@@ -127,21 +127,31 @@ struct VPackSaveInspector : InspectorBase<VPackSaveInspector> {
   }
 
   template<class... Ts, class... Args>
-  auto processVariant(std::variant<Ts...>& value, std::string_view typeField,
-                      std::string_view valueField, Args&&... args) {
-    return std::visit(
-        overload{[this, typeField, valueField, &args](typename Args::Type& v) {
-          std::string tag(
-              args.tag);  // TODO - remove once we have support for unsafe types
-          return beginObject()  //
-                 |
-                 [&]() {
-                   return applyFields(field(typeField, tag),
-                                      field(valueField, v));
-                 }  //
-                 | [&]() { return endObject(); };
-        }...},
-        value);
+  auto processVariant(UnqualifiedVariant<Ts...>& variant, Args&&... args) {
+    return beginObject()  //
+           |
+           [&]() {
+             return std::visit(overload{[this, &args](typename Args::Type& v) {
+                                 return applyFields(field(args.tag, v));
+                               }...},
+                               variant.value);
+           }  //
+           | [&]() { return endObject(); };
+  }
+
+  template<class... Ts, class... Args>
+  auto processVariant(QualifiedVariant<Ts...>& variant, Args&&... args) {
+    return beginObject()  //
+           |
+           [&]() {
+             return std::visit(
+                 overload{[this, &variant, &args](typename Args::Type& v) {
+                   return applyFields(field(variant.typeField, args.tag),
+                                      field(variant.valueField, v));
+                 }...},
+                 variant.value);
+           }  //
+           | [&]() { return endObject(); };
   }
 
   velocypack::Builder& builder() noexcept { return _builder; }

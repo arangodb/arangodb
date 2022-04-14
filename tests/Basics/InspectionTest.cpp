@@ -388,30 +388,60 @@ struct Struct1 {
 struct Struct2 {
   int v;
 };
-using MyVariant =
-    std::variant<std::string, int, Struct1, Struct2, std::monostate>;
 
-struct Variant {
-  MyVariant a;
-  MyVariant b;
-  MyVariant c;
-  MyVariant d;
-  MyVariant e;
+struct MyQualifiedVariant
+    : std::variant<std::string, int, Struct1, Struct2, std::monostate> {};
+
+struct QualifiedVariant {
+  MyQualifiedVariant a;
+  MyQualifiedVariant b;
+  MyQualifiedVariant c;
+  MyQualifiedVariant d;
+  MyQualifiedVariant e;
 };
 
 template<class Inspector>
-auto inspect(Inspector& f, MyVariant& x) {
+auto inspect(Inspector& f, MyQualifiedVariant& x) {
   namespace insp = arangodb::inspection;
-  return f.variant(x).typeField("t").valueField("v").alternatives(
-      insp::type<std::string>("string"),  //
-      insp::type<int>("int"),             //
-      insp::type<Struct1>("Struct1"),     //
-      insp::type<Struct2>("Struct2"),     //
-      insp::type<std::monostate>("nil"));
+  return f.variant(x).qualified("t", "v").alternatives(
+      insp::type<std::string>("string"),   //
+      insp::type<int>("int"),              //
+      insp::type<Struct1>("Struct1"),      //
+      insp::type<Struct2>("Struct2"),      //
+      insp::type<std::monostate>("nil"));  //
 }
 
 template<class Inspector>
-auto inspect(Inspector& f, Variant& x) {
+auto inspect(Inspector& f, QualifiedVariant& x) {
+  return f.object(x).fields(f.field("a", x.a), f.field("b", x.b),
+                            f.field("c", x.c), f.field("d", x.d),
+                            f.field("e", x.e));
+}
+
+struct MyUnqualifiedVariant
+    : std::variant<std::string, int, Struct1, Struct2, std::monostate> {};
+
+struct UnqualifiedVariant {
+  MyUnqualifiedVariant a;
+  MyUnqualifiedVariant b;
+  MyUnqualifiedVariant c;
+  MyUnqualifiedVariant d;
+  MyUnqualifiedVariant e;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, MyUnqualifiedVariant& x) {
+  namespace insp = arangodb::inspection;
+  return f.variant(x).unqualified().alternatives(
+      insp::type<std::string>("string"),   //
+      insp::type<int>("int"),              //
+      insp::type<Struct1>("Struct1"),      //
+      insp::type<Struct2>("Struct2"),      //
+      insp::type<std::monostate>("nil"));  //
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, UnqualifiedVariant& x) {
   return f.object(x).fields(f.field("a", x.a), f.field("b", x.b),
                             f.field("c", x.c), f.field("d", x.d),
                             f.field("e", x.e));
@@ -765,12 +795,12 @@ TEST_F(VPackSaveInspectorTest, store_type_with_unsafe_fields) {
   EXPECT_EQ(hashedString, slice["hashed"].copyString());
 }
 
-TEST_F(VPackSaveInspectorTest, store_variant) {
-  Variant d{.a = "foobar",
-            .b = 42,
-            .c = Struct1{1},
-            .d = Struct2{2},
-            .e = std::monostate{}};
+TEST_F(VPackSaveInspectorTest, store_qualified_variant) {
+  QualifiedVariant d{.a = {"foobar"},
+                     .b = {42},
+                     .c = {Struct1{1}},
+                     .d = {Struct2{2}},
+                     .e = {std::monostate{}}};
   auto result = inspector.apply(d);
   ASSERT_TRUE(result.ok());
 
@@ -790,6 +820,33 @@ TEST_F(VPackSaveInspectorTest, store_variant) {
 
   EXPECT_EQ("nil", slice["e"]["t"].stringView());
   EXPECT_TRUE(slice["e"]["v"].isEmptyObject());
+}
+
+TEST_F(VPackSaveInspectorTest, store_unqualified_variant) {
+  UnqualifiedVariant d{.a = {"foobar"},
+                       .b = {42},
+                       .c = {Struct1{1}},
+                       .d = {Struct2{2}},
+                       .e = {std::monostate{}}};
+  auto result = inspector.apply(d);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+  EXPECT_EQ(1, slice["a"].length());
+  EXPECT_EQ("foobar", slice["a"]["string"].stringView());
+
+  EXPECT_EQ(1, slice["b"].length());
+  EXPECT_EQ(42, slice["b"]["int"].getInt());
+
+  EXPECT_EQ(1, slice["c"].length());
+  EXPECT_EQ(1, slice["c"]["Struct1"]["v"].getInt());
+
+  EXPECT_EQ(1, slice["d"].length());
+  EXPECT_EQ(2, slice["d"]["Struct2"]["v"].getInt());
+
+  EXPECT_EQ(1, slice["e"].length());
+  EXPECT_TRUE(slice["e"]["nil"].isEmptyObject());
 }
 
 struct VPackLoadInspectorTest : public ::testing::Test {
@@ -1613,7 +1670,7 @@ TEST_F(VPackLoadInspectorTest, load_type_with_explicitly_ignored_fields) {
   ASSERT_TRUE(result.ok());
 }
 
-TEST_F(VPackLoadInspectorTest, load_variant) {
+TEST_F(VPackLoadInspectorTest, load_qualified_variant) {
   builder.openObject();
   builder.add(VPackValue("a"));
   builder.openObject();
@@ -1656,11 +1713,11 @@ TEST_F(VPackLoadInspectorTest, load_variant) {
   builder.close();
   VPackLoadInspector inspector{builder};
 
-  Variant v{.a = std::monostate{},
-            .b = std::monostate{},
-            .c = std::monostate{},
-            .d = std::monostate{},
-            .e = 0};
+  QualifiedVariant v{.a = {std::monostate{}},
+                     .b = {std::monostate{}},
+                     .c = {std::monostate{}},
+                     .d = {std::monostate{}},
+                     .e = {0}};
   auto result = inspector.apply(v);
   ASSERT_TRUE(result.ok());
   EXPECT_EQ("foobar", std::get<std::string>(v.a));
@@ -1670,7 +1727,8 @@ TEST_F(VPackLoadInspectorTest, load_variant) {
   EXPECT_TRUE(std::holds_alternative<std::monostate>(v.e));
 }
 
-TEST_F(VPackLoadInspectorTest, error_unknown_type_tag) {
+TEST_F(VPackLoadInspectorTest,
+       error_unknown_type_tag_when_loading_qualified_variant) {
   builder.openObject();
   builder.add(VPackValue("a"));
   builder.openObject();
@@ -1680,14 +1738,15 @@ TEST_F(VPackLoadInspectorTest, error_unknown_type_tag) {
   builder.close();
   VPackLoadInspector inspector{builder};
 
-  Variant v;
+  QualifiedVariant v;
   auto result = inspector.apply(v);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Found invalid type: blubb", result.error());
   EXPECT_EQ("a", result.path());
 }
 
-TEST_F(VPackLoadInspectorTest, error_expecting_string_when_parsing_variant) {
+TEST_F(VPackLoadInspectorTest,
+       error_expecting_string_when_parsing_qualified_variant_value) {
   builder.openObject();
   builder.add(VPackValue("a"));
   builder.openObject();
@@ -1697,14 +1756,15 @@ TEST_F(VPackLoadInspectorTest, error_expecting_string_when_parsing_variant) {
   builder.close();
   VPackLoadInspector inspector{builder};
 
-  Variant v;
+  QualifiedVariant v;
   auto result = inspector.apply(v);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Expecting type String", result.error());
   EXPECT_EQ("a.value", result.path());
 }
 
-TEST_F(VPackLoadInspectorTest, error_missing_tag_when_parsing_variant) {
+TEST_F(VPackLoadInspectorTest,
+       error_missing_tag_when_parsing_qualified_variant) {
   builder.openObject();
   builder.add(VPackValue("a"));
   builder.openObject();
@@ -1713,14 +1773,15 @@ TEST_F(VPackLoadInspectorTest, error_missing_tag_when_parsing_variant) {
   builder.close();
   VPackLoadInspector inspector{builder};
 
-  Variant v;
+  QualifiedVariant v;
   auto result = inspector.apply(v);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Variant type field \"t\" is missing", result.error());
   EXPECT_EQ("a", result.path());
 }
 
-TEST_F(VPackLoadInspectorTest, error_invalid_tag_type_when_parsing_variant) {
+TEST_F(VPackLoadInspectorTest,
+       error_invalid_tag_type_when_parsing_qualified_variant) {
   builder.openObject();
   builder.add(VPackValue("a"));
   builder.openObject();
@@ -1729,14 +1790,15 @@ TEST_F(VPackLoadInspectorTest, error_invalid_tag_type_when_parsing_variant) {
   builder.close();
   VPackLoadInspector inspector{builder};
 
-  Variant v;
+  QualifiedVariant v;
   auto result = inspector.apply(v);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Variant type field \"t\" must be a string", result.error());
   EXPECT_EQ("a", result.path());
 }
 
-TEST_F(VPackLoadInspectorTest, error_missing_value_when_parsing_variant) {
+TEST_F(VPackLoadInspectorTest,
+       error_missing_value_when_parsing_qualified_variant) {
   builder.openObject();
   builder.add(VPackValue("a"));
   builder.openObject();
@@ -1745,10 +1807,112 @@ TEST_F(VPackLoadInspectorTest, error_missing_value_when_parsing_variant) {
   builder.close();
   VPackLoadInspector inspector{builder};
 
-  Variant v;
+  QualifiedVariant v;
   auto result = inspector.apply(v);
   ASSERT_FALSE(result.ok());
   EXPECT_EQ("Variant value field \"v\" is missing", result.error());
+  EXPECT_EQ("a", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest, load_unqualified_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("string", "foobar");
+  builder.close();
+
+  builder.add(VPackValue("b"));
+  builder.openObject();
+  builder.add("int", 42);
+  builder.close();
+
+  builder.add(VPackValue("c"));
+  builder.openObject();
+  builder.add(VPackValue("Struct1"));
+  builder.openObject();
+  builder.add("v", 1);
+  builder.close();
+  builder.close();
+
+  builder.add(VPackValue("d"));
+  builder.openObject();
+  builder.add(VPackValue("Struct2"));
+  builder.openObject();
+  builder.add("v", 2);
+  builder.close();
+  builder.close();
+
+  builder.add(VPackValue("e"));
+  builder.openObject();
+  builder.add(VPackValue("nil"));
+  builder.openObject();
+  builder.close();
+  builder.close();
+
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  UnqualifiedVariant v{.a = {std::monostate{}},
+                       .b = {std::monostate{}},
+                       .c = {std::monostate{}},
+                       .d = {std::monostate{}},
+                       .e = {0}};
+  auto result = inspector.apply(v);
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ("foobar", std::get<std::string>(v.a));
+  EXPECT_EQ(42, std::get<int>(v.b));
+  EXPECT_EQ(1, std::get<Struct1>(v.c).v);
+  EXPECT_EQ(2, std::get<Struct2>(v.d).v);
+  EXPECT_TRUE(std::holds_alternative<std::monostate>(v.e));
+}
+
+TEST_F(VPackLoadInspectorTest,
+       error_unknown_type_tag_when_loading_unqualified_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("blubb", "");
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  UnqualifiedVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Found invalid type: blubb", result.error());
+  EXPECT_EQ("a", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       error_expecting_string_when_parsing_unqualified_variant_value) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("string", 42);
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  UnqualifiedVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Expecting type String", result.error());
+  EXPECT_EQ("a.value", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       error_missing_data_when_parsing_qualified_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  UnqualifiedVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Missing unqualified variant data", result.error());
   EXPECT_EQ("a", result.path());
 }
 

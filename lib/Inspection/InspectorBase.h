@@ -32,6 +32,7 @@
 
 #include <velocypack/Iterator.h>
 
+#include "Basics/overload.h"
 #include "Inspection/Access.h"
 
 namespace arangodb::inspection {
@@ -44,135 +45,33 @@ namespace arangodb::inspection {
 
 template<class Derived>
 struct InspectorBase {
-  template<class T>
-  [[nodiscard]] Status apply(T& x) {
-    return process(self(), x);
-  }
-
+ protected:
   template<class T>
   struct Object;
 
-  struct Keep {};
-
-  constexpr Keep keep() { return {}; }
-
-  template<class T, const char ErrorMsg[], class Func, class... Args>
-  static Status checkInvariant(Func&& func, Args&&... args) {
-    using result_t = std::invoke_result_t<Func, Args...>;
-    if constexpr (std::is_same_v<result_t, bool>) {
-      if (!std::invoke(std::forward<Func>(func), std::forward<Args>(args)...)) {
-        return {ErrorMsg};
-      }
-      return {};
-    } else {
-      static_assert(std::is_same_v<result_t, Status>,
-                    "Invariants must either return bool or "
-                    "velocypack::inspection::Status");
-      return std::invoke(std::forward<Func>(func), std::forward<Args>(args)...);
-    }
-  }
-
-  template<class T>
-  struct FieldsResult {
-    template<class Invariant>
-    Status invariant(Invariant&& func) {
-      if constexpr (Derived::isLoading) {
-        if (!result.ok()) {
-          return std::move(result);
-        }
-        return checkInvariant<FieldsResult, FieldsResult::InvariantFailedError>(
-            std::forward<Invariant>(func), object);
-      } else {
-        return std::move(result);
-      }
-    }
-    operator Status() && { return std::move(result); }
-
-    static constexpr const char InvariantFailedError[] =
-        "Object invariant failed";
-
-   private:
-    template<class TT>
-    friend struct Object;
-    FieldsResult(Status&& res, T& object)
-        : result(std::move(res)), object(object) {}
-    Status result;
-    T& object;
-  };
-
-  template<class T>
-  struct Object {
-    template<class... Args>
-    [[nodiscard]] FieldsResult<T> fields(Args&&... args) {
-      auto& i = inspector;
-      auto res =
-          i.beginObject()                                                 //
-          | [&]() { return i.applyFields(std::forward<Args>(args)...); }  //
-          | [&]() { return i.endObject(); };                              //
-
-      return {std::move(res), object};
-    }
-
-   private:
-    friend struct InspectorBase;
-    explicit Object(Derived& inspector, T& o)
-        : inspector(inspector), object(o) {}
-
-    Derived& inspector;
-    T& object;
-  };
-
   template<class... Ts>
-  struct Variant {
-    template<class... Args>
-    auto alternatives(Args&&... args) && {
-      // TODO - check that args cover all types and that there ate no duplicates
-      return _inspector.processVariant(_value, _typeField, _valueField,
-                                       std::forward<Args>(args)...);
-    }
-
-    Variant&& typeField(std::string_view v) && {
-      _typeField = v;
-      return std::move(*this);
-    }
-
-    Variant&& valueField(std::string_view v) && {
-      _valueField = v;
-      return std::move(*this);
-    }
-
-   private:
-    friend struct InspectorBase;
-    explicit Variant(Derived& inspector, std::variant<Ts...>& value)
-        : _inspector(inspector), _value(value) {}
-    Derived& _inspector;
-    std::variant<Ts...>& _value;
-    std::string_view _typeField{"tag"};
-    std::string_view _valueField{"value"};
-  };
-
-  template<class InnerField, class Fallback>
-  struct FallbackField;
-
-  template<class InnerField, class Invariant>
-  struct InvariantField;
-
-  template<class InnerField, class Transformer>
-  struct TransformField;
-
-  template<typename DerivedField>
-  struct BasicField;
+  struct Variant;
 
   template<typename T>
   struct RawField;
 
   struct IgnoreField;
 
+  struct Keep {};
+
   // TODO - support virtual fields with getter/setter
   // template<typename T>
   // struct VirtualField : BasicField<VirtualField<T>> {
   //   using value_type = T;
   // };
+
+ public:
+  template<class T>
+  [[nodiscard]] Status apply(T& x) {
+    return process(self(), x);
+  }
+
+  constexpr Keep keep() { return {}; }
 
   template<class T>
   [[nodiscard]] Object<T> object(T& o) noexcept {
@@ -187,7 +86,7 @@ struct InspectorBase {
   template<typename T>
   [[nodiscard]] RawField<T> field(std::string_view name,
                                   T& value) const noexcept {
-    static_assert(!std::is_const<T>::value);
+    static_assert(!std::is_const<T>::value || !Derived::isLoading);
     return RawField<T>{{name}, value};
   }
 
@@ -196,6 +95,12 @@ struct InspectorBase {
   }
 
  protected:
+  template<class InnerField, class Transformer>
+  struct TransformField;
+
+  template<class InnerField, class FallbackValue>
+  struct FallbackField;
+
   Derived& self() { return static_cast<Derived&>(*this); }
 
   template<class T>
@@ -331,14 +236,14 @@ struct InspectorBase {
       std::conditional_t<HasTransformMethod<Inner>::value, std::monostate,
                          TransformMixin<Inner>>;
 
- public:
-  template<class InnerField, class U>
+ protected:
+  template<class InnerField, class FallbackValue>
   struct EMPTY_BASE FallbackField
-      : Derived::template FallbackContainer<U>,
-        WithInvariant<FallbackField<InnerField, U>>,
-        WithTransform<FallbackField<InnerField, U>> {
-    FallbackField(InnerField inner, U&& val)
-        : Derived::template FallbackContainer<U>(std::move(val)),
+      : Derived::template FallbackContainer<FallbackValue>,
+        WithInvariant<FallbackField<InnerField, FallbackValue>>,
+        WithTransform<FallbackField<InnerField, FallbackValue>> {
+    FallbackField(InnerField inner, FallbackValue&& val)
+        : Derived::template FallbackContainer<FallbackValue>(std::move(val)),
           inner(std::move(inner)) {}
     using value_type = typename InnerField::value_type;
     InnerField inner;
@@ -356,15 +261,15 @@ struct InspectorBase {
     InnerField inner;
   };
 
-  template<class InnerField, class T>
+  template<class InnerField, class Transformer>
   struct EMPTY_BASE TransformField
-      : WithInvariant<TransformField<InnerField, T>>,
-        WithFallback<TransformField<InnerField, T>> {
-    TransformField(InnerField inner, T&& transformer)
+      : WithInvariant<TransformField<InnerField, Transformer>>,
+        WithFallback<TransformField<InnerField, Transformer>> {
+    TransformField(InnerField inner, Transformer&& transformer)
         : inner(std::move(inner)), transformer(std::move(transformer)) {}
     using value_type = typename InnerField::value_type;
     InnerField inner;
-    T transformer;
+    Transformer transformer;
   };
 
   template<typename DerivedField>
@@ -387,6 +292,125 @@ struct InspectorBase {
     explicit IgnoreField(std::string_view name) : name(name) {}
     std::string_view name;
   };
+
+  template<class T>
+  struct FieldsResult {
+    template<class Invariant>
+    Status invariant(Invariant&& func) {
+      if constexpr (Derived::isLoading) {
+        if (!result.ok()) {
+          return std::move(result);
+        }
+        return checkInvariant<FieldsResult, FieldsResult::InvariantFailedError>(
+            std::forward<Invariant>(func), object);
+      } else {
+        return std::move(result);
+      }
+    }
+    operator Status() && { return std::move(result); }
+
+    static constexpr const char InvariantFailedError[] =
+        "Object invariant failed";
+
+   private:
+    template<class TT>
+    friend struct Object;
+    FieldsResult(Status&& res, T& object)
+        : result(std::move(res)), object(object) {}
+    Status result;
+    T& object;
+  };
+
+  template<class T>
+  struct Object {
+    template<class... Args>
+    [[nodiscard]] FieldsResult<T> fields(Args&&... args) {
+      auto& i = inspector;
+      auto res =
+          i.beginObject()                                                 //
+          | [&]() { return i.applyFields(std::forward<Args>(args)...); }  //
+          | [&]() { return i.endObject(); };                              //
+
+      return {std::move(res), object};
+    }
+
+   private:
+    friend struct InspectorBase;
+    explicit Object(Derived& inspector, T& o)
+        : inspector(inspector), object(o) {}
+
+    Derived& inspector;
+    T& object;
+  };
+
+  template<template<class...> class DerivedVariant, class... Ts>
+  struct VariantBase {
+    VariantBase(Derived& inspector, std::variant<Ts...>& value)
+        : inspector(inspector), value(value) {}
+
+    template<class... Args>
+    auto alternatives(Args&&... args) && {
+      // TODO - check that args cover all types and that there are no duplicates
+      return inspector.processVariant(
+          static_cast<DerivedVariant<Ts...>&>(*this),
+          std::forward<Args>(args)...);
+    }
+
+    Derived& inspector;
+    std::variant<Ts...>& value;
+  };
+
+  template<class... Ts>
+  struct UnqualifiedVariant : VariantBase<UnqualifiedVariant, Ts...> {
+    using VariantBase<UnqualifiedVariant, Ts...>::VariantBase;
+  };
+
+  template<class... Ts>
+  struct QualifiedVariant : VariantBase<QualifiedVariant, Ts...> {
+    QualifiedVariant(Derived& inspector, std::variant<Ts...>& value,
+                     std::string_view typeField, std::string_view valueField)
+        : VariantBase<QualifiedVariant, Ts...>(inspector, value),
+          typeField(typeField),
+          valueField(valueField) {}
+
+    std::string_view const typeField;
+    std::string_view const valueField;
+  };
+
+  template<class... Ts>
+  struct Variant {
+    UnqualifiedVariant<Ts...> unqualified() && {
+      return UnqualifiedVariant<Ts...>(_inspector, _value);
+    }
+
+    QualifiedVariant<Ts...> qualified(std::string_view typeField,
+                                      std::string_view valueField) && {
+      return QualifiedVariant<Ts...>(_inspector, _value, typeField, valueField);
+    }
+
+   private:
+    friend struct InspectorBase;
+    Variant(Derived& inspector, std::variant<Ts...>& value)
+        : _inspector(inspector), _value(value) {}
+    Derived& _inspector;
+    std::variant<Ts...>& _value;
+  };
+
+  template<class T, const char ErrorMsg[], class Func, class... Args>
+  static Status checkInvariant(Func&& func, Args&&... args) {
+    using result_t = std::invoke_result_t<Func, Args...>;
+    if constexpr (std::is_same_v<result_t, bool>) {
+      if (!std::invoke(std::forward<Func>(func), std::forward<Args>(args)...)) {
+        return {ErrorMsg};
+      }
+      return {};
+    } else {
+      static_assert(std::is_same_v<result_t, Status>,
+                    "Invariants must either return bool or "
+                    "velocypack::inspection::Status");
+      return std::invoke(std::forward<Func>(func), std::forward<Args>(args)...);
+    }
+  }
 };
 
 namespace detail {
