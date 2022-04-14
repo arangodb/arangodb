@@ -259,7 +259,6 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   auto const& sortElements = sortNode->elements();
   std::vector<std::pair<size_t, bool>> scoresSort;
   for (auto const& sort : sortElements) {
-    /// TODO  - extract as func?
     TRI_ASSERT(sort.var);
     auto varSetBy = plan->getVarSetBy(sort.var->id);
     TRI_ASSERT(varSetBy);
@@ -278,7 +277,6 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
           astCalcNode->getData());
       TRI_ASSERT(sortVariable);
     }
-    /// end of func extract
     auto s = std::find_if(scorers.begin(), scorers.end(),
                           [sortVariable](Scorer const& t) {
                             return t.var->id == sortVariable->id;
