@@ -122,8 +122,8 @@ struct ReplicatedState final
    */
   void forceRebuild() override;
 
-  struct StateManagerBase {
-    virtual ~StateManagerBase() = default;
+  struct IStateManager {
+    virtual ~IStateManager() = default;
     virtual void run() = 0;
 
     using WaitForAppliedPromise = futures::Promise<futures::Unit>;
@@ -173,7 +173,7 @@ struct ReplicatedState final
     explicit GuardedData(ReplicatedState& self) : _self(self) {}
 
     ReplicatedState& _self;
-    std::shared_ptr<StateManagerBase> currentManager = nullptr;
+    std::shared_ptr<IStateManager> currentManager = nullptr;
   };
   Guarded<GuardedData> guardedData;
   LoggerContext const loggerContext;
