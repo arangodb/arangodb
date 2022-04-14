@@ -97,12 +97,13 @@ void LeaderStateManager<S>::run() noexcept {
                   if (auto result = tryResult.get(); result.ok()) {
                     LOG_CTX("1a375", DEBUG, self->loggerContext)
                         << "recovery on leader completed";
-                    bool waitForResigned =
-                        self->guardedData.doUnderLock([&](GuardedData& data) {
+                    auto state = self->guardedData.doUnderLock(
+                        [&](GuardedData& data)
+                            -> std::shared_ptr<IReplicatedLeaderState<S>> {
                           if (data.token == nullptr) {
                             LOG_CTX("59a31", DEBUG, self->loggerContext)
                                 << "token already gone";
-                            return false;
+                            return nullptr;
                           }
                           data.state = machine;
                           data.token->snapshot.updateStatus(
@@ -110,10 +111,11 @@ void LeaderStateManager<S>::run() noexcept {
                           data.updateInternalState(
                               LeaderInternalState::kServiceAvailable);
                           data.state->_stream = data.stream;
-                          return true;
+                          return data.state;
                         });
 
-                    if (waitForResigned) {
+                    if (state != nullptr) {
+                      state->onSnapshotCompleted();
                       self->beginWaitingForParticipantResigned();
                       return result;
                     } else {
