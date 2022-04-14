@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "VocBase/vocbase.h"
+
 #include <memory>
 #include <optional>
 #include <string>
@@ -64,28 +66,37 @@ struct PrototypeStateMethods {
     std::vector<ParticipantId> servers;
   };
 
+  struct PrototypeWriteOptions {
+    bool waitForCommit{true};
+    bool waitForSync{false};
+    bool waitForApplied{true};
+  };
+
   [[nodiscard]] virtual auto createState(CreateOptions options) const
       -> futures::Future<ResultT<CreateResult>> = 0;
 
   [[nodiscard]] virtual auto insert(
-      LogId id,
-      std::unordered_map<std::string, std::string> const& entries) const
-      -> futures::Future<ResultT<LogIndex>> = 0;
+      LogId id, std::unordered_map<std::string, std::string> const& entries,
+      PrototypeWriteOptions) const -> futures::Future<LogIndex> = 0;
 
-  [[nodiscard]] virtual auto get(LogId id, std::string key) const
-      -> futures::Future<std::optional<std::string>> = 0;
-  [[nodiscard]] virtual auto get(LogId id, std::vector<std::string> keys) const
-      -> futures::Future<std::unordered_map<std::string, std::string>> = 0;
+  [[nodiscard]] virtual auto get(LogId id, std::string key,
+                                 LogIndex waitForApplied) const
+      -> futures::Future<ResultT<std::optional<std::string>>> = 0;
+  [[nodiscard]] virtual auto get(LogId id, std::vector<std::string> keys,
+                                 LogIndex waitForApplied) const
+      -> futures::Future<
+          ResultT<std::unordered_map<std::string, std::string>>> = 0;
 
   [[nodiscard]] virtual auto getSnapshot(LogId id, LogIndex waitForIndex) const
       -> futures::Future<
           ResultT<std::unordered_map<std::string, std::string>>> = 0;
 
-  [[nodiscard]] virtual auto remove(LogId id, std::string key) const
-      -> futures::Future<ResultT<LogIndex>> = 0;
-  [[nodiscard]] virtual auto remove(LogId id,
-                                    std::vector<std::string> keys) const
-      -> futures::Future<ResultT<LogIndex>> = 0;
+  [[nodiscard]] virtual auto remove(LogId id, std::string key,
+                                    PrototypeWriteOptions) const
+      -> futures::Future<LogIndex> = 0;
+  [[nodiscard]] virtual auto remove(LogId id, std::vector<std::string> keys,
+                                    PrototypeWriteOptions) const
+      -> futures::Future<LogIndex> = 0;
 
   struct PrototypeStatus {
     // TODO
@@ -114,5 +125,11 @@ template<class Inspector>
 auto inspect(Inspector& f, PrototypeStateMethods::PrototypeStatus& x) {
   return f.object(x).fields(f.field("id", x.id));
 }
-
+template<class Inspector>
+auto inspect(Inspector& f, PrototypeStateMethods::PrototypeWriteOptions& x) {
+  return f.object(x).fields(
+      f.field("waitForCommit", x.waitForCommit).fallback(true),
+      f.field("waitForSync", x.waitForSync).fallback(false),
+      f.field("waitForApplied", x.waitForApplied).fallback(true));
+}
 }  // namespace arangodb::replication2
