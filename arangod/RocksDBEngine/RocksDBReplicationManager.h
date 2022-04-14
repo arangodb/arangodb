@@ -66,7 +66,8 @@ class RocksDBReplicationManager {
   /// @brief remove a context by id
   //////////////////////////////////////////////////////////////////////////////
 
-  bool remove(RocksDBReplicationId);
+  ResultT<std::tuple<SyncerId, ServerId, std::string>> remove(
+      RocksDBReplicationId id);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find an existing context by id

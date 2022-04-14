@@ -98,6 +98,9 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
   /// @brief maximum tick until which we need to run WAL tailing for. 0 means
   /// "no restriction"
   uint64_t _tailingUpperBoundTick;
+
+  /// @brief end time (timestamp in seconds)
+  std::chrono::time_point<std::chrono::steady_clock> _endTimeForAttempt;
 };
 
 }  // namespace maintenance

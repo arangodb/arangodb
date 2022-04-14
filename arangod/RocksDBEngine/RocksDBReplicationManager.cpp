@@ -165,8 +165,12 @@ RocksDBReplicationContext* RocksDBReplicationManager::createContext(
 /// @brief remove a context by id
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
+ResultT<std::tuple<SyncerId, ServerId, std::string>>
+RocksDBReplicationManager::remove(RocksDBReplicationId id) {
   RocksDBReplicationContext* context = nullptr;
+  SyncerId syncerId;
+  ServerId clientId;
+  std::string clientInfo;
 
   {
     MUTEX_LOCKER(mutexLocker, _lock);
@@ -175,7 +179,7 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
 
     if (it == _contexts.end()) {
       // not found
-      return false;
+      return {TRI_ERROR_CURSOR_NOT_FOUND};
     }
 
     LOG_TOPIC("71233", TRACE, Logger::REPLICATION)
@@ -186,13 +190,17 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
 
     if (context->isDeleted()) {
       // already deleted
-      return false;
+      return {TRI_ERROR_CURSOR_NOT_FOUND};
     }
+
+    syncerId = context->syncerId();
+    clientId = context->replicationClientServerId();
+    clientInfo = context->clientInfo();
 
     if (context->isUsed()) {
       // context is in use by someone else. now mark as deleted
       context->setDeleted();
-      return true;
+      return {std::make_tuple(syncerId, clientId, clientInfo)};
     }
 
     // context not in use by someone else
@@ -202,7 +210,8 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
   TRI_ASSERT(context != nullptr);
 
   delete context;
-  return true;
+
+  return {std::make_tuple(syncerId, clientId, clientInfo)};
 }
 
 ////////////////////////////////////////////////////////////////////////////////

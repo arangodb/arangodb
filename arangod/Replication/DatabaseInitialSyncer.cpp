@@ -537,12 +537,6 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     LOG_TOPIC("0a10d", DEBUG, Logger::REPLICATION)
         << "client: getting leader state to dump " << vocbase().name();
 
-    auto batchCancelation = scopeGuard([this]() noexcept {
-      if (!_config.isChild()) {
-        std::ignore = batchFinish();
-      }
-    });
-
     Result r;
     if (!_config.isChild()) {
       // enable patching of collection count for ShardSynchronization Job

@@ -128,8 +128,7 @@ TailingSyncer::~TailingSyncer() { abortOngoingTransactions(); }
 /// @brief decide based on _state.leader which api to use
 ///        GlobalTailingSyncer should overwrite this probably
 std::string TailingSyncer::tailingBaseUrl(std::string const& cc) {
-  std::string const& base = TailingSyncer::WalAccessUrl;
-  return base + "/" + cc + "?";
+  return TailingSyncer::WalAccessUrl + "/" + cc + "?";
 }
 
 /// @brief set the applier progress
