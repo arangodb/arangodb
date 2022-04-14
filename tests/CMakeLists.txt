@@ -269,7 +269,6 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/HotBackupTest.cpp
   RocksDBEngine/EncryptionProviderTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
-  RocksDBEngine/ShaEventListener.cpp
   RocksDBEngine/TransactionManagerTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/HttpResponseCheckerTest.cpp
