@@ -42,6 +42,8 @@ OperationOptions::OperationOptions()
       checkUniqueConstraintsInPreflight(false),
       truncateCompact(true),
       documentCallFromAql(false),
+      canDisableIndexing(true),
+      budget(0.0),
       _context(nullptr) {}
 
 OperationOptions::OperationOptions(ExecContext const& context)
@@ -50,7 +52,7 @@ OperationOptions::OperationOptions(ExecContext const& context)
 }
 
 namespace {
-const char* indexOpModeString(IndexOperationMode mode) {
+std::string_view indexOpModeString(IndexOperationMode mode) {
   switch (mode) {
     case IndexOperationMode::normal:
       return "normal";
@@ -80,6 +82,7 @@ std::ostream& operator<<(std::ostream& os, OperationOptions const& ops) {
      << ", isRestore : " << ops.isRestore
      << ", overwriteMode : " << OperationOptions::stringifyOverwriteMode(ops.overwriteMode)
      << ", canDisableIndexing : " << ops.canDisableIndexing
+     << ", budget : " << ops.budget
      << " }" << std::endl;
   // clang-format on
   return os;
@@ -94,7 +97,7 @@ ExecContext const& OperationOptions::context() const {
 }
 
 /// @brief stringifies the overwrite mode
-char const* OperationOptions::stringifyOverwriteMode(
+std::string_view OperationOptions::stringifyOverwriteMode(
     OperationOptions::OverwriteMode mode) {
   switch (mode) {
     case OverwriteMode::Unknown:

@@ -97,7 +97,7 @@ struct OperationOptions {
   }
 
   /// @brief stringifies the overwrite mode
-  static char const* stringifyOverwriteMode(
+  static std::string_view stringifyOverwriteMode(
       OperationOptions::OverwriteMode mode);
 
   /// @brief determine the overwrite mode from the string value
@@ -168,7 +168,11 @@ struct OperationOptions {
   // have to ensure that writes become visible to the current query. This is
   // necessary for UPSERTS where the subquery relies on a non-unique secondary
   // index.
-  bool canDisableIndexing = true;
+  bool canDisableIndexing;
+
+  // time budget for carrying out the (write) operation. a value of <= 0.0 means
+  // there is no budget
+  double budget;
 
   // get associated execution context
   ExecContext const& context() const;

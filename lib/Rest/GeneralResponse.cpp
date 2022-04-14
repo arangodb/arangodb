@@ -355,7 +355,6 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_GRAPH_INVALID_PARAMETER):
     case static_cast<int>(TRI_ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS):
     case static_cast<int>(TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST):
-    case static_cast<int>(TRI_ERROR_ARANGO_NO_JOURNAL):
     case static_cast<int>(TRI_ERROR_NO_SMART_COLLECTION):
     case static_cast<int>(TRI_ERROR_NO_SMART_GRAPH_ATTRIBUTE):
     case static_cast<int>(TRI_ERROR_CANNOT_DROP_SMART_COLLECTION):

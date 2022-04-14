@@ -38,6 +38,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/system-compiler.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterTrxMethods.h"
@@ -86,6 +87,19 @@ using Future = futures::Future<T>;
 namespace {
 
 enum class ReplicationType { NONE, LEADER, FOLLOWER };
+
+double getEndTime(velocypack::Slice value,
+                  OperationOptions const& options) noexcept {
+  // default to unconstrained
+  double endTime = -1.0;
+
+  // this is a batch operation and we have a time budget to carry out the
+  // writes. to stay within the budget, we need to set an end time.
+  if (options.budget > 0.0 && value.isArray()) {
+    endTime = TRI_microtime() + options.budget;
+  }
+  return endTime;
+}
 
 Result buildRefusalResult(LogicalCollection const& collection,
                           char const* operation,
@@ -858,7 +872,7 @@ Future<OperationResult> transaction::Methods::documentLocal(
     }
   }
 
-  auto workForOneDocument = [&](VPackSlice value, bool isMultiple) -> Result {
+  auto workForOneDocument = [&](VPackSlice value, bool isBatch) -> Result {
     Result res;
 
     std::string_view key(transaction::helpers::extractKeyPart(value));
@@ -875,7 +889,7 @@ Future<OperationResult> transaction::Methods::documentLocal(
                 RevisionId foundRevision =
                     transaction::helpers::extractRevFromDocument(doc);
                 if (expectedRevision != foundRevision) {
-                  if (!isMultiple) {
+                  if (!isBatch) {
                     // still return
                     buildDocumentIdentity(collection.get(), resultBuilder, cid,
                                           key, foundRevision,
@@ -889,7 +903,7 @@ Future<OperationResult> transaction::Methods::documentLocal(
 
             if (!options.silent) {
               resultBuilder.add(doc);
-            } else if (isMultiple) {
+            } else if (isBatch) {
               resultBuilder.add(VPackSlice::nullSlice());
             }
             return true;
@@ -1089,12 +1103,21 @@ Future<OperationResult> transaction::Methods::insertLocal(
 
   [[maybe_unused]] size_t numExclusions = 0;
 
-  auto workForOneDocument = [&](VPackSlice value, bool isBabies,
+  // end time for the operation. a negative value means the end time is not
+  // constrained.
+  double endTime = ::getEndTime(value, options);
+
+  auto workForOneDocument = [&](VPackSlice value, bool isBatch,
                                 bool& excludeFromReplication) -> Result {
+    if (endTime > 0.0 && TRI_microtime() > endTime) {
+      // time budget exceeded
+      return {TRI_ERROR_ARANGO_WRITE_OPERATION_TIMEOUT};
+    }
+
     excludeFromReplication = false;
 
     if (!value.isObject()) {
-      return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+      return {TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID};
     }
 
     docResult.clear();
@@ -1212,7 +1235,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
 
     if (res.fail()) {
       // Error reporting in the babies case is done outside of here,
-      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies &&
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBatch &&
           prevDocResult.revisionId().isSet()) {
         TRI_ASSERT(didReplace);
 
@@ -1521,9 +1544,18 @@ Future<OperationResult> transaction::Methods::modifyLocal(
 
   [[maybe_unused]] size_t numExclusions = 0;
 
+  // end time for the operation. a negative value means the end time is not
+  // constrained.
+  double endTime = ::getEndTime(newValue, options);
+
   // lambda //////////////
-  auto workForOneDocument = [&](VPackSlice newVal, bool isBabies,
+  auto workForOneDocument = [&](VPackSlice newVal, bool isBatch,
                                 bool& excludeFromReplication) -> Result {
+    if (endTime > 0.0 && TRI_microtime() > endTime) {
+      // time budget exceeded
+      return {TRI_ERROR_ARANGO_WRITE_OPERATION_TIMEOUT};
+    }
+
     Result res;
     if (!newVal.isObject()) {
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -1544,7 +1576,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     }
 
     if (res.fail()) {
-      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBatch) {
         TRI_ASSERT(previous.revisionId().isSet());
         std::string_view key =
             newVal.get(StaticStrings::KeyString).stringView();
@@ -1800,7 +1832,16 @@ Future<OperationResult> transaction::Methods::removeLocal(
   VPackBuilder resultBuilder;
   ManagedDocumentResult previous;
 
-  auto workForOneDocument = [&](VPackSlice value, bool isBabies) -> Result {
+  // end time for the operation. a negative value means the end time is not
+  // constrained.
+  double endTime = ::getEndTime(value, options);
+
+  auto workForOneDocument = [&](VPackSlice value, bool isBatch) -> Result {
+    if (endTime > 0.0 && TRI_microtime() > endTime) {
+      // time budget exceeded
+      return {TRI_ERROR_ARANGO_WRITE_OPERATION_TIMEOUT};
+    }
+
     transaction::BuilderLeaser builder(this);
     std::string_view key;
     if (value.isString()) {
@@ -1832,7 +1873,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
     auto res = collection->remove(*this, value, options, previous);
 
     if (res.fail()) {
-      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBatch) {
         TRI_ASSERT(previous.revisionId().isSet());
         buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
                               previous.revisionId(), RevisionId::none(),
