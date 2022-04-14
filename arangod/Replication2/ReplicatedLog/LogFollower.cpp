@@ -594,17 +594,19 @@ replicated_log::LogFollower::~LogFollower() {
 }
 
 auto LogFollower::release(LogIndex doneWithIdx) -> Result {
-  return _guardedFollowerData.doUnderLock(
-      [&](GuardedFollowerData& self) -> Result {
-        TRI_ASSERT(doneWithIdx <= self._inMemoryLog.getLastIndex());
-        if (doneWithIdx <= self._releaseIndex) {
-          return {};
-        }
-        self._releaseIndex = doneWithIdx;
-        LOG_CTX("a0c95", TRACE, _loggerContext)
-            << "new release index set to " << self._releaseIndex;
-        return self.checkCompaction();
-      });
+  auto guard = _guardedFollowerData.getLockedGuard();
+
+  // guard.waitFor(_appendEntriesInFlightCondVar,
+  //               [&] { return !_appendEntriesInFlight; });
+
+  TRI_ASSERT(doneWithIdx <= guard->_inMemoryLog.getLastIndex());
+  if (doneWithIdx <= guard->_releaseIndex) {
+    return {};
+  }
+  guard->_releaseIndex = doneWithIdx;
+  LOG_CTX("a0c95", TRACE, _loggerContext)
+      << "new release index set to " << guard->_releaseIndex;
+  return guard->checkCompaction();
 }
 
 auto LogFollower::waitForLeaderAcked() -> WaitForFuture {
