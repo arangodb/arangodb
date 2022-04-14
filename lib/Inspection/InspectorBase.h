@@ -32,7 +32,6 @@
 
 #include <velocypack/Iterator.h>
 
-#include "Basics/overload.h"
 #include "Inspection/Access.h"
 
 namespace arangodb::inspection {
