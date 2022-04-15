@@ -239,8 +239,11 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
         limitNode = ExecutionNode::castTo<LimitNode*>(current);
         break;
         case ExecutionNode::CALCULATION:
-        // TODO: check only SETs for scoring variables!
+        // Only deterministic calcs allowed
         // Other should be forbidden as number of calls will be changed!
+        if (!current->isDeterministic()) {
+          return false;
+        }
         break;
       default:
         return false;
