@@ -11,15 +11,16 @@ const URLPARAMETERS = {
   nodeLabel: "_key",
   edgeLabel: "_id",
   nodeSize: "",
-  nodeSizeByEdges: true,
+  nodeSizeByEdges: false,
   edgeEditable: true,
   nodeLabelByCollection: false,
   edgeLabelByCollection: false,
   nodeStart: "",
   barnesHutOptimize: true,
   query: "",
+  nodeLabelByCollection: false,
+  edgeLabelByCollection: false,
   //mode: "all",
-  pokemon: "pikachu"
 };
 
 export default URLPARAMETERS;
