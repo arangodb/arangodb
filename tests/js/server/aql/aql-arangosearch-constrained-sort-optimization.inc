@@ -80,6 +80,11 @@
         let plan = AQL_EXPLAIN(query).plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
+       testNotAppliedDueToNonDetermCalc() {
+        let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 0  LET a = NOOPT(d.b.b1)  SORT BM25(d) LIMIT 10 RETURN {dD:d, aA:a}";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertEqual(-1, plan.rules.indexOf(ruleName));
+      },
       testNotAppliedDueToNoLimit() {
         let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 0 SORT BM25(d) RETURN d";
         let plan = AQL_EXPLAIN(query).plan;

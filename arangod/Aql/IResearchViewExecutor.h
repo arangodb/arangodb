@@ -283,10 +283,10 @@ class IndexReadBuffer {
 
   size_t memoryUsage(size_t maxSize) const noexcept {
     auto res = maxSize * sizeof(decltype(_keyBuffer)::value_type) +
-           maxSize * sizeof(decltype(_scoreBuffer)::value_type) +
-           maxSize * sizeof(decltype(_storedValuesBuffer)::value_type);
+               maxSize * sizeof(decltype(_scoreBuffer)::value_type) +
+               maxSize * sizeof(decltype(_storedValuesBuffer)::value_type);
     if (_scoresSort) {
-     res += maxSize * sizeof(decltype(_rows)::value_type);
+      res += maxSize * sizeof(decltype(_rows)::value_type);
     }
     return res;
   }
