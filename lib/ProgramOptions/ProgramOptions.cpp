@@ -602,7 +602,7 @@ void ProgramOptions::addPositional(std::string const& value) {
 }
 
 // adds an option to the list of options
-void ProgramOptions::addOption(Option const& option) {
+void ProgramOptions::addOption(Option&& option) {
   checkIfSealed();
   std::map<std::string, Section>::iterator sectionIt =
       addSection(option.section, "");
@@ -616,7 +616,7 @@ void ProgramOptions::addOption(Option const& option) {
   }
 
   Section& section = (*sectionIt).second;
-  section.options.try_emplace(option.name, option);
+  section.options.try_emplace(option.name, std::move(option));
 }
 
 // modernize an option name

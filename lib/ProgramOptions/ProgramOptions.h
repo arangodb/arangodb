@@ -28,6 +28,10 @@
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Section.h"
 
+#include <memory>
+#include <string>
+#include <vector>
+
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -127,10 +131,11 @@ class ProgramOptions {
   void addOldOption(std::string const& old, std::string const& replacement);
 
   // adds a section to the options
-  auto addSection(Section const& section) {
+  auto addSection(Section&& section) {
     checkIfSealed();
 
-    auto [it, emplaced] = _sections.try_emplace(section.name, section);
+    auto [it, emplaced] =
+        _sections.try_emplace(section.name, std::move(section));
     if (!emplaced) {
       // section already present. check if we need to update it
       Section& sec = it->second;
@@ -158,13 +163,21 @@ class ProgramOptions {
         EnterpriseSection(name, description, link, "", hidden, obsolete));
   }
 
-  // adds an option to the program options
+  // adds an option to the program options.
+  Option& addOption(
+      std::string const& name, std::string const& description,
+      std::unique_ptr<Parameter> parameter,
+      std::underlying_type<Flags>::type flags = makeFlags(Flags::Default)) {
+    return addOption(name, description, std::move(parameter), flags);
+  }
+
+  // adds an option to the program options. old API!
   Option& addOption(
       std::string const& name, std::string const& description,
       Parameter* parameter,
       std::underlying_type<Flags>::type flags = makeFlags(Flags::Default)) {
-    addOption(Option(name, description, parameter, flags));
-    return getOption(name);
+    return addOption(name, description, std::unique_ptr<Parameter>(parameter),
+                     flags);
   }
 
   // adds a deprecated option that has no effect to the program options to not
@@ -173,7 +186,8 @@ class ProgramOptions {
   Option& addObsoleteOption(std::string const& name,
                             std::string const& description,
                             bool requiresValue) {
-    addOption(Option(name, description, new ObsoleteParameter(requiresValue),
+    addOption(Option(name, description,
+                     std::make_unique<ObsoleteParameter>(requiresValue),
                      makeFlags(Flags::Uncommon, Flags::Obsolete)));
     return getOption(name);
   }
@@ -264,7 +278,7 @@ class ProgramOptions {
 
  private:
   // adds an option to the list of options
-  void addOption(Option const& option);
+  void addOption(Option&& option);
 
   // modernize an option name
   std::string const& modernize(std::string const& name);
