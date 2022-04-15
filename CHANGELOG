@@ -1,6 +1,9 @@
 v3.9.2 (XXXX-XX-XX)
 -------------------
 
+* Fix deadlocked shard synchronisations when planned shard leader has not yet
+  taken over leadership.
+
 * Added an IO heartbeat which checks that the underlying volume is writable with
   reasonable performance. The test is done every 15 seconds and can be
   explicitly switched off. New metrics to give visibility if the test fails.
@@ -19,9 +22,6 @@ v3.9.2 (XXXX-XX-XX)
 
 v3.9.1 (2022-04-04)
 -------------------
-
-* Fix deadlocked shard synchronisations when planned shard leader has
-  not yet taken over leadership.
 
 * Updated ArangoDB Starter to 0.15.4.
 
