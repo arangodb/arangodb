@@ -192,7 +192,7 @@
       },
       
     };
-  }
+  };
 }());
 
 //optimizer:{rules:['-arangosearch-constrained-sort']}
