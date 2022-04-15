@@ -578,7 +578,7 @@ void RocksDBEngine::start() {
 
   rocksdb::TransactionDBOptions transactionOptions;
   // number of locks per column_family
-  transactionOptions.num_stripes = NumberOfCores::getValue();
+  transactionOptions.num_stripes = std::max(size_t(16), NumberOfCores::getValue());
   transactionOptions.transaction_lock_timeout = opts._transactionLockTimeout;
 
   _options.allow_fallocate = opts._allowFAllocate;
