@@ -83,7 +83,7 @@
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
-#include "RocksDBEngine/RocksDBSha256Checksum.h"
+#include "RocksDBEngine/RocksDBChecksumEnv.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBUpgrade.h"
@@ -265,6 +265,11 @@ RocksDBEngine::RocksDBEngine(Server& server)
 }
 
 RocksDBEngine::~RocksDBEngine() { shutdownRocksDBInstance(); }
+
+std::unique_ptr<rocksdb::Env> RocksDBEngine::NewChecksumEnv(
+    rocksdb::Env* base_env, std::string const& path) {
+  return std::make_unique<arangodb::checksum::ChecksumEnv>(base_env, path);
+}
 
 /// shuts down the RocksDB instance. this is called from unprepare
 /// and the dtor
@@ -796,8 +801,25 @@ void RocksDBEngine::start() {
   _options.compaction_readahead_size =
       static_cast<size_t>(opts._compactionReadaheadSize);
 
+  if (_createShaFiles) {
+    _checksumEnv = NewChecksumEnv(rocksdb::Env::Default(), _path);
+    _options.env = _checksumEnv.get();
+    static_cast<checksum::ChecksumEnv*>(_checksumEnv.get())
+        ->getHelper()
+        ->checkMissingShaFiles();  // this works even if done before
+                                   // configureEnterpriseRocksDBOptions() is
+                                   // called when tehre's encryption, because
+                                   // checkMissingShafiles() only looks for
+                                   // existing sst files without their sha files
+                                   // in the directory and writes the missing
+                                   // sha files.
+  } else {
+    _options.env = rocksdb::Env::Default();
+  }
+
 #ifdef USE_ENTERPRISE
   configureEnterpriseRocksDBOptions(_options, createdEngineDir);
+
 #endif
 
   _options.env->SetBackgroundThreads(static_cast<int>(opts._numThreadsHigh),
@@ -871,17 +893,6 @@ void RocksDBEngine::start() {
     _options.avoid_flush_during_recovery = true;
   } else {
     _options.max_open_files = -1;
-  }
-
-  if (_createShaFiles) {
-    auto shaFileManager = std::make_shared<RocksDBShaFileManager>(_path);
-    // Register checksum factory
-    _options.file_checksum_gen_factory =
-        std::make_shared<RocksDBSha256ChecksumFactory>(shaFileManager);
-    // Do an initial check in the database directory for missing SHA checksum
-    // files
-    shaFileManager->checkMissingShaFiles();
-    _options.listeners.push_back(std::move(shaFileManager));
   }
 
   // WAL_ttl_seconds needs to be bigger than the sync interval of the count

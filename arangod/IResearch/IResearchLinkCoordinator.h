@@ -78,10 +78,9 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex,
     return IResearchLink::matchesDefinition(slice);
   }
 
-  size_t memory() const final {
-    return stats().indexSize;  // TODO add in memory size
-  }
+  Stats stats() const final;
 
+  size_t memory() const final { return stats().indexSize; }
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLink object
   /// @param withFigures output 'figures' section with e.g. memory size
