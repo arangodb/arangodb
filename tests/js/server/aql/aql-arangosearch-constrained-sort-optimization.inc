@@ -85,6 +85,11 @@
         let plan = AQL_EXPLAIN(query).plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
+      testNotAppliedDueToLimitBefore() {
+        let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 0 LIMIT 10 SORT BM25(d) RETURN d";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertEqual(-1, plan.rules.indexOf(ruleName));
+      },
       testNotAppliedDueToInLoop() {
         let query = "FOR a IN 1..10 FOR d IN " + vn + " SEARCH d.a.a1 == a SORT BM25(d) LIMIT 10 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;

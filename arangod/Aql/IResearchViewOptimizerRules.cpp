@@ -228,26 +228,25 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   SortNode* sortNode = nullptr;
   LimitNode const* limitNode = nullptr;
   while (current = current->getFirstParent()) {
-    if (current->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW ||
-        current->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
-        current->getType() == ExecutionNode::TRAVERSAL ||
-        current->getType() == ExecutionNode::SHORTEST_PATH ||
-        current->getType() == ExecutionNode::K_SHORTEST_PATHS ||
-        current->getType() == ExecutionNode::INDEX ||
-        current->getType() == ExecutionNode::COLLECT) {
-      // any of these node types will lead to more/less results in the output,
-      // and may as well change the sort order, so let's better abort here
-      return false;
+    switch (current->getType()) {
+      case ExecutionNode::SORT:
+        sortNode = ExecutionNode::castTo<SortNode*>(current);
+        break;
+      case ExecutionNode::LIMIT:
+        if (sortNode == nullptr) {
+          return false;
+        }
+        limitNode = ExecutionNode::castTo<LimitNode*>(current);
+        break;
+        case ExecutionNode::CALCULATION:
+        // TODO: check only SETs for scoring variables!
+        // Other should be forbidden as number of calls will be changed!
+        break;
+      default:
+        return false;
+        break;
     }
-
-    if (current->getType() == ExecutionNode::SORT) {
-      // we stop on first sort
-      sortNode = ExecutionNode::castTo<SortNode*>(current);
-    }
-
-    if (current->getType() == ExecutionNode::LIMIT) {
-      // we always check only first limit
-      limitNode = ExecutionNode::castTo<LimitNode*>(current);
+    if (sortNode && limitNode) {
       break;
     }
   }

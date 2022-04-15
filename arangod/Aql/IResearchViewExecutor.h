@@ -281,26 +281,21 @@ class IndexReadBuffer {
   // before and after.
   void assertSizeCoherence() const noexcept;
 
-  size_t memoryUsage() const noexcept {
-    return _keyBuffer.capacity() * sizeof(decltype(_keyBuffer)::value_type) +
-           _scoreBuffer.capacity() *
-               sizeof(decltype(_scoreBuffer)::value_type) +
-           _storedValuesBuffer.capacity() *
-               sizeof(decltype(_storedValuesBuffer)::value_type) +
-           _rows.capacity() * sizeof(decltype(_rows)::value_type);
+  size_t memoryUsage(size_t maxSize) const noexcept {
+    auto res = maxSize * sizeof(decltype(_keyBuffer)::value_type) +
+           maxSize * sizeof(decltype(_scoreBuffer)::value_type) +
+           maxSize * sizeof(decltype(_storedValuesBuffer)::value_type);
+    if (_scoresSort) {
+     res += maxSize * sizeof(decltype(_rows)::value_type);
+    }
+    return res;
   }
 
   void preAllocateStoredValuesBuffer(size_t atMost, size_t scores,
                                      size_t stored) {
     TRI_ASSERT(_storedValuesBuffer.empty());
     if (_keyBuffer.capacity() < atMost) {
-      _keyBuffer.reserve(atMost);
-      _scoreBuffer.reserve(atMost * scores);
-      _storedValuesBuffer.reserve(atMost * stored);
-      if (_scoresSort) {
-        _rows.reserve(atMost);
-      }
-      auto newMemoryUsage = memoryUsage();
+      auto newMemoryUsage = memoryUsage(atMost);
       auto tracked = _memoryTracker.tracked();
       if (newMemoryUsage != tracked) {
         if (newMemoryUsage > tracked) {
@@ -308,6 +303,12 @@ class IndexReadBuffer {
         } else {
           _memoryTracker.decrease(tracked - newMemoryUsage);
         }
+      }
+      _keyBuffer.reserve(atMost);
+      _scoreBuffer.reserve(atMost * scores);
+      _storedValuesBuffer.reserve(atMost * stored);
+      if (_scoresSort) {
+        _rows.reserve(atMost);
       }
     }
     _maxSize = atMost;
@@ -539,7 +540,7 @@ class IResearchViewExecutor
   using ReadContext = typename Base::ReadContext;
 
   size_t skip(size_t toSkip, IResearchViewStats&);
-  size_t skipAll();
+  size_t skipAll(IResearchViewStats&);
 
   void saveCollection();
 
@@ -658,7 +659,7 @@ class IResearchViewMergeExecutor
 
   void reset();
   size_t skip(size_t toSkip, IResearchViewStats&);
-  size_t skipAll();
+  size_t skipAll(IResearchViewStats&);
 
  private:
   std::vector<Segment> _segments;
@@ -696,7 +697,7 @@ class IResearchViewHeapSortExecutor
   using ReadContext = typename Base::ReadContext;
 
   size_t skip(size_t toSkip, IResearchViewStats& stats);
-  size_t skipAll();
+  size_t skipAll(IResearchViewStats& stats);
   size_t getScanned() const noexcept {
     return _totalCount;
   }
