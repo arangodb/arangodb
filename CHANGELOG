@@ -1,6 +1,11 @@
 v3.9.2 (XXXX-XX-XX)
 -------------------
 
+* Added startup option `--rocksdb.transaction-lock-stripes` to configure the
+  number of lock stripes to be used by RocksDB transactions. The option defaults
+  to the number of available cores, but is bumped to a value of 16 if the number
+  of cores is lower.
+
 * Fix deadlocked shard synchronisations when planned shard leader has not yet
   taken over leadership.
 
