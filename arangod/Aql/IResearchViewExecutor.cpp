@@ -381,8 +381,7 @@ std::vector<float_t>::iterator ScoreIterator::end() noexcept {
 
 template<typename ValueType, bool copyStored>
 IndexReadBuffer<ValueType, copyStored>::IndexReadBuffer(
-    size_t const numScoreRegisters,
-    ResourceMonitor& monitor)
+    size_t const numScoreRegisters, ResourceMonitor& monitor)
     : _numScoreRegisters(numScoreRegisters),
       _keyBaseIdx(0),
       _maxSize(0),
@@ -574,12 +573,16 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(
       }
     }
   }
-  if (inputRange.upstreamState() == ExecutorState::DONE &&
-      output.getClientCall().fullCount) {
-    // force skipAll call
-    return {ExecutorState::HASMORE, stats, upstreamCall};
+  auto reportedState = inputRange.upstreamState();
+  if constexpr (Traits::ExplicitScanned) {
+    if (inputRange.upstreamState() == ExecutorState::DONE &&
+        output.getClientCall().fullCount &&
+        static_cast<Impl&>(*this).canSkipAll()) {
+      // force skipAll call
+      reportedState = ExecutorState::HASMORE;
+    }
   }
-  return {inputRange.upstreamState(), stats, upstreamCall};
+  return {reportedState, stats, upstreamCall};
 }
 
 template<typename Impl, typename Traits>
@@ -634,7 +637,17 @@ IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(
     // else we do unlimited softLimit.
     // we are going to return everything anyways.
   }
-  return {inputRange.upstreamState(), stats, call.getSkipCount(), upstreamCall};
+
+  auto const reportedState = inputRange.upstreamState();
+  if constexpr (Traits::ExplicitScanned) {
+    if (inputRange.upstreamState() == ExecutorState::DONE &&
+        call.needsFullCount() && impl.canSkipAll() && call.getOffset() == 0) {
+      // execute skipAll immediately
+      call.didSkip(impl.skipAll(stats));
+    }
+  }
+
+  return {reportedState, stats, call.getSkipCount(), upstreamCall};
 }
 
 template<typename Impl, typename Traits>
@@ -1039,13 +1052,13 @@ IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skipAll(
   } else {
     // Looks like this is currently unreachable.
     // If this assert is ever triggered, tests for such case should be added.
-    // But implementations should work. 
+    // But implementations should work.
     TRI_ASSERT(false);
     size_t const count = this->_reader->size();
     for (size_t readerOffset = 0; readerOffset < count; ++readerOffset) {
-          auto& segmentReader = (*this->_reader)[readerOffset];
+      auto& segmentReader = (*this->_reader)[readerOffset];
       auto itr = this->_filter->execute(segmentReader, this->_order,
-                                   &this->_filterCtx);
+                                        &this->_filterCtx);
       TRI_ASSERT(itr);
       if (!itr) {
         continue;
@@ -1060,7 +1073,7 @@ IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skipAll(
     }
     stats.incrScanned(totalSkipped);
   }
- 
+
   // seal the executor anyway
   _bufferFilled = true;
   this->_indexReadBuffer.reset();
@@ -1070,9 +1083,9 @@ IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skipAll(
 }
 
 template<bool copyStored, bool ordered, MaterializeType materializeType>
-size_t IResearchViewHeapSortExecutor<copyStored, ordered,
-                                     materializeType>::skip(size_t limit,
-                                                            IResearchViewStats& stats) {
+size_t
+IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skip(
+    size_t limit, IResearchViewStats& stats) {
   if (fillBufferInternal(limit)) {
     stats.incrScanned(getScanned());
   }
@@ -1473,7 +1486,8 @@ size_t IResearchViewExecutor<copyStored, ordered, materializeType>::skip(
 }
 
 template<bool copyStored, bool ordered, MaterializeType materializeType>
-size_t IResearchViewExecutor<copyStored, ordered, materializeType>::skipAll(IResearchViewStats&) {
+size_t IResearchViewExecutor<copyStored, ordered, materializeType>::skipAll(
+    IResearchViewStats&) {
   TRI_ASSERT(this->_indexReadBuffer.empty());
   TRI_ASSERT(this->_filter);
 
@@ -1837,7 +1851,8 @@ size_t IResearchViewMergeExecutor<copyStored, ordered, materializeType>::skip(
 
 template<bool copyStored, bool ordered, MaterializeType materializeType>
 size_t
-IResearchViewMergeExecutor<copyStored, ordered, materializeType>::skipAll(IResearchViewStats&) {
+IResearchViewMergeExecutor<copyStored, ordered, materializeType>::skipAll(
+    IResearchViewStats&) {
   TRI_ASSERT(this->_indexReadBuffer.empty());
   TRI_ASSERT(this->_filter != nullptr);
 

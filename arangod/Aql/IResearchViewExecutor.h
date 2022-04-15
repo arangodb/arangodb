@@ -239,8 +239,7 @@ class IndexReadBuffer {
  public:
   using KeyValueType = ValueType;
 
-  explicit IndexReadBuffer(size_t numScoreRegisters,
-                           ResourceMonitor& monitor);
+  explicit IndexReadBuffer(size_t numScoreRegisters, ResourceMonitor& monitor);
 
   ValueType const& getValue(IndexReadBufferEntry bufferEntry) const noexcept;
 
@@ -698,9 +697,9 @@ class IResearchViewHeapSortExecutor
 
   size_t skip(size_t toSkip, IResearchViewStats& stats);
   size_t skipAll(IResearchViewStats& stats);
-  size_t getScanned() const noexcept {
-    return _totalCount;
-  }
+  size_t getScanned() const noexcept { return _totalCount; }
+  bool canSkipAll() const noexcept { return _bufferFilled && _totalCount; }
+
   void reset();
   void fillBuffer(ReadContext& ctx);
   bool fillBufferInternal(size_t skip);
