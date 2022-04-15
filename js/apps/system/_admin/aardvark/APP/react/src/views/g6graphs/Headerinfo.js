@@ -15,6 +15,7 @@ import ParameterEdgeLabelByCollection from "./ParameterEdgeLabelByCollection";
 import ParameterNodeLabel from "./ParameterNodeLabel";
 import ParameterEdgeLabel from "./ParameterEdgeLabel";
 import ParameterNodeColorAttribute from "./ParameterNodeColorAttribute";
+import ParameterNodeSizeByEdges from "./ParameterNodeSizeByEdges";
 import ButtonSave from "./ButtonSave";
 
 export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onDownloadFullScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onGraphDataLoaded }) => {
@@ -204,15 +205,7 @@ const screenshotMenu = (
             <br />
             <ParameterNodeColorAttribute />
             <br />
-            <Switch
-              checkedChildren="Size by connections"
-              unCheckedChildren="Default size"
-              onChange={onSwitchChange}
-              style={{ marginTop: '24px' }}
-            />
-            <Tooltip title="Should nodes be sized by their edges count? If enabled, node sizing attribute will be ignored.">
-              <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)', marginTop: '24px' }} />
-            </Tooltip>
+            <ParameterNodeSizeByEdges />
             <br />
             <Input
               addonBefore="Sizing attribute"
