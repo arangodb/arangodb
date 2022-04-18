@@ -198,7 +198,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs,
     iresearch::CountApproximate countApproximate,
     iresearch::FilterOptimization filterOptimization,
-    std::vector<std::pair<size_t, bool>> scoresSort, size_t scoresSortLimit)
+    std::vector<std::pair<size_t, bool>> scorersSort, size_t scorersSortLimit)
     : _scoreRegisters(std::move(scoreRegisters)),
       _reader(std::move(reader)),
       _query(query),
@@ -217,8 +217,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _countApproximate(countApproximate),
       _filterConditionIsEmpty(::filterConditionIsEmpty(&_filterCondition)),
       _filterOptimization(filterOptimization),
-      _scorersSort(std::move(scoresSort)),
-      _scorersSortLimit(scoresSortLimit) {
+      _scorersSort(std::move(scorersSort)),
+      _scorersSortLimit(scorersSortLimit) {
   TRI_ASSERT(_reader != nullptr);
   std::tie(_documentOutReg, _collectionPointerReg) = std::visit(
       overload{
@@ -1142,7 +1142,7 @@ bool IResearchViewHeapSortExecutor<
   this->_indexReadBuffer.preAllocateStoredValuesBuffer(
       atMost, this->_infos.getScoreRegisters().size(),
       this->_infos.getOutNonMaterializedViewRegs().size());
-  size_t const count = this->_reader->size();
+  auto const count = this->_reader->size();
 
   irs::doc_iterator::ptr itr;
   irs::document const* doc{};
@@ -1200,7 +1200,7 @@ bool IResearchViewHeapSortExecutor<
           return lhs_val.irsDocId() < rhs_val.irsDocId();
         });
 
-    size_t lastSegmentIdx = pkReadingOrder.size();
+    size_t lastSegmentIdx = count;
     ColumnIterator pkReader;
     aql::QueryContext& query = this->_infos.getQuery();
     std::shared_ptr<arangodb::LogicalCollection> collection;

@@ -94,7 +94,8 @@ class IResearchViewExecutorInfos {
       iresearch::IResearchViewNode::ViewValuesRegisters&&
           outNonMaterializedViewRegs,
       iresearch::CountApproximate, iresearch::FilterOptimization,
-      std::vector<std::pair<size_t, bool>> scoresSort, size_t scoresSortLimit);
+      std::vector<std::pair<size_t, bool>> scorersSort,
+      size_t scorersSortLimit);
 
   auto getDocumentRegister() const noexcept -> RegisterId;
   auto getCollectionRegister() const noexcept -> RegisterId;
@@ -281,9 +282,10 @@ class IndexReadBuffer {
   void assertSizeCoherence() const noexcept;
 
   size_t memoryUsage(size_t maxSize) const noexcept {
-    auto res = maxSize * sizeof(typename decltype(_keyBuffer)::value_type) +
-               maxSize * sizeof(typename decltype(_scoreBuffer)::value_type) +
-               maxSize * sizeof(typename decltype(_storedValuesBuffer)::value_type);
+    auto res =
+        maxSize * sizeof(typename decltype(_keyBuffer)::value_type) +
+        maxSize * sizeof(typename decltype(_scoreBuffer)::value_type) +
+        maxSize * sizeof(typename decltype(_storedValuesBuffer)::value_type);
     if (_scoresSort) {
       res += maxSize * sizeof(typename decltype(_rows)::value_type);
     }
@@ -316,7 +318,8 @@ class IndexReadBuffer {
 
   auto getMaterializeRange(size_t skip) const noexcept {
     if (_rows.size() > skip) {
-      return std::span(_rows.begin() + skip, _rows.end());
+      auto start = _rows.begin() + skip;
+      return std::span(start, _rows.end());
     }
     return std::span(_rows.end(), _rows.end());
   }
