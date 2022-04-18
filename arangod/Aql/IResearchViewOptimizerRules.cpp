@@ -264,7 +264,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     TRI_ASSERT(sort.var);
     auto varSetBy = plan->getVarSetBy(sort.var->id);
     TRI_ASSERT(varSetBy);
-    arangodb::aql::Variable const* sortVariable;
+    arangodb::aql::Variable const* sortVariable{};
     if (varSetBy->getType() == ExecutionNode::CALCULATION) {
       auto* calc = ExecutionNode::castTo<CalculationNode*>(varSetBy);
       TRI_ASSERT(calc->expression());
@@ -278,7 +278,12 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       sortVariable = reinterpret_cast<arangodb::aql::Variable const*>(
           astCalcNode->getData());
       TRI_ASSERT(sortVariable);
+    } else {
+      // FIXME (Dronplane): here we should deal with stored
+      //                    values when we will support such optimization
+      return false;
     }
+
     auto s = std::find_if(scorers.begin(), scorers.end(),
                           [sortVariable](Scorer const& t) {
                             return t.var->id == sortVariable->id;
