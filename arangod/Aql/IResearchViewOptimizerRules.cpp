@@ -227,7 +227,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   auto const& scorers = viewNode.scorers();
   SortNode* sortNode = nullptr;
   LimitNode const* limitNode = nullptr;
-  while (current = current->getFirstParent()) {
+  while ((current = current->getFirstParent())) {
     switch (current->getType()) {
       case ExecutionNode::SORT:
         sortNode = ExecutionNode::castTo<SortNode*>(current);
