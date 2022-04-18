@@ -774,8 +774,10 @@ struct HeapSortExecutorValue {
   UnitedSourceId collection;
 };
 
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
 static_assert(sizeof(HeapSortExecutorValue) <= 16,
               "HeapSortExecutorValue size is not optimal");
+#endif
 
 template<bool copyStored, bool ordered,
          iresearch::MaterializeType materializeType>
