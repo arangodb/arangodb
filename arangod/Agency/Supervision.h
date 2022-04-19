@@ -26,7 +26,7 @@
 #include "Agency/AgencyCommon.h"
 #include "Agency/AgentInterface.h"
 #include "Agency/Store.h"
-#include "Agency/TimeString.h"
+#include "Basics/TimeString.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"

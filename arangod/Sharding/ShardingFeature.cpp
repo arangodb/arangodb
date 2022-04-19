@@ -185,7 +185,7 @@ std::string ShardingFeature::getDefaultShardingStrategyForNewCollection(
       properties, StaticStrings::IsSmart, false);
   bool isEdge =
       TRI_COL_TYPE_EDGE == VelocyPackHelper::getNumericValue<uint32_t>(
-                               properties, "type", TRI_COL_TYPE_UNKNOWN);
+                               properties, "type", TRI_COL_TYPE_DOCUMENT);
   if (isSmart && isEdge) {
     // smart edge collection
     return ShardingStrategyEnterpriseHashSmartEdge::NAME;

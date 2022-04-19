@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <limits>
 #include <optional>
 #include <string_view>
 #include <tuple>
@@ -42,13 +43,15 @@ struct ParseOptions {
   bool ignoreUnknownFields = false;
 };
 
-struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
+template<bool AllowUnsafeTypes>
+struct VPackLoadInspectorImpl
+    : InspectorBase<VPackLoadInspectorImpl<AllowUnsafeTypes>> {
   static constexpr bool isLoading = true;
 
-  explicit VPackLoadInspector(velocypack::Builder& builder,
-                              ParseOptions options = {})
-      : VPackLoadInspector(builder.slice(), options) {}
-  explicit VPackLoadInspector(velocypack::Slice slice, ParseOptions options)
+  explicit VPackLoadInspectorImpl(velocypack::Builder& builder,
+                                  ParseOptions options = {})
+      : VPackLoadInspectorImpl(builder.slice(), options) {}
+  explicit VPackLoadInspectorImpl(velocypack::Slice slice, ParseOptions options)
       : _slice(slice), _options(options) {}
 
   template<class T, class = std::enable_if_t<std::is_integral_v<T>>>
@@ -75,6 +78,34 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
       return {"Expecting type String"};
     }
     v = _slice.copyString();
+    return {};
+  }
+
+  [[nodiscard]] Status value(std::string_view& v) {
+    static_assert(AllowUnsafeTypes);
+    if (!_slice.isString()) {
+      return {"Expecting type String"};
+    }
+    v = _slice.stringView();
+    return {};
+  }
+
+  [[nodiscard]] Status value(velocypack::HashedStringRef& v) {
+    static_assert(AllowUnsafeTypes);
+    if (!_slice.isString()) {
+      return {"Expecting type String"};
+    }
+    auto s = _slice.stringView();
+    if (s.size() > std::numeric_limits<uint32_t>::max()) {
+      return {"String value too long to store In HashedStringRef"};
+    }
+    v = velocypack::HashedStringRef(s.data(), static_cast<uint32_t>(s.size()));
+    return {};
+  }
+
+  [[nodiscard]] Status::Success value(velocypack::Slice& v) {
+    static_assert(AllowUnsafeTypes);
+    v = _slice;
     return {};
   }
 
@@ -136,34 +167,41 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
            | [&]() { return endArray(); };          //
   }
 
-  [[nodiscard]] Status::Success parseField(velocypack::Slice, IgnoreField&&) {
+  [[nodiscard]] Status::Success parseField(
+      velocypack::Slice, typename VPackLoadInspectorImpl::IgnoreField&&) {
     return {};
   }
 
   template<class T>
   [[nodiscard]] Status parseField(velocypack::Slice slice, T&& field) {
-    VPackLoadInspector ff(slice, _options);
-    auto name = getFieldName(field);
-    auto& value = getFieldValue(field);
+    VPackLoadInspectorImpl ff(slice, _options);
+    auto name = VPackLoadInspectorImpl::getFieldName(field);
+    auto& value = VPackLoadInspectorImpl::getFieldValue(field);
     auto load = [&]() {
       auto isPresent = !slice.isNone();
-      using FallbackField = decltype(getFallbackField(field));
+      using FallbackField =
+          decltype(VPackLoadInspectorImpl::getFallbackField(field));
       if constexpr (!std::is_void_v<FallbackField>) {
         auto applyFallback = [&](auto& val) {
-          getFallbackField(field).apply(val);
+          VPackLoadInspectorImpl::getFallbackField(field).apply(val);
         };
-        if constexpr (!std::is_void_v<decltype(getTransformer(field))>) {
-          return loadTransformedField(ff, name, isPresent, value,
-                                      std::move(applyFallback),
-                                      getTransformer(field));
+        if constexpr (!std::is_void_v<
+                          decltype(VPackLoadInspectorImpl::getTransformer(
+                              field))>) {
+          return loadTransformedField(
+              ff, name, isPresent, value, std::move(applyFallback),
+              VPackLoadInspectorImpl::getTransformer(field));
         } else {
           return loadField(ff, name, isPresent, value,
                            std::move(applyFallback));
         }
       } else {
-        if constexpr (!std::is_void_v<decltype(getTransformer(field))>) {
-          return loadTransformedField(ff, name, isPresent, value,
-                                      getTransformer(field));
+        if constexpr (!std::is_void_v<
+                          decltype(VPackLoadInspectorImpl::getTransformer(
+                              field))>) {
+          return loadTransformedField(
+              ff, name, isPresent, value,
+              VPackLoadInspectorImpl::getTransformer(field));
         } else {
           return loadField(ff, name, isPresent, value);
         }
@@ -184,8 +222,8 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
   ParseOptions options() const noexcept { return _options; }
 
   template<class U>
-  struct FallbackContainer {
-    explicit FallbackContainer(U&& val) : fallbackValue(std::move(val)) {}
+  struct ActualFallbackContainer {
+    explicit ActualFallbackContainer(U&& val) : fallbackValue(std::move(val)) {}
     template<class T>
     void apply(T& val) const noexcept {
       if constexpr (std::is_assignable_v<T, U>) {
@@ -199,6 +237,17 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
     U fallbackValue;
   };
 
+  struct EmptyFallbackContainer {
+    explicit EmptyFallbackContainer(typename VPackLoadInspectorImpl::Keep&&) {}
+    template<class T>
+    void apply(T&) const noexcept {}
+  };
+
+  template<class U>
+  using FallbackContainer = std::conditional_t<
+      std::is_same_v<U, typename VPackLoadInspectorImpl::Keep>,
+      EmptyFallbackContainer, ActualFallbackContainer<U>>;
+
   template<class Invariant>
   struct InvariantContainer {
     explicit InvariantContainer(Invariant&& invariant)
@@ -211,7 +260,8 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
 
   template<class... Args>
   Status applyFields(Args&&... args) {
-    std::array<std::string_view, sizeof...(args)> names{getFieldName(args)...};
+    std::array<std::string_view, sizeof...(args)> names{
+        VPackLoadInspectorImpl::getFieldName(args)...};
     std::array<velocypack::Slice, sizeof...(args)> slices;
     for (auto [k, v] : VPackObjectIterator(slice())) {
       auto it = std::find(names.begin(), names.end(), k.stringView());
@@ -226,13 +276,7 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
     return parseFields(slices.data(), std::forward<Args>(args)...);
   }
 
- private:
-  template<class T>
-  struct HasFallback : std::false_type {};
-
-  template<class T, class U>
-  struct HasFallback<FallbackField<T, U>> : std::true_type {};
-
+ protected:
   template<class Arg>
   Status parseFields(velocypack::Slice* slices, Arg&& arg) {
     return parseField(*slices, std::forward<Arg>(arg));
@@ -248,7 +292,7 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
   Status processList(T& list) {
     std::size_t idx = 0;
     for (auto&& s : VPackArrayIterator(_slice)) {
-      VPackLoadInspector ff(s, _options);
+      VPackLoadInspectorImpl ff(s, _options);
       typename T::value_type val;
       if (auto res = process(ff, val); !res.ok()) {
         return {std::move(res), std::to_string(idx), Status::ArrayTag{}};
@@ -262,7 +306,7 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
   template<class T>
   Status processMap(T& map) {
     for (auto&& pair : VPackObjectIterator(_slice)) {
-      VPackLoadInspector ff(pair.value, _options);
+      VPackLoadInspectorImpl ff(pair.value, _options);
       typename T::mapped_type val;
       if (auto res = process(ff, val); !res.ok()) {
         return {std::move(res), "'" + pair.key.copyString() + "'",
@@ -274,15 +318,19 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
   }
 
   template<class T, class U>
-  Status checkInvariant(InvariantField<T, U>& field) {
-    return InspectorBase::checkInvariant<
-        InvariantField<T, U>, InvariantField<T, U>::InvariantFailedError>(
-        field.invariantFunc, getFieldValue(field));
+  Status checkInvariant(
+      typename VPackLoadInspectorImpl::template InvariantField<T, U>& field) {
+    using Field =
+        typename VPackLoadInspectorImpl::template InvariantField<T, U>;
+    return InspectorBase<VPackLoadInspectorImpl>::template checkInvariant<
+        Field, Field::InvariantFailedError>(
+        field.invariantFunc, VPackLoadInspectorImpl::getFieldValue(field));
   }
 
   template<class T>
   auto checkInvariant(T& field) {
-    if constexpr (!IsRawField<std::remove_cvref_t<T>>::value) {
+    if constexpr (!InspectorBase<VPackLoadInspectorImpl>::template IsRawField<
+                      std::remove_cvref_t<T>>::value) {
       return checkInvariant(field.inner);
     } else {
       return Status::Success{};
@@ -292,7 +340,7 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
   template<std::size_t Idx, std::size_t End, class T>
   [[nodiscard]] Status processTuple(T& data) {
     if constexpr (Idx < End) {
-      VPackLoadInspector ff{_slice[Idx], _options};
+      VPackLoadInspectorImpl ff{_slice[Idx], _options};
       if (auto res = process(ff, std::get<Idx>(data)); !res.ok()) {
         return {std::move(res), std::to_string(Idx), Status::ArrayTag{}};
       }
@@ -306,7 +354,7 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
   [[nodiscard]] Status processArray(T (&data)[N]) {
     std::size_t index = 0;
     for (auto&& v : VPackArrayIterator(_slice)) {
-      VPackLoadInspector ff(v, _options);
+      VPackLoadInspectorImpl ff(v, _options);
       if (auto res = process(ff, data[index]); !res.ok()) {
         return {std::move(res), std::to_string(index), Status::ArrayTag{}};
       }
@@ -326,11 +374,7 @@ struct VPackLoadInspector : InspectorBase<VPackLoadInspector> {
   ParseOptions _options;
 };
 
-template<>
-struct VPackLoadInspector::FallbackContainer<VPackLoadInspector::Keep> {
-  explicit FallbackContainer(VPackLoadInspector::Keep&&) {}
-  template<class T>
-  void apply(T&) const noexcept {}
-};
+using VPackLoadInspector = VPackLoadInspectorImpl<false>;
+using VPackUnsafeLoadInspector = VPackLoadInspectorImpl<true>;
 
 }  // namespace arangodb::inspection

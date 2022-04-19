@@ -524,11 +524,15 @@ auto replicated_log::LogFollower::waitForIterator(LogIndex index)
            * next entry containing payload.
            */
 
-          auto actualIndex = index;
+          auto actualIndex =
+              std::max(index, followerData._inMemoryLog.getFirstIndex());
           while (actualIndex <= followerData._commitIndex) {
             auto memtry =
                 followerData._inMemoryLog.getEntryByIndex(actualIndex);
-            TRI_ASSERT(memtry.has_value());  // should always have a value
+            TRI_ASSERT(memtry.has_value())
+                << "first index is "
+                << followerData._inMemoryLog
+                       .getFirstIndex();  // should always have a value
             if (!memtry.has_value()) {
               break;
             }
@@ -654,6 +658,9 @@ auto LogFollower::construct(LoggerContext const& loggerContext,
   return std::make_shared<MakeSharedWrapper>(
       loggerContext, std::move(logMetrics), std::move(id), std::move(logCore),
       term, std::move(leaderId), std::move(log));
+}
+auto LogFollower::copyInMemoryLog() const -> InMemoryLog {
+  return _guardedFollowerData.getLockedGuard()->_inMemoryLog;
 }
 
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics()
