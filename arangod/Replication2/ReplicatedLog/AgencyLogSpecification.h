@@ -55,6 +55,8 @@ auto constexpr LeadershipEstablished =
 auto constexpr CommitStatus = std::string_view{"commitStatus"};
 auto constexpr Supervision = std::string_view{"supervision"};
 auto constexpr Leader = std::string_view{"leader"};
+auto constexpr TargetVersion = std::string_view{"targetVersion"};
+auto constexpr Version = std::string_view{"version"};
 auto constexpr Actions = std::string_view{"actions"};
 auto constexpr MaxActionsTraceLength =
     std::string_view{"maxActionsTraceLength"};
@@ -198,6 +200,7 @@ auto toVelocyPack(LogCurrentSupervisionElection::ErrorCode, VPackBuilder&)
 enum class LogCurrentSupervisionError {
   TARGET_LEADER_INVALID,
   TARGET_LEADER_EXCLUDED,
+  TARGET_NOT_ENOUGH_PARTICIPANTS,
   GENERAL_ERROR  // TODO: Using this whilw refactoring
                  // other code; needs to be improved
 };
@@ -271,8 +274,10 @@ struct LogCurrentSupervision {
   std::optional<LogCurrentSupervisionElection> election;
   std::optional<LogCurrentSupervisionError> error;
   std::optional<std::string> statusMessage;
+  std::optional<uint64_t> targetVersion;
 
   auto toVelocyPack(VPackBuilder&) const -> void;
+  static auto fromVelocyPack(velocypack::Slice) -> LogCurrentSupervision;
 
   LogCurrentSupervision() = default;
   LogCurrentSupervision(from_velocypack_t, VPackSlice slice);
@@ -283,6 +288,7 @@ auto inspect(Inspector& f, LogCurrentSupervision& x) {
   return f.object(x).fields(
       f.field(static_strings::Election, x.election),
       f.field(static_strings::Error, x.error),
+      f.field(static_strings::TargetVersion, x.targetVersion),
       f.field(static_strings::StatusMessage, x.statusMessage));
 }
 
@@ -305,6 +311,7 @@ struct LogCurrent {
 
   // Will be nullopt until a leader has been assumed leadership
   std::optional<Leader> leader;
+  std::optional<std::uint64_t> targetVersion;
 
   // Temporary hack until Actions are de-serializable.
   struct ActionDummy {
@@ -336,7 +343,7 @@ auto inspect(Inspector& f, LogCurrent::ActionDummy& x) {
     x = LogCurrent::ActionDummy{};
   } else {
   }
-  return arangodb::inspection::Result{};
+  return arangodb::inspection::Status::Success{};
 }
 
 template<class Inspector>
@@ -356,6 +363,7 @@ struct LogTarget {
   LogConfig config;
 
   std::optional<ParticipantId> leader;
+  std::optional<uint64_t> version;
 
   struct Supervision {
     std::size_t maxActionsTraceLength{0};
@@ -392,6 +400,7 @@ auto inspect(Inspector& f, LogTarget& x) {
           .fallback(ParticipantsFlagsMap{}),
       f.field(StaticStrings::Config, x.config),
       f.field(StaticStrings::Leader, x.leader),
+      f.field(static_strings::Version, x.version),
       f.field(static_strings::Supervision, x.supervision));
 }
 

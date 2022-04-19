@@ -38,6 +38,7 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Statistics/StatisticsFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb::application_features;
@@ -58,8 +59,6 @@ ServerFeature::ServerFeature(Server& server, int* res)
 {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
-
-  startsAfter<StatisticsFeature>();
   startsAfter<UpgradeFeature>();
 }
 

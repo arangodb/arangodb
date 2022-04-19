@@ -23,9 +23,13 @@
 
 #pragma once
 
+#include <string_view>
 #include <type_traits>
 
-#include "Inspection/Result.h"
+#include <velocypack/HashedStringRef.h>
+#include <velocypack/Slice.h>
+
+#include "Inspection/Status.h"
 
 namespace arangodb::inspection {
 template<class T>
@@ -47,14 +51,26 @@ struct HasInspectOverload<T, Inspector,
     : std::conditional_t<
           std::is_convertible_v<decltype(inspect(std::declval<Inspector&>(),
                                                  std::declval<T&>())),
-                                Result>,
+                                Status>,
           std::true_type, typename std::false_type> {};
 
 template<class T>
-constexpr inline bool IsBuiltinType() {
+constexpr inline bool IsSafeBuiltinType() {
   return std::is_same_v<T, bool> || std::is_integral_v<T> ||
          std::is_floating_point_v<T> ||
          std::is_same_v<T, std::string>;  // TODO - use is-string-like?
+}
+
+template<class T>
+constexpr inline bool IsUnsafeBuiltinType() {
+  return std::is_same_v<T, std::string_view> ||
+         std::is_same_v<T, arangodb::velocypack::Slice> ||
+         std::is_same_v<T, arangodb::velocypack::HashedStringRef>;
+}
+
+template<class T>
+constexpr inline bool IsBuiltinType() {
+  return IsSafeBuiltinType<T>() || IsUnsafeBuiltinType<T>();
 }
 
 template<class T, class = void>

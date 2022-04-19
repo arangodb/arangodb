@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2021-2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@
 namespace arangodb::replication2::replicated_state {
 template<typename S>
 struct FollowerStateManager
-    : ReplicatedState<S>::StateManagerBase,
+    : ReplicatedState<S>::IStateManager,
       std::enable_shared_from_this<FollowerStateManager<S>> {
   using Factory = typename ReplicatedStateTraits<S>::FactoryType;
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
@@ -38,9 +38,9 @@ struct FollowerStateManager
   using LeaderType = typename ReplicatedStateTraits<S>::LeaderType;
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
   using WaitForAppliedQueue =
-      typename ReplicatedState<S>::StateManagerBase::WaitForAppliedQueue;
+      typename ReplicatedState<S>::IStateManager::WaitForAppliedQueue;
   using WaitForAppliedPromise =
-      typename ReplicatedState<S>::StateManagerBase::WaitForAppliedPromise;
+      typename ReplicatedState<S>::IStateManager::WaitForAppliedPromise;
 
   using Stream = streams::Stream<EntryType>;
   using Iterator = typename Stream::Iterator;
@@ -52,7 +52,7 @@ struct FollowerStateManager
       std::unique_ptr<ReplicatedStateToken> token,
       std::shared_ptr<Factory> factory) noexcept;
 
-  void run() override;
+  void run() noexcept override;
 
   [[nodiscard]] auto getStatus() const -> StateStatus final;
 

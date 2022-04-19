@@ -35,9 +35,13 @@
 #include <velocypack/ValueType.h>
 #include <velocypack/velocypack-memory.h>
 
+#include "Inspection/Access.h"
 #include "Inspection/VPackLoadInspector.h"
 #include "Inspection/VPackSaveInspector.h"
 #include "Inspection/VPack.h"
+#include "velocypack/Builder.h"
+
+#include "Logger/LogMacros.h"
 
 namespace {
 
@@ -198,7 +202,7 @@ struct InvariantWithResult {
 template<class Inspector>
 auto inspect(Inspector& f, InvariantWithResult& x) {
   return f.object(x).fields(
-      f.field("i", x.i).invariant([](int v) -> arangodb::inspection::Result {
+      f.field("i", x.i).invariant([](int v) -> arangodb::inspection::Status {
         if (v == 0) {
           return {"Must not be zero"};
         }
@@ -247,12 +251,12 @@ struct MyTransformer {
   using MemoryType = int;
   using SerializedType = std::string;
 
-  arangodb::inspection::Result toSerialized(MemoryType v,
+  arangodb::inspection::Status toSerialized(MemoryType v,
                                             SerializedType& result) const {
     result = std::to_string(v);
     return {};
   }
-  arangodb::inspection::Result fromSerialized(SerializedType const& v,
+  arangodb::inspection::Status fromSerialized(SerializedType const& v,
                                               MemoryType& result) const {
     result = std::stoi(v);
     return {};
@@ -298,19 +302,85 @@ struct Specialization {
   int i;
   std::string s;
 };
+
+enum class AnEnumClass { Option1, Option2, Option3 };
+
+auto to_string(AnEnumClass e) -> std::string_view {
+  switch (e) {
+    case AnEnumClass::Option1:
+      return "Option1";
+    case AnEnumClass::Option2:
+      return "Option2";
+    case AnEnumClass::Option3:
+      return "Option3";
+  }
+  return "invalid.";
+}
+
+template<typename Enum>
+struct EnumStorage {
+  using MemoryType = Enum;
+
+  std::underlying_type_t<Enum> code;
+  std::string message;
+
+  explicit EnumStorage(Enum e)
+      : code(static_cast<std::underlying_type_t<Enum>>(e)),
+        message(to_string(e)){};
+  explicit EnumStorage() {}
+
+  operator Enum() const { return Enum(code); }
+};
+
+template<class Inspector, class Enum>
+auto inspect(Inspector& f, EnumStorage<Enum>& e) {
+  if constexpr (Inspector::isLoading) {
+    return f.object(e).fields(f.field("code", e.code),
+                              f.ignoreField("message"));
+  } else {
+    return f.object(e).fields(f.field("code", e.code),
+                              f.field("message", e.message));
+  }
+}
 }  // namespace
 
 namespace arangodb::inspection {
 template<>
 struct Access<Specialization> : AccessBase<Specialization> {
   template<class Inspector>
-  [[nodiscard]] static Result apply(Inspector& f, Specialization& x) {
+  [[nodiscard]] static Status apply(Inspector& f, Specialization& x) {
     return f.object(x).fields(f.field("i", x.i), f.field("s", x.s));
   }
 };
+template<>
+struct Access<AnEnumClass>
+    : StorageTransformerAccess<AnEnumClass, EnumStorage<AnEnumClass>> {};
+
 }  // namespace arangodb::inspection
 
 namespace {
+
+struct ExplicitIgnore {
+  std::string s;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ExplicitIgnore& x) {
+  return f.object(x).fields(f.field("s", x.s), f.ignoreField("ignore"));
+}
+
+struct Unsafe {
+  std::string_view view;
+  arangodb::velocypack::Slice slice;
+  arangodb::velocypack::HashedStringRef hashed;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, Unsafe& x) {
+  return f.object(x).fields(f.field("view", x.view), f.field("slice", x.slice),
+                            f.field("hashed", x.hashed));
+}
+
 using namespace arangodb;
 using VPackLoadInspector = inspection::VPackLoadInspector;
 using VPackSaveInspector = inspection::VPackSaveInspector;
@@ -499,7 +569,10 @@ TEST_F(VPackSaveInspectorTest, store_optional) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(3, slice.length());
+  EXPECT_EQ(5, slice.length());
+  // a and b have fallbacks, so we need to serialize them explicitly as null
+  EXPECT_TRUE(slice["a"].isNull());
+  EXPECT_TRUE(slice["b"].isNull());
   EXPECT_EQ("blubb", slice["y"].copyString());
 
   auto vec = slice["vec"];
@@ -537,7 +610,7 @@ TEST_F(VPackSaveInspectorTest, store_optional_pointer) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(3, slice.length());
+  EXPECT_EQ(5, slice.length());
   EXPECT_EQ(42, slice["b"].getInt());
   EXPECT_EQ(43, slice["d"]["i"].getInt());
   auto vec = slice["vec"];
@@ -546,6 +619,9 @@ TEST_F(VPackSaveInspectorTest, store_optional_pointer) {
   EXPECT_EQ(1, vec[0].getInt());
   EXPECT_TRUE(vec[1].isNull());
   EXPECT_EQ(2, vec[2].getInt());
+  // x and y have fallbacks, so we need to serialize them explicitly as null
+  EXPECT_TRUE(slice["x"].isNull());
+  EXPECT_TRUE(slice["y"].isNull());
 }
 
 TEST_F(VPackSaveInspectorTest, store_object_with_fallbacks) {
@@ -611,6 +687,34 @@ TEST_F(VPackSaveInspectorTest, store_type_with_custom_specialization) {
   ASSERT_TRUE(slice.isObject());
   EXPECT_EQ(s.i, slice["i"].getInt());
   EXPECT_EQ(s.s, slice["s"].copyString());
+}
+
+TEST_F(VPackSaveInspectorTest, store_type_with_explicitly_ignored_fields) {
+  ExplicitIgnore e{.s = "foobar"};
+  auto result = inspector.apply(e);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+  EXPECT_EQ(1, slice.length());
+}
+
+TEST_F(VPackSaveInspectorTest, store_type_with_unsafe_fields) {
+  velocypack::Builder localBuilder;
+  localBuilder.add(VPackValue("blubb"));
+  std::string_view hashedString = "hashedString";
+  Unsafe u{.view = "foobar",
+           .slice = localBuilder.slice(),
+           .hashed = {hashedString.data(),
+                      static_cast<uint32_t>(hashedString.size())}};
+  auto result = inspector.apply(u);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+  EXPECT_EQ("foobar", slice["view"].copyString());
+  EXPECT_EQ("blubb", slice["slice"].copyString());
+  EXPECT_EQ(hashedString, slice["hashed"].copyString());
 }
 
 struct VPackLoadInspectorTest : public ::testing::Test {
@@ -856,7 +960,7 @@ TEST_F(VPackLoadInspectorTest, load_optional) {
                     .y = "blubb",
                     .vec = {1, std::nullopt, 3},
                     .map = {{"1", 1}, {"2", std::nullopt}, {"3", 3}}};
-  EXPECT_EQ(expected.a, o.a) << o.a.has_value() << " " << o.a.value();
+  EXPECT_EQ(expected.a, o.a);
   EXPECT_EQ(expected.b, o.b);
   EXPECT_EQ(expected.x, o.x);
   EXPECT_EQ(expected.y, o.y);
@@ -1422,6 +1526,36 @@ TEST_F(VPackLoadInspectorTest, load_type_with_custom_specialization) {
   EXPECT_EQ("foobar", s.s);
 }
 
+TEST_F(VPackLoadInspectorTest, load_type_with_explicitly_ignored_fields) {
+  builder.openObject();
+  builder.add("s", VPackValue("foobar"));
+  builder.add("ignore", VPackValue("something"));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ExplicitIgnore e;
+  auto result = inspector.apply(e);
+  ASSERT_TRUE(result.ok());
+}
+
+TEST_F(VPackLoadInspectorTest, load_type_with_unsafe_fields) {
+  builder.openObject();
+  builder.add("view", VPackValue("foobar"));
+  builder.add("slice", VPackValue("blubb"));
+  builder.add("hashed", VPackValue("hashedString"));
+  builder.close();
+  arangodb::inspection::VPackUnsafeLoadInspector inspector{builder};
+
+  Unsafe u;
+  auto result = inspector.apply(u);
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ(builder.slice()["view"].stringView(), u.view);
+  EXPECT_EQ(builder.slice()["view"].stringView().data(), u.view.data());
+  EXPECT_EQ(builder.slice()["slice"].start(), u.slice.start());
+  EXPECT_EQ(builder.slice()["hashed"].stringView(), u.hashed.stringView());
+  EXPECT_EQ(builder.slice()["hashed"].stringView().data(), u.hashed.data());
+}
+
 struct VPackInspectionTest : public ::testing::Test {};
 
 TEST_F(VPackInspectionTest, serialize) {
@@ -1470,6 +1604,37 @@ TEST_F(VPackInspectionTest, deserialize_throws) {
         }
       },
       arangodb::basics::Exception);
+}
+
+TEST_F(VPackInspectionTest, GenericEnumClass) {
+  {
+    velocypack::Builder builder;
+
+    AnEnumClass const d = AnEnumClass::Option1;
+    arangodb::velocypack::serialize(builder, d);
+
+    velocypack::Slice slice = builder.slice();
+    ASSERT_TRUE(slice.isObject());
+    EXPECT_EQ(static_cast<std::underlying_type_t<AnEnumClass>>(d),
+              slice["code"].getInt());
+    EXPECT_EQ(to_string(d), slice["message"].copyString());
+  }
+
+  {
+    auto const expected = AnEnumClass::Option3;
+    velocypack::Builder builder;
+
+    builder.openObject();
+    builder.add(
+        "code",
+        VPackValue(static_cast<std::underlying_type_t<AnEnumClass>>(expected)));
+    builder.add("message", VPackValue(to_string(expected)));
+    builder.close();
+
+    auto d = arangodb::velocypack::deserialize<AnEnumClass>(builder.slice());
+
+    EXPECT_EQ(d, expected);
+  }
 }
 
 }  // namespace

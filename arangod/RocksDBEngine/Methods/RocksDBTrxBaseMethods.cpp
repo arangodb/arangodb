@@ -263,9 +263,20 @@ void RocksDBTrxBaseMethods::createTransaction() {
   rocksdb::TransactionOptions trxOpts;
   trxOpts.set_snapshot = true;
 
-  // when trying to lock the same keys, we want to return quickly and not
-  // spend the default 1000ms before giving up
-  trxOpts.lock_timeout = 1;
+  if (_state->hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX)) {
+    // write operations for the same keys on followers should normally be
+    // serialized by the key locks held on the leaders. so we don't expect
+    // to run into lock conflicts on followers. however, the lock_timeout
+    // set here also includes locking the striped mutex for _all_ key locks,
+    // which may be contended under load. to avoid timeouts caused by
+    // waiting for the contented striped mutex, increase it to a higher
+    // value on followers that makes this situation unlikely.
+    trxOpts.lock_timeout = 3000;
+  } else {
+    // when trying to lock the same keys, we want to return quickly and not
+    // spend the default 1000ms before giving up
+    trxOpts.lock_timeout = 1;
+  }
 
   // unclear performance implications do not use for now
   // trxOpts.deadlock_detect = !hasHint(transaction::Hints::Hint::NO_DLD);

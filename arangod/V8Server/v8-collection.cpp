@@ -1147,12 +1147,7 @@ static void JS_LoadVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto res = methods::Collections::load(vocbase, collection);
-
-  if (res.fail()) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
+  // load is a no-op starting with ArangoDB 3.9
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
@@ -2382,11 +2377,7 @@ static void JS_UnloadVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto res = methods::Collections::unload(&(collection->vocbase()), collection);
-
-  if (res.fail()) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  // unload is a no-op starting with ArangoDB 3.9
 
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
@@ -2569,8 +2560,6 @@ static void JS_CompletionsVocbase(
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_dropDatabase()"))
       .FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_dropView()"))
-      .FromMaybe(false);
-  result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_engine()"))
       .FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_engineStats()"))
       .FromMaybe(false);

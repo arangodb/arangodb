@@ -121,7 +121,7 @@ It determines how many copies of each shard are required to be
 in sync on the different DB-Servers. If there are less then these many copies
 in the cluster a shard will refuse to write. Writes to shards with enough
 up-to-date copies will succeed at the same time however. The value of
-`writeConcern` can not be larger than `replicationFactor`. _(cluster only)_
+`writeConcern` cannot be larger than `replicationFactor`. _(cluster only)_
 
 @RESTBODYPARAM{distributeShardsLike,string,optional,string}
 (The default is `""`): in an Enterprise Edition cluster, this attribute binds
@@ -190,11 +190,11 @@ this extra check.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the `collection-name` is missing, then am *HTTP 400* is
+If the `collection-name` is missing, then an *HTTP 400* is
 returned.
 
 @RESTRETURNCODE{404}
-If the `collection-name` is unknown, then am *HTTP 404* is returned.
+If the `collection-name` is unknown, then an *HTTP 404* is returned.
 
 @RESTRETURNCODE{200}
 
