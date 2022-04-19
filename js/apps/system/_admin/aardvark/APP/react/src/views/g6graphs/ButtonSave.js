@@ -13,7 +13,7 @@ const ParameterStartnode = ({ graphName, onGraphDataLoaded }) => {
 
       $.ajax({
         type: 'GET',
-        url: arangoHelper.databaseUrl(`/_admin/aardvark/graph/${graphName}`),
+        url: arangoHelper.databaseUrl(`/_admin/aardvark/g6graph/${graphName}`),
         contentType: 'application/json',
         data: urlParameters[0],
         success: function (data) {

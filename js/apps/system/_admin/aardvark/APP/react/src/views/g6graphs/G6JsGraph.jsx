@@ -1,6 +1,6 @@
 /* global arangoHelper, arangoFetch, frontendConfig */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useContext } from 'react';
 import ReactDOM from 'react-dom';
 import { GraphView } from './GraphView';
 import { AttributesInfo } from './AttributesInfo';
@@ -29,12 +29,12 @@ import { JsonEditor as Editor } from 'jsoneditor-react';
 import { UrlParametersContext } from "./url-parameters-context";
 import URLPARAMETERS from "./UrlParameters";
 import FetchData from "./FetchData";
-import ParameterPokemon from "./ParameterPokemon";
 import G6FuncComponent from "./G6FuncComponent";
 import './tooltip.css';
 
 const G6JsGraph = () => {
   const [urlParameters, setUrlParameters] = React.useState(URLPARAMETERS);
+  //const [contextUrlParameters, setContextUrlParameters] = useContext(UrlParametersContext);
 
   let responseTimesObject = {
     fetchStarted: null,
@@ -63,8 +63,6 @@ const G6JsGraph = () => {
     query: '',
     mode: 'all'
   };
-
-  //http://localhost:8529/_db/_system/_admin/aardvark/graph/routeplanner?depth=2&limit=250&nodeColor=#2ecc71&nodeColorAttribute=&nodeColorByCollection=true&edgeColor=#cccccc&edgeColorAttribute=&edgeColorByCollection=false&nodeLabel=_key&edgeLabel=&nodeSize=&nodeSizeByEdges=true&edgeEditable=true&nodeLabelByCollection=false&edgeLabelByCollection=false&nodeStart=&barnesHutOptimize=true&mode=all
 
   const [urlParams, setUrlParams] = useState(urlParamsObject);
   const [lookedUpData, setLookedUpData] = useState([]);
@@ -95,6 +93,10 @@ const G6JsGraph = () => {
     .catch((err) => {
       console.log(err);
     });
+  }
+
+  const currentUrlParams = () => {
+    console.log("currentUrlParams: ", urlParams);
   }
 
   const [responseTimes, setResponseTimes] = useState(responseTimesObject);
@@ -681,11 +683,16 @@ const G6JsGraph = () => {
   }
 
   const expandNode = (node) => {
+    console.log("urlParameters from context at expanding node: ", urlParameters);
+    console.log("urlParameters.edgeLabelByCollection: ", urlParameters.edgeLabelByCollection);
+    console.log("urlParameters.nodeLabelByCollection: ", urlParameters.nodeLabelByCollection);
+    console.log("urlParameters.nodeSizeByEdges: ", urlParameters.nodeSizeByEdges);
     // /_admin/aardvark/graph/routeplanner?nodeLabelByCollection=false&nodeColorByCollection=true&nodeSizeByEdges=true&edgeLabelByCollection=false&edgeColorByCollection=false&nodeStart=frenchCity/Caen&depth=2&limit=1&nodeLabel=_key&nodeColor=#2ecc71&nodeColorAttribute=&nodeSize=&edgeLabel=&edgeColor=#cccccc&edgeColorAttribute=&edgeEditable=true&query=FOR v, e, p IN 1..1 ANY "germanCity/Hamburg" GRAPH "routeplanner" RETURN p
     console.log(">>>>>>>>>>>> expandNode (node): ", node);
     //const url = `/_admin/aardvark/graph/routeplanner?nodeLabelByCollection=false&nodeColorByCollection=true&nodeSizeByEdges=true&edgeLabelByCollection=false&edgeColorByCollection=false&nodeStart=frenchCity/Caen&depth=2&limit=250&nodeLabel=_key&nodeColor=#2ecc71&nodeColorAttribute=&nodeSize=&edgeLabel=&edgeColor=#cccccc&edgeColorAttribute=&edgeEditable=true&query=FOR v, e, p IN 1..1 ANY "frenchCity/Caen" GRAPH "routeplanner" RETURN p`;
     //const url = `/_admin/aardvark/graph/${graphName}?depth=2&limit=250&nodeColor=#2ecc71&nodeColorAttribute=&nodeColorByCollection=true&edgeColor=#cccccc&edgeColorAttribute=&edgeColorByCollection=false&nodeLabel=_key&edgeLabel=&nodeSize=&nodeSizeByEdges=true&edgeEditable=true&nodeLabelByCollection=false&edgeLabelByCollection=false&nodeStart=&barnesHutOptimize=true&query=FOR v, e, p IN 1..1 ANY "${node}" GRAPH "${graphName}" RETURN p`;
-    const url = `/_admin/aardvark/graph/${graphName}?depth=2&limit=250&nodeColor=%232ecc71&nodeColorAttribute=&nodeColorByCollection=true&edgeColor=%23cccccc&edgeColorAttribute=&edgeColorByCollection=false&nodeLabel=_key&edgeLabel=&nodeSize=&nodeSizeByEdges=true&edgeEditable=true&nodeLabelByCollection=false&edgeLabelByCollection=false&nodeStart=&barnesHutOptimize=true&query=FOR v, e, p IN 1..1 ANY "${node}" GRAPH "${graphName}" RETURN p`;
+    //const url = `/_admin/aardvark/graph/${graphName}?depth=2&limit=250&nodeColor=%232ecc71&nodeColorAttribute=&nodeColorByCollection=false&edgeColor=%23cccccc&edgeColorAttribute=&edgeColorByCollection=false&nodeLabel=_key&edgeLabel=&nodeSize=&nodeSizeByEdges=${urlParameters.nodeSizeByEdges}&edgeEditable=true&nodeLabelByCollection=false&edgeLabelByCollection=false&nodeStart=&barnesHutOptimize=true&query=FOR v, e, p IN 1..1 ANY "${node}" GRAPH "${graphName}" RETURN p`;
+    const url = `/_admin/aardvark/g6graph/${graphName}?depth=${urlParameters.depth}&limit=${urlParameters.limit}&nodeColor=%23${urlParameters.nodeColor}&nodeColorAttribute=${urlParameters.nodeColorAttribute}&nodeColorByCollection=${urlParameters.nodeColorByCollection}&edgeColor=%23${urlParameters.edgeColor}&edgeColorAttribute=${urlParameters.edgeColorAttribute}&edgeColorByCollection=${urlParameters.edgeColorByCollection}&nodeLabel=${urlParameters.nodeLabel}&edgeLabel=${urlParameters.edgeLabel}&nodeSize=${urlParameters.nodeSize}&nodeSizeByEdges=${urlParameters.nodeSizeByEdges}&edgeEditable=${urlParameters.edgeEditable}&nodeLabelByCollection=${urlParameters.nodeLabelByCollection}&edgeLabelByCollection=${urlParameters.edgeLabelByCollection}&nodeStart=${urlParameters.nodeStart}&barnesHutOptimize=${urlParameters.barnesHutOptimize}&query=FOR v, e, p IN 1..1 ANY "${node}" GRAPH "${graphName}" RETURN p`;
       arangoFetch(arangoHelper.databaseUrl(url), {
         method: "GET"
       })
@@ -715,7 +722,7 @@ const G6JsGraph = () => {
   }
 
   const setStartnode = (node) => {
-    const url = `/_admin/aardvark/graph/${graphName}?nodeLabelByCollection=true&nodeColorByCollection=false&nodeSizeByEdges=true&edgeLabelByCollection=true&edgeColorByCollection=false&nodeStart=${node}&depth=1&limit=2&nodeLabel=&nodeColor=#2ecc71&nodeColorAttribute=&nodeSize=&edgeLabel=&edgeColor=#cccccc&edgeColorAttribute=&edgeEditable=true`;
+    const url = `/_admin/aardvark/g6graph/${graphName}?nodeLabelByCollection=true&nodeColorByCollection=false&nodeSizeByEdges=true&edgeLabelByCollection=true&edgeColorByCollection=false&nodeStart=${node}&depth=1&limit=2&nodeLabel=&nodeColor=#2ecc71&nodeColorAttribute=&nodeSize=&edgeLabel=&edgeColor=#cccccc&edgeColorAttribute=&edgeEditable=true`;
       arangoFetch(arangoHelper.databaseUrl(url), {
         method: "GET"
       })
@@ -815,7 +822,6 @@ const G6JsGraph = () => {
           data={graphData}
         />
         <FetchData />
-        <ParameterPokemon />
         <SlideInMenu>
           <h5>Graph</h5>
           <AqlEditor
@@ -844,9 +850,12 @@ const G6JsGraph = () => {
           setGraphData(data2);
         }
 
+        // <UrlParametersContext.Provider value={urlParameters}>
+        
   return (
     <div>
-      <UrlParametersContext.Provider value={urlParameters}>
+      <UrlParametersContext.Provider value={[urlParameters, setUrlParameters]}>
+
         <EditModal
           shouldShow={showEditModal}
           onRequestClose={() => {
@@ -957,6 +966,7 @@ const G6JsGraph = () => {
         >
           <strong>Add node</strong>
         </AddNodeModal2>
+        <button onClick={() => currentUrlParams()}>current Url Params</button>
         <button onClick={() => testApiParams()}>Test API Params</button>
         <button onClick={() => changeGraphDataTest()}>Change graph data test</button>
         <button onClick={() => updateGraphDataWithEdge(edgeModelToAdd)}>Add edge to graph drawing</button>

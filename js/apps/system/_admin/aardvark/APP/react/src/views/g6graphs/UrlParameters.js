@@ -4,9 +4,9 @@ const URLPARAMETERS = {
   fruchtermann: "fruchtermann",
   nodeColorByCollection: true,
   edgeColorByCollection: false,
-  nodeColor: "#2ecc71",
+  nodeColor: "2ecc71",
   nodeColorAttribute: "isCapital",
-  edgeColor: "#cccccc",
+  edgeColor: "cccccc",
   edgeColorAttribute: "",
   nodeLabel: "_key",
   edgeLabel: "_id",
@@ -18,8 +18,6 @@ const URLPARAMETERS = {
   nodeStart: "",
   barnesHutOptimize: true,
   query: "",
-  nodeLabelByCollection: false,
-  edgeLabelByCollection: false,
   //mode: "all",
 };
 
