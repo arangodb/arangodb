@@ -28,9 +28,9 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var db = require("@arangodb").db;
-var internal = require("internal");
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
+const internal = require("internal");
 const isCluster = require("@arangodb/cluster").isCluster();
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -38,7 +38,7 @@ const isCluster = require("@arangodb/cluster").isCluster();
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerCollectMethodsTestSuite () {
-  var c;
+  let c;
 
   return {
     setUp : function () {
