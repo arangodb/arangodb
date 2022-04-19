@@ -214,7 +214,7 @@ struct Option {
   std::unique_ptr<Parameter> parameter;
 
   /// @brief option flags
-  std::underlying_type<Flags>::type const flags;
+  std::underlying_type<Flags>::type flags;
 
   std::vector<uint32_t> introducedInVersions;
   std::vector<uint32_t> deprecatedInVersions;
