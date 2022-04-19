@@ -20,5 +20,9 @@ jobs:
         run: echo "PR_BASE=${{ github.event.pull_request.base.sha }}" >> $GITHUB_ENV
       - name: extract head
         run: echo "PR_HEAD=${{ github.event.pull_request.head.sha }}" >> $GITHUB_ENV
+      - name: calculate diff
+        run: |
+          mkdir -p build 
+          git diff --diff-filter=ACMRT --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} -- arangosh/ arangod/ lib/ client-tools/ tests/ Enterprise/ > build/DIFF
       - name: arangodb-clang-format
         uses: arangodb/clang-format-action@1.0.3
