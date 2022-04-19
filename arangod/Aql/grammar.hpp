@@ -1,3 +1,4 @@
+/* clang-format off */
 /* A Bison parser, made by GNU Bison 3.7.6.  */
 
 /* Bison interface for Yacc-like parsers in C
@@ -136,7 +137,7 @@ extern int Aqldebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 41 "Aql/grammar.y"
+#line 43 "Aql/grammar.y"
 
   arangodb::aql::AstNode*  node;
   struct {
