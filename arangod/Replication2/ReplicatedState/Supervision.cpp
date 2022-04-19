@@ -391,37 +391,6 @@ void checkReplicatedState(SupervisionContext& ctx,
   checkConverged(ctx, *log, state);
 }
 
-auto executeAction(RSA::State state, std::optional<RLA::Log> log,
-                   Action& action) -> ActionContext {
-  auto logTarget = std::invoke([&]() -> std::optional<RLA::LogTarget> {
-    if (log) {
-      return std::move(log->target);
-    }
-    return std::nullopt;
-  });
-
-  auto statePlan = std::invoke([&]() -> std::optional<RSA::Plan> {
-    if (state.plan) {
-      return std::move(state.plan);
-    }
-    return std::nullopt;
-  });
-
-  auto currentSupervision =
-      std::invoke([&]() -> std::optional<RSA::Current::Supervision> {
-        if (state.current) {
-          return std::move(state.current->supervision);
-        }
-        return RSA::Current::Supervision{};
-      });
-
-  auto actionCtx = replicated_state::ActionContext{
-      std::move(logTarget), std::move(statePlan),
-      std::move(currentSupervision)};
-  std::visit([&](auto& action) { action.execute(actionCtx); }, action);
-  return actionCtx;
-}
-
 auto buildAgencyTransaction(DatabaseID const& database, LogId id,
                             SupervisionContext& sctx, ActionContext& actx,
                             arangodb::agency::envelope envelope)

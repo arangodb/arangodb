@@ -369,7 +369,8 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Streams/MultiplexerConcurrencyTest.cpp
   Replication2/Streams/TestLogSpecification.cpp
   Replication2/Streams/TestLogSpecification.h
-        Replication2/ReplicatedState/SupervisionTest.cpp)
+  Replication2/ReplicatedState/SupervisionTest.cpp
+)
 
 
 if (LINUX)

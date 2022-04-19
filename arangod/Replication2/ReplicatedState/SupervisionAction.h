@@ -116,22 +116,14 @@ struct SetLeaderAction {
   }
 };
 
-struct WaitForAction {
-  std::string message;
-  void execute(ActionContext& ctx) {}
-};
+using Action = std::variant<
+    EmptyAction, AddParticipantAction, RemoveParticipantFromLogTargetAction,
+    RemoveParticipantFromStatePlanAction, AddStateToPlanAction,
+    UpdateParticipantFlagsAction, CurrentConvergedAction, SetLeaderAction>;
 
-using Action =
-    std::variant<EmptyAction, AddParticipantAction,
-                 RemoveParticipantFromLogTargetAction,
-                 RemoveParticipantFromStatePlanAction, AddStateToPlanAction,
-                 UpdateParticipantFlagsAction, CurrentConvergedAction,
-                 SetLeaderAction>;
-
-auto execute(LogId id, DatabaseID const& database, Action action,
-             std::optional<agency::Plan> state,
-             std::optional<agency::Current::Supervision> currentSupervision,
-             std::optional<replication2::agency::LogTarget> log,
-             arangodb::agency::envelope envelope) -> arangodb::agency::envelope;
+auto executeAction(
+    arangodb::replication2::replicated_state::agency::State state,
+    std::optional<replication2::agency::Log> log, Action& action)
+    -> ActionContext;
 
 }  // namespace arangodb::replication2::replicated_state
