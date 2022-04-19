@@ -45,8 +45,6 @@ class ManagerFeature final : public ArangodFeature {
 
   void collectOptions(
       std::shared_ptr<arangodb::options::ProgramOptions> options) override;
-  void validateOptions(
-      std::shared_ptr<arangodb::options::ProgramOptions> options) override;
   void prepare() override;
   void start() override;
   void stop() override;

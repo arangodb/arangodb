@@ -55,7 +55,6 @@ struct config_t {
   uint64_t _compactionKeepSize;
   double _supervisionGracePeriod;
   double _supervisionOkThreshold;
-  bool _cmdLineTimings;
   size_t _version;
   std::string _startup;
   size_t _maxAppendSize;
@@ -225,9 +224,6 @@ struct config_t {
 
   /// @brief Reset timeout multiplier
   void setTimeoutMult(int64_t);
-
-  /// @brief Supervision grace period
-  bool cmdLineTimings() const;
 
   /// @brief Supervision grace period
   double supervisionGracePeriod() const;

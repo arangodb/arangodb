@@ -66,7 +66,6 @@ class AgencyFeature : public ArangodFeature {
   double _supervisionOkThreshold;
   std::string _agencyMyAddress;
   std::vector<std::string> _agencyEndpoints;
-  bool _cmdLineTimings;
   std::string _recoveryId;
 
   std::unique_ptr<consensus::Agent> _agent;

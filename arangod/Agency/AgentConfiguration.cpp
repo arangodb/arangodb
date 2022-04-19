@@ -70,7 +70,6 @@ config_t::config_t()
       _compactionKeepSize(50000),
       _supervisionGracePeriod(15.0),
       _supervisionOkThreshold(5.0),
-      _cmdLineTimings(false),
       _version(0),
       _startup("origin"),
       _maxAppendSize(250),
@@ -79,7 +78,7 @@ config_t::config_t()
 config_t::config_t(std::string const& rid, size_t as, size_t ps, double minp,
                    double maxp, std::string const& e,
                    std::vector<std::string> const& g, bool s, bool st, bool w,
-                   double f, uint64_t c, uint64_t k, double p, double o, bool t,
+                   double f, uint64_t c, uint64_t k, double p, double o,
                    size_t a)
     : _recoveryId(rid),
       _agencySize(as),
@@ -97,7 +96,6 @@ config_t::config_t(std::string const& rid, size_t as, size_t ps, double minp,
       _compactionKeepSize(k),
       _supervisionGracePeriod(p),
       _supervisionOkThreshold(o),
-      _cmdLineTimings(t),
       _version(0),
       _startup("origin"),
       _maxAppendSize(a),
@@ -130,7 +128,6 @@ config_t& config_t::operator=(config_t const& other) {
   _compactionKeepSize = other._compactionKeepSize;
   _supervisionGracePeriod = other._supervisionGracePeriod;
   _supervisionOkThreshold = other._supervisionOkThreshold;
-  _cmdLineTimings = other._cmdLineTimings;
   _version = other._version;
   _startup = other._startup;
   _maxAppendSize = other._maxAppendSize;
@@ -158,7 +155,6 @@ config_t& config_t::operator=(config_t&& other) {
   _compactionKeepSize = std::move(other._compactionKeepSize);
   _supervisionGracePeriod = std::move(other._supervisionGracePeriod);
   _supervisionOkThreshold = std::move(other._supervisionOkThreshold);
-  _cmdLineTimings = std::move(other._cmdLineTimings);
   _version = std::move(other._version);
   _startup = std::move(other._startup);
   _maxAppendSize = std::move(other._maxAppendSize);
@@ -168,11 +164,6 @@ config_t& config_t::operator=(config_t&& other) {
 size_t config_t::version() const {
   READ_LOCKER(readLocker, _lock);
   return _version;
-}
-
-bool config_t::cmdLineTimings() const {
-  READ_LOCKER(readLocker, _lock);
-  return _cmdLineTimings;
 }
 
 double config_t::supervisionGracePeriod() const {

@@ -21,9 +21,10 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <stddef.h>
 #include <algorithm>
+#include <cstddef>
 #include <ios>
+#include <limits>
 
 #include "RocksDBOptionFeature.h"
 
@@ -227,7 +228,8 @@ void RocksDBOptionFeature::collectOptions(
           "--rocksdb.target-file-size-multiplier",
           "multiplier for `--rocksdb.target-file-size`, a value of 1 means "
           "that files in different levels will have the same size",
-          new UInt64Parameter(&_targetFileSizeMultiplier))
+          new UInt64Parameter(&_targetFileSizeMultiplier, /*base*/ 1,
+                              /*minValue*/ 1))
       .setIntroducedIn(30701);
 
   options
@@ -300,7 +302,8 @@ void RocksDBOptionFeature::collectOptions(
 
   options->addOption("--rocksdb.num-levels",
                      "number of levels for the database",
-                     new UInt64Parameter(&_numLevels));
+                     new UInt64Parameter(&_numLevels, /*base*/ 1,
+                                         /*minValue*/ 1, /*maxValue*/ 20));
 
   options->addOption("--rocksdb.num-uncompressed-levels",
                      "number of uncompressed levels for the database",
@@ -316,12 +319,16 @@ void RocksDBOptionFeature::collectOptions(
                      "maximum total data size for level-1",
                      new UInt64Parameter(&_maxBytesForLevelBase));
 
-  options->addOption("--rocksdb.max-bytes-for-level-multiplier",
-                     "if not using dynamic level sizes, the maximum number of "
-                     "bytes for level L can be calculated as "
-                     " max-bytes-for-level-base * "
-                     "(max-bytes-for-level-multiplier ^ (L-1))",
-                     new DoubleParameter(&_maxBytesForLevelMultiplier));
+  options->addOption(
+      "--rocksdb.max-bytes-for-level-multiplier",
+      "if not using dynamic level sizes, the maximum number of "
+      "bytes for level L can be calculated as "
+      " max-bytes-for-level-base * "
+      "(max-bytes-for-level-multiplier ^ (L-1))",
+      new DoubleParameter(&_maxBytesForLevelMultiplier, /*base*/ 1.0,
+                          /*minValue*/ 0.0,
+                          /*maxValue*/ std::numeric_limits<double>::max(),
+                          /*minInclusive*/ false));
 
   options->addOption(
       "--rocksdb.block-align-data-blocks",
@@ -418,12 +425,14 @@ void RocksDBOptionFeature::collectOptions(
   options->addOption(
       "--rocksdb.num-threads-priority-high",
       "number of threads for high priority operations (e.g. flush)",
-      new UInt32Parameter(&_numThreadsHigh));
+      new UInt32Parameter(&_numThreadsHigh, /*base*/ 1, /*minValue*/ 0,
+                          /*maxValue*/ 64));
 
   options->addOption(
       "--rocksdb.num-threads-priority-low",
       "number of threads for low priority operations (e.g. compaction)",
-      new UInt32Parameter(&_numThreadsLow));
+      new UInt32Parameter(&_numThreadsLow, /*base*/ 1, /*minValue*/ 0,
+                          /*maxValue*/ 256));
 
   options->addOption(
       "--rocksdb.block-cache-size", "size of block cache in bytes",
@@ -433,7 +442,9 @@ void RocksDBOptionFeature::collectOptions(
   options->addOption(
       "--rocksdb.block-cache-shard-bits",
       "number of shard bits to use for block cache (use -1 for default value)",
-      new Int64Parameter(&_blockCacheShardBits));
+      new Int64Parameter(&_blockCacheShardBits, /*base*/ 1, /*minValue*/ -1,
+                         /*maxValue*/ 20, /*minInclusive*/ true,
+                         /*maxInclusive*/ false));
 
   options->addOption("--rocksdb.enforce-block-cache-size-limit",
                      "if true, strictly enforces the block cache size limit",
@@ -582,10 +593,6 @@ void RocksDBOptionFeature::collectOptions(
 
 void RocksDBOptionFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-  if (_targetFileSizeMultiplier < 1) {
-    LOG_TOPIC("664be", FATAL, arangodb::Logger::FIXME)
-        << "invalid value for '--rocksdb.target-file-size-multiplier'";
-  }
   if (_writeBufferSize > 0 && _writeBufferSize < 1024 * 1024) {
     LOG_TOPIC("4ce44", FATAL, arangodb::Logger::FIXME)
         << "invalid value for '--rocksdb.write-buffer-size'";
@@ -596,17 +603,6 @@ void RocksDBOptionFeature::validateOptions(
         << "invalid value for '--rocksdb.total-write-buffer-size'";
     FATAL_ERROR_EXIT();
   }
-  if (_maxBytesForLevelMultiplier <= 0.0) {
-    LOG_TOPIC("f6f8a", FATAL, arangodb::Logger::FIXME)
-        << "invalid value for '--rocksdb.max-bytes-for-level-multiplier'";
-    FATAL_ERROR_EXIT();
-  }
-  if (_numLevels < 1 || _numLevels > 20) {
-    LOG_TOPIC("70938", FATAL, arangodb::Logger::FIXME)
-        << "invalid value for '--rocksdb.num-levels'";
-    FATAL_ERROR_EXIT();
-  }
-
   if (_maxBackgroundJobs != -1 &&
       (_maxBackgroundJobs < 1 || _maxBackgroundJobs > 128)) {
     LOG_TOPIC("cfc5a", FATAL, arangodb::Logger::FIXME)
@@ -614,26 +610,9 @@ void RocksDBOptionFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  if (_numThreadsHigh > 64) {
-    LOG_TOPIC("d3105", FATAL, arangodb::Logger::FIXME)
-        << "invalid value for '--rocksdb.num-threads-priority-high'";
-    FATAL_ERROR_EXIT();
-  }
-  if (_numThreadsLow > 256) {
-    LOG_TOPIC("30c65", FATAL, arangodb::Logger::FIXME)
-        << "invalid value for '--rocksdb.num-threads-priority-low'";
-    FATAL_ERROR_EXIT();
-  }
   if (_maxSubcompactions > _numThreadsLow) {
     _maxSubcompactions = _numThreadsLow;
   }
-  if (_blockCacheShardBits >= 20 || _blockCacheShardBits < -1) {
-    // -1 is RocksDB default value, but anything less is invalid
-    LOG_TOPIC("327a3", FATAL, arangodb::Logger::FIXME)
-        << "invalid value for '--rocksdb.block-cache-shard-bits'";
-    FATAL_ERROR_EXIT();
-  }
-
   _minWriteBufferNumberToMergeTouched = options->processingResult().touched(
       "--rocksdb.min-write-buffer-number-to-merge");
 
