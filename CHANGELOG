@@ -3,8 +3,8 @@ v3.9.2 (XXXX-XX-XX)
 
 * Improve validation for variables used in the `KEEP` part of AQL COLLECT
   operations. Previously referring to a variable that was introduced by the
-  COLLECT itself from out of the KEEP part triggered an internal error. The
-  case is detected properly now and handled with a descriptive error message.
+  COLLECT itself from out of the KEEP part triggered an internal error. The case
+  is detected properly now and handled with a descriptive error message.
 
 * Added startup option `--rocksdb.transaction-lock-stripes` to configure the
   number of lock stripes to be used by RocksDB transactions. The option defaults
