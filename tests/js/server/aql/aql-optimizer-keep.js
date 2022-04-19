@@ -85,8 +85,8 @@ function optimizerKeepTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testReferToCollectVariablesFromKeep : function () {
-      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT a = i KEEP a RETURN 1");
-      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT a = i KEEP i RETURN 1");
+      assertQueryError(errors.ERROR_QUERY_VARIABLE_NAME_UNKNOWN.code, "FOR i IN " + c.name() + " COLLECT a = i INTO g KEEP a RETURN 1");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT a = i INTO g KEEP g RETURN 1");
     },
 
 
