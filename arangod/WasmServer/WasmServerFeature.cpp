@@ -68,28 +68,30 @@ auto WasmServerFeature::loadModuleIntoRuntime(ModuleName const& name)
   return Result{};
 }
 
-auto WasmServerFeature::executeFunction(
-    ModuleName const& moduleName, FunctionName const& functionName,
-    wasm::FunctionParameters const& parameters) -> ResultT<uint64_t> {
+auto WasmServerFeature::executeFunction(ModuleName const& moduleName,
+                                        FunctionName const& functionName,
+                                        wasm::FunctionInput const& parameters)
+    -> ResultT<FunctionOutput> {
   auto moduleAlreadyLoaded = _guardedModules.doUnderLock(
       [&moduleName](GuardedModules const& guardedModules) -> bool {
         return guardedModules._loadedModules.contains(moduleName.string);
       });
   if (!moduleAlreadyLoaded) {
     if (auto result = loadModuleIntoRuntime(moduleName); result.fail()) {
-      return ResultT<uint64_t>::error(result.errorNumber(),
-                                      result.errorMessage());
+      return ResultT<FunctionOutput>::error(result.errorNumber(),
+                                            result.errorMessage());
     }
   }
 
   auto function = _runtime.find_function(functionName.string.c_str());
   if (!function.has_value()) {
-    return ResultT<uint64_t>::error(TRI_ERROR_WASM_EXECUTION_ERROR,
-                                    "WasmServerFeature: Function '" +
-                                        functionName.string + "' in module '" +
-                                        moduleName.string + "' not found");
+    return ResultT<FunctionOutput>::error(
+        TRI_ERROR_WASM_EXECUTION_ERROR,
+        "WasmServerFeature: Function '" + functionName.string +
+            "' in module '" + moduleName.string + "' not found");
   }
-  return function.value().call<uint64_t>(parameters.a, parameters.b);
+  return FunctionOutput{
+      function.value().call<uint64_t>(parameters.a, parameters.b)};
 }
 
 auto WasmServerFeature::addModule(Module const& module) -> Result {

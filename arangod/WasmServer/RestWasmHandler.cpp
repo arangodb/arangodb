@@ -191,7 +191,7 @@ auto executeWasmFunction(ModuleName const& moduleName,
   }
 
   VPackObjectBuilder ob(&response);
-  response.add("result", VPackValue(result.get()));
+  response.add("result", VPackValue(result.get().value));
   return Result{};
 }
 

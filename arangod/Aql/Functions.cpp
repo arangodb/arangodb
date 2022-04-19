@@ -9066,9 +9066,8 @@ AqlValue Functions::CallWasm(ExpressionContext* expressionContext,
   WasmServerFeature& feature = server.getFeature<WasmServerFeature>();
   auto result = feature.executeFunction(
       moduleName.slice().copyString(), functionName.slice().copyString(),
-      wasm::FunctionParameters{
-          static_cast<uint64_t>(functionParameter1.toInt64()),
-          static_cast<uint64_t>(functionParameter2.toInt64())});
+      wasm::FunctionInput{static_cast<uint64_t>(functionParameter1.toInt64()),
+                          static_cast<uint64_t>(functionParameter2.toInt64())});
 
   if (result.fail()) {
     expressionContext->registerError(result.errorNumber(),
@@ -9077,7 +9076,7 @@ AqlValue Functions::CallWasm(ExpressionContext* expressionContext,
   }
   transaction::Methods* trx = &expressionContext->trx();
   transaction::BuilderLeaser builder(trx);
-  builder->add(VPackValue(result.get()));
+  builder->add(VPackValue(result.get().value));
   return AqlValue(builder->slice(), builder->size());
 }
 

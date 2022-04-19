@@ -137,5 +137,5 @@ TEST(WasmFunctionParameterCreation,
   auto velocypack = VPackParser::fromJson(R"({"a": 3, "b": 982})")->slice();
   auto result = arangodb::wasm::velocypackToFunctionParameters(velocypack);
   EXPECT_TRUE(result.ok());
-  EXPECT_EQ(result.get(), (FunctionParameters{3, 982}));
+  EXPECT_EQ(result.get(), (FunctionInput{3, 982}));
 }

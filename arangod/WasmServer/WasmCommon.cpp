@@ -161,28 +161,28 @@ auto uint64FromSlice(Slice slice) -> std::optional<uint64_t> {
 }
 
 auto arangodb::wasm::velocypackToFunctionParameters(Slice slice)
-    -> ResultT<FunctionParameters> {
+    -> ResultT<FunctionInput> {
   if (!slice.isObject()) {
-    return ResultT<FunctionParameters>::error(TRI_ERROR_BAD_PARAMETER,
-                                              "Can only parse an object");
+    return ResultT<FunctionInput>::error(TRI_ERROR_BAD_PARAMETER,
+                                         "Can only parse an object");
   }
   if (!slice.hasKey("a")) {
-    return ResultT<FunctionParameters>::error(TRI_ERROR_BAD_PARAMETER,
-                                              "Required field 'a' is missing");
+    return ResultT<FunctionInput>::error(TRI_ERROR_BAD_PARAMETER,
+                                         "Required field 'a' is missing");
   }
   if (!slice.hasKey("b")) {
-    return ResultT<FunctionParameters>::error(TRI_ERROR_BAD_PARAMETER,
-                                              "Required field 'b' is missing");
+    return ResultT<FunctionInput>::error(TRI_ERROR_BAD_PARAMETER,
+                                         "Required field 'b' is missing");
   }
   auto a = uint64FromSlice(slice.get("a"));
   if (!a.has_value()) {
-    return ResultT<FunctionParameters>::error(
+    return ResultT<FunctionInput>::error(
         TRI_ERROR_BAD_PARAMETER, "Field a: Should be an unsigned integer");
   }
   auto b = uint64FromSlice(slice.get("b"));
   if (!b.has_value()) {
-    return ResultT<FunctionParameters>::error(
+    return ResultT<FunctionInput>::error(
         TRI_ERROR_BAD_PARAMETER, "Field b: Should be an unsigned integer");
   }
-  return FunctionParameters{a.value(), b.value()};
+  return FunctionInput{a.value(), b.value()};
 }

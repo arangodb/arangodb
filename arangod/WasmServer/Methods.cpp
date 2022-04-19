@@ -66,8 +66,8 @@ struct WasmVmMethodsSingleServer final
 
   auto executeFunction(ModuleName const& moduleName,
                        FunctionName const& functionName,
-                       FunctionParameters const& parameters) const
-      -> futures::Future<ResultT<uint64_t>> override {
+                       FunctionInput const& parameters) const
+      -> futures::Future<ResultT<FunctionOutput>> override {
     return vocbase.server().getFeature<WasmServerFeature>().executeFunction(
         moduleName, functionName, parameters);
   }

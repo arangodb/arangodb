@@ -61,8 +61,8 @@ class WasmServerFeature final : public ArangodFeature {
   auto loadModuleIntoRuntime(wasm::ModuleName const& name) -> Result;
   auto executeFunction(wasm::ModuleName const& moduleName,
                        wasm::FunctionName const& functionName,
-                       wasm::FunctionParameters const& parameters)
-      -> ResultT<uint64_t>;
+                       wasm::FunctionInput const& parameters)
+      -> ResultT<wasm::FunctionOutput>;
   auto addModule(wasm::Module const& module) -> Result;
   auto removeModule(wasm::ModuleName const& name) -> Result;
   auto allModules() const -> ResultT<std::vector<wasm::ModuleName>>;

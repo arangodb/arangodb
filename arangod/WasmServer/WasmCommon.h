@@ -62,16 +62,20 @@ struct FunctionName {
   FunctionName(std::string string) : string{std::move(string)} {}
 };
 
-struct FunctionParameters {
+struct FunctionInput {
   uint64_t a;
   uint64_t b;
-  auto operator==(FunctionParameters const& parameters) const -> bool = default;
+  auto operator==(FunctionInput const& parameters) const -> bool = default;
+};
+
+struct FunctionOutput {
+  uint64_t value;
 };
 
 auto velocypackToModule(arangodb::velocypack::Slice slice) -> ResultT<Module>;
 void moduleToVelocypack(Module const& module, VPackBuilder& builder,
                         bool forCollection = false);
 auto velocypackToFunctionParameters(arangodb::velocypack::Slice slice)
-    -> ResultT<FunctionParameters>;
+    -> ResultT<FunctionInput>;
 
 }  // namespace arangodb::wasm
