@@ -1,6 +1,8 @@
 v3.8.7 (XXXX-XX-XX)
 -------------------
 
+* Updated arangosync to v2.9.0.
+
 * Fix deadlocked shard synchronisations when planned shard leader has not yet
   taken over leadership.
 
