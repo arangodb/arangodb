@@ -96,9 +96,8 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--agency.election-timeout-min",
       "minimum timeout before an agent calls for new election (in seconds)",
-      new DoubleParameter(&_minElectionTimeout, /*base*/ 1.0, /*minValue*/ 0.0,
-                          /*maxValue*/ std::numeric_limits<double>::max(),
-                          /*minInclusive*/ false),
+      new DoubleParameter{
+          .ptr = &_minElectionTimeout, .minValue = 0.0, .minInclusive = false},
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnAgent));

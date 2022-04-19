@@ -333,17 +333,17 @@ void RocksDBEngine::collectOptions(
   /// server "healthy". this is expressed as a floating point value between 0
   /// and 1! if set to 0.0, the % amount of free disk is ignored in checks.
   options
-      ->addOption(
-          "--rocksdb.minimum-disk-free-percent",
-          "minimum percentage of free disk space for considering the "
-          "server healthy in "
-          "health checks (set to 0 to disable the check)",
-          new DoubleParameter(&_requiredDiskFreePercentage, /*base*/ 1.0,
-                              /*minValue*/ 0.0, /*maxValue*/ 1.0),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnDBServer,
-              arangodb::options::Flags::OnSingle))
+      ->addOption("--rocksdb.minimum-disk-free-percent",
+                  "minimum percentage of free disk space for considering the "
+                  "server healthy in "
+                  "health checks (set to 0 to disable the check)",
+                  new DoubleParameter{.ptr = &_requiredDiskFreePercentage,
+                                      .minValue = 0.0,
+                                      .maxValue = 1.0},
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30800);
 
   /// @brief minimum number of free bytes on disk for considering the server
@@ -438,7 +438,7 @@ void RocksDBEngine::collectOptions(
       ->addOption(
           "--rocksdb.throttle-slots",
           "number of historic metrics to use for throttle value calculation",
-          new UInt64Parameter(&_throttleSlots, /*base*/ 1, /*minValue*/ 1),
+          new UInt64Parameter{.ptr = &_throttleSlots, .minValue = 1},
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer,

@@ -86,16 +86,15 @@ void AuthenticationFeature::collectOptions(
       new DoubleParameter(&_authenticationTimeout));
 
   options
-      ->addOption(
-          "--server.session-timeout",
-          "lifetime for tokens in seconds that can be obtained from "
-          "the POST /_open/auth endpoint. Used by the web interface "
-          "for JWT-based sessions",
-          new DoubleParameter(&_sessionTimeout, /*base*/ 1.0, /*minValue*/ 1.0),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnCoordinator,
-              arangodb::options::Flags::OnSingle))
+      ->addOption("--server.session-timeout",
+                  "lifetime for tokens in seconds that can be obtained from "
+                  "the POST /_open/auth endpoint. Used by the web interface "
+                  "for JWT-based sessions",
+                  new DoubleParameter{.ptr = &_sessionTimeout, .minValue = 1.0},
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30900);
 
   options->addOption("--server.local-authentication",

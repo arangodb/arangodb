@@ -194,13 +194,13 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       .setIntroducedIn(30600);
 
   options
-      ->addOption("--cluster.min-replication-factor",
-                  "minimum replication factor for new collections",
-                  new UInt32Parameter(&_minReplicationFactor, /*base*/ 1,
-                                      /*minValue*/ 1),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator))
+      ->addOption(
+          "--cluster.min-replication-factor",
+          "minimum replication factor for new collections",
+          new UInt32Parameter{.ptr = &_minReplicationFactor, .minValue = 1},
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(30600);
 
   options
@@ -208,8 +208,8 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           "--cluster.max-replication-factor",
           "maximum replication factor for new collections (0 = unrestricted)",
           // 10 is a hard-coded max value for the replication factor
-          new UInt32Parameter(&_maxReplicationFactor, /*base*/ 1,
-                              /*minValue*/ 0, /*maxValue*/ 10),
+          new UInt32Parameter{
+              .ptr = &_maxReplicationFactor, .minValue = 0, .maxValue = 10},
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnCoordinator))
@@ -220,7 +220,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           "--cluster.max-number-of-shards",
           "maximum number of shards when creating new collections (0 = "
           "unrestricted)",
-          new UInt32Parameter(&_maxNumberOfShards, /*base*/ 1, /*minValue*/ 1),
+          new UInt32Parameter{.ptr = &_maxNumberOfShards, .minValue = 1},
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnCoordinator))

@@ -138,13 +138,13 @@ void SchedulerFeature::collectOptions(
                      new UInt64Parameter(&_fifo3Size));
 
   options
-      ->addOption(
-          "--server.unavailability-queue-fill-grade",
-          "queue fill grade from which onwards the server is "
-          "considered unavailable because of overload (ratio, use a "
-          "value of 0 to disable it)",
-          new DoubleParameter(&_unavailabilityQueueFillGrade, /*base*/ 1.0,
-                              /*minValue*/ 0.0, /*maxValue*/ 1.0))
+      ->addOption("--server.unavailability-queue-fill-grade",
+                  "queue fill grade from which onwards the server is "
+                  "considered unavailable because of overload (ratio, use a "
+                  "value of 0 to disable it)",
+                  new DoubleParameter{.ptr = &_unavailabilityQueueFillGrade,
+                                      .minValue = 0.0,
+                                      .maxValue = 1.0})
       .setIntroducedIn(30610)
       .setIntroducedIn(30706);
 

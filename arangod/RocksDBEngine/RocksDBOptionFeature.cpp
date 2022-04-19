@@ -228,8 +228,7 @@ void RocksDBOptionFeature::collectOptions(
           "--rocksdb.target-file-size-multiplier",
           "multiplier for `--rocksdb.target-file-size`, a value of 1 means "
           "that files in different levels will have the same size",
-          new UInt64Parameter(&_targetFileSizeMultiplier, /*base*/ 1,
-                              /*minValue*/ 1))
+          new UInt64Parameter{.ptr = &_targetFileSizeMultiplier, .minValue = 1})
       .setIntroducedIn(30701);
 
   options
@@ -300,10 +299,9 @@ void RocksDBOptionFeature::collectOptions(
       new UInt64Parameter(&_minWriteBufferNumberToMerge),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
-  options->addOption("--rocksdb.num-levels",
-                     "number of levels for the database",
-                     new UInt64Parameter(&_numLevels, /*base*/ 1,
-                                         /*minValue*/ 1, /*maxValue*/ 20));
+  options->addOption(
+      "--rocksdb.num-levels", "number of levels for the database",
+      new UInt64Parameter{.ptr = &_numLevels, .minValue = 1, .maxValue = 20});
 
   options->addOption("--rocksdb.num-uncompressed-levels",
                      "number of uncompressed levels for the database",
@@ -319,16 +317,14 @@ void RocksDBOptionFeature::collectOptions(
                      "maximum total data size for level-1",
                      new UInt64Parameter(&_maxBytesForLevelBase));
 
-  options->addOption(
-      "--rocksdb.max-bytes-for-level-multiplier",
-      "if not using dynamic level sizes, the maximum number of "
-      "bytes for level L can be calculated as "
-      " max-bytes-for-level-base * "
-      "(max-bytes-for-level-multiplier ^ (L-1))",
-      new DoubleParameter(&_maxBytesForLevelMultiplier, /*base*/ 1.0,
-                          /*minValue*/ 0.0,
-                          /*maxValue*/ std::numeric_limits<double>::max(),
-                          /*minInclusive*/ false));
+  options->addOption("--rocksdb.max-bytes-for-level-multiplier",
+                     "if not using dynamic level sizes, the maximum number of "
+                     "bytes for level L can be calculated as "
+                     " max-bytes-for-level-base * "
+                     "(max-bytes-for-level-multiplier ^ (L-1))",
+                     new DoubleParameter{.ptr = &_maxBytesForLevelMultiplier,
+                                         .minValue = 0.0,
+                                         .minInclusive = false});
 
   options->addOption(
       "--rocksdb.block-align-data-blocks",
@@ -425,14 +421,14 @@ void RocksDBOptionFeature::collectOptions(
   options->addOption(
       "--rocksdb.num-threads-priority-high",
       "number of threads for high priority operations (e.g. flush)",
-      new UInt32Parameter(&_numThreadsHigh, /*base*/ 1, /*minValue*/ 0,
-                          /*maxValue*/ 64));
+      new UInt32Parameter{
+          .ptr = &_numThreadsHigh, .minValue = 0, .maxValue = 64});
 
   options->addOption(
       "--rocksdb.num-threads-priority-low",
       "number of threads for low priority operations (e.g. compaction)",
-      new UInt32Parameter(&_numThreadsLow, /*base*/ 1, /*minValue*/ 0,
-                          /*maxValue*/ 256));
+      new UInt32Parameter{
+          .ptr = &_numThreadsLow, .minValue = 0, .maxValue = 256});
 
   options->addOption(
       "--rocksdb.block-cache-size", "size of block cache in bytes",
@@ -442,9 +438,10 @@ void RocksDBOptionFeature::collectOptions(
   options->addOption(
       "--rocksdb.block-cache-shard-bits",
       "number of shard bits to use for block cache (use -1 for default value)",
-      new Int64Parameter(&_blockCacheShardBits, /*base*/ 1, /*minValue*/ -1,
-                         /*maxValue*/ 20, /*minInclusive*/ true,
-                         /*maxInclusive*/ false));
+      new Int64Parameter{.ptr = &_blockCacheShardBits,
+                         .minValue = -1,
+                         .maxValue = 20,
+                         .maxInclusive = false});
 
   options->addOption("--rocksdb.enforce-block-cache-size-limit",
                      "if true, strictly enforces the block cache size limit",
