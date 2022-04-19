@@ -347,6 +347,10 @@ auto checkReplicatedStateParticipants(SupervisionContext& ctx,
     return ctx.reportStatus(RSA::StatusCode::kLogCurrentNotAvailable,
                             "State/Current not yet populated");
   }
+  if (!log.plan.has_value()) {
+    return ctx.reportStatus(RSA::StatusCode::kLogPlanNotAvailable,
+                            "Log/Plan not yet populated");
+  }
 
   auto const serversInTarget = state.target.participants.size();
   auto const serversOk = countOkServers(log, state);

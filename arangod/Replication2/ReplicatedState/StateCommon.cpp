@@ -63,6 +63,15 @@ auto replicated_state::operator<<(std::ostream& os, StateGeneration g)
   return os << g.value;
 }
 
+auto StateGeneration::operator++() noexcept -> StateGeneration& {
+  ++value;
+  return *this;
+}
+
+auto StateGeneration::operator++(int) noexcept -> StateGeneration {
+  return StateGeneration{value++};
+}
+
 auto replicated_state::operator<<(std::ostream& os, SnapshotStatus const& ss)
     -> std::ostream& {
   return os << to_string(ss);

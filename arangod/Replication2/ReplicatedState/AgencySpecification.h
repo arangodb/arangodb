@@ -95,6 +95,7 @@ struct Current {
 
     enum StatusCode {
       kLogNotCreated,
+      kLogPlanNotAvailable,
       kLogCurrentNotAvailable,
       kServerSnapshotMissing,
       kInsufficientSnapshotCoverage,
