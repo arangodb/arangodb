@@ -244,6 +244,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
         if (!current->isDeterministic()) {
           return false;
         }
+        // TODO: Check current->getVariablesUsedHere()!
         break;
       default:
         return false;

@@ -80,10 +80,20 @@
         let plan = AQL_EXPLAIN(query).plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
-       testNotAppliedDueToNonDetermCalc() {
-        let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 0  LET a = NOOPT(d.b.b1)  SORT BM25(d) LIMIT 10 RETURN {dD:d, aA:a}";
+      testNotAppliedDueToNonDetermCalc() {
+        let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 0  LET a = NOOPT(d.b.b1) SORT BM25(d) LIMIT 10 RETURN {dD:d, aA:a}";
         let plan = AQL_EXPLAIN(query).plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
+      },
+      testNotAppliedDueToNonDetermCalc2() {
+        let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 0  SORT BM25(d) LET a = NOOPT(d.b.b1) LIMIT 10 RETURN {dD:d, aA:a}";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertEqual(-1, plan.rules.indexOf(ruleName));
+      },
+      testNotAppliedDueToUsedBeforeSort() {
+        let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 0  SORT BM25(d) LET a = UPPER(d.b.b1) LIMIT 10 RETURN {dD:d, aA:a}";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertEqual(-1, plan.rules.indexOf(ruleName), {}, {optimizer:{rules:['-move-calculations-down']}});
       },
       testNotAppliedDueToNoLimit() {
         let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 0 SORT BM25(d) RETURN d";
@@ -190,7 +200,15 @@
           assertEqual(1500, result.json.length);
           assertEqual(17871, result.stats.scannedIndex);
       },
-      
+      testAppliedDueWithNonDetermAfter() {
+        let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3'  SORT BM25(d) LIMIT 10 LET a = NOOPT(d.b.b1) RETURN {dD:d, aA:a}";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        let result = AQL_EXECUTE(query, {}, {fullCount:true});
+        assertEqual(10, result.json.length);
+        assertEqual(17871, result.stats.scannedIndex);
+        assertEqual(17871, result.stats.fullCount);
+      }
     };
   };
 }());
