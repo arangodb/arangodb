@@ -39,7 +39,7 @@ const replicatedLogIsReady = function (database, logId, term, participants, lead
       }
       if (current.localStatus[srv].term < term) {
         return Error(`Participant ${srv} has not yet acknowledged the current term; ` +
-          `found = ${current.localStatus[srv].term}, expected = ${term}.`);
+            `found = ${current.localStatus[srv].term}, expected = ${term}.`);
       }
     }
 
@@ -74,7 +74,7 @@ const replicatedLogLeaderEstablished = function (database, logId, term, particip
       }
       if (term !== undefined && current.localStatus[srv].term < term) {
         return Error(`Participant ${srv} has not yet acknowledged the current term; ` +
-          `found = ${current.localStatus[srv].term}, expected = ${term}.`);
+            `found = ${current.localStatus[srv].term}, expected = ${term}.`);
       }
     }
 
@@ -129,7 +129,7 @@ const replicatedLogParticipantsFlag = function (database, logId, flags, generati
     if (generation !== undefined) {
       if (current.leader.committedParticipantsConfig.generation < generation) {
         return Error("Leader has not yet acked new generation; "
-          + `found ${current.leader.committedParticipantsConfig.generation}, expected = ${generation}`);
+            + `found ${current.leader.committedParticipantsConfig.generation}, expected = ${generation}`);
       }
     }
 
@@ -150,8 +150,8 @@ const replicatedLogParticipantsFlag = function (database, logId, flags, generati
   };
 };
 
-const replicatedLogTargetVersion = function(database, logId, version) {
-  return function() {
+const replicatedLogTargetVersion = function (database, logId, version) {
+  return function () {
     let {current} = LH.readReplicatedLogAgency(database, logId);
 
     if (current === undefined) {
@@ -170,7 +170,7 @@ const replicatedLogTargetVersion = function(database, logId, version) {
   };
 };
 
-const replicatedLogLeaderTargetIs = function(database, stateId, expectedLeader) {
+const replicatedLogLeaderTargetIs = function (database, stateId, expectedLeader) {
   return function () {
     const currentLeader = LH.getReplicatedLogLeaderTarget(database, stateId);
     if (currentLeader === expectedLeader) {
@@ -181,7 +181,7 @@ const replicatedLogLeaderTargetIs = function(database, stateId, expectedLeader) 
   };
 };
 
-const replicatedLogLeaderPlanIs = function(database, stateId, expectedLeader) {
+const replicatedLogLeaderPlanIs = function (database, stateId, expectedLeader) {
   return function () {
     const {leader: currentLeader} = LH.getReplicatedLogLeaderPlan(database, stateId);
     if (currentLeader === expectedLeader) {
@@ -189,6 +189,33 @@ const replicatedLogLeaderPlanIs = function(database, stateId, expectedLeader) {
     } else {
       return new Error(`Expected log leader to switch to ${expectedLeader}, but is still ${currentLeader}`);
     }
+  };
+};
+
+const replicatedLogLeaderCommitFail = function (database, logId, expected) {
+  return function () {
+    let {current} = LH.readReplicatedLogAgency(database, logId);
+    if (current === undefined) {
+      return Error("current not yet defined");
+    }
+    if (!current.leader) {
+      return Error("Leader has not yet established its term");
+    }
+
+    const status = current.leader.commitStatus;
+    if (expected === undefined) {
+      if (status !== undefined) {
+        return Error(`CommitStatus not yet cleared, current-value = ${status.reason}`);
+      }
+    } else {
+      if (status === undefined) {
+        return Error("CommitStatus not yet set.");
+      } else if (status.reason !== expected) {
+        return Error(`CommitStatus not as expected, found ${status.reason}; expected ${expected}`);
+      }
+    }
+
+    return true;
   };
 };
 
@@ -201,3 +228,4 @@ exports.replicatedLogParticipantsFlag = replicatedLogParticipantsFlag;
 exports.replicatedLogTargetVersion = replicatedLogTargetVersion;
 exports.replicatedLogLeaderTargetIs = replicatedLogLeaderTargetIs;
 exports.replicatedLogLeaderPlanIs = replicatedLogLeaderPlanIs;
+exports.replicatedLogLeaderCommitFail = replicatedLogLeaderCommitFail;
