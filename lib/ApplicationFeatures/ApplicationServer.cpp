@@ -299,7 +299,7 @@ void ApplicationServer::shutdownFatalError() {
 // for any options that should become part of the result
 VPackBuilder ApplicationServer::options(
     std::function<bool(std::string const&)> const& filter) const {
-  return _options->toVPack(false, false, filter);
+  return _options->toVelocyPack(false, false, filter);
 }
 
 // walks over all features and runs a callback function for them
@@ -392,8 +392,8 @@ void ApplicationServer::parseOptions(int argc, char* argv[]) {
   }
 
   if (_dumpOptions) {
-    auto builder =
-        _options->toVPack(false, true, [](std::string const&) { return true; });
+    auto builder = _options->toVelocyPack(
+        false, true, [](std::string const&) { return true; });
     arangodb::velocypack::Options options;
     options.prettyPrint = true;
     std::cout << builder.slice().toJson(&options) << std::endl;

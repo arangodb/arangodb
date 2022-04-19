@@ -188,7 +188,7 @@ struct Parameter {
     return std::string("<") + name() + std::string(">");
   }
 
-  virtual void toVPack(VPackBuilder&) const = 0;
+  virtual void toVelocyPack(VPackBuilder&, bool detailed) const = 0;
 };
 
 // specialized type for boolean values
@@ -224,8 +224,11 @@ struct BooleanParameter : public Parameter {
     return Parameter::typeDescription();
   }
 
-  void toVPack(VPackBuilder& builder) const override {
+  void toVelocyPack(VPackBuilder& builder, bool detailed) const override {
     builder.add(VPackValue(*ptr));
+    if (detailed) {
+      builder.add("required", VPackValue(required));
+    }
   }
 
   ValueType* ptr;
@@ -265,8 +268,11 @@ struct AtomicBooleanParameter : public Parameter {
     return Parameter::typeDescription();
   }
 
-  void toVPack(VPackBuilder& builder) const override {
+  void toVelocyPack(VPackBuilder& builder, bool detailed) const override {
     builder.add(VPackValue(ptr->load()));
+    if (detailed) {
+      builder.add("required", VPackValue(required));
+    }
   }
 
   ValueType* ptr;
@@ -312,8 +318,15 @@ struct NumericParameter : public Parameter {
     }
   }
 
-  void toVPack(VPackBuilder& builder) const override {
+  void toVelocyPack(VPackBuilder& builder, bool detailed) const override {
     builder.add(VPackValue(*ptr));
+    if (detailed) {
+      builder.add("base", VPackValue(base));
+      builder.add("minValue", VPackValue(minValue));
+      builder.add("maxValue", VPackValue(maxValue));
+      builder.add("minInclusive", VPackValue(minInclusive));
+      builder.add("maxInclusive", VPackValue(maxInclusive));
+    }
   }
 
   std::string name() const override {
@@ -384,7 +397,7 @@ struct StringParameter : public Parameter {
     return "";
   }
 
-  void toVPack(VPackBuilder& builder) const override {
+  void toVelocyPack(VPackBuilder& builder, bool /*detailed*/) const override {
     builder.add(VPackValue(*ptr));
   }
 
@@ -481,7 +494,7 @@ struct VectorParameter : public Parameter {
 
   void flushValue() override { ptr->clear(); }
 
-  void toVPack(VPackBuilder& builder) const override {
+  void toVelocyPack(VPackBuilder& builder, bool /*detailed*/) const override {
     builder.openArray();
     for (size_t i = 0; i < ptr->size(); ++i) {
       builder.add(VPackValue(ptr->at(i)));
@@ -553,7 +566,7 @@ struct DiscreteValuesVectorParameter : public Parameter {
     return result;
   }
 
-  void toVPack(VPackBuilder& builder) const override {
+  void toVelocyPack(VPackBuilder& builder, bool /*detailed*/) const override {
     builder.openArray();
     for (size_t i = 0; i < ptr->size(); ++i) {
       builder.add(VPackValue(ptr->at(i)));
@@ -591,7 +604,7 @@ struct ObsoleteParameter : public Parameter {
   std::string name() const override { return "obsolete"; }
   std::string valueString() const override { return "-"; }
   std::string set(std::string const&) override { return ""; }
-  void toVPack(VPackBuilder& builder) const override {
+  void toVelocyPack(VPackBuilder& builder, bool /*detailed*/) const override {
     builder.add(VPackValue(VPackValueType::Null));
   }
 

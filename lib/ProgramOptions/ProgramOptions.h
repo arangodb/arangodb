@@ -212,7 +212,7 @@ class ProgramOptions {
   // filters applied to filter out specific options.
   // the filter function is expected to return true
   // for any options that should become part of the result
-  arangodb::velocypack::Builder toVPack(
+  arangodb::velocypack::Builder toVelocyPack(
       bool onlyTouched, bool detailed,
       std::function<bool(std::string const&)> const& filter) const;
 

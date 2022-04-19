@@ -172,7 +172,7 @@ void ProgramOptions::printSectionsHelp() const {
 // filters applied to filter out specific options.
 // the filter function is expected to return true
 // for any options that should become part of the result
-VPackBuilder ProgramOptions::toVPack(
+VPackBuilder ProgramOptions::toVelocyPack(
     bool onlyTouched, bool detailed,
     std::function<bool(std::string const&)> const& filter) const {
   VPackBuilder builder;
@@ -234,10 +234,7 @@ VPackBuilder ProgramOptions::toVPack(
           builder.close();
 
           // component support
-          char const* arangod = "arangod";
-          if (_progname.size() >= strlen(arangod) &&
-              _progname.compare(_progname.size() - strlen(arangod),
-                                strlen(arangod), arangod) == 0) {
+          if (_progname.ends_with("arangod")) {
             builder.add("component", VPackValue(VPackValueType::Array));
             if (option.hasFlag(arangodb::options::Flags::OnCoordinator)) {
               builder.add(VPackValue("coordinator"));
@@ -289,14 +286,14 @@ VPackBuilder ProgramOptions::toVPack(
             // command-like options are commands, thus they shouldn't have
             // a "default" value
             builder.add(VPackValue("default"));
-            option.toVPack(builder);
+            option.toVelocyPack(builder, detailed);
           }
           builder.add(
               "dynamic",
               VPackValue(option.hasFlag(arangodb::options::Flags::Dynamic)));
           builder.close();
         } else {
-          option.toVPack(builder);
+          option.toVelocyPack(builder, detailed);
         }
       },
       onlyTouched, false);

@@ -123,7 +123,8 @@ struct Option {
   Option(Option&& other) = default;
   Option& operator=(Option&& other) = default;
 
-  void toVPack(arangodb::velocypack::Builder& builder) const;
+  void toVelocyPack(arangodb::velocypack::Builder& builder,
+                    bool detailed) const;
 
   bool hasFlag(Flags flag) const {
     return (static_cast<std::underlying_type<Flags>::type>(flag) & flags) ==

@@ -65,8 +65,8 @@ Option::Option(std::string const& value, std::string const& description,
 #endif
 }
 
-void Option::toVPack(VPackBuilder& builder) const {
-  parameter->toVPack(builder);
+void Option::toVelocyPack(VPackBuilder& builder, bool detailed) const {
+  parameter->toVelocyPack(builder, detailed);
 }
 
 // format a version string
