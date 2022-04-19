@@ -79,7 +79,7 @@ void CacheManagerFeature::collectOptions(
       "--cache.rebalancing-interval",
       "microseconds between rebalancing attempts",
       new UInt64Parameter(
-          &_rebalancingInterval, /*base*/ 1.0,
+          &_rebalancingInterval, /*base*/ 1,
           /*minValue*/ CacheManagerFeature::minRebalancingInterval));
 }
 
