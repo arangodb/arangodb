@@ -481,3 +481,589 @@ TEST(ParametersTest, toNumberUInt64) {
     }
   }
 }
+
+TEST(ParametersTest, Int16DefaultRange) {
+  int16_t value = 0;
+  ASSERT_EQ("", arangodb::options::Int16Parameter(&value, 1).set("0"));
+  ASSERT_EQ("", arangodb::options::Int16Parameter(&value, 1).set("1"));
+  ASSERT_EQ("", arangodb::options::Int16Parameter(&value, 1).set("32767"));
+  ASSERT_EQ("", arangodb::options::Int16Parameter(&value, 1).set("-32768"));
+
+  // validation errors
+  ASSERT_NE("", arangodb::options::Int16Parameter(&value, 1).set("-32769"));
+  ASSERT_NE("", arangodb::options::Int16Parameter(&value, 1).set("32768"));
+
+  ASSERT_NE("", arangodb::options::Int16Parameter(&value, 1).set(""));
+  ASSERT_NE("", arangodb::options::Int16Parameter(&value, 1).set("abc"));
+}
+
+TEST(ParametersTest, UInt16DefaultRange) {
+  uint16_t value = 0;
+  ASSERT_EQ("", arangodb::options::UInt16Parameter(&value, 1).set("0"));
+  ASSERT_EQ("", arangodb::options::UInt16Parameter(&value, 1).set("1"));
+  ASSERT_EQ("", arangodb::options::UInt16Parameter(&value, 1).set("32767"));
+  ASSERT_EQ("", arangodb::options::UInt16Parameter(&value, 1).set("65535"));
+
+  // validation errors
+  ASSERT_NE("", arangodb::options::UInt16Parameter(&value, 1).set("-1"));
+  ASSERT_NE("", arangodb::options::UInt16Parameter(&value, 1).set("65536"));
+
+  ASSERT_NE("", arangodb::options::UInt16Parameter(&value, 1).set(""));
+  ASSERT_NE("", arangodb::options::UInt16Parameter(&value, 1).set("abc"));
+}
+
+TEST(ParametersTest, Int32DefaultRange) {
+  int32_t value = 0;
+  ASSERT_EQ("", arangodb::options::Int32Parameter(&value, 1).set("0"));
+  ASSERT_EQ("", arangodb::options::Int32Parameter(&value, 1).set("1"));
+  ASSERT_EQ("", arangodb::options::Int32Parameter(&value, 1).set("32767"));
+  ASSERT_EQ("", arangodb::options::Int32Parameter(&value, 1).set("65535"));
+  ASSERT_EQ("", arangodb::options::Int32Parameter(&value, 1).set("2147483647"));
+  ASSERT_EQ("",
+            arangodb::options::Int32Parameter(&value, 1).set("-2147483647"));
+  ASSERT_EQ("",
+            arangodb::options::Int32Parameter(&value, 1).set("-2147483648"));
+
+  // validation errors
+  ASSERT_NE("",
+            arangodb::options::Int32Parameter(&value, 1).set("-2147483649"));
+  ASSERT_NE("", arangodb::options::Int32Parameter(&value, 1).set("2147483648"));
+
+  ASSERT_NE("", arangodb::options::Int32Parameter(&value, 1).set(""));
+  ASSERT_NE("", arangodb::options::Int32Parameter(&value, 1).set("abc"));
+}
+
+TEST(ParametersTest, UInt32DefaultRange) {
+  uint32_t value = 0;
+  ASSERT_EQ("", arangodb::options::UInt32Parameter(&value, 1).set("0"));
+  ASSERT_EQ("", arangodb::options::UInt32Parameter(&value, 1).set("1"));
+  ASSERT_EQ("", arangodb::options::UInt32Parameter(&value, 1).set("32767"));
+  ASSERT_EQ("", arangodb::options::UInt32Parameter(&value, 1).set("65535"));
+  ASSERT_EQ("",
+            arangodb::options::UInt32Parameter(&value, 1).set("4294967295"));
+
+  // validation errors
+  ASSERT_NE("", arangodb::options::UInt32Parameter(&value, 1).set("-1"));
+  ASSERT_NE("",
+            arangodb::options::UInt32Parameter(&value, 1).set("4294967296"));
+
+  ASSERT_NE("", arangodb::options::UInt32Parameter(&value, 1).set(""));
+  ASSERT_NE("", arangodb::options::UInt32Parameter(&value, 1).set("abc"));
+}
+
+TEST(ParametersTest, Int64DefaultRange) {
+  int64_t value = 0;
+  ASSERT_EQ("", arangodb::options::Int64Parameter(&value, 1).set("0"));
+  ASSERT_EQ("", arangodb::options::Int64Parameter(&value, 1).set("1"));
+  ASSERT_EQ("", arangodb::options::Int64Parameter(&value, 1).set("65535"));
+  ASSERT_EQ("", arangodb::options::Int64Parameter(&value, 1).set("4294967296"));
+  ASSERT_EQ("", arangodb::options::Int64Parameter(&value, 1).set(
+                    "9223372036854775807"));
+  ASSERT_EQ("", arangodb::options::Int64Parameter(&value, 1).set(
+                    "-9223372036854775808"));
+
+  // validation errors
+  ASSERT_NE("", arangodb::options::Int64Parameter(&value, 1).set(
+                    "9223372036854775808"));
+  ASSERT_NE("", arangodb::options::Int64Parameter(&value, 1).set(
+                    "-9223372036854775809"));
+
+  ASSERT_NE("", arangodb::options::Int64Parameter(&value, 1).set(""));
+  ASSERT_NE("", arangodb::options::Int64Parameter(&value, 1).set("abc"));
+}
+
+TEST(ParametersTest, UInt64DefaultRange) {
+  uint64_t value = 0;
+  ASSERT_EQ("", arangodb::options::UInt64Parameter(&value, 1).set("0"));
+  ASSERT_EQ("", arangodb::options::UInt64Parameter(&value, 1).set("1"));
+  ASSERT_EQ("", arangodb::options::UInt64Parameter(&value, 1).set("65535"));
+  ASSERT_EQ("",
+            arangodb::options::UInt64Parameter(&value, 1).set("4294967296"));
+  ASSERT_EQ("", arangodb::options::UInt64Parameter(&value, 1).set(
+                    "18446744073709551615"));
+
+  // validation errors
+  ASSERT_NE("", arangodb::options::UInt64Parameter(&value, 1).set("-1"));
+  ASSERT_NE("", arangodb::options::UInt64Parameter(&value, 1).set(
+                    "18446744073709551616"));
+
+  ASSERT_NE("", arangodb::options::UInt64Parameter(&value, 1).set(""));
+  ASSERT_NE("", arangodb::options::UInt64Parameter(&value, 1).set("abc"));
+}
+
+TEST(ParametersTest, Int16Validation) {
+  int16_t value = 0;
+  {
+    arangodb::options::Int16Parameter param(&value, 1, -10, 10, true, true);
+    ASSERT_EQ("", param.set("-10"));
+    ASSERT_EQ("", param.set("-9"));
+    ASSERT_EQ("", param.set("-0"));
+    ASSERT_EQ("", param.set("1"));
+    ASSERT_EQ("", param.set("2"));
+    ASSERT_EQ("", param.set("10"));
+    ASSERT_NE("", param.set("-12"));
+    ASSERT_NE("", param.set("-11"));
+    ASSERT_NE("", param.set("11"));
+    ASSERT_NE("", param.set("22"));
+  }
+
+  {
+    arangodb::options::Int16Parameter param(&value, 1, -10, 35, true, true);
+    ASSERT_EQ("", param.set("-10"));
+    ASSERT_EQ("", param.set("-9"));
+    ASSERT_EQ("", param.set("0"));
+    ASSERT_EQ("", param.set("10"));
+    ASSERT_EQ("", param.set("11"));
+    ASSERT_EQ("", param.set("34"));
+    ASSERT_EQ("", param.set("35"));
+    ASSERT_NE("", param.set("-12"));
+    ASSERT_NE("", param.set("-11"));
+    ASSERT_NE("", param.set("36"));
+    ASSERT_NE("", param.set("100"));
+  }
+
+  {
+    arangodb::options::Int16Parameter param(&value, 1, -100, 135, false, true);
+    ASSERT_EQ("", param.set("-99"));
+    ASSERT_EQ("", param.set("0"));
+    ASSERT_EQ("", param.set("101"));
+    ASSERT_EQ("", param.set("102"));
+    ASSERT_EQ("", param.set("135"));
+    ASSERT_NE("", param.set("-101"));
+    ASSERT_NE("", param.set("-100"));
+    ASSERT_NE("", param.set("136"));
+  }
+
+  {
+    arangodb::options::Int16Parameter param(&value, 1, -100, 135, false, false);
+    ASSERT_EQ("", param.set("-99"));
+    ASSERT_EQ("", param.set("-98"));
+    ASSERT_EQ("", param.set("0"));
+    ASSERT_EQ("", param.set("100"));
+    ASSERT_EQ("", param.set("101"));
+    ASSERT_EQ("", param.set("102"));
+    ASSERT_EQ("", param.set("134"));
+    ASSERT_NE("", param.set("135"));
+    ASSERT_NE("", param.set("-101"));
+    ASSERT_NE("", param.set("-100"));
+    ASSERT_NE("", param.set("136"));
+  }
+
+  {
+    arangodb::options::Int16Parameter param(&value, 1, -100, 135, true, false);
+    ASSERT_EQ("", param.set("-100"));
+    ASSERT_EQ("", param.set("-99"));
+    ASSERT_EQ("", param.set("0"));
+    ASSERT_EQ("", param.set("100"));
+    ASSERT_EQ("", param.set("101"));
+    ASSERT_EQ("", param.set("102"));
+    ASSERT_EQ("", param.set("134"));
+    ASSERT_NE("", param.set("-101"));
+    ASSERT_NE("", param.set("135"));
+    ASSERT_NE("", param.set("136"));
+  }
+}
+
+TEST(ParametersTest, UInt16Validation) {
+  uint16_t value = 0;
+  {
+    arangodb::options::UInt16Parameter param(&value, 1, 0, 10, true, true);
+    ASSERT_EQ("", param.set("0"));
+    ASSERT_EQ("", param.set("1"));
+    ASSERT_EQ("", param.set("2"));
+    ASSERT_EQ("", param.set("10"));
+    ASSERT_NE("", param.set("11"));
+    ASSERT_NE("", param.set("22"));
+  }
+
+  {
+    arangodb::options::UInt16Parameter param(&value, 1, 10, 35, true, true);
+    ASSERT_EQ("", param.set("10"));
+    ASSERT_EQ("", param.set("11"));
+    ASSERT_EQ("", param.set("34"));
+    ASSERT_EQ("", param.set("35"));
+    ASSERT_NE("", param.set("0"));
+    ASSERT_NE("", param.set("1"));
+    ASSERT_NE("", param.set("9"));
+    ASSERT_NE("", param.set("36"));
+    ASSERT_NE("", param.set("100"));
+  }
+
+  {
+    arangodb::options::UInt16Parameter param(&value, 1, 100, 135, false, true);
+    ASSERT_EQ("", param.set("101"));
+    ASSERT_EQ("", param.set("102"));
+    ASSERT_EQ("", param.set("135"));
+    ASSERT_NE("", param.set("99"));
+    ASSERT_NE("", param.set("100"));
+    ASSERT_NE("", param.set("136"));
+  }
+
+  {
+    arangodb::options::UInt16Parameter param(&value, 1, 100, 135, false, false);
+    ASSERT_EQ("", param.set("101"));
+    ASSERT_EQ("", param.set("102"));
+    ASSERT_EQ("", param.set("134"));
+    ASSERT_NE("", param.set("135"));
+    ASSERT_NE("", param.set("99"));
+    ASSERT_NE("", param.set("100"));
+    ASSERT_NE("", param.set("136"));
+  }
+
+  {
+    arangodb::options::UInt16Parameter param(&value, 1, 100, 135, true, false);
+    ASSERT_EQ("", param.set("100"));
+    ASSERT_EQ("", param.set("101"));
+    ASSERT_EQ("", param.set("102"));
+    ASSERT_EQ("", param.set("134"));
+    ASSERT_NE("", param.set("99"));
+    ASSERT_NE("", param.set("135"));
+    ASSERT_NE("", param.set("136"));
+  }
+}
+
+TEST(ParametersTest, Int32Validation) {
+  int32_t value = 0;
+  {
+    arangodb::options::Int32Parameter param(&value, 1, -10, 10, true, true);
+    ASSERT_EQ("", param.set("-10"));
+    ASSERT_EQ("", param.set("-9"));
+    ASSERT_EQ("", param.set("-0"));
+    ASSERT_EQ("", param.set("1"));
+    ASSERT_EQ("", param.set("2"));
+    ASSERT_EQ("", param.set("10"));
+    ASSERT_NE("", param.set("-12"));
+    ASSERT_NE("", param.set("-11"));
+    ASSERT_NE("", param.set("11"));
+    ASSERT_NE("", param.set("22"));
+  }
+
+  {
+    arangodb::options::Int32Parameter param(&value, 1, -10, 35, true, true);
+    ASSERT_EQ("", param.set("-10"));
+    ASSERT_EQ("", param.set("-9"));
+    ASSERT_EQ("", param.set("0"));
+    ASSERT_EQ("", param.set("10"));
+    ASSERT_EQ("", param.set("11"));
+    ASSERT_EQ("", param.set("34"));
+    ASSERT_EQ("", param.set("35"));
+    ASSERT_NE("", param.set("-12"));
+    ASSERT_NE("", param.set("-11"));
+    ASSERT_NE("", param.set("36"));
+    ASSERT_NE("", param.set("100"));
+  }
+
+  {
+    arangodb::options::Int32Parameter param(&value, 1, -100, 135, false, true);
+    ASSERT_EQ("", param.set("-99"));
+    ASSERT_EQ("", param.set("0"));
+    ASSERT_EQ("", param.set("101"));
+    ASSERT_EQ("", param.set("102"));
+    ASSERT_EQ("", param.set("135"));
+    ASSERT_NE("", param.set("-101"));
+    ASSERT_NE("", param.set("-100"));
+    ASSERT_NE("", param.set("136"));
+  }
+
+  {
+    arangodb::options::Int32Parameter param(&value, 1, -100, 135, false, false);
+    ASSERT_EQ("", param.set("-99"));
+    ASSERT_EQ("", param.set("-98"));
+    ASSERT_EQ("", param.set("0"));
+    ASSERT_EQ("", param.set("100"));
+    ASSERT_EQ("", param.set("101"));
+    ASSERT_EQ("", param.set("102"));
+    ASSERT_EQ("", param.set("134"));
+    ASSERT_NE("", param.set("135"));
+    ASSERT_NE("", param.set("-101"));
+    ASSERT_NE("", param.set("-100"));
+    ASSERT_NE("", param.set("136"));
+  }
+
+  {
+    arangodb::options::Int32Parameter param(&value, 1, -100, 135, true, false);
+    ASSERT_EQ("", param.set("-100"));
+    ASSERT_EQ("", param.set("-99"));
+    ASSERT_EQ("", param.set("0"));
+    ASSERT_EQ("", param.set("100"));
+    ASSERT_EQ("", param.set("101"));
+    ASSERT_EQ("", param.set("102"));
+    ASSERT_EQ("", param.set("134"));
+    ASSERT_NE("", param.set("-101"));
+    ASSERT_NE("", param.set("135"));
+    ASSERT_NE("", param.set("136"));
+  }
+}
+
+TEST(ParametersTest, UInt32Validation) {
+  uint32_t value = 0;
+  {
+    arangodb::options::UInt32Parameter param(&value, 1, 0, 10, true, true);
+    ASSERT_EQ("", param.set("0"));
+    ASSERT_EQ("", param.set("1"));
+    ASSERT_EQ("", param.set("2"));
+    ASSERT_EQ("", param.set("10"));
+    ASSERT_NE("", param.set("11"));
+    ASSERT_NE("", param.set("22"));
+  }
+
+  {
+    arangodb::options::UInt32Parameter param(&value, 1, 10, 35, true, true);
+    ASSERT_EQ("", param.set("10"));
+    ASSERT_EQ("", param.set("11"));
+    ASSERT_EQ("", param.set("34"));
+    ASSERT_EQ("", param.set("35"));
+    ASSERT_NE("", param.set("0"));
+    ASSERT_NE("", param.set("1"));
+    ASSERT_NE("", param.set("9"));
+    ASSERT_NE("", param.set("36"));
+    ASSERT_NE("", param.set("100"));
+  }
+
+  {
+    arangodb::options::UInt32Parameter param(&value, 1, 100, 135, false, true);
+    ASSERT_EQ("", param.set("101"));
+    ASSERT_EQ("", param.set("102"));
+    ASSERT_EQ("", param.set("135"));
+    ASSERT_NE("", param.set("99"));
+    ASSERT_NE("", param.set("100"));
+    ASSERT_NE("", param.set("136"));
+  }
+
+  {
+    arangodb::options::UInt32Parameter param(&value, 1, 100, 135, false, false);
+    ASSERT_EQ("", param.set("101"));
+    ASSERT_EQ("", param.set("102"));
+    ASSERT_EQ("", param.set("134"));
+    ASSERT_NE("", param.set("135"));
+    ASSERT_NE("", param.set("99"));
+    ASSERT_NE("", param.set("100"));
+    ASSERT_NE("", param.set("136"));
+  }
+
+  {
+    arangodb::options::UInt32Parameter param(&value, 1, 100, 135, true, false);
+    ASSERT_EQ("", param.set("100"));
+    ASSERT_EQ("", param.set("101"));
+    ASSERT_EQ("", param.set("102"));
+    ASSERT_EQ("", param.set("134"));
+    ASSERT_NE("", param.set("99"));
+    ASSERT_NE("", param.set("135"));
+    ASSERT_NE("", param.set("136"));
+  }
+}
+
+TEST(ParametersTest, Int64Validation) {
+  int64_t value = 0;
+  {
+    arangodb::options::Int64Parameter param(&value, 1, -10, 10, true, true);
+    ASSERT_EQ("", param.set("-10"));
+    ASSERT_EQ("", param.set("-9"));
+    ASSERT_EQ("", param.set("-0"));
+    ASSERT_EQ("", param.set("1"));
+    ASSERT_EQ("", param.set("2"));
+    ASSERT_EQ("", param.set("10"));
+    ASSERT_NE("", param.set("-12"));
+    ASSERT_NE("", param.set("-11"));
+    ASSERT_NE("", param.set("11"));
+    ASSERT_NE("", param.set("22"));
+  }
+
+  {
+    arangodb::options::Int64Parameter param(&value, 1, -10, 35, true, true);
+    ASSERT_EQ("", param.set("-10"));
+    ASSERT_EQ("", param.set("-9"));
+    ASSERT_EQ("", param.set("0"));
+    ASSERT_EQ("", param.set("10"));
+    ASSERT_EQ("", param.set("11"));
+    ASSERT_EQ("", param.set("34"));
+    ASSERT_EQ("", param.set("35"));
+    ASSERT_NE("", param.set("-12"));
+    ASSERT_NE("", param.set("-11"));
+    ASSERT_NE("", param.set("36"));
+    ASSERT_NE("", param.set("100"));
+  }
+
+  {
+    arangodb::options::Int64Parameter param(&value, 1, -100, 135, false, true);
+    ASSERT_EQ("", param.set("-99"));
+    ASSERT_EQ("", param.set("0"));
+    ASSERT_EQ("", param.set("101"));
+    ASSERT_EQ("", param.set("102"));
+    ASSERT_EQ("", param.set("135"));
+    ASSERT_NE("", param.set("-101"));
+    ASSERT_NE("", param.set("-100"));
+    ASSERT_NE("", param.set("136"));
+  }
+
+  {
+    arangodb::options::Int64Parameter param(&value, 1, -100, 135, false, false);
+    ASSERT_EQ("", param.set("-99"));
+    ASSERT_EQ("", param.set("-98"));
+    ASSERT_EQ("", param.set("0"));
+    ASSERT_EQ("", param.set("100"));
+    ASSERT_EQ("", param.set("101"));
+    ASSERT_EQ("", param.set("102"));
+    ASSERT_EQ("", param.set("134"));
+    ASSERT_NE("", param.set("135"));
+    ASSERT_NE("", param.set("-101"));
+    ASSERT_NE("", param.set("-100"));
+    ASSERT_NE("", param.set("136"));
+  }
+
+  {
+    arangodb::options::Int64Parameter param(&value, 1, -100, 135, true, false);
+    ASSERT_EQ("", param.set("-100"));
+    ASSERT_EQ("", param.set("-99"));
+    ASSERT_EQ("", param.set("0"));
+    ASSERT_EQ("", param.set("100"));
+    ASSERT_EQ("", param.set("101"));
+    ASSERT_EQ("", param.set("102"));
+    ASSERT_EQ("", param.set("134"));
+    ASSERT_NE("", param.set("-101"));
+    ASSERT_NE("", param.set("135"));
+    ASSERT_NE("", param.set("136"));
+  }
+}
+
+TEST(ParametersTest, UInt64Validation) {
+  uint64_t value = 0;
+  {
+    arangodb::options::UInt64Parameter param(&value, 1, 0, 10, true, true);
+    ASSERT_EQ("", param.set("0"));
+    ASSERT_EQ("", param.set("1"));
+    ASSERT_EQ("", param.set("2"));
+    ASSERT_EQ("", param.set("10"));
+    ASSERT_NE("", param.set("11"));
+    ASSERT_NE("", param.set("22"));
+  }
+
+  {
+    arangodb::options::UInt64Parameter param(&value, 1, 10, 35, true, true);
+    ASSERT_EQ("", param.set("10"));
+    ASSERT_EQ("", param.set("11"));
+    ASSERT_EQ("", param.set("34"));
+    ASSERT_EQ("", param.set("35"));
+    ASSERT_NE("", param.set("0"));
+    ASSERT_NE("", param.set("1"));
+    ASSERT_NE("", param.set("9"));
+    ASSERT_NE("", param.set("36"));
+    ASSERT_NE("", param.set("100"));
+  }
+
+  {
+    arangodb::options::UInt64Parameter param(&value, 1, 100, 135, false, true);
+    ASSERT_EQ("", param.set("101"));
+    ASSERT_EQ("", param.set("102"));
+    ASSERT_EQ("", param.set("135"));
+    ASSERT_NE("", param.set("99"));
+    ASSERT_NE("", param.set("100"));
+    ASSERT_NE("", param.set("136"));
+  }
+
+  {
+    arangodb::options::UInt64Parameter param(&value, 1, 100, 135, false, false);
+    ASSERT_EQ("", param.set("101"));
+    ASSERT_EQ("", param.set("102"));
+    ASSERT_EQ("", param.set("134"));
+    ASSERT_NE("", param.set("135"));
+    ASSERT_NE("", param.set("99"));
+    ASSERT_NE("", param.set("100"));
+    ASSERT_NE("", param.set("136"));
+  }
+
+  {
+    arangodb::options::UInt64Parameter param(&value, 1, 100, 135, true, false);
+    ASSERT_EQ("", param.set("100"));
+    ASSERT_EQ("", param.set("101"));
+    ASSERT_EQ("", param.set("102"));
+    ASSERT_EQ("", param.set("134"));
+    ASSERT_NE("", param.set("99"));
+    ASSERT_NE("", param.set("135"));
+    ASSERT_NE("", param.set("136"));
+  }
+}
+
+TEST(ParametersTest, DoubleValidation) {
+  double value = 0.0;
+  {
+    arangodb::options::DoubleParameter param(&value, 1.0, 0.0, 10.0, true,
+                                             true);
+    ASSERT_EQ("", param.set("0"));
+    ASSERT_EQ("", param.set("0.0"));
+    ASSERT_EQ("", param.set("0.01"));
+    ASSERT_EQ("", param.set("0.1"));
+    ASSERT_EQ("", param.set("1"));
+    ASSERT_EQ("", param.set("1.5"));
+    ASSERT_EQ("", param.set("2"));
+    ASSERT_EQ("", param.set("9.9"));
+    ASSERT_EQ("", param.set("9.99999"));
+    ASSERT_EQ("", param.set("10.0"));
+    ASSERT_NE("", param.set("-1.0"));
+    ASSERT_NE("", param.set("-0.01"));
+    ASSERT_NE("", param.set("-0.1"));
+    ASSERT_NE("", param.set("-0.000001"));
+    ASSERT_NE("", param.set("10.00001"));
+    ASSERT_NE("", param.set("11"));
+    ASSERT_NE("", param.set("22"));
+  }
+
+  {
+    arangodb::options::DoubleParameter param(&value, 1.0, 10.2, 35.5, true,
+                                             true);
+    ASSERT_EQ("", param.set("10.2"));
+    ASSERT_EQ("", param.set("10.205"));
+    ASSERT_EQ("", param.set("11.0"));
+    ASSERT_EQ("", param.set("34.0"));
+    ASSERT_EQ("", param.set("35.0"));
+    ASSERT_EQ("", param.set("35.4999"));
+    ASSERT_EQ("", param.set("35.5"));
+    ASSERT_NE("", param.set("10.1999"));
+    ASSERT_NE("", param.set("35.50001"));
+  }
+
+  {
+    arangodb::options::DoubleParameter param(&value, 1.0, 10.2, 35.5, false,
+                                             true);
+    ASSERT_EQ("", param.set("10.201"));
+    ASSERT_EQ("", param.set("10.205"));
+    ASSERT_EQ("", param.set("11.0"));
+    ASSERT_EQ("", param.set("34.0"));
+    ASSERT_EQ("", param.set("35.0"));
+    ASSERT_EQ("", param.set("35.4999"));
+    ASSERT_EQ("", param.set("35.5"));
+    ASSERT_NE("", param.set("10.1999"));
+    ASSERT_NE("", param.set("10.2"));
+    ASSERT_NE("", param.set("35.50001"));
+  }
+
+  {
+    arangodb::options::DoubleParameter param(&value, 1.0, 10.2, 35.5, false,
+                                             false);
+    ASSERT_EQ("", param.set("10.201"));
+    ASSERT_EQ("", param.set("10.205"));
+    ASSERT_EQ("", param.set("11.0"));
+    ASSERT_EQ("", param.set("34.0"));
+    ASSERT_EQ("", param.set("35.0"));
+    ASSERT_EQ("", param.set("35.4999"));
+    ASSERT_NE("", param.set("10.1999"));
+    ASSERT_NE("", param.set("10.2"));
+    ASSERT_NE("", param.set("35.5"));
+    ASSERT_NE("", param.set("35.50001"));
+  }
+
+  {
+    arangodb::options::DoubleParameter param(&value, 1.0, 10.2, 35.5, true,
+                                             false);
+    ASSERT_EQ("", param.set("10.2"));
+    ASSERT_EQ("", param.set("10.201"));
+    ASSERT_EQ("", param.set("10.205"));
+    ASSERT_EQ("", param.set("11.0"));
+    ASSERT_EQ("", param.set("34.0"));
+    ASSERT_EQ("", param.set("35.0"));
+    ASSERT_EQ("", param.set("35.4999"));
+    ASSERT_NE("", param.set("10.1999"));
+    ASSERT_NE("", param.set("35.5"));
+    ASSERT_NE("", param.set("35.50001"));
+  }
+}

@@ -446,11 +446,14 @@ void TtlFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "ttl.max-total-removes",
       "maximum number of documents to remove per invocation of the TTL thread",
-      new UInt64Parameter(&_properties.maxTotalRemoves));
+      new UInt64Parameter(&_properties.maxTotalRemoves, /*base*/ 1,
+                          /*minValue*/ 1));
 
-  options->addOption("ttl.max-collection-removes",
-                     "maximum number of documents to remove per collection",
-                     new UInt64Parameter(&_properties.maxCollectionRemoves));
+  options->addOption(
+      "ttl.max-collection-removes",
+      "maximum number of documents to remove per collection",
+      new UInt64Parameter(&_properties.maxCollectionRemoves, /*base*/ 1,
+                          /*minValue*/ 1));
 
   // the following option was obsoleted in 3.8
   options->addObsoleteOption(
@@ -459,12 +462,6 @@ void TtlFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void TtlFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_properties.maxTotalRemoves == 0) {
-    LOG_TOPIC("1e299", FATAL, arangodb::Logger::STARTUP)
-        << "invalid value for '--ttl.max-total-removes'.";
-    FATAL_ERROR_EXIT();
-  }
-
   if (_properties.maxCollectionRemoves == 0) {
     LOG_TOPIC("2ab82", FATAL, arangodb::Logger::STARTUP)
         << "invalid value for '--ttl.max-collection-removes'.";
