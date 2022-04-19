@@ -2728,7 +2728,7 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
 void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   TRI_ASSERT(ServerState::instance()->isDBServer());
   bool success = false;
-  VPackSlice const body = this->parseVPackBody(success);
+  VPackSlice body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
@@ -3528,6 +3528,14 @@ Result RestReplicationHandler::createBlockingTransaction(
     TransactionId id, LogicalCollection& col, double ttl,
     AccessMode::Type access, RebootId const& rebootId,
     std::string const& serverId) {
+  // it is ok to acquire the lock here in all cases. otherwise we
+  // may block replication. note: we need this here in case the
+  // leader is read-only (e.g. because the license has expired).
+  // if we are not using superuser scope here and the leader is
+  // read-only, trying to grab the lock in exclusive mode will
+  // return a "read-only" error.
+  ExecContextScope scope(&ExecContext::superuser());
+
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 

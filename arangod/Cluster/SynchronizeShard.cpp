@@ -500,7 +500,7 @@ arangodb::Result SynchronizeShard::getReadLock(network::ConnectionPool* pool,
         }
       }
     }
-    return arangodb::Result();
+    return {};
   }
 
   LOG_TOPIC("cba32", DEBUG, Logger::MAINTENANCE)
@@ -516,22 +516,25 @@ arangodb::Result SynchronizeShard::getReadLock(network::ConnectionPool* pool,
 
   // Ambiguous POST, we'll try to DELETE a potentially acquired lock
   try {
-    auto response =
+    auto cancelResponse =
         network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete,
                              REPL_HOLD_READ_LOCK, *buf, options)
             .get();
-    auto res = response.combinedResult();
-    if (res.fail()) {
+    auto cancelRes = cancelResponse.combinedResult();
+    if (cancelRes.fail()) {
       LOG_TOPIC("4f34d", WARN, Logger::MAINTENANCE)
           << "startReadLockOnLeader: cancelation error for shard "
-          << getDatabase() << "/" << collection << ": " << res.errorMessage();
+          << getDatabase() << "/" << collection << ": "
+          << cancelRes.errorMessage();
     }
   } catch (std::exception const& e) {
     LOG_TOPIC("7fcc9", WARN, Logger::MAINTENANCE)
         << "startReadLockOnLeader: exception in cancel: " << e.what();
   }
 
-  return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT);
+  // original response that we received when ordering the lock
+  TRI_ASSERT(res.fail());
+  return res;
 }
 
 arangodb::Result SynchronizeShard::startReadLockOnLeader(
