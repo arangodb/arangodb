@@ -27,7 +27,7 @@
 
 namespace arangodb::replication2::replicated_state {
 template<typename S>
-void LeaderStateManager<S>::run() {
+void LeaderStateManager<S>::run() noexcept {
   // 1. wait for leadership established
   // 1.2. digest available entries into multiplexer
   // 2. construct leader state
@@ -48,6 +48,8 @@ void LeaderStateManager<S>::run() {
         LOG_CTX("53ba1", TRACE, self->loggerContext)
             << "LeaderStateManager established";
         auto f = self->guardedData.doUnderLock([&](GuardedData& data) {
+          TRI_ASSERT(data.internalState ==
+                     LeaderInternalState::kWaitingForLeadershipEstablished);
           data.updateInternalState(LeaderInternalState::kIngestingExistingLog);
           auto mux = Multiplexer::construct(self->logLeader);
           mux->digestAvailableEntries();
