@@ -467,7 +467,12 @@ export class GraphView extends React.Component {
     */
   }
 
+  /*
   updateNodeModel = () => {
+    // Find the item instance by id
+    const item = this.graph.findById('worldVertices/continent-south-america');
+    console.log("item to update: ", item);
+    console.log("item._cfg.id: ", item._cfg.id);
     const model = {
       id: '2',
       label: 'node2',
@@ -477,10 +482,47 @@ export class GraphView extends React.Component {
         fill: 'red',
       },
     };
-    
-    // Find the item instance by id
-    const item = this.graph.findById('frenchCity/Paris');
+
+    model = {
+      label: item._cfg.id
+    };
+
     this.graph.updateItem(item, model);
+  }
+  */
+
+  updateNodeModel = () => {
+    const nodes = this.graph.getNodes();
+    nodes.forEach((node) => {
+      console.log("node: ", node);
+      const model = {
+        label: node._cfg.id
+      };
+      this.graph.updateItem(node, model);
+      /*
+      if (!node.style) {
+        node.style = {};
+      }
+      switch (
+        node.class // Configure the graphics type of nodes according to their class
+      ) {
+        case 'c0': {
+          node.type = 'circle'; // The graphics type is circle when class = 'c0'
+          break;
+        }
+        case 'c1': {
+          node.type = 'rect'; // The graphics type is rect when class = 'c1'
+          node.size = [35, 20]; // The node size when class = 'c1'
+          break;
+        }
+        case 'c2': {
+          node.type = 'ellipse'; // The graphics type is ellipse when class = 'c2'
+          node.size = [35, 20]; // The node size when class = 'c2'
+          break;
+        }
+      }
+      */
+    });
   }
 
   addCollectionNameToNodes = (value) => {
@@ -539,7 +581,6 @@ export class GraphView extends React.Component {
 
   /*
   <button onClick={this.changeLayout}>Change layout</button>
-  <button onClick={this.updateNodeModel}>Update "frenchCity/Paris"</button>
   <button onClick={this.addCollectionNameToNodes}>Add collection name (nodes)</button>
   <button onClick={this.getNodes}>Get nodes (new)</button>
   <button onClick={this.getEdges}>Get edges (new)</button>
@@ -582,6 +623,7 @@ export class GraphView extends React.Component {
 
   render() {
     return <>
+      <button onClick={this.updateNodeModel}>Update "worldVertices/continent-south-america"</button>
       <button onClick={() => this.printVertexCollections()}>Print vertex collections</button>
       <button onClick={() => {
         this.props.data.nodes.forEach(node => {
