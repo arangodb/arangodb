@@ -42,6 +42,8 @@
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include <limits>
+
 using namespace arangodb::options;
 
 namespace arangodb {
@@ -91,7 +93,9 @@ void AuthenticationFeature::collectOptions(
           "lifetime for tokens in seconds that can be obtained from "
           "the POST /_open/auth endpoint. Used by the web interface "
           "for JWT-based sessions",
-          new DoubleParameter(&_sessionTimeout, /*base*/ 1.0, /*minValue*/ 1.0),
+          new DoubleParameter(&_sessionTimeout, /*base*/ 1.0, /*minValue*/ 1.0,
+                              /*maxValue*/ std::numeric_limit<double>::max(),
+                              /*minInclusive*/ false),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnCoordinator,

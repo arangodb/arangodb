@@ -414,6 +414,9 @@ void QueryRegistryFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
+  // cap the value somehow. creating this many plans really does not make sense
+  _maxQueryPlans = std::min(_maxQueryPlans, decltype(_maxQueryPlans)(1024));
+
   _maxParallelism =
       std::clamp(_maxParallelism, static_cast<uint64_t>(1),
                  static_cast<uint64_t>(NumberOfCores::getValue()));
