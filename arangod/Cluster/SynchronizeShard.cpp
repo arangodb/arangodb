@@ -695,6 +695,7 @@ bool SynchronizeShard::first() {
   std::string const& shard = getShard();
   std::string const& leader = _description.get(THE_LEADER);
   bool forcedResync = _description.get(FORCED_RESYNC) == "true";
+  bool syncByRevision = _description.get(SYNC_BY_REVISION) == "true";
 
   size_t failuresInRow = _feature.replicationErrors(database, shard);
 
@@ -937,14 +938,23 @@ bool SynchronizeShard::first() {
     }
 
     // determine end timestamp for shard synchronization attempt, if any
-    ReplicationTimeoutFeature& timeouts =
-        _feature.server().getFeature<ReplicationTimeoutFeature>();
-    double attemptTimeout = timeouts.shardSynchronizationAttemptTimeout();
-    if (attemptTimeout > 0.0) {
-      // set end time for synchronization attempt
-      _endTimeForAttempt =
-          std::chrono::steady_clock::now() +
-          std::chrono::seconds(static_cast<int64_t>(attemptTimeout));
+    if (syncByRevision) {
+      // note: we can only set the timeout if we can use the Merkle-tree
+      // based synchronization protocol. this protocol can work incrementally
+      // and can make progress within limited time even if the number of
+      // documents in the underlying shard is very large.
+      // the pre-Merkle tree protocol requires a setup time proportional
+      // to the number of documents in the collection, and may not make
+      // progress within the configured timeout value.
+      ReplicationTimeoutFeature& timeouts =
+          _feature.server().getFeature<ReplicationTimeoutFeature>();
+      double attemptTimeout = timeouts.shardSynchronizationAttemptTimeout();
+      if (attemptTimeout > 0.0) {
+        // set end time for synchronization attempt
+        _endTimeForAttempt =
+            std::chrono::steady_clock::now() +
+            std::chrono::seconds(static_cast<int64_t>(attemptTimeout));
+      }
     }
 
     LOG_TOPIC("53337", DEBUG, Logger::MAINTENANCE)
