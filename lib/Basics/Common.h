@@ -33,15 +33,9 @@
 #define NOMINMAX
 #endif
 
-#endif
-
-#ifdef _WIN32
-// some Windows headers define macros named free and small,
-// leading to follow-up compile errors
-#undef free
-#undef small
 // Windows debug mode also seems to define DEBUG preproc symbol
 #undef DEBUG
+
 #endif
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS

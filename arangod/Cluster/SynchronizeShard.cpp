@@ -316,7 +316,6 @@ static arangodb::Result addShardFollower(
           result.errorNumber(),
           StringUtils::concatT(errorMessage, ", ", result.errorMessage()));
     }
-
     LOG_TOPIC("79935", DEBUG, Logger::MAINTENANCE)
         << "addShardFollower: success";
     return arangodb::Result();
@@ -392,11 +391,13 @@ arangodb::Result SynchronizeShard::collectionCountOnLeader(
   options.database = getDatabase();
   options.timeout = network::Timeout(60);
   options.skipScheduler = true;  // hack to speed up future.get()
+  network::Headers headers;
+  headers.insert_or_assign("X-Arango-Frontend", "true");
 
   auto response =
       network::sendRequest(pool, leaderEndpoint, fuerte::RestVerb::Get,
                            "/_api/collection/" + getShard() + "/count",
-                           VPackBuffer<uint8_t>(), options)
+                           VPackBuffer<uint8_t>(), options, std::move(headers))
           .get();
   auto res = response.combinedResult();
   if (res.fail()) {
@@ -677,6 +678,7 @@ bool SynchronizeShard::first() {
   std::string const& planId = _description.get(COLLECTION);
   std::string const& shard = getShard();
   std::string const& leader = _description.get(THE_LEADER);
+  bool forcedResync = _description.get(FORCED_RESYNC) == "true";
 
   size_t failuresInRow = feature().replicationErrors(database, shard);
 
@@ -810,14 +812,36 @@ bool SynchronizeShard::first() {
           current.end()) {
         break;  // start synchronization work
       }
-      // We are already there, this is rather strange, but never mind:
+      // This was the normal case. However, if we have been away for a short
+      // amount of time and the leader has not yet noticed that we were gone,
+      // we might actually get here and try to resync and are still in
+      // Current. In this case, we write a log message and sync anyway:
       std::stringstream error;
+      if (forcedResync) {
+        error << "found ourselves in Current, but resyncing anyways because of "
+                 "a recent restart, ";
+        AppendShardInformationToMessage(database, shard, planId, startTime,
+                                        error);
+        LOG_TOPIC("4abcd", DEBUG, Logger::MAINTENANCE)
+            << "SynchronizeOneShard: " << error.str();
+        break;
+      }
+      // Otherwise, we give up on the job, since we do not want to repeat
+      // a SynchronizeShard if we are already in Current:
       error << "already done, ";
       AppendShardInformationToMessage(database, shard, planId, startTime,
                                       error);
       LOG_TOPIC("4abcb", DEBUG, Logger::MAINTENANCE)
           << "SynchronizeOneShard: " << error.str();
       result(TRI_ERROR_FAILED, error.str());
+      return false;
+    } else {
+      // we need to immediately exit, as the planned leader is not yet leading
+      // in current
+      LOG_TOPIC("4acdc", DEBUG, Logger::MAINTENANCE)
+          << "SynchronizeOneShard: Planned leader has not taken over "
+             "leadership";
+      result(TRI_ERROR_FAILED, "Planned leader has not taken over leadership");
       return false;
     }
 

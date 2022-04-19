@@ -1,0 +1,19 @@
+name: arangodb_ioheartbeat_duration
+introducedIn: "3.8.7"
+help: |
+  Histogram of execution times of a single IO heartbeat check.
+unit: us
+type: histogram
+category: Health
+complexity: medium
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This histogram is updated whenever the io heartbeat runs its test in
+  the database directory. It writes a small file, syncs it to durable
+  storage, reads it, and then unlinks the file again. This test is done
+  periodically to ensure that the underlying volume is usable and performs
+  reasonably well. The test can be switched off explicitly with the flag
+  `--database.io-heartbeat=false`, but the default is `true`.

@@ -27,7 +27,7 @@
 
 namespace arangodb::replication2::replicated_state {
 template<typename S>
-void LeaderStateManager<S>::run() {
+void LeaderStateManager<S>::run() noexcept {
   // 1. wait for leadership established
   // 1.2. digest available entries into multiplexer
   // 2. construct leader state
@@ -48,6 +48,8 @@ void LeaderStateManager<S>::run() {
         LOG_CTX("53ba1", TRACE, self->loggerContext)
             << "LeaderStateManager established";
         auto f = self->guardedData.doUnderLock([&](GuardedData& data) {
+          TRI_ASSERT(data.internalState ==
+                     LeaderInternalState::kWaitingForLeadershipEstablished);
           data.updateInternalState(LeaderInternalState::kIngestingExistingLog);
           auto mux = Multiplexer::construct(self->logLeader);
           mux->digestAvailableEntries();
@@ -95,12 +97,13 @@ void LeaderStateManager<S>::run() {
                   if (auto result = tryResult.get(); result.ok()) {
                     LOG_CTX("1a375", DEBUG, self->loggerContext)
                         << "recovery on leader completed";
-                    bool waitForResigned =
-                        self->guardedData.doUnderLock([&](GuardedData& data) {
+                    auto state = self->guardedData.doUnderLock(
+                        [&](GuardedData& data)
+                            -> std::shared_ptr<IReplicatedLeaderState<S>> {
                           if (data.token == nullptr) {
                             LOG_CTX("59a31", DEBUG, self->loggerContext)
                                 << "token already gone";
-                            return false;
+                            return nullptr;
                           }
                           data.state = machine;
                           data.token->snapshot.updateStatus(
@@ -108,10 +111,11 @@ void LeaderStateManager<S>::run() {
                           data.updateInternalState(
                               LeaderInternalState::kServiceAvailable);
                           data.state->_stream = data.stream;
-                          return true;
+                          return data.state;
                         });
 
-                    if (waitForResigned) {
+                    if (state != nullptr) {
+                      state->onSnapshotCompleted();
                       self->beginWaitingForParticipantResigned();
                       return result;
                     } else {
