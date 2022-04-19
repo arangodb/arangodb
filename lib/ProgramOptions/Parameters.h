@@ -303,10 +303,10 @@ struct NumericParameter : public Parameter {
         *ptr = v;
         return "";
       }
-      return "number '" + value + "' is out of allowed range " +
+      return "number '" + value + "' is outside of allowed range " +
              (minInclusive ? "[" : "(") + std::to_string(this->minValue) +
              " - " + std::to_string(this->maxValue) +
-             (maxInclusive ? "]" : ")");
+             (maxInclusive ? "]" : ")") + " for type " + this->name();
     } catch (...) {
       return "invalid numeric value '" + value + "' for type " + this->name();
     }
@@ -334,7 +334,7 @@ struct NumericParameter : public Parameter {
     } else if constexpr (std::is_same_v<ValueType, double>) {
       return "double";
     } else {
-      static_assert("unsupport ValueType");
+      static_assert("unsupported ValueType");
     }
   }
 
