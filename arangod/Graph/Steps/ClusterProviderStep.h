@@ -75,13 +75,6 @@ class ClusterProviderStep
     EdgeType _edge;
   };
 
-  enum class FetchedType {
-    UNFETCHED,
-    VERTEX_FETCHED,
-    EDGES_FETCHED,
-    VERTEX_AND_EDGES_FETCHED
-  };
-
  private:
   ClusterProviderStep(const VertexType& v, const EdgeType& edge, size_t prev);
   ClusterProviderStep(VertexType v, EdgeType edge, size_t prev,
@@ -109,12 +102,12 @@ class ClusterProviderStep
   }
 
   bool vertexFetched() const {
-    return _fetchedStatus == FetchedType::VERTEX_FETCHED or
+    return _fetchedStatus == FetchedType::VERTEX_FETCHED ||
            _fetchedStatus == FetchedType::VERTEX_AND_EDGES_FETCHED;
   }
 
   bool edgeFetched() const {
-    return _fetchedStatus == FetchedType::EDGES_FETCHED or
+    return _fetchedStatus == FetchedType::EDGES_FETCHED ||
            _fetchedStatus == FetchedType::VERTEX_AND_EDGES_FETCHED;
   }
 

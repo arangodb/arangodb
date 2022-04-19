@@ -49,6 +49,7 @@ class HashedStringRef;
 
 namespace graph {
 
+class ValidationResult;
 struct VertexDescription;
 
 namespace enterprise {
@@ -177,7 +178,8 @@ class OneSidedEnumerator : public TraversalEnumerator {
   void clearProvider();
 
 #ifdef USE_ENTERPRISE
-  auto smartExpand(Step const& step, size_t posPrevious) -> void;
+  auto smartExpand(Step const& step, size_t posPrevious,
+                   ValidationResult const& res) -> void;
 #endif
 
  private:

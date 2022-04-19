@@ -152,20 +152,21 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
     }
   }
 
-  if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
-    if (!step.edgeFetched()) {
-      // NOTE: The step we have should be the first, s.t. we are guaranteed
-      // to work on it, as the ordering here gives the priority to the Provider
-      // in how important it is to get responses for a particular step.
-      std::vector<Step*> stepsToFetch{&step};
-      _queue.getStepsWithoutFetchedEdges(stepsToFetch);
-      TRI_ASSERT(!stepsToFetch.empty());
-      _provider.fetchEdges(stepsToFetch);
-      TRI_ASSERT(step.edgeFetched());
-    }
-    if constexpr (std::is_same_v<ResultList, enterprise::SmartGraphResponse>) {
-      smartExpand(step, posPrevious);
-    } else {
+  if constexpr (std::is_same_v<ResultList, enterprise::SmartGraphResponse>) {
+    smartExpand(step, posPrevious, res);
+  } else {
+    if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
+      if (!step.edgeFetched()) {
+        // NOTE: The step we have should be the first, s.t. we are guaranteed
+        // to work on it, as the ordering here gives the priority to the
+        // Provider in how important it is to get responses for a particular
+        // step.
+        std::vector<Step*> stepsToFetch{&step};
+        _queue.getStepsWithoutFetchedEdges(stepsToFetch);
+        TRI_ASSERT(!stepsToFetch.empty());
+        _provider.fetchEdges(stepsToFetch);
+        TRI_ASSERT(step.edgeFetched());
+      }
       _provider.expand(step, posPrevious,
                        [&](Step n) -> void { _queue.append(n); });
     }
