@@ -9,3 +9,5 @@ add_library(arango_wasm STATIC
 target_link_libraries(arango_wasm arango)
 target_link_libraries(arango_wasm m3)
 target_link_libraries(arango_wasm arango_vocbase)
+
+add_subdirectory(WasmVm)
