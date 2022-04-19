@@ -6,6 +6,14 @@ v3.9.2 (XXXX-XX-XX)
   COLLECT itself from out of the KEEP part triggered an internal error. The
   case is detected properly now and handled with a descriptive error message.
 
+* Added startup option `--rocksdb.transaction-lock-stripes` to configure the
+  number of lock stripes to be used by RocksDB transactions. The option defaults
+  to the number of available cores, but is bumped to a value of 16 if the number
+  of cores is lower.
+
+* Fix deadlocked shard synchronisations when planned shard leader has not yet
+  taken over leadership.
+
 * Added an IO heartbeat which checks that the underlying volume is writable with
   reasonable performance. The test is done every 15 seconds and can be
   explicitly switched off. New metrics to give visibility if the test fails.

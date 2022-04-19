@@ -686,8 +686,9 @@ void RocksDBEngine::start() {
   auto const& opts = server().getFeature<arangodb::RocksDBOptionFeature>();
 
   rocksdb::TransactionDBOptions transactionOptions;
-  // number of locks per column_family
-  transactionOptions.num_stripes = NumberOfCores::getValue();
+  // num_stripes must be at least 1
+  transactionOptions.num_stripes =
+      std::max(size_t(1), static_cast<size_t>(opts._transactionLockStripes));
   transactionOptions.transaction_lock_timeout = opts._transactionLockTimeout;
 
   _options.allow_fallocate = opts._allowFAllocate;
