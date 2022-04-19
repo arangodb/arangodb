@@ -156,7 +156,9 @@ void FollowerStateManager<S>::tryTransferSnapshot(
   TRI_ASSERT(leader.has_value()) << "leader established it's leadership. There "
                                     "has to be a leader in the current term";
 
-  LOG_CTX("52a11", TRACE, loggerContext) << "try to acquire a new snapshot";
+  LOG_CTX("52a11", DEBUG, loggerContext)
+      << "try to acquire a new snapshot, starting at "
+      << logFollower->getCommitIndex();
   auto f = hiddenState->acquireSnapshot(*leader, logFollower->getCommitIndex());
   std::move(f).thenFinal([weak = this->weak_from_this(), hiddenState](
                              futures::Try<Result>&& tryResult) noexcept {
@@ -244,7 +246,7 @@ template<typename S>
 void FollowerStateManager<S>::checkSnapshot(
     std::shared_ptr<IReplicatedFollowerState<S>> hiddenState) {
   bool needsSnapshot = _guardedData.doUnderLock([&](GuardedData& data) {
-    LOG_CTX("aee5b", TRACE, loggerContext)
+    LOG_CTX("aee5b", DEBUG, loggerContext)
         << "snapshot status is " << data.token->snapshot.status
         << ", generation is " << data.token->generation;
     return data.token->snapshot.status != SnapshotStatus::kCompleted;
@@ -352,7 +354,7 @@ void FollowerStateManager<S>::handleAwaitLeadershipResult(
 }
 
 template<typename S>
-void FollowerStateManager<S>::run() {
+void FollowerStateManager<S>::run() noexcept {
   // 1. wait for log follower to have committed at least one entry
   // 2. receive a new snapshot (if required)
   //    if (old_generation != new_generation || snapshot_status != Completed)

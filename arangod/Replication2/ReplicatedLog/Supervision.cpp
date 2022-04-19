@@ -107,9 +107,14 @@ auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
             participant);
 
     if (participant != current.leader->serverId and flags.forced) {
-      auto const rebootId = health._health.at(participant).rebootId;
-      return DictateLeaderAction(
-          LogPlanTermSpecification::Leader(participant, rebootId));
+      auto const& rebootId = health.getRebootId(participant);
+      if (rebootId.has_value()) {
+        return DictateLeaderAction(
+            LogPlanTermSpecification::Leader(participant, *rebootId));
+      } else {
+        return DictateLeaderFailedAction{
+            "participant selected as leader does not have a valid rebootId"};
+      }
     }
   }
 
@@ -181,21 +186,25 @@ auto leaderInTarget(ParticipantId const& targetLeader,
       //       distinguishing between errors and conditions not being met (?)
     };
 
-    auto const rebootId = health._health.at(targetLeader).rebootId;
-    return DictateLeaderAction(
-        LogPlanTermSpecification::Leader{targetLeader, rebootId});
+    auto const& rebootId = health.getRebootId(targetLeader);
+    if (rebootId.has_value()) {
+      return DictateLeaderAction(
+          LogPlanTermSpecification::Leader{targetLeader, *rebootId});
+    } else {
+      return ErrorAction(LogCurrentSupervisionError::TARGET_LEADER_INVALID);
+    }
   }
   return std::nullopt;
 }
 
-auto computeReason(LogCurrentLocalState const& status, bool healthy,
-                   bool excluded, LogTerm term)
+auto computeReason(std::optional<LogCurrentLocalState> const& maybeStatus,
+                   bool healthy, bool excluded, LogTerm term)
     -> LogCurrentSupervisionElection::ErrorCode {
   if (!healthy) {
     return LogCurrentSupervisionElection::ErrorCode::SERVER_NOT_GOOD;
   } else if (excluded) {
     return LogCurrentSupervisionElection::ErrorCode::SERVER_EXCLUDED;
-  } else if (term != status.term) {
+  } else if (!maybeStatus or term != maybeStatus->term) {
     return LogCurrentSupervisionElection::ErrorCode::TERM_NOT_CONFIRMED;
   } else {
     return LogCurrentSupervisionElection::ErrorCode::OK;
@@ -209,23 +218,34 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
   auto election = LogCurrentSupervisionElection();
   election.term = term;
 
-  for (auto const& [participant, status] : states) {
-    auto const excluded =
-        participantsConfig.participants.contains(participant) and
-        not participantsConfig.participants.at(participant).allowedAsLeader;
+  for (auto const& [participant, flags] : participantsConfig.participants) {
+    auto const excluded = not flags.allowedAsLeader;
     auto const healthy = health.notIsFailed(participant);
-    auto reason = computeReason(status, healthy, excluded, term);
+
+    auto maybeStatus = std::invoke(
+        [&states](ParticipantId const& participant)
+            -> std::optional<LogCurrentLocalState> {
+          auto status = states.find(participant);
+          if (status != states.end()) {
+            return status->second;
+          } else {
+            return std::nullopt;
+          }
+        },
+        participant);
+
+    auto reason = computeReason(maybeStatus, healthy, excluded, term);
     election.detail.emplace(participant, reason);
 
     if (reason == LogCurrentSupervisionElection::ErrorCode::OK) {
       election.participantsAvailable += 1;
 
-      if (status.spearhead >= election.bestTermIndex) {
-        if (status.spearhead != election.bestTermIndex) {
+      if (maybeStatus->spearhead >= election.bestTermIndex) {
+        if (maybeStatus->spearhead != election.bestTermIndex) {
           election.electibleLeaderSet.clear();
         }
         election.electibleLeaderSet.push_back(participant);
-        election.bestTermIndex = status.spearhead;
+        election.bestTermIndex = maybeStatus->spearhead;
       }
     }
   }
@@ -280,11 +300,16 @@ auto doLeadershipElection(LogPlanSpecification const& plan,
     auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
     auto const& newLeader =
         election.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
-    auto const& newLeaderRebootId = health._health.at(newLeader).rebootId;
+    auto const& newLeaderRebootId = health.getRebootId(newLeader);
 
-    return LeaderElectionAction(
-        LogPlanTermSpecification::Leader(newLeader, newLeaderRebootId),
-        election);
+    if (newLeaderRebootId.has_value()) {
+      return LeaderElectionAction(
+          LogPlanTermSpecification::Leader(newLeader, *newLeaderRebootId),
+          election);
+    } else {
+      // TODO: better error
+      return LeaderElectionImpossibleAction();
+    }
   } else {
     // Not enough participants were available to form a quorum, so
     // we can't elect a leader
@@ -372,7 +397,7 @@ auto pickRandomParticipantToBeLeader(ParticipantsFlagsMap const& participants,
   auto acceptableParticipants = std::vector<ParticipantId>{};
 
   for (auto [part, flags] : participants) {
-    if (flags.allowedAsLeader && health._health.contains(part)) {
+    if (flags.allowedAsLeader && health.contains(part)) {
       acceptableParticipants.emplace_back(part);
     }
   }
@@ -400,7 +425,7 @@ auto pickLeader(std::optional<ParticipantId> targetLeader,
   }
 
   if (leaderId.has_value()) {
-    auto rebootId = health.getRebootId(*leaderId);
+    auto const& rebootId = health.getRebootId(*leaderId);
     if (rebootId.has_value()) {
       return LogPlanTermSpecification::Leader{*leaderId, *rebootId};
     }

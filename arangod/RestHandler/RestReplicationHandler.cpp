@@ -3424,7 +3424,7 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
 
   // Initializing creation options
   TRI_col_type_e collectionType = Helper::getNumericValue<TRI_col_type_e, int>(
-      slice, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN);
+      slice, StaticStrings::DataSourceType, TRI_COL_TYPE_DOCUMENT);
   std::vector<CollectionCreationInfo> infos{{name, collectionType, slice}};
   bool isNewDatabase = false;
   bool allowSystem = true;
@@ -3442,9 +3442,10 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
   OperationOptions options(_context);
   std::vector<std::shared_ptr<LogicalCollection>> collections;
   Result res = methods::Collections::create(
-      _vocbase, options, infos, true, enforceReplicationFactor, isNewDatabase,
-      nullptr, collections, allowSystem,
-      allowEnterpriseCollectionsOnSingleServer, true);
+      _vocbase, options, infos, /*createWaitsForSyncReplication*/ true,
+      enforceReplicationFactor, isNewDatabase, nullptr, collections,
+      allowSystem, allowEnterpriseCollectionsOnSingleServer,
+      /*isRestore*/ true);
   if (res.fail()) {
     return res.errorNumber();
   }
@@ -3782,7 +3783,9 @@ RequestLane RestReplicationHandler::lane() const {
         return RequestLane::SERVER_REPLICATION_CATCHUP;
       }
     }
-    if (command == RemoveFollower || command == LoggerFollow) {
+    if (command == RemoveFollower || command == LoggerFollow ||
+        command == Batch || command == Inventory || command == Revisions ||
+        command == Dump) {
       return RequestLane::SERVER_REPLICATION_CATCHUP;
     }
   }

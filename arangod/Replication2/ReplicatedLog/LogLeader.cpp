@@ -1241,17 +1241,57 @@ auto replicated_log::LogLeader::waitForLeadership()
   return waitFor(_firstIndexOfCurrentTerm);
 }
 
+namespace {
+// For (unordered) maps `left` and `right`, return `keys(left) \ keys(right)`
+auto const keySetDifference = [](auto const& left, auto const& right) {
+  using left_t = std::decay_t<decltype(left)>;
+  using right_t = std::decay_t<decltype(right)>;
+  static_assert(
+      std::is_same_v<typename left_t::key_type, typename right_t::key_type>);
+  using key_t = typename left_t::key_type;
+
+  auto result = std::vector<key_t>{};
+  for (auto const& [key, val] : left) {
+    if (!right.contains(key)) {
+      result.emplace_back(key);
+    }
+  }
+
+  return result;
+};
+}  // namespace
+
 auto replicated_log::LogLeader::updateParticipantsConfig(
-    std::shared_ptr<ParticipantsConfig const> config,
-    std::size_t previousGeneration,
-    std::unordered_map<ParticipantId, std::shared_ptr<AbstractFollower>>
-        additionalFollowers,
-    std::vector<ParticipantId> const& followersToRemove) -> LogIndex {
+    std::shared_ptr<ParticipantsConfig const> const& config,
+    std::function<std::shared_ptr<replicated_log::AbstractFollower>(
+        ParticipantId const&)> const& buildFollower) -> LogIndex {
   LOG_CTX("ac277", TRACE, _logContext)
       << "trying to update configuration to generation " << config->generation;
-  TRI_ASSERT(previousGeneration < config->generation);
   auto waitForIndex = _guardedLeaderData.doUnderLock([&](GuardedLeaderData&
                                                              data) {
+    auto const [followersToRemove, additionalFollowers] = std::invoke([&] {
+      auto const& oldFollowers = data._follower;
+      // Note that newParticipants contains the leader, while oldFollowers does
+      // not.
+      auto const& newParticipants = config->participants;
+      auto const additionalParticipantIds =
+          keySetDifference(newParticipants, oldFollowers);
+      auto followersToRemove_ = keySetDifference(oldFollowers, newParticipants);
+
+      auto additionalFollowers_ =
+          std::unordered_map<ParticipantId,
+                             std::shared_ptr<AbstractFollower>>{};
+      for (auto const& participantId : additionalParticipantIds) {
+        // exclude the leader
+        if (participantId != _id) {
+          additionalFollowers_.try_emplace(participantId,
+                                           buildFollower(participantId));
+        }
+      }
+      return std::pair(std::move(followersToRemove_),
+                       std::move(additionalFollowers_));
+    });
+
     if (data.activeParticipantsConfig->generation >= config->generation) {
       auto const message = basics::StringUtils::concatT(
           "updated participant config generation is smaller or equal to "
@@ -1261,29 +1301,19 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
       LOG_CTX("bab5b", TRACE, _logContext) << message;
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
     }
-    if (data.activeParticipantsConfig->generation != previousGeneration) {
-      // This is to make sure the `additionalFollowers` list is really the
-      // (asymmetric) difference between the current and new configuration.
-      auto const message = basics::StringUtils::concatT(
-          "assumed participant config generation does not match the current "
-          "generation - refusing to update; ",
-          "previous = ", previousGeneration,
-          ", current = ", data.activeParticipantsConfig->generation);
-      LOG_CTX("8dc8b", TRACE, _logContext) << message;
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
-    }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // all participants in the new configuration must either exist already, or
     // be added via additionalFollowers.
     {
       auto const& newConfigParticipants = config->participants;
-      TRI_ASSERT(std::all_of(newConfigParticipants.begin(),
-                             newConfigParticipants.end(), [&](auto const& it) {
-                               return data._follower.contains(it.first) ||
-                                      additionalFollowers.contains(it.first) ||
-                                      it.first == data._self.getParticipantId();
-                             }));
+      TRI_ASSERT(std::all_of(
+          newConfigParticipants.begin(), newConfigParticipants.end(),
+          [&, &additionalFollowers = additionalFollowers](auto const& it) {
+            return data._follower.contains(it.first) ||
+                   additionalFollowers.contains(it.first) ||
+                   it.first == data._self.getParticipantId();
+          }));
     }
 #endif
 

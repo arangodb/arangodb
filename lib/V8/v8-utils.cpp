@@ -4003,7 +4003,7 @@ static void JS_Sha256(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   // extract arguments
-  if (args.Length() != 1 || !args[0]->IsString()) {
+  if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("sha256(<text>)");
   }
 
