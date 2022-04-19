@@ -94,7 +94,7 @@ void AuthenticationFeature::collectOptions(
           "the POST /_open/auth endpoint. Used by the web interface "
           "for JWT-based sessions",
           new DoubleParameter(&_sessionTimeout, /*base*/ 1.0, /*minValue*/ 1.0,
-                              /*maxValue*/ std::numeric_limit<double>::max(),
+                              /*maxValue*/ std::numeric_limits<double>::max(),
                               /*minInclusive*/ false),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
