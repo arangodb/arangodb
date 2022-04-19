@@ -224,6 +224,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   }
 
   auto current = static_cast<ExecutionNode*>(&viewNode);
+  auto viewVariable = viewNode.outVariable();
   auto const& scorers = viewNode.scorers();
   SortNode* sortNode = nullptr;
   LimitNode const* limitNode = nullptr;
@@ -240,18 +241,29 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
         break;
         case ExecutionNode::CALCULATION:
         // Only deterministic calcs allowed
-        // Other should be forbidden as number of calls will be changed!
+        // Otherwise optimization should be forbidden
+        // as number of calls will be changed!
         if (!current->isDeterministic()) {
           return false;
         }
-        // TODO: Check current->getVariablesUsedHere()!
+        {
+          VarSet currentUsedVars;
+          current->getVariablesUsedHere(currentUsedVars);
+          bool valid{true};
+          for (auto const& var : currentUsedVars) {
+            if (var->id == viewVariable.id) {
+              return false;
+            }
+          }
+        }
         break;
       default:
         return false;
         break;
     }
-    if (sortNode && limitNode) {
-      break;
+    if (limitNode && sortNode) {
+      // only first SORT + LIMIT makes sense
+      break; 
     }
   }
   if (!sortNode || !limitNode) {
@@ -273,7 +285,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       if (!astCalcNode ||
           astCalcNode->type != AstNodeType::NODE_TYPE_REFERENCE) {
         // Not a reference?  Seems that ScorerReplacer has failed.
-        // e.g. it is expected to be LET sortVar = scoreVar;
+        // e.g. it is expected to be LET sortVar = scorerVar;
         TRI_ASSERT(false);
         return false;
       }
