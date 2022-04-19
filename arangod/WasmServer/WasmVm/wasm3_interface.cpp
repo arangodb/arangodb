@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <cstring>
 #include <string>
-#include <string_view>
 
 #include "Basics/Result.h"
 #include "fmt/core.h"
@@ -22,25 +21,37 @@ WasmVm::~WasmVm() {
   m3_FreeEnvironment(environment);
 }
 
-auto WasmVm::error(M3Result const& err) -> std::optional<std::string_view> {
+auto errorInfos(IM3Runtime const& runtime) -> std::string {
+    // there will be an error info if d_m3VerboseErrorMessages = 1
+    M3ErrorInfo info;
+    m3_GetErrorInfo(runtime, &info);
+    if (info.result == m3Err_none) {
+      return "";
+    }
+    return fmt::format(" - {}, {}:{}",
+				      info.message, info.file, info.line);
+}
+auto WasmVm::error(M3Result const& err) -> std::optional<std::string> {
   if (err != m3Err_none) {
-    return err;
+    return fmt::format("wasm3 error: {}{}", err, errorInfos(runtime));
   }
   return {};
 }
 
-auto WasmVm::load_module(uint8_t* data, size_t size) -> Result {
-  IM3Module module;
+auto WasmVm::load_module(std::vector<uint8_t> modulecode) -> Result {
+  code.emplace_back(std::move(modulecode));
 
-  auto e = error(m3_ParseModule(environment, &module, data, size));
+  IM3Module module;
+  auto e = error(m3_ParseModule(environment, &module, code.back().data(),
+                                code.back().size()));
   if (e.has_value()) {
     return Result{TRI_ERROR_WASM_EXECUTION_ERROR,
-        fmt::format("Cannot parse module: {}", e.value())};
+                  fmt::format("Cannot parse module: {}", e.value())};
   }
   e = error(m3_LoadModule(runtime, module));
   if (e.has_value()) {
     return Result{TRI_ERROR_WASM_EXECUTION_ERROR,
-        fmt::format("Cannot load module: {}", e.value())};
+                  fmt::format("Cannot load module: {}", e.value())};
   }
   return {};
 }

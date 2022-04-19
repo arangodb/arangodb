@@ -131,11 +131,3 @@ TEST(WasmModuleConversion, converts_module_to_velocypack_with_name_as_key) {
           ->slice()
           .toJson());
 }
-
-TEST(WasmFunctionParameterCreation,
-     extracts_function_parameters_from_velocypack) {
-  auto velocypack = VPackParser::fromJson(R"({"a": 3, "b": 982})")->slice();
-  auto result = arangodb::wasm::velocypackToFunctionParameters(velocypack);
-  EXPECT_TRUE(result.ok());
-  EXPECT_EQ(result.get(), (FunctionInput{3, 982}));
-}

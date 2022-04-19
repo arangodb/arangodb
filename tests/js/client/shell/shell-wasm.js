@@ -33,6 +33,7 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
+let pu = require('@arangodb/testutils/process-utils');
 
 var wasmmodules = require("@arangodb/aql/wasmModules");
 
@@ -44,20 +45,29 @@ function WasmModulesSuite() {
 	'use strict';
 
 	const modulename = "my_module";
-	const code = "AGFzbQEAAAABKwhgAAF/YAF/AX9gAn9/AX9gAABgAX8AYAN/f38Bf2ADf35/AX5gAn5+AX4CeQQWd2FzaV9zbmFwc2hvdF9wcmV2aWV3MQ5hcmdzX3NpemVzX2dldAACFndhc2lfc25hcHNob3RfcHJldmlldzEIYXJnc19nZXQAAhZ3YXNpX3NuYXBzaG90X3ByZXZpZXcxCXByb2NfZXhpdAAEA2VudgRtYWluAAIDCwoDBwMAAAAEAQEBBAUBcAECAgUGAQGAAoACBgkBfwFBoIjAAgsHeQkGbWVtb3J5AgADYWRkAAUZX19pbmRpcmVjdF9mdW5jdGlvbl90YWJsZQEABl9zdGFydAAGEF9fZXJybm9fbG9jYXRpb24ACAZmZmx1c2gADAlzdGFja1NhdmUACQxzdGFja1Jlc3RvcmUACgpzdGFja0FsbG9jAAsJBwEAQQELAQQKmQMKAwABCwcAIAAgAXwLBwAQBxACAAuNAQEEfyMAQRBrIgAkAAJAIAAiAkEMaiAAQQhqEABFBEACf0EAIAIoAgwiAUUNABogACABQQJ0IgNBE2pBcHFrIgAiASQAIAEgAigCCEEPakFwcWsiASQAIAAgA2pBADYCACAAIAEQAQ0CIAIoAgwLIAAQAyEAIAJBEGokACAADwtBxwAQAgALQccAEAIACwUAQYAICwQAIwALBgAgACQACxAAIwAgAGtBcHEiACQAIAALZwEBfyAABEAgACgCTEF/TARAIAAQDQ8LIAAQDQ8LQZAIKAIABEBBkAgoAgAQDCEBC0GMCCgCACIABEADQCAAKAJMGiAAKAIUIAAoAhxLBEAgABANIAFyIQELIAAoAjgiAA0ACwsgAQtpAQJ/AkAgACgCFCAAKAIcTQ0AIABBAEEAIAAoAiQRBQAaIAAoAhQNAEF/DwsgACgCBCIBIAAoAggiAkkEQCAAIAEgAmusQQEgACgCKBEGABoLIABBADYCHCAAQgA3AxAgAEIANwIEQQAL";
+	const add_module_without_allocation = "AGFzbQEAAAABKwhgAAF/YAF/AX9gAn9/AX9gAABgAX8AYAN/f38Bf2ADf35/AX5gAn5+AX4CeQQWd2FzaV9zbmFwc2hvdF9wcmV2aWV3MQ5hcmdzX3NpemVzX2dldAACFndhc2lfc25hcHNob3RfcHJldmlldzEIYXJnc19nZXQAAhZ3YXNpX3NuYXBzaG90X3ByZXZpZXcxCXByb2NfZXhpdAAEA2VudgRtYWluAAIDCwoDBwMAAAAEAQEBBAUBcAECAgUGAQGAAoACBgkBfwFBoIjAAgsHeQkGbWVtb3J5AgADYWRkAAUZX19pbmRpcmVjdF9mdW5jdGlvbl90YWJsZQEABl9zdGFydAAGEF9fZXJybm9fbG9jYXRpb24ACAZmZmx1c2gADAlzdGFja1NhdmUACQxzdGFja1Jlc3RvcmUACgpzdGFja0FsbG9jAAsJBwEAQQELAQQKmQMKAwABCwcAIAAgAXwLBwAQBxACAAuNAQEEfyMAQRBrIgAkAAJAIAAiAkEMaiAAQQhqEABFBEACf0EAIAIoAgwiAUUNABogACABQQJ0IgNBE2pBcHFrIgAiASQAIAEgAigCCEEPakFwcWsiASQAIAAgA2pBADYCACAAIAEQAQ0CIAIoAgwLIAAQAyEAIAJBEGokACAADwtBxwAQAgALQccAEAIACwUAQYAICwQAIwALBgAgACQACxAAIwAgAGtBcHEiACQAIAALZwEBfyAABEAgACgCTEF/TARAIAAQDQ8LIAAQDQ8LQZAIKAIABEBBkAgoAgAQDCEBC0GMCCgCACIABEADQCAAKAJMGiAAKAIUIAAoAhxLBEAgABANIAFyIQELIAAoAjgiAA0ACwsgAQtpAQJ/AkAgACgCFCAAKAIcTQ0AIABBAEEAIAAoAiQRBQAaIAAoAhQNAEF/DwsgACgCBCIBIAAoAggiAkkEQCAAIAEgAmusQQEgACgCKBEGABoLIABBADYCHCAAQgA3AxAgAEIANwIEQQAL";
+  const slice_module = pu.TOP_DIR + "/tests/js/client/shell/slices.wasm";
 
 	return {
 
+	        tearDownAll: function() {
+	                wasmmodules.unregister(modulename);
+	        },
+
 		test_modules_are_initially_empty: function() {
-			assertEqual(wasmmodules.toArray(), []);
+		        assertEqual(wasmmodules.toArray(), []);
 		},
 
 		test_module_can_be_registered: function() {
-			assertEqual(wasmmodules.register(modulename, code), { "installed": modulename });
+			assertEqual(wasmmodules.register(modulename, add_module_without_allocation), { "installed": modulename });
+		},
+
+		test_module_can_be_registered_via_file: function() {
+			assertEqual(wasmmodules.registerByFile(modulename, slice_module), { "installed": modulename });
 		},
 
 		test_names_of_all_registered_modules_are_shown: function() {
-			wasmmodules.register(modulename, code);
+			wasmmodules.register(modulename, add_module_without_allocation);
 
 			assertEqual(wasmmodules.toArray(), [modulename]);
 		},
@@ -71,7 +81,7 @@ function WasmModulesSuite() {
 		},
 
 		test_existing_module_is_overwritten_with_module_of_same_name: function() {
-			wasmmodules.register(modulename, code, true);
+			wasmmodules.register(modulename, add_module_without_allocation, true);
 
 			wasmmodules.register(modulename, "AQL/", false);
 
@@ -86,12 +96,12 @@ function WasmModulesSuite() {
 		},
 
 		test_a_registered_module_shows_its_detail_information: function() {
-			wasmmodules.register(modulename, code);
+			wasmmodules.register(modulename, add_module_without_allocation);
 
 			assertEqual(wasmmodules.show(modulename), {
 				"result": {
 					"name": modulename,
-					"code": code,
+					"code": add_module_without_allocation,
 					"isDeterministic": false
 				}
 			});
@@ -106,13 +116,13 @@ function WasmModulesSuite() {
 		},
 
 		test_modules_can_be_unregistered: function() {
-			wasmmodules.register(modulename, code);
+			wasmmodules.register(modulename, add_module_without_allocation);
 
 			assertEqual(wasmmodules.unregister(modulename), { "removed": modulename });
 		},
 
 		test_modules_are_deleted_when_unregistered: function() {
-			wasmmodules.register(modulename, code);
+			wasmmodules.register(modulename, add_module_without_allocation);
 
 			wasmmodules.unregister(modulename);
 
@@ -127,8 +137,17 @@ function WasmModulesSuite() {
 			}
 		},
 
+	        test_wasm_module_needs_allocate_and_deallocate_function_to_be_executable_via_AQL: function() {
+		  wasmmodules.registerByFile(modulename, slice_module);
+		  try {
+			db._query("RETURN CALL_WASM('" + modulename + "', 'add', 1, 4)").toArray();
+		  } catch (err) {
+			assertEqual(err.errorNum, ERRORS.ERROR_WASM_EXECUTION_ERROR.code);
+		  }
+	        },
+
 		test_function_in_registered_module_is_exectable_via_AQL_query: function() {
-			wasmmodules.register(modulename, code);
+			wasmmodules.registerByFile(modulename, slice_module);
 
 			const queryresult = db._query("RETURN CALL_WASM('" + modulename + "', 'add', 1, 4)").toArray();
 
@@ -136,47 +155,61 @@ function WasmModulesSuite() {
 		},
 
 		test_function_in_registered_module_is_exectable_via_AQL_query_on_DB_server: function() {
-			wasmmodules.register(modulename, code);
-		        db._createDocumentCollection("newtable");
-		        db._query("INSERT {a: 1, b: 2} in newtable")
+			wasmmodules.registerByFile(modulename, slice_module);
+			db._createDocumentCollection("newtable");
+			db._query("INSERT {a: 1, b: 2} in newtable")
 
 			const queryresult = db._query("FOR d in newtable RETURN CALL_WASM('" + modulename + "', 'add', 1, 4)").toArray();
 
 			assertEqual(queryresult, [5]);
 
-		        db._drop("newtable");
+			db._drop("newtable");
 		},
 
 		test_unknown_module_execution_throws_error: function() {
 			try {
-				const queryresult = db._query("RETURN CALL_WASM('unknown_module', 'add', 1, 4)").toArray();
+				db._query("RETURN CALL_WASM('unknown_module', 'add', 1, 4)").toArray();
 			} catch (err) {
 				assertEqual(err.errorNum, ERRORS.ERROR_WASM_EXECUTION_ERROR.code);
 			}
 		},
 
 		test_unknown_function_execution_throws_error: function() {
-			wasmmodules.register(modulename, code);
+			wasmmodules.register(modulename, add_module_without_allocation);
 
 			try {
-				const queryresult = db._query("RETURN CALL_WASM('" + modulename + "', 'function_not_inside_module', 1, 4)").toArray();
+				db._query("RETURN CALL_WASM('" + modulename + "', 'function_not_inside_module', 1, 4)").toArray();
 			} catch (err) {
 				assertEqual(err.errorNum, ERRORS.ERROR_WASM_EXECUTION_ERROR.code);
 			}
 		},
 
-		test_wrong_code_cannot_be_executed: function() {
-			wasmmodules.register("new_module", "AQL/");
+	        test_function_can_be_executed_on_more_complicated_data_structures: function() {
+			wasmmodules.registerByFile(modulename, slice_module);
 
-			// TODO PREG-87 Return result from wasm3 parse_module function
-			// and return ERROR_WASM_EXECUTION_ERROR in handler
+			const queryresult = db._query("RETURN CALL_WASM('" + modulename + "', 'ipv6_string_to_array', '2001:0db8:85a3:08d3:1319:8a2e:0370:7344')").toArray();
 
-			try {
-				const queryresult = db._query("RETURN CALL_WASM('new_module', 'function_not_inside_module', 1, 4)").toArray();
-			} catch (err) {
-				assertEqual(err.errorNum, ERRORS.ERROR_INTERNAL.code);
-			}
+			assertEqual(queryresult, [[32, 1,  13,  184, 133, 163, 8,   211,
+                                      19, 25, 138, 46,  3,   112, 115, 68]]);
 		},
+
+	  test_expected_error_in_wasm_function_gives_error_when_called: function () {
+		  wasmmodules.registerByFile(modulename, slice_module);
+		  try {
+			db._query("RETURN CALL_WASM('" + modulename + "', 'add', 'some string', 4)").toArray();
+		  } catch (err) {
+			assertEqual(err.errorNum, ERRORS.ERROR_WASM_EXECUTION_ERROR.code);
+		  }
+	        },
+
+	  test_unexpected_error_in_wasm_function_gives_error_when_called: function() {
+		  wasmmodules.registerByFile(modulename, slice_module);
+		  try {
+			db._query("RETURN CALL_WASM('" + modulename + "', 'incorrect_string_function', 'some string')").toArray();
+		  } catch (err) {
+			assertEqual(err.errorNum, ERRORS.ERROR_WASM_EXECUTION_ERROR.code);
+		  }
+	        },
 
 	};
 }

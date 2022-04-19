@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <optional>
-#include <regex>
 #include <set>
 #include <string>
 
@@ -84,11 +83,6 @@ auto velocypackToCode(Slice slice) -> ResultT<Code> {
     return Code{code};
   } else if (slice.isString()) {
     auto string = slice.copyString();
-    if (!regex_match(string,
-                     std::regex(arangodb::basics::StringUtils::base64Regex))) {
-      return ResultT<Code>::error(TRI_ERROR_BAD_PARAMETER,
-                                  "String should be a base64 string.");
-    }
     auto decodedString =
         arangodb::basics::StringUtils::decodeBase64(slice.copyString());
     std::vector<uint8_t> vec(decodedString.begin(), decodedString.end());
@@ -158,31 +152,4 @@ auto uint64FromSlice(Slice slice) -> std::optional<uint64_t> {
     return slice.getUInt();
   }
   return std::nullopt;
-}
-
-auto arangodb::wasm::velocypackToFunctionParameters(Slice slice)
-    -> ResultT<FunctionInput> {
-  if (!slice.isObject()) {
-    return ResultT<FunctionInput>::error(TRI_ERROR_BAD_PARAMETER,
-                                         "Can only parse an object");
-  }
-  if (!slice.hasKey("a")) {
-    return ResultT<FunctionInput>::error(TRI_ERROR_BAD_PARAMETER,
-                                         "Required field 'a' is missing");
-  }
-  if (!slice.hasKey("b")) {
-    return ResultT<FunctionInput>::error(TRI_ERROR_BAD_PARAMETER,
-                                         "Required field 'b' is missing");
-  }
-  auto a = uint64FromSlice(slice.get("a"));
-  if (!a.has_value()) {
-    return ResultT<FunctionInput>::error(
-        TRI_ERROR_BAD_PARAMETER, "Field a: Should be an unsigned integer");
-  }
-  auto b = uint64FromSlice(slice.get("b"));
-  if (!b.has_value()) {
-    return ResultT<FunctionInput>::error(
-        TRI_ERROR_BAD_PARAMETER, "Field b: Should be an unsigned integer");
-  }
-  return FunctionInput{a.value(), b.value()};
 }

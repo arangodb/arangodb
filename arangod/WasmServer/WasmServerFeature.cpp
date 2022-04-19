@@ -12,9 +12,9 @@
 #include "Basics/voc-errors.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "WasmServer/Wasm3cpp.h"
 #include "WasmServer/WasmCommon.h"
 #include "WasmServer/WasmModuleCollection.h"
+#include "WasmServer/WasmVm/wasm_with_slices.hpp"
 
 namespace arangodb {
 namespace application_features {
@@ -58,10 +58,10 @@ auto WasmServerFeature::loadModuleIntoRuntime(ModuleName const& name)
   if (module.fail()) {
     return Result{TRI_ERROR_WASM_EXECUTION_ERROR, module.errorMessage()};
   }
-
-  auto wasm3Module = _environment.parse_module(module.get().code.bytes.data(),
-                                               module.get().code.bytes.size());
-  _runtime.load(wasm3Module);
+  auto code = module.get().code.bytes;
+  if (auto res = _vm.load_module(module.get().code.bytes); res.fail()) {
+    return Result{TRI_ERROR_WASM_EXECUTION_ERROR, res.errorMessage()};
+  }
   _guardedModules.doUnderLock([&name](GuardedModules& guardedModules) {
     guardedModules._loadedModules.emplace(name.string);
   });
@@ -83,15 +83,15 @@ auto WasmServerFeature::executeFunction(ModuleName const& moduleName,
     }
   }
 
-  auto function = _runtime.find_function(functionName.string.c_str());
-  if (!function.has_value()) {
+  auto output = arangodb::wasm_interface::call_function(
+      _vm, functionName.string.data(), parameters);
+  if (output.fail()) {
     return ResultT<FunctionOutput>::error(
         TRI_ERROR_WASM_EXECUTION_ERROR,
-        "WasmServerFeature: Function '" + functionName.string +
-            "' in module '" + moduleName.string + "' not found");
+        fmt::format("WasmServerFeature: Module {}: {}", moduleName.string,
+                    output.errorMessage()));
   }
-  return FunctionOutput{
-      function.value().call<uint64_t>(parameters.a, parameters.b)};
+  return FunctionOutput{output.get()};
 }
 
 auto WasmServerFeature::addModule(Module const& module) -> Result {

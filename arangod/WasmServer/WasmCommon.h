@@ -29,6 +29,7 @@
 
 #include "Basics/ResultT.h"
 #include "velocypack/Builder.h"
+#include "velocypack/Slice.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -62,20 +63,11 @@ struct FunctionName {
   FunctionName(std::string string) : string{std::move(string)} {}
 };
 
-struct FunctionInput {
-  uint64_t a;
-  uint64_t b;
-  auto operator==(FunctionInput const& parameters) const -> bool = default;
-};
-
-struct FunctionOutput {
-  uint64_t value;
-};
+using FunctionInput = VPackSlice;
+using FunctionOutput = VPackSlice;
 
 auto velocypackToModule(arangodb::velocypack::Slice slice) -> ResultT<Module>;
 void moduleToVelocypack(Module const& module, VPackBuilder& builder,
                         bool forCollection = false);
-auto velocypackToFunctionParameters(arangodb::velocypack::Slice slice)
-    -> ResultT<FunctionInput>;
 
 }  // namespace arangodb::wasm

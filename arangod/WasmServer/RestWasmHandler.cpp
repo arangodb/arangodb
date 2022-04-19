@@ -172,33 +172,23 @@ auto addWasmModule(VPackSlice slice, wasm::WasmVmMethods const& methods,
 }
 
 auto executeWasmFunction(ModuleName const& moduleName,
-                         FunctionName const& functionName, VPackSlice slice,
+                         FunctionName const& functionName, FunctionInput input,
                          wasm::WasmVmMethods const& methods,
                          VPackBuilder& response) -> Result {
-  auto functionParameters =
-      arangodb::wasm::velocypackToFunctionParameters(slice);
-  if (!functionParameters.ok()) {
-    return Result{functionParameters.errorNumber(),
-                  functionParameters.errorMessage()};
-  }
-
-  auto result =
-      methods
-          .executeFunction(moduleName, functionName, functionParameters.get())
-          .get();
-  if (result.fail()) {
-    return Result{result.errorNumber(), result.errorMessage()};
+  auto output = methods.executeFunction(moduleName, functionName, input).get();
+  if (output.fail()) {
+    return Result{output.errorNumber(), output.errorMessage()};
   }
 
   VPackObjectBuilder ob(&response);
-  response.add("result", VPackValue(result.get().value));
+  response.add("result", output.get());
   return Result{};
 }
 
 auto RestWasmHandler::handlePostRequest(WasmVmMethods const& methods)
     -> RestStatus {
   auto success = bool{};
-  auto slice = parseVPackBody(success);
+  auto input = parseVPackBody(success);
   if (!success) {
     return RestStatus::DONE;
   }
@@ -206,7 +196,7 @@ auto RestWasmHandler::handlePostRequest(WasmVmMethods const& methods)
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   VPackBuilder response;
   if (suffixes.size() == 0) {
-    auto result = addWasmModule(slice, methods, response);
+    auto result = addWasmModule(input, methods, response);
     if (result.fail()) {
       generateError(ResponseCode::BAD, result.errorNumber(),
                     result.errorMessage());
@@ -216,7 +206,7 @@ auto RestWasmHandler::handlePostRequest(WasmVmMethods const& methods)
   } else if (suffixes.size() == 2) {
     auto result =
         executeWasmFunction(ModuleName{suffixes[0]}, FunctionName{suffixes[1]},
-                            slice, methods, response);
+                            input, methods, response);
     if (result.fail()) {
       generateError(ResponseCode::BAD, result.errorNumber(),
                     result.errorMessage());

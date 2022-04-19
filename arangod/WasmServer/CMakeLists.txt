@@ -1,5 +1,4 @@
 add_library(arango_wasm STATIC
-  Wasm3.cpp
   Methods.cpp
   WasmCommon.cpp
   RestWasmHandler.cpp
@@ -7,7 +6,8 @@ add_library(arango_wasm STATIC
   WasmModuleCollection.cpp)
 
 target_link_libraries(arango_wasm arango)
-target_link_libraries(arango_wasm m3)
 target_link_libraries(arango_wasm arango_vocbase)
+target_link_libraries(arango_wasm fmt::fmt)
+target_link_libraries(arango_wasm wasm-interface-with-slices)
 
 add_subdirectory(WasmVm)

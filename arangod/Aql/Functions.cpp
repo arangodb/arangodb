@@ -9053,10 +9053,15 @@ AqlValue Functions::CallWasm(ExpressionContext* expressionContext,
     THROW_ARANGO_EXCEPTION_PARAMS(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
   }
-  AqlValue const& functionParameter1 =
-      extractFunctionParameterValue(parameters, 2);
-  AqlValue const& functionParameter2 =
-      extractFunctionParameterValue(parameters, 3);
+  transaction::Methods* trx = &expressionContext->trx();
+  transaction::BuilderLeaser parameterBuilder(trx);
+  {
+    VPackArrayBuilder array(parameterBuilder.builder());
+    for (size_t p = 2; p < parameters.size(); p++) {
+      parameterBuilder->add(
+          extractFunctionParameterValue(parameters, p).slice());
+    }
+  }
 
   auto& server = expressionContext->trx().vocbase().server();
   if (!server.hasFeature<WasmServerFeature>()) {
@@ -9064,19 +9069,17 @@ AqlValue Functions::CallWasm(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintEmptyArray());
   }
   WasmServerFeature& feature = server.getFeature<WasmServerFeature>();
-  auto result = feature.executeFunction(
-      moduleName.slice().copyString(), functionName.slice().copyString(),
-      wasm::FunctionInput{static_cast<uint64_t>(functionParameter1.toInt64()),
-                          static_cast<uint64_t>(functionParameter2.toInt64())});
+  auto result = feature.executeFunction(moduleName.slice().copyString(),
+                                        functionName.slice().copyString(),
+                                        parameterBuilder->slice());
 
   if (result.fail()) {
     expressionContext->registerError(result.errorNumber(),
                                      result.errorMessage().data());
     return AqlValue(AqlValueHintNull());
   }
-  transaction::Methods* trx = &expressionContext->trx();
   transaction::BuilderLeaser builder(trx);
-  builder->add(VPackValue(result.get().value));
+  builder->add(result.get());
   return AqlValue(builder->slice(), builder->size());
 }
 

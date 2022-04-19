@@ -34,9 +34,9 @@
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
 #include "RestServer/arangod.h"
-#include "WasmServer/Wasm3cpp.h"
 #include "WasmServer/WasmCommon.h"
 #include "WasmServer/WasmModuleCollection.h"
+#include "WasmServer/WasmVm/wasm3_interface.hpp"
 
 namespace arangodb {
 namespace options {
@@ -74,8 +74,7 @@ class WasmServerFeature final : public ArangodFeature {
   };
   Guarded<GuardedModules> _guardedModules;
 
-  wasm3::environment _environment;
-  wasm3::runtime _runtime = _environment.new_runtime(1024);
+  wasm_interface::WasmVm _vm;
 
   std::unique_ptr<WasmModuleCollection> _wasmModuleCollection;
 };
