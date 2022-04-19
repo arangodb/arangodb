@@ -342,8 +342,7 @@ void QueryRegistryFeature::collectOptions(
   options->addOption(
       "--query.optimizer-max-plans",
       "maximum number of query plans to create for a query",
-      new UInt64Parameter(&_maxQueryPlans, /*base*/ 1, /*minValue*/ 1,
-                          /*maxValue*/ UINT64_MAX));
+      new UInt64Parameter(&_maxQueryPlans, /*base*/ 1, /*minValue*/ 1));
 
   options
       ->addOption("--query.max-nodes-per-callstack",
