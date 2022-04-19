@@ -1,6 +1,9 @@
 devel
 -----
 
+* FE-45: Added tooltips with helpful information to the options on the View UI
+  settings page.
+
 * Updated arangosync to v2.9.0-preview-6.
 
 * Fixed BTS-811 in which there was an incongruence between data being
