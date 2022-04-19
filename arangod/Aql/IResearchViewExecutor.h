@@ -317,11 +317,13 @@ class IndexReadBuffer {
   }
 
   auto getMaterializeRange(size_t skip) const noexcept {
-    if (_rows.size() > skip) {
-      auto start = _rows.begin() + skip;
-      return std::span(start, _rows.end());
-    }
-    return std::span(_rows.end(), _rows.end());
+    auto start = _rows.size() > skip ?
+      _rows.begin() + skip : _rows.end();
+    // if (_rows.size() > skip) {
+    //  auto start = _rows.begin() + skip;
+    //  return std::span(start, _rows.end());
+    //}
+    return std::span{start, _rows.end()};
   }
 
   void setStoredValue(size_t idx, irs::bytes_ref value) {
