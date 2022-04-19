@@ -83,7 +83,7 @@
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
-#include "RocksDBEngine/RocksDBSha256Checksum.h"
+#include "RocksDBEngine/RocksDBChecksumEnv.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBUpgrade.h"
@@ -265,6 +265,11 @@ RocksDBEngine::RocksDBEngine(Server& server)
 }
 
 RocksDBEngine::~RocksDBEngine() { shutdownRocksDBInstance(); }
+
+std::unique_ptr<rocksdb::Env> RocksDBEngine::NewChecksumEnv(
+    rocksdb::Env* base_env, std::string const& path) {
+  return std::make_unique<arangodb::checksum::ChecksumEnv>(base_env, path);
+}
 
 /// shuts down the RocksDB instance. this is called from unprepare
 /// and the dtor
@@ -538,7 +543,7 @@ void RocksDBEngine::collectOptions(
                       arangodb::options::Flags::OnSingle,
                       arangodb::options::Flags::Uncommon))
       .setIntroducedIn(30604)
-      .setDeprecatedIn(30100);
+      .setDeprecatedIn(31000);
 
   options->addOption(
       "--rocksdb.wal-archive-size-limit",
@@ -693,8 +698,9 @@ void RocksDBEngine::start() {
   auto const& opts = server().getFeature<arangodb::RocksDBOptionFeature>();
 
   rocksdb::TransactionDBOptions transactionOptions;
-  // number of locks per column_family
-  transactionOptions.num_stripes = NumberOfCores::getValue();
+  // num_stripes must be at least 1
+  transactionOptions.num_stripes =
+      std::max(size_t(1), static_cast<size_t>(opts._transactionLockStripes));
   transactionOptions.transaction_lock_timeout = opts._transactionLockTimeout;
 
   _options.allow_fallocate = opts._allowFAllocate;
@@ -795,8 +801,25 @@ void RocksDBEngine::start() {
   _options.compaction_readahead_size =
       static_cast<size_t>(opts._compactionReadaheadSize);
 
+  if (_createShaFiles) {
+    _checksumEnv = NewChecksumEnv(rocksdb::Env::Default(), _path);
+    _options.env = _checksumEnv.get();
+    static_cast<checksum::ChecksumEnv*>(_checksumEnv.get())
+        ->getHelper()
+        ->checkMissingShaFiles();  // this works even if done before
+                                   // configureEnterpriseRocksDBOptions() is
+                                   // called when tehre's encryption, because
+                                   // checkMissingShafiles() only looks for
+                                   // existing sst files without their sha files
+                                   // in the directory and writes the missing
+                                   // sha files.
+  } else {
+    _options.env = rocksdb::Env::Default();
+  }
+
 #ifdef USE_ENTERPRISE
   configureEnterpriseRocksDBOptions(_options, createdEngineDir);
+
 #endif
 
   _options.env->SetBackgroundThreads(static_cast<int>(opts._numThreadsHigh),
@@ -870,17 +893,6 @@ void RocksDBEngine::start() {
     _options.avoid_flush_during_recovery = true;
   } else {
     _options.max_open_files = -1;
-  }
-
-  if (_createShaFiles) {
-    auto shaFileManager = std::make_shared<RocksDBShaFileManager>(_path);
-    // Register checksum factory
-    _options.file_checksum_gen_factory =
-        std::make_shared<RocksDBSha256ChecksumFactory>(shaFileManager);
-    // Do an initial check in the database directory for missing SHA checksum
-    // files
-    shaFileManager->checkMissingShaFiles();
-    _options.listeners.push_back(std::move(shaFileManager));
   }
 
   // WAL_ttl_seconds needs to be bigger than the sync interval of the count
@@ -2902,9 +2914,8 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     for (VPackSlice it : VPackArrayIterator(slice)) {
       // we found a collection that is still active
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
-      auto uniqCol =
-          std::make_shared<arangodb::LogicalCollection>(*vocbase, it, false);
-      auto collection = uniqCol.get();
+
+      auto collection = vocbase->createCollectionObject(it, /*isAStub*/ false);
       TRI_ASSERT(collection != nullptr);
 
       auto phy = static_cast<RocksDBCollection*>(collection->getPhysical());
@@ -2917,7 +2928,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
             << "': " << r.errorMessage();
       }
 
-      StorageEngine::registerCollection(*vocbase, uniqCol);
+      StorageEngine::registerCollection(*vocbase, collection);
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)
           << "added document collection '" << collection->name() << "'";
     }
@@ -2934,12 +2945,18 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   }
 }
 
+DECLARE_GAUGE(rocksdb_cache_active_tables, uint64_t,
+              "rocksdb_cache_active_tables");
 DECLARE_GAUGE(rocksdb_cache_allocated, uint64_t, "rocksdb_cache_allocated");
 DECLARE_GAUGE(rocksdb_cache_hit_rate_lifetime, uint64_t,
               "rocksdb_cache_hit_rate_lifetime");
 DECLARE_GAUGE(rocksdb_cache_hit_rate_recent, uint64_t,
               "rocksdb_cache_hit_rate_recent");
 DECLARE_GAUGE(rocksdb_cache_limit, uint64_t, "rocksdb_cache_limit");
+DECLARE_GAUGE(rocksdb_cache_unused_memory, uint64_t,
+              "rocksdb_cache_unused_memory");
+DECLARE_GAUGE(rocksdb_cache_unused_tables, uint64_t,
+              "rocksdb_cache_unused_tables");
 DECLARE_GAUGE(rocksdb_actual_delayed_write_rate, uint64_t,
               "rocksdb_actual_delayed_write_rate");
 DECLARE_GAUGE(rocksdb_background_errors, uint64_t, "rocksdb_background_errors");
@@ -3188,9 +3205,13 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
       server().getFeature<CacheManagerFeature>().manager();
   if (manager != nullptr) {
     // cache turned on
+    cache::Manager::MemoryStats stats = manager->memoryStats();
     auto rates = manager->globalHitRates();
-    builder.add("cache.limit", VPackValue(manager->globalLimit()));
-    builder.add("cache.allocated", VPackValue(manager->globalAllocation()));
+    builder.add("cache.limit", VPackValue(stats.globalLimit));
+    builder.add("cache.allocated", VPackValue(stats.globalAllocation));
+    builder.add("cache.active-tables", VPackValue(stats.activeTables));
+    builder.add("cache.unused-memory", VPackValue(stats.spareAllocation));
+    builder.add("cache.unused-tables", VPackValue(stats.spareTables));
     // handle NaN
     builder.add("cache.hit-rate-lifetime",
                 VPackValue(rates.first >= 0.0 ? rates.first : 0.0));
@@ -3200,6 +3221,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     // cache turned off
     builder.add("cache.limit", VPackValue(0));
     builder.add("cache.allocated", VPackValue(0));
+    builder.add("cache.active-tables", VPackValue(0));
+    builder.add("cache.unused-memory", VPackValue(0));
+    builder.add("cache.unused-tables", VPackValue(0));
     // handle NaN
     builder.add("cache.hit-rate-lifetime", VPackValue(0));
     builder.add("cache.hit-rate-recent", VPackValue(0));

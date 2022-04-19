@@ -35,7 +35,8 @@ class Transaction;
 namespace arangodb {
 namespace cache {
 class Cache;
-}
+class Manager;
+}  // namespace cache
 
 class LogicalCollection;
 class ManagedDocumentResult;
@@ -46,15 +47,13 @@ class LocalDocumentId;
 
 class RocksDBCollection final : public RocksDBMetaCollection {
   friend class RocksDBEngine;
-  friend class RocksDBFulltextIndex;
-  friend class RocksDBVPackIndex;
 
- public:
-  explicit RocksDBCollection(LogicalCollection& collection,
-                             arangodb::velocypack::Slice const& info);
   RocksDBCollection(LogicalCollection& collection,
                     PhysicalCollection const*);  // use in cluster only!!!!!
 
+ public:
+  explicit RocksDBCollection(LogicalCollection& collection,
+                             arangodb::velocypack::Slice info);
   ~RocksDBCollection();
 
   arangodb::Result updateProperties(VPackSlice const& slice,
@@ -82,6 +81,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   /// @brief Drop an index with the given iid.
   bool dropIndex(IndexId iid) override;
+
   std::unique_ptr<IndexIterator> getAllIterator(
       transaction::Methods* trx, ReadOwnWrites readOwnWrites) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(
@@ -209,7 +209,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                              bool withCache, ReadOwnWrites readOwnWrites) const;
 
   /// @brief create hash-cache
-  void createCache() const;
+  void setupCache() const;
   /// @brief destory hash-cache
   void destroyCache() const;
 
@@ -225,6 +225,11 @@ class RocksDBCollection final : public RocksDBMetaCollection {
  private:
   /// @brief cached ptr to primary index for performance, never delete
   RocksDBPrimaryIndex* _primaryIndex;
+
+  // we have to store the cacheManager's pointer here because the
+  // vocbase might already be destroyed at the time the destructor is executed
+  cache::Manager* _cacheManager;
+
   /// @brief document cache (optional)
   mutable std::shared_ptr<cache::Cache> _cache;
 

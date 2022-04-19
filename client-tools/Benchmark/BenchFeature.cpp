@@ -100,7 +100,6 @@ BenchFeature::BenchFeature(Server& server, int* result)
       _histogramNumIntervals(1000),
       _histogramIntervalSize(0.0),
       _percentiles({50.0, 80.0, 85.0, 90.0, 95.0, 99.0, 99.99}) {
-  requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
 
@@ -181,6 +180,13 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "whether we should create the database specified via the "
                      "server connection",
                      new BooleanParameter(&_createDatabase));
+
+  options
+      ->addOption("--create-collection",
+                  "whether we should create the collection specified via "
+                  "the --collection parameter",
+                  new BooleanParameter(&_createCollection))
+      .setIntroducedIn(31000);
 
   options->addOption("--duration",
                      "test for duration seconds instead of a fixed test count",

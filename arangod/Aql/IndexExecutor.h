@@ -111,9 +111,6 @@ class IndexExecutorInfos {
   std::vector<std::pair<VariableId, RegisterId>> const&
   getFilterVarsToRegister() const noexcept;
 
-  // setter
-  void setHasMultipleExpansions(bool flag);
-
   bool hasNonConstParts() const;
 
   bool isLateMaterialized() const noexcept {
@@ -170,16 +167,16 @@ class IndexExecutorInfos {
 
   /// @brief true if one of the indexes uses more than one expanded attribute,
   /// e.g. the index is on values[*].name and values[*].type
-  bool _hasMultipleExpansions;
+  bool const _hasMultipleExpansions;
 
-  bool _produceResult;
+  bool const _produceResult;
 
   /// @brief Counter how many documents have been returned/skipped
   ///        during one call. Retained during WAITING situations.
   ///        Needs to be 0 after we return a result.
-  bool _count;
+  bool const _count;
 
-  bool _oneIndexCondition;
+  bool const _oneIndexCondition;
 
   ReadOwnWrites const _readOwnWrites;
 };
@@ -190,14 +187,20 @@ class IndexExecutorInfos {
 class IndexExecutor {
  private:
   struct CursorStats {
-    size_t created = 0;
-    size_t rearmed = 0;
+    std::uint64_t cursorsCreated = 0;
+    std::uint64_t cursorsRearmed = 0;
+    std::uint64_t cacheHits = 0;
+    std::uint64_t cacheMisses = 0;
 
-    void incrCreated() noexcept;
-    void incrRearmed() noexcept;
+    void incrCursorsCreated(std::uint64_t value = 1) noexcept;
+    void incrCursorsRearmed(std::uint64_t value = 1) noexcept;
+    void incrCacheHits(std::uint64_t value = 1) noexcept;
+    void incrCacheMisses(std::uint64_t value = 1) noexcept;
 
-    size_t getAndResetCreated() noexcept;
-    size_t getAndResetRearmed() noexcept;
+    [[nodiscard]] std::uint64_t getAndResetCursorsCreated() noexcept;
+    [[nodiscard]] std::uint64_t getAndResetCursorsRearmed() noexcept;
+    [[nodiscard]] std::uint64_t getAndResetCacheHits() noexcept;
+    [[nodiscard]] std::uint64_t getAndResetCacheMisses() noexcept;
   };
 
   struct CursorReader {

@@ -29,6 +29,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Variable.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Builder.h>
@@ -38,15 +39,10 @@
 
 using namespace arangodb::aql;
 
-namespace {
-std::string_view const filterKey("filter");
-std::string_view const maxProjectionsKey("maxProjections");
-std::string_view const producesResultKey("producesResult");
-}  // namespace
-
 DocumentProducingNode::DocumentProducingNode(Variable const* outVariable)
     : _outVariable(outVariable),
       _count(false),
+      _useCache(true),
       _maxProjections(kMaxProjections) {
   TRI_ASSERT(_outVariable != nullptr);
 }
@@ -57,10 +53,11 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
           Variable::varFromVPack(plan->getAst(), slice, "outVariable")),
       _projections(arangodb::aql::Projections::fromVelocyPack(slice)),
       _count(false),
+      _useCache(true),
       _maxProjections(kMaxProjections) {
   TRI_ASSERT(_outVariable != nullptr);
 
-  VPackSlice p = slice.get(::filterKey);
+  VPackSlice p = slice.get(StaticStrings::Filter);
   if (!p.isNone()) {
     Ast* ast = plan->getAst();
     // new AstNode is memory-managed by the Ast
@@ -70,11 +67,14 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
   _count = arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "count",
                                                                false);
   _readOwnWrites = arangodb::basics::VelocyPackHelper::getBooleanValue(
-                       slice, "readOwnWrites", false)
+                       slice, StaticStrings::ReadOwnWrites, false)
                        ? ReadOwnWrites::yes
                        : ReadOwnWrites::no;
 
-  p = slice.get(::maxProjectionsKey);
+  _useCache = arangodb::basics::VelocyPackHelper::getBooleanValue(
+      slice, StaticStrings::UseCache, _useCache);
+
+  p = slice.get(StaticStrings::MaxProjections);
   if (!p.isNone()) {
     setMaxProjections(p.getNumber<size_t>());
   }
@@ -89,6 +89,7 @@ void DocumentProducingNode::cloneInto(ExecutionPlan* plan,
   c.copyCountFlag(this);
   c.setCanReadOwnWrites(canReadOwnWrites());
   c.setMaxProjections(maxProjections());
+  c.setUseCache(useCache());
 }
 
 void DocumentProducingNode::replaceVariables(
@@ -106,7 +107,7 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
   _projections.toVelocyPack(builder);
 
   if (_filter != nullptr) {
-    builder.add(VPackValue(filterKey));
+    builder.add(VPackValue(StaticStrings::Filter));
     _filter->toVelocyPack(builder, flags);
   }
 
@@ -114,18 +115,19 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
   builder.add("count", VPackValue(doCount()));
   if (doCount()) {
     TRI_ASSERT(_filter == nullptr);
-    builder.add(::producesResultKey, VPackValue(false));
+    builder.add(StaticStrings::ProducesResult, VPackValue(false));
   } else {
     builder.add(
-        ::producesResultKey,
+        StaticStrings::ProducesResult,
         VPackValue(_filter != nullptr ||
                    dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(
                        _outVariable)));
   }
-  builder.add("readOwnWrites",
+  builder.add(StaticStrings::ReadOwnWrites,
               VPackValue(_readOwnWrites == ReadOwnWrites::yes));
 
-  builder.add(::maxProjectionsKey, VPackValue(maxProjections()));
+  builder.add(StaticStrings::UseCache, VPackValue(useCache()));
+  builder.add(StaticStrings::MaxProjections, VPackValue(maxProjections()));
 }
 
 Variable const* DocumentProducingNode::outVariable() const {

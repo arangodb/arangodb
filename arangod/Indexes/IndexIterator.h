@@ -49,6 +49,9 @@
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/vocbase.h"
 
+#include <cstdint>
+#include <string_view>
+
 namespace arangodb {
 class Index;
 class LogicalCollection;
@@ -169,43 +172,58 @@ class IndexIterator {
 
   bool hasMore() const noexcept { return _hasMore; }
 
-  void reset();
+  void reset() {
+    // intentionally do not reset cache statistics here.
+    _hasMore = true;
+    resetImpl();
+  }
 
   /// @brief Calls cb for the next batchSize many elements
   /// returns true if there are more documents (hasMore) and false
   /// if there are none
   bool next(IndexIterator::LocalDocumentIdCallback const& callback,
-            uint64_t batchSize);
+            uint64_t batchSize) {
+    _hasMore = _hasMore && nextImpl(callback, batchSize);
+    return _hasMore;
+  }
 
   /// @brief Calls cb for the next batchSize many elements, complete documents
   /// returns true if there are more documents (hasMore) and false
   /// if there are none
   bool nextDocument(IndexIterator::DocumentCallback const& callback,
-                    uint64_t batchSize);
+                    uint64_t batchSize) {
+    _hasMore = _hasMore && nextDocumentImpl(callback, batchSize);
+    return _hasMore;
+  }
 
   /// @brief Calls cb for the next batchSize many elements, index-only
   /// projections returns true if there are more documents (hasMore) and false
   /// if there are none
   bool nextCovering(IndexIterator::CoveringCallback const& callback,
-                    uint64_t batchSize);
+                    uint64_t batchSize) {
+    _hasMore = _hasMore && nextCoveringImpl(callback, batchSize);
+    return _hasMore;
+  }
 
   /// @brief convenience function to retrieve all results
   void all(IndexIterator::LocalDocumentIdCallback const& callback) {
-    while (next(callback, 1000)) { /* intentionally empty */
+    while (next(callback, internalBatchSize)) {
+      // intentionally empty
     }
   }
 
   /// @brief convenience function to retrieve all results
-  void allDocuments(IndexIterator::DocumentCallback const& callback,
-                    uint64_t batchSize) {
-    while (nextDocument(callback, batchSize)) { /* intentionally empty */
+  void allDocuments(IndexIterator::DocumentCallback const& callback) {
+    while (nextDocument(callback, internalBatchSize)) {
+      // intentionally empty
     }
   }
 
   /// @brief convenience function to retrieve all results from a covering
   /// index
   void allCovering(IndexIterator::CoveringCallback const& callback) {
-    while (nextCovering(callback, 1000)) { /* intentionally empty */
+    while (nextCovering(callback, internalBatchSize)) {
+      // intentionally empty
     }
   }
 
@@ -217,7 +235,16 @@ class IndexIterator {
   /// the provided condition and would only produce an empty result
   [[nodiscard]] bool rearm(arangodb::aql::AstNode const* node,
                            arangodb::aql::Variable const* variable,
-                           IndexIteratorOptions const& opts);
+                           IndexIteratorOptions const& opts) {
+    TRI_ASSERT(canRearm());
+    // intentionally do not reset cache statistics here.
+    _hasMore = true;
+    if (rearmImpl(node, variable, opts)) {
+      reset();
+      return true;
+    }
+    return false;
+  }
 
   /// @brief skip the next toSkip many elements.
   ///        skipped will be increased by the amount of skipped elements
@@ -231,10 +258,15 @@ class IndexIterator {
   ///        throw on OUT_OF_MEMORY
   void skipAll(uint64_t& skipped);
 
-  virtual char const* typeName() const = 0;
+  virtual std::string_view typeName() const noexcept = 0;
 
   /// @brief whether or not the index iterator supports rearming
   virtual bool canRearm() const { return false; }
+
+  /// @brief returns cache hits (first) and misses (second) statistics, and
+  /// resets their values to 0
+  [[nodiscard]] std::pair<std::uint64_t, std::uint64_t>
+  getAndResetCacheStats() noexcept;
 
  protected:
   ReadOwnWrites canReadOwnWrites() const noexcept { return _readOwnWrites; }
@@ -243,18 +275,43 @@ class IndexIterator {
                          arangodb::aql::Variable const* variable,
                          IndexIteratorOptions const& opts);
 
-  virtual bool nextImpl(LocalDocumentIdCallback const& callback, size_t limit);
-  virtual bool nextDocumentImpl(DocumentCallback const& callback, size_t limit);
+  virtual bool nextImpl(LocalDocumentIdCallback const& callback,
+                        uint64_t limit);
+  virtual bool nextDocumentImpl(DocumentCallback const& callback,
+                                uint64_t limit);
 
   // extract index attribute values directly from the index while index scanning
-  virtual bool nextCoveringImpl(CoveringCallback const& callback, size_t limit);
+  virtual bool nextCoveringImpl(CoveringCallback const& callback,
+                                uint64_t limit);
 
   virtual void resetImpl() {}
 
   virtual void skipImpl(uint64_t count, uint64_t& skipped);
 
+  void incrCacheHits(std::uint64_t value = 1) noexcept { _cacheHits += value; }
+  void incrCacheMisses(std::uint64_t value = 1) noexcept {
+    _cacheMisses += value;
+  }
+  void incrCacheStats(bool found, std::uint64_t value = 1) noexcept {
+    if (found) {
+      _cacheHits += value;
+    } else {
+      _cacheMisses += value;
+    }
+  }
+
+  // the default batch size is 1000, i.e. up to 1000 elements will be
+  // fetched from an index in one go. this is an arbitrary value selected
+  // in the early days of ArangoDB and has proven to work since then.
+  static constexpr uint64_t internalBatchSize = 1000;
+
   LogicalCollection* _collection;
   transaction::Methods* _trx;
+
+  // statistics
+  std::uint64_t _cacheHits;
+  std::uint64_t _cacheMisses;
+
   bool _hasMore;
 
  private:
@@ -269,15 +326,17 @@ class EmptyIndexIterator final : public IndexIterator {
 
   ~EmptyIndexIterator() = default;
 
-  char const* typeName() const override { return "empty-index-iterator"; }
+  std::string_view typeName() const noexcept override {
+    return "empty-index-iterator";
+  }
 
-  bool nextImpl(LocalDocumentIdCallback const&, size_t) override {
+  bool nextImpl(LocalDocumentIdCallback const&, uint64_t) override {
     return false;
   }
-  bool nextDocumentImpl(DocumentCallback const&, size_t) override {
+  bool nextDocumentImpl(DocumentCallback const&, uint64_t) override {
     return false;
   }
-  bool nextCoveringImpl(CoveringCallback const&, size_t) override {
+  bool nextCoveringImpl(CoveringCallback const&, uint64_t) override {
     return false;
   }
 
@@ -303,17 +362,20 @@ class MultiIndexIterator final : public IndexIterator {
 
   ~MultiIndexIterator() = default;
 
-  char const* typeName() const override { return "multi-index-iterator"; }
+  std::string_view typeName() const noexcept override {
+    return "multi-index-iterator";
+  }
 
   /// @brief Get the next elements
   ///        If one iterator is exhausted, the next one is used.
   ///        If callback is called less than limit many times
   ///        all iterators are exhausted
-  bool nextImpl(LocalDocumentIdCallback const& callback, size_t limit) override;
+  bool nextImpl(LocalDocumentIdCallback const& callback,
+                uint64_t limit) override;
   bool nextDocumentImpl(DocumentCallback const& callback,
-                        size_t limit) override;
+                        uint64_t limit) override;
   bool nextCoveringImpl(CoveringCallback const& callback,
-                        size_t limit) override;
+                        uint64_t limit) override;
 
   /// @brief Reset the cursor
   ///        This will reset ALL internal iterators and start all over again
@@ -337,7 +399,7 @@ struct IndexIteratorOptions {
   /// Used when creating the condition required to build an iterator
   bool evaluateFCalls = true;
   /// @brief enable caching
-  bool enableCache = true;
+  bool useCache = true;
   /// @brief number of lookahead elements considered before computing the next
   /// intersection of the Z-curve with the search range
   size_t lookahead = 1;

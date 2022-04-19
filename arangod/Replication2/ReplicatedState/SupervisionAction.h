@@ -32,81 +32,91 @@
 
 namespace arangodb::replication2::replicated_state {
 
-struct ActionContext {
-  using LogTarget = replication2::agency::LogTarget;
-  using StatePlan = agency::Plan;
-
-  ActionContext(std::optional<LogTarget> logTarget,
-                std::optional<StatePlan> statePlan)
-      : logTarget(std::move(logTarget)), statePlan(std::move(statePlan)) {}
-
+template<typename T>
+struct ModifySomeType {
+  explicit ModifySomeType(std::optional<T> const& value) : value(value) {}
   template<typename F>
-  auto modifyLogTarget(F&& fn) {
-    static_assert(std::is_invocable_r_v<void, F, LogTarget&>);
-    TRI_ASSERT(logTarget.has_value())
-        << "modifying action expects target to be present";
-    modifiedTarget = true;
-    return std::invoke(std::forward<F>(fn), *logTarget);
+  auto modifyMyValue(F&& fn) {
+    static_assert(std::is_invocable_r_v<void, F, T&>);
+    TRI_ASSERT(value.has_value())
+        << "modifying action expects value to be present";
+    wasModified = true;
+    return std::invoke(std::forward<F>(fn), *value);
   }
 
-  template<typename F>
-  auto modifyStatePlan(F&& fn) {
-    static_assert(std::is_invocable_r_v<void, F, StatePlan&>);
-    TRI_ASSERT(statePlan.has_value())
-        << "modifying action expects target to be present";
-    modifiedPlan = true;
-    return std::invoke(std::forward<F>(fn), *statePlan);
+  template<typename... Vs>
+  void setMyValue(Vs&&... args) {
+    value.emplace(std::forward<Vs>(args)...);
+    wasModified = true;
   }
 
-  template<typename F>
-  auto modifyBoth(F&& fn) {
-    static_assert(std::is_invocable_r_v<void, F, StatePlan&, LogTarget&>);
-    TRI_ASSERT(statePlan.has_value())
-        << "modifying action expects state plan to be present";
-    TRI_ASSERT(logTarget.has_value())
-        << "modifying action expects target to be present";
-    modifiedPlan = true;
-    modifiedTarget = true;
-    return std::invoke(std::forward<F>(fn), *statePlan, *logTarget);
+  auto getMyValue() const -> T const& { return value.value(); }
+
+  std::optional<T> value;
+  bool wasModified = false;
+};
+
+template<typename... Ts>
+struct ModifyContext : private ModifySomeType<Ts>... {
+  explicit ModifyContext(std::optional<Ts>... values)
+      : ModifySomeType<Ts>(std::move(values))... {}
+
+  [[nodiscard]] auto hasModification() const noexcept -> bool {
+    return (forType<Ts>().wasModified || ...);
   }
 
-  void setLogTarget(LogTarget newTarget) {
-    logTarget.emplace(std::move(newTarget));
-    modifiedTarget = true;
+  template<typename... T, typename F>
+  auto modify(F&& fn) {
+    static_assert(std::is_invocable_v<F, T&...>);
+    TRI_ASSERT((forType<T>().value.has_value() && ...))
+        << "modifying action expects value to be present";
+    ((forType<T>().wasModified = true), ...);
+    return std::invoke(std::forward<F>(fn), (*forType<T>().value)...);
   }
 
-  void setStatePlan(StatePlan newPlan) {
-    statePlan.emplace(std::move(newPlan));
-    modifiedPlan = true;
+  template<typename... T, typename F>
+  auto modifyOrCreate(F&& fn) {
+    static_assert(std::is_invocable_v<F, T&...>);
+    (
+        [&] {
+          if (!forType<T>().value.has_value()) {
+            static_assert(std::is_default_constructible_v<T>);
+            forType<T>().value.emplace();
+          }
+        }(),
+        ...);
+    ((forType<T>().wasModified = true), ...);
+    return std::invoke(std::forward<F>(fn), (*forType<T>().value)...);
   }
 
-  auto hasModification() const noexcept -> bool {
-    return modifiedTarget || modifiedPlan;
+  template<typename T, typename... Args>
+  auto setValue(Args&&... args) {
+    return forType<T>().setMyValue(std::forward<Args>(args)...);
   }
 
-  auto hasLogTargetModification() const noexcept -> bool {
-    return modifiedTarget;
+  template<typename T>
+  auto getValue() const -> T const& {
+    return forType<T>().getMyValue();
   }
 
-  auto hasStatePlanModification() const noexcept -> bool {
-    return modifiedPlan;
-  }
-
-  auto getLogTarget() const noexcept -> LogTarget const& {
-    return logTarget.value();
-  }
-
-  auto getStatePlan() const noexcept -> StatePlan const& {
-    return statePlan.value();
+  template<typename T>
+  [[nodiscard]] auto hasModificationFor() const noexcept -> bool {
+    return forType<T>().wasModified;
   }
 
  private:
-  std::optional<LogTarget> logTarget;
-  bool modifiedTarget = false;
-  std::optional<StatePlan> statePlan;
-  bool modifiedPlan = false;
+  template<typename T>
+  auto forType() -> ModifySomeType<T>& {
+    return static_cast<ModifySomeType<T>&>(*this);
+  }
+  template<typename T>
+  auto forType() const -> ModifySomeType<T> const& {
+    return static_cast<ModifySomeType<T> const&>(*this);
+  }
 };
 
+using ActionContext = ModifyContext<replication2::agency::LogTarget,
+                                    agency::Plan, agency::Current::Supervision>;
 struct EmptyAction {
   void execute(ActionContext&) {}
 };
@@ -116,14 +126,36 @@ struct AddParticipantAction {
   StateGeneration generation;
 
   void execute(ActionContext& ctx) {
-    ctx.modifyBoth([&](agency::Plan& plan,
-                       replication2::agency::LogTarget& logTarget) {
-      logTarget.participants[participant] =
-          ParticipantFlags{.allowedInQuorum = false, .allowedAsLeader = false};
+    ctx.modify<agency::Plan, replication2::agency::LogTarget>(
+        [&](auto& plan, auto& logTarget) {
+          logTarget.participants[participant] = ParticipantFlags{
+              .allowedInQuorum = false, .allowedAsLeader = false};
 
-      plan.participants[participant].generation = plan.generation;
-      plan.generation.value += 1;
-    });
+          plan.participants[participant].generation = plan.generation;
+          plan.generation.value += 1;
+        });
+  }
+};
+
+struct RemoveParticipantFromLogTargetAction {
+  ParticipantId participant;
+
+  void execute(ActionContext& ctx) {
+    ctx.modify<agency::Plan, replication2::agency::LogTarget>(
+        [&](auto& plan, auto& logTarget) {
+          logTarget.participants.erase(participant);
+        });
+  }
+};
+
+struct RemoveParticipantFromStatePlanAction {
+  ParticipantId participant;
+
+  void execute(ActionContext& ctx) {
+    ctx.modify<agency::Plan, replication2::agency::LogTarget>(
+        [&](auto& plan, auto& logTarget) {
+          plan.participants.erase(participant);
+        });
   }
 };
 
@@ -132,8 +164,8 @@ struct AddStateToPlanAction {
   agency::Plan statePlan;
 
   void execute(ActionContext& ctx) {
-    ctx.setLogTarget(std::move(logTarget));
-    ctx.setStatePlan(std::move(statePlan));
+    ctx.setValue<agency::Plan>(std::move(statePlan));
+    ctx.setValue<replication2::agency::LogTarget>(std::move(logTarget));
   }
 };
 
@@ -142,17 +174,46 @@ struct UpdateParticipantFlagsAction {
   ParticipantFlags flags;
 
   void execute(ActionContext& ctx) {
-    ctx.modifyLogTarget([&](replication2::agency::LogTarget& target) {
-      target.participants.at(participant) = flags;
-    });
+    ctx.modify<replication2::agency::LogTarget>(
+        [&](auto& target) { target.participants.at(participant) = flags; });
   }
 };
 
-using Action = std::variant<EmptyAction, AddParticipantAction,
-                            AddStateToPlanAction, UpdateParticipantFlagsAction>;
+struct CurrentConvergedAction {
+  std::uint64_t version;
+
+  void execute(ActionContext& ctx) {
+    ctx.modifyOrCreate<replicated_state::agency::Current::Supervision>(
+        [&](auto& current) { current.version = version; });
+  }
+};
+
+struct SetLeaderAction {
+  std::optional<ParticipantId> leader;
+
+  void execute(ActionContext& ctx) {
+    ctx.modify<replication2::agency::LogTarget>(
+        [&](replication2::agency::LogTarget& target) {
+          target.leader = leader;
+        });
+  }
+};
+
+struct WaitForAction {
+  std::string message;
+  void execute(ActionContext& ctx) {}
+};
+
+using Action =
+    std::variant<EmptyAction, AddParticipantAction,
+                 RemoveParticipantFromLogTargetAction,
+                 RemoveParticipantFromStatePlanAction, AddStateToPlanAction,
+                 UpdateParticipantFlagsAction, CurrentConvergedAction,
+                 SetLeaderAction, WaitForAction>;
 
 auto execute(LogId id, DatabaseID const& database, Action action,
              std::optional<agency::Plan> state,
+             std::optional<agency::Current::Supervision> currentSupervision,
              std::optional<replication2::agency::LogTarget> log,
              arangodb::agency::envelope envelope) -> arangodb::agency::envelope;
 

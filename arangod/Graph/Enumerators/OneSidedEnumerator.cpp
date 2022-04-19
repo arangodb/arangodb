@@ -102,15 +102,16 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
   // Pull next element from Queue
   // Do 1 step search
   TRI_ASSERT(!_queue.isEmpty());
-  if (!_queue.hasProcessableElement()) {
-    std::vector<Step*> looseEnds = _queue.getLooseEnds();
-    futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
+  if (!_queue.firstIsVertexFetched()) {
+    std::vector<Step*> looseEnds = _queue.getStepsWithoutFetchedVertex();
+    futures::Future<std::vector<Step*>> futureEnds =
+        _provider.fetchVertices(looseEnds);
 
     // Will throw all network errors here
-    auto&& preparedEnds = futureEnds.get();
+    std::vector<Step*> preparedEnds = std::move(futureEnds.get());
 
     TRI_ASSERT(preparedEnds.size() != 0);
-    TRI_ASSERT(_queue.hasProcessableElement());
+    TRI_ASSERT(_queue.firstIsVertexFetched());
   }
 
   auto tmp = _queue.pop();
@@ -143,6 +144,16 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
   }
 
   if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
+    if (!step.edgeFetched()) {
+      // NOTE: The step we have should be the first, s.t. we are guaranteed
+      // to work on it, as the ordering here gives the priority to the Provider
+      // in how important it is to get responses for a particular step.
+      std::vector<Step*> stepsToFetch{&step};
+      _queue.getStepsWithoutFetchedEdges(stepsToFetch);
+      TRI_ASSERT(!stepsToFetch.empty());
+      _provider.fetchEdges(stepsToFetch);
+      TRI_ASSERT(step.edgeFetched());
+    }
     _provider.expand(step, posPrevious,
                      [&](Step n) -> void { _queue.append(n); });
   }
@@ -196,7 +207,7 @@ auto OneSidedEnumerator<Configuration>::getNextPath()
   while (!isDone()) {
     searchMoreResults();
 
-    while (!_results.empty()) {
+    if (!_results.empty()) {
       auto step = std::move(_results.back());
       _results.pop_back();
       return std::make_unique<ResultPathType>(step, _provider, _interior);
@@ -210,6 +221,7 @@ void OneSidedEnumerator<Configuration>::searchMoreResults() {
   while (_results.empty() &&
          !searchDone()) {  // TODO: check && !_queue.isEmpty()
     _resultsFetched = false;
+
     computeNeighbourhoodOfNextVertex();
   }
 
@@ -228,7 +240,7 @@ bool OneSidedEnumerator<Configuration>::skipPath() {
   while (!isDone()) {
     searchMoreResults();
 
-    while (!_results.empty()) {
+    if (!_results.empty()) {
       // just drop one result for skipping
       _results.pop_back();
       return true;
@@ -247,16 +259,16 @@ auto OneSidedEnumerator<Configuration>::fetchResults() -> void {
   if (!_resultsFetched && !_results.empty()) {
     std::vector<Step*> looseEnds{};
 
-    for (auto& vertex : _results) {
-      if (!vertex.isProcessable()) {
-        looseEnds.emplace_back(&vertex);
+    for (auto& step : _results) {
+      if (!step.vertexFetched()) {
+        looseEnds.emplace_back(&step);
       }
     }
 
     if (!looseEnds.empty()) {
       // Will throw all network errors here
       futures::Future<std::vector<Step*>> futureEnds =
-          _provider.fetch(looseEnds);
+          _provider.fetchVertices(looseEnds);
       futureEnds.get();
       // Notes for the future:
       // Vertices are now fetched. Think about other less-blocking and
@@ -282,9 +294,7 @@ auto OneSidedEnumerator<Configuration>::stealStats() -> aql::TraversalStats {
   _stats += _provider.stealStats();
 
   auto t = _stats;
-  // Placement new of stats, do not reallocate space.
-  _stats.~TraversalStats();
-  new (&_stats) aql::TraversalStats{};
+  _stats.clear();
   return t;
 }
 
