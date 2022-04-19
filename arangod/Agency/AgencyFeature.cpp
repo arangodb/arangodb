@@ -235,11 +235,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   // Check Timeouts
-  if (_minElectionTimeout <= 0.) {
-    LOG_TOPIC("facb6", FATAL, Logger::AGENCY)
-        << "agency.election-timeout-min must not be negative!";
-    FATAL_ERROR_EXIT();
-  } else if (_minElectionTimeout < 0.15) {
+  if (_minElectionTimeout < 0.15) {
     LOG_TOPIC("0cce9", WARN, Logger::AGENCY)
         << "very short agency.election-timeout-min!";
   }

@@ -339,11 +339,11 @@ struct NumericParameter : public Parameter {
   }
 
   ValueType* ptr;
-  ValueType base;
-  ValueType minValue;
-  ValueType maxValue;
-  bool minInclusive;
-  bool maxInclusive;
+  ValueType base = 1;
+  ValueType minValue = std::numeric_limits<ValueType>::min();
+  ValueType maxValue = std::numeric_limits<ValueType>::max();
+  bool minInclusive = true;
+  bool maxInclusive = true;
 };
 
 // concrete int16 number value type
