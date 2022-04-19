@@ -24,6 +24,8 @@
 #pragma once
 
 #include "Basics/ErrorCode.h"
+#include "Inspection/VPack.h"
+#include "Inspection/Transformers.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedState/StateCommon.h"
 
@@ -87,7 +89,36 @@ struct Current {
   std::unordered_map<ParticipantId, ParticipantStatus> participants;
 
   struct Supervision {
-    std::uint64_t version;
+    using clock = std::chrono::system_clock;
+
+    std::optional<std::uint64_t> version;
+
+    enum StatusCode {
+      kLogNotCreated,
+      kLogPlanNotAvailable,
+      kLogCurrentNotAvailable,
+      kServerSnapshotMissing,
+      kInsufficientSnapshotCoverage,
+      kLogParticipantNotYetGone,
+    };
+
+    struct StatusMessage {
+      std::optional<std::string> message;
+      StatusCode code;
+      std::optional<ParticipantId> participant;
+
+      StatusMessage() = default;
+      StatusMessage(StatusCode code, std::optional<ParticipantId> participant)
+          : code(code), participant(std::move(participant)) {}
+
+      friend auto operator==(StatusMessage const&,
+                             StatusMessage const&) noexcept -> bool = default;
+    };
+
+    using StatusReport = std::vector<StatusMessage>;
+
+    std::optional<StatusReport> statusReport;
+    std::optional<clock::time_point> lastTimeModified;
 
     void toVelocyPack(velocypack::Builder& builder) const;
     [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Supervision;
@@ -101,6 +132,20 @@ struct Current {
       -> bool = default;
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Current;
+};
+
+using StatusCode = Current::Supervision::StatusCode;
+using StatusMessage = Current::Supervision::StatusMessage;
+using StatusReport = Current::Supervision::StatusReport;
+
+auto to_string(StatusCode) noexcept -> std::string_view;
+
+struct StatusCodeStringTransformer {
+  using SerializedType = std::string;
+  auto toSerialized(StatusCode source, std::string& target) const
+      -> inspection::Status;
+  auto fromSerialized(std::string const& source, StatusCode& target) const
+      -> inspection::Status;
 };
 
 struct Target {
@@ -119,6 +164,8 @@ struct Target {
   LogConfig config;
   std::optional<std::uint64_t> version;
 
+  struct Supervision {};
+
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Target;
 };
@@ -131,7 +178,19 @@ struct State {
 
 template<class Inspector>
 auto inspect(Inspector& f, Current::Supervision& x) {
-  return f.object(x).fields(f.field("version", x.version));
+  return f.object(x).fields(
+      f.field("version", x.version),
+      f.field("lastTimeModified", x.lastTimeModified)
+          .transformWith(inspection::TimeStampTransformer{}),
+      f.field("statusReport", x.statusReport));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, Current::Supervision::StatusMessage& x) {
+  return f.object(x).fields(
+      f.field("message", x.message),
+      f.field("code", x.code).transformWith(StatusCodeStringTransformer{}),
+      f.field("participant", x.participant));
 }
 
 }  // namespace arangodb::replication2::replicated_state::agency

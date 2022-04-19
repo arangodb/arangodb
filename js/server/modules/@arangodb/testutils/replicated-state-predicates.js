@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const SH = require("@arangodb/testutils/replicated-state-helper");
+const _ = require("lodash");
 
 const isError = function (value) {
   return value instanceof Error;
@@ -100,6 +101,10 @@ const replicatedStateVersionConverged = function (database, logId, expectedVersi
       return Error(`Expected version ${expectedVersion}, found version ${supervision.value}`);
     }
 
+    if (supervision.statusReport !== undefined && supervision.statusReport.length !== 0) {
+      return Error(`Still errors left in status report`);
+    }
+
     return true;
   };
 };
@@ -115,7 +120,64 @@ const replicatedStateTargetLeaderIs = function (database, stateId, expectedLeade
   };
 };
 
+const replicatedStateSupervisionStatus = function (database, stateId, errors, exactList = false) {
+  return function () {
+    const {current} = SH.readReplicatedStateAgency(database, stateId);
+    if (current === undefined || current.supervision === undefined) {
+      return Error(`Current/supervision is not yet defined for ${stateId}`);
+    }
+
+    const supervision = current.supervision;
+    if (supervision.statusReport === undefined) {
+      return Error(`Missing status report.`);
+    }
+
+    const findError = function (err) {
+      for (const e of supervision.statusReport) {
+        if (_.isEqual(e, err)) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    for (const err of errors) {
+      if (!findError(err)) {
+        return Error(`Error ${JSON.stringify(err)} missing from status report`);
+      }
+    }
+
+    if (exactList && supervision.statusReport.length !== errors.length) {
+      return Error(`Extraneous errors in supervision report`);
+    }
+    return true;
+  };
+};
+
+const replicatedStateServerIsGone = function (database, stateId, serverId) {
+  return function () {
+    const {plan} = SH.readReplicatedStateAgency(database, stateId);
+    if (plan.participants[serverId] !== undefined) {
+      return Error(`Server ${serverId} still present in State/Plan`);
+    }
+    return true;
+  };
+};
+
+const replicatedStateStatusAvailable = function (database, stateId) {
+  return function () {
+    const report = SH.getReplicatedStateStatus(database, stateId);
+    if (report === undefined) {
+      return Error(`Status report for replicated state ${database}/${stateId} not yet available`);
+    }
+    return true;
+  };
+};
+
+exports.replicatedStateSupervisionStatus = replicatedStateSupervisionStatus;
 exports.replicatedStateIsReady = replicatedStateIsReady;
 exports.serverReceivedSnapshotGeneration = serverReceivedSnapshotGeneration;
 exports.replicatedStateVersionConverged = replicatedStateVersionConverged;
 exports.replicatedStateTargetLeaderIs = replicatedStateTargetLeaderIs;
+exports.replicatedStateServerIsGone = replicatedStateServerIsGone;
+exports.replicatedStateStatusAvailable = replicatedStateStatusAvailable;

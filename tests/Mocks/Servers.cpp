@@ -27,7 +27,6 @@
 
 #include "Agency/AgencyStrings.h"
 #include "Agency/AsyncAgencyComm.h"
-#include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -39,6 +38,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Basics/StringUtils.h"
+#include "Basics/TimeString.h"
 #include "Basics/files.h"
 #include "Cluster/ActionDescription.h"
 #include "Cluster/AgencyCache.h"
