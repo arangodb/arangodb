@@ -95,9 +95,9 @@ void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       ->addOption("--transaction.streaming-idle-timeout",
                   "idle timeout for streaming "
                   "transactions in seconds",
-                  new DoubleParameter{.ptr = &_streamingIdleTimeout,
-                                      .minValue = 0.0,
-                                      .maxValue = maxStreamingIdleTimeout},
+                  new DoubleParameter(&_streamingIdleTimeout, /*base*/ 1.0,
+                                      /*minValue*/ 0.0,
+                                      /*maxValue*/ maxStreamingIdleTimeout),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,

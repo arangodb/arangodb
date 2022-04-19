@@ -80,18 +80,16 @@ void ReplicatedLogFeature::collectOptions(
       "--replicatedlog.threshold-network-batch-size",
       "send a batch of log updates early when threshold "
       "(in bytes) is exceeded",
-      new SizeTParameter{
-          .ptr = &_options->_thresholdNetworkBatchSize,
-          .minValue =
-              ReplicatedLogGlobalSettings::minThresholdNetworkBatchSize});
+      new SizeTParameter(
+          &_options->_thresholdNetworkBatchSize, /*base*/ 1, /*minValue*/
+          ReplicatedLogGlobalSettings::minThresholdNetworkBatchSize));
   options->addOption(
       "--replicatedlog.threshold-rocksdb-write-batch-size",
       "write a batch of log updates to RocksDB early "
       "when threshold (in bytes) is exceeded",
-      new SizeTParameter{
-          .ptr = &_options->_thresholdRocksDBWriteBatchSize,
-          .minValue =
-              ReplicatedLogGlobalSettings::minThresholdRocksDBWriteBatchSize});
+      new SizeTParameter(
+          &_options->_thresholdRocksDBWriteBatchSize, /*base*/ 1, /*minValue*/
+          ReplicatedLogGlobalSettings::minThresholdRocksDBWriteBatchSize));
 #endif
 }
 

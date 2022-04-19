@@ -446,13 +446,14 @@ void TtlFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "ttl.max-total-removes",
       "maximum number of documents to remove per invocation of the TTL thread",
-      new UInt64Parameter{.ptr = &_properties.maxTotalRemoves, .minValue = 1});
+      new UInt64Parameter(&_properties.maxTotalRemoves, /*base*/ 1,
+                          /*minValue*/ 1, /*maxValue*/ UINT64_MAX));
 
   options->addOption(
       "ttl.max-collection-removes",
       "maximum number of documents to remove per collection",
-      new UInt64Parameter{.ptr = &_properties.maxCollectionRemoves,
-                          .minValue = 1});
+      new UInt64Parameter(&_properties.maxCollectionRemoves, /*base*/ 1,
+                          /*minValue*/ 1, /*maxValue*/ UINT64_MAX));
 
   // the following option was obsoleted in 3.8
   options->addObsoleteOption(

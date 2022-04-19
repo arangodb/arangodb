@@ -263,7 +263,8 @@ void QueryRegistryFeature::collectOptions(
       ->addOption(
           "--query.max-runtime",
           "runtime threshold for AQL queries (in seconds, 0 = no limit)",
-          new DoubleParameter{.ptr = &_queryMaxRuntime, .minValue = 0.0})
+          new DoubleParameter(&_queryMaxRuntime, /*base*/ 1.0,
+                              /*minValue*/ 0.0))
       .setIntroducedIn(30607)
       .setIntroducedIn(30703);
 
@@ -341,7 +342,8 @@ void QueryRegistryFeature::collectOptions(
   options->addOption(
       "--query.optimizer-max-plans",
       "maximum number of query plans to create for a query",
-      new UInt64Parameter{.ptr = &_maxQueryPlans, .minValue = 1});
+      new UInt64Parameter(&_maxQueryPlans, /*base*/ 1, /*minValue*/ 1,
+                          /*maxValue*/ UINT64_MAX));
 
   options
       ->addOption("--query.max-nodes-per-callstack",
