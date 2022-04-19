@@ -1,6 +1,9 @@
 devel
 -----
 
+* FE-43: Simplify the workflow on the web view UI (Links page): allow for users
+  to view a single link or field with their properties at a time.
+
 * Updated arangosync to v2.9.0-preview-6.
 
 * Fixed BTS-811 in which there was an incongruence between data being
