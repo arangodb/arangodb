@@ -6,6 +6,8 @@ devel
   COLLECT itself from out of the KEEP part triggered an internal error. The
   case is detected properly now and handled with a descriptive error message.
 
+* Updated arangosync to v2.9.0-preview-6.
+
 * Fixed BTS-811 in which there was an incongruence between data being
   checksummed and data being written to `.sst` files, because checksumming 
   should have been made after the encryption of the data, not before it.
