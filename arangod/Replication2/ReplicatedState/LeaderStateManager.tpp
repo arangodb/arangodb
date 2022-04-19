@@ -152,6 +152,18 @@ void LeaderStateManager<S>::run() noexcept {
             return;
           }
           TRI_ASSERT(res.ok());
+          if (!res.ok()) {
+            THROW_ARANGO_EXCEPTION(res);
+          }
+        } catch (arangodb::basics::Exception const& e) {
+          if (e.code() ==
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED) {
+            return;
+          }
+          LOG_CTX("e73bd", FATAL, self->loggerContext)
+              << "Unexpected exception in leader startup procedure: "
+              << e.what();
+          FATAL_ERROR_EXIT();
         } catch (std::exception const& e) {
           LOG_CTX("e73bc", FATAL, self->loggerContext)
               << "Unexpected exception in leader startup procedure: "

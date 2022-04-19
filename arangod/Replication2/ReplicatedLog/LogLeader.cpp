@@ -1012,7 +1012,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::calculateCommitLag()
         std::chrono::duration<double, std::milli>>(
         std::chrono::steady_clock::now() - memtry->insertTp());
   } else {
-    TRI_ASSERT(_commitIndex == _inMemoryLog.getLastIndex())
+    TRI_ASSERT(_commitIndex == LogIndex{0} ||
+               _commitIndex == _inMemoryLog.getLastIndex())
         << "If there is no entry following the commitIndex the last index "
            "should be the commitIndex. _commitIndex = "
         << _commitIndex << ", lastIndex = " << _inMemoryLog.getLastIndex();

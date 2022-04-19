@@ -22,9 +22,9 @@
 
 #include "FailureOracleFeature.h"
 
-#include "Agency/TimeString.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/TimeString.h"
 #include "Basics/application-exit.h"
 #include "Basics/system-compiler.h"
 #include "Cluster/AgencyCache.h"

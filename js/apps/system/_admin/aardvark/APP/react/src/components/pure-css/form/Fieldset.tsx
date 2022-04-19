@@ -1,12 +1,12 @@
-import React, { ReactNode } from 'react';
-import styled from 'styled-components';
+import React, { ReactNode } from "react";
+import styled from "styled-components";
 
 const StyledLegend = styled.legend`
   font-size: 14px;
-  margin-bottom: 12px;
   border-bottom: none;
   line-height: normal;
   color: inherit;
+  margin: 12px;
 `;
 
 type FieldsetProps = {
@@ -14,10 +14,11 @@ type FieldsetProps = {
   legend?: string;
 };
 
-const Fieldset = ({ children, legend }: FieldsetProps) =>
+const Fieldset = ({ children, legend }: FieldsetProps) => (
   <fieldset>
     {legend ? <StyledLegend>{legend}</StyledLegend> : null}
     {children}
-  </fieldset>;
+  </fieldset>
+);
 
 export default Fieldset;

@@ -2557,6 +2557,27 @@ auto parseReplicatedLogAgency(Node const& root, std::string const& dbName,
     return std::nullopt;
   }
 }
+
+auto parseReplicatedStateAgency(Node const& root, Node const& targetNode,
+                                std::string const& dbName,
+                                std::string const& idString)
+    -> replication2::replicated_state::agency::State {
+  return replication2::replicated_state::agency::State{
+      .target = parseSomethingFromNode<
+          replication2::replicated_state::agency::Target>(targetNode),
+      .plan = parseIfExists<replication2::replicated_state::agency::Plan>(
+          root, aliases::plan()
+                    ->replicatedStates()
+                    ->database(dbName)
+                    ->state(idString)
+                    ->str(SkipComponents(1))),
+      .current = parseIfExists<replication2::replicated_state::agency::Current>(
+          root, aliases::current()
+                    ->replicatedStates()
+                    ->database(dbName)
+                    ->state(idString)
+                    ->str(SkipComponents(1)))};
+}
 }  // namespace
 
 void Supervision::checkReplicatedLogs() {
@@ -2663,6 +2684,27 @@ void Supervision::checkReplicatedLogs() {
   }
 }
 
+namespace {
+auto handleReplicatedState(Node const& snapshot, Node const& targetNode,
+                           std::string const& dbName,
+                           std::string const& idString,
+                           arangodb::agency::envelope envelope)
+    -> arangodb::agency::envelope try {
+  auto log = parseReplicatedLogAgency(snapshot, dbName, idString);
+  auto state =
+      parseReplicatedStateAgency(snapshot, targetNode, dbName, idString);
+
+  return replication2::replicated_state::executeCheckReplicatedState(
+      dbName, std::move(state), std::move(log), std::move(envelope));
+} catch (std::exception const& err) {
+  LOG_TOPIC("676d1", ERR, Logger::REPLICATION2)
+      << "Supervision caught exception while parsing "
+         "replicated state "
+      << dbName << "/" << idString << ": " << err.what();
+  return envelope;
+}
+}  // namespace
+
 void Supervision::checkReplicatedStates() {
   _lock.assertLockedByCurrentThread();
 
@@ -2678,70 +2720,8 @@ void Supervision::checkReplicatedStates() {
 
   for (auto const& [dbName, db] : targetNode->get().children()) {
     for (auto const& [idString, node] : db->children()) {
-      auto log = parseReplicatedLogAgency(snapshot(), dbName, idString);
-
-      auto state = replication2::replicated_state::agency::State{
-          .target = parseSomethingFromNode<
-              replication2::replicated_state::agency::Target>(*node),
-          .plan = parseIfExists<replication2::replicated_state::agency::Plan>(
-              snapshot(), aliases::plan()
-                              ->replicatedStates()
-                              ->database(dbName)
-                              ->state(idString)
-                              ->str(SkipComponents(1))),
-          .current =
-              parseIfExists<replication2::replicated_state::agency::Current>(
-                  snapshot(), aliases::current()
-                                  ->replicatedStates()
-                                  ->database(dbName)
-                                  ->state(idString)
-                                  ->str(SkipComponents(1)))};
-
-      auto action = std::invoke(
-          [&, &dbName = dbName, &idString = idString]()
-              -> std::optional<replication2::replicated_state::Action> {
-            try {
-              return replication2::replicated_state::checkReplicatedState(
-                  log, state);
-            } catch (std::exception const& err) {
-              LOG_TOPIC("676d1", ERR, Logger::REPLICATION2)
-                  << "Supervision caught exception in checkReplicatedLog "
-                     "for "
-                     "replicated log "
-                  << dbName << "/" << idString << ": " << err.what();
-              return std::nullopt;
-            }
-          });
-
-      if (action.has_value()) {
-        auto logTarget = std::invoke(
-            [&]() -> std::optional<replication2::agency::LogTarget> {
-              if (log.has_value()) {
-                return std::move(log->target);
-              }
-              return std::nullopt;
-            });
-        auto statePlan = std::invoke(
-            [&]()
-                -> std::optional<replication2::replicated_state::agency::Plan> {
-              if (state.plan.has_value()) {
-                return std::move(*state.plan);
-              }
-              return std::nullopt;
-            });
-        auto stateCurrent = std::invoke(
-            [&]() -> std::optional<replication2::replicated_state::agency::
-                                       Current::Supervision> {
-              if (state.current.has_value() &&
-                  state.current->supervision.has_value()) {
-                return std::move(*state.current->supervision);
-              }
-              return std::nullopt;
-            });
-        envelope = execute(state.target.id, dbName, *action,
-                           std::move(statePlan), std::move(stateCurrent),
-                           std::move(logTarget), std::move(envelope));
-      }
+      envelope = handleReplicatedState(snapshot(), *node, dbName, idString,
+                                       std::move(envelope));
     }
   }
 
