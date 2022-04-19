@@ -101,10 +101,9 @@ const updateReplicatedStateTarget = function (database, stateId, callback) {
   global.ArangoAgency.increaseVersion(`Target/Version`);
 };
 
-const createReplicatedStateTarget = function (database, targetConfig, type) {
+const createReplicatedStateTargetWithServers = function (database, targetConfig, type, servers) {
   const stateId = LH.nextUniqueLogId();
 
-  const servers = _.sampleSize(LH.dbservers, targetConfig.replicationFactor);
   let participants = {};
   for (const server of servers) {
     participants[server] = {};
@@ -127,7 +126,21 @@ const createReplicatedStateTarget = function (database, targetConfig, type) {
   LH.waitFor(spreds.replicatedStateIsReady(database, stateId, servers));
   const leader = LH.getReplicatedLogLeaderPlan(database, stateId).leader;
   const followers = _.difference(servers, [leader]);
-  return {stateId, servers, leader, followers};
+  const others = _.difference(LH.dbservers, servers);
+  return {stateId, servers, leader, followers, others};
+};
+
+const getReplicatedStateStatus = function (database, stateId) {
+  const {current} = readReplicatedStateAgency(database, stateId);
+  if (current === undefined || current.supervision === undefined || current.supervision.statusReport === undefined) {
+    return undefined;
+  }
+  return current.supervision.statusReport;
+};
+
+const createReplicatedStateTarget = function (database, targetConfig, type) {
+  const servers = _.sampleSize(LH.dbservers, targetConfig.replicationFactor);
+  return createReplicatedStateTargetWithServers(database, targetConfig, type, servers);
 };
 
 const getReplicatedStateLeaderTarget = function (database, logId) {
@@ -135,9 +148,11 @@ const getReplicatedStateLeaderTarget = function (database, logId) {
   return target.leader;
 };
 
+exports.createReplicatedStateTarget = createReplicatedStateTarget;
+exports.createReplicatedStateTargetWithServers = createReplicatedStateTargetWithServers;
+exports.getLocalStatus = getLocalStatus;
+exports.getReplicatedStateLeaderTarget = getReplicatedStateLeaderTarget;
+exports.getReplicatedStateStatus = getReplicatedStateStatus;
 exports.readReplicatedStateAgency = readReplicatedStateAgency;
 exports.updateReplicatedStatePlan = updateReplicatedStatePlan;
-exports.getLocalStatus = getLocalStatus;
-exports.createReplicatedStateTarget = createReplicatedStateTarget;
 exports.updateReplicatedStateTarget = updateReplicatedStateTarget;
-exports.getReplicatedStateLeaderTarget = getReplicatedStateLeaderTarget;

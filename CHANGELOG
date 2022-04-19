@@ -1,6 +1,9 @@
 devel
 -----
 
+* FE-43: Simplify the workflow on the web view UI (Links page): allow for users
+  to view a single link or field with their properties at a time.
+
 * Improve validation for variables used in the `KEEP` part of AQL COLLECT
   operations. Previously referring to a variable that was introduced by the
   COLLECT itself from out of the KEEP part triggered an internal error. The
