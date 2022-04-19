@@ -23,7 +23,6 @@
 
 #include "SortExecutor.h"
 
-
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/InputAqlItemRow.h"
@@ -39,12 +38,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
-  // dum di dum di dum
-   // wuit
-  // testi
-  // grrr
-// more wut
-/// @brief OurLessThan
+// custom AqlValue-aware comparator for sorting
 class OurLessThan {
  public:
   OurLessThan(velocypack::Options const* options, AqlItemMatrix const& input,
