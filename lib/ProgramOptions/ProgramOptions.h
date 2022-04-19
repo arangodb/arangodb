@@ -168,7 +168,8 @@ class ProgramOptions {
       std::string const& name, std::string const& description,
       std::unique_ptr<Parameter> parameter,
       std::underlying_type<Flags>::type flags = makeFlags(Flags::Default)) {
-    return addOption(name, description, std::move(parameter), flags);
+    addOption(Option(name, description, std::move(parameter), flags));
+    return getOption(name);
   }
 
   // adds an option to the program options. old API!
@@ -176,8 +177,8 @@ class ProgramOptions {
       std::string const& name, std::string const& description,
       Parameter* parameter,
       std::underlying_type<Flags>::type flags = makeFlags(Flags::Default)) {
-    return addOption(name, description, std::unique_ptr<Parameter>(parameter),
-                     flags);
+    addOption(name, description, std::unique_ptr<Parameter>(parameter), flags);
+    return getOption(name);
   }
 
   // adds a deprecated option that has no effect to the program options to not
