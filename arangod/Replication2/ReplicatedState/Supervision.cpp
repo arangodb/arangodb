@@ -150,10 +150,15 @@ auto checkStateAdded(SupervisionContext& ctx, RSA::State const& state) {
   auto id = state.target.id;
 
   if (!state.plan) {
-    auto statePlan = RSA::Plan{.id = state.target.id,
-                               .generation = StateGeneration{2},
-                               .properties = state.target.properties,
-                               .participants = {}};
+    auto statePlan =
+        RSA::Plan{.id = state.target.id,
+                  // use generation 2 here, because the initial
+                  // participants are written with generation 1 and
+                  // AddParticipant uses the value written here for new
+                  // participants and *then* increments the generation
+                  .generation = StateGeneration{2},
+                  .properties = state.target.properties,
+                  .participants = {}};
 
     auto logTarget =
         replication2::agency::LogTarget(id, {}, state.target.config);
