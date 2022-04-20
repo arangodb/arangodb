@@ -1553,7 +1553,7 @@ void SynchronizeShard::setState(ActionState state) {
       // timeout. if so, this does not count as an error
       bool isTimeoutExceeded = result().is(
           TRI_ERROR_REPLICATION_SHARD_SYNC_ATTEMPT_TIMEOUT_EXCEEDED);
-      if (!haveRequeued && isTimeoutExceeded) {
+      if (!haveRequeued && !isTimeoutExceeded) {
         // increase failure counter for this shard. if we have accumulated
         // x many failures in a row, the shard on the follower will be
         // dropped and completely rebuilt.
