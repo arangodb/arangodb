@@ -1,6 +1,11 @@
 v3.8.7 (XXXX-XX-XX)
 -------------------
 
+* Improve validation for variables used in the `KEEP` part of AQL COLLECT
+  operations. Previously referring to a variable that was introduced by the
+  COLLECT itself from out of the KEEP part triggered an internal error. The case
+  is detected properly now and handled with a descriptive error message.
+
 * Updated arangosync to v2.9.0.
 
 * Fix deadlocked shard synchronisations when planned shard leader has not yet
