@@ -28,7 +28,7 @@
 
 #include "Basics/debugging.h"
 #include "Basics/StaticStrings.h"
-#include "Agency/TimeString.h"
+#include "Basics/TimeString.h"
 
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
@@ -63,14 +63,25 @@ auto replicated_state::operator<<(std::ostream& os, StateGeneration g)
   return os << g.value;
 }
 
+auto StateGeneration::operator++() noexcept -> StateGeneration& {
+  ++value;
+  return *this;
+}
+
+auto StateGeneration::operator++(int) noexcept -> StateGeneration {
+  return StateGeneration{value++};
+}
+
 auto replicated_state::operator<<(std::ostream& os, SnapshotStatus const& ss)
     -> std::ostream& {
   return os << to_string(ss);
 }
 
 void SnapshotInfo::updateStatus(SnapshotStatus s) noexcept {
-  status = s;
-  timestamp = clock::now();
+  if (status != s) {
+    status = s;
+    timestamp = clock::now();
+  }
 }
 
 auto replicated_state::to_string(SnapshotStatus s) noexcept

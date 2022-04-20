@@ -35,10 +35,10 @@
 #include "Pregel/Utils.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Agency/TimeString.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/TimeString.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"

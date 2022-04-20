@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2021-2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -79,6 +79,13 @@ struct IReplicatedLeaderState : IReplicatedLeaderStateBase {
 
   [[nodiscard]] virtual auto resign() && noexcept
       -> std::unique_ptr<CoreType> = 0;
+
+  /**
+   * This hook is called after leader recovery is completed and the internal
+   * state has been updated. The underlying stream is guaranteed to have been
+   * initialized.
+   */
+  virtual void onSnapshotCompleted(){};
 
   // TODO make private
   std::shared_ptr<Stream> _stream;

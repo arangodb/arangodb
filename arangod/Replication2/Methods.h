@@ -169,6 +169,17 @@ struct ReplicatedStateMethods {
   virtual auto getLocalStatus(LogId) const
       -> futures::Future<replicated_state::StateStatus> = 0;
 
+  struct ParticipantSnapshotStatus {
+    replicated_state::SnapshotInfo status;
+    replicated_state::StateGeneration generation;
+  };
+
+  using GlobalSnapshotStatus =
+      std::unordered_map<ParticipantId, ParticipantSnapshotStatus>;
+
+  virtual auto getGlobalSnapshotStatus(LogId) const
+      -> futures::Future<ResultT<GlobalSnapshotStatus>> = 0;
+
   static auto createInstance(TRI_vocbase_t& vocbase)
       -> std::shared_ptr<ReplicatedStateMethods>;
 
@@ -182,5 +193,12 @@ struct ReplicatedStateMethods {
       LogId id, std::optional<ParticipantId> const& leaderId) const
       -> futures::Future<Result> = 0;
 };
+
+template<class Inspector>
+auto inspect(Inspector& f,
+             ReplicatedStateMethods::ParticipantSnapshotStatus& x) {
+  return f.object(x).fields(f.field("status", x.status),
+                            f.field("generation", x.generation));
+}
 
 }  // namespace arangodb::replication2

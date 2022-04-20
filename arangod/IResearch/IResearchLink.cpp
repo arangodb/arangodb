@@ -517,14 +517,10 @@ std::string const& IResearchLink::getShardName() const noexcept {
 }
 
 std::string IResearchLink::getCollectionName() const {
-  if (ServerState::instance()->isDBServer()) {
-    return _meta._collectionName;
-  }
   if (ServerState::instance()->isSingleServer()) {
     return std::to_string(_collection.id().id());
   }
-  TRI_ASSERT(false);
-  return {};
+  return _meta._collectionName;
 }
 
 void IResearchLink::insertMetrics() {

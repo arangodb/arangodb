@@ -215,7 +215,7 @@ const waitForReplicatedLogAvailable = function (id) {
       let status = db._replicatedLog(id).status();
       const leaderId = status.leaderId;
       if (leaderId !== undefined && status.participants !== undefined &&
-        status.participants[leaderId].connection.errorCode === 0 && status.participants[leaderId].response.role === "leader") {
+          status.participants[leaderId].connection.errorCode === 0 && status.participants[leaderId].response.role === "leader") {
         break;
       }
       console.info("replicated log not yet available");
@@ -242,7 +242,7 @@ const getServerProcessID = function (serverId) {
   return global.instanceInfo.arangods[pos].pid;
 };
 
-const stopServer = function (serverId) {
+const stopServerImpl = function (serverId) {
   console.log(`suspending server ${serverId}`);
   let result = require('internal').suspendExternal(getServerProcessID(serverId));
   if (!result) {
@@ -250,7 +250,7 @@ const stopServer = function (serverId) {
   }
 };
 
-const continueServer = function (serverId) {
+const continueServerImpl = function (serverId) {
   console.log(`continuing server ${serverId}`);
   let result = require('internal').continueExternal(getServerProcessID(serverId));
   if (!result) {
@@ -259,12 +259,12 @@ const continueServer = function (serverId) {
 };
 
 const continueServerWaitOk = function (serverId) {
-  continueServer(serverId);
+  continueServerImpl(serverId);
   waitFor(lpreds.serverHealthy(serverId));
 };
 
 const stopServerWaitFailed = function (serverId) {
-  stopServer(serverId);
+  stopServerImpl(serverId);
   waitFor(lpreds.serverFailed(serverId));
 };
 
@@ -365,6 +365,101 @@ const createReplicatedLog = function (database, targetConfig) {
   return {logId, servers, leader, term, followers};
 };
 
+
+const testHelperFunctions = function (database) {
+  let previousDatabase, databaseExisted = true;
+  let stoppedServers = {};
+
+  const stopServer = function (serverId) {
+    if (stoppedServers[serverId] !== undefined) {
+      throw new Error(`{serverId} already stopped`);
+    }
+    stopServerImpl(serverId);
+    stoppedServers[serverId] = true;
+  };
+
+  const stopServerWait = function (serverId) {
+    stopServer(serverId);
+    waitFor(lpreds.serverFailed(serverId));
+  };
+
+  const continueServer = function (serverId) {
+    if (stoppedServers[serverId] === undefined) {
+      throw new Error(`{serverId} not stopped`);
+    }
+    continueServerImpl(serverId);
+    delete stoppedServers[serverId];
+  };
+
+  const continueServerWait = function (serverId) {
+    continueServer(serverId);
+    waitFor(lpreds.serverHealthy(serverId));
+  };
+
+  const resumeAll = function () {
+    Object.keys(stoppedServers).forEach(function (key) {
+      continueServerWait(key);
+    });
+    stoppedServers = {};
+  };
+
+  const createTestDatabase = function () {
+    previousDatabase = db._name();
+    if (!_.includes(db._databases(), database)) {
+      db._createDatabase(database);
+      databaseExisted = false;
+    }
+    db._useDatabase(database);
+  };
+
+  const resetPreviousDatabase = function () {
+    db._useDatabase(previousDatabase);
+    if (!databaseExisted) {
+      db._dropDatabase(database);
+    }
+  };
+
+  const setUpAll = function () {
+    createTestDatabase();
+  };
+
+  const tearDownAll = function () {
+    resumeAll();
+    resetPreviousDatabase();
+  };
+
+  const setUpAnd = function (cb) {
+    return function (testName) {
+      registerAgencyTestBegin(testName);
+      cb(testName);
+    };
+  };
+  const setUp = setUpAnd(() => null);
+
+  const tearDownAnd = function (cb) {
+    return function (testName) {
+      registerAgencyTestEnd(testName);
+      resumeAll();
+      cb(testName);
+    };
+  };
+  const tearDown = tearDownAnd(() => null);
+
+  return {
+    stopServer,
+    stopServerWait,
+    continueServer,
+    continueServerWait,
+    resumeAll,
+    setUpAll,
+    tearDownAll,
+    setUp,
+    setUpAnd,
+    tearDown,
+    tearDownAnd
+  };
+};
+
 exports.waitFor = waitFor;
 exports.readAgencyValueAt = readAgencyValueAt;
 exports.createParticipantsConfig = createParticipantsConfig;
@@ -377,8 +472,8 @@ exports.replicatedLogUpdatePlanParticipantsConfigParticipants = replicatedLogUpd
 exports.replicatedLogSetPlanTerm = replicatedLogSetPlanTerm;
 exports.replicatedLogSetPlan = replicatedLogSetPlan;
 exports.replicatedLogDeletePlan = replicatedLogDeletePlan;
-exports.stopServer = stopServer;
-exports.continueServer = continueServer;
+exports.stopServer = stopServerImpl;
+exports.continueServer = continueServerImpl;
 exports.nextUniqueLogId = nextUniqueLogId;
 exports.registerAgencyTestBegin = registerAgencyTestBegin;
 exports.registerAgencyTestEnd = registerAgencyTestEnd;
@@ -397,3 +492,4 @@ exports.createReplicatedLog = createReplicatedLog;
 exports.checkRequestResult = checkRequestResult;
 exports.getServerUrl = getServerUrl;
 exports.getServerHealth = getServerHealth;
+exports.testHelperFunctions = testHelperFunctions;

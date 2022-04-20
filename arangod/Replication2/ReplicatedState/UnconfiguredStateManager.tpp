@@ -40,7 +40,7 @@ UnconfiguredStateManager<S>::UnconfiguredStateManager(
       _token(std::move(token)) {}
 
 template<typename S>
-void UnconfiguredStateManager<S>::run() {
+void UnconfiguredStateManager<S>::run() noexcept {
   _unconfiguredParticipant->waitForResign().thenFinal(
       [weak = _parent](futures::Try<futures::Unit>&& result) {
         TRI_ASSERT(result.valid());

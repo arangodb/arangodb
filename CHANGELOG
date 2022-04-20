@@ -1,6 +1,79 @@
 devel
 -----
 
+* FE-45: Added tooltips with helpful information to the options on the View UI
+  settings page.
+
+* FE-43: Simplify the workflow on the web view UI (Links page): allow for users
+  to view a single link or field with their properties at a time.
+
+* Improve validation for variables used in the `KEEP` part of AQL COLLECT
+  operations. Previously referring to a variable that was introduced by the
+  COLLECT itself from out of the KEEP part triggered an internal error. The
+  case is detected properly now and handled with a descriptive error message.
+
+* Updated arangosync to v2.9.0.
+
+* Updated arangosync to v2.9.0-preview-6.
+
+* Fixed BTS-811 in which there was an incongruence between data being
+  checksummed and data being written to `.sst` files, because checksumming 
+  should have been made after the encryption of the data, not before it.
+
+* Increase internal transaction lock timeout on followers during cluster
+  write operations. Although writes to the same keys on followers should be
+  serialized by the key locks held on the leader, it is still possible that
+  the global transaction lock striped mutex is a source of contention and 
+  that concurrent write operations time out while waiting to acquire this
+  global mutex. The lock timeout on followers is now significantly increased
+  to make this very unlikely.
+
+* Added startup option `--rocksdb.transaction-lock-stripes` to configure the
+  number of lock stripes to be used by RocksDB transactions. The option
+  defaults to the number of available cores, but is bumped to a value of
+  16 if the number of cores is lower.
+
+* Make all requests which are needed for shard resync at least medium
+  priority to improve getting-in-sync under load.
+
+* Added command line option to arangobench to disable implicit collection
+  creation. This allows one to run tests against a manually created and
+  configured collection.
+
+* Added an IO heartbeat which checks that the underlying volume is writable
+  with reasonable performance. The test is done every 15 seconds and can
+  be explicitly switched off. New metrics to give visibility if the test
+  fails.
+
+* Fix lock order in Agent::advanceCommitIndex for State's _logLock and
+  Agent's _waitForCV.
+
+* Fix deadlocked shard synchronisations when planned shard leader has
+  not yet taken over leadership.
+
+* Resync follower shard after a follower restart immediately and not lazily.
+
+* Unify the creation of normal and SmartGraph collections.
+
+  This unifies the code paths for creating collections for normal
+  collections and SmartGraph collections, so that the functionality is
+  centralized in one place. SmartGraph-specific code for validation and
+  collection creation has been moved to enterprise as well.
+
+* Make followers respond to synchronous replication requests with less data.
+  Specifically, followers will not build detailed results with _id, _key and
+  _rev for the inserted/modified/removed documents, which would be ignored 
+  by the leader anyway.
+
+* Updated arangosync to v2.9.0-preview-5.
+
+* Auto-regenerate exit code and error code files in non-maintainer mode, too.
+
+* Only show slowest optimizer rules in explain output for optimizer rules
+  that took a considerable amount of time (>= 0.0002 seconds). Previously
+  the slowest 5 optimizer rules were shown, regardless of how long they
+  took to execute and even if they executed sufficiently fast.
+
 * Updated arangosync to v2.9.0-preview-4.
 
 * Make the StatisticsFeature start after the NetworkFeature, so that any 

@@ -73,6 +73,35 @@ void QueueTracer<QueueImpl>::append(typename QueueImpl::Step step) {
 }
 
 template<class QueueImpl>
+bool QueueTracer<QueueImpl>::firstIsVertexFetched() const {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["firstIsVertexFetched"].addTiming(TRI_microtime() - start);
+  });
+  return _impl.firstIsVertexFetched();
+}
+
+template<class QueueImpl>
+void QueueTracer<QueueImpl>::getStepsWithoutFetchedEdges(
+    std::vector<Step*>& stepsToFetch) {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["getStepsWithoutFetchedEdges"].addTiming(TRI_microtime() - start);
+  });
+  _impl.getStepsWithoutFetchedEdges(stepsToFetch);
+}
+
+template<class QueueImpl>
+std::vector<typename QueueImpl::Step*>
+QueueTracer<QueueImpl>::getStepsWithoutFetchedVertex() {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["getStepsWithoutFetchedVertex"].addTiming(TRI_microtime() - start);
+  });
+  return _impl.getStepsWithoutFetchedVertex();
+}
+
+template<class QueueImpl>
 bool QueueTracer<QueueImpl>::hasProcessableElement() const {
   double start = TRI_microtime();
   // umpfh, this can extend _stats, thus requires mutability, may allocate

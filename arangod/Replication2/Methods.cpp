@@ -96,13 +96,21 @@ struct ReplicatedLogMethodsDBServer final
 
   auto getLogEntryByIndex(LogId id, LogIndex index) const
       -> futures::Future<std::optional<PersistingLogEntry>> override {
-    return vocbase.getReplicatedLogLeaderById(id)->readReplicatedEntryByIndex(
-        index);
+    auto entry = vocbase.getReplicatedLogById(id)
+                     ->getParticipant()
+                     ->copyInMemoryLog()
+                     .getEntryByIndex(index);
+    if (entry.has_value()) {
+      return entry->entry();
+    } else {
+      return std::nullopt;
+    }
   }
 
   auto slice(LogId id, LogIndex start, LogIndex stop) const
       -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
-    return vocbase.getReplicatedLogLeaderById(id)
+    return vocbase.getReplicatedLogById(id)
+        ->getParticipant()
         ->copyInMemoryLog()
         .getInternalIteratorRange(start, stop);
   }
@@ -110,9 +118,12 @@ struct ReplicatedLogMethodsDBServer final
   auto poll(LogId id, LogIndex index, std::size_t limit) const
       -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
     auto leader = vocbase.getReplicatedLogLeaderById(id);
-    return vocbase.getReplicatedLogLeaderById(id)->waitFor(index).thenValue(
-        [index, limit, leader = std::move(leader), self = shared_from_this()](
-            auto&&) -> std::unique_ptr<PersistedLogIterator> {
+    return vocbase.getReplicatedLogById(id)
+        ->getParticipant()
+        ->waitFor(index)
+        .thenValue([index, limit, leader = std::move(leader),
+                    self = shared_from_this()](
+                       auto&&) -> std::unique_ptr<PersistedLogIterator> {
           auto log = leader->copyInMemoryLog();
           return log.getInternalIteratorRange(index, index + limit);
         });
@@ -120,7 +131,8 @@ struct ReplicatedLogMethodsDBServer final
 
   auto tail(LogId id, std::size_t limit) const
       -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
-    auto log = vocbase.getReplicatedLogLeaderById(id)->copyInMemoryLog();
+    auto log =
+        vocbase.getReplicatedLogById(id)->getParticipant()->copyInMemoryLog();
     auto stop = log.getNextIndex();
     auto start = stop.saturatedDecrement(limit);
     return log.getInternalIteratorRange(start, stop);
@@ -128,7 +140,8 @@ struct ReplicatedLogMethodsDBServer final
 
   auto head(LogId id, std::size_t limit) const
       -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
-    auto log = vocbase.getReplicatedLogLeaderById(id)->copyInMemoryLog();
+    auto log =
+        vocbase.getReplicatedLogById(id)->getParticipant()->copyInMemoryLog();
     auto start = log.getFirstIndex();
     return log.getInternalIteratorRange(start, start + limit);
   }
@@ -889,6 +902,12 @@ struct ReplicatedStateDBServerMethods
     THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_NOT_IMPLEMENTED);
   }
 
+  auto getGlobalSnapshotStatus(LogId) const
+      -> futures::Future<ResultT<GlobalSnapshotStatus>> override {
+    // Only available on the coordinator
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_NOT_IMPLEMENTED);
+  }
+
   TRI_vocbase_t& vocbase;
 };
 
@@ -1009,6 +1028,39 @@ struct ReplicatedStateCoordinatorMethods
       -> futures::Future<Result> override {
     return replication2::agency::methods::replaceReplicatedSetLeader(
         vocbase, id, leaderId);
+  }
+
+  auto getGlobalSnapshotStatus(LogId id) const
+      -> futures::Future<ResultT<GlobalSnapshotStatus>> override {
+    AsyncAgencyComm ac;
+    auto f = ac.getValues(arangodb::cluster::paths::aliases::current()
+                              ->replicatedStates()
+                              ->database(vocbase.name())
+                              ->state(id),
+                          std::chrono::seconds{5});
+    return std::move(f).then([self = shared_from_this()](
+                                 futures::Try<AgencyReadResult>&& tryResult)
+                                 -> ResultT<GlobalSnapshotStatus> {
+      auto result =
+          basics::catchToResultT([&] { return std::move(tryResult.get()); });
+
+      if (result.fail()) {
+        return result.result();
+      }
+      if (result->value().isNone()) {
+        return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
+      }
+      auto current =
+          replicated_state::agency::Current::fromVelocyPack(result->value());
+
+      GlobalSnapshotStatus status;
+      for (auto const& [p, s] : current.participants) {
+        status[p] = ParticipantSnapshotStatus{.status = s.snapshot,
+                                              .generation = s.generation};
+      }
+
+      return status;
+    });
   }
 
   TRI_vocbase_t& vocbase;

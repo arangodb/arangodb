@@ -152,7 +152,8 @@ bool CreateCollection::first() {
     std::shared_ptr<LogicalCollection> col;
     OperationOptions options(ExecContext::current());
     res.reset(Collections::create(vocbase, options, shard, type, docket.slice(),
-                                  waitForRepl, enforceReplFact, false, col));
+                                  waitForRepl, enforceReplFact,
+                                  /*isNewDatabase*/ false, col));
     result(res);
     if (col) {
       LOG_TOPIC("9db9a", DEBUG, Logger::MAINTENANCE)

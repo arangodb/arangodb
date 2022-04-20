@@ -70,19 +70,34 @@ auto arangodb::RestReplicatedStateHandler::handleGetRequest(
     replication2::ReplicatedStateMethods const& methods)
     -> arangodb::RestStatus {
   std::vector<std::string> const& suffixes = _request->suffixes();
-  if (suffixes.size() < 2 || suffixes[1] != "local-status") {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting _api/replicated-state/<state-id>/local-status");
-    return RestStatus::DONE;
-  }
+  if (suffixes.size() == 2) {
+    replication2::LogId logId{basics::StringUtils::uint64(suffixes[0])};
 
-  replication2::LogId logId{basics::StringUtils::uint64(suffixes[0])};
-  return waitForFuture(
-      methods.getLocalStatus(logId).thenValue([this](auto&& status) {
-        VPackBuilder buffer;
-        status.toVelocyPack(buffer);
-        generateOk(rest::ResponseCode::OK, buffer.slice());
-      }));
+    if (suffixes[1] == "local-status") {
+      return waitForFuture(
+          methods.getLocalStatus(logId).thenValue([this](auto&& status) {
+            VPackBuilder buffer;
+            status.toVelocyPack(buffer);
+            generateOk(rest::ResponseCode::OK, buffer.slice());
+          }));
+    } else if (suffixes[1] == "snapshot-status") {
+      return waitForFuture(methods.getGlobalSnapshotStatus(logId).thenValue(
+          [this](auto&& status) {
+            if (status.ok()) {
+              VPackBuilder buffer;
+              velocypack::serialize(buffer, status.get());
+              generateOk(rest::ResponseCode::OK, buffer.slice());
+            } else {
+              generateError(status.result());
+            }
+          }));
+    }
+  }
+  generateError(
+      rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+      "expecting "
+      "_api/replicated-state/<state-id>/[local-status|snapshot-status]");
+  return RestStatus::DONE;
 }
 
 auto arangodb::RestReplicatedStateHandler::handlePostRequest(

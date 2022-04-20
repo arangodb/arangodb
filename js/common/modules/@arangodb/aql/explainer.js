@@ -257,6 +257,9 @@ function printRules(rules, stats) {
     }
     return { name: key, time: stats.rules[key] };
   });
+  // filter out everything that was reasonably fast
+  times = times.filter((item) => item.time >= 0.0002);
+
   times.sort(function(l, r) {
     // highest cost first
     return r.time - l.time;
@@ -264,13 +267,16 @@ function printRules(rules, stats) {
   // top few only
   times = times.slice(0, 5);
 
-  stringBuilder.appendLine(section('Optimization rules with highest execution times:'));
-  stringBuilder.appendLine(' ' + header('RuleName') + '   ' + pad(maxNameLength - 'RuleName'.length) + header('Duration [s]'));
-  times.forEach(function(rule) {
-    stringBuilder.appendLine(' ' + keyword(rule.name) + '   ' + pad(12 + maxNameLength - rule.name.length - rule.time.toFixed(5).length) + value(rule.time.toFixed(5)));
-  });
+  if (times.length > 0) {
+    stringBuilder.appendLine(section('Optimization rules with highest execution times:'));
+    stringBuilder.appendLine(' ' + header('RuleName') + '   ' + pad(maxNameLength - 'RuleName'.length) + header('Duration [s]'));
+    times.forEach(function(rule) {
+      stringBuilder.appendLine(' ' + keyword(rule.name) + '   ' + pad(12 + maxNameLength - rule.name.length - rule.time.toFixed(5).length) + value(rule.time.toFixed(5)));
+    });
   
-  stringBuilder.appendLine();
+    stringBuilder.appendLine();
+  }
+
   stringBuilder.appendLine(value(stats.rulesExecuted) + annotation(' rule(s) executed, ') + value(stats.plansCreated) + annotation(' plan(s) created'));
   stringBuilder.appendLine();
 }

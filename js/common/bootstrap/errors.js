@@ -145,6 +145,7 @@
     "ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED" : { "code" : 1423, "message" : "a resigned follower instance rejected a request" },
     "ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE" : { "code" : 1424, "message" : "the replicated log of the participant is gone" },
     "ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM" : { "code" : 1425, "message" : "an invalid term was given" },
+    "ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED" : { "code" : 1426, "message" : "log participant unconfigured" },
     "ERROR_CLUSTER_NOT_FOLLOWER"   : { "code" : 1446, "message" : "not a follower" },
     "ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED" : { "code" : 1447, "message" : "follower transaction intermediate commit already performed" },
     "ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED" : { "code" : 1448, "message" : "creating collection failed due to precondition" },

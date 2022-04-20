@@ -1314,65 +1314,72 @@ if (NOT(SKIP_PACKAGING))
 endif()
 
 ################################################################################
-## ERRORS FILE
+## ERRORS FILES
 ################################################################################
 
-if (USE_MAINTAINER_MODE)
-  # If "make clean" removes these files, afterwards neither "make" nor "cmake" work any more.
-  set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM "On")
+# If "make clean" removes these files, afterwards neither "make" nor "cmake" work any more.
+set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM "On")
 
-  set(ERROR_FILES
-    lib/Basics/voc-errors.h
-    lib/Basics/error-registry.h
-    js/common/bootstrap/errors.js
+set(ERROR_FILES
+  lib/Basics/voc-errors.h
+  lib/Basics/error-registry.h
+  js/common/bootstrap/errors.js
+)
+
+set(ERROR_FILES_GEN)
+set(ERRORS_DAT lib/Basics/errors.dat)
+
+foreach (m IN LISTS ERROR_FILES)
+  get_filename_component(GEN_BASENAME "${m}" NAME)
+  if (GEN_BASENAME STREQUAL "errors.js")
+    # generated errors.js is copied into the source dir
+    set(TARGET_FILENAME ${CMAKE_SOURCE_DIR}/${m})
+  else ()
+    # generated C++ header files are copied into the build dir
+    set(TARGET_FILENAME ${CMAKE_BINARY_DIR}/${m})
+  endif ()
+  add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/${m}
+    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/utils/generateErrorfile.py ${CMAKE_SOURCE_DIR}/${ERRORS_DAT} ${CMAKE_BINARY_DIR}/${GEN_BASENAME}.tmp
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/${GEN_BASENAME}.tmp ${TARGET_FILENAME}
+    COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/${GEN_BASENAME}.tmp
+    DEPENDS ${CMAKE_SOURCE_DIR}/${ERRORS_DAT} ${CMAKE_SOURCE_DIR}/utils/generateErrorfile.py
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT  "Building errors file ${m}"
+    VERBATIM
   )
 
-  set(ERROR_FILES_GEN)
-  set(ERRORS_DAT lib/Basics/errors.dat)
+  list(APPEND ERROR_FILES_GEN ${CMAKE_BINARY_DIR}/${m})
+endforeach ()
 
-  foreach (m IN LISTS ERROR_FILES)
-    add_custom_command(
-      OUTPUT ${CMAKE_SOURCE_DIR}/${m}
-      COMMAND ${PYTHON_EXECUTABLE} ./utils/generateErrorfile.py ./${ERRORS_DAT} ./${m}.tmp
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
-      COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
-      DEPENDS ${CMAKE_SOURCE_DIR}/${ERRORS_DAT} ./utils/generateErrorfile.py
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      COMMENT  "Building errors files ${m}"
-      VERBATIM
-    )
+add_custom_target(errorfiles ALL DEPENDS ${ERROR_FILES_GEN})
+  
+set(EXIT_CODE_FILES
+  lib/Basics/exitcodes.h
+  js/common/bootstrap/exitcodes.js
+  Installation/Windows/Plugins/exitcodes.nsh
+)
 
-    list(APPEND ERROR_FILES_GEN ${CMAKE_SOURCE_DIR}/${m})
-  endforeach ()
+set(EXIT_CODE_FILES_GEN)
+set(EXIT_CODES_DAT lib/Basics/exitcodes.dat)
 
-  add_custom_target(errorfiles ALL DEPENDS ${ERROR_FILES_GEN})
-
-  set(EXIT_CODE_FILES
-    lib/Basics/exitcodes.h
-    js/common/bootstrap/exitcodes.js
-    Installation/Windows/Plugins/exitcodes.nsh
+foreach (m IN LISTS EXIT_CODE_FILES)
+  get_filename_component(GEN_BASENAME "${m}" NAME)
+  add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/${m}
+    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/utils/generateExitCodesFiles.py ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT} ${CMAKE_BINARY_DIR}/${GEN_BASENAME}.tmp
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/${GEN_BASENAME}.tmp ${CMAKE_BINARY_DIR}/${m}
+    COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/${GEN_BASENAME}.tmp
+    DEPENDS ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT} ${CMAKE_SOURCE_DIR}/utils/generateExitCodesFiles.py
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT  "Building exitcode file ${m}"
+    VERBATIM
   )
 
-  set(EXIT_CODE_FILES_GEN)
-  set(EXIT_CODES_DAT lib/Basics/exitcodes.dat)
+  list(APPEND EXIT_CODE_FILES_GEN ${CMAKE_BINARY_DIR}/${m})
+endforeach ()
 
-  foreach (m IN LISTS EXIT_CODE_FILES)
-    add_custom_command(
-      OUTPUT ${CMAKE_SOURCE_DIR}/${m}
-      COMMAND ${PYTHON_EXECUTABLE} ./utils/generateExitCodesFiles.py ./${EXIT_CODES_DAT} ./${m}.tmp
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
-      COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
-      DEPENDS ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT} ./utils/generateExitCodesFiles.py
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      COMMENT  "Building exitcode files ${m}"
-      VERBATIM
-    )
-
-    list(APPEND EXIT_CODE_FILES_GEN ${CMAKE_SOURCE_DIR}/${m})
-  endforeach ()
-
-  add_custom_target(exitcodefiles ALL DEPENDS ${EXIT_CODE_FILES_GEN})
-endif ()
+add_custom_target(exitcodefiles ALL DEPENDS ${EXIT_CODE_FILES_GEN})
 
 ################################################################################
 ## SUB-PROJECTS

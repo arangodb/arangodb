@@ -112,6 +112,17 @@ auto MockGraphProvider::startVertex(VertexType v, size_t depth, double weight)
   return Step(v, decideProcessable());
 }
 
+auto MockGraphProvider::fetchVertices(const std::vector<Step*>& looseEnds)
+    -> futures::Future<std::vector<Step*>> {
+  return fetch(looseEnds);
+}
+
+auto MockGraphProvider::fetchEdges(const std::vector<Step*>& fetchedVertices)
+    -> Result {
+  TRI_ASSERT(false);
+  return TRI_ERROR_NO_ERROR;
+}
+
 auto MockGraphProvider::fetch(std::vector<Step*> const& looseEnds)
     -> futures::Future<std::vector<Step*>> {
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS)

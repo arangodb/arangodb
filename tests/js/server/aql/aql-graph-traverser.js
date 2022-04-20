@@ -2942,7 +2942,7 @@ function complexFilteringSuite() {
         // 1 Primary (Tri1)
         // 1 Edge (Tri1->Tri2)
         // 1 Primary (Tri2)
-        assertEqual(stats.scannedIndex, 4);
+        assertEqual(stats.scannedIndex, 3);
       } else {
         // one edge and one vertex lookup
         assertEqual(stats.scannedIndex, 2);
@@ -2964,15 +2964,8 @@ function complexFilteringSuite() {
       assertEqual(cursor.count(), 0);
       var stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-
-      if (isCluster) {
-        // Note: In the cluster case, we're currently pre-fetching. Therefore, our scannedIndex result
-        // mismatches in comparison to the SingleServer variant.
-        assertEqual(stats.scannedIndex, 2);
-      } else {
-        // 1 Primary (Tri1)
-        assertEqual(stats.scannedIndex, 1);
-      }
+      // 1 Primary (Tri1)
+      assertEqual(stats.scannedIndex, 1);
       assertEqual(stats.filtered, 1);
     },
 
@@ -3018,7 +3011,7 @@ function complexFilteringSuite() {
       assertEqual(stats.scannedFull, 0);
       // 1 Primary (A)
       // 0 Edge
-      assertEqual(stats.scannedIndex, isCluster ? 3 : 1);
+      assertEqual(stats.scannedIndex, 1);
       // 1 Filter (A)
       assertEqual(stats.filtered, 1);
     },
@@ -4214,7 +4207,7 @@ function optimizeQuantifierSuite() {
 
       stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      assertEqual(stats.scannedIndex, isCluster ? 3 : 1);
+      assertEqual(stats.scannedIndex, 1);
       assertEqual(stats.filtered, 1);
     },
 
@@ -4318,8 +4311,7 @@ function optimizeQuantifierSuite() {
 
       stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-
-      assertEqual(stats.scannedIndex,  isCluster ? 3 : 1);
+      assertEqual(stats.scannedIndex, 1);
       assertEqual(stats.filtered, 1);
     },
 
