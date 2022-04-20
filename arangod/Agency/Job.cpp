@@ -33,10 +33,10 @@
 
 #include "Agency/Node.h"
 #include "Agency/Supervision.h"
-#include "Agency/TimeString.h"
 #include "AgencyStrings.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
+#include "Basics/TimeString.h"
 #include "Basics/voc-errors.h"
 #include "Random/RandomGenerator.h"
 

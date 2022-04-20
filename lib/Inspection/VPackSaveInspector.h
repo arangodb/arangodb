@@ -59,6 +59,16 @@ struct VPackSaveInspector : InspectorBase<VPackSaveInspector> {
     return {};
   }
 
+  [[nodiscard]] Status::Success value(velocypack::Slice s) {
+    _builder.add(s);
+    return {};
+  }
+
+  [[nodiscard]] Status::Success value(velocypack::HashedStringRef const& s) {
+    _builder.add(VPackValue(s.stringView()));
+    return {};
+  }
+
   template<class T, class = std::enable_if_t<detail::IsBuiltinType<T>()>>
   [[nodiscard]] Status::Success value(T const& v) {
     static_assert(detail::IsBuiltinType<T>());

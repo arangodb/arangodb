@@ -28,20 +28,20 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
+const jsunity = require("jsunity");
 const {assertTrue, assertFalse, assertEqual, assertNotEqual} = jsunity.jsUnity.assertions;
-var internal = require("internal");
-var errors = internal.errors;
-var db = require("@arangodb").db;
-var helper = require("@arangodb/aql-helper");
-var assertQueryError = helper.assertQueryError;
+const internal = require("internal");
+const errors = internal.errors;
+const db = require("@arangodb").db;
+const helper = require("@arangodb/aql-helper");
+const assertQueryError = helper.assertQueryError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerKeepTestSuite () {
-  var c;
+  let c;
 
   return {
     setUpAll : function () {
@@ -79,6 +79,16 @@ function optimizerKeepTestSuite () {
       var results = AQL_EXECUTE(query);
       assertEqual([ "test0", "test1", "test2", "test3", "test4", "test5", "test6", "test7", "test8", "test9" ], results.json, query);
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test refer to variable introduced by COLLECT from KEEP
+////////////////////////////////////////////////////////////////////////////////
+    
+    testReferToCollectVariablesFromKeep : function () {
+      assertQueryError(errors.ERROR_QUERY_VARIABLE_NAME_UNKNOWN.code, "FOR i IN " + c.name() + " COLLECT a = i INTO g KEEP a RETURN 1");
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN " + c.name() + " COLLECT a = i INTO g KEEP g RETURN 1");
+    },
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test no keep
@@ -240,11 +250,6 @@ function optimizerKeepTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(optimizerKeepTestSuite);
 
 return jsunity.done();
-

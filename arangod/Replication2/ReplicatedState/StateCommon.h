@@ -57,6 +57,8 @@ struct StateGeneration {
                           StateGeneration const&) = default;
 
   [[nodiscard]] auto operator+(std::uint64_t delta) const -> StateGeneration;
+  auto operator++() noexcept -> StateGeneration&;
+  auto operator++(int) noexcept -> StateGeneration;
 
   friend auto operator<<(std::ostream&, StateGeneration) -> std::ostream&;
 

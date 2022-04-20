@@ -39,6 +39,7 @@
 #include "Inspection/VPackLoadInspector.h"
 #include "Inspection/VPackSaveInspector.h"
 #include "Inspection/VPack.h"
+#include "velocypack/Builder.h"
 
 #include "Logger/LogMacros.h"
 
@@ -368,6 +369,18 @@ auto inspect(Inspector& f, ExplicitIgnore& x) {
   return f.object(x).fields(f.field("s", x.s), f.ignoreField("ignore"));
 }
 
+struct Unsafe {
+  std::string_view view;
+  arangodb::velocypack::Slice slice;
+  arangodb::velocypack::HashedStringRef hashed;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, Unsafe& x) {
+  return f.object(x).fields(f.field("view", x.view), f.field("slice", x.slice),
+                            f.field("hashed", x.hashed));
+}
+
 using namespace arangodb;
 using VPackLoadInspector = inspection::VPackLoadInspector;
 using VPackSaveInspector = inspection::VPackSaveInspector;
@@ -684,6 +697,24 @@ TEST_F(VPackSaveInspectorTest, store_type_with_explicitly_ignored_fields) {
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
   EXPECT_EQ(1, slice.length());
+}
+
+TEST_F(VPackSaveInspectorTest, store_type_with_unsafe_fields) {
+  velocypack::Builder localBuilder;
+  localBuilder.add(VPackValue("blubb"));
+  std::string_view hashedString = "hashedString";
+  Unsafe u{.view = "foobar",
+           .slice = localBuilder.slice(),
+           .hashed = {hashedString.data(),
+                      static_cast<uint32_t>(hashedString.size())}};
+  auto result = inspector.apply(u);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+  EXPECT_EQ("foobar", slice["view"].copyString());
+  EXPECT_EQ("blubb", slice["slice"].copyString());
+  EXPECT_EQ(hashedString, slice["hashed"].copyString());
 }
 
 struct VPackLoadInspectorTest : public ::testing::Test {
@@ -1505,6 +1536,24 @@ TEST_F(VPackLoadInspectorTest, load_type_with_explicitly_ignored_fields) {
   ExplicitIgnore e;
   auto result = inspector.apply(e);
   ASSERT_TRUE(result.ok());
+}
+
+TEST_F(VPackLoadInspectorTest, load_type_with_unsafe_fields) {
+  builder.openObject();
+  builder.add("view", VPackValue("foobar"));
+  builder.add("slice", VPackValue("blubb"));
+  builder.add("hashed", VPackValue("hashedString"));
+  builder.close();
+  arangodb::inspection::VPackUnsafeLoadInspector inspector{builder};
+
+  Unsafe u;
+  auto result = inspector.apply(u);
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ(builder.slice()["view"].stringView(), u.view);
+  EXPECT_EQ(builder.slice()["view"].stringView().data(), u.view.data());
+  EXPECT_EQ(builder.slice()["slice"].start(), u.slice.start());
+  EXPECT_EQ(builder.slice()["hashed"].stringView(), u.hashed.stringView());
+  EXPECT_EQ(builder.slice()["hashed"].stringView().data(), u.hashed.data());
 }
 
 struct VPackInspectionTest : public ::testing::Test {};
