@@ -16,6 +16,8 @@ v3.9.2 (XXXX-XX-XX)
   will continue the synchronization shortly after. Setting a timeout can 
   help to split the synchronization of large shards into smaller chunks and 
   release snapshots and archived WAL files on the leader earlier.
+  This change also introduces a new metric `arangodb_sync_timeouts_total`
+  that counts the number of timed-out shard synchronization attempts.
 
 * Updated arangosync to v2.9.0.
 
