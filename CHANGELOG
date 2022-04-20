@@ -1,6 +1,10 @@
 devel
 -----
 
+* FE-46: UI improvement on the view UI pages as well as adding tooltips to
+  options where necessary. The affected pages are mostly the Info and
+  Consolidation Policy pages.
+
 * FE-44: Moved the Info page to before JSON, making the settings page the
   default page in the view web UI.
 
@@ -19,7 +23,7 @@ devel
   * if cache is enabled, show cache usage and allocation size in figures
   The `cacheEnabled` property of collections is now also changable via the
   UI for existing collections.
-  
+
 * FE-45: Added tooltips with helpful information to the options on the View UI
   settings page.
 
