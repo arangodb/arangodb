@@ -252,8 +252,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
  private:
   aql::ExecutionState cleanupTrxAndEngines(ErrorCode errorCode);
 
-  void finishDBServerParts(int errorCode);
-
   // @brief injects vertex collections into all types of graph nodes:
   // ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH and
   // ExecutionNode::K_SHORTEST_PATHS - in case the GraphNode does not contain

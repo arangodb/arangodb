@@ -231,7 +231,7 @@ struct RocksDBMetadata final {
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // whether document counts are tainted during testing
-  bool _tainted = false;
+  std::atomic_bool _tainted = false;
 #endif
 };
 
