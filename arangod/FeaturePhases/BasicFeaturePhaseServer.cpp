@@ -37,6 +37,7 @@ BasicFeaturePhaseServer::BasicFeaturePhaseServer(ArangodServer& server)
   if constexpr (ArangodServer::contains<SupervisorFeature>()) {
     startsAfter<SupervisorFeature, ArangodServer>();
   }
+  startsAfter<CpuUsageFeature, ArangodServer>();
   startsAfter<DatabasePathFeature, ArangodServer>();
   startsAfter<EnvironmentFeature, ArangodServer>();
   startsAfter<LanguageFeature, ArangodServer>();
@@ -44,6 +45,7 @@ BasicFeaturePhaseServer::BasicFeaturePhaseServer(ArangodServer& server)
   startsAfter<NonceFeature, ArangodServer>();
   startsAfter<PrivilegeFeature, ArangodServer>();
   startsAfter<SchedulerFeature, ArangodServer>();
+  startsAfter<SharedPRNGFeature, ArangodServer>();
   startsAfter<ShardingFeature, ArangodServer>();
   startsAfter<SslFeature, ArangodServer>();
   startsAfter<TempFeature, ArangodServer>();

@@ -23,7 +23,12 @@
 
 #include "ConnectionStatistics.h"
 
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 #include "Rest/CommonDefines.h"
+
+#include <thread>
+#include <vector>
 
 #include <boost/lockfree/queue.hpp>
 
@@ -33,13 +38,50 @@ using namespace arangodb;
 // --SECTION--                                                  global variables
 // -----------------------------------------------------------------------------
 
-static size_t const QUEUE_SIZE = 64 * 1024 - 2;  // current (1.62) boost maximum
+namespace {
+// initial amount of empty statistics items to be created in statisticsItems
+constexpr size_t kInitialQueueSize = 32;
 
-static std::unique_ptr<ConnectionStatistics[]> _statisticsBuffer;
+// protects statisticsItems
+Mutex statisticsMutex;
 
-static boost::lockfree::queue<ConnectionStatistics*,
-                              boost::lockfree::capacity<QUEUE_SIZE>>
-    _freeList;
+// a container of ConnectionStatistics objects. the vector is populated
+// initially with kInitialQueueSize items. It can grow at runtime. The addresses
+// of objects in the vector can be stored in freeList, so the objects must not
+// be destroyed if they are still in the free list. access to statisticsItems
+// must be protected by statisticsMutex
+std::vector<std::unique_ptr<ConnectionStatistics>> statisticsItems;
+
+// a free list of ConnectionStatistics objects, not owning them. the free list
+// is initially populated with kInitialQueueSize objects.
+static boost::lockfree::queue<ConnectionStatistics*> freeList;
+
+bool enqueueItem(ConnectionStatistics* item) noexcept {
+  int tries = 0;
+
+  try {
+    do {
+      bool ok = freeList.push(item);
+      if (ok) {
+        return true;
+      }
+      std::this_thread::yield();
+    } while (++tries < 1000);
+  } catch (...) {
+  }
+
+  TRI_ASSERT(false);
+  // if for whatever reason the push operation fails, we will
+  // have a ConnectionStatistics object in statisticsItems
+  // that is not in the queue anymore. this item will be
+  // allocated at program end normally, but it becomes useless
+  // until then. this should be a very rare case though.
+  // each ConnectionStatistics object 24 bytes big.
+
+  return false;
+}
+
+}  // namespace
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
@@ -54,23 +96,61 @@ void ConnectionStatistics::Item::SET_HTTP() {
 }
 
 void ConnectionStatistics::initialize() {
-  _statisticsBuffer.reset(new ConnectionStatistics[QUEUE_SIZE]());
+  MUTEX_LOCKER(guard, ::statisticsMutex);
 
-  for (size_t i = 0; i < QUEUE_SIZE; ++i) {
-    ConnectionStatistics* entry = &_statisticsBuffer[i];
-    bool ok = _freeList.push(entry);
-    TRI_ASSERT(ok);
+  ::freeList.reserve(kInitialQueueSize * 2);
+
+  ::statisticsItems.reserve(kInitialQueueSize);
+  for (size_t i = 0; i < kInitialQueueSize; ++i) {
+    // create a new ConnectionStatistics object on the heap
+    ::statisticsItems.emplace_back(std::make_unique<ConnectionStatistics>());
+    // add its address to the freelist
+    bool ok = ::enqueueItem(::statisticsItems.back().get());
+    if (!ok) {
+      // for some reason we couldn't push the item to the queue. so there
+      // is no further use for it.
+      ::statisticsItems.pop_back();
+    }
   }
 }
 
-ConnectionStatistics::Item ConnectionStatistics::acquire() {
+ConnectionStatistics::Item ConnectionStatistics::acquire() noexcept {
   ConnectionStatistics* statistics = nullptr;
 
-  if (_freeList.pop(statistics)) {
-    return Item{statistics};
+  // try the happy path first
+  if (!::freeList.pop(statistics)) {
+    // didn't have any items on the free list. now try the
+    // expensive path
+    try {
+      auto cs = std::make_unique<ConnectionStatistics>();
+      // store pointer for just-created item
+      statistics = cs.get();
+
+      MUTEX_LOCKER(guard, ::statisticsMutex);
+      ::statisticsItems.emplace_back(std::move(cs));
+    } catch (...) {
+      statistics = nullptr;
+    }
   }
 
-  return Item{};
+  return Item{statistics};
+}
+
+void ConnectionStatistics::release() noexcept {
+  if (_http) {
+    statistics::HttpConnections.decCounter();
+  }
+
+  if (_connStart != 0.0 && _connEnd != 0.0) {
+    double totalTime = _connEnd - _connStart;
+    statistics::ConnectionTimeDistribution.addFigure(totalTime);
+  }
+
+  // clear statistics
+  reset();
+
+  // put statistics item back onto the freelist
+  enqueueItem(this);
 }
 
 void ConnectionStatistics::getSnapshot(Snapshot& snapshot) {
@@ -81,28 +161,4 @@ void ConnectionStatistics::getSnapshot(Snapshot& snapshot) {
   snapshot.methodRequests = statistics::MethodRequests;
   snapshot.asyncRequests = statistics::AsyncRequests;
   snapshot.connectionTime = statistics::ConnectionTimeDistribution;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-void ConnectionStatistics::release() {
-  {
-    if (_http) {
-      statistics::HttpConnections.decCounter();
-    }
-
-    if (_connStart != 0.0 && _connEnd != 0.0) {
-      double totalTime = _connEnd - _connStart;
-      statistics::ConnectionTimeDistribution.addFigure(totalTime);
-    }
-  }
-
-  // clear statistics
-  reset();
-
-  // put statistics item back onto the freelist
-  bool ok = _freeList.push(this);
-  TRI_ASSERT(ok);
 }

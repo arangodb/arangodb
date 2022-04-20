@@ -199,6 +199,7 @@ auto toVelocyPack(LogCurrentSupervisionElection::ErrorCode, VPackBuilder&)
 enum class LogCurrentSupervisionError {
   TARGET_LEADER_INVALID,
   TARGET_LEADER_EXCLUDED,
+  TARGET_NOT_ENOUGH_PARTICIPANTS,
   GENERAL_ERROR  // TODO: Using this whilw refactoring
                  // other code; needs to be improved
 };
@@ -275,6 +276,7 @@ struct LogCurrentSupervision {
   std::optional<uint64_t> targetVersion;
 
   auto toVelocyPack(VPackBuilder&) const -> void;
+  static auto fromVelocyPack(velocypack::Slice) -> LogCurrentSupervision;
 
   LogCurrentSupervision() = default;
   LogCurrentSupervision(from_velocypack_t, VPackSlice slice);

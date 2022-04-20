@@ -37,7 +37,7 @@ namespace arangodb::replication2::replicated_state {
 
 template<typename S>
 struct UnconfiguredStateManager
-    : ReplicatedState<S>::StateManagerBase,
+    : ReplicatedState<S>::IStateManager,
       std::enable_shared_from_this<UnconfiguredStateManager<S>> {
   using Factory = typename ReplicatedStateTraits<S>::FactoryType;
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
@@ -46,9 +46,9 @@ struct UnconfiguredStateManager
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
 
   using WaitForAppliedQueue =
-      typename ReplicatedState<S>::StateManagerBase::WaitForAppliedQueue;
+      typename ReplicatedState<S>::IStateManager::WaitForAppliedQueue;
   using WaitForAppliedPromise =
-      typename ReplicatedState<S>::StateManagerBase::WaitForAppliedQueue;
+      typename ReplicatedState<S>::IStateManager::WaitForAppliedQueue;
 
   UnconfiguredStateManager(
       std::shared_ptr<ReplicatedState<S>> const& parent,
@@ -57,7 +57,7 @@ struct UnconfiguredStateManager
       std::unique_ptr<CoreType> core,
       std::unique_ptr<ReplicatedStateToken> token);
 
-  void run() override;
+  void run() noexcept override;
 
   [[nodiscard]] auto getStatus() const -> StateStatus override;
 

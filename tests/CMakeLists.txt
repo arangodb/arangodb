@@ -191,12 +191,10 @@ set(ARANGODB_TESTS_SOURCES
   Basics/EndpointTest.cpp
   Basics/FixedSizeAllocatorTest.cpp
   Basics/GuardedTest.cpp
-  Basics/InifileParserTest.cpp
   Basics/InspectionTest.cpp
   Basics/LoggerTest.cpp
   Basics/MemoryUsageTest.cpp
   Basics/NumberUtilsTest.cpp
-  Basics/ParametersTest.cpp
   Basics/RandomTest.cpp
   Basics/ReadWriteLockTest.cpp
   Basics/RecursiveLockerTest.cpp
@@ -269,6 +267,8 @@ set(ARANGODB_TESTS_SOURCES
   Network/MethodsTest.cpp
   Network/UtilsTest.cpp
   Pregel/typedbuffer.cpp
+  ProgramOptions/InifileParserTest.cpp
+  ProgramOptions/ParametersTest.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
   Rest/PathMatchTest.cpp
   RestHandler/RestAnalyzerHandlerTest.cpp
@@ -284,7 +284,6 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/HotBackupTest.cpp
   RocksDBEngine/EncryptionProviderTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
-  RocksDBEngine/ShaEventListener.cpp
   RocksDBEngine/TransactionManagerTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/HttpResponseCheckerTest.cpp
@@ -316,8 +315,10 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Mocks/AsyncFollower.h
   Replication2/Mocks/AsyncLeader.cpp
   Replication2/Mocks/FakeAbstractFollower.h
-  Replication2/Mocks/FakeFailureOracle.h
   Replication2/Mocks/FakeFailureOracle.cpp
+  Replication2/Mocks/FakeFailureOracle.h
+  Replication2/Mocks/FakeFollower.cpp
+  Replication2/Mocks/FakeFollower.h
   Replication2/Mocks/FakeReplicatedLog.cpp
   Replication2/Mocks/FakeReplicatedLog.h
   Replication2/Mocks/FakeReplicatedState.cpp
@@ -338,6 +339,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/LeaderAppendEntriesTest.cpp
   Replication2/ReplicatedLog/LogParticipantWaitForResignTests.cpp
   Replication2/ReplicatedLog/LogReclaimTest.cpp
+  Replication2/ReplicatedLog/LogStatusTest.cpp
   Replication2/ReplicatedLog/MaintenanceTests.cpp
   Replication2/ReplicatedLog/MultiTermTest.cpp
   Replication2/ReplicatedLog/ReplicatedLogTest.cpp
@@ -349,10 +351,11 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
   Replication2/ReplicatedLog/UpdateReplicatedLogTests.cpp
   Replication2/ReplicatedLog/WaitForSyncTest.cpp
-  Replication2/ReplicatedLog/InMemoryLogTest.cpp
   Replication2/ReplicatedState/FollowerSnapshotTest.cpp
   Replication2/ReplicatedState/FollowerWaitForTest.cpp
   Replication2/ReplicatedState/LeaderRecoveryTest.cpp
+  Replication2/ReplicatedState/MaintenanceTest.cpp
+  Replication2/ReplicatedState/PrototypeConcurrencyTest.cpp
   Replication2/ReplicatedState/PrototypeStateMachineTest.cpp
   Replication2/ReplicatedState/ReplicatedStateFeatureTest.cpp
   Replication2/ReplicatedState/ReplicatedStateTest.cpp
@@ -366,22 +369,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Streams/MultiplexerConcurrencyTest.cpp
   Replication2/Streams/TestLogSpecification.cpp
   Replication2/Streams/TestLogSpecification.h
-  Replication2/Streams/MultiplexerConcurrencyTest.cpp
-  Replication2/Mocks/AsyncFollower.cpp
-  Replication2/Mocks/AsyncFollower.h
-  Replication2/Mocks/FakeFollower.cpp
-  Replication2/Mocks/FakeFollower.h
-  Replication2/ReplicatedLog/WaitForSyncTest.cpp
-  Replication2/ReplicatedLog/CalcCommitIndexTest.cpp
-  Replication2/ReplicatedLog/EstablishLeadershipTest.cpp
-  Replication2/ReplicatedState/ReplicatedStateTest.cpp
-  Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
-  Replication2/ReplicatedState/ReplicatedStateFeatureTest.cpp
-  Replication2/ReplicatedState/LeaderRecoveryTest.cpp
-  Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
-  Replication2/ReplicatedLog/AppendEntriesErrorReasonTest.cpp
-  Replication2/Mocks/AsyncLeader.cpp
-  Replication2/ReplicatedLog/LogStatusTest.cpp
+  Replication2/ReplicatedState/SupervisionTest.cpp
 )
 
 

@@ -42,10 +42,8 @@ class Methods;
 class RocksDBPrimaryIndex final : public RocksDBIndex {
   friend class RocksDBPrimaryIndexEqIterator;
   friend class RocksDBPrimaryIndexInIterator;
-  template<bool reverse>
+  template<bool reverse, bool mustCheckBounds>
   friend class RocksDBPrimaryIndexRangeIterator;
-  friend class RocksDBAllIndexIterator;
-  friend class RocksDBAnyIndexIterator;
 
  public:
   RocksDBPrimaryIndex(arangodb::LogicalCollection& collection,

@@ -300,6 +300,21 @@ TEST_F(SupervisionLogTest, test_log_created) {
   EXPECT_EQ(action._participants, participants);
 }
 
+TEST_F(SupervisionLogTest, test_log_not_created) {
+  auto const config = LogConfig(3, 2, 3, true);
+  auto const participants = ParticipantsFlagsMap{
+      {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
+
+  auto r = checkReplicatedLog(LogTarget(LogId{44}, participants, config),
+                              std::nullopt, std::nullopt, ParticipantsHealth{});
+
+  EXPECT_TRUE(std::holds_alternative<ErrorAction>(r));
+
+  auto& action = std::get<ErrorAction>(r);
+  EXPECT_EQ(action._error,
+            LogCurrentSupervisionError::TARGET_NOT_ENOUGH_PARTICIPANTS);
+}
+
 TEST_F(SupervisionLogTest, test_log_present) {
   auto const config = LogConfig(3, 2, 3, true);
   auto const participants = ParticipantsFlagsMap{
@@ -775,8 +790,6 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
   auto action = std::get<RemoveParticipantFromPlanAction>(r);
   ASSERT_EQ(action._participant, "D");
 }
-
-#include <Logger/LogMacros.h>
 
 TEST_F(LogSupervisionTest, test_write_empty_term) {
   auto const& logId = LogId{44};

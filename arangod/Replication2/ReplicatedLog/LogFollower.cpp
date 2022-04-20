@@ -366,6 +366,11 @@ auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
   return {};
 }
 
+auto replicated_log::LogFollower::GuardedFollowerData::didResign()
+    const noexcept -> bool {
+  return _logCore == nullptr;
+}
+
 replicated_log::LogFollower::GuardedFollowerData::GuardedFollowerData(
     LogFollower const& self, std::unique_ptr<LogCore> logCore,
     InMemoryLog inMemoryLog)
@@ -413,7 +418,7 @@ auto replicated_log::LogFollower::resign() && -> std::tuple<
   return _guardedFollowerData.doUnderLock(
       [this](GuardedFollowerData& followerData) {
         LOG_CTX("838fe", DEBUG, _loggerContext) << "follower resign";
-        if (followerData._logCore == nullptr) {
+        if (followerData.didResign()) {
           LOG_CTX("55a1d", WARN, _loggerContext)
               << "follower log core is already gone. Resign was called twice!";
           basics::abortOrThrowException(ParticipantResignedException(
@@ -478,6 +483,12 @@ replicated_log::LogFollower::LogFollower(
 auto replicated_log::LogFollower::waitFor(LogIndex idx)
     -> replicated_log::ILogParticipant::WaitForFuture {
   auto self = _guardedFollowerData.getLockedGuard();
+  if (self->didResign()) {
+    auto promise = WaitForPromise{};
+    promise.setException(ParticipantResignedException(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE));
+    return promise.getFuture();
+  }
   if (self->_commitIndex >= idx) {
     return futures::Future<WaitForResult>{
         std::in_place, self->_commitIndex,
@@ -513,11 +524,15 @@ auto replicated_log::LogFollower::waitForIterator(LogIndex index)
            * next entry containing payload.
            */
 
-          auto actualIndex = index;
+          auto actualIndex =
+              std::max(index, followerData._inMemoryLog.getFirstIndex());
           while (actualIndex <= followerData._commitIndex) {
             auto memtry =
                 followerData._inMemoryLog.getEntryByIndex(actualIndex);
-            TRI_ASSERT(memtry.has_value());  // should always have a value
+            TRI_ASSERT(memtry.has_value())
+                << "first index is "
+                << followerData._inMemoryLog
+                       .getFirstIndex();  // should always have a value
             if (!memtry.has_value()) {
               break;
             }
@@ -643,6 +658,9 @@ auto LogFollower::construct(LoggerContext const& loggerContext,
   return std::make_shared<MakeSharedWrapper>(
       loggerContext, std::move(logMetrics), std::move(id), std::move(logCore),
       term, std::move(leaderId), std::move(log));
+}
+auto LogFollower::copyInMemoryLog() const -> InMemoryLog {
+  return _guardedFollowerData.getLockedGuard()->_inMemoryLog;
 }
 
 auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics()

@@ -67,26 +67,26 @@ def errorName(error):
 
 # generate C header file from errors
 def genCHeaderFile(errors):
-  wiki = "/// Error codes and meanings\n"\
-       + "/// The following errors might be raised when running ArangoDB:\n"\
-       + "\n\n"
+  wiki = "// Error codes and meanings\n"\
+       + "// The following errors might be raised when running ArangoDB:\n"
 
   header = """
 #pragma once
 
 #include "Basics/ErrorCode.h"
 
+/* clang-format off */
 """ \
            + wiki
 
   # print individual errors
   for e in errors:
     header = header\
+           + "\n"\
            + "/// " + e[1] + ": " + e[0] + "\n"\
            + wrap(e[2], 80, 0, 0, "/// \"") + "\"\n"\
            + wrap(e[3], 80, 0, 0, "/// ") + "\n"\
-           + "#define " + errorName(e).ljust(65) + " (::ErrorCode{" + e[1] + "})\n"\
-           + "\n"
+           + "#define " + errorName(e).ljust(65) + " (::ErrorCode{" + e[1] + "})\n"
 
   return header
 
@@ -96,8 +96,10 @@ def genErrorRegistryHeaderFile(errors):
 
 #include "Basics/voc-errors.h"
 
+/* clang-format off */
+
 namespace frozen {{
-template <>
+template<>
 struct elsa<ErrorCode> {{
   constexpr auto operator()(ErrorCode const& value, std::size_t seed) const -> std::size_t {{
     return elsa<int>{{}}.operator()(static_cast<int>(value), seed);

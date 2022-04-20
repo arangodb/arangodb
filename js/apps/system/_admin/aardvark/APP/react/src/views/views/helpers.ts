@@ -23,17 +23,17 @@ ajvErrors(ajv);
 export const validateAndFix = ajv.addSchema(linksSchema).compile(formSchema);
 
 export function useLinkState(formState: { [key: string]: any }, formField: string) {
-  const [field, setField] = useState('');
+  const [innerField, setInnerField] = useState('');
   const [addDisabled, setAddDisabled] = useState(true);
-  const fields = useMemo(() => (formState[formField] || {}), [formField, formState]);
+  const innerFields = useMemo(() => (formState[formField] || {}), [formField, formState]);
 
   useEffect(() => {
-    const fieldKeys = chain(fields).omitBy(isNull).keys().value();
+    const innerFieldKeys = chain(innerFields).omitBy(isNull).keys().value();
 
-    setAddDisabled(!field || fieldKeys.includes(field));
-  }, [field, fields]);
+    setAddDisabled(!innerField || innerFieldKeys.includes(innerField));
+  }, [innerField, innerFields]);
 
-  return [field, setField, addDisabled, fields];
+  return [innerField, setInnerField, addDisabled, innerFields];
 }
 
 export function useView(name: string) {

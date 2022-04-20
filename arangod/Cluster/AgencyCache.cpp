@@ -830,13 +830,14 @@ AgencyCache::change_set_t AgencyCache::changedSince(
                       std::move(rest_res));
 }
 
-namespace std {
-ostream& operator<<(ostream& o, AgencyCache::change_set_t const& c) {
+std::ostream& arangodb::operator<<(std::ostream& o,
+                                   AgencyCache::change_set_t const& c) {
   o << c.ind;
   return o;
 }
 
-ostream& operator<<(ostream& o, AgencyCache::databases_t const& dbs) {
+std::ostream& arangodb::operator<<(std::ostream& o,
+                                   AgencyCache::databases_t const& dbs) {
   o << "{";
   bool first = true;
   for (auto const& db : dbs) {
@@ -850,4 +851,3 @@ ostream& operator<<(ostream& o, AgencyCache::databases_t const& dbs) {
   o << "}";
   return o;
 }
-}  // namespace std

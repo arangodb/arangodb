@@ -629,7 +629,7 @@ futures::Future<OperationResult> PhysicalCollection::figures(
   builder.openObject();
 
   // add index information
-  size_t sizeIndexes = memory();
+  size_t sizeIndexes = 0;
   size_t numIndexes = 0;
 
   {

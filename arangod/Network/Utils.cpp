@@ -93,7 +93,6 @@ ErrorCode resolveDestination(ClusterInfo& ci, DestinationId const& dest,
   } else if (dest.compare(0, 7, "server:", 7) == 0) {
     spec.serverId = dest.substr(7);
   } else {
-    std::string errorMessage = "did not understand destination '" + dest + "'";
     LOG_TOPIC("77a84", ERR, Logger::COMMUNICATION)
         << "did not understand destination '" << dest << "'";
     return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
@@ -104,8 +103,6 @@ ErrorCode resolveDestination(ClusterInfo& ci, DestinationId const& dest,
     if (spec.serverId.find(',') != std::string::npos) {
       TRI_ASSERT(false);
     }
-    std::string errorMessage =
-        "did not find endpoint of server '" + spec.serverId + "'";
     LOG_TOPIC("f29ef", ERR, Logger::COMMUNICATION)
         << "did not find endpoint of server '" << spec.serverId << "'";
     return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;

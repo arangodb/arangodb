@@ -52,7 +52,7 @@ function paths_server(options) {
   let opts = _.clone(options);
   // procdump can't stand weird characters in programm options
   opts.disableMonitor = true;
-  let rc = tu.performTests(opts, testCases, fs.join('server_paths', weirdNames[0], weirdNames[1], weirdNames[2], weirdNames[3]), tu.runThere);
+  let rc = new tu.runOnArangodRunner(opts, fs.join('server_paths', weirdNames[0], weirdNames[1], weirdNames[2], weirdNames[3])).run(testCases);
   process.env.TMPDIR = tmpPath;
   process.env.TEMP = tmpPath;
   process.env.TMP = tmpPath;

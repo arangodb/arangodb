@@ -36,13 +36,13 @@ const {
   waitForReplicatedLogAvailable,
   registerAgencyTestBegin, registerAgencyTestEnd,
   waitFor,
-  allServersHealthy,
   getServerUrl,
   checkRequestResult,
-  readReplicatedLogAgency,
   replicatedLogDeleteTarget,
-  replicatedLogIsReady,
 } = helper;
+const {
+  allServersHealthy,
+} = require("@arangodb/testutils/replicated-logs-predicates");
 
 const database = "replication2_supervision_test_db";
 const IS_FAILED = true;
@@ -153,15 +153,24 @@ const replicatedLogRegressionSuite = function () {
       // is the only server that has received log index 2.
       const {index: logIdx} = log.insert({foo: "baz"}, {dontWaitForCommit: true});
 
-      { // As followers[0] is stopped and writeConcern=3, the log cannot currently commit.
-        const {participants: {[leader]: {response: status}}} = log.status();
-        assertIdentical(status.lastCommitStatus.reason, "QuorumSizeNotReached", JSON.stringify({status}));
-        assertTrue(status.local.commitIndex < logIdx, `Commit index is ${status.local.commitIndex}, but should be lower than ${JSON.stringify(logIdx)}`);
-      }
+      waitFor(() => {
+          // As followers[0] is stopped and writeConcern=3, the log cannot currently commit.
+          const {participants: {[leader]: {response: status}}} = log.status();
+          if (status.lastCommitStatus.reason !== "QuorumSizeNotReached") {
+            return new Error(`Expected status to be QuorumSizeNotReached, but is ${status.lastCommitStatus.reason}. Full status is: ${JSON.stringify(status)}`);
+          }
+          if (!(status.local.commitIndex < logIdx)) {
+            return new Error(`Commit index is ${status.local.commitIndex}, but should be lower than ${JSON.stringify(logIdx)}.`);
+          }
+          return true;
+        }
+      );
 
       // wait for followers[1] to have received the log entries, and the leader to take note of that
       waitFor(() => {
-        return logIdx === log.status().participants[leader].response.follower[followers[1]].spearhead.index;
+        const followerSpearhead = log.status().participants[leader].response.follower[followers[1]].spearhead.index;
+        return logIdx === followerSpearhead
+          || new Error(`Expected spearhead of ${followers[1]} to be ${logIdx}, but is ${followerSpearhead}.`);
       });
 
       // stop the other follower as well
@@ -174,7 +183,9 @@ const replicatedLogRegressionSuite = function () {
 
       // wait for followers[0] to have received the log entries, and the leader to take note of that
       waitFor(() => {
-        return logIdx === log.status().participants[leader].response.follower[followers[0]].spearhead.index;
+        const followerSpearhead = log.status().participants[leader].response.follower[followers[0]].spearhead.index;
+        return logIdx === followerSpearhead
+          || new Error(`Expected spearhead of ${followers[0]} to be ${logIdx}, but is ${followerSpearhead}.`);
       });
 
       { // followers[1] got the log entry before it was stopped, and followers[0] just got it now, so it should be committed.

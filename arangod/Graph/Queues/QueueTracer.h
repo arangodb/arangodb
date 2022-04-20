@@ -43,12 +43,24 @@ class QueueTracer {
 
   void clear();
   void append(Step step);
+  bool firstIsVertexFetched() const;
   bool hasProcessableElement() const;
   size_t size() const;
   bool isEmpty() const;
   std::vector<Step*> getLooseEnds();
 
   Step pop();
+
+  // Return all Steps where the Provider needs to call fetchVertices()
+  // for in order to be able to process them
+  std::vector<Step*> getStepsWithoutFetchedVertex();
+
+  // Return all Steps where the Provider needs to call fetchEdges()
+  // for in order to be able to process them.
+  // Note here, we hand in the vector of Steps, as in the place
+  // we are using this method we have already popped the first
+  // Step from the queue, but it cannot be processed.
+  void getStepsWithoutFetchedEdges(std::vector<Step*>& stepsToFetch);
 
  private:
   QueueImpl _impl;

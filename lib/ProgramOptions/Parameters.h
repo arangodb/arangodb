@@ -31,8 +31,10 @@
 #include <velocypack/Builder.h>
 
 #include <atomic>
+#include <cstdint>
 #include <limits>
 #include <numeric>
+#include <string>
 #include <type_traits>
 #include <unordered_set>
 #include <stdexcept>
@@ -186,7 +188,7 @@ struct Parameter {
     return std::string("<") + name() + std::string(">");
   }
 
-  virtual void toVPack(VPackBuilder&) const = 0;
+  virtual void toVelocyPack(VPackBuilder&, bool detailed) const = 0;
 };
 
 // specialized type for boolean values
@@ -222,8 +224,11 @@ struct BooleanParameter : public Parameter {
     return Parameter::typeDescription();
   }
 
-  void toVPack(VPackBuilder& builder) const override {
+  void toVelocyPack(VPackBuilder& builder, bool detailed) const override {
     builder.add(VPackValue(*ptr));
+    if (detailed) {
+      builder.add("required", VPackValue(required));
+    }
   }
 
   ValueType* ptr;
@@ -263,8 +268,11 @@ struct AtomicBooleanParameter : public Parameter {
     return Parameter::typeDescription();
   }
 
-  void toVPack(VPackBuilder& builder) const override {
+  void toVelocyPack(VPackBuilder& builder, bool detailed) const override {
     builder.add(VPackValue(ptr->load()));
+    if (detailed) {
+      builder.add("required", VPackValue(required));
+    }
   }
 
   ValueType* ptr;
@@ -277,139 +285,103 @@ template<typename T>
 struct NumericParameter : public Parameter {
   typedef T ValueType;
 
-  explicit NumericParameter(ValueType* ptr) : ptr(ptr), base(1) {}
-  NumericParameter(ValueType* ptr, ValueType base) : ptr(ptr), base(base) {}
+  explicit NumericParameter(
+      ValueType* ptr, ValueType base = 1,
+      ValueType minValue = std::numeric_limits<ValueType>::min(),
+      ValueType maxValue = std::numeric_limits<ValueType>::max(),
+      bool minInclusive = true, bool maxInclusive = true)
+      : ptr(ptr),
+        base(base),
+        minValue(minValue),
+        maxValue(maxValue),
+        minInclusive(minInclusive),
+        maxInclusive(maxInclusive) {}
 
   std::string valueString() const override { return stringifyValue(*ptr); }
 
   std::string set(std::string const& value) override {
     try {
       ValueType v = toNumber<ValueType>(value, base);
-      *ptr = v;
-      return "";
+      if (((minInclusive && v >= minValue) ||
+           (!minInclusive && v > minValue)) &&
+          ((maxInclusive && v <= maxValue) ||
+           (!maxInclusive && v < maxValue))) {
+        *ptr = v;
+        return "";
+      }
+      return "number '" + value + "' is outside of allowed range " +
+             (minInclusive ? "[" : "(") + std::to_string(this->minValue) +
+             " - " + std::to_string(this->maxValue) +
+             (maxInclusive ? "]" : ")") + " for type " + this->name();
     } catch (...) {
       return "invalid numeric value '" + value + "' for type " + this->name();
     }
   }
 
-  void toVPack(VPackBuilder& builder) const override {
+  void toVelocyPack(VPackBuilder& builder, bool detailed) const override {
     builder.add(VPackValue(*ptr));
+    if (detailed) {
+      builder.add("base", VPackValue(base));
+      builder.add("minValue", VPackValue(minValue));
+      builder.add("maxValue", VPackValue(maxValue));
+      builder.add("minInclusive", VPackValue(minInclusive));
+      builder.add("maxInclusive", VPackValue(maxInclusive));
+    }
+  }
+
+  std::string name() const override {
+    if constexpr (std::is_same_v<ValueType, std::int16_t>) {
+      return "int16";
+    } else if constexpr (std::is_same_v<ValueType, std::uint16_t>) {
+      return "uint16";
+    } else if constexpr (std::is_same_v<ValueType, std::int32_t>) {
+      return "int32";
+    } else if constexpr (std::is_same_v<ValueType, std::uint32_t>) {
+      return "uint32";
+    } else if constexpr (std::is_same_v<ValueType, std::int64_t>) {
+      return "int64";
+    } else if constexpr (std::is_same_v<ValueType, std::uint64_t>) {
+      return "uint64";
+    } else if constexpr (std::is_same_v<ValueType, std::size_t>) {
+      return "size";
+    } else if constexpr (std::is_same_v<ValueType, double>) {
+      return "double";
+    } else {
+      static_assert("unsupported ValueType");
+    }
   }
 
   ValueType* ptr;
-  ValueType base;
+  ValueType base = 1;
+  ValueType minValue = std::numeric_limits<ValueType>::min();
+  ValueType maxValue = std::numeric_limits<ValueType>::max();
+  bool minInclusive = true;
+  bool maxInclusive = true;
 };
 
 // concrete int16 number value type
-struct Int16Parameter : public NumericParameter<int16_t> {
-  typedef int16_t ValueType;
-
-  explicit Int16Parameter(ValueType* ptr) : NumericParameter<ValueType>(ptr) {}
-  Int16Parameter(ValueType* ptr, ValueType base)
-      : NumericParameter<ValueType>(ptr, base) {}
-
-  std::string name() const override { return "int16"; }
-};
+using Int16Parameter = NumericParameter<std::int16_t>;
 
 // concrete uint16 number value type
-struct UInt16Parameter : public NumericParameter<uint16_t> {
-  typedef uint16_t ValueType;
-
-  explicit UInt16Parameter(ValueType* ptr) : NumericParameter<ValueType>(ptr) {}
-  UInt16Parameter(ValueType* ptr, ValueType base)
-      : NumericParameter<ValueType>(ptr, base) {}
-
-  std::string name() const override { return "uint16"; }
-};
+using UInt16Parameter = NumericParameter<std::uint16_t>;
 
 // concrete int32 number value type
-struct Int32Parameter : public NumericParameter<int32_t> {
-  typedef int32_t ValueType;
-
-  explicit Int32Parameter(ValueType* ptr) : NumericParameter<ValueType>(ptr) {}
-  Int32Parameter(ValueType* ptr, ValueType base)
-      : NumericParameter<ValueType>(ptr, base) {}
-
-  std::string name() const override { return "int32"; }
-};
+using Int32Parameter = NumericParameter<std::int32_t>;
 
 // concrete uint32 number value type
-struct UInt32Parameter : public NumericParameter<uint32_t> {
-  typedef uint32_t ValueType;
-
-  explicit UInt32Parameter(ValueType* ptr) : NumericParameter<ValueType>(ptr) {}
-  UInt32Parameter(ValueType* ptr, ValueType base)
-      : NumericParameter<ValueType>(ptr, base) {}
-
-  std::string name() const override { return "uint32"; }
-};
+using UInt32Parameter = NumericParameter<std::uint32_t>;
 
 // concrete int64 number value type
-struct Int64Parameter : public NumericParameter<int64_t> {
-  typedef int64_t ValueType;
-
-  explicit Int64Parameter(ValueType* ptr) : NumericParameter<ValueType>(ptr) {}
-  Int64Parameter(ValueType* ptr, ValueType base)
-      : NumericParameter<ValueType>(ptr, base) {}
-
-  std::string name() const override { return "int64"; }
-};
+using Int64Parameter = NumericParameter<std::int64_t>;
 
 // concrete uint64 number value type
-struct UInt64Parameter : public NumericParameter<uint64_t> {
-  typedef uint64_t ValueType;
-
-  explicit UInt64Parameter(ValueType* ptr) : NumericParameter<ValueType>(ptr) {}
-  UInt64Parameter(ValueType* ptr, ValueType base)
-      : NumericParameter<ValueType>(ptr, base) {}
-
-  std::string name() const override { return "uint64"; }
-};
+using UInt64Parameter = NumericParameter<std::uint64_t>;
 
 // concrete size_t number value type
-struct SizeTParameter : public NumericParameter<std::size_t> {
-  typedef std::size_t ValueType;
-
-  explicit SizeTParameter(ValueType* ptr) : NumericParameter<ValueType>(ptr) {}
-  SizeTParameter(ValueType* ptr, ValueType base)
-      : NumericParameter<ValueType>(ptr, base) {}
-
-  std::string name() const override { return "size"; }
-};
-
-template<typename T>
-struct BoundedParameter : public T {
-  BoundedParameter(typename T::ValueType* ptr, typename T::ValueType minValue,
-                   typename T::ValueType maxValue)
-      : T(ptr), minValue(minValue), maxValue(maxValue) {}
-
-  std::string set(std::string const& value) override {
-    try {
-      typename T::ValueType v = toNumber<typename T::ValueType>(
-          value, static_cast<typename T::ValueType>(1));
-      if (v >= minValue && v <= maxValue) {
-        *this->ptr = v;
-        return "";
-      }
-    } catch (...) {
-      return "invalid numeric value '" + value + "' for type " + this->name();
-    }
-    return "number '" + value + "' out of allowed range (" +
-           std::to_string(minValue) + " - " + std::to_string(maxValue) + ")";
-  }
-
-  typename T::ValueType minValue;
-  typename T::ValueType maxValue;
-};
+using SizeTParameter = NumericParameter<std::size_t>;
 
 // concrete double number value type
-struct DoubleParameter : public NumericParameter<double> {
-  typedef double ValueType;
-
-  explicit DoubleParameter(ValueType* ptr) : NumericParameter<double>(ptr) {}
-
-  std::string name() const override { return "double"; }
-};
+using DoubleParameter = NumericParameter<double>;
 
 // string value type
 struct StringParameter : public Parameter {
@@ -425,7 +397,7 @@ struct StringParameter : public Parameter {
     return "";
   }
 
-  void toVPack(VPackBuilder& builder) const override {
+  void toVelocyPack(VPackBuilder& builder, bool /*detailed*/) const override {
     builder.add(VPackValue(*ptr));
   }
 
@@ -522,7 +494,7 @@ struct VectorParameter : public Parameter {
 
   void flushValue() override { ptr->clear(); }
 
-  void toVPack(VPackBuilder& builder) const override {
+  void toVelocyPack(VPackBuilder& builder, bool /*detailed*/) const override {
     builder.openArray();
     for (size_t i = 0; i < ptr->size(); ++i) {
       builder.add(VPackValue(ptr->at(i)));
@@ -594,7 +566,7 @@ struct DiscreteValuesVectorParameter : public Parameter {
     return result;
   }
 
-  void toVPack(VPackBuilder& builder) const override {
+  void toVelocyPack(VPackBuilder& builder, bool /*detailed*/) const override {
     builder.openArray();
     for (size_t i = 0; i < ptr->size(); ++i) {
       builder.add(VPackValue(ptr->at(i)));
@@ -632,7 +604,7 @@ struct ObsoleteParameter : public Parameter {
   std::string name() const override { return "obsolete"; }
   std::string valueString() const override { return "-"; }
   std::string set(std::string const&) override { return ""; }
-  void toVPack(VPackBuilder& builder) const override {
+  void toVelocyPack(VPackBuilder& builder, bool /*detailed*/) const override {
     builder.add(VPackValue(VPackValueType::Null));
   }
 

@@ -25,13 +25,12 @@
 const internal = require("internal");
 const {wait} = internal;
 const _ = require("lodash");
-const jsunity = require("jsunity");
-const {assertTrue} = jsunity.jsUnity.assertions;
 const request = require('@arangodb/request');
 const arangodb = require('@arangodb');
 const ArangoError = arangodb.ArangoError;
 const ERRORS = arangodb.errors;
 const db = arangodb.db;
+const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 
 const waitFor = function (checkFn, maxTries = 240) {
   let count = 0;
@@ -210,76 +209,13 @@ const replicatedLogDeleteTarget = function (database, logId) {
   global.ArangoAgency.increaseVersion(`Target/Version`);
 };
 
-const replicatedLogIsReady = function (database, logId, term, participants, leader) {
-  return function () {
-    let {current} = readReplicatedLogAgency(database, logId);
-    if (current === undefined) {
-      return Error("current not yet defined");
-    }
-
-    for (const srv of participants) {
-      if (!current.localStatus || !current.localStatus[srv]) {
-        return Error(`Participant ${srv} has not yet reported to current.`);
-      }
-      if (current.localStatus[srv].term < term) {
-        return Error(`Participant ${srv} has not yet acknowledged the current term; ` +
-            `found = ${current.localStatus[srv].term}, expected = ${term}.`);
-      }
-    }
-
-    if (leader !== undefined) {
-      if (!current.leader) {
-        return Error("Leader has not yet established its term");
-      }
-      if (current.leader.serverId !== leader) {
-        return Error(`Wrong leader in current; found = ${current.leader.serverId}, expected = ${leader}`);
-      }
-      if (current.leader.term < term) {
-        return Error(`Leader has not yet confirmed the term; found = ${current.leader.term}, expected = ${term}`);
-      }
-      if (!current.leader.leadershipEstablished) {
-        return Error("Leader has not yet established its leadership");
-      }
-    }
-    return true;
-  };
-};
-
-const replicatedLogLeaderEstablished = function (database, logId, term, participants) {
-  return function () {
-    let {current} = readReplicatedLogAgency(database, logId);
-    if (current === undefined) {
-      return Error("current not yet defined");
-    }
-
-    for (const srv of participants) {
-      if (!current.localStatus || !current.localStatus[srv]) {
-        return Error(`Participant ${srv} has not yet reported to current.`);
-      }
-      if (term !== undefined && current.localStatus[srv].term < term) {
-        return Error(`Participant ${srv} has not yet acknowledged the current term; ` +
-            `found = ${current.localStatus[srv].term}, expected = ${term}.`);
-      }
-    }
-
-    if (!current.leader) {
-      return Error("Leader has not yet established its term");
-    }
-    if (!current.leader.leadershipEstablished) {
-      return Error("Leader has not yet established its leadership");
-    }
-
-    return true;
-  };
-};
-
 const waitForReplicatedLogAvailable = function (id) {
   while (true) {
     try {
       let status = db._replicatedLog(id).status();
       const leaderId = status.leaderId;
       if (leaderId !== undefined && status.participants !== undefined &&
-        status.participants[leaderId].connection.errorCode === 0 && status.participants[leaderId].response.role === "leader") {
+          status.participants[leaderId].connection.errorCode === 0 && status.participants[leaderId].response.role === "leader") {
         break;
       }
       console.info("replicated log not yet available");
@@ -306,7 +242,7 @@ const getServerProcessID = function (serverId) {
   return global.instanceInfo.arangods[pos].pid;
 };
 
-const stopServer = function (serverId) {
+const stopServerImpl = function (serverId) {
   console.log(`suspending server ${serverId}`);
   let result = require('internal').suspendExternal(getServerProcessID(serverId));
   if (!result) {
@@ -314,7 +250,7 @@ const stopServer = function (serverId) {
   }
 };
 
-const continueServer = function (serverId) {
+const continueServerImpl = function (serverId) {
   console.log(`continuing server ${serverId}`);
   let result = require('internal').continueExternal(getServerProcessID(serverId));
   if (!result) {
@@ -322,39 +258,14 @@ const continueServer = function (serverId) {
   }
 };
 
-const allServersHealthy = function () {
-  return function () {
-    for (const server of dbservers) {
-      const health = getServerHealth(server);
-      if (health !== "GOOD") {
-        return Error(`${server} is ${health}`);
-      }
-    }
-
-    return true;
-  };
-};
-
-const checkServerHealth = function (serverId, value) {
-  return function () {
-    if (value === getServerHealth(serverId)) {
-      return true;
-    }
-    return Error(`${serverId} is not ${value}`);
-  };
-};
-
-const serverHealthy = (serverId) => checkServerHealth(serverId, "GOOD");
-const serverFailed = (serverId) => checkServerHealth(serverId, "FAILED");
-
 const continueServerWaitOk = function (serverId) {
-  continueServer(serverId);
-  waitFor(serverHealthy(serverId));
+  continueServerImpl(serverId);
+  waitFor(lpreds.serverHealthy(serverId));
 };
 
 const stopServerWaitFailed = function (serverId) {
-  stopServer(serverId);
-  waitFor(serverFailed(serverId));
+  stopServerImpl(serverId);
+  waitFor(lpreds.serverFailed(serverId));
 };
 
 const nextUniqueLogId = function () {
@@ -419,42 +330,6 @@ const getLocalStatus = function (database, logId, serverId) {
 };
 
 
-const replicatedLogParticipantsFlag = function (database, logId, flags, generation = undefined) {
-  return function () {
-    let {current} = readReplicatedLogAgency(database, logId);
-    if (current === undefined) {
-      return Error("current not yet defined");
-    }
-    if (!current.leader) {
-      return Error("Leader has not yet established its term");
-    }
-    if (!current.leader.committedParticipantsConfig) {
-      return Error("Leader has not yet committed any participants config");
-    }
-    if (generation !== undefined) {
-      if (current.leader.committedParticipantsConfig.generation < generation) {
-        return Error("Leader has not yet acked new generation; "
-            + `found ${current.leader.committedParticipantsConfig.generation}, expected = ${generation}`);
-      }
-    }
-
-    const participants = current.leader.committedParticipantsConfig.participants;
-    for (const [p, v] of Object.entries(flags)) {
-      if (v === null) {
-        if (participants[p] !== undefined) {
-          return Error(`Entry for server ${p} still present in participants flags`);
-        }
-      } else {
-        if (!_.isEqual(v, participants[p])) {
-          return Error(`Flags for participant ${p} are not as expected: ${JSON.stringify(v)} vs. ${JSON.stringify(participants[p])}`);
-        }
-      }
-    }
-
-    return true;
-  };
-};
-
 const getReplicatedLogLeaderPlan = function (database, logId) {
   let {plan} = readReplicatedLogAgency(database, logId);
   if (!plan.currentTerm) {
@@ -483,30 +358,105 @@ const createReplicatedLog = function (database, targetConfig) {
     supervision: {maxActionsTraceLength: 20},
   });
 
-  waitFor(replicatedLogLeaderEstablished(database, logId, undefined, servers));
+  waitFor(lpreds.replicatedLogLeaderEstablished(database, logId, undefined, servers));
 
   const {leader, term} = getReplicatedLogLeaderPlan(database, logId);
   const followers = _.difference(servers, [leader]);
   return {logId, servers, leader, term, followers};
 };
 
-const replicatedLogTargetVersion = function(database, logId, version) {
-  return function() {
-    let {current} = readReplicatedLogAgency(database, logId);
 
-    if (current === undefined) {
-      return Error(`current not yet defined`);
+const testHelperFunctions = function (database) {
+  let previousDatabase, databaseExisted = true;
+  let stoppedServers = {};
+
+  const stopServer = function (serverId) {
+    if (stoppedServers[serverId] !== undefined) {
+      throw new Error(`{serverId} already stopped`);
     }
-    if (!current.supervision) {
-      return Error(`supervision not yet reported to current`);
+    stopServerImpl(serverId);
+    stoppedServers[serverId] = true;
+  };
+
+  const stopServerWait = function (serverId) {
+    stopServer(serverId);
+    waitFor(lpreds.serverFailed(serverId));
+  };
+
+  const continueServer = function (serverId) {
+    if (stoppedServers[serverId] === undefined) {
+      throw new Error(`{serverId} not stopped`);
     }
-    if (!current.supervision.targetVersion) {
-      return Error(`no version reported in current by supervision`);
+    continueServerImpl(serverId);
+    delete stoppedServers[serverId];
+  };
+
+  const continueServerWait = function (serverId) {
+    continueServer(serverId);
+    waitFor(lpreds.serverHealthy(serverId));
+  };
+
+  const resumeAll = function () {
+    Object.keys(stoppedServers).forEach(function (key) {
+      continueServerWait(key);
+    });
+    stoppedServers = {};
+  };
+
+  const createTestDatabase = function () {
+    previousDatabase = db._name();
+    if (!_.includes(db._databases(), database)) {
+      db._createDatabase(database);
+      databaseExisted = false;
     }
-    if (current.supervision.targetVersion !== version) {
-      return Error(`found version ${current.supervison.targetVersion}, expected ${version}`);
+    db._useDatabase(database);
+  };
+
+  const resetPreviousDatabase = function () {
+    db._useDatabase(previousDatabase);
+    if (!databaseExisted) {
+      db._dropDatabase(database);
     }
-    return true;
+  };
+
+  const setUpAll = function () {
+    createTestDatabase();
+  };
+
+  const tearDownAll = function () {
+    resumeAll();
+    resetPreviousDatabase();
+  };
+
+  const setUpAnd = function (cb) {
+    return function (testName) {
+      registerAgencyTestBegin(testName);
+      cb(testName);
+    };
+  };
+  const setUp = setUpAnd(() => null);
+
+  const tearDownAnd = function (cb) {
+    return function (testName) {
+      registerAgencyTestEnd(testName);
+      resumeAll();
+      cb(testName);
+    };
+  };
+  const tearDown = tearDownAnd(() => null);
+
+  return {
+    stopServer,
+    stopServerWait,
+    continueServer,
+    continueServerWait,
+    resumeAll,
+    setUpAll,
+    tearDownAll,
+    setUp,
+    setUpAnd,
+    tearDown,
+    tearDownAnd
   };
 };
 
@@ -522,28 +472,24 @@ exports.replicatedLogUpdatePlanParticipantsConfigParticipants = replicatedLogUpd
 exports.replicatedLogSetPlanTerm = replicatedLogSetPlanTerm;
 exports.replicatedLogSetPlan = replicatedLogSetPlan;
 exports.replicatedLogDeletePlan = replicatedLogDeletePlan;
-exports.replicatedLogIsReady = replicatedLogIsReady;
-exports.stopServer = stopServer;
-exports.continueServer = continueServer;
+exports.stopServer = stopServerImpl;
+exports.continueServer = continueServerImpl;
 exports.nextUniqueLogId = nextUniqueLogId;
 exports.registerAgencyTestBegin = registerAgencyTestBegin;
 exports.registerAgencyTestEnd = registerAgencyTestEnd;
 exports.replicatedLogSetTarget = replicatedLogSetTarget;
 exports.getParticipantsObjectForServers = getParticipantsObjectForServers;
-exports.allServersHealthy = allServersHealthy;
 exports.continueServerWaitOk = continueServerWaitOk;
 exports.stopServerWaitFailed = stopServerWaitFailed;
 exports.replicatedLogDeleteTarget = replicatedLogDeleteTarget;
 exports.getLocalStatus = getLocalStatus;
 exports.getServerRebootId = getServerRebootId;
 exports.replicatedLogUpdateTargetParticipants = replicatedLogUpdateTargetParticipants;
-exports.replicatedLogLeaderEstablished = replicatedLogLeaderEstablished;
 exports.waitForReplicatedLogAvailable = waitForReplicatedLogAvailable;
-exports.replicatedLogParticipantsFlag = replicatedLogParticipantsFlag;
 exports.getReplicatedLogLeaderPlan = getReplicatedLogLeaderPlan;
 exports.getReplicatedLogLeaderTarget = getReplicatedLogLeaderTarget;
 exports.createReplicatedLog = createReplicatedLog;
 exports.checkRequestResult = checkRequestResult;
 exports.getServerUrl = getServerUrl;
 exports.getServerHealth = getServerHealth;
-exports.replicatedLogTargetVersion = replicatedLogTargetVersion;
+exports.testHelperFunctions = testHelperFunctions;

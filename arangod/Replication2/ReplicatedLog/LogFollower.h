@@ -78,6 +78,7 @@ class LogFollower : public ILogFollower,
       -> std::unique_ptr<LogIterator>;
   [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
 
+  [[nodiscard]] auto copyInMemoryLog() const -> InMemoryLog override;
   [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
 
   /// @brief Resolved when the leader has committed at least one entry.
@@ -102,6 +103,7 @@ class LogFollower : public ILogFollower,
     auto checkCommitIndex(LogIndex newCommitIndex, LogIndex newLITK,
                           std::unique_ptr<WaitForQueue> outQueue) noexcept
         -> DeferredAction;
+    [[nodiscard]] auto didResign() const noexcept -> bool;
 
     LogFollower const& _follower;
     InMemoryLog _inMemoryLog;

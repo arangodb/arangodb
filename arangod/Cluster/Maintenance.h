@@ -80,9 +80,9 @@ using ReplicatedLogStatusMapByDatabase =
 using ReplicatedLogSpecMap =
     std::unordered_map<arangodb::replication2::LogId,
                        arangodb::replication2::agency::LogPlanSpecification>;
-using ReplicatedStateStatusMap =
-    std::unordered_map<arangodb::replication2::LogId,
-                       arangodb::replication2::replicated_state::StateStatus>;
+using ReplicatedStateStatusMap = std::unordered_map<
+    arangodb::replication2::LogId,
+    std::optional<arangodb::replication2::replicated_state::StateStatus>>;
 using ReplicatedStateStatusMapByDatabase =
     std::unordered_map<DatabaseID, ReplicatedStateStatusMap>;
 using ReplicatedStateSpecMap =

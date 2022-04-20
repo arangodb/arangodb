@@ -212,9 +212,9 @@ class AgencyCache final : public ServerThread<ArangodServer> {
   metrics::Gauge<uint64_t>& _callbacksCount;
 };
 
-}  // namespace arangodb
+std::ostream& operator<<(std::ostream& o,
+                         arangodb::AgencyCache::change_set_t const& c);
+std::ostream& operator<<(std::ostream& o,
+                         arangodb::AgencyCache::databases_t const& d);
 
-namespace std {
-ostream& operator<<(ostream& o, arangodb::AgencyCache::change_set_t const& c);
-ostream& operator<<(ostream& o, arangodb::AgencyCache::databases_t const& d);
-}  // namespace std
+}  // namespace arangodb

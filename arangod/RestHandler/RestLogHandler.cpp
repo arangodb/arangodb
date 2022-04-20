@@ -196,17 +196,20 @@ RestStatus RestLogHandler::handlePostRelease(
 RestStatus RestLogHandler::handlePost(ReplicatedLogMethods const& methods,
                                       velocypack::Slice specSlice) {
   // create a new log
-  replication2::agency::LogTarget spec(replication2::agency::from_velocypack,
-                                       specSlice);
-  return waitForFuture(methods.createReplicatedLog(std::move(spec))
-                           .thenValue([this](Result&& result) {
-                             if (result.ok()) {
-                               generateOk(rest::ResponseCode::OK,
-                                          VPackSlice::emptyObjectSlice());
-                             } else {
-                               generateError(result);
-                             }
-                           }));
+  auto spec =
+      velocypack::deserialize<ReplicatedLogMethods::CreateOptions>(specSlice);
+  return waitForFuture(
+      methods.createReplicatedLog(std::move(spec))
+          .thenValue(
+              [this](ResultT<ReplicatedLogMethods::CreateResult>&& result) {
+                if (result.ok()) {
+                  VPackBuilder builder;
+                  velocypack::serialize(builder, result.get());
+                  generateOk(rest::ResponseCode::OK, builder.slice());
+                } else {
+                  generateError(result.result());
+                }
+              }));
 }
 
 RestStatus RestLogHandler::handleGetRequest(

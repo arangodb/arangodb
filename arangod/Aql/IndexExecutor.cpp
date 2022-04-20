@@ -53,6 +53,7 @@
 #include <velocypack/Iterator.h>
 
 #include <memory>
+#include <span>
 #include <utility>
 
 // Set this to true to activate devel logging
@@ -62,8 +63,29 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
+
+bool hasMultipleExpansions(
+    std::span<transaction::Methods::IndexHandle> const& indexes) noexcept {
+  // count how many attributes in the index are expanded (array index).
+  // if more than a single attribute is expanded, we always need to
+  // deduplicate the result later on.
+  // if we have an expanded attribute that occurs later in the index fields
+  // definition, e.g. ["name", "status[*]"], we also need to deduplicate
+  // later on.
+  for (auto const& idx : indexes) {
+    auto const& fields = idx->fields();
+    for (size_t i = 1; i < fields.size(); ++i) {
+      if (idx->isAttributeExpanded(i)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 /// resolve constant attribute accesses
-static void resolveFCallConstAttributes(Ast* ast, AstNode* fcall) {
+void resolveFCallConstAttributes(Ast* ast, AstNode* fcall) {
   TRI_ASSERT(fcall->type == NODE_TYPE_FCALL);
   TRI_ASSERT(fcall->numMembers() == 1);
   AstNode* array = fcall->getMemberUnchecked(0);
@@ -147,6 +169,7 @@ IndexIterator::CoveringCallback getCallback(
     return true;
   };
 }
+
 }  // namespace
 
 IndexExecutorInfos::IndexExecutorInfos(
@@ -176,7 +199,7 @@ IndexExecutorInfos::IndexExecutorInfos(
       _outputRegisterId(outputRegister),
       _outNonMaterializedIndVars(outNonMaterializedIndVars),
       _outNonMaterializedIndRegs(std::move(outNonMaterializedIndRegs)),
-      _hasMultipleExpansions(false),
+      _hasMultipleExpansions(::hasMultipleExpansions(_indexes)),
       _produceResult(produceResult),
       _count(count),
       _oneIndexCondition(oneIndexCondition),
@@ -210,23 +233,6 @@ IndexExecutorInfos::IndexExecutorInfos(
         // geo index condition i.e. `GEO_DISTANCE(x, y) <= d`
         if (lhs->type == NODE_TYPE_FCALL) {
           ::resolveFCallConstAttributes(_ast, lhs);
-        }
-      }
-    }
-  }
-
-  // count how many attributes in the index are expanded (array index)
-  // if more than a single attribute, we always need to deduplicate the
-  // result later on
-  for (auto const& idx : getIndexes()) {
-    size_t expansions = 0;
-    auto const& fields = idx->fields();
-    for (size_t i = 0; i < fields.size(); ++i) {
-      if (idx->isAttributeExpanded(i)) {
-        ++expansions;
-        if (expansions > 1 || i > 0) {
-          _hasMultipleExpansions = true;
-          break;
         }
       }
     }
@@ -298,10 +304,6 @@ IndexExecutorInfos::getVarsToRegister() const noexcept {
 std::vector<std::pair<VariableId, RegisterId>> const&
 IndexExecutorInfos::getFilterVarsToRegister() const noexcept {
   return _filterVarsToRegs;
-}
-
-void IndexExecutorInfos::setHasMultipleExpansions(bool flag) {
-  _hasMultipleExpansions = flag;
 }
 
 bool IndexExecutorInfos::hasNonConstParts() const {

@@ -125,6 +125,20 @@ std::chrono::milliseconds correctTimeoutToExecutionDeadline(
   return delta;
 }
 
+uint32_t correctTimeoutToExecutionDeadline(uint32_t timeoutMS) {
+  MUTEX_LOCKER(mutex, singletonDeadlineMutex);
+  auto when = executionDeadline;
+  if (when < 0.00001) {
+    return timeoutMS;
+  }
+  auto now = TRI_microtime();
+  auto delta = static_cast<uint32_t>((when - now) * 1000);
+  if (delta > timeoutMS) {
+    return timeoutMS;
+  }
+  return delta;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief signal handler for CTRL-C
 ////////////////////////////////////////////////////////////////////////////////

@@ -193,13 +193,14 @@ auto ReplicatedState<S>::GuardedData::rebuild(
         << "Replicated log has an unhandled participant type.";
     std::abort();
   }
-} catch (basics::Exception const& ex) {
-  if (ex.code() == TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE) {
-    LOG_CTX("eacb9", TRACE, _self.loggerContext)
-        << "Replicated log participant is gone. Replicated state will go soon "
-           "as well.";
-    return {};
-  }
+} catch (replication2::replicated_log::ParticipantResignedException const& ex) {
+  LOG_CTX("eacb9", TRACE, _self.loggerContext)
+      << "Replicated log participant is gone. Replicated state will go soon "
+         "as well. Error code: "
+      << ex.code();
+  currentManager = nullptr;
+  return {};
+} catch (...) {
   throw;
 }
 
@@ -218,6 +219,7 @@ auto ReplicatedState<S>::GuardedData::runFollower(
       std::move(core), std::move(token), _self.factory);
   currentManager = manager;
 
+  static_assert(noexcept(manager->run()));
   return DeferredAction([manager]() noexcept { manager->run(); });
 } catch (std::exception const& e) {
   LOG_CTX("ab9de", DEBUG, _self.loggerContext)
@@ -240,6 +242,7 @@ auto ReplicatedState<S>::GuardedData::runLeader(
       std::move(core), std::move(token), _self.factory);
   currentManager = manager;
 
+  static_assert(noexcept(manager->run()));
   return DeferredAction([manager]() noexcept { manager->run(); });
 } catch (std::exception const& e) {
   LOG_CTX("016f3", DEBUG, _self.loggerContext)
@@ -259,6 +262,7 @@ auto ReplicatedState<S>::GuardedData::runUnconfigured(
       std::move(core), std::move(token));
   currentManager = manager;
 
+  static_assert(noexcept(manager->run()));
   return DeferredAction([manager]() noexcept { manager->run(); });
 } catch (std::exception const& e) {
   LOG_CTX("6f1eb", DEBUG, _self.loggerContext)
