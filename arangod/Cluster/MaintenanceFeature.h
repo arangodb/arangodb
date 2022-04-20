@@ -618,7 +618,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   std::optional<std::reference_wrapper<Gauge<uint64_t>>> _shards_leader_count;
   std::optional<std::reference_wrapper<Gauge<uint64_t>>>
       _shards_not_replicated_count;
-  std::optional<std::reference_wrapper<Gauge<uint64_t>>> _sync_timeouts_total;
+  std::optional<std::reference_wrapper<Counter>> _sync_timeouts_total;
 };
 
 }  // namespace arangodb
