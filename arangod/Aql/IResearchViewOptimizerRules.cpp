@@ -246,16 +246,6 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
         if (!current->isDeterministic()) {
           return false;
         }
-        {
-          VarSet currentUsedVars;
-          current->getVariablesUsedHere(currentUsedVars);
-          bool valid{true};
-          for (auto const& var : currentUsedVars) {
-            if (var->id == viewVariable.id) {
-              return false;
-            }
-          }
-        }
         break;
       default:
         return false;
