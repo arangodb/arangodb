@@ -502,8 +502,8 @@ void MaintenanceFeature::stop() {
 }
 
 void MaintenanceFeature::countTimedOutSyncAttempt() {
-  if (_sync_timeouts_total != nullptr) {
-    ++(*_sync_timeouts_total);
+  if (_sync_timeouts_total) {
+    _sync_timeouts_total->get().operator++();
   }
 }
 
