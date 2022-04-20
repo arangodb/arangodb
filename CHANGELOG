@@ -1,6 +1,14 @@
 v3.9.2 (XXXX-XX-XX)
 -------------------
 
+* Increase internal transaction lock timeout on followers during cluster write
+  operations. Although writes to the same keys on followers should be serialized
+  by the key locks held on the leader, it is still possible that the global
+  transaction lock striped mutex is a source of contention and that concurrent
+  write operations time out while waiting to acquire this global mutex. The lock
+  timeout on followers is now significantly increased to make this very
+  unlikely.
+
 * Updated arangosync to v2.9.0.
 
 * Improve validation for variables used in the `KEEP` part of AQL COLLECT
