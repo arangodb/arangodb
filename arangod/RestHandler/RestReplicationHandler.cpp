@@ -3528,7 +3528,7 @@ Result RestReplicationHandler::createBlockingTransaction(
     TransactionId id, LogicalCollection& col, double ttl,
     AccessMode::Type access, RebootId const& rebootId,
     std::string const& serverId) {
-  // it is ok to acquire the lock here in all cases. otherwise we
+  // it is ok to acquire the scope here in all cases. otherwise we
   // may block replication. note: we need this here in case the
   // leader is read-only (e.g. because the license has expired).
   // if we are not using superuser scope here and the leader is
