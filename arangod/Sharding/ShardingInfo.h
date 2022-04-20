@@ -56,20 +56,20 @@ class ShardingInfo {
   bool usesSameShardingStrategy(ShardingInfo const* other) const;
   std::string shardingStrategyName() const;
 
-  LogicalCollection* collection() const;
+  LogicalCollection* collection() const noexcept;
   void toVelocyPack(arangodb::velocypack::Builder& result,
                     bool translateCids) const;
 
-  std::string const& distributeShardsLike() const;
+  std::string const& distributeShardsLike() const noexcept;
   void distributeShardsLike(std::string const& cid, ShardingInfo const* other);
 
-  std::vector<std::string> const& avoidServers() const;
+  std::vector<std::string> const& avoidServers() const noexcept;
   void avoidServers(std::vector<std::string> const&);
 
-  size_t replicationFactor() const;
+  size_t replicationFactor() const noexcept;
   void replicationFactor(size_t);
 
-  size_t writeConcern() const;
+  size_t writeConcern() const noexcept;
   void writeConcern(size_t);
 
   void setWriteConcernAndReplicationFactor(size_t writeConcern,
@@ -77,9 +77,9 @@ class ShardingInfo {
 
   std::pair<bool, bool>
   makeSatellite();  // Return note booleans: (isError, isASatellite)
-  bool isSatellite() const;
+  bool isSatellite() const noexcept;
 
-  size_t numberOfShards() const;
+  size_t numberOfShards() const noexcept;
 
   /// @brief update the number of shards. note that this method
   /// should never be called after a collection was properly initialized
@@ -94,8 +94,8 @@ class ShardingInfo {
       arangodb::velocypack::Slice slice, ArangodServer const& server,
       bool enforceReplicationFactor);
 
-  bool usesDefaultShardKeys() const;
-  std::vector<std::string> const& shardKeys() const;
+  bool usesDefaultShardKeys() const noexcept;
+  std::vector<std::string> const& shardKeys() const noexcept;
 
   std::shared_ptr<ShardMap> shardIds() const;
 

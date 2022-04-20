@@ -2324,7 +2324,8 @@ function iResearchFeatureAqlTestSuite () {
                                   {links: 
                                     {[colName]: 
                                       {storeValues: 'id', 
-                                       includeAllFields:true, 
+                                       includeAllFields:false, 
+                                       fields:{field:{}},
                                        analyzers:['calcUnderTest']}}});
         let res1 = db._query("FOR d IN @@v SEARCH d.field > 2" + 
                              "OPTIONS { waitForSync: true } RETURN d ",
@@ -2368,7 +2369,8 @@ function iResearchFeatureAqlTestSuite () {
                                   {links: 
                                     {[colName]: 
                                       {storeValues: 'id', 
-                                       includeAllFields:true, 
+                                       includeAllFields:false, 
+                                       fields:{field:{}},
                                        analyzers:['calcUnderTest']}}});
         let res1 = db._query("FOR d IN @@v SEARCH d.field > 2" + 
                              "OPTIONS { waitForSync: true } RETURN d ",
@@ -2500,7 +2502,8 @@ function iResearchFeatureAqlTestSuite () {
                                   {links: 
                                     {[colName]: 
                                       {storeValues: 'id', 
-                                       includeAllFields:true, 
+                                       includeAllFields:false, 
+                                       fields:{field:{}},
                                        analyzers:['calcUnderTest']}}});
         let res1 = db._query("FOR d IN @@v SEARCH ANALYZER(d.field > '2', 'calcUnderTest')" +  
                              "OPTIONS { waitForSync: true } RETURN d ",
@@ -2545,7 +2548,8 @@ function iResearchFeatureAqlTestSuite () {
                                   {links: 
                                     {[colName]: 
                                       {storeValues: 'id', 
-                                       includeAllFields:true, 
+                                       includeAllFields:false, 
+                                       fields:{field:{}},
                                        analyzers:['calcUnderTest']}}});
         let res1 = db._query("FOR d IN @@v SEARCH ANALYZER(d.field > '2', 'calcUnderTest')" +  
                              "OPTIONS { waitForSync: true } RETURN d ",
@@ -2668,7 +2672,8 @@ function iResearchFeatureAqlTestSuite () {
                                   {links: 
                                     {[colName]: 
                                       {storeValues: 'id', 
-                                       includeAllFields:true, 
+                                       includeAllFields:false, 
+                                       fields:{field:{}},
                                        analyzers:['calcUnderTest']}}});
         let res1 = db._query("FOR d IN @@v SEARCH d.field == true" + 
                              " OPTIONS { waitForSync: true } RETURN d ",
@@ -2709,7 +2714,8 @@ function iResearchFeatureAqlTestSuite () {
                                   {links: 
                                     {[colName]: 
                                       {storeValues: 'id', 
-                                       includeAllFields:true, 
+                                       includeAllFields:false, 
+                                       fields:{field:{}},
                                        analyzers:['calcUnderTest']}}});
         let res1 = db._query("FOR d IN @@v SEARCH d.field == true" + 
                              " OPTIONS { waitForSync: true } RETURN d ",

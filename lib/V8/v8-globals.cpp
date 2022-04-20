@@ -200,7 +200,9 @@ TRI_v8_global_t::TRI_v8_global_t(
       isolate, TRI_V8_ASCII_STRING(isolate, "isSynchronousReplication"));
   IsSystemKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "isSystem"));
   KeepNullKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "keepNull"));
-  KeyOptionsKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "keyOptions"));
+  KeyOptionsKey.Reset(
+      isolate,
+      TRI_V8_ASCII_STD_STRING(isolate, arangodb::StaticStrings::KeyOptions));
   LengthKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "length"));
   LifeTimeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "lifeTime"));
   MergeObjectsKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "mergeObjects"));
