@@ -55,7 +55,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_state_and_log) {
   replicated_state::checkReplicatedState(ctx, std::nullopt, state.get());
 
   EXPECT_TRUE(ctx.hasUpdates());
-  EXPECT_TRUE(std::holds_alternative<AddStateToPlanAction>(ctx.getAction()));
+  ASSERT_TRUE(std::holds_alternative<AddStateToPlanAction>(ctx.getAction()));
   auto const& action = std::get<AddStateToPlanAction>(ctx.getAction());
   EXPECT_EQ(action.statePlan.id, logId);
   EXPECT_EQ(action.logTarget.id, logId);
@@ -138,9 +138,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_wait_snapshot) {
   replicated_state::checkReplicatedState(ctx, log.get(), state.get());
 
   EXPECT_TRUE(ctx.hasUpdates());
-  EXPECT_TRUE(std::holds_alternative<EmptyAction>(ctx.getAction()))
-      << std::visit([](auto const& a) { return typeid(a).name(); },
-                    ctx.getAction());
+  EXPECT_TRUE(std::holds_alternative<EmptyAction>(ctx.getAction()));
   auto statusReport = ctx.getReport();
   ASSERT_EQ(statusReport.size(), 3);
 
@@ -181,7 +179,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_snapshot_complete) {
   replicated_state::checkReplicatedState(ctx, log.get(), state.get());
 
   EXPECT_TRUE(ctx.hasUpdates());
-  EXPECT_TRUE(
+  ASSERT_TRUE(
       std::holds_alternative<UpdateParticipantFlagsAction>(ctx.getAction()));
   auto& action = std::get<UpdateParticipantFlagsAction>(ctx.getAction());
   EXPECT_EQ(action.participant, "A");
@@ -256,7 +254,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_add_participant_1) {
   replicated_state::checkReplicatedState(ctx, log.get(), state.get());
 
   EXPECT_TRUE(ctx.hasUpdates());
-  EXPECT_TRUE(std::holds_alternative<AddParticipantAction>(ctx.getAction()));
+  ASSERT_TRUE(std::holds_alternative<AddParticipantAction>(ctx.getAction()));
   auto& action = std::get<AddParticipantAction>(ctx.getAction());
   EXPECT_EQ(action.participant, "D");
 }
@@ -360,7 +358,7 @@ TEST_F(ReplicatedStateSupervisionTest, check_add_participant_3_2) {
   replicated_state::checkReplicatedState(ctx, log.get(), state.get());
 
   EXPECT_TRUE(ctx.hasUpdates());
-  EXPECT_TRUE(
+  ASSERT_TRUE(
       std::holds_alternative<UpdateParticipantFlagsAction>(ctx.getAction()));
   auto& action = std::get<UpdateParticipantFlagsAction>(ctx.getAction());
   EXPECT_EQ(action.participant, "D");
@@ -394,7 +392,221 @@ TEST_F(ReplicatedStateSupervisionTest, check_add_participant_4) {
   replicated_state::checkReplicatedState(ctx, log.get(), state.get());
 
   EXPECT_TRUE(ctx.hasUpdates());
-  EXPECT_TRUE(std::holds_alternative<CurrentConvergedAction>(ctx.getAction()));
+  ASSERT_TRUE(std::holds_alternative<CurrentConvergedAction>(ctx.getAction()));
   auto& action = std::get<CurrentConvergedAction>(ctx.getAction());
   EXPECT_EQ(action.version, 12);
+}
+
+TEST_F(ReplicatedStateSupervisionTest, check_remove_two_servers_0) {
+  // "B" and "C" are no longer in State/Target
+  // "D" has been added
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "D")
+      .setTargetVersion(20)
+      .setTargetConfig(defaultConfig);
+
+  state.setPlanParticipants("A", "B", "C").setAllSnapshotsComplete();
+  state.setCurrentVersion(12);
+
+  log.setId(logId)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("B", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete);
+
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  EXPECT_TRUE(ctx.hasUpdates());
+  ASSERT_TRUE(std::holds_alternative<AddParticipantAction>(ctx.getAction()));
+  auto& action = std::get<AddParticipantAction>(ctx.getAction());
+  EXPECT_EQ(action.participant, "D");
+}
+
+TEST_F(ReplicatedStateSupervisionTest, check_remove_two_servers_1) {
+  // "B" and "C" are no longer in State/Target
+  // "D" has been added to State/Plan and Log/Target
+  // "D"s snapshot is not yet complete
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "D")
+      .setTargetVersion(20)
+      .setTargetConfig(defaultConfig);
+
+  state.setPlanParticipants("A", "B", "C", "D")
+      .setSnapshotCompleteFor("A", "B", "C");
+  state.setCurrentVersion(12);
+
+  log.setId(logId)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("B", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete)
+      .setTargetParticipant("D", flagsSnapshotIncomplete);
+
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  EXPECT_TRUE(ctx.hasUpdates());
+  ASSERT_TRUE(std::holds_alternative<RemoveParticipantFromLogTargetAction>(
+      ctx.getAction()))
+      << ctx.getAction().index();
+  auto& action =
+      std::get<RemoveParticipantFromLogTargetAction>(ctx.getAction());
+  EXPECT_TRUE(action.participant == "B" || action.participant == "C")
+      << action.participant;
+}
+
+TEST_F(ReplicatedStateSupervisionTest, check_remove_two_servers_2) {
+  // "B" and "C" are no longer in target
+  // assume that "B" was removed from Log/Target
+  // but "D" still has no snapshot
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "D")
+      .setTargetVersion(20)
+      .setTargetConfig(defaultConfig);
+
+  state.setPlanParticipants("A", "B", "C", "D")
+      .setSnapshotCompleteFor("A", "B", "C");
+  state.setCurrentVersion(12);
+
+  log.setId(logId)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete)
+      .setTargetParticipant("D", flagsSnapshotIncomplete);
+
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete)
+      .setPlanParticipant("D", flagsSnapshotIncomplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  // removing "C" is not yet allowed, because "D" has no snapshot
+  // and we need at least two ok servers
+  // "B" is still in Log/Plan.
+  EXPECT_TRUE(ctx.hasUpdates());
+  EXPECT_TRUE(std::holds_alternative<EmptyAction>(ctx.getAction()));
+  auto& report = ctx.getReport();
+  ASSERT_EQ(report.size(), 3);
+  std::sort(report.begin(), report.end(),
+            [](auto const& left, auto const& right) {
+              return std::tie(left.participant, left.code) <
+                     std::tie(right.participant, right.code);
+            });
+  EXPECT_EQ(report[0].code, RSA::StatusCode::kLogParticipantNotYetGone);
+  EXPECT_EQ(report[0].participant, "B");
+  EXPECT_EQ(report[1].code, RSA::StatusCode::kInsufficientSnapshotCoverage);
+  EXPECT_EQ(report[1].participant, "C");
+  EXPECT_EQ(report[2].code, RSA::StatusCode::kServerSnapshotMissing);
+  EXPECT_EQ(report[2].participant, "D");
+}
+
+TEST_F(ReplicatedStateSupervisionTest, check_remove_two_servers_3_1) {
+  // Same as above but now drop "B" from Log/Plan
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "D")
+      .setTargetVersion(20)
+      .setTargetConfig(defaultConfig);
+
+  state.setPlanParticipants("A", "B", "C", "D")
+      .setSnapshotCompleteFor("A", "B", "C");
+  state.setCurrentVersion(12);
+
+  log.setId(logId)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete)
+      .setTargetParticipant("D", flagsSnapshotIncomplete);
+
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete)
+      .setPlanParticipant("D", flagsSnapshotIncomplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  // We should now be able to remove "B"
+  EXPECT_TRUE(ctx.hasUpdates());
+  ASSERT_TRUE(std::holds_alternative<RemoveParticipantFromStatePlanAction>(
+      ctx.getAction()));
+  auto& action =
+      std::get<RemoveParticipantFromStatePlanAction>(ctx.getAction());
+  EXPECT_EQ(action.participant, "B");
+  auto& report = ctx.getReport();
+  ASSERT_EQ(report.size(), 2);
+  std::sort(report.begin(), report.end(),
+            [](auto const& left, auto const& right) {
+              return std::tie(left.participant, left.code) <
+                     std::tie(right.participant, right.code);
+            });
+  EXPECT_EQ(report[0].code, RSA::StatusCode::kInsufficientSnapshotCoverage);
+  EXPECT_EQ(report[0].participant, "C");
+  EXPECT_EQ(report[1].code, RSA::StatusCode::kServerSnapshotMissing);
+  EXPECT_EQ(report[1].participant, "D");
+}
+
+TEST_F(ReplicatedStateSupervisionTest, check_remove_two_servers_3_2) {
+  // Same as above, but complete snapshot of "D"
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "D")
+      .setTargetVersion(20)
+      .setTargetConfig(defaultConfig);
+
+  state.setPlanParticipants("A", "B", "C", "D").setAllSnapshotsComplete();
+  state.setCurrentVersion(12);
+
+  log.setId(logId)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete)
+      .setTargetParticipant("D", flagsSnapshotIncomplete);
+
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete)
+      .setPlanParticipant("D", flagsSnapshotIncomplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  // removing "C" is not yet allowed, because "D" has no snapshot
+  // and we need at least two ok servers
+  // "B" is still in Log/Plan.
+  EXPECT_TRUE(ctx.hasUpdates());
+  ASSERT_TRUE(
+      std::holds_alternative<UpdateParticipantFlagsAction>(ctx.getAction()));
+  auto& action = std::get<UpdateParticipantFlagsAction>(ctx.getAction());
+  EXPECT_EQ(action.participant, "D");
+  EXPECT_EQ(action.flags, flagsSnapshotComplete);
+  auto& report = ctx.getReport();
+  ASSERT_EQ(report.size(), 2);
+  std::sort(report.begin(), report.end(),
+            [](auto const& left, auto const& right) {
+              return std::tie(left.participant, left.code) <
+                     std::tie(right.participant, right.code);
+            });
+  EXPECT_EQ(report[0].code, RSA::StatusCode::kLogParticipantNotYetGone);
+  EXPECT_EQ(report[0].participant, "B");
+  EXPECT_EQ(report[1].code, RSA::StatusCode::kInsufficientSnapshotCoverage);
+  EXPECT_EQ(report[1].participant, "C");
 }

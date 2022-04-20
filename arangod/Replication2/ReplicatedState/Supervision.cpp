@@ -125,7 +125,7 @@ auto isParticipantOk(ParticipantId const& participant, RLA::Log const& log,
       auto const& flags = iter->second;
       return flags.allowedAsLeader and flags.allowedInQuorum;
     }
-    return true;
+    return false;
   };
 
   // check if the flags for that participant are set correctly
