@@ -1,6 +1,12 @@
 v3.9.2 (XXXX-XX-XX)
 -------------------
 
+* Fix: for the Windows build, the new Snappy version, which was introduced in
+  3.9, generated code that contained BMI2 instructions which where introduced
+  with the Intel Haswell architecture. However, our target architecture for 3.9
+  is actually Sandy Bridge, which predates Haswell. Running the build on these
+  older CPUs thus resulted in illegal instruction exceptions.
+
 * Updated arangosync to v2.9.0.
 
 * Improve validation for variables used in the `KEEP` part of AQL COLLECT
