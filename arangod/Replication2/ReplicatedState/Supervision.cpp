@@ -32,9 +32,9 @@
 using namespace arangodb;
 
 /*
- * This is the flow graph of the replicated state supervision. Operations that are
- * on the same level are allowed to be executed in parallel. The first entry in
- * a chain that produces an action terminates the rest of the chain. Actions
+ * This is the flow graph of the replicated state supervision. Operations that
+ * are on the same level are allowed to be executed in parallel. The first entry
+ * in a chain that produces an action terminates the rest of the chain. Actions
  * of a lower level are only executed if their parent is ok.
  *
  * 1. ReplicatedLog/Target and ReplicatedState/Plan exists

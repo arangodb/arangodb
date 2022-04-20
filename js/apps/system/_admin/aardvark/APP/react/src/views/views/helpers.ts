@@ -36,25 +36,6 @@ export function useLinkState(formState: { [key: string]: any }, formField: strin
   return [innerField, setInnerField, addDisabled, innerFields];
 }
 
-export const useCollection = () => {
-  const { data, error } = useSWR(['/collection', 'excludeSystem=true'], (path, qs) => getApiRouteForCurrentDB().get(path, qs));
-  if (data) {
-    return { res: data.body.result };
-  } else {
-    return error;
-  }
-}
-
-export function useJsonFormEffect(Ivalue: any) {
-  const [json, setJson] = useState(Ivalue);
-
-  function toggleButton(value: any) {
-    setJson((cur: any) => typeof value === "boolean" ? value : !cur)
-  }
-
-  return [json, toggleButton];
-}
-
 export function useView(name: string) {
   const [view, setView] = useState<object>({ name });
   const { data } = useSWR(`/view/${name}/properties`,
@@ -96,17 +77,18 @@ export const buildSubNav = (isAdminUser: boolean, name: string, activeKey: strin
 
   const defaultRoute = '#view/' + encodeURIComponent(name);
   const menus: { [key: string]: any } = {
-    Info: {
-      route: defaultRoute
-    },
+
     Settings: {
-      route: `${defaultRoute}/settings`
+      route: defaultRoute
     },
     'Consolidation Policy': {
       route: `${defaultRoute}/consolidation`
     },
     Links: {
       route: `${defaultRoute}/links`
+    },
+    Info: {
+      route: `${defaultRoute}/info`
     },
     JSON: {
       route: `${defaultRoute}/json`

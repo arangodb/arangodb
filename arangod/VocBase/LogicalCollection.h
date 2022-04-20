@@ -71,8 +71,6 @@ class Methods;
 /// needs to be derived from the JSON info in the agency's plan entry for the
 /// collection...
 
-typedef std::shared_ptr<LogicalCollection> LogicalCollectionPtr;
-
 class LogicalCollection : public LogicalDataSource {
   friend struct ::TRI_vocbase_t;
 
@@ -149,41 +147,62 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Properties
   RevisionId revision(transaction::Methods*) const;
-  bool waitForSync() const { return _waitForSync; }
+  bool waitForSync() const noexcept { return _waitForSync; }
   void waitForSync(bool value) { _waitForSync = value; }
 #ifdef USE_ENTERPRISE
-  bool isDisjoint() const { return _isDisjoint; }
-  bool isSmart() const { return _isSmart; }
-  bool isSmartChild() const { return _isSmartChild; }
+  bool isDisjoint() const noexcept { return _isDisjoint; }
+  bool isSmart() const noexcept { return _isSmart; }
+  bool isSmartChild() const noexcept { return _isSmartChild; }
+  bool hasSmartJoinAttribute() const noexcept {
+    return !_smartJoinAttribute.empty();
+  }
+
+  bool isLocalSmartEdgeCollection() const noexcept;
+  bool isRemoteSmartEdgeCollection() const noexcept;
+  bool isSmartEdgeCollection() const noexcept;
+  bool isSatToSmartEdgeCollection() const noexcept;
+  bool isSmartToSatEdgeCollection() const noexcept;
+
 #else
-  bool isDisjoint() const { return false; }
-  bool isSmart() const { return false; }
-  bool isSmartChild() const { return false; }
+  bool isDisjoint() const noexcept { return false; }
+  bool isSmart() const noexcept { return false; }
+  bool isSmartChild() const noexcept { return false; }
+  bool hasSmartJoinAttribute() const noexcept { return false; }
+
+  bool isLocalSmartEdgeCollection() const noexcept { return false; }
+  bool isRemoteSmartEdgeCollection() const noexcept { return false; }
+  bool isSmartEdgeCollection() const noexcept { return false; }
+  bool isSatToSmartEdgeCollection() const noexcept { return false; }
+  bool isSmartToSatEdgeCollection() const noexcept { return false; }
 #endif
-  bool usesRevisionsAsDocumentIds() const;
-  /// @brief is this a cluster-wide Plan (ClusterInfo) collection
-  bool isAStub() const { return _isAStub; }
-
-  bool hasSmartJoinAttribute() const { return !smartJoinAttribute().empty(); }
-
-  bool hasClusterWideUniqueRevs() const;
 
   /// @brief return the name of the SmartJoin attribute (empty string
   /// if no SmartJoin attribute is present)
-  std::string const& smartJoinAttribute() const { return _smartJoinAttribute; }
+  std::string const& smartJoinAttribute() const noexcept;
+
+  std::string const& smartGraphAttribute() const noexcept;
+
+  bool usesRevisionsAsDocumentIds() const noexcept;
+
+  /// @brief is this a cluster-wide Plan (ClusterInfo) collection
+  bool isAStub() const noexcept { return _isAStub; }
+
+  bool hasClusterWideUniqueRevs() const noexcept;
+
+  [[nodiscard]] bool mustCreateKeyOnCoordinator() const noexcept;
 
   // SECTION: sharding
   ShardingInfo* shardingInfo() const;
 
   // proxy methods that will use the sharding info in the background
-  size_t numberOfShards() const;
-  size_t replicationFactor() const;
-  size_t writeConcern() const;
-  std::string const& distributeShardsLike() const;
-  std::vector<std::string> const& avoidServers() const;
-  bool isSatellite() const;
-  bool usesDefaultShardKeys() const;
-  std::vector<std::string> const& shardKeys() const;
+  size_t numberOfShards() const noexcept;
+  size_t replicationFactor() const noexcept;
+  size_t writeConcern() const noexcept;
+  std::string const& distributeShardsLike() const noexcept;
+  std::vector<std::string> const& avoidServers() const noexcept;
+  bool isSatellite() const noexcept;
+  bool usesDefaultShardKeys() const noexcept;
+  std::vector<std::string> const& shardKeys() const noexcept;
   TEST_VIRTUAL std::shared_ptr<ShardMap> shardIds() const;
 
   // mutation options for sharding
@@ -199,10 +218,6 @@ class LogicalCollection : public LogicalDataSource {
                                 std::string& shardID,
                                 bool& usesDefaultShardKeys,
                                 std::string_view key = std::string_view());
-
-  /// @briefs creates a new document key, the input slice is ignored here
-  /// this method is overriden in derived classes
-  virtual std::string createKey(velocypack::Slice input);
 
   PhysicalCollection* getPhysical() const { return _physical.get(); }
 
@@ -232,7 +247,7 @@ class LogicalCollection : public LogicalDataSource {
   virtual bool skipForAqlWrite(velocypack::Slice document,
                                std::string const& key) const;
 
-  bool allowUserKeys() const;
+  bool allowUserKeys() const noexcept;
 
   // SECTION: Modification Functions
   Result drop() override;
@@ -330,19 +345,19 @@ class LogicalCollection : public LogicalDataSource {
 
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.
-  inline KeyGenerator* keyGenerator() const { return _keyGenerator.get(); }
+  KeyGenerator& keyGenerator() const { return *_keyGenerator; }
 
   transaction::CountCache& countCache() { return _countCache; }
 
   std::unique_ptr<FollowerInfo> const& followers() const;
 
   /// @brief returns the value of _syncByRevision
-  bool syncByRevision() const;
+  bool syncByRevision() const noexcept;
 
   /// @brief returns the value of _syncByRevision, but only for "real"
   /// collections with data backing. returns false for all collections with no
   /// data backing.
-  bool useSyncByRevision() const;
+  bool useSyncByRevision() const noexcept;
 
   /// @brief set the internal validator types. This should be handled with care
   /// and be set before the collection is persisted into the Agency.
@@ -350,35 +365,11 @@ class LogicalCollection : public LogicalDataSource {
   // (Technically no issue but will have side-effects on shards)
   void setInternalValidatorTypes(uint64_t type);
 
-  uint64_t getInternalValidatorTypes() const;
-
-  bool isLocalSmartEdgeCollection() const noexcept;
-
-  bool isRemoteSmartEdgeCollection() const noexcept;
-
-  bool isSmartEdgeCollection() const noexcept;
-
-  bool isSatToSmartEdgeCollection() const noexcept;
-
-  bool isSmartToSatEdgeCollection() const noexcept;
-
- protected:
-  void addInternalValidator(std::unique_ptr<ValidatorBase>);
-
-  Result appendVPack(velocypack::Builder& build, Serialization ctx,
-                     bool safe) const override;
-
-  Result updateSchema(VPackSlice schema);
-
-  /**
-   * Enterprise only method. See enterprise code for implementation
-   * Community has a dummy stub.
-   */
-  std::string createSmartToSatKey(velocypack::Slice input);
-
-  void decorateWithInternalEEValidators();
+  uint64_t getInternalValidatorTypes() const noexcept;
 
  private:
+  void initializeSmartAttributes(velocypack::Slice info);
+
   void prepareIndexes(velocypack::Slice indexesSlice);
 
   void increaseV8Version();
@@ -388,6 +379,15 @@ class LogicalCollection : public LogicalDataSource {
   void decorateWithInternalValidators();
 
  protected:
+  void addInternalValidator(std::unique_ptr<ValidatorBase>);
+
+  Result appendVPack(velocypack::Builder& build, Serialization ctx,
+                     bool safe) const override;
+
+  Result updateSchema(VPackSlice schema);
+
+  void decorateWithInternalEEValidators();
+
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
 
   // SECTION: Meta Information
@@ -421,16 +421,20 @@ class LogicalCollection : public LogicalDataSource {
   bool const _isSmartChild;
 #endif
 
+  bool const _allowUserKeys;
+
   // SECTION: Properties
   std::atomic<bool> _waitForSync;
-
-  bool const _allowUserKeys;
 
   std::atomic<bool> _usesRevisionsAsDocumentIds;
 
   std::atomic<bool> _syncByRevision;
 
+#ifdef USE_ENTERPRISE
+  std::string _smartGraphAttribute;
+
   std::string _smartJoinAttribute;
+#endif
 
   transaction::CountCache _countCache;
 
