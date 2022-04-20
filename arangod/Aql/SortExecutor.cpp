@@ -38,8 +38,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
-
-/// @brief OurLessThan
+// custom AqlValue-aware comparator for sorting
 class OurLessThan {
  public:
   OurLessThan(velocypack::Options const* options, AqlItemMatrix const& input,
