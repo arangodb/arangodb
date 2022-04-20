@@ -1521,6 +1521,10 @@ void SynchronizeShard::setState(ActionState state) {
         // dropped and completely rebuilt.
         _feature.storeReplicationError(getDatabase(), getShard());
       }
+      if (isTimeoutExceeded) {
+        // track the number of timeouts
+        _feature.countTimedOutSyncAttempt();
+      }
     }
 
     // Acquire current version from agency and wait for it to have been dealt
