@@ -2343,7 +2343,8 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         if (lshard.isObject()) {  // just in case
           VPackSlice theLeader = lshard.get("theLeader");
           if (theLeader.isString() &&
-              theLeader.stringView() == maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
+              theLeader.stringView() ==
+                  maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
             needsResyncBecauseOfRestart = true;
           }
         }
@@ -2356,7 +2357,9 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         std::string leader = pservers[0].copyString();
         std::string forcedResync =
             needsResyncBecauseOfRestart ? "true" : "false";
-        std::string syncByRevision = pcol.value.get(StaticStrings::SyncByRevision).isTrue() ? "true" : "false";
+        std::string syncByRevision =
+            pcol.value.get(StaticStrings::SyncByRevision).isTrue() ? "true"
+                                                                   : "false";
         std::shared_ptr<ActionDescription> description =
             std::make_shared<ActionDescription>(
                 std::map<std::string, std::string>{
