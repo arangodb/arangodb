@@ -75,9 +75,12 @@ void CacheManagerFeature::collectOptions(
       new UInt64Parameter(&_cacheSize),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
-  options->addOption("--cache.rebalancing-interval",
-                     "microseconds between rebalancing attempts",
-                     new UInt64Parameter(&_rebalancingInterval));
+  options->addOption(
+      "--cache.rebalancing-interval",
+      "microseconds between rebalancing attempts",
+      new UInt64Parameter(
+          &_rebalancingInterval, /*base*/ 1,
+          /*minValue*/ CacheManagerFeature::minRebalancingInterval));
 }
 
 void CacheManagerFeature::validateOptions(
@@ -86,13 +89,6 @@ void CacheManagerFeature::validateOptions(
     LOG_TOPIC("75778", FATAL, arangodb::Logger::FIXME)
         << "invalid value for `--cache.size', need at least "
         << Manager::kMinSize;
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_rebalancingInterval < (CacheManagerFeature::minRebalancingInterval)) {
-    LOG_TOPIC("8bb45", FATAL, arangodb::Logger::FIXME)
-        << "invalid value for `--cache.rebalancing-interval', need at least "
-        << (CacheManagerFeature::minRebalancingInterval);
     FATAL_ERROR_EXIT();
   }
 }

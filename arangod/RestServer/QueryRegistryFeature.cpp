@@ -263,7 +263,8 @@ void QueryRegistryFeature::collectOptions(
       ->addOption(
           "--query.max-runtime",
           "runtime threshold for AQL queries (in seconds, 0 = no limit)",
-          new DoubleParameter(&_queryMaxRuntime))
+          new DoubleParameter(&_queryMaxRuntime, /*base*/ 1.0,
+                              /*minValue*/ 0.0))
       .setIntroducedIn(30607)
       .setIntroducedIn(30703);
 
@@ -338,9 +339,10 @@ void QueryRegistryFeature::collectOptions(
                      "the query result cache",
                      new BooleanParameter(&_queryCacheIncludeSystem));
 
-  options->addOption("--query.optimizer-max-plans",
-                     "maximum number of query plans to create for a query",
-                     new UInt64Parameter(&_maxQueryPlans));
+  options->addOption(
+      "--query.optimizer-max-plans",
+      "maximum number of query plans to create for a query",
+      new UInt64Parameter(&_maxQueryPlans, /*base*/ 1, /*minValue*/ 1));
 
   options
       ->addOption("--query.max-nodes-per-callstack",
@@ -409,20 +411,6 @@ void QueryRegistryFeature::validateOptions(
     LOG_TOPIC("2af5f", FATAL, Logger::AQL)
         << "invalid value for `--query.global-memory-limit`. expecting 0 or a "
            "value >= `--query.memory-limit`";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_queryMaxRuntime < 0.0) {
-    LOG_TOPIC("46572", FATAL, Logger::AQL)
-        << "invalid value for `--query.max-runtime`. expecting 0 or a positive "
-           "value";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_maxQueryPlans == 0) {
-    LOG_TOPIC("4006f", FATAL, Logger::AQL)
-        << "invalid value for `--query.optimizer-max-plans`. expecting at "
-           "least 1";
     FATAL_ERROR_EXIT();
   }
 
