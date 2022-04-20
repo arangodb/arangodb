@@ -36,6 +36,10 @@
 
 #include <velocypack/StringRef.h>
 
+#include <algorithm>
+#include <cstdint>
+#include <string>
+
 %}
 
 %union {
