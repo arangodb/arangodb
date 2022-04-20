@@ -63,21 +63,35 @@
     },
     getFiguresCombined: function (callback, isCluster) {
       var self = this;
-      var shardsCallback = function (error, data) {
+      var propertiesCallback = function (error, data) {
         if (error) {
           callback(true);
+        } else {
+          var figures = data;
+          self.getProperties(function (error, data) {
+            if (error) {
+              callback(true, figures);
+            } else {
+              callback(false, Object.assign(figures, { properties: data }));
+            }
+          });
+        }
+      };
+      var shardsCallback = function (error, data) {
+        if (error) {
+          propertiesCallback(true);
         } else {
           var figures = data;
           if (isCluster) {
             self.getShards(function (error, data) {
               if (error) {
-                callback(true);
+                propertiesCallback(true, data);
               } else {
-                callback(false, Object.assign(figures, { shards: data.shards }));
+                propertiesCallback(false, Object.assign(figures, { shards: data.shards }));
               }
             });
           } else {
-            callback(false, figures);
+            propertiesCallback(false, figures);
           }
         }
       };
@@ -278,8 +292,7 @@
       });
     },
 
-    changeCollection: function (wfs, replicationFactor, writeConcern, callback) {
-      var result = false;
+    changeCollection: function (wfs, replicationFactor, writeConcern, cacheEnabled, callback) {
       if (wfs === 'true') {
         wfs = true;
       } else if (wfs === 'false') {
@@ -288,6 +301,15 @@
       var data = {
         waitForSync: wfs
       };
+
+      if (cacheEnabled === 'true' || cacheEnabled === true) {
+        cacheEnabled = true;
+      } else {
+        cacheEnabled = false;
+      }
+      if (cacheEnabled !== null && cacheEnabled !== undefined) {
+        data.cacheEnabled = cacheEnabled;
+      }
 
       if (replicationFactor) {
         data.replicationFactor = parseInt(replicationFactor, 10);
@@ -311,7 +333,6 @@
           callback(true, data);
         }
       });
-      return result;
     },
 
     changeValidation: function (validation, callback) {

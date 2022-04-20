@@ -120,8 +120,8 @@ bool PhysicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
   VPackValueLength len;
   char const* docId = slice.getStringUnchecked(len);
   [[maybe_unused]] size_t split = 0;
-  return KeyGenerator::validateId(docId, static_cast<size_t>(len),
-                                  _extendedNames, split);
+  return KeyGeneratorHelper::validateId(docId, static_cast<size_t>(len),
+                                        _extendedNames, split);
 }
 
 bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
@@ -377,7 +377,7 @@ Result PhysicalCollection::newObjectForInsert(
   VPackSlice s = value.get(StaticStrings::KeyString);
   if (s.isNone()) {
     TRI_ASSERT(!isRestore);  // need key in case of restore
-    auto keyString = _logicalCollection.createKey(value);
+    auto keyString = _logicalCollection.keyGenerator().generate(value);
 
     if (keyString.empty()) {
       return Result(TRI_ERROR_ARANGO_OUT_OF_KEYS);
@@ -389,11 +389,9 @@ Result PhysicalCollection::newObjectForInsert(
   } else {
     TRI_ASSERT(s.isString());
 
-    VPackValueLength l;
-    char const* p = s.getStringUnchecked(l);
-
     // validate and track the key just used
-    auto res = _logicalCollection.keyGenerator()->validate(p, l, isRestore);
+    auto res = _logicalCollection.keyGenerator().validate(s.stringView(), value,
+                                                          isRestore);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return Result(res);
