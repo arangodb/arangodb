@@ -1,6 +1,13 @@
 devel
 -----
 
+* Make web UI show the following information for collections:
+  * key generator type
+  * whether or not the document and primary index cache is enabled
+  * if cache is enabled, show cache usage and allocation size in figures
+  The `cacheEnabled` property of collections is now also changable via the
+  UI for existing collections.
+  
 * FE-45: Added tooltips with helpful information to the options on the View UI
   settings page.
 
@@ -48,7 +55,7 @@ devel
 * Fix lock order in Agent::advanceCommitIndex for State's _logLock and
   Agent's _waitForCV.
 
-* Fix deadlocked shard synchronisations when planned shard leader has
+* Fix deadlocked shard synchronizations when planned shard leader has
   not yet taken over leadership.
 
 * Resync follower shard after a follower restart immediately and not lazily.
