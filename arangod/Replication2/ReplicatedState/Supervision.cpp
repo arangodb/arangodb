@@ -32,9 +32,9 @@
 using namespace arangodb;
 
 /*
- * This is the flow graph of the replicated state supervision. Operations that are
- * on the same level are allowed to be executed in parallel. The first entry in
- * a chain that produces an action terminates the rest of the chain. Actions
+ * This is the flow graph of the replicated state supervision. Operations that
+ * are on the same level are allowed to be executed in parallel. The first entry
+ * in a chain that produces an action terminates the rest of the chain. Actions
  * of a lower level are only executed if their parent is ok.
  *
  * 1. ReplicatedLog/Target and ReplicatedState/Plan exists
@@ -198,8 +198,7 @@ auto checkParticipantAdded(SupervisionContext& ctx, RLA::Log const& log,
     if (!planParticipants.contains(participant) ||
         !log.target.participants.contains(participant)) {
       if (ctx.numberServersInTarget + 1 >= ctx.numberServersOk) {
-        ctx.createAction<AddParticipantAction>(participant,
-                                               state.plan->generation);
+        ctx.createAction<AddParticipantAction>(participant);
       } else {
         ctx.reportStatus(RSA::StatusCode::kInsufficientSnapshotCoverage,
                          participant);
@@ -264,9 +263,10 @@ auto checkLogParticipantRemoved(SupervisionContext& ctx, RLA::Log const& log,
 auto checkSnapshotComplete(SupervisionContext& ctx, RLA::Log const& log,
                            RSA::State const& state) {
   if (state.current and log.plan) {
-    // TODO generation?
     for (auto const& [participant, flags] : log.target.participants) {
       if (!flags.allowedAsLeader || !flags.allowedInQuorum) {
+        TRI_ASSERT(state.plan->participants.contains(participant))
+            << "if a participant is in Log/Target is has to be in State/Plan";
         auto const& plannedGeneration =
             state.plan->participants.at(participant).generation;
 
@@ -287,6 +287,11 @@ auto checkSnapshotComplete(SupervisionContext& ctx, RLA::Log const& log,
         }
         // otherwise, report error
         ctx.reportStatus(RSA::StatusCode::kServerSnapshotMissing, participant);
+      } else {
+        TRI_ASSERT(isParticipantSnapshotCompleted(participant, *state.current,
+                                                  *state.plan))
+            << "If a participant is allowed as leader and in a quorum, its "
+               "snapshot must be available";
       }
     }
   }

@@ -40,6 +40,7 @@ struct ReplicatedStateSupervisionTest : ::testing::Test {
   LogConfig const defaultConfig = {2, 2, 3, false};
   LogId const logId{12};
 
+  ParticipantFlags const flagsSnapshotComplete{};
   ParticipantFlags const flagsSnapshotIncomplete{.allowedInQuorum = false,
                                                  .allowedAsLeader = false};
 };
@@ -154,4 +155,246 @@ TEST_F(ReplicatedStateSupervisionTest, check_wait_snapshot) {
   }
 
   EXPECT_EQ(participants, (std::unordered_set<ParticipantId>{"A", "B", "C"}));
+}
+
+TEST_F(ReplicatedStateSupervisionTest, check_snapshot_complete) {
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C")
+      .setTargetConfig(defaultConfig);
+
+  state.setPlanParticipants("A", "B", "C").setSnapshotCompleteFor("A");
+  state.makeCurrent();
+
+  log.setId(logId)
+      .setTargetParticipant("A", flagsSnapshotIncomplete)
+      .setTargetParticipant("B", flagsSnapshotIncomplete)
+      .setTargetParticipant("C", flagsSnapshotIncomplete);
+
+  log.setPlanParticipant("A", flagsSnapshotIncomplete)
+      .setPlanParticipant("B", flagsSnapshotIncomplete)
+      .setPlanParticipant("C", flagsSnapshotIncomplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  EXPECT_TRUE(ctx.hasUpdates());
+  EXPECT_TRUE(
+      std::holds_alternative<UpdateParticipantFlagsAction>(ctx.getAction()));
+  auto& action = std::get<UpdateParticipantFlagsAction>(ctx.getAction());
+  EXPECT_EQ(action.participant, "A");
+  EXPECT_EQ(action.flags, flagsSnapshotComplete);
+
+  auto statusReport = ctx.getReport();
+  ASSERT_EQ(statusReport.size(), 2);
+
+  std::unordered_set<ParticipantId> participants;
+
+  for (int i = 0; i < 2; i++) {
+    auto& message = statusReport[i];
+    EXPECT_EQ(message.code, RSA::StatusCode::kServerSnapshotMissing);
+    if (message.participant) {
+      participants.insert(*message.participant);
+    }
+  }
+
+  EXPECT_EQ(participants, (std::unordered_set<ParticipantId>{"B", "C"}));
+}
+
+TEST_F(ReplicatedStateSupervisionTest, check_all_snapshot_complete) {
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C")
+      .setTargetVersion(12)
+      .setTargetConfig(defaultConfig);
+
+  state.setPlanParticipants("A", "B", "C").setAllSnapshotsComplete();
+  state.setCurrentVersion(12);
+
+  log.setId(logId)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("B", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete);
+
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  EXPECT_FALSE(ctx.hasUpdates());
+}
+
+TEST_F(ReplicatedStateSupervisionTest, check_add_participant_1) {
+  // Server "D" was added to target
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C", "D")
+      .setTargetVersion(12)
+      .setTargetConfig(defaultConfig);
+
+  state.setPlanParticipants("A", "B", "C").setAllSnapshotsComplete();
+  state.setCurrentVersion(5);
+
+  log.setId(logId)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("B", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete);
+
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  EXPECT_TRUE(ctx.hasUpdates());
+  EXPECT_TRUE(std::holds_alternative<AddParticipantAction>(ctx.getAction()));
+  auto& action = std::get<AddParticipantAction>(ctx.getAction());
+  EXPECT_EQ(action.participant, "D");
+}
+
+TEST_F(ReplicatedStateSupervisionTest, check_add_participant_2) {
+  // Server "D" is now in State/Plan and Log/Target
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C", "D")
+      .setTargetVersion(12)
+      .setTargetConfig(defaultConfig);
+
+  state.setPlanParticipants("A", "B", "C")
+      .setAllSnapshotsComplete()
+      .addPlanParticipant("D");
+  state.setCurrentVersion(5);
+
+  log.setId(logId)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("B", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete)
+      .setTargetParticipant("D", flagsSnapshotIncomplete);
+
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  EXPECT_TRUE(ctx.hasUpdates());
+  EXPECT_TRUE(std::holds_alternative<EmptyAction>(ctx.getAction()));
+  auto& report = ctx.getReport();
+  ASSERT_EQ(report.size(), 1);
+  EXPECT_EQ(report[0].code, RSA::StatusCode::kServerSnapshotMissing);
+}
+
+TEST_F(ReplicatedStateSupervisionTest, check_add_participant_3_1) {
+  // Server "D" is now in Log/Current committed
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C", "D")
+      .setTargetVersion(12)
+      .setTargetConfig(defaultConfig);
+
+  state.setPlanParticipants("A", "B", "C")
+      .setAllSnapshotsComplete()
+      .addPlanParticipant("D");
+  state.setCurrentVersion(5);
+
+  log.setId(logId)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("B", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete)
+      .setTargetParticipant("D", flagsSnapshotIncomplete);
+
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete)
+      .setPlanParticipant("D", flagsSnapshotIncomplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  EXPECT_TRUE(ctx.hasUpdates());
+  EXPECT_TRUE(std::holds_alternative<EmptyAction>(ctx.getAction()));
+  auto& report = ctx.getReport();
+  ASSERT_EQ(report.size(), 1);
+  EXPECT_EQ(report[0].code, RSA::StatusCode::kServerSnapshotMissing);
+}
+
+TEST_F(ReplicatedStateSupervisionTest, check_add_participant_3_2) {
+  // Server "D" is not yet in Log/Current but the snapshot is completed
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C", "D")
+      .setTargetVersion(12)
+      .setTargetConfig(defaultConfig);
+
+  state.setPlanParticipants("A", "B", "C", "D").setAllSnapshotsComplete();
+  state.setCurrentVersion(5);
+
+  log.setId(logId)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("B", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete)
+      .setTargetParticipant("D", flagsSnapshotIncomplete);
+
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete)
+      .setPlanParticipant("D", flagsSnapshotIncomplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  EXPECT_TRUE(ctx.hasUpdates());
+  EXPECT_TRUE(
+      std::holds_alternative<UpdateParticipantFlagsAction>(ctx.getAction()));
+  auto& action = std::get<UpdateParticipantFlagsAction>(ctx.getAction());
+  EXPECT_EQ(action.participant, "D");
+  EXPECT_EQ(action.flags, flagsSnapshotComplete);
+}
+
+TEST_F(ReplicatedStateSupervisionTest, check_add_participant_4) {
+  AgencyStateBuilder state;
+  AgencyLogBuilder log;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C", "D")
+      .setTargetVersion(12)
+      .setTargetConfig(defaultConfig);
+
+  state.setPlanParticipants("A", "B", "C", "D").setAllSnapshotsComplete();
+  state.setCurrentVersion(5);
+
+  log.setId(logId)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("B", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete)
+      .setTargetParticipant("D", flagsSnapshotComplete);
+
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete)
+      .setPlanParticipant("D", flagsSnapshotIncomplete);
+
+  replicated_state::SupervisionContext ctx;
+  ctx.enableErrorReporting();
+  replicated_state::checkReplicatedState(ctx, log.get(), state.get());
+
+  EXPECT_TRUE(ctx.hasUpdates());
+  EXPECT_TRUE(std::holds_alternative<CurrentConvergedAction>(ctx.getAction()));
+  auto& action = std::get<CurrentConvergedAction>(ctx.getAction());
+  EXPECT_EQ(action.version, 12);
 }
