@@ -208,7 +208,7 @@ struct BaseOptions {
 
   void setRefactor(bool r) noexcept { _refactor = r; }
 
-  bool refactor() const { return true; }
+  bool refactor() const { return _refactor; }
 
   aql::Variable const* tmpVar();  // TODO check public
   arangodb::aql::FixedVarExpressionContext& getExpressionCtx();
