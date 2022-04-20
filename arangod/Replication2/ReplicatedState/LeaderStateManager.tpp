@@ -27,7 +27,7 @@
 
 namespace arangodb::replication2::replicated_state {
 template<typename S>
-void LeaderStateManager<S>::run() {
+void LeaderStateManager<S>::run() noexcept {
   // 1. wait for leadership established
   // 1.2. digest available entries into multiplexer
   // 2. construct leader state
@@ -48,6 +48,8 @@ void LeaderStateManager<S>::run() {
         LOG_CTX("53ba1", TRACE, self->loggerContext)
             << "LeaderStateManager established";
         auto f = self->guardedData.doUnderLock([&](GuardedData& data) {
+          TRI_ASSERT(data.internalState ==
+                     LeaderInternalState::kWaitingForLeadershipEstablished);
           data.updateInternalState(LeaderInternalState::kIngestingExistingLog);
           auto mux = Multiplexer::construct(self->logLeader);
           mux->digestAvailableEntries();
@@ -150,6 +152,18 @@ void LeaderStateManager<S>::run() {
             return;
           }
           TRI_ASSERT(res.ok());
+          if (!res.ok()) {
+            THROW_ARANGO_EXCEPTION(res);
+          }
+        } catch (arangodb::basics::Exception const& e) {
+          if (e.code() ==
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED) {
+            return;
+          }
+          LOG_CTX("e73bd", FATAL, self->loggerContext)
+              << "Unexpected exception in leader startup procedure: "
+              << e.what();
+          FATAL_ERROR_EXIT();
         } catch (std::exception const& e) {
           LOG_CTX("e73bc", FATAL, self->loggerContext)
               << "Unexpected exception in leader startup procedure: "

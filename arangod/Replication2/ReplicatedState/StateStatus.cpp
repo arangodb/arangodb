@@ -26,7 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/voc-errors.h"
-#include "Agency/TimeString.h"
+#include "Basics/TimeString.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>

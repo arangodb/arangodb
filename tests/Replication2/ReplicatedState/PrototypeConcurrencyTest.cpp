@@ -100,12 +100,14 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
         "prototype-state", networkMock, storageMock);
     leader->triggerAsyncReplication();
 
+    leader->waitForLeadership().get();
     auto replicatedState =
         feature->createReplicatedState("prototype-state", leaderLog);
     replicatedState->start(
         std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
     leaderState = std::dynamic_pointer_cast<PrototypeLeaderState>(
         replicatedState->getLeader());
+    TRI_ASSERT(leaderState != nullptr);
     networkMock->addLeaderState("leader", leaderState);
 
     replicatedState =
@@ -130,7 +132,7 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
   static auto createAsyncReplicatedLog(LogId id = LogId{0})
       -> std::shared_ptr<replication2::replicated_log::ReplicatedLog> {
     return createReplicatedLogImpl<replicated_log::ReplicatedLog,
-                                   test::MockLog>(id);
+                                   test::AsyncMockLog>(id);
   }
 
   static auto createLeaderWithDefaultFlags(
@@ -176,8 +178,7 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
       std::make_shared<MockPrototypeStorageInterface>();
 };
 
-TEST_F(PrototypeConcurrencyTest, DISABLED_test_concurrent_writes) {
-  leader->waitForLeadership().get();
+TEST_F(PrototypeConcurrencyTest, test_concurrent_writes) {
   const auto numKeys = 1000;
   const auto options = PrototypeStateMethods::PrototypeWriteOptions{};
   auto const runThread = [options, this](int from, int to, int delta,
