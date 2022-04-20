@@ -179,6 +179,13 @@ template class ::arangodb::graph::QueueTracer<
 template class ::arangodb::graph::QueueTracer<
     arangodb::graph::WeightedQueue<SingleServerProviderStep>>;
 
+template class ::arangodb::graph::QueueTracer<
+    arangodb::graph::FifoQueue<ClusterProviderStep>>;
+template class ::arangodb::graph::QueueTracer<
+    arangodb::graph::LifoQueue<ClusterProviderStep>>;
+template class ::arangodb::graph::QueueTracer<
+    arangodb::graph::WeightedQueue<ClusterProviderStep>>;
+
 #ifdef USE_ENTERPRISE
 template class ::arangodb::graph::QueueTracer<
     arangodb::graph::FifoQueue<enterprise::SmartGraphStep>>;
@@ -186,12 +193,4 @@ template class ::arangodb::graph::QueueTracer<
     arangodb::graph::LifoQueue<enterprise::SmartGraphStep>>;
 template class ::arangodb::graph::QueueTracer<
     arangodb::graph::WeightedQueue<enterprise::SmartGraphStep>>;
-
-template class ::arangodb::graph::QueueTracer<
-    arangodb::graph::FifoQueue<ClusterProviderStep>>;
-template class ::arangodb::graph::QueueTracer<
-    arangodb::graph::LifoQueue<ClusterProviderStep>>;
-template class ::arangodb::graph::QueueTracer<
-    arangodb::graph::WeightedQueue<ClusterProviderStep>>;
 #endif
-
