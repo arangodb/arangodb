@@ -25,14 +25,11 @@
 
 #include "Basics/ScopeGuard.h"
 #include "Basics/system-functions.h"
-#include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Queues/LifoQueue.h"
 #include "Graph/Queues/WeightedQueue.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
-#ifdef USE_ENTERPRISE
-// #include "Enterprise/Graph/Steps/ClusterProviderStep.h"
-#endif
+#include "Graph/Steps/ClusterProviderStep.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"

@@ -371,32 +371,18 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorSingleServer(
           });
     }
   }
+  // This Assert is not necessary, we could be smart here, for disjoints.
+  // However current implementation does not hand in isSmart==true
+  // in the valid combination.
+  TRI_ASSERT(!isSmart);
   bool useTracing = true;
   TRI_ASSERT(_traversalEnumerator == nullptr);
 
-#ifdef USE_ENTERPRISE
-  if (isSmart) {
-    // TODO [GraphRefactor]: I think this should never be called at all.
-    TRI_ASSERT(false);
-    _traversalEnumerator = TraversalEnumerator::createEnumerator<
-        SingleServerProvider<enterprise::SmartGraphStep>>(
-        order, uniqueVertices, uniqueEdges, query,
-        std::move(baseProviderOptions), std::move(pathValidatorOptions),
-        std::move(enumeratorOptions), useTracing);
-  } else {
-    _traversalEnumerator = TraversalEnumerator::createEnumerator<
-        SingleServerProvider<SingleServerProviderStep>>(
-        order, uniqueVertices, uniqueEdges, query,
-        std::move(baseProviderOptions), std::move(pathValidatorOptions),
-        std::move(enumeratorOptions), useTracing);
-  }
-#else
   _traversalEnumerator = TraversalEnumerator::createEnumerator<
       SingleServerProvider<SingleServerProviderStep>>(
       order, uniqueVertices, uniqueEdges, query, std::move(baseProviderOptions),
       std::move(pathValidatorOptions), std::move(enumeratorOptions),
       useTracing);
-#endif
 
   TRI_ASSERT(_traversalEnumerator != nullptr);
 }

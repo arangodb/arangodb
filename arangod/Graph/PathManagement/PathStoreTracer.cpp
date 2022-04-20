@@ -33,11 +33,11 @@
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
+#include "Graph/Steps/ClusterProviderStep.h"
 #include "Graph/Types/ValidationResult.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
-// #include "Enterprise/Graph/Steps/ClusterProviderStep.h"
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 #endif
 
