@@ -46,7 +46,6 @@ class ReplicatedLogFeature final : public ArangodFeature {
       -> std::shared_ptr<replication2::ReplicatedLogGlobalSettings const>;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override;
 
  private:

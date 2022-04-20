@@ -28,7 +28,7 @@
 
 #include "Basics/debugging.h"
 #include "Basics/StaticStrings.h"
-#include "Agency/TimeString.h"
+#include "Basics/TimeString.h"
 
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;
@@ -61,6 +61,15 @@ auto StateGeneration::saturatedDecrement(uint64_t delta) const noexcept
 auto replicated_state::operator<<(std::ostream& os, StateGeneration g)
     -> std::ostream& {
   return os << g.value;
+}
+
+auto StateGeneration::operator++() noexcept -> StateGeneration& {
+  ++value;
+  return *this;
+}
+
+auto StateGeneration::operator++(int) noexcept -> StateGeneration {
+  return StateGeneration{value++};
 }
 
 auto replicated_state::operator<<(std::ostream& os, SnapshotStatus const& ss)

@@ -21,18 +21,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#include <memory>
 
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
 #include "Replication2/Streams/Streams.h"
 #include "Replication2/Streams/LogMultiplexer.h"
 
+#include <Basics/Guarded.h>
+
+#include <memory>
+
 namespace arangodb::replication2::replicated_state {
 
 template<typename S>
 struct LeaderStateManager
-    : ReplicatedState<S>::StateManagerBase,
+    : ReplicatedState<S>::IStateManager,
       std::enable_shared_from_this<LeaderStateManager<S>> {
   using Factory = typename ReplicatedStateTraits<S>::FactoryType;
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
@@ -41,9 +44,9 @@ struct LeaderStateManager
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
 
   using WaitForAppliedQueue =
-      typename ReplicatedState<S>::StateManagerBase::WaitForAppliedQueue;
+      typename ReplicatedState<S>::IStateManager::WaitForAppliedQueue;
   using WaitForAppliedPromise =
-      typename ReplicatedState<S>::StateManagerBase::WaitForAppliedQueue;
+      typename ReplicatedState<S>::IStateManager::WaitForAppliedQueue;
 
   explicit LeaderStateManager(
       LoggerContext loggerContext,
@@ -58,7 +61,7 @@ struct LeaderStateManager
 
   [[nodiscard]] auto getStatus() const -> StateStatus final;
 
-  void run() override;
+  void run() noexcept override;
 
   [[nodiscard]] auto resign() && noexcept
       -> std::tuple<std::unique_ptr<CoreType>,

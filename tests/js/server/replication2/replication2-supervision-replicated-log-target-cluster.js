@@ -241,7 +241,7 @@ const replicatedLogSuite = function () {
         assertEqual(detail[followers[1]].code, 0);
       }
 
-      // now resume, followers[1 has to become leader, because it's the only server with log entry 1 available
+      // now resume, followers[1] has to become leader, because it's the only server with log entry 1 available
       continueServer(followers[0]);
       waitFor(replicatedLogIsReady(database, logId, term + 2, [followers[0], followers[1]], followers[1]));
 
