@@ -444,7 +444,7 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
         std::make_unique<enterprise::SmartGraphRPCCommunicator>(
             query, query.resourceMonitor(), baseProviderOptions.engines()));
     _traversalEnumerator = TraversalEnumerator::createEnumerator<
-        enterprise::SmartGraphProvider<enterprise::SmartGraphCoordinatorStep>>(
+        enterprise::SmartGraphProvider<ClusterProviderStep>>(
         order, uniqueVertices, uniqueEdges, query,
         std::move(baseProviderOptions), std::move(pathValidatorOptions),
         std::move(enumeratorOptions), useTracing);
