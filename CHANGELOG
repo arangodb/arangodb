@@ -1,6 +1,9 @@
 v3.8.7 (XXXX-XX-XX)
 -------------------
 
+* Bump the number of RocksDB transaction lock stripes to at least 16, if the
+  number of cores is lower than that value.
+
 * Increase internal transaction lock timeout on followers during cluster write
   operations. Although writes to the same keys on followers should be serialized
   by the key locks held on the leader, it is still possible that the global
