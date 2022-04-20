@@ -302,9 +302,9 @@
         waitForSync: wfs
       };
 
-      if (cacheEnabled === 'true') {
+      if (cacheEnabled === 'true' || cacheEnabled === true) {
         cacheEnabled = true;
-      } else if (cacheEnabled === 'false') {
+      } else {
         cacheEnabled = false;
       }
       if (cacheEnabled !== null && cacheEnabled !== undefined) {
