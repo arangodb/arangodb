@@ -1,6 +1,14 @@
 devel
 -----
 
+* Refactor internal code paths responsible for `_key` generation. For
+  collections with only a single shard, we can now always let the leader
+  DB server generate the keys locally. For collections with multiple shards, 
+  the coordinators are now always responsible for key generation.
+  Previously the responsibility was mixed and depended on the type of 
+  operation executed (document insert API vs. AQL query, single operation
+  vs. batch).
+
 * Make web UI show the following information for collections:
   * key generator type
   * whether or not the document and primary index cache is enabled

@@ -2882,6 +2882,9 @@ function testCompleteGraphDfsUniqueVerticesPathD3(testGraph) {
 }
 
 function testCompleteGraphDfsUniqueVerticesPathD3NotHasExtra(testGraph) {
+  if (!internal.debugCanUseFailAt()) {
+    return;
+  }
   internal.debugSetFailAt("RocksDBEdgeIndex::disableHasExtra");
   try {
     completeGraphDfsUniqueVerticesPathD3Helper(testGraph);
