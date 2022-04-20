@@ -1,6 +1,9 @@
 devel
 -----
 
+* FE-45: Added tooltips with helpful information to the options on the View UI
+  settings page.
+
 * FE-43: Simplify the workflow on the web view UI (Links page): allow for users
   to view a single link or field with their properties at a time.
 
