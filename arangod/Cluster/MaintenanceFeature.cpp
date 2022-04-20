@@ -109,8 +109,8 @@ DECLARE_GAUGE(arangodb_shards_leader_number, uint64_t,
               "Number of leader shards on this machine");
 DECLARE_GAUGE(arangodb_shards_not_replicated, uint64_t,
               "Number of shards not replicated at all");
-DECLARE_GAUGE(arangodb_sync_timeouts_total, uint64_t,
-              "Number of shard synchronization attempts that timed out");
+DECLARE_COUNTER(arangodb_sync_timeouts_total,
+                "Number of shard synchronization attempts that timed out");
 
 namespace {
 
