@@ -706,8 +706,10 @@ bool SynchronizeShard::first() {
   std::string planId = _description.get(COLLECTION);
   std::string const& shard = getShard();
   std::string leader = _description.get(THE_LEADER);
-  bool forcedResync = _description.get(FORCED_RESYNC) == "true";
-  bool syncByRevision = _description.get(SYNC_BY_REVISION) == "true";
+  bool forcedResync = _description.has(FORCED_RESYNC) &&
+                      _description.get(FORCED_RESYNC) == "true";
+  bool syncByRevision = _description.has(SYNC_BY_REVISION) &&
+                        _description.get(SYNC_BY_REVISION) == "true";
 
   size_t failuresInRow = _feature.replicationErrors(database, shard);
 
