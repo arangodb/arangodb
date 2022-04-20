@@ -153,6 +153,7 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
   }
 
   if constexpr (std::is_same_v<ResultList, enterprise::SmartGraphResponse>) {
+    TRI_ASSERT(ServerState::instance()->isDBServer());
     smartExpand(step, posPrevious, res);
   } else {
     if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
