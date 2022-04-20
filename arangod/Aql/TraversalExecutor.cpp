@@ -84,7 +84,7 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
     arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
     TraverserOptions* opts,
-    ClusterBaseProviderOptions&& clusterBaseProviderOptions)
+    ClusterBaseProviderOptions&& clusterBaseProviderOptions, bool isSmart)
     : _traverser(std::move(traverser)),
       _registerMapping(std::move(registerMapping)),
       _fixedSource(std::move(fixedSource)),
@@ -124,7 +124,7 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     parseTraversalEnumeratorCluster(
         getOrder(), getUniqueVertices(), getUniqueEdges(), _defaultWeight,
         _weightAttribute, query, std::move(clusterBaseProviderOptions),
-        std::move(pathValidatorOptions), std::move(enumeratorOptions));
+        std::move(pathValidatorOptions), std::move(enumeratorOptions), isSmart);
 
     TRI_ASSERT(_traversalEnumerator != nullptr);
   }
@@ -147,7 +147,8 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
     arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
     TraverserOptions* opts,
-    graph::SingleServerBaseProviderOptions&& singleServerBaseProviderOptions)
+    graph::SingleServerBaseProviderOptions&& singleServerBaseProviderOptions,
+    bool isSmart)
     : _traverser(std::move(traverser)),
       _registerMapping(std::move(registerMapping)),
       _fixedSource(std::move(fixedSource)),
@@ -187,7 +188,7 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     parseTraversalEnumeratorSingleServer(
         getOrder(), getUniqueVertices(), getUniqueEdges(), _defaultWeight,
         _weightAttribute, query, std::move(singleServerBaseProviderOptions),
-        std::move(pathValidatorOptions), std::move(enumeratorOptions));
+        std::move(pathValidatorOptions), std::move(enumeratorOptions), isSmart);
 
     TRI_ASSERT(_traversalEnumerator != nullptr);
   }
@@ -346,7 +347,7 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorSingleServer(
     std::string const& weightAttribute, QueryContext& query,
     SingleServerBaseProviderOptions&& baseProviderOptions,
     PathValidatorOptions&& pathValidatorOptions,
-    OneSidedEnumeratorOptions&& enumeratorOptions) -> void {
+    OneSidedEnumeratorOptions&& enumeratorOptions, bool isSmart) -> void {
   if (order == TraverserOptions::Order::WEIGHTED) {
     // It is valid to not have set a weightAttribute.
     // TRI_ASSERT(_opts->hasWeightAttribute());
@@ -373,11 +374,30 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorSingleServer(
   bool useTracing = true;
   TRI_ASSERT(_traversalEnumerator == nullptr);
 
+#ifdef USE_ENTERPRISE
+  if (isSmart) {
+    // TODO [GraphRefactor]: I think this should never be called at all.
+    TRI_ASSERT(false);
+    _traversalEnumerator = TraversalEnumerator::createEnumerator<
+        SingleServerProvider<enterprise::SmartGraphStep>>(
+        order, uniqueVertices, uniqueEdges, query,
+        std::move(baseProviderOptions), std::move(pathValidatorOptions),
+        std::move(enumeratorOptions), useTracing);
+  } else {
+    _traversalEnumerator = TraversalEnumerator::createEnumerator<
+        SingleServerProvider<SingleServerProviderStep>>(
+        order, uniqueVertices, uniqueEdges, query,
+        std::move(baseProviderOptions), std::move(pathValidatorOptions),
+        std::move(enumeratorOptions), useTracing);
+  }
+#else
   _traversalEnumerator = TraversalEnumerator::createEnumerator<
       SingleServerProvider<SingleServerProviderStep>>(
       order, uniqueVertices, uniqueEdges, query, std::move(baseProviderOptions),
       std::move(pathValidatorOptions), std::move(enumeratorOptions),
       useTracing);
+#endif
+
   TRI_ASSERT(_traversalEnumerator != nullptr);
 }
 
@@ -389,7 +409,8 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
     arangodb::aql::QueryContext& query,
     arangodb::graph::ClusterBaseProviderOptions&& baseProviderOptions,
     arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
-    arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions) -> void {
+    arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
+    bool isSmart) -> void {
   if (order == TraverserOptions::Order::WEIGHTED) {
     // It is valid to not have set a weightAttribute.
     // TRI_ASSERT(_opts->hasWeightAttribute());
@@ -417,11 +438,31 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
   bool useTracing = true;
   TRI_ASSERT(_traversalEnumerator == nullptr);
 
+#ifdef USE_ENTERPRISE
+  if (isSmart) {
+    baseProviderOptions.setRPCCommunicator(
+        std::make_unique<enterprise::SmartGraphRPCCommunicator>(
+            query, query.resourceMonitor(), baseProviderOptions.engines()));
+    _traversalEnumerator = TraversalEnumerator::createEnumerator<
+        enterprise::SmartGraphProvider<enterprise::SmartGraphCoordinatorStep>>(
+        order, uniqueVertices, uniqueEdges, query,
+        std::move(baseProviderOptions), std::move(pathValidatorOptions),
+        std::move(enumeratorOptions), useTracing);
+  } else {
+    _traversalEnumerator = TraversalEnumerator::createEnumerator<
+        ClusterProvider<ClusterProviderStep>>(
+        order, uniqueVertices, uniqueEdges, query,
+        std::move(baseProviderOptions), std::move(pathValidatorOptions),
+        std::move(enumeratorOptions), useTracing);
+  }
+#else
   _traversalEnumerator = TraversalEnumerator::createEnumerator<
       ClusterProvider<ClusterProviderStep>>(
       order, uniqueVertices, uniqueEdges, query, std::move(baseProviderOptions),
       std::move(pathValidatorOptions), std::move(enumeratorOptions),
       useTracing);
+#endif
+
   TRI_ASSERT(_traversalEnumerator != nullptr);
 }
 

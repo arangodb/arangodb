@@ -690,7 +690,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createRefactoredBlock(
         TraversalExecutorInfosHelper::OutputName, RegisterId,
         TraversalExecutorInfosHelper::OutputNameHash>& outputRegisterMapping,
     RegisterId inputRegister, RegisterInfos registerInfos,
-    std::unordered_map<ServerID, aql::EngineId> const* engines) const {
+    std::unordered_map<ServerID, aql::EngineId> const* engines,
+    bool isSmart) const {
   TraverserOptions* opts = this->options();
 
   arangodb::graph::OneSidedEnumeratorOptions options{opts->minDepth,
@@ -754,14 +755,13 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createRefactoredBlock(
         std::move(filterConditionVariables), plan()->getAst(),
         opts->uniqueVertices, opts->uniqueEdges, opts->mode, opts->refactor(),
         opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
-        std::move(validatorOptions),
-        //                                 arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
-        //                                 opts->maxDepth});
-        std::move(options), opts, std::move(clusterBaseProviderOptions));
+        std::move(validatorOptions), std::move(options), opts,
+        std::move(clusterBaseProviderOptions), isSmart);
 
     return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else {
+    TRI_ASSERT(!isSmart);
     auto singleServerBaseProviderOptions =
         getSingleServerBaseProviderOptions(opts, filterConditionVariables);
     auto executorInfos = TraversalExecutorInfos(  // todo add a parameter:
@@ -770,10 +770,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createRefactoredBlock(
         std::move(filterConditionVariables), plan()->getAst(),
         opts->uniqueVertices, opts->uniqueEdges, opts->mode, opts->refactor(),
         opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
-        std::move(validatorOptions),
-        //                                 arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
-        //                                 opts->maxDepth});
-        std::move(options), opts, std::move(singleServerBaseProviderOptions));
+        std::move(validatorOptions), std::move(options), opts,
+        std::move(singleServerBaseProviderOptions), isSmart);
 
     return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -1012,8 +1010,17 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
      */
     waitForSatelliteIfRequired(&engine);
     if (isSmart() && !isDisjoint()) {
-      traverser = std::make_unique<arangodb::traverser::SmartGraphTraverser>(
-          opts, engines());
+      if (opts->refactor()) {
+        // Note: Using refactored smart graph cluster engine.
+        LOG_DEVEL << "Using refactored SmartGraph cluster engine!";
+        return createRefactoredBlock(
+            engine, std::move(filterConditionVariables), checkPruneAvailability,
+            checkPostFilterAvailability, outputRegisterMapping, inputRegister,
+            registerInfos, engines(), true /*isSmart*/);
+      } else {
+        traverser = std::make_unique<arangodb::traverser::SmartGraphTraverser>(
+            opts, engines());
+      }
     } else {
 #endif
       /*
@@ -1025,7 +1032,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
             engine, std::move(filterConditionVariables), checkPruneAvailability,
             checkPostFilterAvailability, outputRegisterMapping, inputRegister,
             registerInfos, engines());
-
       } else {
         // Note: Using non-refactored cluster engine.
         traverser = std::make_unique<arangodb::traverser::ClusterTraverser>(
