@@ -4,6 +4,24 @@ v3.8.7 (XXXX-XX-XX)
 * Bump the number of RocksDB transaction lock stripes to at least 16, if the
   number of cores is lower than that value.
 
+* Increase internal transaction lock timeout on followers during cluster write
+  operations. Although writes to the same keys on followers should be serialized
+  by the key locks held on the leader, it is still possible that the global
+  transaction lock striped mutex is a source of contention and that concurrent
+  write operations time out while waiting to acquire this global mutex. The lock
+  timeout on followers is now significantly increased to make this very
+  unlikely.
+
+* Improve validation for variables used in the `KEEP` part of AQL COLLECT
+  operations. Previously referring to a variable that was introduced by the
+  COLLECT itself from out of the KEEP part triggered an internal error. The case
+  is detected properly now and handled with a descriptive error message.
+
+* Updated arangosync to v2.9.0.
+
+* Fix deadlocked shard synchronisations when planned shard leader has not yet
+  taken over leadership.
+
 * Added an IO heartbeat which checks that the underlying volume is writable with
   reasonable performance. The test is done every 15 seconds and can be
   explicitly switched off. New metrics to give visibility if the test fails.
