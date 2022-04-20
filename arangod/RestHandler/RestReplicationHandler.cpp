@@ -1335,6 +1335,15 @@ Result RestReplicationHandler::processRestoreCollection(
     }
 #endif
 
+    if (parameters.get(StaticStrings::UsesRevisionsAsDocumentIds).isNone() &&
+        (parameters.get(StaticStrings::SyncByRevision).isNone() ||
+         parameters.get(StaticStrings::SyncByRevision).isTrue())) {
+      // for restored collections that do not have "syncByRevision" nor
+      // "usesRevisionsAsDocumentIds" set, set "usesRevisionsAsDocumentIds"
+      // to true. This allows the usage of revision trees for the collection.
+      toMerge.add(StaticStrings::UsesRevisionsAsDocumentIds, VPackValue(true));
+    }
+
     // Always ignore `shadowCollections` they were accidentially dumped in
     // arangodb versions earlier than 3.3.6
     toMerge.add(StaticStrings::ShadowCollections,
@@ -3414,6 +3423,14 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
     // needed in case we restore cluster related data into single server
     // instance
     patch.add(StaticStrings::DataSourcePlanId, VPackSlice::nullSlice());
+    if (slice.get(StaticStrings::UsesRevisionsAsDocumentIds).isNone() &&
+        (slice.get(StaticStrings::SyncByRevision).isNone() ||
+         slice.get(StaticStrings::SyncByRevision).isTrue())) {
+      // for restored collections that do not have the attribute
+      // "usesRevisionsAsDocumentIds" set, set "usesRevisionsAsDocumentIds"
+      // to true. This allows the usage of revision trees for the collection.
+      patch.add(StaticStrings::UsesRevisionsAsDocumentIds, VPackValue(true));
+    }
   }
   patch.close();
 

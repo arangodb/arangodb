@@ -21,6 +21,7 @@
 /// @author Michael Hackstein
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "LogicalCollection.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"

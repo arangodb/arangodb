@@ -240,6 +240,9 @@ VPackBuilder createCollectionProperties(
         vocbase.server()
             .getFeature<arangodb::EngineSelectorFeature>()
             .isRocksDB() &&
+        !info.properties
+             .get(arangodb::StaticStrings::UsesRevisionsAsDocumentIds)
+             .isFalse() &&
         LogicalCollection::currentVersion() >= LogicalCollection::Version::v37;
 
     if (addUseRevs) {

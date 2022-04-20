@@ -1,13 +1,16 @@
 devel
 -----
 
+* Set "useRevisionsAsDocumentIds" to true when restoring collection data
+  via arangorestore in case it is not set in the collection structure input
+  data. This allows using revision trees for restored collections.
+
 * FE-46: UI improvement on the view UI pages as well as adding tooltips to
   options where necessary. The affected pages are mostly the Info and
   Consolidation Policy pages.
 
 * FE-44: Moved the Info page to before JSON, making the settings page the
   default page in the view web UI.
-
 
 * Refactor internal code paths responsible for `_key` generation. For
   collections with only a single shard, we can now always let the leader
