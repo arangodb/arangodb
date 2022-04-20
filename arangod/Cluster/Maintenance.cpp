@@ -1708,8 +1708,8 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         if (lshard.isObject()) {  // just in case
           VPackSlice theLeader = lshard.get("theLeader");
           if (theLeader.isString() &&
-              theLeader.compareString(maintenance::ResignShardLeadership::
-                                          LeaderNotYetKnownString) == 0) {
+              theLeader.stringView() ==
+                  maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
             needsResyncBecauseOfRestart = true;
           }
         }
@@ -1722,6 +1722,9 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         std::string leader = pservers[0].copyString();
         std::string forcedResync =
             needsResyncBecauseOfRestart ? "true" : "false";
+        std::string syncByRevision =
+            pcol.value.get(StaticStrings::SyncByRevision).isTrue() ? "true"
+                                                                   : "false";
 
         // If the leader is failed, we need not try to get in sync:
         if (failedServers.find(leader) != failedServers.end()) {
@@ -1740,6 +1743,7 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
                     {SHARD, shname.toString()},
                     {THE_LEADER, std::move(leader)},
                     {FORCED_RESYNC, std::move(forcedResync)},
+                    {SYNC_BY_REVISION, syncByRevision},
                     {SHARD_VERSION,
                      std::to_string(feature.shardVersion(shname.toString()))}},
                 SYNCHRONIZE_PRIORITY, true);

@@ -652,6 +652,13 @@ constexpr auto TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE = ErrorCode{1407};
 /// Will be raised when an unexpected transaction id is found.
 constexpr auto TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION = ErrorCode{1408};
 
+/// 1409: ERROR_REPLICATION_SHARD_SYNC_ATTEMPT_TIMEOUT_EXCEEDED
+/// "shard synchronization attempt timeout exceeded"
+/// Will be raised when the synchronization of a shard takes longer than the
+/// configured timeout.
+constexpr auto TRI_ERROR_REPLICATION_SHARD_SYNC_ATTEMPT_TIMEOUT_EXCEEDED =
+    ErrorCode{1409};
+
 /// 1410: ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION
 /// "invalid replication applier configuration"
 /// Will be raised when the configuration for the replication applier is
