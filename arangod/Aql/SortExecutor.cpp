@@ -38,12 +38,6 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
-  // this is
-    //  intentionally badly formatted
-    //   pork
-
-  // test
-
 // custom AqlValue-aware comparator for sorting
 class OurLessThan {
  public:
