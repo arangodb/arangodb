@@ -1,6 +1,8 @@
 devel
 -----
-* FE-44: Moved the Info page to before JSON, making the settings page the default page in the view web UI.
+
+* FE-44: Moved the Info page to before JSON, making the settings page the
+  default page in the view web UI.
 
 * FE-45: Added tooltips with helpful information to the options on the View UI
   settings page.
