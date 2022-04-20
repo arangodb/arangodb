@@ -1,6 +1,9 @@
 devel
 -----
-* FE-46: UI improvement on the view UI pages as well as adding tooltips to options where necessary. The affected pages are mostly the Info and Consolidation Policy pages.
+
+* FE-46: UI improvement on the view UI pages as well as adding tooltips to
+  options where necessary. The affected pages are mostly the Info and
+  Consolidation Policy pages.
 
 * FE-45: Added tooltips with helpful information to the options on the View UI
   settings page.
