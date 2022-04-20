@@ -33,7 +33,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
-#include "Enterprise/Graph/Steps/SmartGraphCoordinatorStep.h"
+// #include "Enterprise/Graph/Steps/ClusterProviderStep.h"
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 #endif
 
@@ -229,7 +229,7 @@ template class ::arangodb::graph::ProviderTracer<
 
 template class ::arangodb::graph::ProviderTracer<
     arangodb::graph::enterprise::SmartGraphProvider<
-        arangodb::graph::enterprise::SmartGraphCoordinatorStep>>;
+        arangodb::graph::ClusterProviderStep>>;
 #endif
 
 template class ::arangodb::graph::ProviderTracer<

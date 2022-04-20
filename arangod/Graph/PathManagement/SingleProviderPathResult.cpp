@@ -230,15 +230,15 @@ template class ::arangodb::graph::SingleProviderPathResult<
 #ifdef USE_ENTERPRISE
 template class ::arangodb::graph::SingleProviderPathResult<
     ::arangodb::graph::enterprise::SmartGraphProvider<
-        enterprise::SmartGraphCoordinatorStep>,
-    ::arangodb::graph::PathStore<enterprise::SmartGraphCoordinatorStep>,
-    enterprise::SmartGraphCoordinatorStep>;
+        ClusterProviderStep>,
+    ::arangodb::graph::PathStore<ClusterProviderStep>,
+    ClusterProviderStep>;
 
 template class ::arangodb::graph::SingleProviderPathResult<
     ::arangodb::graph::ProviderTracer<
         ::arangodb::graph::enterprise::SmartGraphProvider<
-            enterprise::SmartGraphCoordinatorStep>>,
+            ClusterProviderStep>>,
     ::arangodb::graph::PathStoreTracer<
-        ::arangodb::graph::PathStore<enterprise::SmartGraphCoordinatorStep>>,
-    enterprise::SmartGraphCoordinatorStep>;
+        ::arangodb::graph::PathStore<ClusterProviderStep>>,
+    ClusterProviderStep>;
 #endif

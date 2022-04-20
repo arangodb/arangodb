@@ -123,6 +123,7 @@ auto TraversalEnumerator::createEnumerator(
   } else {
     GENERATE_ORDER_SWITCH(ProviderName)
   }
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
 #define INSTANTIATE_FACTORY(ProviderName)                              \
@@ -145,5 +146,5 @@ INSTANTIATE_FACTORY(arangodb::graph::SingleServerProvider<
 
 #ifdef USE_ENTERPRISE
 INSTANTIATE_FACTORY(arangodb::graph::enterprise::SmartGraphProvider<
-                    arangodb::graph::enterprise::SmartGraphCoordinatorStep>)
+                    arangodb::graph::ClusterProviderStep>)
 #endif

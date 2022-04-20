@@ -312,48 +312,47 @@ template void PathStore<ClusterProviderStep>::reverseBuildPath<
 
 #ifdef USE_ENTERPRISE
 
-template class PathStore<enterprise::SmartGraphCoordinatorStep>;
 template void
-PathStore<enterprise::SmartGraphCoordinatorStep>::buildPath<PathResult<
-    enterprise::SmartGraphProvider<enterprise::SmartGraphCoordinatorStep>,
-    enterprise::SmartGraphCoordinatorStep>>(
-    enterprise::SmartGraphCoordinatorStep const& vertex,
+PathStore<ClusterProviderStep>::buildPath<PathResult<
+    enterprise::SmartGraphProvider<ClusterProviderStep>,
+    ClusterProviderStep>>(
+    ClusterProviderStep const& vertex,
     PathResult<
-        enterprise::SmartGraphProvider<enterprise::SmartGraphCoordinatorStep>,
-        enterprise::SmartGraphCoordinatorStep>& path) const;
+        enterprise::SmartGraphProvider<ClusterProviderStep>,
+        ClusterProviderStep>& path) const;
 
 template void
-PathStore<enterprise::SmartGraphCoordinatorStep>::reverseBuildPath<
-    enterprise::SmartGraphProvider<enterprise::SmartGraphCoordinatorStep>>(
-    enterprise::SmartGraphCoordinatorStep const& vertex,
+PathStore<ClusterProviderStep>::reverseBuildPath<
+    enterprise::SmartGraphProvider<ClusterProviderStep>>(
+    ClusterProviderStep const& vertex,
     PathResult<
-        enterprise::SmartGraphProvider<enterprise::SmartGraphCoordinatorStep>,
-        enterprise::SmartGraphCoordinatorStep>& path) const;
+        enterprise::SmartGraphProvider<ClusterProviderStep>,
+        ClusterProviderStep>& path) const;
 
 // Tracing
 
-template void PathStore<enterprise::SmartGraphCoordinatorStep>::buildPath<
+template void PathStore<ClusterProviderStep>::buildPath<
     PathResult<ProviderTracer<enterprise::SmartGraphProvider<
-                   enterprise::SmartGraphCoordinatorStep>>,
+                   ClusterProviderStep>>,
                ProviderTracer<enterprise::SmartGraphProvider<
-                   enterprise::SmartGraphCoordinatorStep>>::Step>>(
+                   ClusterProviderStep>>::Step>>(
     ProviderTracer<enterprise::SmartGraphProvider<
-        enterprise::SmartGraphCoordinatorStep>>::Step const& vertex,
+        ClusterProviderStep>>::Step const& vertex,
     PathResult<ProviderTracer<enterprise::SmartGraphProvider<
-                   enterprise::SmartGraphCoordinatorStep>>,
+                   ClusterProviderStep>>,
                ProviderTracer<enterprise::SmartGraphProvider<
-                   enterprise::SmartGraphCoordinatorStep>>::Step>& path) const;
+                   ClusterProviderStep>>::Step>& path) const;
 
 template void PathStore<ProviderTracer<enterprise::SmartGraphProvider<
-    enterprise::SmartGraphCoordinatorStep>>::Step>::
+    ClusterProviderStep>>::Step>::
     reverseBuildPath<ProviderTracer<
-        enterprise::SmartGraphProvider<enterprise::SmartGraphCoordinatorStep>>>(
+        enterprise::SmartGraphProvider<ClusterProviderStep>>>(
         ProviderTracer<enterprise::SmartGraphProvider<
-            enterprise::SmartGraphCoordinatorStep>>::Step const& vertex,
+            ClusterProviderStep>>::Step const& vertex,
         PathResult<ProviderTracer<enterprise::SmartGraphProvider<
-                       enterprise::SmartGraphCoordinatorStep>>,
+                       ClusterProviderStep>>,
                    ProviderTracer<enterprise::SmartGraphProvider<
-                       enterprise::SmartGraphCoordinatorStep>>::Step>& path)
+                       ClusterProviderStep>>::Step>& path)
         const;
 #endif
 

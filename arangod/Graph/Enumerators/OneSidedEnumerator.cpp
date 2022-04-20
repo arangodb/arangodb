@@ -429,5 +429,5 @@ MAKE_ONE_SIDED_ENUMERATORS_CONFIGURATION(
     SingleServerProvider<arangodb::graph::enterprise::SmartGraphStep>)
 MAKE_ONE_SIDED_ENUMERATORS_CONFIGURATION(
     arangodb::graph::enterprise::SmartGraphProvider<
-        arangodb::graph::enterprise::SmartGraphCoordinatorStep>)
+        arangodb::graph::ClusterProviderStep>)
 #endif
