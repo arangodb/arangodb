@@ -413,6 +413,10 @@ void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSort() {
   std::sort(
       _rows.begin(), _rows.end(),
       BufferHeapSortContext{_numScoreRegisters, _scoresSort, _scoreBuffer});
+  if (_heapSizeLeft) {
+    // heap was not filled up to the limit. So fill buffer here.
+    _storedValuesBuffer.resize(_keyBuffer.size() * _storedValuesCount);
+  }
 }
 
 template<typename ValueType, bool copySorted>
