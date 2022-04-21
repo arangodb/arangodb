@@ -36,7 +36,7 @@ namespace arangodb {
 class EndpointIp : public Endpoint {
  protected:
   EndpointIp(DomainType, EndpointType, TransportType, EncryptionType, int, bool,
-             std::string const&, uint16_t const);
+             std::string const&, uint16_t const, std::string const& context);
 
  public:
   ~EndpointIp();
@@ -63,5 +63,6 @@ class EndpointIp : public Endpoint {
   std::string const _host;
   uint16_t const _port;
   bool const _reuseAddress;
+  std::string const _context;
 };
 }  // namespace arangodb

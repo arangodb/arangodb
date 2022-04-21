@@ -58,6 +58,7 @@ Endpoint::Endpoint(DomainType domainType, EndpointType type,
       _transport(transport),
       _encryption(encryption),
       _specification(specification),
+      _context(),
       _listenBacklog(listenBacklog),
       _connected(false) {
   TRI_invalidatesocket(&_socket);
@@ -203,9 +204,10 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Endpoint* Endpoint::serverFactory(std::string const& specification,
-                                  int listenBacklog, bool reuseAddress) {
+                                  int listenBacklog, bool reuseAddress,
+				  std::string const& context) {
   return Endpoint::factory(EndpointType::SERVER, specification, listenBacklog,
-                           reuseAddress);
+                           reuseAddress, context);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,7 +215,7 @@ Endpoint* Endpoint::serverFactory(std::string const& specification,
 ////////////////////////////////////////////////////////////////////////////////
 
 Endpoint* Endpoint::clientFactory(std::string const& specification) {
-  return Endpoint::factory(EndpointType::CLIENT, specification, 0, false);
+  return Endpoint::factory(EndpointType::CLIENT, specification, 0, false, "");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -222,7 +224,7 @@ Endpoint* Endpoint::clientFactory(std::string const& specification) {
 
 Endpoint* Endpoint::factory(Endpoint::EndpointType type,
                             std::string const& specification, int listenBacklog,
-                            bool reuseAddress) {
+                            bool reuseAddress, std::string const& context) {
   if (specification.size() < 7) {
     return nullptr;
   }
@@ -298,7 +300,7 @@ Endpoint* Endpoint::factory(Endpoint::EndpointType type,
       std::string host = copy.substr(1, found - 1);
 
       return new EndpointIpV6(type, protocol, encryption, listenBacklog,
-                              reuseAddress, host, port);
+                              reuseAddress, host, port, context);
     }
 
     found = copy.find("]", 1);
@@ -308,7 +310,7 @@ Endpoint* Endpoint::factory(Endpoint::EndpointType type,
       std::string host = copy.substr(1, found - 1);
 
       return new EndpointIpV6(type, protocol, encryption, listenBacklog,
-                              reuseAddress, host, defaultPort);
+                              reuseAddress, host, defaultPort, context);
     }
 
     // invalid address specification
@@ -333,12 +335,12 @@ Endpoint* Endpoint::factory(Endpoint::EndpointType type,
     std::string host = copy.substr(0, found);
 
     return new EndpointIpV4(type, protocol, encryption, listenBacklog,
-                            reuseAddress, host, port);
+                            reuseAddress, host, port, context);
   }
 
   // hostname only
   return new EndpointIpV4(type, protocol, encryption, listenBacklog,
-                          reuseAddress, copy, defaultPort);
+                          reuseAddress, copy, defaultPort, context);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

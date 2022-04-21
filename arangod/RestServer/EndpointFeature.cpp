@@ -63,7 +63,7 @@ void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "endpoint for client requests (e.g. "
                      "'http+tcp://127.0.0.1:8529', or "
                      "'vst+ssl://192.168.1.1:8529')",
-                     new VectorParameter<StringParameter>(&_endpoints));
+                     new ContextParameter<VectorParameter<StringParameter>>(&_endpointss));
 
   options->addSection("tcp", "TCP features");
 
@@ -116,15 +116,17 @@ std::vector<std::string> EndpointFeature::httpEndpoints() {
 }
 
 void EndpointFeature::buildEndpointLists() {
-  for (std::vector<std::string>::const_iterator i = _endpoints.begin();
-       i != _endpoints.end(); ++i) {
-    bool ok =
-        _endpointList.add((*i), static_cast<int>(_backlogSize), _reuseAddress);
+  for (auto const& endpoints : _endpointss) {
+    for (std::vector<std::string>::const_iterator i = endpoints.second.begin();
+	 i != endpoints.second.end(); ++i) {
+      bool ok =
+        _endpointList.add((*i), static_cast<int>(_backlogSize), _reuseAddress, endpoints.first);
 
-    if (!ok) {
-      LOG_TOPIC("1ddc1", FATAL, arangodb::Logger::FIXME)
+      if (!ok) {
+	LOG_TOPIC("1ddc1", FATAL, arangodb::Logger::FIXME)
           << "invalid endpoint '" << (*i) << "'";
-      FATAL_ERROR_EXIT();
+	FATAL_ERROR_EXIT();
+      }
     }
   }
 }

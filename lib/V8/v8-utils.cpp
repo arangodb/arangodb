@@ -5118,7 +5118,7 @@ static void JS_TestPort(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string address = TRI_ObjectToString(isolate, args[0]);
-  Endpoint* endpoint = Endpoint::serverFactory(address, 10, false);
+  Endpoint* endpoint = Endpoint::serverFactory(address, 10, false, "");
   if (nullptr == endpoint) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,

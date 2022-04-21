@@ -115,14 +115,16 @@ static std::string buildSpecification(Endpoint::DomainType domainType,
 EndpointIp::EndpointIp(DomainType domainType, EndpointType type,
                        TransportType transport, EncryptionType encryption,
                        int listenBacklog, bool reuseAddress,
-                       std::string const& host, uint16_t const port)
+                       std::string const& host, uint16_t const port,
+		       std::string const& context)
     : Endpoint(
           domainType, type, transport, encryption,
           buildSpecification(domainType, transport, encryption, host, port),
           listenBacklog),
       _host(host),
       _port(port),
-      _reuseAddress(reuseAddress) {
+      _reuseAddress(reuseAddress),
+      _context(context) {
   TRI_ASSERT(domainType == Endpoint::DomainType::IPV4 ||
              domainType == Endpoint::DomainType::IPV6);
 }

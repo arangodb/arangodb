@@ -123,16 +123,6 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                                              defaultConfig.preferHttp11InAlpn));
 }
 
-void SslServerFeature::validateOptionsSslConfig(SslConfig& config) {
-  // check for SSLv2
-  if (config.sslProtocol == SslProtocol::SSL_V2) {
-    LOG_TOPIC("b7890", FATAL, arangodb::Logger::SSL)
-        << "SSLv2 is not supported any longer because of security "
-           "vulnerabilities in this protocol";
-    FATAL_ERROR_EXIT();
-  }
-}
-
 void SslServerFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
   // build ssl config structures
@@ -157,6 +147,15 @@ void SslServerFeature::validateOptions(
   }
 
   for (auto data : _sslOptionss) {
+
+    // check for SSLv2
+    if (data.second == SslProtocol::SSL_V2) {
+      LOG_TOPIC("b7890", FATAL, arangodb::Logger::SSL)
+        << "SSLv2 is not supported any longer because of security "
+	   "vulnerabilities in this protocol";
+      FATAL_ERROR_EXIT();
+    }
+
     _sslConfigs[data.first].context = data.first;
     _sslConfigs[data.first].sslOptions = data.second;
   }
@@ -175,28 +174,21 @@ void SslServerFeature::validateOptions(
     _sslConfigs[data.first].context = data.first;
     _sslConfigs[data.first].preferHttp11InAlpn = data.second;
   }
-
-  for (auto config : _sslConfigs) {
-    validateOptionsSslConfig(config.second);
-  }
-}
-
-void SslServerFeature::prepareSslConfig(std::string const& name,
-                                        SslConfig& config) {
-  LOG_TOPIC("afcd3", INFO, arangodb::Logger::SSL)
-      << "using SSL options for '" << name
-      << "': " << stringifySslOptions(config.sslOptions);
-
-  if (!config.cipherList.empty()) {
-    LOG_TOPIC("9b126", INFO, arangodb::Logger::SSL)
-        << "using SSL cipher-list for '" << name << "': '" << config.cipherList
-        << "'";
-  }
 }
 
 void SslServerFeature::prepare() {
-  for (auto config : _sslConfigs) {
-    prepareSslConfig(config.first, config.second);
+  for (auto configPair : _sslConfigs) {
+    auto config = configPair.second;
+
+    LOG_TOPIC("afcd3", INFO, arangodb::Logger::SSL)
+	<< "using SSL options for '" << config.context,
+	<< "': " << stringifySslOptions(config.sslOptions);
+
+    if (!config.cipherList.empty()) {
+      LOG_TOPIC("9b126", INFO, arangodb::Logger::SSL)
+	  << "using SSL cipher-list for '" << config.context << "': '" << config.cipherList
+	  << "'";
+    }
   }
 
   UniformCharacter r(
@@ -241,23 +233,20 @@ void SslServerFeature::verifySslOptions(SslConfig& config) {
         << config.context << "'";
     FATAL_ERROR_EXIT();
   }
-
-  // Set up first _sniEntry:
-  config.sniEntries.clear();
-  config.sniEntries.emplace_back("", config.keyfile);
-
-  try {
-    createSslContexts(config);  // just to test if everything works
-  } catch (...) {
-    LOG_TOPIC("997d2", FATAL, arangodb::Logger::SSL)
-        << "cannot create SSL context for '" << config.context << "'";
-    FATAL_ERROR_EXIT();
-  }
 }
 
 void SslServerFeature::verifySslOptions() {
   for (auto config : _sslConfigs) {
     verifySslOptions(config.second);
+  }
+
+  // just to test if everything works
+  try {
+    createSslContexts();
+  } catch (...) {
+    LOG_TOPIC("997d2", FATAL, arangodb::Logger::SSL)
+        << "cannot create SSL context for '" << config.context << "'";
+    FATAL_ERROR_EXIT();
   }
 }
 
@@ -470,15 +459,9 @@ asio_ns::ssl::context SslServerFeature::createSslContextInternal(
   }
 }
 
-SslServerFeature::SslContextList SslServerFeature::createSslContexts(
-    std::string const& context) {
-  SslContextList a;
-  return a;
-}
-
-SslServerFeature::SslContextList SslServerFeature::createSslContexts(
-    SslConfig& config) {
+SslServerFeature::SslContextList SslServerFeature::createSslContexts() {
   auto result = std::make_shared<std::vector<asio_ns::ssl::context>>();
+
   for (size_t i = 0; i < config.sniEntries.size(); ++i) {
     auto res = createSslContextInternal(config, i);
     result->emplace_back(std::move(res));
@@ -487,8 +470,8 @@ SslServerFeature::SslContextList SslServerFeature::createSslContexts(
   return result;
 }
 
-size_t SslServerFeature::chooseSslContext(std::string const& serverName) const {
-  auto itr = _sslConfigs.find("");
+size_t SslServerFeature::chooseSslContext(std::string const& serverName, std::string const& context) const {
+  auto itr = _sslConfigs.find(context);
 
   if (itr != _sslConfigs.end()) {
     SslConfig const& config = itr->second;

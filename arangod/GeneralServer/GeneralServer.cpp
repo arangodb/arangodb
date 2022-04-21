@@ -186,7 +186,7 @@ SslServerFeature::SslContextList GeneralServer::sslContexts() {
   std::lock_guard<std::mutex> guard(_sslContextMutex);
   if (!_sslContexts) {
     _sslContexts =
-        server().getFeature<SslServerFeature>().createSslContexts("");
+        server().getFeature<SslServerFeature>().createSslContexts();
 #ifdef USE_ENTERPRISE
     if (_sslContexts->size() > 0) {
       // Set a client hello callback such that we have a chance to change the
@@ -209,7 +209,7 @@ Result GeneralServer::reloadTLS() {
     {
       std::lock_guard<std::mutex> guard(_sslContextMutex);
       _sslContexts =
-          server().getFeature<SslServerFeature>().createSslContexts("");
+          server().getFeature<SslServerFeature>().createSslContexts();
 #ifdef USE_ENTERPRISE
       if (_sslContexts->size() > 0) {
         // Set a client hello callback such that we have a chance to change the

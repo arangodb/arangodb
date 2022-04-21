@@ -58,7 +58,7 @@ EndpointList::~EndpointList() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool EndpointList::add(std::string const& specification, int backLogSize,
-                       bool reuseAddress) {
+                       bool reuseAddress, std::string const& context) {
   std::string const key = Endpoint::unifiedForm(specification);
 
   if (key.empty()) {
@@ -71,7 +71,7 @@ bool EndpointList::add(std::string const& specification, int backLogSize,
     return true;
   }
 
-  Endpoint* ep = Endpoint::serverFactory(key, backLogSize, reuseAddress);
+  Endpoint* ep = Endpoint::serverFactory(key, backLogSize, reuseAddress, context);
 
   if (ep == nullptr) {
     return false;

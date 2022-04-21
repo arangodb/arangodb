@@ -42,7 +42,7 @@ class EndpointList {
 
  public:
   bool empty() const { return _endpoints.empty(); }
-  bool add(std::string const&, int, bool);
+  bool add(std::string const& specification, int backlogSize, bool reuseAddress, std::string const& context);
   bool remove(std::string const&, Endpoint**);
   std::vector<std::string> all() const;
   std::vector<std::string> all(Endpoint::TransportType transport) const;

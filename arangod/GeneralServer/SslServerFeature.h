@@ -62,8 +62,6 @@ class SslServerFeature : public ArangodFeature {
           ecdhCurve("prime256v1"),
           sessionCache(false),
           preferHttp11InAlpn(false),
-          sniEntries(),
-          sniServerIndex(),
           sslRequirePeerCertificate(false) {}
     std::string context;
     std::string cafile;
@@ -75,13 +73,15 @@ class SslServerFeature : public ArangodFeature {
     std::string ecdhCurve;
     bool sessionCache;
     bool preferHttp11InAlpn;
-    // For SNI, we have two maps, one mapping to the filename for a certain
-    // server, another, to keep the actual keyfile in memory.
-    std::vector<SNIEntry>
-        sniEntries;  // the first entry is the default server keyfile
-    std::unordered_map<std::string, size_t>
-        sniServerIndex;  // map server names to indices in _sniEntries
     bool sslRequirePeerCertificate;
+
+    // For SNI, we have two maps, one mapping to the filename for a certain
+    // server and context. Another map is global defined in the feature for
+    // all combinations, to keep the actual keyfile in memory.
+
+    // each config contains an index 'defaultIndex' which points to
+    // the default certificate for that context
+    std::vector<SNIEntry> sniEntries;
   };
 
   typedef std::shared_ptr<std::vector<asio_ns::ssl::context>> SslContextList;
@@ -96,15 +96,16 @@ class SslServerFeature : public ArangodFeature {
   void unprepare() override final;
   void verifySslOptions();
 
-  SslContextList createSslContexts(std::string const& context);
   virtual SslContextList createSslContexts(SslConfig&);
-  size_t chooseSslContext(std::string const& serverName) const;
+  size_t chooseSslContext(std::string const& serverName, std::string const& context) const;
 
   // Dump all SSL related data into a builder, private keys
   // are hashed.
   virtual Result dumpTLSData(VPackBuilder& builder) const;
 
  protected:
+  virtual void verifySslOptions(SslConfig&);
+
   std::unordered_map<std::string, std::string> _cafiles;
   std::unordered_map<std::string, std::string> _keyfiles;
   std::unordered_map<std::string, std::string> _cipherLists;
@@ -116,11 +117,10 @@ class SslServerFeature : public ArangodFeature {
 
   std::unordered_map<std::string, SslConfig> _sslConfigs;
 
-  virtual void verifySslOptions(SslConfig&);
+  // map server names to indices in _sniEntries
+  std::unordered_map<std::string, size_t> sniServerIndex;
 
  private:
-  void validateOptionsSslConfig(SslConfig&);
-  void prepareSslConfig(std::string const& name, SslConfig&);
   std::string stringifySslOptions(uint64_t opts) const;
 
   asio_ns::ssl::context createSslContextInternal(SslConfig&, size_t idx);

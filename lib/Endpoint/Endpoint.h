@@ -55,9 +55,9 @@ class Endpoint {
  public:
   static std::string uriForm(std::string const&);
   static std::string unifiedForm(std::string const&);
-  static Endpoint* serverFactory(std::string const&, int, bool reuseAddress);
+  static Endpoint* serverFactory(std::string const& specification, int, bool reuseAddress, std::string const& context);
   static Endpoint* clientFactory(std::string const&);
-  static Endpoint* factory(EndpointType type, std::string const&, int, bool);
+  static Endpoint* factory(EndpointType type, std::string const& specificaton, int, bool, std::string const& context);
   static std::string defaultEndpoint(TransportType);
 
  public:
@@ -66,6 +66,7 @@ class Endpoint {
   EndpointType type() const { return _type; }
   EncryptionType encryption() const { return _encryption; }
   std::string specification() const { return _specification; }
+  std::string context() const { return _context; }
 
  public:
   virtual TRI_socket_t connect(double, double) = 0;
@@ -93,6 +94,7 @@ class Endpoint {
   TransportType _transport;
   EncryptionType _encryption;
   std::string _specification;
+  std::string _context;
   int _listenBacklog;
 
   bool _connected;

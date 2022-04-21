@@ -42,7 +42,7 @@ class EndpointFeature final : public HttpEndpointProvider {
   void start() override final;
 
  private:
-  std::vector<std::string> _endpoints;
+  std::unordered_map<std::string, std::vector<std::string>> _endpointss;
   bool _reuseAddress;
   uint64_t _backlogSize;
 

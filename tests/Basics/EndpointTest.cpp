@@ -54,7 +54,7 @@ using namespace std;
   delete e;
 
 #define CHECK_ENDPOINT_SERVER_FEATURE(type, specification, feature, expected) \
-  e = arangodb::Endpoint::serverFactory(specification, 1, true);              \
+  e = arangodb::Endpoint::serverFactory(specification, 1, true, "");          \
   EXPECT_EQ((expected), (e->feature()));                                      \
   delete e;
 
@@ -656,7 +656,7 @@ TEST(EndpointTest, EndpointHostString) {
 TEST(EndpointTest, EndpointIsConnectedServer1) {
   Endpoint* e;
 
-  e = arangodb::Endpoint::serverFactory("tcp://127.0.0.1", 1, true);
+  e = arangodb::Endpoint::serverFactory("tcp://127.0.0.1", 1, true, "");
   EXPECT_TRUE(false == e->isConnected());
   delete e;
 }
@@ -668,7 +668,7 @@ TEST(EndpointTest, EndpointIsConnectedServer1) {
 TEST(EndpointTest, EndpointIsConnectedServer2) {
   Endpoint* e;
 
-  e = arangodb::Endpoint::serverFactory("ssl://127.0.0.1", 1, true);
+  e = arangodb::Endpoint::serverFactory("ssl://127.0.0.1", 1, true, "");
   EXPECT_TRUE(false == e->isConnected());
   delete e;
 }
@@ -681,7 +681,7 @@ TEST(EndpointTest, EndpointIsConnectedServer2) {
 TEST(EndpointTest, EndpointIsConnectedServer3) {
   Endpoint* e;
 
-  e = arangodb::Endpoint::serverFactory("unix:///tmp/socket", 1, true);
+  e = arangodb::Endpoint::serverFactory("unix:///tmp/socket", 1, true, "");
   EXPECT_TRUE(false == e->isConnected());
   delete e;
 }
@@ -732,7 +732,7 @@ TEST(EndpointTest, EndpointIsConnectedClient3) {
 TEST(EndpointTest, EndpointServerTcpIpv4WithPort) {
   Endpoint* e;
 
-  e = arangodb::Endpoint::serverFactory("tcp://127.0.0.1:667", 1, true);
+  e = arangodb::Endpoint::serverFactory("tcp://127.0.0.1:667", 1, true, "");
   EXPECT_TRUE("http+tcp://127.0.0.1:667" == e->specification());
   EXPECT_TRUE(arangodb::Endpoint::EndpointType::SERVER == e->type());
   EXPECT_TRUE(arangodb::Endpoint::DomainType::IPV4 == e->domainType());
@@ -753,7 +753,7 @@ TEST(EndpointTest, EndpointServerTcpIpv4WithPort) {
 TEST(EndpointTest, EndpointServerUnix) {
   Endpoint* e;
 
-  e = arangodb::Endpoint::serverFactory("unix:///path/to/arango.sock", 1, true);
+  e = arangodb::Endpoint::serverFactory("unix:///path/to/arango.sock", 1, true, "");
   EXPECT_TRUE("http+unix:///path/to/arango.sock" == e->specification());
   EXPECT_TRUE(arangodb::Endpoint::EndpointType::SERVER == e->type());
   EXPECT_TRUE(arangodb::Endpoint::DomainType::UNIX == e->domainType());
