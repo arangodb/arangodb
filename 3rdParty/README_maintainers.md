@@ -477,6 +477,32 @@ index d9b7043a39c..2718c16e5a4 100644
 Compression library
 https://github.com/google/snappy
 
+We need the following modification to snappy's cmake config to ensure that on
+Windows the compiler does not use instructions which are not supported by our
+target architecture:
+```
+diff --git a/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt b/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt
+index 672561e62fc..d6341fd1d7a 100644
+--- a/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt
++++ b/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt
+@@ -160,6 +160,7 @@ int main() {
+   return zero();
+ }" HAVE_ATTRIBUTE_ALWAYS_INLINE)
+
++if (NOT WINDOWS)
+ check_cxx_source_compiles("
+ #include <tmmintrin.h>
+
+@@ -177,6 +178,7 @@ check_cxx_source_compiles("
+ int main() {
+   return _bzhi_u32(0, 1);
+ }" SNAPPY_HAVE_BMI2)
++endif()
+
+ include(CheckSymbolExists)
+ check_symbol_exists("mmap" "sys/mman.h" HAVE_FUNC_MMAP)
+ ```
+
 ## snowball
 
 http://snowball.tartarus.org/ stemming for IResearch. We use the latest provided cmake which we maintain.
