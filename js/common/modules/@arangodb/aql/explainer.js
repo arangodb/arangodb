@@ -2152,15 +2152,16 @@ function processQuery(query, explain, planIndex) {
 /* the exposed explain function */
 function explain(data, options, shouldPrint) {
   'use strict';
+  // we need to clone here because options are modified later
   if (typeof data === 'string') {
-    data = { query: data, options: options };
+    data = { query: data, options: _.clone(options) };
   }
   if (!(data instanceof Object)) {
     throw 'ArangoStatement needs initial data';
   }
 
   if (options === undefined) {
-    options = data.options;
+    options = _.clone(data.options);
   }
   options = options || {};
   options.explainInternals = false;

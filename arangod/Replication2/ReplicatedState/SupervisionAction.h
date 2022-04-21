@@ -42,7 +42,6 @@ struct EmptyAction {
 
 struct AddParticipantAction {
   ParticipantId participant;
-  StateGeneration generation;
 
   void execute(ActionContext& ctx) {
     ctx.modify<agency::Plan, replication2::agency::LogTarget>(

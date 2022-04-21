@@ -186,13 +186,15 @@ Result validateAllCollectionsInfo(
     std::vector<CollectionCreationInfo> const& infos, bool allowSystem,
     bool allowEnterpriseCollectionsOnSingleServer,
     bool enforceReplicationFactor) {
+  Result res;
+
   for (auto const& info : infos) {
     // If the PlanId is not set, we either are on a single server, or this is
     // a local collection in a cluster; which means, it is neither a user-facing
     // collection (as seen on a Coordinator), nor a shard (on a DBServer).
 
     // validate the information of the collection to be created
-    Result res = validateCreationInfo(
+    res = validateCreationInfo(
         info, vocbase, allowEnterpriseCollectionsOnSingleServer,
         enforceReplicationFactor, isLocalCollection(info), isSystemName(info),
         allowSystem);
@@ -830,9 +832,19 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
         std::string("cannot access collection '") + coll->name() + "'");
   }
 
-  std::unordered_set<std::string> ignoreKeys{
-      "allowUserKeys", "cid",    "count",  "deleted", "id",   "indexes", "name",
-      "path",          "planId", "shards", "status",  "type", "version"};
+  std::unordered_set<std::string> ignoreKeys{StaticStrings::AllowUserKeys,
+                                             StaticStrings::DataSourceCid,
+                                             "count",
+                                             StaticStrings::DataSourceDeleted,
+                                             StaticStrings::DataSourceId,
+                                             StaticStrings::Indexes,
+                                             StaticStrings::DataSourceName,
+                                             "path",
+                                             StaticStrings::DataSourcePlanId,
+                                             "shards",
+                                             "status",
+                                             StaticStrings::DataSourceType,
+                                             StaticStrings::Version};
 
   if (ServerState::instance()->isSingleServer() &&
       (!coll->isSatellite() && !coll->isSmart())) {
@@ -1289,15 +1301,15 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
 
 /// @brief the list of collection attributes that are allowed by user-input
 /// this is to avoid retyping the same list twice
-#define COMMON_ALLOWED_COLLECTION_INPUT_ATTRIBUTES                            \
-  StaticStrings::DataSourceSystem, StaticStrings::DataSourceId, "keyOptions", \
-      StaticStrings::WaitForSyncString, StaticStrings::CacheEnabled,          \
-      StaticStrings::ShardKeys, StaticStrings::NumberOfShards,                \
-      StaticStrings::DistributeShardsLike, "avoidServers",                    \
-      StaticStrings::IsSmart, StaticStrings::ShardingStrategy,                \
-      StaticStrings::GraphSmartGraphAttribute, StaticStrings::Schema,         \
-      StaticStrings::SmartJoinAttribute, StaticStrings::ReplicationFactor,    \
-      StaticStrings::MinReplicationFactor, /* deprecated */                   \
+#define COMMON_ALLOWED_COLLECTION_INPUT_ATTRIBUTES                             \
+  StaticStrings::DataSourceSystem, StaticStrings::DataSourceId,                \
+      StaticStrings::KeyOptions, StaticStrings::WaitForSyncString,             \
+      StaticStrings::CacheEnabled, StaticStrings::ShardKeys,                   \
+      StaticStrings::NumberOfShards, StaticStrings::DistributeShardsLike,      \
+      "avoidServers", StaticStrings::IsSmart, StaticStrings::ShardingStrategy, \
+      StaticStrings::GraphSmartGraphAttribute, StaticStrings::Schema,          \
+      StaticStrings::SmartJoinAttribute, StaticStrings::ReplicationFactor,     \
+      StaticStrings::MinReplicationFactor, /* deprecated */                    \
       StaticStrings::WriteConcern, "servers"
 
 arangodb::velocypack::Builder Collections::filterInput(
