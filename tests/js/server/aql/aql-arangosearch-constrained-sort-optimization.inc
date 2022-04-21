@@ -260,13 +260,13 @@
         }
       },
       testAppliedSortAsc() {
-        let query = "FOR d IN " + vn + " SEARCH ANALYZER(d.strval == 'cat', 'text_en') SORT TFIDF(d) ASC LIMIT 1000, 10 "
+        let query = "FOR d IN " + vn + " SEARCH ANALYZER(d.strval == 'cat', 'text_en') SORT TFIDF(d) ASC LIMIT 1002, 10 "
                     + " RETURN {idx:d.idx, score:TFIDF(d)}";
         let plan = AQL_EXPLAIN(query).plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = AQL_EXECUTE(query);
         assertEqual(10, result.json.length);
-        let expectedIdx = 500;
+        let expectedIdx = 501;
         for (let i = 0; i < 10; ++i) {
           assertEqual(result.json[i].idx, expectedIdx);
           if (i % 2 == 1) {
