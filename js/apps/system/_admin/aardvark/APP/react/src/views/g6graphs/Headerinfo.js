@@ -13,6 +13,7 @@ import ParameterLimit from "./ParameterLimit";
 import ParameterNodeLabelByCollection from "./ParameterNodeLabelByCollection";
 import ParameterNodeColorByCollection from "./ParameterNodeColorByCollection";
 import ParameterEdgeLabelByCollection from "./ParameterEdgeLabelByCollection";
+import ParameterEdgeColorByCollection from "./ParameterEdgeColorByCollection";
 import ParameterNodeLabel from "./ParameterNodeLabel";
 import ParameterEdgeLabel from "./ParameterEdgeLabel";
 import ParameterNodeColorAttribute from "./ParameterNodeColorAttribute";
@@ -228,15 +229,7 @@ const screenshotMenu = (
             <br />
             <ParameterEdgeLabelByCollection />
             <br />
-            <Switch
-              checkedChildren="Color by collections"
-              unCheckedChildren="Don't color by collections"
-              onChange={onSwitchChange}
-              style={{ marginTop: '24px' }}
-            />
-            <Tooltip title="Should edges be colorized by their collection? If enabled, edge color and edge color attribute will be ignored.">
-              <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)', marginTop: '24px' }} />
-            </Tooltip>
+            <ParameterEdgeColorByCollection />
             <br />
             <Input
               addonBefore="Color"
