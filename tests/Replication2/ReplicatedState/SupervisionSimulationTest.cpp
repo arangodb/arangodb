@@ -28,6 +28,8 @@
 #include "Replication2/ReplicatedState/Supervision.h"
 #include "Replication2/Helper/AgencyStateBuilder.h"
 #include "Replication2/Helper/AgencyLogBuilder.h"
+#include "Replication2/ReplicatedLog/Supervision.h"
+#include "Replication2/ReplicatedLog/SupervisionAction.h"
 
 #include <boost/container_hash/hash.hpp>
 
@@ -100,7 +102,6 @@ std::size_t hash_value(ParticipantsConfig const& s) {
   return seed;
 }
 }  // namespace arangodb::replication2
-
 namespace arangodb::replication2::agency {
 
 std::size_t hash_value(LogTarget const& s) {
@@ -165,21 +166,60 @@ std::size_t hash_value(Log const& s) {
   return seed;
 }
 }  // namespace arangodb::replication2::agency
-
+namespace arangodb::replication2::replicated_log {
+std::size_t hash_value(ParticipantHealth const& h) {
+  std::size_t seed = 0;
+  boost::hash_combine(seed, h.rebootId.value());
+  boost::hash_combine(seed, h.notIsFailed);
+  return seed;
+}
+std::size_t hash_value(ParticipantsHealth const& h) {
+  return boost::hash_range(h._health.begin(), h._health.end());
+}
+}  // namespace arangodb::replication2::replicated_log
 namespace {
 
 struct AgencyState {
   RSA::State replicatedState;
   std::optional<RLA::Log> replicatedLog;
+  replicated_log::ParticipantsHealth health;
 
   friend std::size_t hash_value(AgencyState const& s) {
     std::size_t seed = 0;
     boost::hash_combine(seed, s.replicatedState);
     boost::hash_combine(seed, s.replicatedLog);
+    boost::hash_combine(seed, s.health);
     return seed;
   }
   friend auto operator==(AgencyState const& s, AgencyState const& s2) noexcept
       -> bool = default;
+
+  friend auto operator<<(std::ostream& os, AgencyState const& state)
+      -> std::ostream& {
+    auto const print = [&](auto const& x) {
+      VPackBuilder builder;
+      x.toVelocyPack(builder);
+      os << builder.toJson() << std::endl;
+    };
+
+    print(state.replicatedState.target);
+    if (state.replicatedState.plan) {
+      print(*state.replicatedState.plan);
+    }
+    if (state.replicatedState.current) {
+      print(*state.replicatedState.current);
+    }
+    if (state.replicatedLog) {
+      print(state.replicatedLog->target);
+      if (state.replicatedLog->plan) {
+        print(*state.replicatedLog->plan);
+      }
+      if (state.replicatedLog->current) {
+        print(*state.replicatedLog->current);
+      }
+    }
+    return os;
+  }
 };
 
 struct ActorState {
@@ -192,42 +232,53 @@ struct ActorState {
       -> bool = default;
 };
 
-struct Action {
-  virtual ~Action() = default;
+struct SimulationAction {
+  virtual ~SimulationAction() = default;
   virtual void apply(std::shared_ptr<AgencyState>) = 0;
-  virtual void print() = 0;
+  auto toString() -> std::string {
+    std::stringstream ss;
+    this->operator<<(ss);
+    return ss.str();
+  }
+  virtual auto operator<<(std::ostream&) const -> std::ostream& = 0;
 };
 
-struct LoadAction final : Action {
+struct LoadAction final : SimulationAction {
   explicit LoadAction(std::size_t index) : actorIndex(index) {}
   void apply(std::shared_ptr<AgencyState>) override {}
-  void print() override { std::cout << "Load " << actorIndex << std::endl; }
+  auto operator<<(std::ostream& os) const -> std::ostream& override {
+    return os << "Load " << actorIndex;
+  }
   std::size_t actorIndex;
 };
 
 struct SimulationState {
   std::size_t depth = 0;
+  std::size_t _uniqueId = 0;
   std::unique_ptr<Action> _producedBy;
   std::shared_ptr<AgencyState> _agency;
   std::vector<ActorState> _actors;
-  std::shared_ptr<SimulationState const> _previous;
+  mutable std::vector<std::pair<std::shared_ptr<SimulationState const>,
+                                std::unique_ptr<SimulationAction>>>
+      _previous;
 
   friend std::size_t hash_value(SimulationState const& sim) {
     std::size_t seed = 0;
     boost::hash_combine(seed, *sim._agency);
-    boost::hash_combine(
-        seed, boost::hash_range(sim._actors.begin(), sim._actors.end()));
+    // boost::hash_combine(
+    //     seed, boost::hash_range(sim._actors.begin(), sim._actors.end()));
 
     return seed;
   }
 
   friend auto operator==(SimulationState const& s, SimulationState const& s2)
       -> bool {
-    return std::tie(*s._agency, s._actors) == std::tie(*s2._agency, s2._actors);
+    return std::tie(*s._agency /*, s._actors*/) ==
+           std::tie(*s2._agency /*, s2._actors*/);
   }
 };
 
-struct SupervisionStateAction final : Action {
+struct SupervisionStateAction final : SimulationAction {
   void apply(std::shared_ptr<AgencyState> agency) override {
     auto actionCtx =
         executeAction(agency->replicatedState, agency->replicatedLog, _action);
@@ -252,25 +303,50 @@ struct SupervisionStateAction final : Action {
   explicit SupervisionStateAction(replicated_state::Action action)
       : _action(std::move(action)) {}
 
-  void print() override {
-    std::cout << "Supervision "
+  auto operator<<(std::ostream& os) const -> std::ostream& override {
+    return os << "Supervision "
               << std::visit([&](auto const& x) { return typeid(x).name(); },
-                            _action)
-              << std::endl;
+                            _action);
   }
 
   replicated_state::Action _action;
 };
 
+struct SupervisionLogAction final : SimulationAction {
+  void apply(std::shared_ptr<AgencyState> agency) override {
+    auto ctx =
+        replicated_log::ActionContext{agency->replicatedLog.value().plan,
+                                      agency->replicatedLog.value().current};
+    std::visit([&](auto& action) { action.execute(ctx); }, _action);
+    if (ctx.hasCurrentModification()) {
+      agency->replicatedLog->current = ctx.getCurrent();
+    }
+    if (ctx.hasPlanModification()) {
+      agency->replicatedLog->plan = ctx.getPlan();
+    }
+  }
+
+  explicit SupervisionLogAction(replicated_log::Action action)
+      : _action(std::move(action)) {}
+  auto operator<<(std::ostream& os) const -> std::ostream& override {
+    return os << "Supervision "
+              << std::visit([&](auto const& x) { return typeid(x).name(); },
+                            _action);
+  }
+
+  replicated_log::Action _action;
+};
+
 struct Actor {
   virtual ~Actor() = default;
   virtual auto step(std::shared_ptr<AgencyState const> const&) const
-      -> std::unique_ptr<Action> = 0;
+      -> std::unique_ptr<SimulationAction> = 0;
 };
 
 struct SupervisionActor final : Actor {
-  auto stepReplicatedState(std::shared_ptr<AgencyState const> const& agency)
-      const -> std::unique_ptr<Action> {
+  static auto stepReplicatedState(
+      std::shared_ptr<AgencyState const> const& agency)
+      -> std::unique_ptr<SimulationAction> {
     replicated_state::SupervisionContext ctx;
     ctx.enableErrorReporting();
     replicated_state::checkReplicatedState(ctx, agency->replicatedLog,
@@ -282,13 +358,35 @@ struct SupervisionActor final : Actor {
     return std::make_unique<SupervisionStateAction>(std::move(action));
   }
 
+  static auto stepReplicatedLog(
+      std::shared_ptr<AgencyState const> const& agency)
+      -> std::unique_ptr<SimulationAction> {
+    if (!agency->replicatedLog.has_value()) {
+      return nullptr;
+    }
+    auto action = replicated_log::checkReplicatedLog(
+        agency->replicatedLog->target, agency->replicatedLog->plan,
+        agency->replicatedLog->current, agency->health);
+    if (std::holds_alternative<replicated_log::EmptyAction>(action)) {
+      return nullptr;
+    }
+    if (std::holds_alternative<replicated_log::LeaderElectionOutOfBoundsAction>(
+            action)) {
+      return nullptr;
+    }
+    return std::make_unique<SupervisionLogAction>(std::move(action));
+  }
+
   auto step(std::shared_ptr<AgencyState const> const& agency) const
-      -> std::unique_ptr<Action> override {
+      -> std::unique_ptr<SimulationAction> override {
+    if (auto action = stepReplicatedLog(agency); action != nullptr) {
+      return action;
+    }
     return stepReplicatedState(agency);
   }
 };
 
-struct DBServerSnapshotCompleteAction final : Action {
+struct DBServerSnapshotCompleteAction final : SimulationAction {
   explicit DBServerSnapshotCompleteAction(ParticipantId name,
                                           StateGeneration generation)
       : name(std::move(name)), generation(generation) {}
@@ -301,11 +399,10 @@ struct DBServerSnapshotCompleteAction final : Action {
     status.generation = generation;
     status.snapshot.status = SnapshotStatus::kCompleted;
   };
-
-  void print() override {
-    std::cout << "Snapshot Complete for " << name << "@" << generation
-              << std::endl;
+  auto operator<<(std::ostream& os) const -> std::ostream& override {
+    return os << "Snapshot Complete for " << name << "@" << generation;
   }
+
   ParticipantId name;
   StateGeneration generation;
 };
@@ -314,7 +411,7 @@ struct DBServerActor final : Actor {
   explicit DBServerActor(ParticipantId name) : name(std::move(name)) {}
 
   auto stepReplicatedState(std::shared_ptr<AgencyState const> const& agency)
-      const -> std::unique_ptr<Action> {
+      const -> std::unique_ptr<SimulationAction> {
     if (auto& plan = agency->replicatedState.plan; plan.has_value()) {
       if (auto iter = plan->participants.find(name);
           iter != plan->participants.end()) {
@@ -341,7 +438,7 @@ struct DBServerActor final : Actor {
   }
 
   auto step(std::shared_ptr<AgencyState const> const& agency) const
-      -> std::unique_ptr<Action> override {
+      -> std::unique_ptr<SimulationAction> override {
     return stepReplicatedState(agency);
   }
 
@@ -365,24 +462,31 @@ struct SimStateCmp {
 struct ReplicatedStateSupervisionSimulationTest : ::testing::Test {
   std::deque<std::shared_ptr<SimulationState const>> activeStates;
   std::vector<std::unique_ptr<Actor>> actors;
-  std::unordered_set<std::shared_ptr<SimulationState const>, SimStateHash,
+  std::unordered_set<std::shared_ptr<SimulationState>, SimStateHash,
                      SimStateCmp>
       fingerprints;
 
+  std::size_t numCreateStates = 0;
   std::size_t discoveredStates = 0;
   std::size_t eliminatedStates = 0;
 
-  void addNewState(std::shared_ptr<SimulationState const> const& sim) {
-    auto [ptr, inserted] = fingerprints.emplace(sim);
+  void addNewState(std::shared_ptr<SimulationState> const& newState,
+                   std::shared_ptr<SimulationState const> const& prev,
+                   std::unique_ptr<SimulationAction> action) {
+    newState->_uniqueId = numCreateStates += 1;
+    auto [ptr, inserted] = fingerprints.emplace(newState);
     if (inserted) {
-      activeStates.emplace_back(sim);
+      activeStates.emplace_back(newState);
       discoveredStates += 1;
+      newState->_previous.emplace_back(std::pair{prev, std::move(action)});
     } else {
+      ptr->operator*()._previous.emplace_back(
+          std::pair{prev, std::move(action)});
       eliminatedStates += 1;
     }
   }
 
-  void createLoadStep(std::shared_ptr<SimulationState const> const& sim,
+  /*void createLoadStep(std::shared_ptr<SimulationState const> const& sim,
                       std::size_t actorIdx) {
     // first check if there is something new
     auto const& actor = sim->_actors[actorIdx];
@@ -391,28 +495,27 @@ struct ReplicatedStateSupervisionSimulationTest : ::testing::Test {
       newSim->_actors = sim->_actors;
       newSim->depth = sim->depth + 1;
       newSim->_agency = sim->_agency;
-      newSim->_previous = sim;
+      newSim->_previous = {sim};
       newSim->_actors[actorIdx]._localAgency = sim->_agency;
       newSim->_producedBy = std::make_unique<LoadAction>(actorIdx);
-      addNewState(newSim);
+      addNewState(newSim, sim);
     }
-  }
+  }*/
 
   void createRunStep(std::shared_ptr<SimulationState const> const& sim,
                      std::size_t actorIdx) {
     auto const& actorData = sim->_actors[actorIdx];
-    auto action = actors[actorIdx]->step(actorData._localAgency);
+    auto action =
+        actors[actorIdx]->step(sim->_agency /*actorData._localAgency*/);
     if (action != nullptr) {
       // now mutate the agency
       auto newSim = std::make_shared<SimulationState>();
       newSim->_agency = std::make_shared<AgencyState>(*sim->_agency);
       action->apply(newSim->_agency);
       newSim->_actors = sim->_actors;
-      newSim->_actors[actorIdx]._localAgency = newSim->_agency;
-      newSim->_producedBy = std::move(action);
+      // newSim->_actors[actorIdx]._localAgency = newSim->_agency;
       newSim->depth = sim->depth + 1;
-      newSim->_previous = sim;
-      addNewState(newSim);
+      addNewState(newSim, sim, std::move(action));
     }
   }
 
@@ -420,7 +523,7 @@ struct ReplicatedStateSupervisionSimulationTest : ::testing::Test {
   // each actor can run or load
   void expand(std::shared_ptr<SimulationState const> const& sim) {
     for (std::size_t i = 0; i < actors.size(); i++) {
-      createLoadStep(sim, i);
+      // createLoadStep(sim, i);
       createRunStep(sim, i);
     }
   }
@@ -431,8 +534,12 @@ struct ReplicatedStateSupervisionSimulationTest : ::testing::Test {
     while (!activeStates.empty()) {
       auto sim = activeStates.front();
       activeStates.pop_front();
-      auto oldSize = activeStates.size();
+      auto oldSize = numCreateStates;
       expand(sim);
+      if (oldSize == numCreateStates) {
+        std::cout << sim->_uniqueId << std::endl;
+        std::cout << *sim->_agency << std::endl;
+      }
       if (std::chrono::steady_clock::now() - last > std::chrono::seconds{5}) {
         std::cout << "total states = " << discoveredStates
                   << "; eliminated = " << eliminatedStates
@@ -440,18 +547,34 @@ struct ReplicatedStateSupervisionSimulationTest : ::testing::Test {
         last = std::chrono::steady_clock::now();
       }
     }
+    std::cout << "end of expandAll" << std::endl;
   }
 
-  void printPath(std::shared_ptr<SimulationState const> const& step) {
-    if (step->_previous) {
-      printPath(step->_previous);
-      step->_producedBy->print();
-      if (step->_agency->replicatedState.plan) {
-        VPackBuilder builder;
-        step->_agency->replicatedState.plan->toVelocyPack(builder);
-        std::cout << builder.toJson() << std::endl;
+  void printAllStates() {
+    std::size_t idx = 0;
+    std::cout << "digraph foobar {" << std::endl;
+    for (auto const& s : fingerprints) {
+      std::cout << "v" << s->_uniqueId;
+      if (s->_uniqueId == 0) {
+        std::cout << "[label=\"initial\"]";
+      }
+      std::cout << ";" << std::endl;
+    }
+
+    for (auto const& s : fingerprints) {
+      for (auto const& [p, action] : s->_previous) {
+        std::cout << "v" << p->_uniqueId << " -> v" << s->_uniqueId
+                  << "[label=\"" << action->toString() << "\"];" << std::endl;
       }
     }
+
+    std::cout << "}" << std::endl;
+  }
+
+  void setServerHealth(ParticipantId const& id, RebootId rebootId,
+                       bool isNotFailed) {
+    activeStates.front()->_agency->health._health.emplace(
+        id, replicated_log::ParticipantHealth{rebootId, isNotFailed});
   }
 
   void createInitialState(RSA::State state, std::optional<RLA::Log> log) {
@@ -463,7 +586,8 @@ struct ReplicatedStateSupervisionSimulationTest : ::testing::Test {
     for (std::size_t i = 0; i < actors.size(); ++i) {
       newSim->_actors.emplace_back()._localAgency = newSim->_agency;
     }
-    activeStates.emplace_back(std::move(newSim));
+    activeStates.emplace_back(newSim);
+    fingerprints.emplace(std::move(newSim));
   }
 
   LogConfig const defaultConfig = {2, 2, 3, false};
@@ -484,11 +608,15 @@ TEST_F(ReplicatedStateSupervisionSimulationTest, check_state_and_log) {
   actors.emplace_back(std::make_unique<SupervisionActor>());
   actors.emplace_back(std::make_unique<DBServerActor>("A"));
   actors.emplace_back(std::make_unique<DBServerActor>("B"));
-  // actors.emplace_back(std::make_unique<DBServerActor>("C"));
+  actors.emplace_back(std::make_unique<DBServerActor>("C"));
 
   createInitialState(state.get(), std::nullopt);
+  setServerHealth("A", RebootId{1}, false);
+  setServerHealth("B", RebootId{1}, false);
+  setServerHealth("C", RebootId{1}, false);
   expandAll();
 
   std::cout << "total states = " << discoveredStates
             << "; eliminated = " << eliminatedStates << std::endl;
+  printAllStates();
 }
