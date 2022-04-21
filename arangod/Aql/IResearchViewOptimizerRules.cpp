@@ -274,9 +274,10 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       auto astCalcNode = calc->expression()->node();
       if (!astCalcNode ||
           astCalcNode->type != AstNodeType::NODE_TYPE_REFERENCE) {
-        // Not a reference?  Seems that ScorerReplacer has failed.
+        // Not a reference?  Seems that it is not 
+        // something produced by ScorerReplacer.
         // e.g. it is expected to be LET sortVar = scorerVar;
-        TRI_ASSERT(false);
+        // Definately not something we could handle.
         return false;
       }
       sortVariable = reinterpret_cast<arangodb::aql::Variable const*>(

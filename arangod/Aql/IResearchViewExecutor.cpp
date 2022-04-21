@@ -510,7 +510,7 @@ IndexReadBuffer<ValueType, copyStored>::pop_front() noexcept {
   assertSizeCoherence();
   size_t key = _keyBaseIdx;
   if (!_rows.empty()) {
-    TRI_ASSERT(_scoresSort);
+    TRI_ASSERT(!_scoresSort.empty());
     key = _rows[_keyBaseIdx];
   }
   IndexReadBufferEntry entry{key};
