@@ -4,8 +4,10 @@ export const AttributesInfo = ({ attributes }) => {
   return (
     <>
       {
-      Object.keys(attributes)
-        .map((key) => <Tag color="cyan"><strong>{key}</strong></Tag>)
+        Object.keys(attributes)
+        .map((key, i) => (
+            <Tag color="cyan" key={key.toString()}><strong>{key}:</strong> {JSON.stringify(attributes[key])}</Tag>
+        ))
       }
     </>
   );
