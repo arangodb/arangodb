@@ -71,6 +71,12 @@ struct AgencyStateBuilder {
     return *this;
   }
 
+  auto setCurrentVersion(std::optional<std::uint64_t> version)
+      -> AgencyStateBuilder& {
+    makeCurrentSupervision().version = version;
+    return *this;
+  }
+
   auto setPlanGeneration(StateGeneration gen) -> AgencyStateBuilder& {
     makePlan().generation = gen;
     return *this;
@@ -95,6 +101,13 @@ struct AgencyStateBuilder {
     return *this;
   }
 
+  auto setAllSnapshotsComplete() -> AgencyStateBuilder& {
+    for (auto const& [p, v] : makePlan().participants) {
+      setSnapshotCompleteFor(p);
+    }
+    return *this;
+  }
+
   auto makePlan() -> RSA::Plan& {
     if (!_state.plan.has_value()) {
       _state.plan.emplace();
@@ -105,12 +118,13 @@ struct AgencyStateBuilder {
   }
 
   template<typename... Vs>
-  auto setSnapshotCompleteFor(Vs&&... id) {
+  auto setSnapshotCompleteFor(Vs&&... id) -> AgencyStateBuilder& {
     ((makeCurrent().participants[id] =
           {_state.plan.value().participants.at(id).generation,
            SnapshotInfo{SnapshotStatus::kCompleted, SnapshotInfo::clock::now(),
                         std::nullopt}}),
      ...);
+    return *this;
   }
 
   auto makeCurrent() -> RSA::Current& {
@@ -118,6 +132,13 @@ struct AgencyStateBuilder {
       _state.current.emplace();
     }
     return _state.current.value();
+  }
+
+  auto makeCurrentSupervision() -> RSA::Current::Supervision& {
+    if (auto& s = makeCurrent().supervision; s.has_value()) {
+      return *s;
+    }
+    return makeCurrent().supervision.emplace();
   }
 
   auto get() const noexcept -> RSA::State const& { return _state; }
