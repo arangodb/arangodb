@@ -494,10 +494,13 @@ export class GraphView extends React.Component {
     const nodes = this.graph.getNodes();
     nodes.forEach((node) => {
       console.log("node: ", node);
+      const idSplit = node._cfg.id.split('/');
+
       const model = {
-        label: node._cfg.id
+        label: `${idSplit[1]} (${idSplit[0]})`
       };
       this.graph.updateItem(node, model);
+
       /*
       if (!node.style) {
         node.style = {};
@@ -622,7 +625,8 @@ export class GraphView extends React.Component {
 
   render() {
     return <>
-      <button onClick={this.updateNodeModel}>Update "worldVertices/continent-south-america"</button>
+      <button onClick={this.updateNodeModel}>Show collection to nodes</button>
+      <button onClick={this.updateEdgeModel}>Show collection to edges</button>
       <button onClick={() => this.printVertexCollections()}>Print vertex collections</button>
       <button onClick={() => {
         this.props.data.nodes.forEach(node => {
