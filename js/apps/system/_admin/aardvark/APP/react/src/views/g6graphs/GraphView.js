@@ -42,8 +42,7 @@ export class GraphView extends React.Component {
         if (evt.target && evt.target.isCanvas && evt.target.isCanvas()) {
           header = 'Canvas ContextMenu';
           menu = `<ul id='graphViewerMenu'>
-            <li title='addNode'>Add node to graph</li>
-            <li title='addNodeToDb'>Add node to database</li>
+            <li title='addNodeToDb'>Add node</li>
           </ul>`;
         } else if (evt.item) {
           const itemType = evt.item.getType();
