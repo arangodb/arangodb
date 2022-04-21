@@ -171,7 +171,6 @@
       testQueryResultsWithMultipleCollections() {
         let query = "FOR d IN " + vn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LIMIT 10 RETURN d";
         let plan = AQL_EXPLAIN(query, {}, diabledRules).plan;
-        print(plan);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = AQL_EXECUTE(query, {}, diabledRules);
         assertEqual(4, result.json.length);
