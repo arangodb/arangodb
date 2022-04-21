@@ -277,10 +277,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
       RocksDBIndex* idx = findIndex(RocksDBKey::objectId(key));
       if (idx) {
-        KeyGenerator* keyGen = idx->collection().keyGenerator();
-        if (keyGen) {
-          keyGen->track(ref.data(), ref.size());
-        }
+        idx->collection().keyGenerator().track(ref);
       }
 
     } else if (column_family_id ==

@@ -27,7 +27,6 @@
 
 #include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
-#include "Agency/TimeString.h"
 #include "Agency/TransactionBuilder.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
@@ -37,6 +36,7 @@
 #include "Basics/RecursiveLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/TimeString.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
@@ -72,11 +72,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
-
-#ifdef USE_ENTERPRISE
-#include "Enterprise/VocBase/SmartVertexCollection.h"
-#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
-#endif
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>

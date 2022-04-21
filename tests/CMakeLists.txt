@@ -191,12 +191,10 @@ set(ARANGODB_TESTS_SOURCES
   Basics/EndpointTest.cpp
   Basics/FixedSizeAllocatorTest.cpp
   Basics/GuardedTest.cpp
-  Basics/InifileParserTest.cpp
   Basics/InspectionTest.cpp
   Basics/LoggerTest.cpp
   Basics/MemoryUsageTest.cpp
   Basics/NumberUtilsTest.cpp
-  Basics/ParametersTest.cpp
   Basics/RandomTest.cpp
   Basics/ReadWriteLockTest.cpp
   Basics/RecursiveLockerTest.cpp
@@ -269,6 +267,8 @@ set(ARANGODB_TESTS_SOURCES
   Network/MethodsTest.cpp
   Network/UtilsTest.cpp
   Pregel/typedbuffer.cpp
+  ProgramOptions/InifileParserTest.cpp
+  ProgramOptions/ParametersTest.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
   Rest/PathMatchTest.cpp
   RestHandler/RestAnalyzerHandlerTest.cpp
@@ -369,6 +369,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Streams/MultiplexerConcurrencyTest.cpp
   Replication2/Streams/TestLogSpecification.cpp
   Replication2/Streams/TestLogSpecification.h
+  Replication2/ReplicatedState/SupervisionTest.cpp
 )
 
 
