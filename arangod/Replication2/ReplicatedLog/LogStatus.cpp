@@ -382,6 +382,23 @@ auto replicated_log::to_string(GlobalStatus::SpecificationSource source)
   }
 }
 
+auto replicated_log::to_string(ParticipantRole role) noexcept
+    -> std::string_view {
+  switch (role) {
+    case ParticipantRole::kUnconfigured:
+      return "Unconfigured";
+    case ParticipantRole::kLeader:
+      return "Leader";
+    case ParticipantRole::kFollower:
+      return "Follower";
+  }
+  LOG_TOPIC("e3242", ERR, Logger::REPLICATION2)
+      << "Unhandled participant role: "
+      << static_cast<std::underlying_type_t<decltype(role)>>(role);
+  TRI_ASSERT(false);
+  return "(unknown status code)";
+}
+
 void GlobalStatus::Specification::toVelocyPack(
     arangodb::velocypack::Builder& b) const {
   velocypack::ObjectBuilder ob(&b);
@@ -398,4 +415,27 @@ auto GlobalStatus::Specification::fromVelocyPack(arangodb::velocypack::Slice s)
     source = GlobalStatus::SpecificationSource::kRemoteAgency;
   }
   return Specification{.source = source, .plan = std::move(plan)};
+}
+
+auto ParticipantRoleStringTransformer::toSerialized(ParticipantRole source,
+                                                    std::string& target) const
+    -> arangodb::inspection::Status {
+  target = to_string(source);
+  return {};
+}
+
+auto ParticipantRoleStringTransformer::fromSerialized(
+    std::string const& source, ParticipantRole& target) const
+    -> arangodb::inspection::Status {
+  if (source == "Unconfigured") {
+    target = ParticipantRole::kUnconfigured;
+  } else if (source == "Leader") {
+    target = ParticipantRole::kLeader;
+  } else if (source == "Follower") {
+    target = ParticipantRole::kFollower;
+  } else {
+    return inspection::Status{"Invalid participant role name: " +
+                              std::string{source}};
+  }
+  return {};
 }

@@ -671,6 +671,8 @@ auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics()
   result.commitIndex = _commitIndex;
   result.firstIndex = _inMemoryLog.getFirstIndex();
   result.spearHead = _inMemoryLog.getLastTermIndexPair();
+  result.lowestIndexToKeep = _lowestIndexToKeep;
+  result.releaseIndex = _releaseIndex;
   return result;
 }
 
