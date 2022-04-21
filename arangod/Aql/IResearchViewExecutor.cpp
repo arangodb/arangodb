@@ -143,13 +143,13 @@ class BufferHeapSortContext {
  public:
   explicit BufferHeapSortContext(
       size_t numScoreRegisters,
-      std::vector<std::pair<size_t, bool>> const& scoresSort,
-      std::vector<float_t> const& scoreBuffer)
+      std::span<std::pair<size_t, bool> const> scoresSort,
+      std::span<float_t const> scoreBuffer)
       : _numScoreRegisters(numScoreRegisters),
         _scoresSort(scoresSort),
         _scoreBuffer(scoreBuffer) {}
 
-  bool operator()(size_t const& a, size_t const& b) const noexcept {
+  bool operator()(size_t a, size_t b) const noexcept {
     auto const* rhs_scores = &_scoreBuffer[b * _numScoreRegisters];
     auto lhs_scores = &_scoreBuffer[a * _numScoreRegisters];
     for (auto const& cmp : _scoresSort) {
@@ -169,15 +169,13 @@ class BufferHeapSortContext {
                           : lhs_scores[cmp.first] > rhs_scores[cmp.first];
       }
     }
-    // auto const& cmp = _scoresSort.front();
-    // return lhs_scores[cmp.first] > rhs_scores[cmp.first];
     return false;
   }
 
  private:
   size_t _numScoreRegisters;
-  std::vector<std::pair<size_t, bool>> const& _scoresSort;
-  std::vector<float_t> const& _scoreBuffer;
+  std::span<std::pair<size_t, bool> const> _scoresSort;
+  std::span<float_t const> _scoreBuffer;
 };  //  BufferHeapSortContext
 
 }  // namespace
@@ -362,7 +360,7 @@ IResearchViewExecutorBase<Impl, Traits>::ReadContext::ReadContext(
 IndexReadBufferEntry::IndexReadBufferEntry(size_t keyIdx) noexcept
     : _keyIdx(keyIdx) {}
 
-ScoreIterator::ScoreIterator(std::vector<float_t>& scoreBuffer, size_t keyIdx,
+ScoreIterator::ScoreIterator(std::span<float_t> scoreBuffer, size_t keyIdx,
                              size_t numScores) noexcept
     : _scoreBuffer(scoreBuffer),
       _scoreBaseIdx(keyIdx * numScores),
@@ -370,11 +368,11 @@ ScoreIterator::ScoreIterator(std::vector<float_t>& scoreBuffer, size_t keyIdx,
   TRI_ASSERT(_scoreBaseIdx + _numScores <= _scoreBuffer.size());
 }
 
-std::vector<float_t>::iterator ScoreIterator::begin() noexcept {
+auto ScoreIterator::begin() noexcept {
   return _scoreBuffer.begin() + static_cast<ptrdiff_t>(_scoreBaseIdx);
 }
 
-std::vector<float_t>::iterator ScoreIterator::end() noexcept {
+auto ScoreIterator::end() noexcept {
   return _scoreBuffer.begin() +
          static_cast<ptrdiff_t>(_scoreBaseIdx + _numScores);
 }
@@ -385,6 +383,7 @@ IndexReadBuffer<ValueType, copyStored>::IndexReadBuffer(
     : _numScoreRegisters(numScoreRegisters),
       _keyBaseIdx(0),
       _maxSize(0),
+      _heapSizeLeft(0),
       _storedValuesCount(0),
       _memoryTracker(monitor) {}
 
@@ -411,49 +410,53 @@ void IndexReadBuffer<ValueType, copySorted>::pushValue(Args&&... args) {
 
 template<typename ValueType, bool copySorted>
 void IndexReadBuffer<ValueType, copySorted>::finalizeHeapSort() {
-  if (!_rows.empty()) {
-    std::sort(
-        _rows.begin(), _rows.end(),
-        BufferHeapSortContext(_numScoreRegisters, *_scoresSort, _scoreBuffer));
-  }
+  std::sort(
+      _rows.begin(), _rows.end(),
+      BufferHeapSortContext{_numScoreRegisters, _scoresSort, _scoreBuffer});
 }
 
 template<typename ValueType, bool copySorted>
-bool IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
+void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
     ValueType&& value, float_t const* scores, size_t count) {
-  BufferHeapSortContext sortContext(_numScoreRegisters, *_scoresSort,
+  BufferHeapSortContext sortContext(_numScoreRegisters, _scoresSort,
                                     _scoreBuffer);
-  if (_maxSize <= _rows.size()) {
+  TRI_ASSERT(_maxSize);
+  if (!_heapSizeLeft) {
     if (sortContext.compareInput(_rows.front(), scores)) {
-      return false;  // not interested in this document
+      return;  // not interested in this document
     }
     std::pop_heap(_rows.begin(), _rows.end(), sortContext);
     // now last contains "free" index in the buffer
     _keyBuffer[_rows.back()] = std::move(value);
     auto const base = _rows.back() * _numScoreRegisters;
-    size_t i = 0;
+    size_t i{0};
+    auto bufferIt = _scoreBuffer.begin() + base;
     for (; i < count; ++i) {
-      _scoreBuffer[base + i] = static_cast<float_t>(scores[i]);
+      *bufferIt = scores[i];
+      ++bufferIt;
     }
     while (i < _numScoreRegisters) {
-      _scoreBuffer[base + i] = std::numeric_limits<float_t>::quiet_NaN();
+      *bufferIt = std::numeric_limits<float_t>::quiet_NaN();
       ++i;
+      ++bufferIt;
     }
+    std::push_heap(_rows.begin(), _rows.end(), sortContext);
   } else {
-    _keyBuffer.push_back(std::move(value));
-    _storedValuesBuffer.resize(_storedValuesBuffer.size() + _storedValuesCount);
+    _keyBuffer.emplace_back(std::move(value));
     size_t i = 0;
     for (; i < count; ++i) {
-      _scoreBuffer.emplace_back(static_cast<float_t>(scores[i]));
+      _scoreBuffer.emplace_back(scores[i]);
     }
     while (i < _numScoreRegisters) {
       _scoreBuffer.emplace_back(std::numeric_limits<float_t>::quiet_NaN());
       ++i;
     }
     _rows.push_back(_rows.size());
+    if ((--_heapSizeLeft) == 0) {
+      _storedValuesBuffer.resize(_keyBuffer.size() * _storedValuesCount);
+      std::make_heap(_rows.begin(), _rows.end(), sortContext);
+    }
   }
-  std::push_heap(_rows.begin(), _rows.end(), sortContext);
-  return _rows.size() >= _maxSize;
 }
 
 template<typename ValueType, bool copyStored>
@@ -463,9 +466,8 @@ IndexReadBuffer<ValueType, copyStored>::getStoredValues() const noexcept {
 }
 
 template<typename ValueType, bool copyStored>
-void IndexReadBuffer<ValueType, copyStored>::pushScore(
-    float_t const scoreValue) {
-  _scoreBuffer.emplace_back(static_cast<float_t>(scoreValue));
+void IndexReadBuffer<ValueType, copyStored>::pushScore(float_t scoreValue) {
+  _scoreBuffer.emplace_back(scoreValue);
 }
 
 template<typename ValueType, bool copyStored>
@@ -478,6 +480,7 @@ void IndexReadBuffer<ValueType, copyStored>::reset() noexcept {
   // Should only be called after everything was consumed
   TRI_ASSERT(empty());
   _keyBaseIdx = 0;
+  _heapSizeLeft = _maxSize;
   _keyBuffer.clear();
   _scoreBuffer.clear();
   _storedValuesBuffer.clear();
@@ -1034,7 +1037,7 @@ IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::
     : Base(fetcher, infos) {
   this->_storedValuesReaders.resize(
       this->_infos.getOutNonMaterializedViewRegs().size());
-  this->_indexReadBuffer.setScoresSort(&this->_infos.scoresSort());
+  this->_indexReadBuffer.setScoresSort(this->_infos.scoresSort());
 }
 
 template<bool copyStored, bool ordered, MaterializeType materializeType>
@@ -1185,8 +1188,7 @@ bool IResearchViewHeapSortExecutor<
   this->_indexReadBuffer.finalizeHeapSort();
   _bufferedCount = this->_indexReadBuffer.size();
   if (skip < _bufferedCount) {
-    auto span = this->_indexReadBuffer.getMaterializeRange(skip);
-    std::vector<size_t> pkReadingOrder(span.begin(), span.end());
+    auto pkReadingOrder = this->_indexReadBuffer.getMaterializeRange(skip);
     std::sort(
         pkReadingOrder.begin(), pkReadingOrder.end(),
         [buffer = &this->_indexReadBuffer](size_t lhs, size_t rhs) -> bool {

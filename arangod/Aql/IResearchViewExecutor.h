@@ -134,9 +134,7 @@ class IResearchViewExecutorInfos {
 
   size_t scoresSortLimit() const noexcept { return _scorersSortLimit; }
 
-  std::vector<std::pair<size_t, bool>> const& scoresSort() const noexcept {
-    return _scorersSort;
-  }
+  auto scoresSort() const noexcept { return std::span{_scorersSort}; }
 
  private:
   aql::RegisterId _documentOutReg;
@@ -221,15 +219,14 @@ class IndexReadBufferEntry {
 
 class ScoreIterator {
  public:
-  ScoreIterator(std::vector<float_t>& scoreBuffer, size_t keyIdx,
+  ScoreIterator(std::span<float_t> scoreBuffer, size_t keyIdx,
                 size_t numScores) noexcept;
 
-  std::vector<float_t>::iterator begin() noexcept;
-
-  std::vector<float_t>::iterator end() noexcept;
+  auto begin() noexcept;
+  auto end() noexcept;
 
  private:
-  std::vector<float_t>& _scoreBuffer;
+  std::span<float_t> _scoreBuffer;
   size_t _scoreBaseIdx;
   size_t _numScores;
 };
@@ -251,14 +248,14 @@ class IndexReadBuffer {
 
   ScoreIterator getScores(IndexReadBufferEntry bufferEntry) noexcept;
 
-  void setScoresSort(std::vector<std::pair<size_t, bool>> const* s) noexcept {
+  void setScoresSort(std::span<std::pair<size_t, bool> const> s) noexcept {
     _scoresSort = s;
   }
 
   template<typename... Args>
   void pushValue(Args&&... args);
 
-  bool pushSortedValue(ValueType&& value, float_t const* scores, size_t count);
+  void pushSortedValue(ValueType&& value, float_t const* scores, size_t count);
 
   void finalizeHeapSort();
   // A note on the scores: instead of saving an array of AqlValues, we could
@@ -286,7 +283,7 @@ class IndexReadBuffer {
         maxSize * sizeof(typename decltype(_keyBuffer)::value_type) +
         maxSize * sizeof(typename decltype(_scoreBuffer)::value_type) +
         maxSize * sizeof(typename decltype(_storedValuesBuffer)::value_type);
-    if (_scoresSort) {
+    if (!_scoresSort.empty()) {
       res += maxSize * sizeof(typename decltype(_rows)::value_type);
     }
     return res;
@@ -308,11 +305,12 @@ class IndexReadBuffer {
       _keyBuffer.reserve(atMost);
       _scoreBuffer.reserve(atMost * scores);
       _storedValuesBuffer.reserve(atMost * stored);
-      if (_scoresSort) {
+      if (!_scoresSort.empty()) {
         _rows.reserve(atMost);
       }
     }
     _maxSize = atMost;
+    _heapSizeLeft = _maxSize;
     _storedValuesCount = stored;
   }
 
@@ -356,9 +354,10 @@ class IndexReadBuffer {
   size_t _numScoreRegisters;
   size_t _keyBaseIdx;
 
-  std::vector<std::pair<size_t, bool>> const* _scoresSort;
+  std::span<std::pair<size_t, bool> const> _scoresSort;
   std::vector<size_t> _rows;
   size_t _maxSize;
+  size_t _heapSizeLeft;
   size_t _storedValuesCount;
   ResourceUsageScope _memoryTracker;
 };  // IndexReadBuffer

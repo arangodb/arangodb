@@ -205,7 +205,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   void setScorersSort(std::vector<std::pair<size_t, bool>>&& sort,
                       size_t limit) {
-    _scorersSort = sort;
+    _scorersSort = std::move(sort);
     _scorersSortLimit = limit;
   }
 
