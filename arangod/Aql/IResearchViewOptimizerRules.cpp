@@ -239,7 +239,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
         }
         limitNode = ExecutionNode::castTo<LimitNode*>(current);
         break;
-        case ExecutionNode::CALCULATION:
+      case ExecutionNode::CALCULATION:
         // Only deterministic calcs allowed
         // Otherwise optimization should be forbidden
         // as number of calls will be changed!
@@ -253,7 +253,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     }
     if (limitNode && sortNode) {
       // only first SORT + LIMIT makes sense
-      break; 
+      break;
     }
   }
   if (!sortNode || !limitNode) {

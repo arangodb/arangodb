@@ -214,7 +214,17 @@
         assertEqual(12129, result.stats.fullCount);
       },
       testAppliedDeterministicUsedBeforeSort() {
-        let query = "FOR d IN " + vn + " SEARCH d.field2 < 'A3'  SORT BM25(d) LET a = UPPER(d.b.b1) LIMIT 10 RETURN {dD:d, aA:a}";
+        let query = "FOR d IN " + vn + " SEARCH d.field2 < 'A3' LET a = UPPER(d.b.b1) SORT BM25(d)  LIMIT 10 RETURN {dD:d, aA:a}";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertNotEqual(-1, plan.rules.indexOf(ruleName), {}, {optimizer:{rules:['-move-calculations-down']}});
+        let result = AQL_EXECUTE(query, {}, {fullCount:true, optimizer:{rules:['-move-calculations-down']}});
+        assertEqual(10, result.json.length);
+        assertEqual(12129, result.stats.scannedIndex);
+        assertEqual(12129, result.stats.fullCount);
+      },
+      testAppliedDeterministicUsedBeforeSortTwoSorts() {
+        let query = "FOR d IN " + vn + " SEARCH d.field2 < 'A3' LET a = UPPER(d.b.b1) SORT BM25(d) ASC "
+                    + "LIMIT 10 SORT TFIDF(d) DESC RETURN {dD:d, aA:a}";
         let plan = AQL_EXPLAIN(query).plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName), {}, {optimizer:{rules:['-move-calculations-down']}});
         let result = AQL_EXECUTE(query, {}, {fullCount:true, optimizer:{rules:['-move-calculations-down']}});
