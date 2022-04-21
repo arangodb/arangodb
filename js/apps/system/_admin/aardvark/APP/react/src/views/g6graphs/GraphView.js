@@ -527,6 +527,18 @@ export class GraphView extends React.Component {
     });
   }
 
+  updateEdgeModel = () => {
+    const edges = this.graph.getEdges();
+    edges.forEach((edge) => {
+      const idSplit = edge._cfg.id.split('/');
+
+      const model = {
+        label: `${idSplit[1]} (${idSplit[0]})`
+      };
+      this.graph.updateItem(edge, model);
+    });
+  }
+
   addCollectionNameToNodes = (value) => {
     this.graph.node((node) => {
       const slashPos = node.id.indexOf("/");
