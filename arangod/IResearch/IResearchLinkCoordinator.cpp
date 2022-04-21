@@ -166,7 +166,7 @@ IResearchDataStore::Stats IResearchLinkCoordinator::stats() const {
   addLabel("view", getViewId());
   addLabel("collection", getCollectionName());
   auto getValue = [&, labels = std::string_view{labels}](std::string_view key) {
-    if (auto it = metrics.find(metrics::MetricKey<>{key, labels});
+    if (auto it = metrics.find(metrics::MetricKeyView{key, labels});
         it != metrics.end()) {
       return std::get<uint64_t>(it->second);
     }

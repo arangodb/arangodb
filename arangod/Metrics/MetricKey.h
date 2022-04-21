@@ -26,11 +26,13 @@
 
 namespace arangodb::metrics {
 
-template<typename T = std::string_view>
+template<typename T>
 struct MetricKey {
   T name;
   T labels;
 };
+
+using MetricKeyView = MetricKey<std::string_view>;
 
 template<typename L, typename R>
 bool operator==(const MetricKey<L>& lhs, const MetricKey<R>& rhs) noexcept {
