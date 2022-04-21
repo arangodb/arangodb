@@ -11,6 +11,7 @@ import ParameterNodeStart from "./ParameterNodeStart";
 import ParameterDepth from "./ParameterDepth";
 import ParameterLimit from "./ParameterLimit";
 import ParameterNodeLabelByCollection from "./ParameterNodeLabelByCollection";
+import ParameterNodeColorByCollection from "./ParameterNodeColorByCollection";
 import ParameterEdgeLabelByCollection from "./ParameterEdgeLabelByCollection";
 import ParameterNodeLabel from "./ParameterNodeLabel";
 import ParameterEdgeLabel from "./ParameterEdgeLabel";
@@ -180,17 +181,13 @@ const screenshotMenu = (
           >
             <ParameterNodeLabel />
             <br />
-            <ParameterNodeLabelByCollection />
+            <ParameterNodeLabelByCollection
+              graphData={graphData}
+              onAddCollectionNameChange={
+                (nodeLabelByCollection) => console.log("nodeLabelByCollection: ", nodeLabelByCollection)
+              } />
             <br />
-            <Switch
-              checkedChildren="Color by collections"
-              unCheckedChildren="Don't color by collections"
-              onChange={onSwitchChange}
-              style={{ marginTop: '24px' }}
-            />
-            <Tooltip title="Should nodes be colorized by their collection? If enabled, node color and node color attribute will be ignored.">
-              <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)', marginTop: '24px' }} />
-            </Tooltip>
+            <ParameterNodeColorByCollection />
             <br />
             <Input
               addonBefore="Color"
