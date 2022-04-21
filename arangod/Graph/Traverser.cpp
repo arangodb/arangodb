@@ -28,7 +28,6 @@
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "VocBase/KeyGenerator.h"
 
 #include <velocypack/Iterator.h>
 
