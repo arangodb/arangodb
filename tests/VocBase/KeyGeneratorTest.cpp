@@ -31,15 +31,15 @@ using namespace arangodb;
 
 namespace {
 bool validateKeyWrapper(char const* key) {
-  return KeyGenerator::validateKey(key, strlen(key));
+  return KeyGeneratorHelper::validateKey(key, strlen(key));
 }
 
 bool validateIdWrapper(char const* id, bool extendedNames, size_t expectedSplit,
                        size_t idLength = 0) {
   size_t split;
 
-  bool result = KeyGenerator::validateId(id, idLength ? idLength : strlen(id),
-                                         extendedNames, split);
+  bool result = KeyGeneratorHelper::validateId(
+      id, idLength ? idLength : strlen(id), extendedNames, split);
   EXPECT_EQ(split, expectedSplit);
   return result;
 }

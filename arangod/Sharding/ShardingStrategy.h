@@ -49,7 +49,7 @@ class ShardingStrategy {
 
   virtual std::string const& name() const = 0;
 
-  virtual bool usesDefaultShardKeys() = 0;
+  virtual bool usesDefaultShardKeys() const noexcept = 0;
 
   virtual void toVelocyPack(arangodb::velocypack::Builder& result) const;
 
