@@ -234,10 +234,14 @@ struct AgencyState {
 };
 
 struct ActorState {
+  bool wantLoad = false;
   std::shared_ptr<AgencyState> _localAgency;
 
   friend std::size_t hash_value(ActorState const& sim) {
-    return hash_value(*sim._localAgency);
+    std::size_t seed = 0;
+    boost::hash_combine(seed, *sim._localAgency);
+    boost::hash_combine(seed, sim.wantLoad);
+    return seed;
   }
   friend auto operator==(ActorState const& s, ActorState const& s2) noexcept
       -> bool = default;
@@ -625,30 +629,32 @@ struct ReplicatedStateSupervisionSimulationTest : ::testing::Test {
                       std::size_t actorIdx) {
     // first check if there is something new
     auto const& actor = sim->_actors[actorIdx];
-    if (actor._localAgency != sim->_agency) {
-      auto newSim = std::make_shared<SimulationState>();
-      newSim->_actors = sim->_actors;
-      newSim->depth = sim->depth + 1;
-      newSim->_agency = sim->_agency;
-      newSim->_actors[actorIdx]._localAgency = sim->_agency;
-      addNewState(newSim, sim, std::make_unique<LoadAction>(actorIdx));
-    }
+    auto newSim = std::make_shared<SimulationState>();
+    newSim->_actors = sim->_actors;
+    newSim->depth = sim->depth + 1;
+    newSim->_agency = sim->_agency;
+    newSim->_actors[actorIdx]._localAgency = sim->_agency;
+    newSim->_actors[actorIdx].wantLoad = false;
+    addNewState(newSim, sim, std::make_unique<LoadAction>(actorIdx));
   }
 
   void createRunStep(std::shared_ptr<SimulationState const> const& sim,
                      std::size_t actorIdx) {
-    auto const& actorData = sim->_actors[actorIdx];
-    auto actions =
-        actors[actorIdx]->step(/*actorData._localAgency*/ sim->_agency);
-    for (auto& action : actions) {
-      // now mutate the agency
-      auto newSim = std::make_shared<SimulationState>();
-      newSim->_agency = std::make_shared<AgencyState>(*sim->_agency);
-      action->apply(newSim->_agency);
-      newSim->_actors = sim->_actors;
-      // newSim->_actors[actorIdx]._localAgency = newSim->_agency;
-      newSim->depth = sim->depth + 1;
-      addNewState(newSim, sim, std::move(action));
+    auto& actorData = sim->_actors[actorIdx];
+    if (actorData.wantLoad) {
+      createLoadStep(sim, actorIdx);
+    } else {
+      auto actions = actors[actorIdx]->step(actorData._localAgency);
+      for (auto& action : actions) {
+        // now mutate the agency
+        auto newSim = std::make_shared<SimulationState>();
+        newSim->_agency = std::make_shared<AgencyState>(*sim->_agency);
+        action->apply(newSim->_agency);
+        newSim->_actors = sim->_actors;
+        newSim->_actors[actorIdx].wantLoad = true;
+        newSim->depth = sim->depth + 1;
+        addNewState(newSim, sim, std::move(action));
+      }
     }
   }
 
@@ -679,6 +685,7 @@ struct ReplicatedStateSupervisionSimulationTest : ::testing::Test {
                   << "; eliminated = " << eliminatedStates
                   << "; active = " << activeStates.size() << std::endl;
         last = std::chrono::steady_clock::now();
+        printPath(sim);
       }
     }
     std::cout << "end of expandAll" << std::endl;
@@ -725,7 +732,9 @@ struct ReplicatedStateSupervisionSimulationTest : ::testing::Test {
     newSim->_agency->replicatedState = std::move(state);
     newSim->_actors.reserve(actors.size());
     for (std::size_t i = 0; i < actors.size(); ++i) {
-      newSim->_actors.emplace_back()._localAgency = newSim->_agency;
+      auto& actor = newSim->_actors.emplace_back();
+      actor._localAgency = newSim->_agency;
+      actor.wantLoad = true;
     }
     activeStates.emplace_back(newSim);
     fingerprints.emplace(std::move(newSim));
