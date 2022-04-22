@@ -921,7 +921,7 @@ void Manager::returnManagedTrx(TransactionId tid, bool isSideUser) noexcept {
   }
 }
 
-/// @brief get the transasction state
+/// @brief get the transaction state
 transaction::Status Manager::getManagedTrxStatus(
     TransactionId tid, std::string const& database) const {
   size_t bucket = getBucket(tid);
@@ -991,6 +991,21 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
   Result res;
   size_t const bucket = getBucket(tid);
   bool wasExpired = false;
+  auto buildErrorMessage = [](TransactionId tid, transaction::Status status,
+                              bool found) -> std::string {
+    std::string msg = "transaction " + std::to_string(tid.id());
+    if (found) {
+      msg += " inaccessible";
+    } else {
+      msg += " not found";
+    }
+    if (status == transaction::Status::COMMITTED) {
+      msg += " on commit operation";
+    } else {
+      msg += " on abort operation";
+    }
+    return msg;
+  };
 
   std::shared_ptr<TransactionState> state;
   {
@@ -1001,35 +1016,20 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
     if (it == buck._managed.end()) {
       // insert a tombstone for an aborted transaction that we never saw before
       auto inserted = buck._managed.try_emplace(
-          tid, _feature, MetaType::Tombstone, tombstoneTTL, nullptr,
+          tid, _feature, MetaType::Tombstone,
+          ttlForType(_feature, MetaType::Tombstone), nullptr,
           arangodb::cluster::CallbackGuard{});
       inserted.first->second.finalStatus = transaction::Status::ABORTED;
-      std::string msg =
-          "transaction " + std::to_string(tid.id()) + " not found";
-      if (status == transaction::Status::COMMITTED) {
-        msg += " on commit operation";
-      } else {
-        msg += " on abort operation";
-      }
-      return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND, std::move(msg));
+      inserted.first->second.db = database;
+      return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND,
+                       buildErrorMessage(tid, status, /*found*/ false));
     }
 
     ManagedTrx& mtrx = it->second;
     if (!::authorized(mtrx.user) ||
         (!database.empty() && mtrx.db != database)) {
-      std::string msg = "transaction " + std::to_string(tid.id());
-      if (it == buck._managed.end()) {
-        msg += " not found";
-      } else {
-        msg += " inaccessible";
-      }
-      if (status == transaction::Status::COMMITTED) {
-        msg += " on commit operation";
-      } else {
-        msg += " on abort operation";
-      }
-
-      return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND, std::move(msg));
+      return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND,
+                       buildErrorMessage(tid, status, /*found*/ true));
     }
 
     // in order to modify the transaction's status, we need the write lock here,
