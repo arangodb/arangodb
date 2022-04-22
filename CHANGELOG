@@ -1,6 +1,10 @@
 devel
 -----
 
+* Web UI: Fixes a GraphViewer issue related to display issues with node
+  and edge labels. Boolean node or edge values could not be used as label
+  values (ES-1084).
+
 * FE-46: UI improvement on the view UI pages as well as adding tooltips to
   options where necessary. The affected pages are mostly the Info and
   Consolidation Policy pages.
