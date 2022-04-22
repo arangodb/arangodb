@@ -44,6 +44,7 @@ const {
 const {
   replicatedLogIsReady,
   replicatedLogParticipantsFlag,
+  replicatedLogLeaderCommitFail,
 } = require("@arangodb/testutils/replicated-logs-predicates");
 
 const database = 'ReplLogsMaintenanceTest';
@@ -69,33 +70,6 @@ const replicatedLogParticipantGeneration = function (logId, generation) {
   };
 };
 
-
-const replicatedLogLeaderCommitFail = function (database, logId, expected) {
-  return function () {
-    let {current} = readReplicatedLogAgency(database, logId);
-    if (current === undefined) {
-      return Error("current not yet defined");
-    }
-    if (!current.leader) {
-      return Error("Leader has not yet established its term");
-    }
-
-    const status = current.leader.commitStatus;
-    if (expected === undefined) {
-      if (status !== undefined) {
-        return Error(`CommitStatus not yet cleared, current-value = ${status.reason}`);
-      }
-    } else {
-      if (status === undefined) {
-        return Error("CommitStatus not yet set.");
-      } else if (status.reason !== expected) {
-        return Error(`CommitStatus not as expected, found ${status.reason}; expected ${expected}`);
-      }
-    }
-
-    return true;
-  };
-};
 
 const {setUpAll, tearDownAll} = (function () {
   let previousDatabase, databaseExisted = true;

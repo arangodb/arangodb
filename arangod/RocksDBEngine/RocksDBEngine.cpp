@@ -83,7 +83,7 @@
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
-#include "RocksDBEngine/RocksDBSha256Checksum.h"
+#include "RocksDBEngine/RocksDBChecksumEnv.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBUpgrade.h"
@@ -271,6 +271,11 @@ RocksDBEngine::~RocksDBEngine() {
   shutdownRocksDBInstance();
 }
 
+std::unique_ptr<rocksdb::Env> RocksDBEngine::NewChecksumEnv(
+    rocksdb::Env* base_env, std::string const& path) {
+  return std::make_unique<arangodb::checksum::ChecksumEnv>(base_env, path);
+}
+
 /// shuts down the RocksDB instance. this is called from unprepare
 /// and the dtor
 void RocksDBEngine::shutdownRocksDBInstance() noexcept {
@@ -333,15 +338,17 @@ void RocksDBEngine::collectOptions(
   /// server "healthy". this is expressed as a floating point value between 0
   /// and 1! if set to 0.0, the % amount of free disk is ignored in checks.
   options
-      ->addOption("--rocksdb.minimum-disk-free-percent",
-                  "minimum percentage of free disk space for considering the "
-                  "server healthy in "
-                  "health checks (set to 0 to disable the check)",
-                  new DoubleParameter(&_requiredDiskFreePercentage),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle))
+      ->addOption(
+          "--rocksdb.minimum-disk-free-percent",
+          "minimum percentage of free disk space for considering the "
+          "server healthy in "
+          "health checks (set to 0 to disable the check)",
+          new DoubleParameter(&_requiredDiskFreePercentage, /*base*/ 1.0,
+                              /*minValue*/ 0.0, /*maxValue*/ 1.0),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30800);
 
   /// @brief minimum number of free bytes on disk for considering the server
@@ -436,7 +443,7 @@ void RocksDBEngine::collectOptions(
       ->addOption(
           "--rocksdb.throttle-slots",
           "number of historic metrics to use for throttle value calculation",
-          new UInt64Parameter(&_throttleSlots),
+          new UInt64Parameter(&_throttleSlots, /*base*/ 1, /*minValue*/ 1),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer,
@@ -569,26 +576,12 @@ void RocksDBEngine::validateOptions(
   validateEnterpriseOptions(options);
 #endif
 
-  if (_throttleSlots == 0) {
-    LOG_TOPIC("76e1b", FATAL, arangodb::Logger::CONFIG)
-        << "invalid value for --rocksdb.throttle-slots";
-    FATAL_ERROR_EXIT();
-  }
-
   if (_throttleScalingFactor == 0) {
     _throttleScalingFactor = 1;
   }
 
   if (_throttleSlots < 8) {
     _throttleSlots = 8;
-  }
-
-  if (_requiredDiskFreePercentage < 0.0 || _requiredDiskFreePercentage > 1.0) {
-    LOG_TOPIC("e4697", FATAL, arangodb::Logger::CONFIG)
-        << "invalid value for --rocksdb.minimum-disk-free-percent. Please use "
-           "a value "
-        << "between 0 (0%) and 1 (100%)";
-    FATAL_ERROR_EXIT();
   }
 
   if (_syncInterval > 0) {
@@ -705,8 +698,25 @@ void RocksDBEngine::start() {
       << "initializing RocksDB, path: '" << _path << "', WAL directory '"
       << _options.wal_dir << "'";
 
+  if (_createShaFiles) {
+    _checksumEnv = NewChecksumEnv(rocksdb::Env::Default(), _path);
+    _options.env = _checksumEnv.get();
+    static_cast<checksum::ChecksumEnv*>(_checksumEnv.get())
+        ->getHelper()
+        ->checkMissingShaFiles();  // this works even if done before
+                                   // configureEnterpriseRocksDBOptions() is
+                                   // called when there's encryption, because
+                                   // checkMissingShafiles() only looks for
+                                   // existing sst files without their sha files
+                                   // in the directory and writes the missing
+                                   // sha files.
+  } else {
+    _options.env = rocksdb::Env::Default();
+  }
+
 #ifdef USE_ENTERPRISE
   configureEnterpriseRocksDBOptions(_options, createdEngineDir);
+
 #endif
 
   _options.env->SetBackgroundThreads(
@@ -731,17 +741,6 @@ void RocksDBEngine::start() {
     if (!_debugLogging) {
       logger->disable();
     }
-  }
-
-  if (_createShaFiles) {
-    auto shaFileManager = std::make_shared<RocksDBShaFileManager>(_path);
-    // Register checksum factory
-    _options.file_checksum_gen_factory =
-        std::make_shared<RocksDBSha256ChecksumFactory>(shaFileManager);
-    // Do an initial check in the database directory for missing SHA checksum
-    // files
-    shaFileManager->checkMissingShaFiles();
-    _options.listeners.push_back(std::move(shaFileManager));
   }
 
   if (_useThrottle) {

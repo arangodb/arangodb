@@ -232,11 +232,13 @@ class StaticStrings {
   static std::string const ParsedBody;
 
   // collection attributes
+  static std::string const AllowUserKeys;
   static std::string const CacheEnabled;  // also used for indexes
   static std::string const DistributeShardsLike;
   static std::string const Indexes;
   static std::string const IsSmart;
   static std::string const IsSmartChild;
+  static std::string const KeyOptions;
   static std::string const MinReplicationFactor;
   static std::string const NumberOfShards;
   static std::string const ObjectId;

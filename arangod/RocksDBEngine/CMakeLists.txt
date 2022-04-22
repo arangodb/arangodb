@@ -47,6 +47,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/Methods/RocksDBTrxMethods.cpp
   RocksDBEngine/RocksDBBackgroundThread.cpp
   RocksDBEngine/RocksDBBuilderIndex.cpp
+  RocksDBEngine/RocksDBChecksumEnv.cpp
   RocksDBEngine/RocksDBCollection.cpp
   RocksDBEngine/RocksDBColumnFamilyManager.cpp
   RocksDBEngine/RocksDBCommon.cpp
@@ -83,7 +84,6 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBRestWalHandler.cpp
   RocksDBEngine/RocksDBSavePoint.cpp
   RocksDBEngine/RocksDBSettingsManager.cpp
-  RocksDBEngine/RocksDBSha256Checksum.cpp
   RocksDBEngine/RocksDBSyncThread.cpp
   RocksDBEngine/RocksDBTransactionCollection.cpp
   RocksDBEngine/RocksDBTransactionMethods.cpp

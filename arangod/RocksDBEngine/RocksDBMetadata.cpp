@@ -427,14 +427,14 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   }
 
   // Step 2. store the key generator
-  KeyGenerator* keyGen = coll.keyGenerator();
-  if ((didWork || force) && keyGen->hasDynamicState()) {
+  KeyGenerator& keyGen = coll.keyGenerator();
+  if ((didWork || force) && keyGen.hasDynamicState()) {
     // only a key generator with dynamic data needs to be recovered
     key.constructKeyGeneratorValue(rcoll->objectId());
 
     tmp.clear();
     tmp.openObject();
-    keyGen->toVelocyPack(tmp);
+    keyGen.toVelocyPack(tmp);
     tmp.close();
 
     RocksDBValue value = RocksDBValue::KeyGeneratorValue(tmp.slice());
@@ -563,8 +563,8 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db,
   loadInitialNumberDocuments();
 
   // Step 2. load the key generator
-  KeyGenerator* keyGen = coll.keyGenerator();
-  if (keyGen->hasDynamicState()) {
+  KeyGenerator& keyGen = coll.keyGenerator();
+  if (keyGen.hasDynamicState()) {
     // only a key generator with dynamic data needs to be recovered
     key.constructKeyGeneratorValue(rcoll->objectId());
     s = db->Get(ro, cf, key.string(), &value);
@@ -574,13 +574,11 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db,
       // simon: wtf who decided this is a good deserialization routine ?!
       VPackSlice val = keyGenProps.get(StaticStrings::LastValue);
       if (val.isString()) {
-        VPackValueLength size;
-        const char* data = val.getString(size);
-        keyGen->track(data, size);
+        keyGen.track(val.stringView());
       } else if (val.isInteger()) {
         uint64_t lastValue = val.getUInt();
         std::string str = std::to_string(lastValue);
-        keyGen->track(str.data(), str.size());
+        keyGen.track(str);
       }
 
     } else if (!s.IsNotFound()) {
