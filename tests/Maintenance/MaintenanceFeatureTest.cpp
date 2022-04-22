@@ -886,7 +886,7 @@ TEST_F(MaintenanceFeatureTestDBServer, test_synchronize_shard_abort) {
                                              {FORCED_RESYNC, "false"}},
           SYNCHRONIZE_PRIORITY, true);
 
-  // The following will executed the action right away:
+  // The following will execute the action right away:
   auto res = mf.addAction(description, true /* executeNow */);
   ASSERT_FALSE(res.ok());  // must have been aborted
   mf.beginShutdown();
