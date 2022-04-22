@@ -77,7 +77,7 @@ void MetricsFeature::collectOptions(
 
 std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
   auto metric = builder.build();
-  MetricKey key{metric->name(), metric->labels()};
+  MetricKeyView key{metric->name(), metric->labels()};
   std::lock_guard lock{_mutex};
   if (!_registry.try_emplace(key, metric).second) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -88,7 +88,7 @@ std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
   return metric;
 }
 
-Metric* MetricsFeature::get(MetricKey const& key) {
+Metric* MetricsFeature::get(MetricKeyView const& key) {
   std::shared_lock lock{_mutex};
   auto it = _registry.find(key);
   if (it == _registry.end()) {
@@ -98,7 +98,7 @@ Metric* MetricsFeature::get(MetricKey const& key) {
 }
 
 bool MetricsFeature::remove(Builder const& builder) {
-  MetricKey key{builder.name(), builder.labels()};
+  MetricKeyView key{builder.name(), builder.labels()};
   std::lock_guard guard{_mutex};
   return _registry.erase(key) != 0;
 }

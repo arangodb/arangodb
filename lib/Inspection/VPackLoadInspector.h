@@ -29,6 +29,7 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <variant>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -276,6 +277,57 @@ struct VPackLoadInspectorImpl
     return parseFields(slices.data(), std::forward<Args>(args)...);
   }
 
+  template<class... Ts, class... Args>
+  auto processVariant(
+      typename VPackLoadInspectorImpl::template UnqualifiedVariant<Ts...>&
+          variant,
+      Args&&... args) {
+    auto loadVariant = [&]() -> Status {
+      VPackObjectIterator it(_slice);
+      if (!it.valid()) {
+        return {"Missing unqualified variant data"};
+      }
+      auto [type, value] = *it;
+      TRI_ASSERT(type.isString());
+      return parseType(type.stringView(), value, variant.value,
+                       std::forward<Args>(args)...);
+    };
+    return beginObject()                     //
+           | loadVariant                     //
+           | [&]() { return endObject(); };  //
+  }
+
+  template<class... Ts, class... Args>
+  auto processVariant(
+      typename VPackLoadInspectorImpl::template QualifiedVariant<Ts...>&
+          variant,
+      Args&&... args) {
+    auto loadVariant = [&]() -> Status {
+      auto type = slice()[variant.typeField];
+      if (!type.isString()) {
+        if (type.isNone()) {
+          return {"Variant type field \"" + std::string(variant.typeField) +
+                  "\" is missing"};
+        } else {
+          return {"Variant type field \"" + std::string(variant.typeField) +
+                  "\" must be a string"};
+        }
+      }
+
+      auto value = slice()[variant.valueField];
+      if (value.isNone()) {
+        return {"Variant value field \"" + std::string(variant.valueField) +
+                "\" is missing"};
+      }
+
+      return parseType(type.stringView(), value, variant.value,
+                       std::forward<Args>(args)...);
+    };
+    return beginObject()                     //
+           | loadVariant                     //
+           | [&]() { return endObject(); };  //
+  }
+
  protected:
   template<class Arg>
   Status parseFields(velocypack::Slice* slices, Arg&& arg) {
@@ -286,6 +338,28 @@ struct VPackLoadInspectorImpl
   Status parseFields(velocypack::Slice* slices, Arg&& arg, Args&&... args) {
     return parseField(*slices, std::forward<Arg>(arg)) |
            [&]() { return parseFields(++slices, std::forward<Args>(args)...); };
+  }
+
+  template<class... Ts, class Arg, class... Args>
+  Status parseType(std::string_view tag, velocypack::Slice value,
+                   std::variant<Ts...>& result, Arg&& arg, Args&&... args) {
+    if (arg.tag == tag) {
+      VPackLoadInspectorImpl inspector(value, _options);
+      typename Arg::Type v;
+      auto res = inspector.apply(v);
+      if (res.ok()) {
+        result = v;
+        return res;
+      } else {
+        return {std::move(res), "value", Status::AttributeTag{}};
+      }
+    } else {
+      if constexpr (sizeof...(Args) == 0) {
+        return {"Found invalid type: " + std::string(tag)};
+      } else {
+        return parseType(tag, value, result, std::forward<Args>(args)...);
+      }
+    }
   }
 
   template<class T>

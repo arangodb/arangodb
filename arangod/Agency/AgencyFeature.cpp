@@ -43,6 +43,8 @@
 #include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
+#include <limits>
+
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -65,8 +67,7 @@ AgencyFeature::AgencyFeature(Server& server)
       _compactionKeepSize(50000),
       _maxAppendSize(250),
       _supervisionGracePeriod(10.0),
-      _supervisionOkThreshold(5.0),
-      _cmdLineTimings(false) {
+      _supervisionOkThreshold(5.0) {
   setOptional(true);
   startsAfter<application_features::FoxxFeaturePhase>();
 }
@@ -95,7 +96,9 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--agency.election-timeout-min",
       "minimum timeout before an agent calls for new election (in seconds)",
-      new DoubleParameter(&_minElectionTimeout),
+      new DoubleParameter(&_minElectionTimeout, /*base*/ 1.0, /*minValue*/ 0.0,
+                          /*maxValue*/ std::numeric_limits<double>::max(),
+                          /*minInclusive*/ false),
       arangodb::options::makeFlags(
           arangodb::options::Flags::DefaultNoComponents,
           arangodb::options::Flags::OnAgent));
@@ -201,10 +204,6 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     return;
   }
 
-  if (result.touched("agency.election-timeout-min")) {
-    _cmdLineTimings = true;
-  }
-
   ServerState::instance()->setRole(ServerState::ROLE_AGENT);
 
   // Agency size
@@ -237,11 +236,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   // Check Timeouts
-  if (_minElectionTimeout <= 0.) {
-    LOG_TOPIC("facb6", FATAL, Logger::AGENCY)
-        << "agency.election-timeout-min must not be negative!";
-    FATAL_ERROR_EXIT();
-  } else if (_minElectionTimeout < 0.15) {
+  if (_minElectionTimeout < 0.15) {
     LOG_TOPIC("0cce9", WARN, Logger::AGENCY)
         << "very short agency.election-timeout-min!";
   }
@@ -356,14 +351,14 @@ void AgencyFeature::prepare() {
     _maxAppendSize /= 10;
   }
 
-  _agent.reset(new consensus::Agent(
+  _agent = std::make_unique<consensus::Agent>(
       server(),
-      consensus::config_t(
-          _recoveryId, _size, _poolSize, _minElectionTimeout,
-          _maxElectionTimeout, endpoint, _agencyEndpoints, _supervision,
-          _supervisionTouched, _waitForSync, _supervisionFrequency,
-          _compactionStepSize, _compactionKeepSize, _supervisionGracePeriod,
-          _supervisionOkThreshold, _cmdLineTimings, _maxAppendSize)));
+      consensus::config_t(_recoveryId, _size, _poolSize, _minElectionTimeout,
+                          _maxElectionTimeout, endpoint, _agencyEndpoints,
+                          _supervision, _supervisionTouched, _waitForSync,
+                          _supervisionFrequency, _compactionStepSize,
+                          _compactionKeepSize, _supervisionGracePeriod,
+                          _supervisionOkThreshold, _maxAppendSize));
 }
 
 void AgencyFeature::start() {

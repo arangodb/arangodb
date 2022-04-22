@@ -242,7 +242,7 @@ class QueryList {
   arangodb::basics::ReadWriteLock _lock;
 
   /// @brief list of current queries, protected by _lock
-  std::unordered_map<TRI_voc_tick_t, Query*> _current;
+  std::unordered_map<TRI_voc_tick_t, std::weak_ptr<Query>> _current;
 
   /// @brief list of slow queries, protected by _lock
   std::list<QueryEntryCopy> _slow;

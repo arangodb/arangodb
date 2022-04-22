@@ -163,6 +163,7 @@ ERROR_REPLICATION_LOOP,1405,"loop detected","Will be raised when the replication
 ERROR_REPLICATION_UNEXPECTED_MARKER,1406,"unexpected marker","Will be raised when an unexpected marker is found in the replication log stream."
 ERROR_REPLICATION_INVALID_APPLIER_STATE,1407,"invalid applier state","Will be raised when an invalid replication applier state file is found."
 ERROR_REPLICATION_UNEXPECTED_TRANSACTION,1408,"invalid transaction","Will be raised when an unexpected transaction id is found."
+ERROR_REPLICATION_SHARD_SYNC_ATTEMPT_TIMEOUT_EXCEEDED,1409,"shard synchronization attempt timeout exceeded","Will be raised when the synchronization of a shard takes longer than the configured timeout."
 ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,1410,"invalid replication applier configuration","Will be raised when the configuration for the replication applier is invalid."
 ERROR_REPLICATION_RUNNING,1411,"cannot perform operation while applier is running","Will be raised when there is an attempt to perform an operation while the replication applier is running."
 ERROR_REPLICATION_APPLIER_STOPPED,1412,"replication stopped","Special error code used to indicate the replication applier was stopped by a user."
@@ -449,7 +450,7 @@ ERROR_MODULE_FAILURE,3103,"failed to invoke module","Failed to invoke the module
 ## Enterprise Edition errors
 ################################################################################
 
-ERROR_NO_SMART_COLLECTION,4000,"collection is not smart","The requested collection needs to be smart, but it ain't"
+ERROR_NO_SMART_COLLECTION,4000,"collection is not smart","The requested collection needs to be smart, but it isn't."
 ERROR_NO_SMART_GRAPH_ATTRIBUTE,4001,"smart graph attribute not given","The given document does not have the SmartGraph attribute set."
 ERROR_CANNOT_DROP_SMART_COLLECTION,4002,"cannot drop this smart collection","This smart collection cannot be dropped, it dictates sharding in the graph."
 ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE,4003,"in smart vertex collections _key must be a string and prefixed with the value of the smart graph attribute","In a smart vertex collection _key must be prefixed with the value of the SmartGraph attribute."

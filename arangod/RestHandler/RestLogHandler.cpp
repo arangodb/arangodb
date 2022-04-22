@@ -32,6 +32,7 @@
 
 #include <Cluster/ClusterFeature.h>
 
+#include "Inspection/VPack.h"
 #include "Replication2/AgencyMethods.h"
 #include "Replication2/Methods.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
