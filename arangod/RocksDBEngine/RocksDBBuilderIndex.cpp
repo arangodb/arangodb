@@ -55,24 +55,6 @@ using namespace arangodb;
 using namespace arangodb::rocksutils;
 
 namespace {
-struct BuilderTrx : public arangodb::transaction::Methods {
-  BuilderTrx(std::shared_ptr<transaction::Context> const& transactionContext,
-             LogicalDataSource const& collection, AccessMode::Type type)
-      : transaction::Methods(transactionContext), _cid(collection.id()) {
-    // add the (sole) data-source
-    addCollection(collection.id(), collection.name(), type);
-    addHint(transaction::Hints::Hint::NO_DLD);
-  }
-
-  /// @brief get the underlying transaction collection
-  RocksDBTransactionCollection* resolveTrxCollection() {
-    return static_cast<RocksDBTransactionCollection*>(trxCollection(_cid));
-  }
-
- private:
-  DataSourceId _cid;
-};
-
 struct BuilderCookie : public arangodb::TransactionState::Cookie {
   // do not track removed documents twice
   ::arangodb::containers::HashSet<LocalDocumentId::BaseType> tracked;
@@ -93,7 +75,8 @@ IndexCreatorThread::IndexCreatorThread(
       _rcoll(rcoll),
       _rootDB(rootDB),
       _ridx(ridx),
-      _trx(trx) {
+      _trx(trx),
+      _trxColl(std::move(trx.resolveTrxCollection())) {
   if (_isUniqueIndex) {
     // for later
   } else {
@@ -111,9 +94,7 @@ void IndexCreatorThread::run() {
     return {{workItem.first, middleOfRange},
             {middleOfRange + 1, workItem.second}};
   };
-
   OperationOptions options;
-
   while (true) {
     try {
       if (_sharedWorkEnv->shouldStop()) {
@@ -125,6 +106,7 @@ void IndexCreatorThread::run() {
           Result res;
           uint64_t numDocsWritten = 0;
           WorkItem leftoverWorkItem = workItem;
+          rocksdb::Iterator* currIt = nullptr;
           do {
             auto bounds = RocksDBKeyBounds::CollectionDocuments(
                 _rcoll->objectId(), leftoverWorkItem.first,
@@ -152,7 +134,7 @@ void IndexCreatorThread::run() {
             for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
               TRI_ASSERT(it->key().compare(upperBound) < 0);
               res = _ridx.insert(
-                  _trx, &_methods, RocksDBKey::documentId(it->key()),
+                  _trx, _methods.get(), RocksDBKey::documentId(it->key()),
                   VPackSlice(
                       reinterpret_cast<uint8_t const*>(it->value().data())),
                   options, /*performChecks*/ true);
@@ -174,13 +156,19 @@ void IndexCreatorThread::run() {
                 }
               }
             }
+            currIt = it.get();
             uint64_t lastDocIdProcessed =
                 RocksDBKey::documentId(it->key()).id();
             if (numDocsWritten == 1000 &&
                 lastDocIdProcessed != leftoverWorkItem.second) {
-              leftoverWorkItem.first =
-                  RocksDBKey::documentId(it->Next()->key()).id();
-              // maybe push more work onto the queue
+              it->Next();
+              leftoverWorkItem.first = RocksDBKey::documentId(it->key()).id();
+              // the partition's first item in range will now be the first
+              // document that has not been processed yet
+              // maybe push more work onto the queue and, as we will split in
+              // half the remaining work, the upper half goes to the queue
+              // and the lower half will be consumed by this thread as part of
+              // current work
               auto [leftoverWork, workToEnqueue] = splitInHalf(workItem, );
               _sharedWorkEnv->enqueueWorkItem(std::move(workToEnqueue));
               leftoverWorkItem = std::move(leftoverWork);
@@ -188,8 +176,8 @@ void IndexCreatorThread::run() {
           } while (
               (leftoverWorkItem.first != 0 && leftoverWorkItem.second != 0));
 
-          if (!it->status().ok() && res.ok()) {
-            res = rocksutils::convertStatus(it->status(),
+          if (!currIt->status().ok() && res.ok()) {
+            res = rocksutils::convertStatus(currIt->status(),
                                             rocksutils::StatusHint::index);
           }
           if (res.fail()) {
@@ -204,14 +192,14 @@ void IndexCreatorThread::run() {
       } else {
         _sharedWorkEnv->waitForWork();
       }
-    } catch (...) {
-      _sharedWorkEnv->registerError(...);
+    } catch (std::exception const& ex) {
+      _sharedWorkEnv->registerError(Result(TRI_ERROR_INTERNAL, ex.what()));
       break;
     }
   }
-
   _sharedWorkEnv->incTerminatedThreads();
 }
+
 Result IndexCreatorThread::commitInsertions() {
   rocksdb::Status s;
   Result res;
@@ -344,6 +332,7 @@ Result RocksDBBuilderIndex::remove(transaction::Methods& trx,
 Result static processPartitions(bool isForeground, RocksDBCollection* rcoll,
                                 RocksDBIndex& ridx,
                                 std::atomic<uint64_t>& docsProcessed) {
+  Result res;
   uint8_t nThreads = 5;  // here for the moment
   std::deque<std::pair<uint64_t, uint64_t>> partitions;
   auto newBounds =
@@ -368,7 +357,10 @@ Result static processPartitions(bool isForeground, RocksDBCollection* rcoll,
   }
 
   while (sharedWorkEnv->getNumTerminatedThreads() < nThreads) {
-    // sleep or check for server shutdown...
+    if (ridx.collection().vocbase().server().isStopping()) {
+      res.reset(TRI_ERROR_SHUTTING_DOWN);
+      break;
+    }
   }
 }
 
@@ -425,38 +417,6 @@ static arangodb::Result fillIndex(
 
   OperationOptions options;
   processPartitions(false, docsProcessed, rcoll, rootDB, ridx);
-
-  uint64_t lowerBound, upperBound;
-
-  for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
-    TRI_ASSERT(it->key().compare(upper) < 0);
-    res = ridx.insert(
-        trx, &batched, RocksDBKey::documentId(it->key()),
-        VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data())),
-        options, /*performChecks*/ true);
-    if (res.fail()) {
-      break;
-    }
-    numDocsWritten++;
-
-    if (numDocsWritten % 1024 == 0) {  // commit buffered writes
-      commitLambda();
-      // cppcheck-suppress identicalConditionAfterEarlyExit
-      if (res.fail()) {
-        break;
-      }
-
-      if (ridx.collection().vocbase().server().isStopping()) {
-        res.reset(TRI_ERROR_SHUTTING_DOWN);
-        break;
-      }
-    }
-  }
-
-  if (!it->status().ok() && res.ok()) {
-    res =
-        rocksutils::convertStatus(it->status(), rocksutils::StatusHint::index);
-  }
 
   if (res.ok()) {
     commitLambda();

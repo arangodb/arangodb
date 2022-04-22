@@ -27,12 +27,36 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionCollection.h"
 
 #include <atomic>
+#include <condition_variable>
 #include <mutex>
 #include <set>
 
 namespace {
+struct BuilderTrx : public arangodb::transaction::Methods {
+  BuilderTrx(
+      std::shared_ptr<arangodb::transaction::Context> const& transactionContext,
+      arangodb::LogicalDataSource const& collection,
+      arangodb::AccessMode::Type type)
+      : arangodb::transaction::Methods(transactionContext),
+        _cid(collection.id()) {
+    // add the (sole) data-source
+    addCollection(collection.id(), collection.name(), type);
+    addHint(arangodb::transaction::Hints::Hint::NO_DLD);
+  }
+
+  /// @brief get the underlying transaction collection
+  arangodb::RocksDBTransactionCollection* resolveTrxCollection() {
+    return static_cast<arangodb::RocksDBTransactionCollection*>(
+        trxCollection(_cid));
+  }
+
+ private:
+  arangodb::DataSourceId _cid;
+};
+
 struct comp {
   template<typename T>
   bool operator()(const T& l, const T& r) const {
@@ -49,7 +73,7 @@ namespace arangodb {
 
 class SharedWorkEnv;
 
-struct BuilderTrx;
+class RocksDBTransactionCollection;
 
 class IndexCreatorThread final : public Thread {
  public:
@@ -58,7 +82,7 @@ class IndexCreatorThread final : public Thread {
                      std::atomic<uint64_t>& docsProcessed,
                      std::shared_ptr<SharedWorkEnv> sharedWorkEnv,
                      RocksDBCollection* rcoll, rocksdb::DB* rootDB,
-                     RocksDBIndex& ridx);
+                     RocksDBIndex& ridx, BuilderTrx& trx);
 
   ~IndexCreatorThread() { Thread::shutdown(); }
 
@@ -76,6 +100,7 @@ class IndexCreatorThread final : public Thread {
   rocksdb::DB* _rootDB;
   RocksDBIndex& _ridx;
   BuilderTrx& _trx;
+  RocksDBTransactionCollection* _trxColl;
 
   // ptrs because of abstract class, have to know which type to craete
   std::unique_ptr<rocksdb::WriteBatchBase> _batch;
@@ -186,6 +211,7 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 using WorkItem = std::pair<uint64_t, uint64_t>;
 
 class SharedWorkEnv {
+  // will change here for std::condition_variable
  public:
   SharedWorkEnv(std::deque<WorkItem>& workItems)
       : _ranges(std::move(workItems)) {}
@@ -202,13 +228,13 @@ class SharedWorkEnv {
   void registerError(Result res) {
     TRI_ASSERT(res.fail());
     {
-      CONDITION_LOCKER(locker, _condition);
+      CONDITION_LOCKER(locker, _condition);  // to be changed
       if (_res.ok()) {
         _res = std::move(res);
       }
       _done = true;
-    }  // TODO: ask Manuel
-    _condition.broadcast();
+    }
+    _condition.notify_all();
   }
 
   bool fetchWorkItem(WorkItem& data) {
@@ -226,8 +252,8 @@ class SharedWorkEnv {
     {
       CONDITION_LOCKER(locker, _condition);
       _ranges.emplace_back(std::move(item));
-    }  // TODO: ask Manuel
-    _condition.signal();
+    }
+    _condition.notify_one();
   }
 
   void waitForWork() {
@@ -245,11 +271,12 @@ class SharedWorkEnv {
   size_t getNumTerminatedThreads() { return _numTerminatedThreads; }
 
  private:
-  basics::ConditionVariable _condition;
+  std::condition_variable _condition;
   std::deque<WorkItem> _ranges;
   Result _res;
   bool _done = false;
   std::atomic<size_t> _numTerminatedThreads = 0;
+  std::mutex mtx;
 };
 
 }  // namespace arangodb
