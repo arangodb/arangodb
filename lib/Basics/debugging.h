@@ -243,16 +243,17 @@ struct NoOpStream {
 
 struct AssertionLogger {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  void operator&(std::ostringstream const& stream) const {
+  void operator&(std::ostringstream& stream) const {
     std::string message = stream.str();
+    stream.clear();
     arangodb::CrashHandler::assertionFailure(
         file, line, function, expr,
         message.empty() ? nullptr : message.c_str());
   }
 
   // can be removed in C++20 because of LWG 1203
-  void operator&(std::ostream const& stream) const {
-    operator&(static_cast<std::ostringstream const&>(stream));
+  void operator&(std::ostream& stream) const {
+    operator&(static_cast<std::ostringstream&>(stream));
   }
 
   const char* file;
@@ -271,12 +272,14 @@ struct AssertionLogger {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
+inline thread_local std::ostringstream threadLocalAssertionBuffer;
+
 #define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                  \
   (ADB_LIKELY(expr))                                                          \
       ? (void)nullptr                                                         \
       : ::arangodb::debug::AssertionLogger{__FILE__, __LINE__,                \
                                            ARANGODB_PRETTY_FUNCTION, #expr} & \
-            std::ostringstream {}
+            threadLocalAssertionBuffer
 
 #else
 
