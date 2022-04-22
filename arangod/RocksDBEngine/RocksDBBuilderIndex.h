@@ -23,12 +23,65 @@
 
 #pragma once
 
+#include "Basics/ConditionLocker.h"
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBMethods.h"
 
 #include <atomic>
 #include <mutex>
+#include <set>
+
+namespace {
+struct comp {
+  template<typename T>
+  bool operator()(const T& l, const T& r) const {
+    if (l.first == r.first) {  // won't happen
+      return l.second > r.second;
+    }
+
+    return l.first > r.first;
+  }
+};
+}  // namespace
 
 namespace arangodb {
+
+class SharedWorkEnv;
+
+struct BuilderTrx;
+
+class IndexCreatorThread final : public Thread {
+ public:
+  IndexCreatorThread(bool isUniqueIndex, bool isForeground,
+                     uint64_t lastDocIdInRange,
+                     std::atomic<uint64_t>& docsProcessed,
+                     std::shared_ptr<SharedWorkEnv> sharedWorkEnv,
+                     RocksDBCollection* rcoll, rocksdb::DB* rootDB,
+                     RocksDBIndex& ridx);
+
+  ~IndexCreatorThread() { Thread::shutdown(); }
+
+  void run() override;
+
+  Result commitInsertions();
+
+ private:
+  bool _isUniqueIndex = false;
+  bool _isForeground = false;
+  uint64_t const _lastDocIdInRange;
+  std::atomic<uint64_t>& _docsProcessed;
+  std::shared_ptr<SharedWorkEnv> _sharedWorkEnv;
+  RocksDBCollection* _rcoll;
+  rocksdb::DB* _rootDB;
+  RocksDBIndex& _ridx;
+  BuilderTrx& _trx;
+
+  // ptrs because of abstract class, have to know which type to craete
+  std::unique_ptr<rocksdb::WriteBatchBase> _batch;
+  std::unique_ptr<RocksDBMethods> _methods;
+  rocksdb::ReadOptions _readOptions;
+};
 
 class RocksDBCollection;
 
@@ -122,8 +175,81 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   Result fillIndexBackground(Locker& locker);
 
  private:
+  size_t _numIdxGenThreads = 5;
   std::shared_ptr<arangodb::RocksDBIndex> _wrapped;
   std::uint64_t _numDocsHint;
   std::atomic<uint64_t> _docsProcessed;
+  std::deque<std::pair<uint64_t, uint64_t>> _docPartitions;
+  std::shared_ptr<SharedWorkEnv> _sharedWorkEnv;
 };
+
+using WorkItem = std::pair<uint64_t, uint64_t>;
+
+class SharedWorkEnv {
+ public:
+  SharedWorkEnv(std::deque<WorkItem>& workItems)
+      : _ranges(std::move(workItems)) {}
+  void markAsDone() {
+    CONDITION_LOCKER(locker, _condition);
+    _done = true;
+  }
+
+  Result result() {
+    CONDITION_LOCKER(locker, _condition);
+    return _res;
+  }
+
+  void registerError(Result res) {
+    TRI_ASSERT(res.fail());
+    {
+      CONDITION_LOCKER(locker, _condition);
+      if (_res.ok()) {
+        _res = std::move(res);
+      }
+      _done = true;
+    }  // TODO: ask Manuel
+    _condition.broadcast();
+  }
+
+  bool fetchWorkItem(WorkItem& data) {
+    CONDITION_LOCKER(locker, _condition);
+    if (_ranges.empty()) {
+      return false;
+    }
+    auto const it = _ranges.begin();
+    data = *it;
+    _ranges.pop_front();
+    return true;
+  }
+
+  void enqueueWorkItem(WorkItem item) {
+    {
+      CONDITION_LOCKER(locker, _condition);
+      _ranges.emplace_back(std::move(item));
+    }  // TODO: ask Manuel
+    _condition.signal();
+  }
+
+  void waitForWork() {
+    CONDITION_LOCKER(locker, _condition);
+    _condition.wait();
+  }
+
+  bool shouldStop() {
+    CONDITION_LOCKER(locker, _condition);
+    return _done;
+  }
+
+  void incTerminatedThreads() { ++_numTerminatedThreads; }
+
+  size_t getNumTerminatedThreads() { return _numTerminatedThreads; }
+
+ private:
+  basics::ConditionVariable _condition;
+  std::deque<WorkItem> _ranges;
+  Result _res;
+  bool _done = false;
+  std::atomic<size_t> _numTerminatedThreads = 0;
+};
+
 }  // namespace arangodb
