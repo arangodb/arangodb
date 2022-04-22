@@ -127,13 +127,13 @@ TEST_F(LogFollowerCompactionTest, run_compaction_during_append_entries) {
   follower->runAllAsyncAppendEntries();
   followersDelayedPersistedLog->runAsyncInsert();
   follower->runAllAsyncAppendEntries();
-  ASSERT_EQ(secondToLastIdx,
+  EXPECT_EQ(secondToLastIdx,
             leader->getQuickStatus().getLocalStatistics().value().commitIndex);
-  ASSERT_EQ(
+  EXPECT_EQ(
       secondToLastIdx,
       follower->getQuickStatus().getLocalStatistics().value().commitIndex);
   // Check that we can actually release indexes now
-  ASSERT_EQ(secondToLastIdx, follower->getQuickStatus()
+  EXPECT_EQ(secondToLastIdx, follower->getQuickStatus()
                                  .getLocalStatistics()
                                  .value()
                                  .lowestIndexToKeep);
@@ -145,31 +145,43 @@ TEST_F(LogFollowerCompactionTest, run_compaction_during_append_entries) {
   // The follower's appendEntries code path is now waiting for the PersistedLog
   // to resolve the insertAsync promise.
   auto const logBeforeCompaction = follower->copyInMemoryLog();
-  ASSERT_EQ(LogIndex{1}, logBeforeCompaction.getFirstIndex());
+  EXPECT_EQ(LogIndex{1}, logBeforeCompaction.getFirstIndex());
   // the last entry should not yet be visible
-  ASSERT_EQ(secondToLastIdx, logBeforeCompaction.getLastIndex());
+  EXPECT_EQ(secondToLastIdx, logBeforeCompaction.getLastIndex());
 
   // now run the compaction
-  // TODO The next line currently deadlocks in LogCore::removeFront
-  follower->release(stopCompactionIdx);
-  auto const compactedLog = follower->copyInMemoryLog();
-  ASSERT_EQ(firstUncompactedIdx, compactedLog.getFirstIndex());
-  ASSERT_EQ(secondToLastIdx, compactedLog.getLastIndex());
+  auto compaction = std::thread([&] {
+    follower->release(stopCompactionIdx);
+    auto const compactedLog = follower->copyInMemoryLog();
+    // compaction should have taken place
+    EXPECT_EQ(firstUncompactedIdx, compactedLog.getFirstIndex());
+    // compactedLog.getLastIndex() can be latestIdx or secondToLastIdx,
+    // depending on how fast append entries reacts
+  });
+  {
+    // get the compaction thread time to get to the point where it tries to
+    // acquire the LogCore's operation mutex for removeFront
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(1ms);
+  }
 
   // resolve promises, so appendEntries can finish
   followersDelayedPersistedLog->runAsyncInsert();
-  ASSERT_EQ(latestIdx,
+
+  compaction.join();
+
+  EXPECT_EQ(latestIdx,
             leader->getQuickStatus().getLocalStatistics().value().commitIndex);
   // run append entries, so the commit index at the follower gets updated as
   // well
   follower->runAllAsyncAppendEntries();
-  ASSERT_EQ(
+  EXPECT_EQ(
       latestIdx,
       follower->getQuickStatus().getLocalStatistics().value().commitIndex);
 
   // check that both the compaction and the latest append entries have had
   // their effect on the log
   auto const finalLog = follower->copyInMemoryLog();
-  ASSERT_EQ(firstUncompactedIdx, finalLog.getFirstIndex());
-  ASSERT_EQ(latestIdx, finalLog.getLastIndex());
+  EXPECT_EQ(firstUncompactedIdx, finalLog.getFirstIndex());
+  EXPECT_EQ(latestIdx, finalLog.getLastIndex());
 }

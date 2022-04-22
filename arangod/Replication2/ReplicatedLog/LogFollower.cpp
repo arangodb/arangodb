@@ -352,7 +352,7 @@ auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
         << newLITK << ".";
     _lowestIndexToKeep = newLITK;
     // TODO do we want to call checkCompaction here?
-    std::ignore = checkCompaction();
+    // std::ignore = checkCompaction();
   }
 
   if (_commitIndex < newCommitIndex && !_inMemoryLog.empty()) {
