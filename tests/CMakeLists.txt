@@ -370,8 +370,8 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Streams/TestLogSpecification.cpp
   Replication2/Streams/TestLogSpecification.h
   Replication2/ReplicatedState/SupervisionTest.cpp
-  Replication2/ReplicatedState/SupervisionSimulationTest.cpp
-)
+        Replication2/ReplicatedState/SupervisionSimulationTest2.cpp
+        Replication2/ModelChecker/ModelChecker.cpp Replication2/ModelChecker/ModelChecker.h Replication2/ModelChecker/Tests/ModelCheckerTest.cpp Replication2/ModelChecker/ActorModel.cpp Replication2/ModelChecker/ActorModel.h)
 
 
 if (LINUX)
