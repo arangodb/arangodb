@@ -330,7 +330,7 @@ Result RocksDBBuilderIndex::remove(transaction::Methods& trx,
 }
 
 Result static processPartitions(bool isForeground, RocksDBCollection* rcoll,
-                                RocksDBIndex& ridx,
+                                rocksdb::DB* rootDB, RocksDBIndex& ridx,
                                 std::atomic<uint64_t>& docsProcessed) {
   Result res;
   uint8_t nThreads = 5;  // here for the moment
@@ -347,7 +347,7 @@ Result static processPartitions(bool isForeground, RocksDBCollection* rcoll,
   std::vector<std::unique_ptr<IndexCreatorThread>> idxGenThreads;
   for (size_t i = 0; i < nThreads; ++i) {
     auto newThread = std::make_unique<IndexCreatorThread>(
-        false, isForeground, docsProcessed, WorkEnv, rcoll, rootDB, ridx);
+        false, isForeground, docsProcessed, SharedWorkEnv, rcoll, rootDB, ridx);
     idxGenThreads.emplace_back(std::move(newThread));
   }
 
