@@ -40,6 +40,7 @@
 #include "Logger/Logger.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/Metric.h"
+#include "Metrics/MetricKey.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -100,13 +101,13 @@ Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
   auto batchToCoordinator = [](ClusterMetricsFeature::Metrics& metrics,
                                std::string_view name, velocypack::Slice labels,
                                velocypack::Slice value) {
-    ClusterMetricsFeature::MetricKey key{name, labels.stringView()};
-    std::get<uint64_t>(metrics[key]) += value.getNumber<uint64_t>();
+    std::get<uint64_t>(metrics[{std::string{name}, labels.copyString()}]) +=
+        value.getNumber<uint64_t>();
   };
   auto batchToPrometheus = [](std::string& result, std::string_view globals,
-                              ClusterMetricsFeature::MetricKey const& key,
+                              std::string_view name, std::string_view labels,
                               ClusterMetricsFeature::MetricValue const& value) {
-    Metric::addMark(result, std::get<0>(key), globals, std::get<1>(key));
+    Metric::addMark(result, name, globals, labels);
     result.append(std::to_string(std::get<uint64_t>(value))) += '\n';
   };
   metric.add("arangodb_search_num_docs", batchToCoordinator, batchToPrometheus);
@@ -128,8 +129,8 @@ Result IResearchLinkCoordinator::init(velocypack::Slice definition) {
       return;
     }
     labelsStr = labelsStr.substr(0, end);
-    metrics::ClusterMetricsFeature::MetricKey key{name, labelsStr};
-    std::get<uint64_t>(metrics[key]) += value.getNumber<uint64_t>();
+    std::get<uint64_t>(metrics[{std::string{name}, std::string{labelsStr}}]) +=
+        value.getNumber<uint64_t>();
   };
   metric.add("arangodb_search_num_failed_commits", gaugeToCoordinator);
   metric.add("arangodb_search_num_failed_cleanups", gaugeToCoordinator);
@@ -165,7 +166,8 @@ IResearchDataStore::Stats IResearchLinkCoordinator::stats() const {
   addLabel("view", getViewId());
   addLabel("collection", getCollectionName());
   auto getValue = [&, labels = std::string_view{labels}](std::string_view key) {
-    if (auto it = metrics.find(std::tuple{key, labels}); it != metrics.end()) {
+    if (auto it = metrics.find(metrics::MetricKeyView{key, labels});
+        it != metrics.end()) {
       return std::get<uint64_t>(it->second);
     }
     return uint64_t{0};
