@@ -1951,7 +1951,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       return ::executors<false,
                          MaterializeType::LateMaterialize |
                              MaterializeType::UseStoredValues>[getExecutorIndex(
-          _sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
+           sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
                                        std::move(executorInfos));
 #endif
     default:
