@@ -635,6 +635,92 @@ function restoreIntegrationSuite () {
       }
     },
     
+    testRestoreWithoutUsesRevisions: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            name: cn,
+            type: 2
+          }
+        }));
+
+        let args = ['--collection', cn, '--import-data', 'false'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        let props = c.properties();
+        assertTrue(props.hasOwnProperty("syncByRevision"));
+        assertTrue(props.syncByRevision);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
+    testRestoreWithUsesRevisionsFalse: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            usesRevisionsAsDocumentIds: false,
+            name: cn,
+            type: 2
+          }
+        }));
+
+        let args = ['--collection', cn, '--import-data', 'false'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        let props = c.properties();
+        assertTrue(props.hasOwnProperty("syncByRevision"));
+        assertFalse(props.syncByRevision);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
+    testRestoreWithUsesRevisionsTrue: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            usesRevisionsAsDocumentIds: true,
+            name: cn,
+            type: 2
+          }
+        }));
+
+        let args = ['--collection', cn, '--import-data', 'false'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        let props = c.properties();
+        assertTrue(props.hasOwnProperty("syncByRevision"));
+        assertTrue(props.syncByRevision);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
     testRestoreNumericGloballyUniqueId: function () {
       let path = fs.getTempFile();
       try {
