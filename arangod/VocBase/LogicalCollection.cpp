@@ -461,12 +461,9 @@ bool LogicalCollection::useSyncByRevision() const noexcept {
 bool LogicalCollection::determineSyncByRevision() const {
   if (version() >= LogicalCollection::Version::v37) {
     auto& server = vocbase().server();
-    if (server.hasFeature<EngineSelectorFeature>() &&
-        server.hasFeature<ReplicationFeature>()) {
-      auto& engine = server.getFeature<EngineSelectorFeature>();
+    if (server.hasFeature<ReplicationFeature>()) {
       auto& replication = server.getFeature<ReplicationFeature>();
-      return engine.isRocksDB() && replication.syncByRevision() &&
-             usesRevisionsAsDocumentIds();
+      return replication.syncByRevision() && usesRevisionsAsDocumentIds();
     }
   }
   return false;

@@ -237,9 +237,6 @@ VPackBuilder createCollectionProperties(
 
     bool addUseRevs = ServerState::instance()->isSingleServerOrCoordinator();
     bool useRevs =
-        vocbase.server()
-            .getFeature<arangodb::EngineSelectorFeature>()
-            .isRocksDB() &&
         LogicalCollection::currentVersion() >= LogicalCollection::Version::v37;
 
     if (addUseRevs) {

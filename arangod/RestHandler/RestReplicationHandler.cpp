@@ -3020,14 +3020,6 @@ void RestReplicationHandler::handleCommandLoggerTickRanges() {
 
 bool RestReplicationHandler::prepareRevisionOperation(
     RevisionOperationContext& ctx) {
-  auto& selector = server().getFeature<EngineSelectorFeature>();
-  if (!selector.isRocksDB()) {
-    generateError(
-        rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
-        "this storage engine does not support revision-based replication");
-    return false;
-  }
-
   LOG_TOPIC("253e2", TRACE, arangodb::Logger::REPLICATION)
       << "enter prepareRevisionOperation";
 
