@@ -418,6 +418,7 @@ static arangodb::Result fillIndex(
   OperationOptions options;
   processPartitions(false, docsProcessed, rcoll, rootDB, ridx);
 
+  /* this will go in the run() of each thread
   if (res.ok()) {
     commitLambda();
   }
@@ -429,6 +430,8 @@ static arangodb::Result fillIndex(
       ridx.estimator()->setAppliedSeq(rootDB->GetLatestSequenceNumber());
     }
   }
+
+   */
 
   // if an error occured drop() will be called
   LOG_TOPIC("dfa3b", DEBUG, Logger::ENGINES)
