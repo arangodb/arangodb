@@ -375,7 +375,7 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorSingleServer(
   // However current implementation does not hand in isSmart==true
   // in the valid combination.
   TRI_ASSERT(!isSmart);
-  bool useTracing = true;
+  bool useTracing = false;
   TRI_ASSERT(_traversalEnumerator == nullptr);
 
   _traversalEnumerator = TraversalEnumerator::createEnumerator<
@@ -421,7 +421,7 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
     }
   }
   TRI_ASSERT(baseProviderOptions.getCache() != nullptr);
-  bool useTracing = true;
+  bool useTracing = false;
   TRI_ASSERT(_traversalEnumerator == nullptr);
 
 #ifdef USE_ENTERPRISE
