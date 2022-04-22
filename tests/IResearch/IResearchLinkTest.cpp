@@ -2234,7 +2234,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
   ~IResearchLinkMetricsTest() override { resetLink(); }
 
   bool checkMetricExist(std::string_view name, std::string_view label) const {
-    arangodb::metrics::MetricKey key(name, label);
+    arangodb::metrics::MetricKeyView key{name, label};
     auto& f = _vocbase.server().getFeature<arangodb::metrics::MetricsFeature>();
     auto* metric = f.get(key);
     return metric != nullptr;

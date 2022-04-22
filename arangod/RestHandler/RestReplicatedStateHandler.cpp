@@ -29,6 +29,7 @@
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Futures/Future.h"
+#include "Inspection/VPack.h"
 #include "Replication2/Methods.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include "Rest/PathMatch.h"

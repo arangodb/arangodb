@@ -60,7 +60,6 @@
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewCoordinator.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "Random/RandomFeature.h"
