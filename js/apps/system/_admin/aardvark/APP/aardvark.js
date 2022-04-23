@@ -1371,7 +1371,7 @@ authRouter.get('/g6graph/:name', function (req, res) {
           if (config.nodeSize && config.nodeSizeByEdges === 'false') {
             nodeSize = node[config.nodeSize];
           }
-
+          
           /*
           nodeObj = {
             id: node._id,
@@ -1383,7 +1383,7 @@ authRouter.get('/g6graph/:name', function (req, res) {
             y: Math.random()
           };
           */
-          nodeObj = {
+         nodeObj = {
             id: node._id,
             label: nodeLabel,
             style: {
@@ -1397,6 +1397,7 @@ authRouter.get('/g6graph/:name', function (req, res) {
             var coll = node._id.split('/')[0];
             if (tmpObjNodes.hasOwnProperty(coll)) {
               nodeObj.color = tmpObjNodes[coll];
+              nodeObj.style.fill = tmpObjNodes[coll] || '#ff0'; 
             } else {
               tmpObjNodes[coll] = colors.jans[Object.keys(tmpObjNodes).length];
               nodeObj.color = tmpObjNodes[coll];
