@@ -1,6 +1,9 @@
 devel
 -----
 
+* Very verbose warning from failing to parse GEO JSON in search. Has lead to
+  Billions of log lines on deployed services.
+
 * Added startup option `--cluster.shard-synchronization-attempt-timeout` to
   limit the amount of time to spend in shard synchronization attempts. The
   default timeout value is 20 minutes.
