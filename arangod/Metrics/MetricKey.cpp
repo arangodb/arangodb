@@ -20,22 +20,30 @@
 ///
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
-#pragma once
 
-#include <cstddef>
-#include <string_view>
+#include "Metrics/MetricKey.h"
+#include "Basics/debugging.h"
+
+#include <string>
+#include <tuple>
 
 namespace arangodb::metrics {
 
-struct MetricKey {
-  std::string_view name;
-  std::string_view labels;
+MetricKey::MetricKey() noexcept = default;
 
-  MetricKey() noexcept;
-  MetricKey(std::string_view name) noexcept;
-  MetricKey(std::string_view name, std::string_view labels) noexcept;
-};
+MetricKey::MetricKey(std::string_view name) noexcept : name{name} {
+  // the metric name should not include any spaces
+  TRI_ASSERT(name.find(' ') == std::string::npos);
+}
 
-bool operator<(MetricKey const& lhs, MetricKey const& rhs);
+MetricKey::MetricKey(std::string_view name, std::string_view labels) noexcept
+    : name{name}, labels{labels} {
+  // the metric name should not include any spaces
+  TRI_ASSERT(name.find(' ') == std::string::npos);
+}
+
+bool operator<(MetricKey const& lhs, MetricKey const& rhs) {
+  return std::tie(lhs.name, lhs.labels) < std::tie(rhs.name, rhs.labels);
+}
 
 }  // namespace arangodb::metrics

@@ -646,6 +646,7 @@ set (LIB_ARANGO_METRICS_SOURCES
   Metrics/Builder.cpp
   Metrics/Counter.cpp
   Metrics/Metric.cpp
+  Metrics/MetricKey.cpp
   Metrics/MetricsFeature.cpp
   Metrics/ClusterMetricsFeature.cpp
   RestHandler/RestMetricsHandler.cpp
