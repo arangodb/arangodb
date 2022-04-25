@@ -62,6 +62,31 @@ struct BuilderCookie : public arangodb::TransactionState::Cookie {
 };
 }  // namespace
 
+IndexCreatorThread::IndexCreatorThread(
+    bool isUniqueIndex, bool isForeground, uint64_t lastDocIdInRange,
+    std::atomic<uint64_t>& docsProcessed,
+    std::shared_ptr<SharedWorkEnv> sharedWorkEnv, RocksDBCollection* rcoll,
+    rocksdb::DB* rootDB, RocksDBIndex& ridx, trx::BuilderTrx& trx)
+    : Thread(ridx.collection().vocbase().server(), "IndexCreatorThread"),
+      _isUniqueIndex(isUniqueIndex),
+      _isForeground(isForeground),
+      _lastDocIdInRange(lastDocIdInRange),
+      _docsProcessed(docsProcessed),
+      _sharedWorkEnv(std::move(sharedWorkEnv)),
+      _rcoll(rcoll),
+      _rootDB(rootDB),
+      _ridx(ridx),
+      _trx(trx),
+      _trxColl(std::move(trx.resolveTrxCollection())) {
+  if (_isUniqueIndex) {
+    // for later
+  } else {
+    _batch = std::make_unique<rocksdb::WriteBatch>(1024 * 1024);
+    _methods = std::make_unique<RocksDBBatchedMethods>(
+        reinterpret_cast<rocksdb::WriteBatch*>(_batch.get()));
+  }
+}
+
 RocksDBBuilderIndex::RocksDBBuilderIndex(
     std::shared_ptr<arangodb::RocksDBIndex> wp, uint64_t numDocsHint)
     : RocksDBIndex(wp->id(), wp->collection(), wp->name(), wp->fields(),
@@ -339,7 +364,6 @@ arangodb::Result RocksDBBuilderIndex::fillIndexForeground() {
 }
 
 namespace {
-
 struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
   ReplayHandler(uint64_t oid, RocksDBIndex& idx, transaction::Methods& trx,
                 RocksDBMethods* methods)
