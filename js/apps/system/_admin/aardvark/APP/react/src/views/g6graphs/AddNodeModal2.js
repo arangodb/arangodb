@@ -120,7 +120,7 @@ const ModalBody = styled.div`
               ) : 'Data is loading...'
             }
           </div>
-          <div style={{ 'margin-top': '38px', 'text-align': 'right' }}>
+          <div style={{ 'marginTop': '38px', 'textAlign': 'right' }}>
             <button className="button-close" onClick={onRequestClose}>Cancel</button>
             <button className="button-success" onClick={() => { addNode(node) }}>Create</button>
           </div>
