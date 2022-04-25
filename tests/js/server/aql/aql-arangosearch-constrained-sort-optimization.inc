@@ -259,7 +259,7 @@
         let expectedIdx = 4994;
         for (let i = 0; i < 10; ++i) {
           assertEqual(result.json[i].idx, expectedIdx);
-          if (i % 2 == 1) {
+          if (i % 2 === 1) {
               expectedIdx--;
           }
         }
@@ -274,7 +274,7 @@
         let expectedIdx = 501;
         for (let i = 0; i < 10; ++i) {
           assertEqual(result.json[i].idx, expectedIdx);
-          if (i % 2 == 1) {
+          if (i % 2 === 1) {
               expectedIdx++;
           }
         }
@@ -289,7 +289,7 @@
         let expectedIdx = 501;
         for (let i = 0; i < 10; ++i) {
           assertEqual(result.json[i].dv, longValue + expectedIdx);
-          if (i % 2 == 1) {
+          if (i % 2 === 1) {
               expectedIdx++;
           }
         }
