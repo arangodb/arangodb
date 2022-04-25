@@ -1,6 +1,9 @@
 v3.9.2 (XXXX-XX-XX)
 -------------------
 
+* Make sure that newly created TTL indexes do not use index estimates, which
+  wouldn't be used for TTL indexes anyway.
+
 * Fix: for the Windows build, the new Snappy version, which was introduced in
   3.9, generated code that contained BMI2 instructions which where introduced
   with the Intel Haswell architecture. However, our target architecture for 3.9
