@@ -23,8 +23,6 @@
 
 #include "Runner.h"
 
-#include <iostream>
-
 #include <numeric>
 #include <memory>
 #include <stdexcept>

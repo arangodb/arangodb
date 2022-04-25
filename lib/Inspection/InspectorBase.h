@@ -33,6 +33,7 @@
 #include <velocypack/Iterator.h>
 
 #include "Inspection/Access.h"
+#include "Inspection/Types.h"
 
 namespace arangodb::inspection {
 
@@ -411,19 +412,6 @@ struct InspectorBase {
     }
   }
 };
-
-namespace detail {
-template<class T>
-struct AlternativeType {
-  using Type = T;
-  std::string_view const tag;
-};
-}  // namespace detail
-
-template<class T>
-detail::AlternativeType<T> type(std::string_view tag) {
-  return detail::AlternativeType<T>{tag};
-}
 
 #undef EMPTY_BASE
 

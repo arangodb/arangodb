@@ -24,18 +24,25 @@
 #pragma once
 
 #include <optional>
+#include <variant>
 
 #include "Inspection/Status.h"
+#include "Inspection/Types.h"
 
 #include "ExecutionThread.h"
 #include "Workload.h"
+#include "velocypack/SliceContainer.h"
 
 namespace arangodb::sepp::workloads {
 
 struct InsertDocuments : Workload {
-  struct ThreadOptions;
+  struct ThreadOptions {
+    std::string collection;
+    std::shared_ptr<velocypack::Builder> object;
+  };
   struct Options;
   struct Thread;
+  struct Object;
 
   InsertDocuments(Options const& options) : _options(options) {}
 
@@ -46,20 +53,31 @@ struct InsertDocuments : Workload {
   Options const& _options;
 };
 
-struct InsertDocuments::ThreadOptions {
-  std::string collection;
-  velocypack::Slice object;
-
+struct InsertDocuments::Object : std::variant<std::string, velocypack::Slice> {
   template<class Inspector>
-  friend inline auto inspect(Inspector& f, ThreadOptions& o) {
-    return f.object(o).fields(f.field("object", o.object),
-                              f.field("collection", o.collection));
+  friend inline auto inspect(Inspector& f, Object& o) {
+    namespace insp = arangodb::inspection;
+    return f.variant(o)
+        .qualified("source", "value")
+        .alternatives(insp::type<std::string>("file"),
+                      insp::type<velocypack::Slice>("inline"));
   }
 };
 
 struct InsertDocuments::Options {
-  std::optional<ThreadOptions> defaultThreadOptions;
-  std::uint32_t threads{1};
+  struct Thread {
+    std::string collection;
+    Object object;
+
+    template<class Inspector>
+    friend inline auto inspect(Inspector& f, Thread& o) {
+      return f.object(o).fields(f.field("object", o.object),
+                                f.field("collection", o.collection));
+    }
+  };
+
+  std::optional<Thread> defaultThreadOptions;
+  std::uint32_t threads{1};  // TODO - make variant fixed number/array of Thread
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, Options& o) {

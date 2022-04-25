@@ -23,6 +23,7 @@
 
 #include "InsertDocuments.h"
 
+#include <fstream>
 #include <memory>
 
 #include "Transaction/Manager.h"
@@ -33,15 +34,41 @@
 #include "VocBase/Methods/Collections.h"
 
 #include "Server.h"
+#include "velocypack/Builder.h"
 
 namespace arangodb::sepp::workloads {
 
 auto InsertDocuments::createThreads(Execution const& exec, Server& server)
     -> WorkerThreadList {
+  ThreadOptions defaultThread;
+
+  if (_options.defaultThreadOptions) {
+    defaultThread.collection = _options.defaultThreadOptions->collection;
+    if (std::holds_alternative<std::string>(
+            _options.defaultThreadOptions->object)) {
+      auto objectFile =
+          std::get<std::string>(_options.defaultThreadOptions->object);
+      try {
+        std::ifstream t(objectFile);
+        std::stringstream buffer;
+        buffer << t.rdbuf();
+
+        defaultThread.object =
+            arangodb::velocypack::Parser::fromJson(buffer.str());
+      } catch (std::exception const& e) {
+        throw std::runtime_error("Failed to parse object file '" + objectFile +
+                                 "' - " + e.what());
+      }
+    } else {
+      defaultThread.object = std::make_shared<velocypack::Builder>();
+      defaultThread.object->add(
+          std::get<velocypack::Slice>(_options.defaultThreadOptions->object));
+    }
+  }
+
   WorkerThreadList result;
   for (std::uint32_t i = 0; i < _options.threads; ++i) {
-    result.emplace_back(std::make_unique<Thread>(
-        _options.defaultThreadOptions.value(), exec, server));
+    result.emplace_back(std::make_unique<Thread>(defaultThread, exec, server));
   }
   return result;
 }
@@ -60,7 +87,7 @@ void InsertDocuments::Thread::run() {
         _options.collection, AccessMode::Type::WRITE);
 
     trx->begin();
-    trx->insert("testcol", _options.object, {});
+    trx->insert("testcol", _options.object->slice(), {});
     trx->commit();
   }
   _operations += 10;
