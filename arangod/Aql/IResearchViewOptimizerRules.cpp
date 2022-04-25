@@ -274,7 +274,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       auto astCalcNode = calc->expression()->node();
       if (!astCalcNode ||
           astCalcNode->type != AstNodeType::NODE_TYPE_REFERENCE) {
-        // Not a reference?  Seems that it is not 
+        // Not a reference?  Seems that it is not
         // something produced by ScorerReplacer.
         // e.g. it is expected to be LET sortVar = scorerVar;
         // Definately not something we could handle.
