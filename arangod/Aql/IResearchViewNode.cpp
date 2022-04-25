@@ -1951,8 +1951,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       return ::executors<false,
                          MaterializeType::LateMaterialize |
                              MaterializeType::UseStoredValues>[getExecutorIndex(
-           sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
-                                       std::move(executorInfos));
+          sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
+                                      std::move(executorInfos));
 #endif
     default:
       ADB_UNREACHABLE;
