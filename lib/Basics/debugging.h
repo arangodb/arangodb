@@ -272,14 +272,16 @@ struct AssertionLogger {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
+namespace arangodb::debug {
 inline thread_local std::ostringstream threadLocalAssertionBuffer;
+}
 
 #define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                  \
   (ADB_LIKELY(expr))                                                          \
       ? (void)nullptr                                                         \
       : ::arangodb::debug::AssertionLogger{__FILE__, __LINE__,                \
                                            ARANGODB_PRETTY_FUNCTION, #expr} & \
-            threadLocalAssertionBuffer
+            ::arangodb::debug::threadLocalAssertionBuffer
 
 #else
 
