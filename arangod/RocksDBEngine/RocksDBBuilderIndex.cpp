@@ -187,8 +187,8 @@ static arangodb::Result fillIndex(
   auto mode =
       snap == nullptr ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE;
   LogicalCollection& coll = ridx.collection();
-  ::BuilderTrx trx(transaction::StandaloneContext::Create(coll.vocbase()), coll,
-                   mode);
+  trx::BuilderTrx trx(transaction::StandaloneContext::Create(coll.vocbase()),
+                      coll, mode);
   if (mode == AccessMode::Type::EXCLUSIVE) {
     trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
   }
@@ -519,8 +519,8 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, RocksDBMethods& batched,
                bool haveExclusiveAccess,
                std::function<void(uint64_t)> const& reportProgress) {
   LogicalCollection& coll = ridx.collection();
-  ::BuilderTrx trx(transaction::StandaloneContext::Create(coll.vocbase()), coll,
-                   mode);
+  trx::BuilderTrx trx(transaction::StandaloneContext::Create(coll.vocbase()),
+                      coll, mode);
   if (mode == AccessMode::Type::EXCLUSIVE) {
     trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
   }

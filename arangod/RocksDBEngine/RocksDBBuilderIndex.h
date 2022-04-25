@@ -23,15 +23,17 @@
 
 #pragma once
 
-#include "RocksDBEngine/RocksDBIndex.h"
-
 #include "Basics/ConditionLocker.h"
+#include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionCollection.h"
 
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
 
-namespace {
+namespace trx {
 struct BuilderTrx : public arangodb::transaction::Methods {
   BuilderTrx(
       std::shared_ptr<arangodb::transaction::Context> const& transactionContext,
@@ -53,13 +55,46 @@ struct BuilderTrx : public arangodb::transaction::Methods {
  private:
   arangodb::DataSourceId _cid;
 };
-}  // namespace
+}  // namespace trx
 
 namespace arangodb {
 
 class SharedWorkEnv;
 
 class RocksDBCollection;
+
+class IndexCreatorThread final : public Thread {
+ public:
+  IndexCreatorThread(bool isUniqueIndex, bool isForeground,
+                     uint64_t lastDocIdInRange,
+                     std::atomic<uint64_t>& docsProcessed,
+                     std::shared_ptr<SharedWorkEnv> sharedWorkEnv,
+                     RocksDBCollection* rcoll, rocksdb::DB* rootDB,
+                     RocksDBIndex& ridx, trx::BuilderTrx& trx);
+
+  ~IndexCreatorThread() { Thread::shutdown(); }
+
+  void run() override;
+
+  Result commitInsertions();
+
+ private:
+  bool _isUniqueIndex = false;
+  bool _isForeground = false;
+  uint64_t const _lastDocIdInRange;
+  std::atomic<uint64_t>& _docsProcessed;
+  std::shared_ptr<SharedWorkEnv> _sharedWorkEnv;
+  RocksDBCollection* _rcoll;
+  rocksdb::DB* _rootDB;
+  RocksDBIndex& _ridx;
+  trx::BuilderTrx& _trx;
+  RocksDBTransactionCollection* _trxColl;
+
+  // ptrs because of abstract class, have to know which type to craete
+  std::unique_ptr<rocksdb::WriteBatchBase> _batch;
+  std::unique_ptr<RocksDBMethods> _methods;
+  rocksdb::ReadOptions _readOptions;
+};
 
 /// Dummy index class that contains the logic to build indexes
 /// without an exclusive lock. It wraps the actual index implementation
