@@ -249,11 +249,9 @@ void InternalRestTraverserHandler::queryEngine() {
     auto eng = static_cast<BaseTraverserEngine*>(engine);
     TRI_ASSERT(eng != nullptr);
     if (option == "smartSearchUnified") {
-      LOG_DEVEL << "Using smartSearchUnified.";
       eng->smartSearchUnified(body, result);
     } else {
       // TODO: Take deprecation path!
-      LOG_DEVEL << "Using deprecated smart search.";
       eng->smartSearch(body, result);
     }
   } else {
@@ -261,7 +259,6 @@ void InternalRestTraverserHandler::queryEngine() {
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "");
     return;
   }
-  // LOG_DEVEL << "Server produced: " << result.slice().toJson();
   generateResult(ResponseCode::OK, result.slice(), engine->context());
 }
 

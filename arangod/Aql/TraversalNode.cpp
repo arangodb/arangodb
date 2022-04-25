@@ -1012,7 +1012,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     if (isSmart() && !isDisjoint()) {
       if (opts->refactor()) {
         // Note: Using refactored smart graph cluster engine.
-        LOG_DEVEL << "Using refactored SmartGraph cluster engine!";
         return createRefactoredBlock(
             engine, std::move(filterConditionVariables), checkPruneAvailability,
             checkPostFilterAvailability, outputRegisterMapping, inputRegister,
