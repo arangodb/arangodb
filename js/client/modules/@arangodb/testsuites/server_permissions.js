@@ -56,114 +56,122 @@ const testPaths = {
   'server_parameters': [tu.pathForTesting('client/server_parameters')]
 };
 
-function startParameterTest(options, testpath, suiteName) {
-  let count = 0;
-  let results = { shutdown: true };
-  let filtered = {};
-  const tests = tu.scanTestPaths(testpath, options);
+class permissionsRunner extends tu.runLocalInArangoshRunner {
+  constructor(options, testname, ...optionalArgs) {
+    super(options, testname, ...optionalArgs);
+    this.info = "runInDriverTest";
+  }
+  run(testlist) {
+    let count = 0;
+    let results = { shutdown: true };
+    let filtered = {};
+    let obj = this;
+    testlist.forEach(function (testFile, i) {
+      count += 1;
+      if (tu.filterTestcaseByOptions(testFile, obj.options, filtered)) {
+        // pass on JWT secret
+        let shutdownStatus;
+        let clonedOpts = _.clone(obj.options);
+        let paramsFirstRun = {};
+        let serverOptions = {};
 
-  tests.forEach(function (testFile, i) {
-    count += 1;
-    if (tu.filterTestcaseByOptions(testFile, options, filtered)) {
-      // pass on JWT secret
-      let instanceInfo;
-      let shutdownStatus;
-      let clonedOpts = _.clone(options);
-      let paramsFirstRun = {};
-      let serverOptions = {};
-
-      let fileContent = fs.read(testFile);
-      let content = `(function(){ const runSetup = false; const getOptions = true; ${fileContent} 
+        let fileContent = fs.read(testFile);
+        let content = `(function(){ const runSetup = false; const getOptions = true; ${fileContent} 
 }())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
 
-      let paramsSecondRun = executeScript(content, true, testFile);
-      let rootDir = fs.join(fs.getTempPath(), count.toString());
-      let runSetup = paramsSecondRun.hasOwnProperty('runSetup');
-      if (paramsSecondRun.hasOwnProperty('server.jwt-secret')) {
-        clonedOpts['server.jwt-secret'] = paramsSecondRun['server.jwt-secret'];
-      }
-      if (paramsSecondRun.hasOwnProperty('database.password')) {
-        clonedOpts['server.password'] = paramsSecondRun['database.password'];
-        clonedOpts['password'] = paramsSecondRun['database.password'];
-        paramsFirstRun['server.password'] = paramsSecondRun['database.password'];
-      }
-      if (runSetup) {
-        delete paramsSecondRun.runSetup;
-        if (options.extremeVerbosity) {
-          print(paramsFirstRun);
+        let paramsSecondRun = executeScript(content, true, testFile);
+        let rootDir = fs.join(fs.getTempPath(), count.toString());
+        let runSetup = paramsSecondRun.hasOwnProperty('runSetup');
+        if (paramsSecondRun.hasOwnProperty('server.jwt-secret')) {
+          clonedOpts['server.jwt-secret'] = paramsSecondRun['server.jwt-secret'];
         }
-        instanceInfo = pu.startInstance(clonedOpts.protocol, clonedOpts, paramsFirstRun, suiteName, rootDir); // first start
-        pu.cleanupDBDirectoriesAppend(instanceInfo.rootDir);      
-        try {
-          print(BLUE + '================================================================================' + RESET);
-          print(CYAN + 'Running Setup of: ' + testFile + RESET);
-          content = `(function(){ const runSetup = true; const getOptions = false; ${fileContent}
+        if (paramsSecondRun.hasOwnProperty('database.password')) {
+          clonedOpts['server.password'] = paramsSecondRun['database.password'];
+          clonedOpts['password'] = paramsSecondRun['database.password'];
+          paramsFirstRun['server.password'] = paramsSecondRun['database.password'];
+        }
+        if (runSetup) {
+          delete paramsSecondRun.runSetup;
+          if (obj.options.extremeVerbosity !== 'silent') {
+            print(paramsFirstRun);
+          }
+          obj.instanceInfo = pu.startInstance(clonedOpts.protocol, clonedOpts, paramsFirstRun, obj.friendlyName, rootDir); // first start
+          pu.cleanupDBDirectoriesAppend(obj.instanceInfo.rootDir);      
+          try {
+            print(BLUE + '================================================================================' + RESET);
+            print(CYAN + 'Running Setup of: ' + testFile + RESET);
+            content = `(function(){ const runSetup = true; const getOptions = false; ${fileContent}
 }())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
 
-          if (!executeScript(content, true, testFile)) {
-            throw new Error("setup of test failed");
+            if (!executeScript(content, true, testFile)) {
+              throw new Error("setup of test failed");
+            }
+          } catch (ex) {
+            shutdownStatus = pu.shutdownInstance(obj.instanceInfo, clonedOpts, false);                                     // stop
+            results[testFile] = {
+              status: false,
+              messages: 'Warmup of system failed: ' + ex,
+              shutdown: shutdownStatus
+            };
+            results['shutdown'] = results['shutdown'] && shutdownStatus;
+            return;
           }
-        } catch (ex) {
-          shutdownStatus = pu.shutdownInstance(instanceInfo, clonedOpts, false);                                     // stop
-          results[testFile] = {
-            status: false,
-            messages: 'Warmup of system failed: ' + ex,
-            shutdown: shutdownStatus
-          };
-          results['shutdown'] = results['shutdown'] && shutdownStatus;
-          return;
+          if (pu.shutdownInstance(obj.instanceInfo, clonedOpts, false)) {                                                     // stop
+            obj.instanceInfo.arangods.forEach(function(arangod) {
+              arangod.pid = null;
+            });
+            if (obj.options.extremeVerbosity !== 'silent') {
+              print(paramsSecondRun);
+            }
+            pu.reStartInstance(clonedOpts, obj.instanceInfo, paramsSecondRun);      // restart with restricted permissions
+          }
+          else {
+            results[testFile] = {
+              status: false,
+              message: "failed to stop instance",
+              shutdown: false
+            };
+          }
+        } else {
+          obj.instanceInfo = pu.startInstance(clonedOpts.protocol, clonedOpts, paramsSecondRun, obj.friendlyName, rootDir); // one start
         }
-        if (pu.shutdownInstance(instanceInfo, clonedOpts, false)) {                                                     // stop
-          instanceInfo.arangods.forEach(function(arangod) {
-            arangod.pid = null;
-          });
-          if (options.extremeVerbosity) {
-            print(paramsSecondRun);
-          }
-          pu.reStartInstance(clonedOpts, instanceInfo, paramsSecondRun);      // restart with restricted permissions
+
+        results[testFile] = obj.runOneTest(testFile);
+        if (obj.instanceInfo.hasOwnProperty("authOpts") &&
+            obj.instanceInfo.authOpts.hasOwnProperty("server.jwt-secret")) {
+          // Reconnect to set the server credentials right
+          arango.reconnect(arango.getEndpoint(), '_system', "root", "", true,
+                           obj.instanceInfo.authOpts["server.jwt-secret"]);
+        }
+        shutdownStatus = pu.shutdownInstance(obj.instanceInfo, clonedOpts, false);
+
+        results['shutdown'] = results['shutdown'] && shutdownStatus;
+        
+        if (!results[testFile].status || !shutdownStatus) {
+          print("Not cleaning up " + obj.instanceInfo.rootDir);
+          results.status = false;
         }
         else {
-          results[testFile] = {
-            status: false,
-            message: "failed to stop instance",
-            shutdown: false
-          };
+          pu.cleanupLastDirectory(clonedOpts);
         }
       } else {
-        instanceInfo = pu.startInstance(clonedOpts.protocol, clonedOpts, paramsSecondRun, suiteName, rootDir); // one start
+        if (obj.options.extremeVerbosity !== 'silent') {
+          print('Skipped ' + testFile + ' because of ' + filtered.filter);
+        }
       }
-
-      results[testFile] = tu.runInLocalArangosh(clonedOpts, instanceInfo, testFile, {});
-      if (instanceInfo.hasOwnProperty("authOpts") && instanceInfo.authOpts.hasOwnProperty("server.jwt-secret")) {
-        // Reconnect to set the server credentials right
-        arango.reconnect(arango.getEndpoint(), '_system', "root", "", true, instanceInfo.authOpts["server.jwt-secret"]);
-      }
-      shutdownStatus = pu.shutdownInstance(instanceInfo, clonedOpts, false);
-
-      results['shutdown'] = results['shutdown'] && shutdownStatus;
-      
-      if (!results[testFile].status || !shutdownStatus) {
-        print("Not cleaning up " + instanceInfo.rootDir);
-        results.status = false;
-      }
-      else {
-        pu.cleanupLastDirectory(clonedOpts);
-      }
-    } else {
-      if (options.extremeVerbosity) {
-        print('Skipped ' + testFile + ' because of ' + filtered.filter);
-      }
-    }
-  });
-  return results;
+    });
+    return results;
+  }
 }
 
 function server_permissions(options) {
-  return startParameterTest(options, testPaths.server_permissions, "server_permissions");
+  return new permissionsRunner(options, "server_permissions").run(
+    tu.scanTestPaths(testPaths.server_permissions, options));
 }
 
 function server_parameters(options) {
-  return startParameterTest(options, testPaths.server_parameters, "server_parameters");
+  return new permissionsRunner(options, "server_parameters").run(
+    tu.scanTestPaths(testPaths.server_parameters, options));
 }
 
 function server_secrets(options) {
@@ -204,7 +212,7 @@ function server_secrets(options) {
     additionalArguments['ssl.server-name-indication']
       = "hans.arangodb.com=./UnitTests/tls.keyfile";
   }
-  return tu.performTests(copyOptions, testCases, 'server_secrets', tu.runInLocalArangosh, additionalArguments);
+  return new tu.runLocalInArangoshRunner(copyOptions, 'server_secrets', additionalArguments).run(testCases);
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {

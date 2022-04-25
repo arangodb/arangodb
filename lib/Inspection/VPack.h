@@ -42,10 +42,10 @@ void serialize(Builder& builder, T& value) {
   }
 }
 
-template<class T>
-void deserialize(Slice slice, T& result,
-                 inspection::ParseOptions options = {}) {
-  inspection::VPackLoadInspector inspector(slice, options);
+namespace detail {
+template<class Inspector, class T>
+void deserialize(Slice slice, T& result, inspection::ParseOptions options) {
+  Inspector inspector(slice, options);
   if (auto res = inspector.apply(result); !res.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, std::string{"Error while parsing VelocyPack: "} +
@@ -53,12 +53,31 @@ void deserialize(Slice slice, T& result,
   }
 }
 
-template<class T>
-T deserialize(Slice slice, inspection::ParseOptions options = {}) {
-  inspection::VPackLoadInspector inspector(slice, options);
+template<class Inspector, class T>
+T deserialize(Slice slice, inspection::ParseOptions options) {
+  Inspector inspector(slice, options);
   T result;
   deserialize(slice, result);
   return result;
+}
+}  // namespace detail
+
+template<class T>
+void deserialize(Slice slice, T& result,
+                 inspection::ParseOptions options = {}) {
+  detail::deserialize<inspection::VPackLoadInspector>(slice, result, options);
+}
+
+template<class T>
+void deserializeUnsafe(Slice slice, T& result,
+                       inspection::ParseOptions options = {}) {
+  detail::deserialize<inspection::VPackUnsafeLoadInspector>(slice, result,
+                                                            options);
+}
+
+template<class T>
+T deserialize(Slice slice, inspection::ParseOptions options = {}) {
+  return detail::deserialize<inspection::VPackLoadInspector, T>(slice, options);
 }
 
 }  // namespace arangodb::velocypack

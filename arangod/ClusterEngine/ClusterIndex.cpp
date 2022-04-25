@@ -230,9 +230,10 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
             allIndexes, this, node, reference, itemsInIndex);
       }
       // other...
-      SimpleAttributeEqualityMatcher matcher(
-          {{arangodb::basics::AttributeName(StaticStrings::IdString, false)},
-           {arangodb::basics::AttributeName(StaticStrings::KeyString, false)}});
+      std::vector<std::vector<arangodb::basics::AttributeName>> fields{
+          {arangodb::basics::AttributeName(StaticStrings::IdString, false)},
+          {arangodb::basics::AttributeName(StaticStrings::KeyString, false)}};
+      SimpleAttributeEqualityMatcher matcher(fields);
       return matcher.matchOne(this, node, reference, itemsInIndex);
     }
     case TRI_IDX_TYPE_EDGE_INDEX: {

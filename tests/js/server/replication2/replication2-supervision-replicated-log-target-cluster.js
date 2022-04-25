@@ -241,7 +241,7 @@ const replicatedLogSuite = function () {
         assertEqual(detail[followers[1]].code, 0);
       }
 
-      // now resume, followers[1 has to become leader, because it's the only server with log entry 1 available
+      // now resume, followers[1] has to become leader, because it's the only server with log entry 1 available
       continueServer(followers[0]);
       waitFor(replicatedLogIsReady(database, logId, term + 2, [followers[0], followers[1]], followers[1]));
 
@@ -565,6 +565,31 @@ const replicatedLogSuite = function () {
       //
       // nothing should have happend
       waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
+      replicatedLogDeleteTarget(database, logId);
+    },
+
+    // This test replaces all participants
+    testChangeAllParticipants: function () {
+      const {logId, servers, term, leader} = createReplicatedLogAndWaitForLeader(database);
+
+      // now change the leader
+      const otherServers = _.difference(dbservers, servers);
+      const targetVersion = 1;
+
+      {
+        let {target} = readReplicatedLogAgency(database, logId);
+        // delete old leader from target
+        target.version = targetVersion;
+        target.participants =
+          Object.assign({}, ...otherServers.map((x) => ({[x]: {}})));
+        replicatedLogSetTarget(database, logId, target);
+      }
+
+      waitFor(replicatedLogTargetVersion(database, logId, targetVersion));
+
+      const {current} = readReplicatedLogAgency(database, logId);
+      waitFor(replicatedLogLeaderEstablished(database, logId, undefined, otherServers));
+
       replicatedLogDeleteTarget(database, logId);
     },
 

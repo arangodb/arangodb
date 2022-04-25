@@ -34,8 +34,6 @@
 namespace arangodb {
 
 class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
-  friend class RocksDBSphericalIndexIterator;
-
  public:
   RocksDBGeoIndex() = delete;
 

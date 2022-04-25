@@ -92,6 +92,10 @@ struct DelayedFollowerLog : replicated_log::AbstractFollower,
     return _follower->getCommitIndex();
   }
 
+  auto copyInMemoryLog() const -> replicated_log::InMemoryLog override {
+    return _follower->copyInMemoryLog();
+  }
+
   using WaitForAsyncPromise =
       futures::Promise<replicated_log::AppendEntriesRequest>;
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2021-2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,14 +21,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "SupervisionAction.h"
 
-#include "Agency/TransactionBuilder.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "velocypack/Builder.h"
-#include "velocypack/velocypack-common.h"
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-common.h>
 
 #include "Agency/AgencyPaths.h"
-
+#include "Agency/TransactionBuilder.h"
+#include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
 using namespace arangodb::replication2::agency;
 namespace paths = arangodb::cluster::paths::aliases;
@@ -70,15 +70,17 @@ auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
     return envelope;
   }
 
-  return envelope.write()
+  return envelope
+      .write()
+      // this is here to trigger all waitForPlan, even if we only
+      // update current.
+      .inc(paths::plan()->version()->str())
       .cond(ctx.hasPlanModification(),
             [&](arangodb::agency::envelope::write_trx&& trx) {
-              return std::move(trx)
-                  .emplace_object(planPath,
-                                  [&](VPackBuilder& builder) {
-                                    ctx.getPlan().toVelocyPack(builder);
-                                  })
-                  .inc(paths::plan()->version()->str());
+              return std::move(trx).emplace_object(
+                  planPath, [&](VPackBuilder& builder) {
+                    ctx.getPlan().toVelocyPack(builder);
+                  });
             })
       .cond(ctx.hasCurrentModification(),
             [&](arangodb::agency::envelope::write_trx&& trx) {

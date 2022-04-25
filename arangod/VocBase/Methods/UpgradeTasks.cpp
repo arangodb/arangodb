@@ -220,9 +220,11 @@ Result createSystemCollections(
 
     std::vector<std::shared_ptr<LogicalCollection>> cols;
     auto res = methods::Collections::create(
-        vocbase, options, testSystemCollectionsToCreate, true, true, true,
+        vocbase, options, testSystemCollectionsToCreate,
+        /*createWaitsForSyncReplication*/ true,
+        /*enforceReplicationFactor*/ true, /*isNewDatabase*/ true,
         colToDistributeShardsLike, cols,
-        true /* allow system collection creation */);
+        /*allowSystem*/ true);
     if (res.fail()) {
       return res;
     }

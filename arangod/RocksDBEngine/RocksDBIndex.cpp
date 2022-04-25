@@ -127,8 +127,10 @@ void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   if (cacheInUse) {
     TRI_ASSERT(_cache != nullptr);
     TRI_ASSERT(_cacheManager != nullptr);
-    builder.add("cacheSize", VPackValue(_cache->size()));
-    builder.add("cacheUsage", VPackValue(_cache->usage()));
+
+    auto [size, usage] = _cache->sizeAndUsage();
+    builder.add("cacheSize", VPackValue(size));
+    builder.add("cacheUsage", VPackValue(usage));
     auto hitRates = _cache->hitRates();
     double rate = hitRates.first;
     rate = std::isnan(rate) ? 0.0 : rate;

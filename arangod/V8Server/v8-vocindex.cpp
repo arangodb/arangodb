@@ -275,7 +275,6 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   bool allowSystem = VelocyPackHelper::getBooleanValue(
       propSlice, StaticStrings::DataSourceSystem, false);
 
-  v8::Handle<v8::Value> result;
   std::shared_ptr<LogicalCollection> coll;
   OperationOptions options(ExecContext::current());
   auto res = methods::Collections::create(
@@ -286,13 +285,14 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
       propSlice,                      // collection properties
       createWaitsForSyncReplication,  // replication wait flag
       enforceReplicationFactor,
-      false,  // is new Database?, here always false
+      /*isNewDatabase*/ false,  // here always false
       coll, allowSystem);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
+  v8::Handle<v8::Value> result;
   if (coll) {
     result = WrapCollection(isolate, coll);
   }

@@ -276,6 +276,7 @@ struct LogCurrentSupervision {
   std::optional<uint64_t> targetVersion;
 
   auto toVelocyPack(VPackBuilder&) const -> void;
+  static auto fromVelocyPack(velocypack::Slice) -> LogCurrentSupervision;
 
   LogCurrentSupervision() = default;
   LogCurrentSupervision(from_velocypack_t, VPackSlice slice);

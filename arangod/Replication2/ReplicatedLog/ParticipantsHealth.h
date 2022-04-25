@@ -53,6 +53,9 @@ struct ParticipantsHealth {
     }
     return std::nullopt;
   }
+  auto contains(ParticipantId const& participant) const -> bool {
+    return _health.contains(participant);
+  }
 
   std::unordered_map<ParticipantId, ParticipantHealth> _health;
 };

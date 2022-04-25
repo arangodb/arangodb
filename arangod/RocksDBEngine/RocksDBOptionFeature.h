@@ -59,6 +59,7 @@ class RocksDBOptionFeature final : public ArangodFeature {
       RocksDBColumnFamilyManager::Family family, rocksdb::Options const& base,
       rocksdb::BlockBasedTableOptions const& tableBase) const;
 
+  uint64_t _transactionLockStripes;
   int64_t _transactionLockTimeout;
   std::string _walDirectory;
   uint64_t _totalWriteBufferSize;

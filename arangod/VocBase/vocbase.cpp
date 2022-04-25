@@ -734,22 +734,23 @@ bool TRI_vocbase_t::unregisterView(arangodb::LogicalView const& view) {
   return true;
 }
 
-/// @brief creates a new collection, worker function
+#ifndef USE_ENTERPRISE
 std::shared_ptr<arangodb::LogicalCollection>
-TRI_vocbase_t::createCollectionWorker(VPackSlice parameters) {
-  std::string const name = arangodb::basics::VelocyPackHelper::getStringValue(
-      parameters, StaticStrings::DataSourceName, "");
-  TRI_ASSERT(!name.empty());
+TRI_vocbase_t::createCollectionObject(arangodb::velocypack::Slice data,
+                                      bool isAStub) {
+  // every collection object on coordinators must be a stub
+  TRI_ASSERT(!ServerState::instance()->isCoordinator() || isAStub);
+  // collection objects on single servers must not be stubs
+  TRI_ASSERT(!ServerState::instance()->isSingleServer() || !isAStub);
 
-  // Try to create a new collection. This is not registered yet
-  auto collection =
-      std::make_shared<arangodb::LogicalCollection>(*this, parameters, false);
-
-  return persistCollection(collection);
+  return std::make_shared<LogicalCollection>(*this, data, isAStub);
 }
+#endif
 
-std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::persistCollection(
-    std::shared_ptr<arangodb::LogicalCollection>& collection) {
+void TRI_vocbase_t::persistCollection(
+    std::shared_ptr<arangodb::LogicalCollection> const& collection) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
   RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
   // reserve room for the new collection
@@ -772,8 +773,6 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::persistCollection(
 
     // Let's try to persist it.
     collection->persistPhysicalCollection();
-
-    return collection;
   } catch (...) {
     unregisterCollection(*collection);
     throw;
@@ -1245,6 +1244,27 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
 #endif
 }
 
+std::shared_ptr<arangodb::LogicalCollection>
+TRI_vocbase_t::createCollectionObjectForStorage(
+    arangodb::velocypack::Slice parameters) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  // augment collection parameters with storage-engine specific data
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+
+  VPackBuilder merged;
+  merged.openObject();
+  engine.addParametersForNewCollection(merged, parameters);
+  merged.close();
+
+  merged =
+      velocypack::Collection::merge(parameters, merged.slice(), true, false);
+  parameters = merged.slice();
+
+  // Try to create a new collection. This is not registered yet
+  return createCollectionObject(parameters, /*isAStub*/ false);
+}
+
 /// @brief creates a new collection from parameter set
 /// collection id (cid) is normally passed with a value of 0
 /// this means that the system will assign a new collection id automatically
@@ -1252,44 +1272,28 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
 /// but the functionality is not advertised
 std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
     arangodb::velocypack::Slice parameters) {
-  // check that the name does not contain any strange characters
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
   std::string const& dbName = _info.getName();
+  std::string name = VelocyPackHelper::getStringValue(
+      parameters, StaticStrings::DataSourceName, "");
 
-  std::string name;
-  bool valid = parameters.isObject();
-  if (valid) {
-    name = VelocyPackHelper::getStringValue(parameters,
-                                            StaticStrings::DataSourceName, "");
-    bool isSystem = VelocyPackHelper::getBooleanValue(
-        parameters, StaticStrings::DataSourceSystem, false);
-    bool extendedNames =
-        server().getFeature<DatabaseFeature>().extendedNamesForCollections();
-    valid =
-        CollectionNameValidator::isAllowedName(isSystem, extendedNames, name);
+  // validate collection parameters
+  Result res = validateCollectionParameters(parameters);
+  if (res.fail()) {
+    events::CreateCollection(dbName, name, res.errorNumber());
+    THROW_ARANGO_EXCEPTION(res);
   }
-
-  if (!valid) {
-    events::CreateCollection(dbName, name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-  }
-
-  // augment creation parameters
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-
-  VPackBuilder merge;
-  merge.openObject();
-  engine.addParametersForNewCollection(merge, parameters);
-  merge.close();
-
-  merge = velocypack::Collection::merge(parameters, merge.slice(), true, false);
-  parameters = merge.slice();
 
   try {
-    READ_LOCKER(readLocker, _inventoryLock);
-    auto collection = createCollectionWorker(parameters);
-    readLocker.unlock();
+    // Try to create a new collection. This is not registered yet
+    auto collection = createCollectionObjectForStorage(parameters);
 
-    TRI_ASSERT(collection != nullptr);
+    {
+      READ_LOCKER(readLocker, _inventoryLock);
+      persistCollection(collection);
+    }
+
     events::CreateCollection(dbName, name, TRI_ERROR_NO_ERROR);
 
     auto& df = server().getFeature<DatabaseFeature>();
@@ -1305,6 +1309,88 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollection(
     events::CreateCollection(dbName, name, TRI_ERROR_INTERNAL);
     throw;
   }
+}
+
+std::vector<std::shared_ptr<arangodb::LogicalCollection>>
+TRI_vocbase_t::createCollections(
+    arangodb::velocypack::Slice infoSlice,
+    bool allowEnterpriseCollectionsOnSingleServer) {
+  TRI_ASSERT(!allowEnterpriseCollectionsOnSingleServer ||
+             ServerState::instance()->isSingleServer());
+
+#ifndef USE_ENTERPRISE
+  if (allowEnterpriseCollectionsOnSingleServer) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "creating SmartGraph collections is not supported in this version");
+  }
+#endif
+
+  std::string const& dbName = _info.getName();
+
+  // first validate all collections
+  for (auto slice : VPackArrayIterator(infoSlice)) {
+    Result res = validateCollectionParameters(slice);
+    if (res.fail()) {
+      std::string name = VelocyPackHelper::getStringValue(
+          slice, StaticStrings::DataSourceName, "");
+      events::CreateCollection(dbName, name, res.errorNumber());
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  }
+
+  std::vector<std::shared_ptr<LogicalCollection>> collections;
+  collections.reserve(infoSlice.length());
+
+  // now create all collection objects
+  for (auto slice : VPackArrayIterator(infoSlice)) {
+    // collection object to be created
+    std::shared_ptr<LogicalCollection> col;
+
+    if (ServerState::instance()->isCoordinator()) {
+      // create a non-augmented collection object. on coordinators,
+      // we do not persist any data, so we can get away with a lightweight
+      // object (isAStub = true).
+      col = createCollectionObject(slice, /*isAStub*/ true);
+    } else {
+      // if we are not on a coordinator, we want to store the collection,
+      // so we augment the collection data with some storage-engine
+      // specific values
+      col = createCollectionObjectForStorage(slice);
+    }
+
+    TRI_ASSERT(col != nullptr);
+    collections.emplace_back(col);
+
+    // add SmartGraph sub-collections to collections if col is a
+    // SmartGraph edge collection that requires it.
+    addSmartGraphCollections(col, collections);
+  }
+
+  if (!ServerState::instance()->isCoordinator()) {
+    // if we are not on a coordinator, we want to store the collection
+    // objects for later lookups by name, guid etc. on a coordinator, this
+    // is not necessary here, because the collections are first created via
+    // the agency and stored there. they will later find their way to the
+    // coordinator again via the AgencyCache and ClusterInfo, which will
+    // create and register them using a separate codepath.
+    READ_LOCKER(readLocker, _inventoryLock);
+    for (auto& col : collections) {
+      persistCollection(col);
+    }
+  }
+
+  // audit-log all collections
+  for (auto& col : collections) {
+    events::CreateCollection(dbName, col->name(), TRI_ERROR_NO_ERROR);
+  }
+
+  auto& df = server().getFeature<DatabaseFeature>();
+  if (df.versionTracker() != nullptr) {
+    df.versionTracker()->track("create collection");
+  }
+
+  return collections;
 }
 
 /// @brief drops a collection
@@ -1371,6 +1457,55 @@ arangodb::Result TRI_vocbase_t::dropCollection(DataSourceId cid,
         std::chrono::microseconds(collectionStatusPollInterval()));
   }
 }
+
+arangodb::Result TRI_vocbase_t::validateCollectionParameters(
+    arangodb::velocypack::Slice parameters) {
+  if (!parameters.isObject()) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "collection parameters should be an object"};
+  }
+  // check that the name does not contain any strange characters
+  std::string name = VelocyPackHelper::getStringValue(
+      parameters, StaticStrings::DataSourceName, "");
+  bool isSystem = VelocyPackHelper::getBooleanValue(
+      parameters, StaticStrings::DataSourceSystem, false);
+  bool extendedNames =
+      server().getFeature<DatabaseFeature>().extendedNamesForCollections();
+  if (!CollectionNameValidator::isAllowedName(isSystem, extendedNames, name)) {
+    return {TRI_ERROR_ARANGO_ILLEGAL_NAME,
+            "illegal collection name '" + name + "'"};
+  }
+
+  TRI_col_type_e collectionType =
+      VelocyPackHelper::getNumericValue<TRI_col_type_e, int>(
+          parameters, StaticStrings::DataSourceType, TRI_COL_TYPE_DOCUMENT);
+
+  if (collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
+      collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
+    return {TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+            "invalid collection type for collection '" + name + "'"};
+  }
+
+  // needed for EE
+  return validateExtendedCollectionParameters(parameters);
+}
+
+#ifndef USE_ENTERPRISE
+void TRI_vocbase_t::addSmartGraphCollections(
+    std::shared_ptr<arangodb::LogicalCollection> const& /*collection*/,
+    std::vector<std::shared_ptr<arangodb::LogicalCollection>>& /*collections*/)
+    const {
+  // nothing to be done here. more in EE version
+}
+#endif
+
+#ifndef USE_ENTERPRISE
+arangodb::Result TRI_vocbase_t::validateExtendedCollectionParameters(
+    arangodb::velocypack::Slice) {
+  // nothing to be done here. more in EE version
+  return {};
+}
+#endif
 
 /// @brief renames a view
 arangodb::Result TRI_vocbase_t::renameView(DataSourceId cid,

@@ -59,7 +59,7 @@ class MetricsFeature final : public ArangodFeature {
     return std::static_pointer_cast<typename MetricBuilder::MetricT>(
         doAdd(builder));
   }
-  Metric* get(MetricKey const& key);
+  Metric* get(MetricKeyView const& key);
   bool remove(Builder const& builder);
 
   void toPrometheus(std::string& result) const;
@@ -87,7 +87,7 @@ class MetricsFeature final : public ArangodFeature {
   mutable std::shared_mutex _mutex;
 
   // TODO(MBkkt) abseil btree map? or hashmap<name, hashmap<labels, Metric>>?
-  std::map<MetricKey, std::shared_ptr<Metric>> _registry;
+  std::map<MetricKeyView, std::shared_ptr<Metric>> _registry;
 
   containers::FlatHashMap<std::string_view, std::unique_ptr<IBatch>> _batch;
 

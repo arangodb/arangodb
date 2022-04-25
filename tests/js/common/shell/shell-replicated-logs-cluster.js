@@ -26,51 +26,9 @@
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const _ = require('lodash');
-const internal = require("internal");
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
 const database = "replication2_test_db";
-
-const getLeaderStatus = function(id) {
-  let status = db._replicatedLog(id).status();
-  const leaderId = status.leaderId;
-  if (leaderId === undefined) {
-    console.info(`leader not available for replicated log ${id}`);
-    return null;
-  }
-  if (status.participants === undefined || status.participants[leaderId] === undefined) {
-    console.info(`participants status not available for replicated log ${id}`);
-    return null;
-  }
-  const leaderResponse = status.participants[leaderId].response;
-  if (leaderResponse === undefined || leaderResponse.role !== "leader") {
-    console.info(`leader not available for replicated log ${id}`);
-    return null;
-  }
-  if (!leaderResponse.leadershipEstablished) {
-    console.info(`leadership not yet established`);
-    return null;
-  }
-  return status.participants[leaderId].response;
-};
-
-const waitForLeader = function (id) {
-  while (true) {
-    try {
-      let status = getLeaderStatus(id);
-      if (status !== null) {
-        break;
-      }
-    } catch (err) {
-      if (err.errorNum !== ERRORS.ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED.code &&
-          err.errorNum !== ERRORS.ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND.code) {
-        throw err;
-      }
-    }
-
-    internal.sleep(1);
-  }
-};
 
 const {setUpAll, tearDownAll} = (function () {
   let previousDatabase, databaseExisted = true;
@@ -93,10 +51,8 @@ const {setUpAll, tearDownAll} = (function () {
   };
 }());
 
-function ReplicatedLogsSuite () {
+function ReplicatedLogsCreateSuite() {
   'use strict';
-
-  const logId = 12;
   const config = {
     replicationFactor: 3,
     writeConcern: 2,
@@ -106,28 +62,30 @@ function ReplicatedLogsSuite () {
 
   return {
     setUpAll, tearDownAll,
-    setUp : function () {},
-    tearDown : function () {},
 
-    testCreateAndDropReplicatedLog : function() {
-      const logSpec = {id: logId, config: config};
-      const log = db._createReplicatedLog(logSpec);
+    testCreateAndDropReplicatedLog: function () {
+      const logId = 12;
+      const log = db._createReplicatedLog({id: logId, config});
 
       assertEqual(log.id(), logId);
-      waitForLeader(logId);
       assertEqual(db._replicatedLog(logId).id(), logId);
       log.drop();
       try {
         db._replicatedLog(logId);
         fail();
-      } catch(err) {
+      } catch (err) {
         assertEqual(err.errorNum, ERRORS.ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND.code);
       }
-    }
+    },
+
+    testCreateNoId: function () {
+      const log = db._createReplicatedLog({config});
+      assertEqual(log.id(), db._replicatedLog(log.id()).id());
+    },
   };
 }
 
-function ReplicatedLogsWriteSuite () {
+function ReplicatedLogsWriteSuite() {
   'use strict';
 
   const config = {
@@ -137,30 +95,42 @@ function ReplicatedLogsWriteSuite () {
     waitForSync: true
   };
 
-  const getNextLogId = (function () {
-    let id = 13;
-    return function () {
-      return id++;
-    };
-  })();
+  let log = null;
 
-  let logId = 0;
+  const getLeaderStatus = function () {
+    let status = log.status();
+    const leaderId = status.leaderId;
+    if (leaderId === undefined) {
+      console.info(`leader not available for replicated log ${log.id()}`);
+      return null;
+    }
+    if (status.participants === undefined || status.participants[leaderId] === undefined) {
+      console.info(`participants status not available for replicated log ${log.id()}`);
+      return null;
+    }
+    const leaderResponse = status.participants[leaderId].response;
+    if (leaderResponse === undefined || leaderResponse.role !== "leader") {
+      console.info(`leader not available for replicated log ${log.id()}`);
+      return null;
+    }
+    if (!leaderResponse.leadershipEstablished) {
+      console.info(`leadership not yet established`);
+      return null;
+    }
+    return status.participants[leaderId].response;
+  };
 
   return {
     setUpAll, tearDownAll,
     setUp: function () {
-      logId = getNextLogId();
-      const logSpec = {id: logId, config: config};
-      const log = db._createReplicatedLog(logSpec);
-      waitForLeader(logId);
+      log = db._createReplicatedLog({config});
     },
     tearDown: function () {
-      db._replicatedLog(logId).drop();
+      db._replicatedLog(log.id()).drop();
     },
 
     testStatus: function () {
-      let log = db._replicatedLog(logId);
-      let leaderStatus = getLeaderStatus(logId);
+      let leaderStatus = getLeaderStatus();
       assertEqual(leaderStatus.local.commitIndex, 1);
       let globalStatus = log.globalStatus();
       assertEqual(globalStatus.specification.source, "RemoteAgency");
@@ -169,13 +139,12 @@ function ReplicatedLogsWriteSuite () {
       // Make sure that coordinator/status and coordinator/global-status return the same thing.
       // We should avoid comparing timestamps, so comparing only the keys of these objects will suffice.
       assertEqual(Object.keys(status).sort(), Object.keys(globalStatus).sort());
-      
+
       let localGlobalStatus = log.globalStatus({useLocalCache: true});
       assertEqual(localGlobalStatus.specification.source, "LocalCache");
     },
 
-    testInsert : function() {
-      let log = db._replicatedLog(logId);
+    testInsert: function () {
       let index = 0;
       for (let i = 0; i < 100; i++) {
         let result = log.insert({foo: i});
@@ -185,12 +154,11 @@ function ReplicatedLogsWriteSuite () {
         assertTrue(next > index);
         index = next;
       }
-      let leaderStatus = getLeaderStatus(logId);
+      let leaderStatus = getLeaderStatus();
       assertTrue(leaderStatus.local.commitIndex >= index);
     },
 
-    testMultiInsert : function() {
-      let log = db._replicatedLog(logId);
+    testMultiInsert: function () {
       let index = 0;
       for (let i = 0; i < 100; i += 3) {
         let result = log.multiInsert([{foo0: i}, {foo1: i + 1}, {foo2: i + 2}]);
@@ -204,12 +172,11 @@ function ReplicatedLogsWriteSuite () {
             indexes[1] < indexes[2]);
         index = indexes[indexes.length - 1];
       }
-      let leaderStatus = getLeaderStatus(logId);
+      let leaderStatus = getLeaderStatus();
       assertTrue(leaderStatus.local.commitIndex >= index);
     },
 
-    testHeadTail : function() {
-      const log = db._replicatedLog(logId);
+    testHeadTail: function () {
       try {
         let index = 0;
         for (let i = 0; i < 100; i++) {
@@ -246,8 +213,7 @@ function ReplicatedLogsWriteSuite () {
       }
     },
 
-    testSlice : function() {
-      let log = db._replicatedLog(logId);
+    testSlice: function () {
       let index = 0;
       for (let i = 0; i < 100; i++) {
         let next = log.insert({foo: i}).index;
@@ -265,28 +231,25 @@ function ReplicatedLogsWriteSuite () {
       }
     },
 
-    testAt : function() {
-      const log = db._replicatedLog(logId);
+    testAt: function () {
       const index = log.insert({foo: "bar"}).index;
       let s = log.at(index);
       assertEqual(s.logIndex, index);
       assertEqual(s.payload.foo, "bar");
     },
 
-    testRelease : function() {
-      const log = db._replicatedLog(logId);
+    testRelease: function () {
       for (let i = 0; i < 2000; i++) {
         log.insert({foo: i});
       }
-      let s1 = getLeaderStatus(logId);
+      let s1 = getLeaderStatus();
       assertEqual(s1.local.firstIndex, 1);
       log.release(1500);
-      let s2 = getLeaderStatus(logId);
+      let s2 = getLeaderStatus();
       assertEqual(s2.local.firstIndex, 1501);
     },
 
-    testPoll : function() {
-      let log = db._replicatedLog(logId);
+    testPoll: function () {
       let index = 0;
       for (let i = 0; i < 100; i++) {
         let next = log.insert({foo: i}).index;
@@ -306,7 +269,7 @@ function ReplicatedLogsWriteSuite () {
   };
 }
 
-jsunity.run(ReplicatedLogsSuite);
+jsunity.run(ReplicatedLogsCreateSuite);
 jsunity.run(ReplicatedLogsWriteSuite);
 
 return jsunity.done();

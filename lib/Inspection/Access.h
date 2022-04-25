@@ -30,10 +30,12 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <variant>
 
 #include <velocypack/Value.h>
 
 #include "Inspection/detail/traits.h"
+#include "velocypack/Slice.h"
 
 namespace arangodb::inspection {
 
@@ -290,6 +292,22 @@ struct Access<std::unique_ptr<T, Deleter>>
 template<class T>
 struct Access<std::shared_ptr<T>> : OptionalAccess<std::shared_ptr<T>> {
   static auto make() { return std::make_shared<T>(); }
+};
+
+template<>
+struct Access<std::monostate> : AccessBase<std::monostate> {
+  template<class Inspector>
+  static auto apply(Inspector& f, std::monostate&) {
+    if constexpr (Inspector::isLoading) {
+      if (!f.slice().isEmptyObject()) {
+        return Status{"Expected empty object"};
+      }
+      return Status{};
+    } else {
+      f.builder().add(VPackSlice::emptyObjectSlice());
+      return Status::Success{};
+    }
+  }
 };
 
 template<class T, class StorageT>

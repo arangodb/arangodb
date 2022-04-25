@@ -157,8 +157,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     // without any transformation!
   }
 
- public:
-  char const* typeName() const override {
+  std::string_view typeName() const noexcept final {
     return "rocksdb-unique-index-iterator";
   }
 
@@ -197,8 +196,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     return true;
   }
 
-  /// @brief Get the next limit many element in the index
-  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, uint64_t limit) override {
     return nextImplementation(
         [&cb](VPackArrayIterator it) {
           LocalDocumentId documentId{it.value().getNumericValue<uint64_t>()};
@@ -211,7 +209,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
         limit);
   }
 
-  bool nextCoveringImpl(CoveringCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(CoveringCallback const& cb, uint64_t limit) override {
     return nextImplementation(
         [&cb, this](VPackArrayIterator it) {
           LocalDocumentId documentId{it.value().getNumericValue<uint64_t>()};
@@ -242,7 +240,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   }
 
   /// @brief Reset the cursor
-  void resetImpl() override {
+  void resetImpl() final {
     TRI_ASSERT(_trx->state()->isRunning());
     _done = false;
   }
@@ -250,7 +248,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
  private:
   template<typename F1, typename F2>
   inline bool nextImplementation(F1&& handleCacheEntry, F2&& handleRocksDBValue,
-                                 size_t limit) {
+                                 uint64_t limit) {
     TRI_ASSERT(_trx->state()->isRunning());
 
     if (limit == 0 || _done) {
@@ -350,7 +348,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
 };
 
 /// @brief Iterator structure for RocksDB. We require a start and stop node
-template<bool unique, bool reverse>
+template<bool unique, bool reverse, bool mustCheckBounds>
 class RocksDBVPackIndexIterator final : public IndexIterator {
  private:
   friend class RocksDBVPackIndex;
@@ -375,9 +373,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         _bounds(std::move(bounds)),
         _rangeBound(reverse ? _bounds.start() : _bounds.end()),
         _format(format),
-        _mustCheckBounds(
-            RocksDBTransactionState::toState(trx)->iteratorMustCheckBounds(
-                collection->id(), readOwnWrites)),
         _mustSeek(true) {
     TRI_ASSERT(index->columnFamily() ==
                RocksDBColumnFamilyManager::get(
@@ -410,8 +405,9 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     }
   }
 
- public:
-  char const* typeName() const override { return "rocksdb-index-iterator"; }
+  std::string_view typeName() const noexcept final {
+    return "rocksdb-index-iterator";
+  }
 
   /// @brief index does support rearming
   bool canRearm() const override { return true; }
@@ -495,7 +491,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   }
 
   /// @brief Get the next limit many elements in the index
-  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
+  bool nextImpl(LocalDocumentIdCallback const& cb, uint64_t limit) override {
     return nextImplementation(
         [&cb, this]() {
           // read LocalDocumentId
@@ -528,7 +524,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         limit);
   }
 
-  bool nextCoveringImpl(CoveringCallback const& cb, size_t limit) override {
+  bool nextCoveringImpl(CoveringCallback const& cb, uint64_t limit) override {
     return nextImplementation(
         [&cb, this]() {
           // read LocalDocumentId
@@ -609,11 +605,11 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     }
 
     // validate that Iterator is in a good shape and hasn't failed
-    arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+    rocksutils::checkIteratorStatus(*_iterator);
   }
 
   /// @brief Reset the cursor
-  void resetImpl() override {
+  void resetImpl() final {
     TRI_ASSERT(_trx->state()->isRunning());
     _mustSeek = true;
 
@@ -655,7 +651,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   /// internal retrieval loop
   template<typename F1, typename F2>
   inline bool nextImplementation(F1&& handleIndexEntry,
-                                 F2&& consumeIteratorValue, size_t limit) {
+                                 F2&& consumeIteratorValue, uint64_t limit) {
     if (_cache) {
       while (true) {
         // this loop will only be left by return statements
@@ -711,7 +707,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
           // have returned false
           TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
           // validate that Iterator is in a good shape and hasn't failed
-          arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+          rocksutils::checkIteratorStatus(*_iterator);
 
           // store in in-memory cache that we found nothing.
           storeInCache(VPackSlice::emptyArraySlice());
@@ -735,12 +731,12 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     ensureIterator();
     TRI_ASSERT(_iterator != nullptr);
 
-    if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+    if (!_iterator->Valid() || outOfRange() || ADB_UNLIKELY(limit == 0)) {
       // No limit no data, or we are actually done. The last call should have
       // returned false
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
       // validate that Iterator is in a good shape and hasn't failed
-      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+      rocksutils::checkIteratorStatus(*_iterator);
 
       // no data found
       return false;
@@ -754,7 +750,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
       if (!advance()) {
         // validate that Iterator is in a good shape and hasn't failed
-        arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+        rocksutils::checkIteratorStatus(*_iterator);
         return false;
       }
 
@@ -795,7 +791,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
       if (!advance()) {
         // validate that Iterator is in a good shape and hasn't failed
-        arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+        rocksutils::checkIteratorStatus(*_iterator);
         break;
       }
     }
@@ -808,7 +804,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
   // look up a value in the in-memory hash cache
   template<typename F>
-  inline CacheLookupResult lookupInCache(F&& cb, size_t& limit) {
+  inline CacheLookupResult lookupInCache(F&& cb, uint64_t& limit) {
     TRI_ASSERT(_cache != nullptr);
 
     // key too large to be cached. should almost never happen
@@ -881,14 +877,15 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     // the bounds checks for the base iterator (from the snapshot), but not for
     // the delta iterator (from the current transaction), so we still have to
     // carry out the checks ourselves.
-    if (!_mustCheckBounds) {
-      return false;
-    }
-
-    if constexpr (reverse) {
-      return _cmp->Compare(_iterator->key(), _rangeBound) < 0;
+    if constexpr (mustCheckBounds) {
+      int res = _cmp->Compare(_iterator->key(), _rangeBound);
+      if constexpr (reverse) {
+        return res < 0;
+      } else {
+        return res > 0;
+      }
     } else {
-      return _cmp->Compare(_iterator->key(), _rangeBound) > 0;
+      return false;
     }
   }
 
@@ -956,7 +953,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   // used for iterate_upper_bound iterate_lower_bound
   rocksdb::Slice _rangeBound;
   RocksDBVPackIndexSearchValueFormat const _format;
-  bool const _mustCheckBounds;
   bool _mustSeek;
 };
 
@@ -1886,16 +1882,30 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIteratorFromBounds(
   TRI_ASSERT(!bounds.empty());
   TRI_ASSERT(format != RocksDBVPackIndexSearchValueFormat::kDetect);
 
+  bool mustCheckBounds =
+      RocksDBTransactionState::toState(trx)->iteratorMustCheckBounds(
+          _collection.id(), readOwnWrites);
+
   if (unique()) {
     // unique index
     if (reverse) {
       // reverse version
-      return std::make_unique<RocksDBVPackIndexIterator<true, true>>(
+      if (mustCheckBounds) {
+        return std::make_unique<RocksDBVPackIndexIterator<true, true, true>>(
+            &_collection, trx, this, std::move(bounds),
+            useCache ? _cache : nullptr, readOwnWrites, format);
+      }
+      return std::make_unique<RocksDBVPackIndexIterator<true, true, false>>(
           &_collection, trx, this, std::move(bounds),
           useCache ? _cache : nullptr, readOwnWrites, format);
     }
     // forward version
-    return std::make_unique<RocksDBVPackIndexIterator<true, false>>(
+    if (mustCheckBounds) {
+      return std::make_unique<RocksDBVPackIndexIterator<true, false, true>>(
+          &_collection, trx, this, std::move(bounds),
+          useCache ? _cache : nullptr, readOwnWrites, format);
+    }
+    return std::make_unique<RocksDBVPackIndexIterator<true, false, false>>(
         &_collection, trx, this, std::move(bounds), useCache ? _cache : nullptr,
         readOwnWrites, format);
   }
@@ -1903,12 +1913,22 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::buildIteratorFromBounds(
   // non-unique index
   if (reverse) {
     // reverse version
-    return std::make_unique<RocksDBVPackIndexIterator<false, true>>(
+    if (mustCheckBounds) {
+      return std::make_unique<RocksDBVPackIndexIterator<false, true, true>>(
+          &_collection, trx, this, std::move(bounds),
+          useCache ? _cache : nullptr, readOwnWrites, format);
+    }
+    return std::make_unique<RocksDBVPackIndexIterator<false, true, false>>(
         &_collection, trx, this, std::move(bounds), useCache ? _cache : nullptr,
         readOwnWrites, format);
   }
   // forward version
-  return std::make_unique<RocksDBVPackIndexIterator<false, false>>(
+  if (mustCheckBounds) {
+    return std::make_unique<RocksDBVPackIndexIterator<false, false, true>>(
+        &_collection, trx, this, std::move(bounds), useCache ? _cache : nullptr,
+        readOwnWrites, format);
+  }
+  return std::make_unique<RocksDBVPackIndexIterator<false, false, false>>(
       &_collection, trx, this, std::move(bounds), useCache ? _cache : nullptr,
       readOwnWrites, format);
 }

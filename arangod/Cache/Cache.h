@@ -109,6 +109,14 @@ class Cache : public std::enable_shared_from_this<Cache> {
   [[nodiscard]] std::uint64_t usage() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Returns the current allocated size and data memory usage for this
+  /// cache in bytes. The values are fetched under the same lock, so they will
+  /// be consistent.
+  //////////////////////////////////////////////////////////////////////////////
+  [[nodiscard]] std::pair<std::uint64_t, std::uint64_t> sizeAndUsage()
+      const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Gives hint to attempt to preallocate space for an incoming load.
   ///
   /// The parameter specifies an expected number of elements to be inserted.

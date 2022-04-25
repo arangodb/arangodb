@@ -36,6 +36,8 @@
 
 #include "Basics/StaticStrings.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/StateMachines/Prototype/PrototypeLeaderState.h"
+#include "Replication2/StateMachines/Prototype/PrototypeFollowerState.h"
 #include "Replication2/StateMachines/Prototype/PrototypeStateMethods.h"
 
 using namespace arangodb::replication2;
@@ -180,20 +182,30 @@ static void JS_WriteInternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("_writeInternal(kv, [options])");
   }
 
-  VPackBuilder builder;
-  TRI_V8ToVPack(isolate, builder, args[0], false, false);
   std::unordered_map<std::string, std::string> kvs;
-  for (auto const& [k, v] : VPackObjectIterator(builder.slice())) {
-    kvs[k.copyString()] = v.copyString();
+  {
+    VPackBuilder builder;
+    TRI_V8ToVPack(isolate, builder, args[0], false, false);
+    for (auto const& [k, v] : VPackObjectIterator(builder.slice())) {
+      kvs[k.copyString()] = v.copyString();
+    }
   }
 
-  auto const result =
-      PrototypeStateMethods::createInstance(vocbase)->insert(id, kvs).get();
-  if (result.fail()) {
-    TRI_V8_THROW_EXCEPTION(result.result());
+  auto options = PrototypeStateMethods::PrototypeWriteOptions{};
+  if (args.Length() > 1) {
+    VPackBuilder builder;
+    builder.clear();
+    TRI_V8ToVPack(isolate, builder, args[1], false, false);
+    options = arangodb::velocypack::deserialize<
+        PrototypeStateMethods::PrototypeWriteOptions>(builder.slice());
   }
+
+  auto const logIndex = PrototypeStateMethods::createInstance(vocbase)
+                            ->insert(id, kvs, options)
+                            .get();
+
   VPackBuilder response;
-  response.add(VPackValue(result->value));
+  response.add(VPackValue(logIndex));
   TRI_V8_RETURN(TRI_VPackToV8(isolate, response.slice()));
 
   TRI_V8_TRY_CATCH_END
@@ -212,7 +224,7 @@ static void JS_GetSnapshot(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (args.Length() > 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("getSnapshot([waitForAppliedIndex])");
+    TRI_V8_THROW_EXCEPTION_USAGE("getSnapshot([waitForIndex])");
   }
 
   auto waitForIndex = LogIndex{0};
@@ -266,12 +278,31 @@ static void JS_ReadInternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     keys.emplace_back(key.copyString());
   }
 
-  auto const result =
-      PrototypeStateMethods::createInstance(vocbase)->get(id, keys).get();
+  if (args.Length() > 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("get([waitForApplied])");
+  }
+
+  auto waitForApplied = LogIndex{0};
+  if (args.Length() > 1) {
+    builder.clear();
+    TRI_V8ToVPack(isolate, builder, args[1], false, false);
+    auto const options = builder.slice();
+    if (auto slice = options.get("waitForApplied"); !slice.isNone()) {
+      waitForApplied = slice.extract<LogIndex>();
+    }
+  }
+
+  auto const result = PrototypeStateMethods::createInstance(vocbase)
+                          ->get(id, keys, waitForApplied)
+                          .get();
+  if (result.fail()) {
+    TRI_V8_THROW_EXCEPTION(result.result());
+  }
+
   VPackBuilder response;
   {
     VPackObjectBuilder ob(&response);
-    for (auto const& [k, v] : result) {
+    for (auto const& [k, v] : result.get()) {
       response.add(k, v);
     }
   }

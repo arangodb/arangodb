@@ -75,8 +75,8 @@ function chaos (options) {
   
   testCases = tu.splitBuckets(options, testCases);
   
-  let handlers = {
-    preRun: (test) => {
+  class chaosRunner extends tu.runLocalInArangoshRunner {
+    preRun(test) {
       global.currentTestConfig = undefined;
       const configs = testCasesWithConfigs[test];
       if (Array.isArray(configs)) {
@@ -88,7 +88,7 @@ function chaos (options) {
     }
   };
 
-  return tu.performTests(options, testCases, 'chaos', tu.runInLocalArangosh, {}, handlers);
+  return new chaosRunner(options, 'chaos', {}).run(testCases);
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {

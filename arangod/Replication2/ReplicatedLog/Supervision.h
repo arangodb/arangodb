@@ -59,8 +59,8 @@ auto getParticipantWithUpdatedFlags(
     ParticipantId const& currentTermLeader)
     -> std::optional<std::pair<ParticipantId, ParticipantFlags>>;
 
-auto computeReason(LogCurrentLocalState const& status, bool healthy,
-                   bool excluded, LogTerm term)
+auto computeReason(std::optional<LogCurrentLocalState> const& maybeStatus,
+                   bool healthy, bool excluded, LogTerm term)
     -> LogCurrentSupervisionElection::ErrorCode;
 
 auto runElectionCampaign(LogCurrentLocalStates const& states,
