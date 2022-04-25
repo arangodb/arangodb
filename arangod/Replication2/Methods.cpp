@@ -606,8 +606,7 @@ struct ReplicatedLogMethodsCoordinator final
 
     network::RequestOptions opts;
     opts.database = vocbase.name();
-    opts.param(StaticStrings::WaitForSyncString,
-               waitForSync ? "true" : "false");
+    opts.param(StaticStrings::WaitForSyncString, waitForSync);
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Post, path,
                                 builder.bufferRef(), opts)
@@ -641,9 +640,8 @@ struct ReplicatedLogMethodsCoordinator final
 
     network::RequestOptions opts;
     opts.database = vocbase.name();
-    opts.param(StaticStrings::WaitForSyncString,
-               waitForSync ? "true" : "false");
-    opts.param(StaticStrings::DontWaitForCommit, "true");
+    opts.param(StaticStrings::WaitForSyncString, waitForSync);
+    opts.param(StaticStrings::DontWaitForCommit, true);
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Post, path,
                                 payload.copyBuffer(), opts)

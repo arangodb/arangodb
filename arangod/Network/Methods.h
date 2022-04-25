@@ -34,6 +34,7 @@
 
 #include <chrono>
 #include <memory>
+#include <type_traits>
 
 namespace arangodb {
 namespace velocypack {
@@ -133,8 +134,16 @@ struct RequestOptions {
 
   template<typename K, typename V>
   RequestOptions& param(K&& key, V&& val) {
+    static_assert(!std::is_same_v<V, bool>, "invalid value type");
     this->parameters.insert_or_assign(std::forward<K>(key),
                                       std::forward<V>(val));
+    return *this;
+  }
+
+  template<typename K>
+  RequestOptions& param(K&& key, bool val) {
+    this->parameters.insert_or_assign(std::forward<K>(key),
+                                      val ? "true" : "false");
     return *this;
   }
 };

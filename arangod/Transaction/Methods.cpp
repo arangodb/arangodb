@@ -2076,8 +2076,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       network::RequestOptions reqOpts;
       reqOpts.database = vocbase().name();
       reqOpts.timeout = network::Timeout(600);
-      reqOpts.param(StaticStrings::Compact,
-                    (options.truncateCompact ? "true" : "false"));
+      reqOpts.param(StaticStrings::Compact, options.truncateCompact);
 
       for (auto const& f : *followers) {
         // check following term id for the follower:
@@ -2521,7 +2520,7 @@ Future<Result> Methods::replicateOperations(
 
   network::RequestOptions reqOpts;
   reqOpts.database = vocbase().name();
-  reqOpts.param(StaticStrings::IsRestoreString, "true");
+  reqOpts.param(StaticStrings::IsRestoreString, true);
   std::string url = "/_api/document/";
   url.append(arangodb::basics::StringUtils::urlEncode(collection->name()));
   if (operation != TRI_VOC_DOCUMENT_OPERATION_INSERT && !value.isArray()) {
@@ -2559,10 +2558,9 @@ Future<Result> Methods::replicateOperations(
         }
         if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
           // extra parameters only required for update
-          reqOpts.param(StaticStrings::KeepNullString,
-                        options.keepNull ? "true" : "false");
+          reqOpts.param(StaticStrings::KeepNullString, options.keepNull);
           reqOpts.param(StaticStrings::MergeObjectsString,
-                        options.mergeObjects ? "true" : "false");
+                        options.mergeObjects);
         }
       }
       break;

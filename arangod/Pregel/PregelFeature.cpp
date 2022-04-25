@@ -585,8 +585,8 @@ Result PregelFeature::toVelocyPack(TRI_vocbase_t& vocbase,
     network::RequestOptions options;
     options.timeout = network::Timeout(30.0);
     options.database = vocbase.name();
-    options.param("local", "true");
-    options.param("all", allDatabases ? "true" : "false");
+    options.param("local", true);
+    options.param("all", allDatabases);
 
     std::string const url = "/_api/control_pregel";
 

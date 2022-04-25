@@ -148,8 +148,8 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
     network::RequestOptions options;
     options.timeout = network::Timeout(30.0);
     options.database = vocbase.name();
-    options.param("local", "true");
-    options.param("all", allDatabases ? "true" : "false");
+    options.param("local", true);
+    options.param("all", allDatabases);
 
     std::string const url = std::string("/_api/query/") +
                             (mode == QueriesMode::Slow ? "slow" : "current");
@@ -250,8 +250,8 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
     network::RequestOptions options;
     options.timeout = network::Timeout(30.0);
     options.database = vocbase.name();
-    options.param("local", "true");
-    options.param("all", allDatabases ? "true" : "false");
+    options.param("local", true);
+    options.param("all", allDatabases);
 
     VPackBuffer<uint8_t> body;
 

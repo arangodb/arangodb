@@ -378,7 +378,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             // sync job status from the maintenance. note older versions will
             // simply ignore the URL parameter and will not report the sync
             // status. the code here is prepared for this.
-            reqOpts.param("checkSyncStatus", "true");
+            reqOpts.param("checkSyncStatus", true);
             std::vector<network::FutureRes> futures;
             futures.reserve(serversToAsk.size());
             for (auto const& server : serversToAsk) {

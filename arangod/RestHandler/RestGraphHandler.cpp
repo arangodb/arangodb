@@ -216,7 +216,7 @@ Result RestGraphHandler::edgeSetsAction(Graph& graph) {
 }
 
 Result RestGraphHandler::edgeSetAction(Graph& graph,
-                                       const std::string& edgeDefinitionName) {
+                                       std::string const& edgeDefinitionName) {
   switch (request()->requestType()) {
     case RequestType::POST:
       return edgeActionCreate(graph, edgeDefinitionName);
@@ -230,7 +230,7 @@ Result RestGraphHandler::edgeSetAction(Graph& graph,
 }
 
 Result RestGraphHandler::vertexSetAction(
-    Graph& graph, const std::string& vertexCollectionName) {
+    Graph& graph, std::string const& vertexCollectionName) {
   switch (request()->requestType()) {
     case RequestType::POST:
       return vertexActionCreate(graph, vertexCollectionName);
@@ -243,8 +243,8 @@ Result RestGraphHandler::vertexSetAction(
 }
 
 Result RestGraphHandler::vertexAction(Graph& graph,
-                                      const std::string& vertexCollectionName,
-                                      const std::string& vertexKey) {
+                                      std::string const& vertexCollectionName,
+                                      std::string const& vertexKey) {
   switch (request()->requestType()) {
     case RequestType::GET: {
       vertexActionRead(graph, vertexCollectionName, vertexKey);
@@ -262,8 +262,8 @@ Result RestGraphHandler::vertexAction(Graph& graph,
 }
 
 Result RestGraphHandler::edgeAction(Graph& graph,
-                                    const std::string& edgeDefinitionName,
-                                    const std::string& edgeKey) {
+                                    std::string const& edgeDefinitionName,
+                                    std::string const& edgeKey) {
   switch (request()->requestType()) {
     case RequestType::GET:
       edgeActionRead(graph, edgeDefinitionName, edgeKey);
@@ -552,8 +552,8 @@ void RestGraphHandler::generateResultMergedWithObject(
 
 // TODO this is nearly exactly the same as vertexActionRead. reuse somehow?
 void RestGraphHandler::edgeActionRead(Graph& graph,
-                                      const std::string& definitionName,
-                                      const std::string& key) {
+                                      std::string const& definitionName,
+                                      std::string const& key) {
   // check for an etag
   bool isValidRevision;
   RevisionId ifNoneRid = extractRevision("if-none-match", isValidRevision);
@@ -586,7 +586,7 @@ void RestGraphHandler::edgeActionRead(Graph& graph,
 }
 
 std::unique_ptr<Graph> RestGraphHandler::getGraph(
-    const std::string& graphName) {
+    std::string const& graphName) {
   auto graphResult = _graphManager.lookupGraphByName(graphName);
   if (graphResult.fail()) {
     THROW_ARANGO_EXCEPTION(std::move(graphResult).result());
@@ -601,8 +601,8 @@ std::unique_ptr<Graph> RestGraphHandler::getGraph(
 // contains the old value in the field "old". This is not documented in
 // HTTP/Gharial!
 Result RestGraphHandler::edgeActionRemove(Graph& graph,
-                                          const std::string& definitionName,
-                                          const std::string& key) {
+                                          std::string const& definitionName,
+                                          std::string const& key) {
   bool waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
 
@@ -639,65 +639,65 @@ void RestGraphHandler::addEtagHeader(velocypack::Slice rev) {
 }
 
 Result RestGraphHandler::vertexActionUpdate(graph::Graph& graph,
-                                            const std::string& collectionName,
-                                            const std::string& key) {
+                                            std::string const& collectionName,
+                                            std::string const& key) {
   return vertexModify(graph, collectionName, key, true);
 }
 
 Result RestGraphHandler::vertexActionReplace(graph::Graph& graph,
-                                             const std::string& collectionName,
-                                             const std::string& key) {
+                                             std::string const& collectionName,
+                                             std::string const& key) {
   return vertexModify(graph, collectionName, key, false);
 }
 
 Result RestGraphHandler::vertexActionCreate(graph::Graph& graph,
-                                            const std::string& collectionName) {
+                                            std::string const& collectionName) {
   return vertexCreate(graph, collectionName);
 }
 
 Result RestGraphHandler::edgeActionUpdate(graph::Graph& graph,
-                                          const std::string& collectionName,
-                                          const std::string& key) {
+                                          std::string const& collectionName,
+                                          std::string const& key) {
   return edgeModify(graph, collectionName, key, true);
 }
 
 Result RestGraphHandler::edgeActionReplace(graph::Graph& graph,
-                                           const std::string& collectionName,
-                                           const std::string& key) {
+                                           std::string const& collectionName,
+                                           std::string const& key) {
   return edgeModify(graph, collectionName, key, false);
 }
 
 Result RestGraphHandler::edgeModify(graph::Graph& graph,
-                                    const std::string& collectionName,
-                                    const std::string& key, bool isPatch) {
+                                    std::string const& collectionName,
+                                    std::string const& key, bool isPatch) {
   return documentModify(graph, collectionName, key, isPatch, TRI_COL_TYPE_EDGE);
 }
 
 Result RestGraphHandler::edgeCreate(graph::Graph& graph,
-                                    const std::string& collectionName) {
+                                    std::string const& collectionName) {
   return documentCreate(graph, collectionName, TRI_COL_TYPE_EDGE);
 }
 
 Result RestGraphHandler::edgeActionCreate(graph::Graph& graph,
-                                          const std::string& collectionName) {
+                                          std::string const& collectionName) {
   return edgeCreate(graph, collectionName);
 }
 
 Result RestGraphHandler::vertexModify(graph::Graph& graph,
-                                      const std::string& collectionName,
-                                      const std::string& key, bool isPatch) {
+                                      std::string const& collectionName,
+                                      std::string const& key, bool isPatch) {
   return documentModify(graph, collectionName, key, isPatch,
                         TRI_COL_TYPE_DOCUMENT);
 }
 
 Result RestGraphHandler::vertexCreate(graph::Graph& graph,
-                                      const std::string& collectionName) {
+                                      std::string const& collectionName) {
   return documentCreate(graph, collectionName, TRI_COL_TYPE_DOCUMENT);
 }
 
 // /_api/gharial/{graph-name}/edge/{definition-name}
 Result RestGraphHandler::editEdgeDefinition(
-    graph::Graph& graph, const std::string& edgeDefinitionName) {
+    graph::Graph& graph, std::string const& edgeDefinitionName) {
   return modifyEdgeDefinition(graph, EdgeDefinitionAction::EDIT,
                               edgeDefinitionName);
 }
@@ -772,7 +772,7 @@ Result RestGraphHandler::modifyEdgeDefinition(graph::Graph& graph,
 
 Result RestGraphHandler::modifyVertexDefinition(
     graph::Graph& graph, VertexDefinitionAction action,
-    std::string vertexDefinitionName) {
+    std::string const& vertexDefinitionName) {
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
@@ -818,8 +818,9 @@ Result RestGraphHandler::modifyVertexDefinition(
 
   return Result();
 }
+
 Result RestGraphHandler::removeEdgeDefinition(
-    graph::Graph& graph, const std::string& edgeDefinitionName) {
+    graph::Graph& graph, std::string const& edgeDefinitionName) {
   return modifyEdgeDefinition(graph, EdgeDefinitionAction::REMOVE,
                               edgeDefinitionName);
 }
@@ -831,8 +832,8 @@ Result RestGraphHandler::removeEdgeDefinition(
 // TODO the document API also supports mergeObjects, silent and ignoreRevs;
 // should gharial, too?
 Result RestGraphHandler::documentModify(graph::Graph& graph,
-                                        const std::string& collectionName,
-                                        const std::string& key, bool isPatch,
+                                        std::string const& collectionName,
+                                        std::string const& key, bool isPatch,
                                         TRI_col_type_e colType) {
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
@@ -844,11 +845,9 @@ Result RestGraphHandler::documentModify(graph::Graph& graph,
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
   bool returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
   bool returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false);
-  // Note: the default here differs from the one in the RestDoumentHandler
   bool keepNull = _request->parsedValue(StaticStrings::KeepNullString, true);
 
   // extract the revision, if single document variant and header given:
-  std::unique_ptr<VPackBuilder> builder;
   auto maybeRev = handleRevision();
 
   auto ctx = createTransactionContext(AccessMode::Type::WRITE);
@@ -895,7 +894,7 @@ Result RestGraphHandler::documentModify(graph::Graph& graph,
       TRI_ASSERT(false);
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 Result RestGraphHandler::documentCreate(graph::Graph& graph,
@@ -950,8 +949,8 @@ Result RestGraphHandler::documentCreate(graph::Graph& graph,
 }
 
 Result RestGraphHandler::vertexActionRemove(graph::Graph& graph,
-                                            const std::string& collectionName,
-                                            const std::string& key) {
+                                            std::string const& collectionName,
+                                            std::string const& key) {
   bool waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
 
@@ -975,7 +974,7 @@ Result RestGraphHandler::vertexActionRemove(graph::Graph& graph,
                   result.slice().get(StaticStrings::Old),
                   *ctx->getVPackOptions());
 
-  return Result();
+  return {};
 }
 
 Result RestGraphHandler::graphActionReadGraphConfig(graph::Graph const& graph) {
@@ -986,7 +985,7 @@ Result RestGraphHandler::graphActionReadGraphConfig(graph::Graph const& graph) {
   builder.close();
   generateGraphConfig(builder.slice(), *ctx.getVPackOptions());
 
-  return Result();
+  return {};
 }
 
 Result RestGraphHandler::graphActionRemoveGraph(graph::Graph const& graph) {
@@ -1007,7 +1006,7 @@ Result RestGraphHandler::graphActionRemoveGraph(graph::Graph const& graph) {
   generateGraphRemoved(true, result.options.waitForSync,
                        *ctx.getVPackOptions());
 
-  return Result();
+  return {};
 }
 
 Result RestGraphHandler::graphActionCreateGraph() {
@@ -1046,7 +1045,7 @@ Result RestGraphHandler::graphActionCreateGraph() {
   generateCreatedGraphConfig(waitForSync, builder.slice(),
                              *ctx.getVPackOptions());
 
-  return Result();
+  return {};
 }
 
 Result RestGraphHandler::graphActionReadGraphs() {
@@ -1057,7 +1056,7 @@ Result RestGraphHandler::graphActionReadGraphs() {
 
   generateGraphConfig(builder.slice(), *ctx.getVPackOptions());
 
-  return Result();
+  return {};
 }
 
 Result RestGraphHandler::graphActionReadConfig(graph::Graph const& graph,
@@ -1077,7 +1076,7 @@ Result RestGraphHandler::graphActionReadConfig(graph::Graph const& graph,
 
   generateGraphConfig(builder.slice(), *ctx.getVPackOptions());
 
-  return Result();
+  return {};
 }
 
 RequestLane RestGraphHandler::lane() const { return RequestLane::CLIENT_SLOW; }

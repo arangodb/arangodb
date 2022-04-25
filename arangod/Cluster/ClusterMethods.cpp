@@ -1058,8 +1058,8 @@ futures::Future<OperationResult> checksumOnCoordinator(
   network::RequestOptions reqOpts;
   reqOpts.database = dbname;
   reqOpts.timeout = network::Timeout(600.0);
-  reqOpts.param("withRevisions", withRevisions ? "true" : "false");
-  reqOpts.param("withData", withData ? "true" : "false");
+  reqOpts.param("withRevisions", withRevisions);
+  reqOpts.param("withData", withData);
 
   std::shared_ptr<ShardMap> shards = collinfo->shardIds();
   std::vector<Future<network::Response>> futures;
@@ -1204,7 +1204,7 @@ futures::Future<OperationResult> figuresOnCoordinator(
 
   network::RequestOptions reqOpts;
   reqOpts.database = dbname;
-  reqOpts.param("details", details ? "true" : "false");
+  reqOpts.param("details", details);
   reqOpts.timeout = network::Timeout(300.0);
 
   // If we get here, the sharding attributes are not only _key, therefore
@@ -1566,21 +1566,13 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
     reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
     reqOpts.retryNotFound = true;
     reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
-    reqOpts
-        .param(StaticStrings::WaitForSyncString,
-               (options.waitForSync ? "true" : "false"))
-        .param(StaticStrings::ReturnNewString,
-               (options.returnNew ? "true" : "false"))
-        .param(StaticStrings::ReturnOldString,
-               (options.returnOld ? "true" : "false"))
-        .param(StaticStrings::IsRestoreString,
-               (options.isRestore ? "true" : "false"))
-        .param(StaticStrings::KeepNullString,
-               (options.keepNull ? "true" : "false"))
-        .param(StaticStrings::MergeObjectsString,
-               (options.mergeObjects ? "true" : "false"))
-        .param(StaticStrings::SkipDocumentValidation,
-               (options.validate ? "false" : "true"));
+    reqOpts.param(StaticStrings::WaitForSyncString, options.waitForSync)
+        .param(StaticStrings::ReturnNewString, options.returnNew)
+        .param(StaticStrings::ReturnOldString, options.returnOld)
+        .param(StaticStrings::IsRestoreString, options.isRestore)
+        .param(StaticStrings::KeepNullString, options.keepNull)
+        .param(StaticStrings::MergeObjectsString, options.mergeObjects)
+        .param(StaticStrings::SkipDocumentValidation, !options.validate);
     if (options.isOverwriteModeSet()) {
       reqOpts.parameters.insert_or_assign(
           StaticStrings::OverwriteMode,
@@ -1707,13 +1699,9 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
   reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
-  reqOpts
-      .param(StaticStrings::WaitForSyncString,
-             (options.waitForSync ? "true" : "false"))
-      .param(StaticStrings::ReturnOldString,
-             (options.returnOld ? "true" : "false"))
-      .param(StaticStrings::IgnoreRevsString,
-             (options.ignoreRevs ? "true" : "false"));
+  reqOpts.param(StaticStrings::WaitForSyncString, options.waitForSync)
+      .param(StaticStrings::ReturnOldString, options.returnOld)
+      .param(StaticStrings::IgnoreRevsString, options.ignoreRevs);
 
   const bool isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
@@ -1881,8 +1869,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
   reqOpts.timeout = network::Timeout(600.0);
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
-  reqOpts.param(StaticStrings::Compact,
-                (options.truncateCompact ? "true" : "false"));
+  reqOpts.param(StaticStrings::Compact, options.truncateCompact);
 
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
@@ -1965,8 +1952,7 @@ Future<OperationResult> getDocumentOnCoordinator(
   reqOpts.database = trx.vocbase().name();
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
-  reqOpts.param(StaticStrings::IgnoreRevsString,
-                (options.ignoreRevs ? "true" : "false"));
+  reqOpts.param(StaticStrings::IgnoreRevsString, options.ignoreRevs);
 
   fuerte::RestVerb restVerb;
   if (!useMultiple) {
@@ -1974,9 +1960,9 @@ Future<OperationResult> getDocumentOnCoordinator(
   } else {
     restVerb = fuerte::RestVerb::Put;
     if (options.silent) {
-      reqOpts.param(StaticStrings::SilentString, "true");
+      reqOpts.param(StaticStrings::SilentString, true);
     }
-    reqOpts.param("onlyget", "true");
+    reqOpts.param("onlyget", true);
   }
 
   if (canUseFastPath) {
@@ -2504,32 +2490,26 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
   reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
-  reqOpts
-      .param(StaticStrings::WaitForSyncString,
-             (options.waitForSync ? "true" : "false"))
-      .param(StaticStrings::IgnoreRevsString,
-             (options.ignoreRevs ? "true" : "false"))
-      .param(StaticStrings::SkipDocumentValidation,
-             (options.validate ? "false" : "true"))
-      .param(StaticStrings::IsRestoreString,
-             (options.isRestore ? "true" : "false"));
+  reqOpts.param(StaticStrings::WaitForSyncString, options.waitForSync)
+      .param(StaticStrings::IgnoreRevsString, options.ignoreRevs)
+      .param(StaticStrings::SkipDocumentValidation, !options.validate)
+      .param(StaticStrings::IsRestoreString, options.isRestore);
 
   fuerte::RestVerb restVerb;
   if (isPatch) {
     restVerb = fuerte::RestVerb::Patch;
     if (!options.keepNull) {
-      reqOpts.param(StaticStrings::KeepNullString, "false");
+      reqOpts.param(StaticStrings::KeepNullString, false);
     }
-    reqOpts.param(StaticStrings::MergeObjectsString,
-                  (options.mergeObjects ? "true" : "false"));
+    reqOpts.param(StaticStrings::MergeObjectsString, options.mergeObjects);
   } else {
     restVerb = fuerte::RestVerb::Put;
   }
   if (options.returnNew) {
-    reqOpts.param(StaticStrings::ReturnNewString, "true");
+    reqOpts.param(StaticStrings::ReturnNewString, true);
   }
   if (options.returnOld) {
-    reqOpts.param(StaticStrings::ReturnOldString, "true");
+    reqOpts.param(StaticStrings::ReturnOldString, true);
   }
 
   const bool isManaged =
@@ -2681,9 +2661,8 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
 
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;  // hack to avoid scheduler queue
-  reqOpts
-      .param(StaticStrings::WaitForSyncString, (waitForSync ? "true" : "false"))
-      .param("waitForCollector", (waitForCollector ? "true" : "false"));
+  reqOpts.param(StaticStrings::WaitForSyncString, waitForSync)
+      .param("waitForCollector", waitForCollector);
 
   std::vector<Future<network::Response>> futures;
   futures.reserve(DBservers.size());
@@ -2725,9 +2704,8 @@ Result compactOnAllDBServers(ClusterFeature& feature, bool changeLevel,
   network::RequestOptions reqOpts;
   reqOpts.timeout = network::Timeout(3600);
   reqOpts.skipScheduler = true;  // hack to avoid scheduler queue
-  reqOpts.param("changeLevel", (changeLevel ? "true" : "false"))
-      .param("compactBottomMostLevel",
-             (compactBottomMostLevel ? "true" : "false"));
+  reqOpts.param("changeLevel", changeLevel)
+      .param("compactBottomMostLevel", compactBottomMostLevel);
 
   std::vector<Future<network::Response>> futures;
   futures.reserve(DBservers.size());
