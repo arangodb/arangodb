@@ -440,6 +440,10 @@ std::string const& LogicalCollection::smartJoinAttribute() const noexcept {
 std::string const& LogicalCollection::smartGraphAttribute() const noexcept {
   return StaticStrings::Empty;
 }
+
+void LogicalCollection::setSmartGraphAttribute(std::string const& /*value*/) {
+  TRI_ASSERT(false);
+}
 #endif
 
 bool LogicalCollection::usesRevisionsAsDocumentIds() const noexcept {
