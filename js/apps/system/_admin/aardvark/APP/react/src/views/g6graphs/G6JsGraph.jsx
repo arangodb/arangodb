@@ -114,6 +114,7 @@ const G6JsGraph = () => {
   const [showEditEdgeModal, setShowEditEdgeModal] = useState(false);
   const [editNode, setEditNode] = useState();
   const [vertexCollections, setVertexCollections] = useState([]);
+  const [vertexCollectionsColors, setVertexCollectionsColors] = useState();
   const [edgeCollections, setEdgeCollections] = useState([]);
   const [edgeModelToAdd, setEdgeModelToAdd] = useState([]);
   const [nodeToEdit, setNodeToEdit] = useState(
@@ -147,6 +148,10 @@ const G6JsGraph = () => {
   const [type, setLayout] = React.useState('graphin-force');
   let [aqlQueryString, setAqlQueryString] = useState("/_admin/aardvark/g6graph/routeplanner");
 
+  const randomColor = () => {
+    return Math.floor(Math.random()*16777215).toString(16);
+  }
+
   const handleChange = value => {
     console.log('handleChange (value): ', value);
     //setLayout(value);
@@ -164,8 +169,20 @@ const G6JsGraph = () => {
       responseTimesObject.fetchDuration = Math.abs(responseTimesObject.fetchFinished.getTime() - responseTimesObject.fetchStarted.getTime());
       setResponseTimes(responseTimesObject);
       console.log("NEW DATA for graphData: ", data);
+      console.log("data.settings: ", data.settings);
       console.log("data.settings.vertexCollections: ", data.settings.vertexCollections);
       setVertexCollections(data.settings.vertexCollections);
+
+      const collectionColors = [];
+      Object.keys(data.settings.vertexCollections)
+      .map((key, i) => {
+        const collectionName = data.settings.vertexCollections[key].name;
+        collectionColors[data.settings.vertexCollections[key].name] = "#" + randomColor();
+        return true;
+      });
+      console.log("collectionColors: ", collectionColors);
+      setVertexCollectionsColors(collectionColors);
+
       setEdgeCollections(data.settings.edgeCollections);
       console.log("data.settings.edgeCollections: ", data.settings.edgeCollections);
       setGraphData(data);
@@ -480,6 +497,9 @@ const G6JsGraph = () => {
   }
 
   const printGraphData = () => {
+    console.log("vertexCollections: ", vertexCollections);
+    console.log("vertexCollectionsColors.frenchCity: ", vertexCollectionsColors.frenchCity);
+    console.log("vertexCollectionsColors.germanCity: ", vertexCollectionsColors.germanCity);
     console.log("Current graphData: ", graphData);
   }
 
@@ -654,14 +674,16 @@ const G6JsGraph = () => {
       ],
       "collection": "germanCity"
     }];
-    setNodeToAdd(data);
-    setNodeToAddKey("Munich");
-    setNodeToAddCollection("germanCity");
+    setNodeToAdd({});
+    //setNodeToAddKey("Munich");
+    //setNodeToAddCollection("germanCity");
     const nodeToAddDataObject = {
+      /*
       "keys": [
         "Munich"
       ],
       "collection": "germanCity"
+      */
     };
       arangoFetch(arangoHelper.databaseUrl("/_api/simple/lookup-by-keys"), {
         method: "POST",
@@ -784,6 +806,7 @@ const G6JsGraph = () => {
       .then(data => {
         const attributes = data.documents[0];
         const allowedAttributesList = omit(attributes, '_rev', '_key');
+        console.log("looked up allowedAttributesList: ", allowedAttributesList);
         setLookedUpData(allowedAttributesList);
       })
       .catch((err) => {
@@ -809,7 +832,6 @@ const G6JsGraph = () => {
 
         /*
         <button onClick={() => changeGraphData()}>Change graph data (parent)</button>
-      <button onClick={() => printGraphData()}>Print graphData</button>
       <button onClick={() => openEditNodeModal()}>Open edit node modal</button>
       <button onClick={() => openEditModal()}>Open edit modal</button>
       <LayoutSelector options={layouts} value={type} onChange={handleChange} />
@@ -854,7 +876,8 @@ const G6JsGraph = () => {
         
   return (
     <div>
-      <UrlParametersContext.Provider value={[urlParameters, setUrlParameters]}>
+      <button onClick={() => printGraphData()}>Print graphData</button>
+      <UrlParametersContext.Provider value={[urlParameters, setUrlParameters, vertexCollectionsColors]}>
 
         <EditModal
           shouldShow={showEditModal}
@@ -997,6 +1020,7 @@ const G6JsGraph = () => {
               onClickDocument={(document) => lookUpDocument(document)}
               onLoadFullGraph={() => setShowFetchFullGraphModal(true)}
               onGraphDataLoaded={(newGraphData) => setGraphData(newGraphData)}
+              vertexCollectionsColors={vertexCollectionsColors}
         />    
         <AttributesInfo attributes={lookedUpData} /> 
       </UrlParametersContext.Provider>

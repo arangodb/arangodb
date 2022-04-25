@@ -187,7 +187,7 @@ export class GraphView extends React.Component {
           {
             type: 'tooltip', // Tooltip
             formatText(model) {
-              console.log("model: ", model);
+              console.log("model (node): ", model);
               // The content of tooltip
               //const text = 'Label: ' + model.label + ((model.population !== undefined) ? ('<br />population: ' + model.population) : ('<br/> population: No information '));
               const text = '<strong>Label:</strong> ' + model.label;
@@ -197,6 +197,7 @@ export class GraphView extends React.Component {
           {
             type: 'edge-tooltip', // Edge tooltip
             formatText(model) {
+              console.log("model (edge): ", model);
               // The content of the edge tooltip
               const text =
                 '<strong>id:</strong> ' +
@@ -218,13 +219,14 @@ export class GraphView extends React.Component {
         type: 'circle', // 'bubble'
         size: 40,
         style: {
+          //fill: '#f00',
           fill: '#dee072', // The filling color of nodes
           stroke: '#576e3e', // The stroke color of nodes
           lineWidth: 1, // The line width of the stroke of nodes
           cursor: 'pointer',
         },
         labelCfg: {
-          position: 'center',
+          position: 'right',
           style: {
             fill: '#576e3e',
             fontStyle: 'regular',
@@ -234,11 +236,14 @@ export class GraphView extends React.Component {
           },
         },
       },
+      // Trauma Center Meidling
+      // Trauma Center Lorenz-Böhler
       nodeStateStyles: {
         hover: {
           fill: '#edf042',
+          stroke: '#576e3e',
           //fillOpacity: 0.1,
-          lineWidth: 1,
+          lineWidth: 2,
           shadowColor: '#576e3e',
           shadowBlur: 10,
           cursor: 'pointer',
@@ -635,26 +640,41 @@ export class GraphView extends React.Component {
     console.log("Print vertex collections in GraphView: ", this.props.vertexCollections);
   }
 
+  //<Tag color="cyan" key={key.toString()}><strong>{key}:</strong> {JSON.stringify(this.props.vertexCollectionsColors[key])}</Tag>
+
   render() {
     return <>
       <button onClick={this.updateNodeModel}>Show collection to nodes</button>
       <button onClick={this.updateEdgeModel}>Show collection to edges</button>
       <button onClick={() => this.printVertexCollections()}>Print vertex collections</button>
       <button onClick={() => {
+        console.log("this.props.vertexCollectionsColors: ", this.props.vertexCollectionsColors);
+        console.log("this.props.vertexCollectionsColors.frenchCity: ", this.props.vertexCollectionsColors.frenchCity);
+        console.log("this.props.vertexCollectionsColors.germanCity: ", this.props.vertexCollectionsColors.germanCity);
+        /*
+        {
+          Object.keys(this.props.vertexCollectionsColors)
+          .map((key, i) => {
+            console.log("key.toString(): ", key.toString());
+            console.log("key: ", key);
+            console.log("JSON.stringify(this.props.vertexCollectionsColors[key]): ", JSON.stringify(this.props.vertexCollectionsColors[key]));
+          })
+        }
+        */
         this.props.data.nodes.forEach(node => {
-          if (node.id.startsWith("frenchCity")) {
-            console.log("Color node: ", node);
-            node.style = {
-              fill: '#f00',
-              // ... other styles
+          Object.keys(this.props.vertexCollectionsColors)
+          .map((key, i) => {
+            if (node.id.startsWith(key.toString())) {
+              console.log("Color node: ", node);
+              console.log("with color: ",  JSON.stringify(this.props.vertexCollectionsColors[key]));
+              node.style = {
+                fill: this.props.vertexCollectionsColors[key]
+              }
             }
-          } else {
-            node.style = {
-              fill: '#002a67',
-              // ... other styles
-            }
-          }
+            return true;
+          });
         });
+        this.graph.render();
       }}>
         Color nodes by collection
       </button>
