@@ -372,6 +372,13 @@ struct OptimizerRule {
                 "sort-limit adds/moves limit nodes. And calculations should "
                 "not be moved up after that.");
 
+  static_assert(
+      handleConstrainedSortInView < lateDocumentMaterializationArangoSearchRule,
+      "Constrained sort optimization outperforms late materialization for "
+      "views so it should have a try before late materialization. "
+      "Also constrained sort rule now does not expects any late "
+      "materialization variables replacement");
+
   std::string_view name;
   RuleFunction func;
   RuleLevel level;

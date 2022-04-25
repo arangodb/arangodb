@@ -34,6 +34,7 @@
     const cn = "UnitTestsCollection";
     const cn1 = "UnitTestsCollection1";
     const vn = "UnitTestsView";
+    const longValue  = "VeryLongValueToNotFitIntoSSOAndTriggerBufferCopyingIssuesIfAnyBlaBlaBla";
     return {
       setUpAll : function () {
         db._useDatabase("_system");
@@ -48,7 +49,11 @@
           consolidationIntervalMsec: 5000,
           primarySort: [{"field": "obj.a.a1", "direction": "asc"}, {"field": "obj.b", "direction": "desc"}],
           primarySortCompression: "none",
-          storedValues: [["obj.a.a1"], {fields:["obj.c"], compression:"none"}, {fields:["obj.d.d1", "obj.e.e1"], compression:"lz4"}, ["obj.f", "obj.g", "obj.h"]],
+          storedValues: [["obj.a.a1"],
+                        {fields:["obj.c"], compression:"none"},
+                        ["storedVal"],
+                        {fields:["obj.d.d1", "obj.e.e1"], compression:"lz4"},
+                        ["obj.f", "obj.g", "obj.h"]],
           links: {
             [cn] : { includeAllFields: true, fields:{ strval:{analyzers:['text_en']}}},
             [cn1] : { includeAllFields: true, fields:{ strval:{analyzers:['text_en']}}}
@@ -64,8 +69,8 @@
         let data2 =[];
         let cats = "cat";
         for (let i = 0; i < 5000; ++i) {
-          data.push({field1:i, field2: "A" + i % 1000, field3: "B" + i % 100, strval: cats, idx:i});
-          data2.push({field1:i/2, field2: "A" + i % 2000, field3: "B" + i % 300, strval: cats, idx:i});
+          data.push({field1:i, field2: "A" + i % 1000, field3: "B" + i % 100, strval: cats, idx:i, storedVal: longValue + i});
+          data2.push({field1:i/2, field2: "A" + i % 2000, field3: "B" + i % 300, strval: cats, idx:i, storedVal: longValue + i});
           cats = cats + " cat";
         }
         c.save(data);
@@ -269,6 +274,21 @@
         let expectedIdx = 501;
         for (let i = 0; i < 10; ++i) {
           assertEqual(result.json[i].idx, expectedIdx);
+          if (i % 2 == 1) {
+              expectedIdx++;
+          }
+        }
+      },
+      testAppliedSortAscWithStoredValues() {
+        let query = "FOR d IN " + vn + " SEARCH ANALYZER(d.strval == 'cat', 'text_en') SORT TFIDF(d) ASC LIMIT 1002, 10 "
+                    + " RETURN {dv:d.storedVal, score:TFIDF(d)}";
+        let plan = AQL_EXPLAIN(query).plan;
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        let result = AQL_EXECUTE(query);
+        assertEqual(10, result.json.length);
+        let expectedIdx = 501;
+        for (let i = 0; i < 10; ++i) {
+          assertEqual(result.json[i].dv, longValue + expectedIdx);
           if (i % 2 == 1) {
               expectedIdx++;
           }

@@ -266,7 +266,13 @@ class IndexReadBuffer {
 
   void pushScoreNone();
 
-  void reset() noexcept;
+  void reset() noexcept {
+    // Should only be called after everything was consumed
+    TRI_ASSERT(empty());
+    clear();
+  }
+
+  void clear() noexcept;
 
   size_t size() const noexcept;
 
@@ -320,7 +326,6 @@ class IndexReadBuffer {
   }
 
   void setStoredValue(size_t idx, irs::bytes_ref value) {
-    TRI_ASSERT(_storedValuesBuffer.size() < _storedValuesBuffer.capacity());
     TRI_ASSERT(idx < _storedValuesBuffer.size());
     _storedValuesBuffer[idx] = value;
   }

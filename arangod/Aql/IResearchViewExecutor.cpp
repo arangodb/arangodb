@@ -480,9 +480,7 @@ void IndexReadBuffer<ValueType, copyStored>::pushScoreNone() {
 }
 
 template<typename ValueType, bool copyStored>
-void IndexReadBuffer<ValueType, copyStored>::reset() noexcept {
-  // Should only be called after everything was consumed
-  TRI_ASSERT(empty());
+void IndexReadBuffer<ValueType, copyStored>::clear() noexcept {
   _keyBaseIdx = 0;
   _heapSizeLeft = _maxSize;
   _keyBuffer.clear();
@@ -598,7 +596,8 @@ std::tuple<ExecutorState,
            AqlCall>
 IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
-  TRI_ASSERT(_indexReadBuffer.empty());
+  TRI_ASSERT(_indexReadBuffer.empty() ||
+             (!this->infos().scoresSort().empty() && call.needsFullCount()));
   auto& impl = static_cast<Impl&>(*this);
   IResearchViewStats stats{};
   while (inputRange.hasDataRow() && call.shouldSkip()) {
@@ -623,7 +622,8 @@ IResearchViewExecutorBase<Impl, Traits>::skipRowsRange(
       // skip all - fullCount phase
       call.didSkip(impl.skipAll(stats));
     }
-    TRI_ASSERT(_indexReadBuffer.empty());
+    // only heapsort version could possibly fetch more than skip requested
+    TRI_ASSERT(_indexReadBuffer.empty() || !this->infos().scoresSort().empty());
 
     if (call.shouldSkip()) {
       // We still need to fetch more
@@ -1039,8 +1039,6 @@ template<bool copyStored, bool ordered, MaterializeType materializeType>
 IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::
     IResearchViewHeapSortExecutor(Fetcher& fetcher, Infos& infos)
     : Base(fetcher, infos) {
-  this->_storedValuesReaders.resize(
-      this->_infos.getOutNonMaterializedViewRegs().size());
   this->_indexReadBuffer.setScoresSort(this->_infos.scoresSort());
 }
 
@@ -1048,7 +1046,6 @@ template<bool copyStored, bool ordered, MaterializeType materializeType>
 size_t
 IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skipAll(
     IResearchViewStats& stats) {
-  TRI_ASSERT(this->_indexReadBuffer.empty());
   TRI_ASSERT(this->_filter);
   size_t totalSkipped{0};
   if (_bufferFilled) {
@@ -1083,7 +1080,7 @@ IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skipAll(
 
   // seal the executor anyway
   _bufferFilled = true;
-  this->_indexReadBuffer.reset();
+  this->_indexReadBuffer.clear();
   _totalCount = 0;
   _bufferedCount = 0;
   return totalSkipped;
@@ -1098,7 +1095,7 @@ IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>::skip(
   }
   if (limit >= this->_indexReadBuffer.size()) {
     auto const skipped = this->_indexReadBuffer.size();
-    this->_indexReadBuffer.reset();
+    this->_indexReadBuffer.clear();
     return skipped;
   } else {
     size_t const toSkip = limit;
@@ -1117,6 +1114,9 @@ void IResearchViewHeapSortExecutor<copyStored, ordered,
   _totalCount = 0;
   _bufferedCount = 0;
   _bufferFilled = false;
+  this->_storedValuesReaders.resize(
+      this->_reader->size() *
+      this->_infos.getOutNonMaterializedViewRegs().size());
 }
 
 template<bool copyStored, bool ordered, MaterializeType materializeType>
