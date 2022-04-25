@@ -766,8 +766,9 @@ struct ReplicatedLogMethodsCoordinator final
       auto& read = result.get();
       auto status = statusFromResult(read.asResult());
       if (read.ok() && !read.value().isNone()) {
-        status.response.emplace(arangodb::replication2::agency::from_velocypack,
-                                read.value());
+        status.response.emplace(
+            arangodb::replication2::agency::LogCurrentSupervision::
+                fromVelocyPack(read.value()));
       }
 
       return status;

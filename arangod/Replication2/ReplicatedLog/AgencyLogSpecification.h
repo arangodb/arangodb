@@ -63,9 +63,6 @@ auto constexpr Code = std::string_view{"code"};
 auto constexpr Message = std::string_view{"message"};
 }  // namespace static_strings
 
-struct from_velocypack_t {};
-inline constexpr auto from_velocypack = from_velocypack_t{};
-
 using ParticipantsFlagsMap =
     std::unordered_map<ParticipantId, ParticipantFlags>;
 
@@ -78,7 +75,6 @@ struct LogPlanTermSpecification {
 
     Leader(ParticipantId const& participant, RebootId const& rebootId)
         : serverId{participant}, rebootId{rebootId} {}
-    Leader(from_velocypack_t, VPackSlice);
     Leader() : rebootId{RebootId{0}} {};
     auto toVelocyPack(VPackBuilder&) const -> void;
     friend auto operator==(Leader const&, Leader const&) noexcept
@@ -87,7 +83,6 @@ struct LogPlanTermSpecification {
   std::optional<Leader> leader;
 
   auto toVelocyPack(VPackBuilder&) const -> void;
-  LogPlanTermSpecification(from_velocypack_t, VPackSlice);
   LogPlanTermSpecification() = default;
 
   LogPlanTermSpecification(LogTerm term, LogConfig config,
@@ -118,8 +113,8 @@ struct LogPlanSpecification {
   ParticipantsConfig participantsConfig;
 
   auto toVelocyPack(velocypack::Builder&) const -> void;
-  static auto fromVelocyPack(velocypack::Slice) -> LogPlanSpecification;
-  LogPlanSpecification(from_velocypack_t, VPackSlice);
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice)
+      -> LogPlanSpecification;
   LogPlanSpecification();
 
   LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term);
@@ -145,7 +140,6 @@ struct LogCurrentLocalState {
 
   auto toVelocyPack(VPackBuilder&) const -> void;
   LogCurrentLocalState() = default;
-  LogCurrentLocalState(from_velocypack_t, VPackSlice);
   LogCurrentLocalState(LogTerm, TermIndexPair) noexcept;
 };
 
@@ -185,7 +179,6 @@ struct LogCurrentSupervisionElection {
   }
 
   LogCurrentSupervisionElection() = default;
-  LogCurrentSupervisionElection(from_velocypack_t, VPackSlice slice);
 };
 
 auto operator==(LogCurrentSupervisionElection const&,
@@ -276,10 +269,10 @@ struct LogCurrentSupervision {
   std::optional<uint64_t> targetVersion;
 
   auto toVelocyPack(VPackBuilder&) const -> void;
-  static auto fromVelocyPack(velocypack::Slice) -> LogCurrentSupervision;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice)
+      -> LogCurrentSupervision;
 
   LogCurrentSupervision() = default;
-  LogCurrentSupervision(from_velocypack_t, VPackSlice slice);
 };
 
 template<class Inspector>
@@ -305,7 +298,7 @@ struct LogCurrent {
     std::optional<replicated_log::CommitFailReason> commitStatus;
 
     auto toVelocyPack(VPackBuilder&) const -> void;
-    static auto fromVelocyPack(VPackSlice) -> Leader;
+    [[nodiscard]] static auto fromVelocyPack(VPackSlice) -> Leader;
   };
 
   // Will be nullopt until a leader has been assumed leadership
@@ -319,8 +312,7 @@ struct LogCurrent {
   std::vector<ActionDummy> actions;
 
   auto toVelocyPack(VPackBuilder&) const -> void;
-  static auto fromVelocyPack(VPackSlice) -> LogCurrent;
-  LogCurrent(from_velocypack_t, VPackSlice);
+  [[nodiscard]] static auto fromVelocyPack(VPackSlice) -> LogCurrent;
   LogCurrent() = default;
 };
 
@@ -372,10 +364,9 @@ struct LogTarget {
 
   std::optional<Supervision> supervision;
 
-  static auto fromVelocyPack(velocypack::Slice) -> LogTarget;
+  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> LogTarget;
   void toVelocyPack(velocypack::Builder&) const;
 
-  LogTarget(from_velocypack_t, VPackSlice);
   LogTarget() = default;
 
   LogTarget(LogId id, ParticipantsFlagsMap const& participants,
