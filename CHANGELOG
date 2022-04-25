@@ -1,6 +1,10 @@
 v3.9.2 (XXXX-XX-XX)
 -------------------
 
+* Very verbose warning from failing to parse GEO JSON in search. Has lead to
+  Billions of log lines on deployed services.
+
+
 * Fix: for the Windows build, the new Snappy version, which was introduced in
   3.9, generated code that contained BMI2 instructions which where introduced
   with the Intel Haswell architecture. However, our target architecture for 3.9
