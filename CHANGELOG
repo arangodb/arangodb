@@ -1,6 +1,9 @@
 v3.8.7 (XXXX-XX-XX)
 -------------------
 
+* Make sure that newly created TTL indexes do not use index estimates, which
+  wouldn't be used for TTL indexes anyway.
+
 * Bump the number of RocksDB transaction lock stripes to at least 16, if the
   number of cores is lower than that value.
 

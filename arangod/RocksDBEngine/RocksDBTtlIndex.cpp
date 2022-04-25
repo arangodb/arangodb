@@ -61,6 +61,7 @@ void RocksDBTtlIndex::toVelocyPack(arangodb::velocypack::Builder& builder,
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
   builder.add(StaticStrings::IndexExpireAfter, VPackValue(_expireAfter));
+  builder.add(StaticStrings::IndexEstimates, VPackValue(hasEstimates()));
   builder.close();
 }
 
