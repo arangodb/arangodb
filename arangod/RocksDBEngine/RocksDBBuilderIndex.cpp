@@ -150,12 +150,19 @@ Result RocksDBBuilderIndex::remove(transaction::Methods& trx,
   return Result();  // do nothing
 }
 
+Result static processPartitions(bool isForeground, RocksDBCollection* rcoll,
+                                rocksdb::DB* rootDB, RocksDBIndex& ridx,
+                                std::atomic<uint64_t>& docsProcessed) {
+  return {TRI_ERROR_NO_ERROR};
+}
+
 // fast mode assuming exclusive access locked from outside
 template<bool foreground>
 static arangodb::Result fillIndex(
     rocksdb::DB* rootDB, RocksDBIndex& ridx, RocksDBMethods& batched,
     rocksdb::WriteBatchBase& batch, rocksdb::Snapshot const* snap,
-    std::function<void(uint64_t)> const& reportProgress) {
+    std::function<void(uint64_t)> const& reportProgress,
+    std::atomic<uint64_t>& docsProcessed) {
   // fillindex can be non transactional, we just need to clean up
   TRI_ASSERT(rootDB != nullptr);
 
@@ -195,6 +202,8 @@ static arangodb::Result fillIndex(
 
   uint64_t numDocsWritten = 0;
   RocksDBTransactionCollection* trxColl = trx.resolveTrxCollection();
+
+  processPartitions(false, rcoll, rootDB, ridx, docsProcessed);
 
   auto commitLambda = [&] {
     auto docsInBatch = batch.GetWriteBatch()->Count();
@@ -315,15 +324,15 @@ arangodb::Result RocksDBBuilderIndex::fillIndexForeground() {
     // avoid duplicate index keys. must therefore use a WriteBatchWithIndex
     rocksdb::WriteBatchWithIndex batch(cmp, batchSize);
     RocksDBBatchedWithIndexMethods methods(engine.db(), &batch);
-    res =
-        ::fillIndex<true>(db, *internal, methods, batch, snap, reportProgress);
+    res = ::fillIndex<true>(db, *internal, methods, batch, snap, reportProgress,
+                            std::ref(_docsProcessed));
   } else {
     // non-unique index. all index keys will be unique anyway because they
     // contain the document id we can therefore get away with a cheap WriteBatch
     rocksdb::WriteBatch batch(batchSize);
     RocksDBBatchedMethods methods(&batch);
-    res =
-        ::fillIndex<true>(db, *internal, methods, batch, snap, reportProgress);
+    res = ::fillIndex<true>(db, *internal, methods, batch, snap, reportProgress,
+                            std::ref(_docsProcessed));
   }
 
   return res;
@@ -665,15 +674,15 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     // avoid duplicate index keys. must therefore use a WriteBatchWithIndex
     rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
     RocksDBBatchedWithIndexMethods methods(engine.db(), &batch);
-    res =
-        ::fillIndex<false>(db, *internal, methods, batch, snap, reportProgress);
+    res = ::fillIndex<false>(db, *internal, methods, batch, snap,
+                             reportProgress, std::ref(_docsProcessed));
   } else {
     // non-unique index. all index keys will be unique anyway because they
     // contain the document id we can therefore get away with a cheap WriteBatch
     rocksdb::WriteBatch batch(32 * 1024 * 1024);
     RocksDBBatchedMethods methods(&batch);
-    res =
-        ::fillIndex<false>(db, *internal, methods, batch, snap, reportProgress);
+    res = ::fillIndex<false>(db, *internal, methods, batch, snap,
+                             reportProgress, std::ref(_docsProcessed));
   }
 
   if (res.fail()) {

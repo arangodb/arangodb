@@ -28,6 +28,7 @@
 #include "Basics/ConditionLocker.h"
 
 #include <atomic>
+#include <condition_variable>
 #include <mutex>
 
 namespace {
@@ -162,29 +163,29 @@ class SharedWorkEnv {
   SharedWorkEnv(std::deque<WorkItem>& workItems)
       : _ranges(std::move(workItems)) {}
   void markAsDone() {
-    CONDITION_LOCKER(locker, _condition);
+    std::unique_lock<std::mutex> lock(mtx);
     _done = true;
   }
 
   Result result() {
-    CONDITION_LOCKER(locker, _condition);
+    std::unique_lock<std::mutex> lock(mtx);
     return _res;
   }
 
   void registerError(Result res) {
     TRI_ASSERT(res.fail());
     {
-      CONDITION_LOCKER(locker, _condition);  // to be changed
+      std::unique_lock<std::mutex> lock(mtx);
       if (_res.ok()) {
         _res = std::move(res);
       }
       _done = true;
     }
-    _condition.broadcast();
+    _condition.notify_all();
   }
 
   bool fetchWorkItem(WorkItem& data) {
-    CONDITION_LOCKER(locker, _condition);
+    std::unique_lock<std::mutex> lock(mtx);
     if (_ranges.empty()) {
       return false;
     }
@@ -196,28 +197,31 @@ class SharedWorkEnv {
 
   void enqueueWorkItem(WorkItem item) {
     {
-      CONDITION_LOCKER(locker, _condition);
+      std::unique_lock<std::mutex> lock(mtx);
       _ranges.emplace_back(std::move(item));
     }
-    _condition.signal();
+    _condition.notify_one();
   }
 
   void waitForWork() {
-    CONDITION_LOCKER(locker, _condition);
-    _condition.wait();
+    std::unique_lock<std::mutex> lock(mtx);
+    _condition.wait(lock);
   }
 
   bool shouldStop() {
-    CONDITION_LOCKER(locker, _condition);
+    std::unique_lock<std::mutex> lock(mtx);
     return _done;
   }
 
-  void incTerminatedThreads() { ++_numTerminatedThreads; }
+  void incTerminatedThreads() {
+    std::unique_lock<std::mutex> lock(mtx);
+    ++_numTerminatedThreads;
+  }
 
   size_t getNumTerminatedThreads() { return _numTerminatedThreads; }
 
  private:
-  basics::ConditionVariable _condition;
+  std::condition_variable _condition;
   std::deque<WorkItem> _ranges;
   Result _res;
   bool _done = false;
