@@ -26,6 +26,7 @@
 #include <gtest/gtest.h>
 
 #include "Aql/VelocyPackHelper.h"
+#include "Inspection/VPack.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
 using namespace arangodb;

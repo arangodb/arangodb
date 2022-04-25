@@ -57,10 +57,9 @@ class ClusterMetricsFeature final : public ArangodFeature {
   // If you need to store a metric of another type,
   // such as double, or char, just add it to this variant
   using MetricValue = std::variant<uint64_t>;
-  using MetricKey = std::tuple<std::string, std::string>;
   // We want map because of promtool format
   // Another option is hashmap<string, hashmap<string, value>
-  using Metrics = std::map<MetricKey, MetricValue, std::less<>>;
+  using Metrics = std::map<MetricKey<std::string>, MetricValue, std::less<>>;
 
   struct Data {
     Data() = default;
@@ -98,7 +97,9 @@ class ClusterMetricsFeature final : public ArangodFeature {
   //////////////////////////////////////////////////////////////////////////////
   using ToPrometheus = void (*)(std::string& /*result*/,
                                 std::string_view /*global labels*/,
-                                MetricKey const&, MetricValue const&);
+                                std::string_view /*metric name*/,
+                                std::string_view /*metric labels*/,
+                                MetricValue const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// Registration of some metric. We need to pass it name, and callbacks.

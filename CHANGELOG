@@ -1,13 +1,30 @@
 devel
 -----
 
+* Added startup option `--cluster.shard-synchronization-attempt-timeout` to
+  limit the amount of time to spend in shard synchronization attempts. The
+  default timeout value is 20 minutes.
+  Running into the timeout will not lead to a synchronization failure, but 
+  will continue the synchronization shortly after. Setting a timeout can 
+  help to split the synchronization of large shards into smaller chunks and 
+  release snapshots and archived WAL files on the leader earlier.
+  This change also introduces a new metric `arangodb_sync_timeouts_total`
+  that counts the number of timed-out shard synchronization attempts.
+
+* Updated arangosync to v2.9.1-preview-1.
+
+* Fix: for the Windows build, the new Snappy version, which was introduced in
+  3.9, generated code that contained BMI2 instructions which where introduced
+  with the Intel Haswell architecture. However, our target architecture for 3.9
+  is actually Sandy Bridge, which predates Haswell. Running the build on these
+  older CPUs thus resulted in illegal instruction exceptions.
+
 * FE-46: UI improvement on the view UI pages as well as adding tooltips to
   options where necessary. The affected pages are mostly the Info and
   Consolidation Policy pages.
 
 * FE-44: Moved the Info page to before JSON, making the settings page the
   default page in the view web UI.
-
 
 * Refactor internal code paths responsible for `_key` generation. For
   collections with only a single shard, we can now always let the leader

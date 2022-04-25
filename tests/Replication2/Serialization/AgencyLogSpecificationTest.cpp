@@ -27,6 +27,7 @@
 
 #include "Aql/VelocyPackHelper.h"
 #include "Cluster/ClusterTypes.h"
+#include "Inspection/VPack.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
 using namespace arangodb;

@@ -265,8 +265,9 @@ void QueryList::remove(Query& query) {
 
 /// @brief kills a query
 Result QueryList::kill(TRI_voc_tick_t id) {
-  // We should call dtor std::shared_ptr<Query> not under a lock,
-  // otherwise a deadlock will occur. Query dtor make a WRITE_LOCKER(..., _lock)
+  // We must not call the std::shared_ptr<Query> dtor under the `_lock`,
+  // because this can result in a deadlock since the Query dtor tries to
+  // remove itself from this list which acquires the write `_lock`
   std::shared_ptr<Query> queryPtr;
   {
     READ_LOCKER(writeLocker, _lock);
@@ -287,8 +288,9 @@ Result QueryList::kill(TRI_voc_tick_t id) {
 /// (i.e. the filter should return true for a queries to be killed)
 uint64_t QueryList::kill(std::function<bool(Query&)> const& filter,
                          bool silent) {
-  // We should call dtor std::shared_ptr<Query> not under a lock,
-  // otherwise a deadlock will occur. Query dtor make a WRITE_LOCKER(..., _lock)
+  // We must not call the std::shared_ptr<Query> dtor under the `_lock`,
+  // because this can result in a deadlock since the Query dtor tries to
+  // remove itself from this list which acquires the write `_lock`
   absl::InlinedVector<std::shared_ptr<Query>, 16> queries;
   {
     READ_LOCKER(readLocker, _lock);
@@ -312,8 +314,9 @@ uint64_t QueryList::kill(std::function<bool(Query&)> const& filter,
 
 /// @brief get the list of currently running queries
 std::vector<QueryEntryCopy> QueryList::listCurrent() {
-  // We should call dtor std::shared_ptr<Query> not under a lock,
-  // otherwise a deadlock will occur. Query dtor make a WRITE_LOCKER(..., _lock)
+  // We must not call the std::shared_ptr<Query> dtor under the `_lock`,
+  // because this can result in a deadlock since the Query dtor tries to
+  // remove itself from this list which acquires the write `_lock`
   absl::InlinedVector<std::shared_ptr<Query>, 16> queries;
   std::vector<QueryEntryCopy> result;
   // reserve room for some queries outside of the lock already,

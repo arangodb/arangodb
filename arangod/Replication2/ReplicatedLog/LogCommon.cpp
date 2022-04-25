@@ -31,6 +31,7 @@
 #include <Basics/StringUtils.h>
 #include <Basics/VelocyPackHelper.h>
 #include <Basics/debugging.h>
+#include <Inspection/VPack.h>
 
 #include <chrono>
 #include <utility>
