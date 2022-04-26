@@ -267,7 +267,9 @@ function authenticationLdapSearchModePrefixSuffix(options) {
   print('Performing #1 Test: Search Mode - Simple Login Mode');
   print(opts.ldapModeSearchPrefixSuffix.conf);
   return new ldapTestRunner(options, 'ldap',
-    opts.ldapModeSearchPrefixSuffix.conf).run(testCases);
+                            opts.ldapModeSearchPrefixSuffix.conf,
+                            false
+                           ).run(testCases);
 }
 
 function authenticationLdapSearchMode(options) {
@@ -293,7 +295,7 @@ function authenticationLdapSearchMode(options) {
   print(opts.ldapModeSearch.conf);
   return new ldapTestRunner(options, 'ldap',
                             opts.ldapModeSearch.conf,
-                            checkUsers=false
+                            false
                            ).run(testCases);
 }
 
@@ -320,7 +322,7 @@ function authenticationLdapSearchModePlaceholder(options) {
   print(opts.ldapModeSearch.conf);
   return new ldapTestRunner(options, 'ldap',
                             opts.ldapModeSearchPlaceholder.conf,
-                            checkUsers=false
+                            false
                            ).run(testCases);
 }
 
@@ -347,7 +349,7 @@ function authenticationLdapRolesModePrefixSuffix(options) {
   print(opts.ldapModeRolesPrefixSuffix.conf);
   return new ldapTestRunner(options, 'ldap',
                             opts.ldapModeRolesPrefixSuffix.conf,
-                            checkUsers=false
+                            false
                            ).run(testCases);
 }
 
@@ -374,7 +376,7 @@ function authenticationLdapRolesMode(options) {
   print(opts.ldapModeRoles.conf);
   return new ldapTestRunner(options, 'ldap',
                             opts.ldapModeRoles.conf,
-                            checkUsers=false
+                            false
                            ).run(testCases);
 }
 
@@ -403,7 +405,7 @@ function authenticationLdapTwoLdap(options) {
   print(opts.dualldap.conf);
   return new ldapTestRunner(options, 'ldap',
                             opts.dualldap.conf,
-                            checkUsers=false
+                            false
                            ).run(testCases);
 }
 
