@@ -181,7 +181,7 @@ struct SimulationEngine {
   struct Result {
     Stats stats{};
     FingerprintSet<Observer> fingerprints;
-
+    std::vector<std::shared_ptr<Step<Observer> const>> finalStates;
     std::optional<Error<Observer>> failed;
 
     void printAllStates(std::ostream& os) {
@@ -222,6 +222,9 @@ struct SimulationEngine {
       return {inserted, *iter};
     };
 
+    using clock = std::chrono::steady_clock;
+    auto last = clock::now();
+
     {
       auto [inserted, step] = registerFingerprint(std::move(initialState),
                                                   std::move(initialObserver));
@@ -240,6 +243,7 @@ struct SimulationEngine {
       auto newStates = driver.expand(nextStep->state);
       if (newStates.empty()) {
         result.stats.finalStates += 1;
+        result.finalStates.emplace_back(nextStep);
         if (auto checkResult = nextStep->observer.finalStep(nextStep->state);
             isError(checkResult)) {
           result.failed.emplace(nextStep, checkResult.asError());
@@ -273,6 +277,12 @@ struct SimulationEngine {
 
         // put step into active steps
         activeSteps.push_back(step);
+      }
+
+      auto now = clock::now();
+      if ((now - last) > std::chrono::seconds{5}) {
+        std::cout << result.stats << std::endl;
+        last = now;
       }
     }
     return result;

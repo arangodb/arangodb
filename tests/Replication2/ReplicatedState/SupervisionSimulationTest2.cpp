@@ -32,9 +32,10 @@
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
 #include "Replication2/ModelChecker/ModelChecker.h"
 #include "Replication2/ModelChecker/ActorModel.h"
+#include "Replication2/ModelChecker/Predicates.h"
 
 #include <boost/container_hash/hash.hpp>
-#if 0
+
 using namespace arangodb;
 using namespace arangodb::test;
 using namespace arangodb::replication2;
@@ -205,6 +206,7 @@ struct AgencyState {
 
   friend auto operator<<(std::ostream& os, AgencyState const& state)
       -> std::ostream& {
+    return os;
     auto const print = [&](auto const& x) {
       VPackBuilder builder;
       x.toVelocyPack(builder);
@@ -260,12 +262,30 @@ struct SupervisionStateAction {
   explicit SupervisionStateAction(replicated_state::Action action)
       : _action(std::move(action)) {}
 
-  auto toString() -> std::string {
+  auto toString() const -> std::string {
     return std::string{"Supervision "} +
            std::visit([&](auto const& x) { return typeid(x).name(); }, _action);
   }
 
   replicated_state::Action _action;
+};
+
+struct KillServerAction {
+  void apply(AgencyState& agency) {
+    agency.health._health.at(id).notIsFailed = false;
+  }
+
+  explicit KillServerAction(ParticipantId id) : id(std::move(id)) {}
+
+  auto toString() const -> std::string { return std::string{"kill "} + id; }
+  ParticipantId id;
+};
+
+struct LoadAgencyData {
+  void apply(AgencyState& agency) {}
+  explicit LoadAgencyData(ParticipantId id) : id(std::move(id)) {}
+  auto toString() const -> std::string { return std::string{"load "} + id; }
+  ParticipantId id;
 };
 
 struct SupervisionLogAction {
@@ -284,7 +304,7 @@ struct SupervisionLogAction {
 
   explicit SupervisionLogAction(replicated_log::Action action)
       : _action(std::move(action)) {}
-  auto toString() -> std::string {
+  auto toString() const -> std::string {
     return std::string{"Supervision "} +
            std::visit([&](auto const& x) { return typeid(x).name(); }, _action);
   }
@@ -305,7 +325,7 @@ struct DBServerSnapshotCompleteAction {
     status.generation = generation;
     status.snapshot.status = SnapshotStatus::kCompleted;
   };
-  auto toString() -> std::string {
+  auto toString() const -> std::string {
     return std::string{"Snapshot Complete for "} + name + "@" +
            to_string(generation);
   }
@@ -325,7 +345,7 @@ struct DBServerReportTermAction {
     auto& status = agency.replicatedLog->current->localState[name];
     status.term = term;
   };
-  auto toString() -> std::string {
+  auto toString() const -> std::string {
     return std::string{"Report Term for "} + name + ", term" + to_string(term);
   }
 
@@ -354,7 +374,7 @@ struct DBServerCommitConfigAction {
         agency.replicatedLog->plan->participantsConfig;
     leader.committedParticipantsConfig->generation = generation;
   };
-  auto toString() -> std::string {
+  auto toString() const -> std::string {
     return std::string{"Commit for"} + name + ", generation " +
            std::to_string(generation) + ", term " + to_string(term);
   }
@@ -367,28 +387,42 @@ struct DBServerCommitConfigAction {
 using AgencyTransition =
     std::variant<SupervisionStateAction, SupervisionLogAction,
                  DBServerSnapshotCompleteAction, DBServerReportTermAction,
-                 DBServerCommitConfigAction>;
+                 DBServerCommitConfigAction, KillServerAction, LoadAgencyData>;
 
-using Actor = model_checker::Actor<AgencyState, AgencyTransition>;
+auto operator<<(std::ostream& os, AgencyTransition const& a) -> std::ostream& {
+  return os << std::visit([](auto const& action) { return action.toString(); },
+                          a);
+}
 
 template<typename Derived>
-struct ActorBase : Actor {
-  virtual auto clone() const -> std::shared_ptr<Actor> override {
-    return std::make_shared<Derived>(reinterpret_cast<Derived const&>(*this));
-  }
-  virtual auto check(AgencyState const& s)
-      -> model_checker::CheckResult override {
-    return model_checker::CheckResult::kContinue;
-  }
-  virtual auto expand(AgencyState const& s)
-      -> std::vector<std::pair<AgencyState, AgencyTransition>> override {
-    auto result = std::vector<std::pair<AgencyState, AgencyTransition>>{};
-    auto actions = reinterpret_cast<Derived const&>(*this).step(s);
+struct ActorBase {
+  using ActionVector = std::vector<AgencyTransition>;
 
+  struct InternalState {
+    friend auto operator==(InternalState const& lhs,
+                           InternalState const& rhs) noexcept -> bool {
+      return true;
+    }
+    friend auto operator<<(std::ostream& os, InternalState const&) noexcept
+        -> std::ostream& {
+      return os;
+    }
+    friend auto hash_value(InternalState const& i) noexcept -> std::size_t {
+      return 0;
+    }
+  };
+
+  auto expand(AgencyState const& s, InternalState const& i)
+      -> std::vector<std::tuple<AgencyTransition, AgencyState, InternalState>> {
+    auto result =
+        std::vector<std::tuple<AgencyTransition, AgencyState, InternalState>>{};
+
+    auto actions = reinterpret_cast<Derived const&>(*this).step(s);
     for (auto& action : actions) {
       auto newState = s;
       std::visit([&](auto& action) { action.apply(newState); }, action);
-      result.emplace_back(std::move(newState), std::move(action));
+      result.emplace_back(std::move(action), std::move(newState),
+                          InternalState{});
     }
 
     return result;
@@ -439,7 +473,7 @@ struct SupervisionActor : ActorBase<SupervisionActor> {
   }
 };
 
-struct DBServerActor final : ActorBase<DBServerActor> {
+struct DBServerActor : ActorBase<DBServerActor> {
   explicit DBServerActor(ParticipantId name) : name(std::move(name)) {}
 
   [[nodiscard]] auto stepReplicatedState(AgencyState const& agency) const
@@ -518,7 +552,7 @@ struct DBServerActor final : ActorBase<DBServerActor> {
     auto const& plan = *agency.replicatedLog->plan;
     if (plan.currentTerm) {
       auto const& term = *plan.currentTerm;
-      if (term.leader->serverId == name) {
+      if (term.leader && term.leader->serverId == name) {
         if (plan.participantsConfig.generation != committedGeneration) {
           return DBServerCommitConfigAction{
               name, plan.participantsConfig.generation, term.term};
@@ -544,6 +578,30 @@ struct DBServerActor final : ActorBase<DBServerActor> {
 
   ParticipantId name;
 };
+
+struct KillLeaderActor : ActorBase<KillLeaderActor> {
+  auto step(AgencyState const& agency) const -> std::vector<AgencyTransition> {
+    std::vector<AgencyTransition> v;
+
+    if (agency.replicatedLog && agency.replicatedLog->plan) {
+      if (agency.replicatedLog->plan->currentTerm) {
+        auto const& term = *agency.replicatedLog->plan->currentTerm;
+        if (term.term == LogTerm{1} && term.leader) {
+          auto const& health = agency.health;
+          auto const& leader = *term.leader;
+          auto isHealth =
+              health.validRebootId(leader.serverId, leader.rebootId) &&
+              health.notIsFailed(leader.serverId);
+          if (isHealth) {
+            v.emplace_back(KillServerAction{leader.serverId});
+          }
+        }
+      }
+    }
+
+    return v;
+  }
+};
 }  // namespace
 
 struct ReplicatedStateSupervisionSimulationTest2 : ::testing::Test {
@@ -555,6 +613,25 @@ struct ReplicatedStateSupervisionSimulationTest2 : ::testing::Test {
                                                  .allowedAsLeader = false};
 };
 
+namespace {
+auto isLeaderHealth() {
+  return MC_BOOL_PRED(global, {
+    AgencyState const& state = global.state;
+    if (state.replicatedLog && state.replicatedLog->plan &&
+        state.replicatedLog->plan->currentTerm) {
+      auto const& term = *state.replicatedLog->plan->currentTerm;
+      if (term.leader) {
+        auto const& leader = *term.leader;
+        auto const& health = global.state.health;
+        return health.validRebootId(leader.serverId, leader.rebootId) &&
+               health.notIsFailed(leader.serverId);
+      }
+    }
+    return false;
+  });
+}
+}  // namespace
+
 TEST_F(ReplicatedStateSupervisionSimulationTest2, check_state_and_log) {
   AgencyStateBuilder state;
   state.setId(logId)
@@ -562,31 +639,114 @@ TEST_F(ReplicatedStateSupervisionSimulationTest2, check_state_and_log) {
       .setTargetVersion(20)
       .setTargetConfig(defaultConfig);
 
-  model_checker::ActorEngine<AgencyState, AgencyTransition> engine;
-  model_checker::ActorDriverBuilder<AgencyState, AgencyTransition> builder;
+  replicated_log::ParticipantsHealth health;
+  health._health.emplace(
+      "A", replicated_log::ParticipantHealth{.rebootId = RebootId(1),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "B", replicated_log::ParticipantHealth{.rebootId = RebootId(1),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "C", replicated_log::ParticipantHealth{.rebootId = RebootId(1),
+                                             .notIsFailed = true});
+  auto initState = AgencyState{.replicatedState = state.get(),
+                               .replicatedLog = std::nullopt,
+                               .health = std::move(health)};
 
-  builder.addObserver([&](AgencyState const& state) {
+  auto driver = model_checker::ActorDriver{
+      SupervisionActor{},
+      DBServerActor{"A"},
+      DBServerActor{"B"},
+      DBServerActor{"C"},
+  };
 
-  });
-  builder.addActor(std::make_unique<SupervisionActor>());
-  builder.addActor(std::make_unique<DBServerActor>("A"));
-  builder.addActor(std::make_unique<DBServerActor>("B"));
-  builder.addActor(std::make_unique<DBServerActor>("C"));
+  auto test = MC_EVENTUALLY_ALWAYS(isLeaderHealth());
+  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+  auto result = Engine::run(driver, test, initState);
+  EXPECT_FALSE(result.failed) << *result.failed;
+  std::cout << result.stats << std::endl;
+}
+
+TEST_F(ReplicatedStateSupervisionSimulationTest2,
+       check_state_and_log_kill_server) {
+  AgencyStateBuilder state;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C")
+      .setTargetVersion(20)
+      .setTargetConfig(defaultConfig);
 
   replicated_log::ParticipantsHealth health;
   health._health.emplace(
       "A", replicated_log::ParticipantHealth{.rebootId = RebootId(1),
-                                             .notIsFailed = false});
+                                             .notIsFailed = true});
   health._health.emplace(
       "B", replicated_log::ParticipantHealth{.rebootId = RebootId(1),
-                                             .notIsFailed = false});
+                                             .notIsFailed = true});
   health._health.emplace(
       "C", replicated_log::ParticipantHealth{.rebootId = RebootId(1),
-                                             .notIsFailed = false});
+                                             .notIsFailed = true});
+  auto initState = AgencyState{.replicatedState = state.get(),
+                               .replicatedLog = std::nullopt,
+                               .health = std::move(health)};
 
-  auto driver = builder.make(
-      AgencyState{.replicatedState = state.get(), .health = health});
-  engine.run(driver);
-  std::cout << engine.statistics() << std::endl;
+  auto driver = model_checker::ActorDriver{
+      SupervisionActor{}, KillLeaderActor{},  DBServerActor{"A"},
+      DBServerActor{"B"}, DBServerActor{"C"},
+  };
+
+  auto test = MC_EVENTUALLY_ALWAYS(isLeaderHealth());
+  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+
+  auto result = Engine::run(driver, test, initState);
+  EXPECT_FALSE(result.failed) << *result.failed;
+  std::cout << result.stats << std::endl;
 }
-#endif
+
+TEST_F(ReplicatedStateSupervisionSimulationTest2, everything_ok_kill_server) {
+  AgencyStateBuilder state;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C")
+      .setTargetVersion(20)
+      .setTargetConfig(defaultConfig);
+  state.setPlanParticipants("A", "B", "C");
+  state.setAllSnapshotsComplete();
+
+  AgencyLogBuilder log;
+  log.setId(logId)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete);
+
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete);
+  log.setPlanLeader("A");
+  log.establishLeadership();
+  log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
+
+  replicated_log::ParticipantsHealth health;
+  health._health.emplace(
+      "A", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "B", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  auto initState = AgencyState{.replicatedState = state.get(),
+                               .replicatedLog = log.get(),
+                               .health = std::move(health)};
+
+  auto driver = model_checker::ActorDriver{
+      SupervisionActor{}, KillLeaderActor{},  DBServerActor{"A"},
+      DBServerActor{"B"}, DBServerActor{"C"},
+  };
+
+  auto test = MC_EVENTUALLY_ALWAYS(isLeaderHealth());
+  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+
+  auto result = Engine::run(driver, test, initState);
+  EXPECT_FALSE(result.failed) << *result.failed;
+  std::cout << result.stats << std::endl;
+}
