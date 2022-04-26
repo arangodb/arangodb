@@ -95,6 +95,16 @@ void Runner::startServer() {
 void Runner::setup() {
   // TODO - make configurable
 
+  for (auto& col : _options.setup.collections) {
+    auto collection = createCollection(col.name);
+    for (auto& idx : col.indexes) {
+      createIndex(*collection, idx);
+    }
+  }
+}
+
+auto Runner::createCollection(std::string const& name)
+    -> std::shared_ptr<LogicalCollection> {
   VPackBuilder optionsBuilder;
   optionsBuilder.openObject();
   optionsBuilder.close();
@@ -103,7 +113,7 @@ void Runner::setup() {
   auto res = methods::Collections::create(
       *_server->vocbase(),     // collection vocbase
       {},                      // operation options
-      "testcol",               // collection name
+      name,                    // collection name
       TRI_COL_TYPE_DOCUMENT,   // collection type
       optionsBuilder.slice(),  // collection properties
       false,                   // replication wait flag
@@ -114,6 +124,22 @@ void Runner::setup() {
     throw std::runtime_error("Failed to create collection: " +
                              std::string(res.errorMessage()));
   }
+  return collection;
+}
+
+void Runner::createIndex(LogicalCollection& col, IndexSetup const& index) {
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("type", index.type);
+  builder.add(VPackValue("fields"));
+  builder.openArray();
+  for (auto& f : index.fields) {
+    builder.add(VPackValue(f));
+  }
+  builder.close();
+  builder.close();
+  bool created = false;
+  std::ignore = col.createIndex(builder.slice(), created);
 }
 
 }  // namespace arangodb::sepp

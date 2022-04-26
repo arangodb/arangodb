@@ -31,6 +31,10 @@
 #include "Options.h"
 #include "Report.h"
 
+namespace arangodb {
+class LogicalCollection;
+}
+
 namespace arangodb::sepp {
 
 struct Server;
@@ -47,6 +51,9 @@ class Runner {
   auto executeRound(std::uint32_t round) -> RoundReport;
   void startServer();
   void setup();
+  auto createCollection(std::string const& name)
+      -> std::shared_ptr<LogicalCollection>;
+  void createIndex(LogicalCollection& col, IndexSetup const& index);
 
   std::string_view _executable;
   std::string_view _reportFile;

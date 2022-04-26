@@ -30,11 +30,47 @@
 
 namespace arangodb::sepp {
 
+struct IndexSetup {
+  std::string name;
+  std::string type;
+  std::vector<std::string> fields;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, IndexSetup& o) {
+  return f.object(o).fields(f.field("name", o.name).fallback(""),
+                            f.field("type", o.type),
+                            f.field("fields", o.fields));
+}
+
+struct CollectionsSetup {
+  std::string name;
+  std::string type;
+  std::vector<IndexSetup> indexes;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, CollectionsSetup& o) {
+  return f.object(o).fields(f.field("name", o.name),
+                            f.field("type", o.type).fallback("document"),
+                            f.field("indexes", o.indexes).fallback(f.keep()));
+}
+
+struct Setup {
+  std::vector<CollectionsSetup> collections;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, Setup& o) {
+  return f.object(o).fields(f.field("collections", o.collections));
+}
+
 struct Options {
   std::string databaseDirectory;
   std::uint32_t runtime;
   std::uint32_t rounds;
 
+  Setup setup;
   workloads::InsertDocuments::Options workload;
 
   RocksDBOptions rocksdb;
@@ -44,8 +80,9 @@ template<class Inspector>
 auto inspect(Inspector& f, Options& o) {
   return f.object(o).fields(
       f.field("databaseDirectory", o.databaseDirectory).fallback("/tmp/sepp"),
-      f.field("runtime", o.runtime).fallback(10000u),
-      f.field("workload", o.workload).fallback(f.keep()),
+      f.field("runtime", o.runtime).fallback(10000u),      //
+      f.field("setup", o.setup),                           //
+      f.field("workload", o.workload).fallback(f.keep()),  //
       f.field("rounds", o.rounds).fallback(5u), f.field("rocksdb", o.rocksdb));
 }
 
