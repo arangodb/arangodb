@@ -227,7 +227,7 @@ class ldapTestRunner extends tu.runInArangoshRunner {
       "exp": Math.floor(Date.now() / 1000) + 3600
     }, 'HS256');
 
-    const endpoints = this.instance.endpoints;
+    const endpoints = this.instanceInfo.endpoints;
     for (const endpoint of endpoints) {
       let result = request({
         method: "PUT",
