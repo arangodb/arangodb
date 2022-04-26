@@ -92,6 +92,7 @@
                 arangoHelper.arangoError('Collection error: ' + error.responseText);
               } else {
                 var wfs = $('#change-collection-sync').val();
+                var cacheEnabled = $('#change-collection-cache').val();
                 var replicationFactor;
                 var writeConcern;
 
@@ -108,7 +109,7 @@
                   }
                 }
                 if (!abort) {
-                  this.model.changeCollection(wfs, replicationFactor, writeConcern, callbackChange);
+                  this.model.changeCollection(wfs, replicationFactor, writeConcern, cacheEnabled, callbackChange);
                 }
               }
             }.bind(this);
@@ -209,11 +210,6 @@
             tableContent.push(
               window.modalView.createReadOnlyEntry(
                 'change-collection-type', 'Type', this.model.get('type'), ''
-              )
-            );
-            tableContent.push(
-              window.modalView.createReadOnlyEntry(
-                'change-collection-status', 'Status', this.model.get('status'), ''
               )
             );
             buttons.push(
@@ -328,6 +324,15 @@
                   'Wait for sync',
                   wfs,
                   'Synchronize to disk before returning from a create or update of a document.',
+                  [{value: false, label: 'No'}, {value: true, label: 'Yes'}])
+              );
+              
+              tableContent.push(
+                window.modalView.createSelectEntry(
+                  'change-collection-cache',
+                  'Enable documents cache',
+                  data.cacheEnabled,
+                  'Enable in-memory cache for documents and primary index',
                   [{value: false, label: 'No'}, {value: true, label: 'Yes'}])
               );
             }

@@ -141,11 +141,10 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
       << " depth " << _options.getMinDepth() << " <= " << step.getDepth()
       << "<= " << _options.getMaxDepth();
 
-  if (res.isFiltered() || res.isPruned()) {
-    _stats.incrFiltered();
-  }
-
   if constexpr (std::is_same_v<ResultList, std::vector<Step>>) {
+    if (res.isFiltered() || res.isPruned()) {
+      _stats.incrFiltered();
+    }
     if (step.getDepth() >= _options.getMinDepth() && !res.isFiltered()) {
       // Include it in results.
       _results.emplace_back(step);
