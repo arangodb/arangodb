@@ -51,18 +51,18 @@ namespace arangodb::replication2::test {
 using namespace replicated_log;
 
 struct ReplicatedLogTest : ::testing::Test {
-  template <typename MockLogT = MockLog>
+  template<typename MockLogT = MockLog>
   auto makeLogCore(LogId id) -> std::unique_ptr<LogCore> {
     auto persisted = makePersistedLog<MockLogT>(id);
     return std::make_unique<LogCore>(persisted);
   }
 
-  template <typename MockLogT = MockLog>
+  template<typename MockLogT = MockLog>
   auto getPersistedLogById(LogId id) -> std::shared_ptr<MockLogT> {
     return std::dynamic_pointer_cast<MockLogT>(_persistedLogs.at(id));
   }
 
-  template <typename MockLogT = MockLog>
+  template<typename MockLogT = MockLog>
   auto makePersistedLog(LogId id) -> std::shared_ptr<MockLogT> {
     auto persisted = std::make_shared<MockLogT>(id);
     _persistedLogs[id] = persisted;

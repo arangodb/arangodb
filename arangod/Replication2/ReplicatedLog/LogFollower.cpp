@@ -170,7 +170,8 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   // Setting it to false does not require the mutex.
   _appendEntriesInFlight = true;
   auto inFlightScopeGuard =
-      ScopeGuard([&flag = _appendEntriesInFlight, &cv = _appendEntriesInFlightCondVar]() noexcept {
+      ScopeGuard([&flag = _appendEntriesInFlight,
+                  &cv = _appendEntriesInFlightCondVar]() noexcept {
         flag = false;
         cv.notify_one();
       });
