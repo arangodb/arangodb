@@ -26,6 +26,7 @@
 #include <Basics/Exceptions.h>
 #include <Basics/application-exit.h>
 #include <Basics/voc-errors.h>
+#include <Inspection/VPack.h>
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
