@@ -17,6 +17,7 @@ import ParameterEdgeColorByCollection from "./ParameterEdgeColorByCollection";
 import ParameterNodeLabel from "./ParameterNodeLabel";
 import ParameterEdgeLabel from "./ParameterEdgeLabel";
 import ParameterNodeColorAttribute from "./ParameterNodeColorAttribute";
+import ParameterNodeColor from "./ParameterNodeColor";
 import ParameterNodeSizeByEdges from "./ParameterNodeSizeByEdges";
 import ButtonSave from "./ButtonSave";
 
@@ -190,16 +191,7 @@ const screenshotMenu = (
             <br />
             <ParameterNodeColorByCollection />
             <br />
-            <Input
-              addonBefore="Color"
-              placeholder="Color"
-              suffix = {
-                <Tooltip title="Default node color. RGB or HEX value.">
-                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                </Tooltip>
-              }
-              style={{ width: 240, marginTop: '24px' }}
-            />
+            <ParameterNodeColor />
             <br />
             <ParameterNodeColorAttribute />
             <br />
