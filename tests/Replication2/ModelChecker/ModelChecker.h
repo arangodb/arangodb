@@ -116,7 +116,7 @@ struct SimulationEngine {
     void printTrace(std::ostream& os) const noexcept {
       if (!parents.empty()) {
         parents.front().second->printTrace(os);
-        os << parents.front().first << std::endl;
+        os << "- [" << parents.front().first << "] ->" << std::endl;
       }
       os << state << std::endl;
     }
@@ -128,6 +128,7 @@ struct SimulationEngine {
 
     friend auto operator<<(std::ostream& os, Step const& s) -> std::ostream& {
       s.printTrace(os);
+      os << " (final state reached)" << std::endl;
       return os;
     }
   };

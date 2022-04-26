@@ -26,220 +26,90 @@
 
 namespace arangodb::test::model_checker {
 
-template<typename State, typename Transition>
-struct Actor {
-  struct InternalState {};
+template<typename State, typename Transition, typename... Actors>
+struct GlobalActorState {
+  State state;
+  std::tuple<typename Actors::InternalState...> actors;
 
-  virtual ~Actor() = default;
-  virtual auto clone() const -> std::shared_ptr<Actor> = 0;
-  virtual auto expand(State const&, InternalState const&)
-      -> std::vector<std::tuple<State, Transition, InternalState>> = 0;
-  virtual auto toString() -> std::string { return ""; }
-};
-
-template<typename State, typename Transition>
-struct ActorModelState {
-  State realState;
-  std::vector<std::shared_ptr<Actor<State, Transition>>> actors;
-
-  friend auto operator==(ActorModelState const& lhs,
-                         ActorModelState const& rhs) noexcept -> bool {
-    if (lhs.realState != rhs.realState) {
-      return false;
-    }
-    /*for (std::size_t i = 0; i < lhs.actors.size(); i++) {
-      if (*lhs.actors[i] != *rhs.actors[i]) {
-        return false;
-      }
-    }*/
-    return true;
-  }
-
-  friend auto hash_value(ActorModelState const& s) -> std::size_t {
+  friend auto hash_value(GlobalActorState const& g) noexcept -> std::size_t {
     std::size_t seed = 0;
-    boost::hash_combine(seed, s.realState);
-    /*for (auto const& actor : s.actors) {
-      boost::hash_combine(seed, *actor);
-    }*/
+    boost::hash_combine(seed, g.state);
+    boost::hash_combine(seed, g.actors);
     return seed;
   }
 
-  friend auto operator<<(std::ostream& os, ActorModelState const& state)
+  friend auto operator==(GlobalActorState const&,
+                         GlobalActorState const&) noexcept -> bool = default;
+
+  friend auto operator<<(std::ostream& os, GlobalActorState const& s)
       -> std::ostream& {
-    os << "State: " << state.realState << std::endl;
-    for (auto const& actor : state.actors) {
-      os << "Actor: " << actor->toString() << std::endl;
-    }
-    return os;
-  }
-};
-
-template<typename State, typename Transition>
-using ActorEngine =
-    SimulationEngine<ActorModelState<State, Transition>, Transition>;
-
-template<typename State, typename Transition, typename NextDriver>
-struct ActorDriver {
-  using Engine = ActorEngine<State, Transition>;
-  using Step = typename Engine::Step;
-  using ActorType = Actor<State, Transition>;
-  using StateType = ActorModelState<State, Transition>;
-
-  auto init() const -> StateType { return {initialState, initialActors}; }
-
-  auto check(Step const& step) const -> model_checker::CheckResult {
-    CheckResult result = CheckResult::withOk();
-    for (auto const& actor : step.state.actors) {
-      result = std::max(result, actor->check(step.state.realState));
-    }
-    if constexpr (!std::is_void_v<NextDriver>) {
-      if (_next != nullptr) {
-        result = std::max(result, _next->check(step));
-      }
-    }
-
-    return result;
-  }
-
-  using ExpandResult = std::vector<std::pair<Transition, StateType>>;
-
-  auto expand(StateType const& state) const -> ExpandResult {
-    auto result = ExpandResult{};
-
-    for (std::size_t i = 0; i < state.actors.size(); i++) {
-      expandActor(state, i, result);
-    }
-
-    return result;
-  }
-
-  static void expandActor(StateType const& inputState, std::size_t index,
-                          ExpandResult& result) {
-    // clone the actor
-    auto outputActors = inputState.actors;
-    outputActors[index] = outputActors[index]->clone();
-    for (auto& [newState, transition] :
-         outputActors[index]->expand(inputState.realState)) {
-      result.emplace_back(std::pair<Transition, StateType>{
-          std::move(transition), StateType{std::move(newState), outputActors}});
-    }
-  }
-
-  State initialState;
-  std::vector<std::shared_ptr<ActorType>> initialActors;
-  NextDriver* _next = nullptr;
-};
-
-template<typename State, typename Transition>
-struct ActorDriverBuilder {
-  using ActorType = Actor<State, Transition>;
-
-  template<typename F>
-  struct ObserverActor final : F, ActorType {
-    static_assert(std::is_copy_constructible_v<F>);
-    ObserverActor(ObserverActor const&) = default;
-    ObserverActor& operator=(ObserverActor const&) = default;
-    explicit ObserverActor(F f) : F(std::move(f)) {}
-    auto check(State const& s) -> CheckResult override {
-      static_assert(std::is_invocable_r_v<void, F, State const&>);
-      F::operator()(s);
-      return CheckResult::withOk();
-    }
-    auto clone() const -> std::shared_ptr<ActorType> override {
-      return std::make_shared<ObserverActor>(*this);
-    }
-    auto expand(const State& s)
-        -> std::vector<std::pair<State, Transition>> override {
-      return {};
-    }
-  };
-
-  template<typename F>
-  void addObserver(F&& fn) {
-    actors.emplace_back(
-        std::make_shared<ObserverActor<F>>(std::forward<F>(fn)));
-  }
-
-  void addActor(std::shared_ptr<ActorType> actor) {
-    actors.emplace_back(std::move(actor));
-  }
-
-  template<typename NextLevel = void>
-  auto make(State initialState, NextLevel* nextLevel = nullptr)
-      -> ActorDriver<State, Transition, NextLevel> {
-    return {initialState, std::move(actors), nextLevel};
+    return s.printActorStates(std::index_sequence_for<Actors...>{}, os);
   }
 
  private:
-  std::vector<std::shared_ptr<ActorType>> actors;
-};
-
-#if 0
-template<typename Actor, typename State>
-struct ActorSimulationState {
-  State realState;
-  std::vector<Actor> actors;
-
-  ActorSimulationState(State realState, std::vector<Actor> actors)
-      : realState(realState), actors(actors) {}
-  friend auto hash_value(ActorSimulationState const& s) -> std::size_t {
-    std::size_t seed = 0;
-    boost::hash_combine(seed, s.realState);
-    boost::hash_combine(seed, s.actors);
-    return seed;
-  }
-
-  friend auto operator<<(std::ostream& os, ActorSimulationState const& s)
+  template<std::size_t... Idxs>
+  auto printActorStates(std::index_sequence<Idxs...>, std::ostream& os) const
       -> std::ostream& {
-    std::cout << "State: " << s.realState << std::endl;
-    for (auto const& actor : s.actors) {
-      std::cout << "Actor: " << actor << std::endl;
-    }
-    return os;
+    os << "[" << state;
+    return ((os << ", {" << std::get<Idxs>(actors) << "}"), ...) << "]";
   }
 };
 
-template<typename Actor, typename State, typename Transition>
-struct ActorSimulation
-    : Simulation<ActorSimulationState<Actor, State>, Transition> {
-  using Step =
-      typename Simulation<ActorSimulationState<Actor, State>, Transition>::Step;
-
- protected:
-  ActorSimulation() {}
-  auto check(Step const& step) const -> CheckResult override {
-    CheckResult result = CheckResult::kContinue;
-    for (auto const& actor : step.state.actors) {
-      result = std::max(result, actor.check(step));
-    }
+template<typename... Actors>
+struct ActorDriver {
+  template<typename State, typename Transition, typename... InternalStates>
+  auto expand(GlobalActorState<State, Transition, InternalStates...> const&
+                  globalState) {
+    auto result = std::vector<std::pair<
+        Transition, GlobalActorState<State, Transition, InternalStates...>>>{};
+    expandEach(std::index_sequence_for<InternalStates...>{}, globalState,
+               result);
     return result;
   }
 
-  using ExpandResult =
-      std::vector<std::pair<Transition, ActorSimulationState<Actor, State>>>;
-
-  auto expand(ActorSimulationState<Actor, State> const& state) const
-      -> ExpandResult override {
-    auto result = ExpandResult{};
-
-    for (std::size_t i = 0; i < state.actors.size(); i++) {
-      expandActor(state, i, result);
-    }
-
-    return result;
+  template<std::size_t... Idxs, typename State, typename Vector>
+  auto expandEach(std::index_sequence<Idxs...>, State const& state, Vector& v) {
+    (expandIdx<Idxs>(state, v), ...);
   }
 
-  static void expandActor(ActorSimulationState<Actor, State> const& inputState,
-                          std::size_t index, ExpandResult& result) {
-    // copy the actor
-    auto outputActors = inputState.actors;
-    for (auto& [transition, newState] :
-         outputActors->expand(inputState.realState)) {
-      result.emplace_back(std::move(transition),
-                          ActorSimulationState<Actor, State>{
-                              std::move(newState), outputActors});
+  template<std::size_t Idx, typename State, typename Vector>
+  auto expandIdx(State const& globalState, Vector& v) {
+    auto& actor = std::get<Idx>(actors);
+    auto const& internalState = std::get<Idx>(globalState.actors);
+    auto result = actor.expand(globalState.state, internalState);
+    v.reserve(result.size());
+
+    for (auto& [transition, state, internal] : result) {
+      auto newActors = globalState.actors;
+      std::get<Idx>(newActors) = internal;
+      v.emplace_back(std::move(transition),
+                     State{std::move(state), std::move(newActors)});
     }
+  }
+
+  template<typename Transition, typename State>
+  auto initialState(State state)
+      -> GlobalActorState<State, Transition, Actors...> {
+    return {std::move(state), {}};
+  }
+
+  explicit ActorDriver(Actors&&... as) : actors(std::forward<Actors>(as)...) {}
+
+  std::tuple<Actors...> actors;
+};
+
+template<typename State, typename Transition>
+struct ActorEngine {
+  template<typename... Actors, typename Observer>
+  static auto run(ActorDriver<Actors...>& driver, Observer&& observer,
+                  State initState) {
+    using GlobalState = GlobalActorState<State, Transition, Actors...>;
+    using BaseEngine = SimulationEngine<GlobalState, Transition>;
+
+    return BaseEngine::run(
+        driver, std::forward<Observer>(observer),
+        driver.template initialState<Transition>(std::move(initState)));
   }
 };
-#endif
+
 }  // namespace arangodb::test::model_checker
