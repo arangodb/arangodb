@@ -340,7 +340,7 @@ function importing (options) {
   } catch (exception) {
     result['run'] = {
       'failed': 1,
-      'message': 'An exceptions of the following form was caught: ' + exception + "\n" + exception.stack
+      'message': 'An exception of the following form was caught: ' + exception + "\n" + exception.stack
     };
     print('An exceptions of the following form was caught: ',
           exception);
