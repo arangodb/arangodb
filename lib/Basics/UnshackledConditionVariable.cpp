@@ -26,12 +26,28 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-void UnshackledConditionVariable::notify_one() noexcept { _cv.notify_one(); }
+void UnshackledConditionVariable::notify_one() noexcept {
+  {
+    // acquire and release the mutex, in order to guarantee that the waiting
+    // thread either has the update visible when checking the precondition,
+    // or has already gone to sleep and released _mutex.
+    auto lock = std::unique_lock(_mutex);
+  }
+  _cv.notify_one();
+}
 
-void UnshackledConditionVariable::notify_all() noexcept { _cv.notify_all(); }
+void UnshackledConditionVariable::notify_all() noexcept {
+  {
+    // acquire and release the mutex, in order to guarantee that the waiting
+    // thread(s) either have the update visible when checking the precondition,
+    // or have already gone to sleep and released _mutex.
+    auto lock = std::unique_lock(_mutex);
+  }
+  _cv.notify_all();
+}
 
 void UnshackledConditionVariable::wait(
-    std::unique_lock<UnshackledMutex>& lock) try {
+    std::unique_lock<UnshackledMutex>& lock) noexcept try {
   {
     auto guard = std::unique_lock(_mutex);
     lock.unlock();
@@ -43,37 +59,38 @@ void UnshackledConditionVariable::wait(
   std::abort();
 }
 
-template<class Rep, class Period>
-auto UnshackledConditionVariable::wait_for(
-    std::unique_lock<UnshackledMutex>& lock,
-    std::chrono::duration<Rep, Period> const& rel_time) -> std::cv_status try {
-  auto res = std::cv_status{};
-  {
-    auto guard = std::unique_lock(_mutex);
-    lock.unlock();
-    res = _cv.wait_for(guard, rel_time);
-  }
-  lock.lock();
-  return res;
-} catch (...) {
-  // We cannot handle any exceptions here.
-  std::abort();
-}
-
-template<class Clock, class Duration>
-auto UnshackledConditionVariable::wait_until(
-    std::unique_lock<std::mutex>& lock,
-    std::chrono::time_point<Clock, Duration> const& timeout_time)
-    -> std::cv_status try {
-  auto res = std::cv_status{};
-  {
-    auto guard = std::unique_lock(_mutex);
-    lock.unlock();
-    res = _cv.wait_until(guard, timeout_time);
-  }
-  lock.lock();
-  return res;
-} catch (...) {
-  // We cannot handle any exceptions here.
-  std::abort();
-}
+/* Commented out for the moment, implementation has to be fixed */
+// template<class Rep, class Period>
+// auto UnshackledConditionVariable::wait_for(
+//     std::unique_lock<UnshackledMutex>& lock,
+//     std::chrono::duration<Rep, Period> const& rel_time) -> std::cv_status try {
+//   auto res = std::cv_status{};
+//   {
+//     auto guard = std::unique_lock(_mutex);
+//     lock.unlock();
+//     res = _cv.wait_for(guard, rel_time);
+//   }
+//   lock.lock();
+//   return res;
+// } catch (...) {
+//   // We cannot handle any exceptions here.
+//   std::abort();
+// }
+//
+// template<class Clock, class Duration>
+// auto UnshackledConditionVariable::wait_until(
+//     std::unique_lock<std::mutex>& lock,
+//     std::chrono::time_point<Clock, Duration> const& timeout_time)
+//     -> std::cv_status try {
+//   auto res = std::cv_status{};
+//   {
+//     auto guard = std::unique_lock(_mutex);
+//     lock.unlock();
+//     res = _cv.wait_until(guard, timeout_time);
+//   }
+//   lock.lock();
+//   return res;
+// } catch (...) {
+//   // We cannot handle any exceptions here.
+//   std::abort();
+// }

@@ -37,30 +37,30 @@ class UnshackledConditionVariable {
   void notify_one() noexcept;
   void notify_all() noexcept;
 
-  void wait(std::unique_lock<UnshackledMutex>& lock);
+  void wait(std::unique_lock<UnshackledMutex>& lock) noexcept;
 
   template<class Predicate>
-  void wait(std::unique_lock<UnshackledMutex>& lock, Predicate stop_waiting);
+  void wait(std::unique_lock<UnshackledMutex>& lock, Predicate stop_waiting) noexcept;
 
   template<class Rep, class Period>
   auto wait_for(std::unique_lock<UnshackledMutex>& lock,
-                std::chrono::duration<Rep, Period> const& rel_time)
+                std::chrono::duration<Rep, Period> const& rel_time) noexcept
       -> std::cv_status;
 
   template<class Rep, class Period, class Predicate>
   auto wait_for(std::unique_lock<UnshackledMutex>& lock,
                 std::chrono::duration<Rep, Period> const& rel_time,
-                Predicate stop_waiting) -> bool;
+                Predicate stop_waiting) noexcept -> bool;
 
   template<class Clock, class Duration>
   auto wait_until(std::unique_lock<std::mutex>& lock,
-                  std::chrono::time_point<Clock, Duration> const& timeout_time)
+                  std::chrono::time_point<Clock, Duration> const& timeout_time) noexcept
       -> std::cv_status;
 
   template<class Clock, class Duration, class Predicate>
   auto wait_until(std::unique_lock<std::mutex>& lock,
                   std::chrono::time_point<Clock, Duration> const& timeout_time,
-                  Predicate stop_waiting) -> bool;
+                  Predicate stop_waiting) noexcept -> bool;
 
  private:
   std::mutex _mutex;
@@ -69,32 +69,45 @@ class UnshackledConditionVariable {
 
 template<class Predicate>
 void UnshackledConditionVariable::wait(std::unique_lock<UnshackledMutex>& lock,
-                                       Predicate stop_waiting) {
+                                       Predicate stop_waiting) noexcept try {
+  auto guard = std::unique_lock(_mutex);
+
   while (!stop_waiting()) {
-    wait(lock);
+    // unlock before suspending the thread
+    lock.unlock();
+    _cv.wait(guard);
+    // to prevent deadlocks, `guard` must not be locked while acquiring `lock`
+    guard.unlock();
+    lock.lock();
+    // guard must be locked while checking the predicate
+    guard.lock();
   }
+} catch (...) {
+  // We cannot handle any exceptions here.
+  std::abort();
 }
 
-template<class Rep, class Period, class Predicate>
-auto UnshackledConditionVariable::wait_for(
-    std::unique_lock<UnshackledMutex>& lock,
-    std::chrono::duration<Rep, Period> const& rel_time, Predicate stop_waiting)
-    -> bool {
-  return wait_until(lock, std::chrono::steady_clock::now() + rel_time,
-                    std::forward<Predicate>(stop_waiting));
-}
-
-template<class Clock, class Duration, class Predicate>
-auto UnshackledConditionVariable::wait_until(
-    std::unique_lock<std::mutex>& lock,
-    std::chrono::time_point<Clock, Duration> const& timeout_time,
-    Predicate stop_waiting) -> bool {
-  while (!stop_waiting()) {
-    if (wait_until(lock, timeout_time) == std::cv_status::timeout) {
-      return stop_waiting();
-    }
-  }
-  return true;
-}
+/* Commented out for the moment, implementation has to be fixed */
+// template<class Rep, class Period, class Predicate>
+// auto UnshackledConditionVariable::wait_for(
+//     std::unique_lock<UnshackledMutex>& lock,
+//     std::chrono::duration<Rep, Period> const& rel_time, Predicate stop_waiting)
+//     -> bool {
+//   return wait_until(lock, std::chrono::steady_clock::now() + rel_time,
+//                     std::forward<Predicate>(stop_waiting));
+// }
+//
+// template<class Clock, class Duration, class Predicate>
+// auto UnshackledConditionVariable::wait_until(
+//     std::unique_lock<std::mutex>& lock,
+//     std::chrono::time_point<Clock, Duration> const& timeout_time,
+//     Predicate stop_waiting) -> bool {
+//   while (!stop_waiting()) {
+//     if (wait_until(lock, timeout_time) == std::cv_status::timeout) {
+//       return stop_waiting();
+//     }
+//   }
+//   return true;
+// }
 
 }  // namespace arangodb::basics
