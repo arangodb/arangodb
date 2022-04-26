@@ -529,6 +529,7 @@ class testRunner {
               }
             }
           } else {
+            this.results[te].message = "Instance not healthy! " + this.results[te].message;
             continue;
           }
           first = false;
