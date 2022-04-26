@@ -445,7 +445,7 @@ function importing (options) {
       'failed': 1,
       'message': 'An exception of the following form was caught: ' + exception + "\n" + exception.stack
     };
-    print('An exceptions of the following form was caught: ',
+    print('An exception of the following form was caught: ',
           exception);
   }
 
