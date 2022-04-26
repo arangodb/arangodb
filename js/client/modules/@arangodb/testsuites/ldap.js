@@ -292,7 +292,9 @@ function authenticationLdapSearchMode(options) {
   print('Performing #2 Test: Search Mode');
   print(opts.ldapModeSearch.conf);
   return new ldapTestRunner(options, 'ldap',
-    opts.ldapModeSearch.conf).run(testCases);
+                            opts.ldapModeSearch.conf,
+                            checkUsers=false
+                           ).run(testCases);
 }
 
 function authenticationLdapSearchModePlaceholder(options) {
@@ -317,7 +319,9 @@ function authenticationLdapSearchModePlaceholder(options) {
   print('Performing #3 Test: Search Mode');
   print(opts.ldapModeSearch.conf);
   return new ldapTestRunner(options, 'ldap',
-    opts.ldapModeSearchPlaceholder.conf).run(testCases);
+                            opts.ldapModeSearchPlaceholder.conf,
+                            checkUsers=false
+                           ).run(testCases);
 }
 
 function authenticationLdapRolesModePrefixSuffix(options) {
@@ -342,7 +346,9 @@ function authenticationLdapRolesModePrefixSuffix(options) {
   print('Performing #4 Test: Role Mode - Simple Login Mode');
   print(opts.ldapModeRolesPrefixSuffix.conf);
   return new ldapTestRunner(options, 'ldap',
-    opts.ldapModeRolesPrefixSuffix.conf).run(testCases);
+                            opts.ldapModeRolesPrefixSuffix.conf,
+                            checkUsers=false
+                           ).run(testCases);
 }
 
 function authenticationLdapRolesMode(options) {
@@ -366,7 +372,10 @@ function authenticationLdapRolesMode(options) {
 
   print('Performing #5 Test: Role Mode');
   print(opts.ldapModeRoles.conf);
-  return new ldapTestRunner(options, 'ldap', opts.ldapModeRoles.conf).run(testCases);
+  return new ldapTestRunner(options, 'ldap',
+                            opts.ldapModeRoles.conf,
+                            checkUsers=false
+                           ).run(testCases);
 }
 
 function authenticationLdapTwoLdap(options) {
@@ -392,7 +401,10 @@ function authenticationLdapTwoLdap(options) {
 
   print('Performing #6 Test: Failover - Scenario 1: two active LDAP servers');
   print(opts.dualldap.conf);
-  return new ldapTestRunner(options, 'ldap', opts.dualldap.conf).run(testCases);
+  return new ldapTestRunner(options, 'ldap',
+                            opts.dualldap.conf,
+                            checkUsers=false
+                           ).run(testCases);
 }
 
 function authenticationLdapFirstLdap(options) {
