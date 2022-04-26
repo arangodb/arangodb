@@ -936,7 +936,7 @@ Result LogicalCollection::properties(velocypack::Slice slice, bool) {
         slice, StaticStrings::InternalValidatorTypes, _internalValidatorTypes);
     if (nextType != _internalValidatorTypes) {
       // This is a bit dangerous operation, if the internalValidators are NOT
-      // empty a concurrent writer could have one in it's hand while this thread
+      // empty a concurrent writer could have one in its hand while this thread
       // deletes it. For now the situation cannot happen, but may happen in the
       // future. As soon as it happens we need to make sure that we hold a write
       // lock on this collection while we swap the validators. (Or apply some
