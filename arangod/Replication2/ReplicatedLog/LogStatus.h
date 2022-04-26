@@ -27,6 +27,7 @@
 #include <unordered_map>
 #include <variant>
 
+#include <Inspection/VPack.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -85,8 +86,7 @@ auto inspect(Inspector& f, QuickLogStatus& x) {
     committedParticipantsConfig = std::make_shared<ParticipantsConfig>();
   }
   auto res = f.object(x).fields(
-      f.field("role", x.role)
-          .transformWith(ParticipantRoleStringTransformer{}),
+      f.field("role", x.role).transformWith(ParticipantRoleStringTransformer{}),
       f.field("term", x.term), f.field("local", x.local),
       f.field("leadershipEstablished", x.leadershipEstablished),
       f.field("commitFailReason", x.commitFailReason),
