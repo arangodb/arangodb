@@ -22,6 +22,8 @@
 
 #include <gtest/gtest.h>
 
+#include <fmt/core.h>
+
 #include "Replication2/ModelChecker/ModelChecker.h"
 #include "Replication2/ModelChecker/ActorModel.h"
 #include <boost/container_hash/hash.hpp>
@@ -54,87 +56,340 @@ struct MyTransition {
   }
 };
 
-template<typename Engine>
-struct GTestDriver {
-  using State = typename Engine::State;
-  using Transition = typename Engine::Transition;
-  using Step = typename Engine::Step;
-
-  explicit GTestDriver(State initState) : initState(initState) {}
-
-  template<typename F>
-  void onStep(F&& fn) {
-    _stepFunction = std::forward<F>(fn);
-  }
-
-  auto init() const -> State { return initState; }
-
-  auto expand(const State& state) const
-      -> std::vector<std::pair<Transition, State>> {
-    return _stepFunction(state);
-  }
-
- private:
-  State initState;
-  std::function<std::vector<std::pair<Transition, State>>(State const&)>
-      _stepFunction;
-  std::function<void(State const&)> _validateFunction;
-};
-
-template<typename Engine>
-struct GTestHelper {
-  using Step = typename Engine::Step;
-  using State = typename Engine::State;
-  using Transition = typename Engine::Transition;
-
-  template<typename F>
-  struct Observer : F {
-    explicit Observer(F f) : F(std::move(f)) {}
-    void finalStep(Step const& step) {}
-    void tick() {}
-    void initTick() {}
-    auto check(Step const& step) -> model_checker::CheckResult {
-      test(step);
-      if (testing::Test::HasFailure()) {
-        dumpStepTrace(step);
-        if (testing::Test::HasFatalFailure()) {
-          return model_checker::CheckResult::kTerminate;
-        }
-        return model_checker::CheckResult::kPrune;
-      }
-      return model_checker::CheckResult::kContinue;
-    }
-
-    void test(Step const& step) { F::operator()(step); }
-
-    static void dumpStepTrace(Step const& step) {
-      if (!step.parents.empty()) {
-        dumpStepTrace(*step.parents[0].second);
-        std::cout << "Transition: " << step.parents[0].first << std::endl;
-      }
-      std::cout << "at step of depth " << step.depth << ": " << std::endl;
-      std::cout << "State: " << step.state << std::endl;
-    }
-  };
-
-  template<typename F>
-  struct Driver : F {
-    auto expand(State const& state) const
-        -> std::vector<std::pair<Transition, State>> {
-      static_assert(std::is_invocable_r_v<void, F const, State const&>);
-      return F::operator()(state);
-    }
-  };
-};
+template<typename E>
+auto max(E const& e) -> E {
+  return e;
+}
+template<typename E, typename F, typename... Gs>
+auto max(E const& e, F const& f, Gs const&... gs) -> E {
+  return std::max(e, max(f, gs...));
+}
 
 }  // namespace
 
-using Engine = model_checker::SimulationEngine<MyState, MyTransition>;
+template<const char File[], std::size_t Line>
+struct FileLineType {
+  static inline constexpr auto filename = File;
+  static inline constexpr std::size_t line = Line;
+
+  static auto annotate(std::string_view message) -> std::string {
+    return fmt::format("{}:{}: {}", filename, line, message);
+  }
+};
+
+#define HERE                                 \
+  decltype([] {                              \
+    static constexpr char data[] = __FILE__; \
+    return ::FileLineType<data, __LINE__>{}; \
+  }())
+
+namespace arangodb::test::model_checker {
+
+template<typename F>
+struct lambda_driver : private F {
+  explicit lambda_driver(F&& f) : F(std::forward<F>(f)) {}
+  template<typename S>
+  auto expand(S const& state) {
+    return F::operator()(state);
+  }
+};
+
+template<typename Location, typename F>
+struct gtest_predicate : private F {
+  explicit gtest_predicate(Location, F&& f) : F(std::forward<F>(f)) {}
+  template<typename S>
+  auto check(S const& state) const {
+    static_assert(std::is_invocable_r_v<void, F const&, S const&>);
+    F::operator()(state);
+    if (testing::Test::HasFailure()) {
+      return CheckResult::withError(Location::annotate("GTest failed"));
+    }
+    return CheckResult::withOk();
+  }
+
+  template<typename S>
+  auto operator()(S const& state) const {
+    return isOk(check(state));
+  }
+
+  template<typename S>
+  auto finalStep(S const& state) {
+    return CheckResult::withOk();
+  }
+
+  friend auto hash_value(gtest_predicate const&) -> std::size_t { return 0; }
+  friend auto operator==(gtest_predicate const&, gtest_predicate const&) {
+    return true;
+  }
+};
+
+template<typename Location, typename F>
+struct bool_predicate : private F {
+  explicit bool_predicate(Location, F&& f) : F(std::forward<F>(f)) {}
+  template<typename S>
+  auto check(S const& state) const {
+    static_assert(std::is_invocable_r_v<bool, F const&, S const&>);
+    if (!F::operator()(state)) {
+      return CheckResult::withError(
+          Location::annotate("predicate evaluated to false"));
+    }
+    return CheckResult::withOk();
+  }
+
+  template<typename S>
+  auto operator()(S const& state) const {
+    return isOk(check(state));
+  }
+
+  template<typename S>
+  auto finalStep(S const& state) {
+    return CheckResult::withOk();
+  }
+
+  friend auto hash_value(bool_predicate const&) -> std::size_t { return 0; }
+  friend auto operator==(bool_predicate const&, bool_predicate const&) {
+    return true;
+  }
+};
+
+template<typename Location, typename F>
+struct eventually : private F {
+  explicit eventually(Location, F&& f) : F(std::forward<F>(f)) {}
+  template<typename S>
+  auto check(S const& state) {
+    auto result = F::check(state);
+    wasTrueOnce = wasTrueOnce || isOk(result);
+    return CheckResult::withOk();
+  }
+
+  template<typename S>
+  auto finalStep(S const& state) {
+    std::cout << "wasTrueOnce: " << wasTrueOnce << std::endl;
+    if (wasTrueOnce) {
+      return CheckResult::withOk();
+    } else {
+      return CheckResult::withError(
+          Location::annotate("Predicate was never fulfilled"));
+    }
+  }
+
+  bool wasTrueOnce = false;
+
+  friend auto hash_value(eventually const& e) -> std::size_t {
+    return boost::hash_value(e.wasTrueOnce);
+  }
+  friend auto operator==(eventually const& lhs, eventually const& rhs) {
+    return lhs.wasTrueOnce == rhs.wasTrueOnce;
+  }
+};
+
+template<typename Location, typename F>
+struct eventually_always : private F {
+  explicit eventually_always(Location, F&& f) : F(std::forward<F>(f)) {}
+
+  template<typename S>
+  auto check(S const&) {
+    return CheckResult::withOk();
+  }
+
+  template<typename S>
+  auto finalStep(S const& state) {
+    static_assert(std::is_invocable_r_v<bool, F const&, S const&>);
+    if (F::operator()(state)) {
+      return CheckResult::withOk();
+    } else {
+      return CheckResult::withError(Location::annotate(
+          "Predicate did not evaluate to true on final state"));
+    }
+  }
+
+  friend auto hash_value(eventually_always const&) -> std::size_t { return 0; }
+  friend auto operator==(eventually_always const&, eventually_always const&) {
+    return true;
+  }
+};
+
+template<typename F>
+struct always : F {
+  explicit always(F&& f) : F(std::forward<F>(f)) {}
+  template<typename S>
+  auto check(S const& state) {
+    if (F::operator()(state)) {
+      return CheckResult::withOk();
+    } else {
+      return CheckResult::withError("Predicate was violated");
+    }
+  }
+
+  template<typename S>
+  auto finalStep(S const& state) {
+    return CheckResult::withOk();
+  }
+  friend auto hash_value(always const&) -> std::size_t { return 0; }
+  friend auto operator==(always const&, always const&) { return true; }
+};
+
+template<std::size_t Idx, typename O>
+struct Tagged : O {
+  friend auto hash_value(Tagged const& c) noexcept -> std::size_t {
+    return hash_value(static_cast<O const&>(c));
+  }
+  friend auto operator<<(std::ostream& os, Tagged const& b) -> std::ostream& {
+    return os << static_cast<O const&>(b);
+  }
+};
+
+template<typename, typename...>
+struct combined_base;
+template<std::size_t... Idx, typename... Os>
+struct combined_base<std::index_sequence<Idx...>, Os...> : Tagged<Idx, Os>... {
+  auto finalStep(auto const& step) {
+    // return max(Tagged<Idx, Os>::check(step)...);
+  }
+  auto check(auto const& step) -> model_checker::CheckResult {
+    // return max(Tagged<Idx, Os>::check(step)...);
+  }
+
+  friend auto hash_value(combined_base const& c) noexcept -> std::size_t {
+    std::size_t seed = 0;
+    (boost::hash_combine(seed, static_cast<Tagged<Idx, Os> const&>(c)), ...);
+    return seed;
+  }
+  friend auto operator==(combined_base const&, combined_base const&) noexcept
+      -> bool = default;
+};
+
+template<typename... Os>
+struct combined : combined_base<std::index_sequence_for<Os...>, Os...> {};
+template<typename... Os>
+combined(Os...) -> combined<Os...>;
+
+}  // namespace arangodb::test::model_checker
+
+#define MC_GTEST_PRED(name, pred)                   \
+  model_checker::gtest_predicate {                  \
+    HERE{}, [&](Engine::State const& name) { pred } \
+  }
+#define MC_BOOL_PRED(name, pred)                    \
+  model_checker::bool_predicate {                   \
+    HERE{}, [&](Engine::State const& name) { pred } \
+  }
+#define MC_EVENTUALLY(pred) \
+  model_checker::eventually { HERE{}, pred }
+#define MC_EVENTUALLY_ALWAYS(pred) \
+  model_checker::eventually_always { HERE{}, pred }
 
 TEST_F(ModelCheckerTest, simple_model_test) {
-  Engine engine;
+  using Engine = model_checker::SimulationEngine<MyState, MyTransition>;
 
-  auto driver = GTestHelper<Engine>::Driver{[&](MyState const& state) {
+  auto driver = model_checker::lambda_driver{[&](MyState const& state) {
+    auto result = std::vector<std::pair<MyTransition, MyState>>{};
+    if (state.x < 10) {
+      result.emplace_back(MyTransition{.deltaX = 1}, MyState{.x = state.x + 1});
+    }
+    return result;
+  }};
+
+  auto test = MC_GTEST_PRED(state, {
+    ASSERT_LE(state.x, 10);
+    ASSERT_GE(state.x, 0);
+  });
+
+  auto result = Engine::run(driver, test, {.x = 0});
+  EXPECT_FALSE(result.failed) << *result.failed;
+
+  auto stats = result.stats;
+  EXPECT_EQ(stats.eliminatedStates, 0);
+  EXPECT_EQ(stats.discoveredStates, 10);
+  EXPECT_EQ(stats.uniqueStates, 10);
+  EXPECT_EQ(stats.finalStates, 1);
+}
+
+TEST_F(ModelCheckerTest, simple_model_test_eventually) {
+  using Engine = model_checker::SimulationEngine<MyState, MyTransition>;
+  auto driver = model_checker::lambda_driver{[&](MyState const& state) {
+    auto result = std::vector<std::pair<MyTransition, MyState>>{};
+    if (state.x < 10) {
+      result.emplace_back(MyTransition{.deltaX = 1}, MyState{.x = state.x + 1});
+    }
+    return result;
+  }};
+
+  auto test = MC_EVENTUALLY(MC_BOOL_PRED(state, { return state.x == 5; }));
+
+  auto result = Engine::run(driver, test, {.x = 0});
+  EXPECT_FALSE(result.failed) << *result.failed;
+
+  auto stats = result.stats;
+  EXPECT_EQ(stats.eliminatedStates, 0);
+  EXPECT_EQ(stats.discoveredStates, 10);
+  EXPECT_EQ(stats.uniqueStates, 10);
+  EXPECT_EQ(stats.finalStates, 1);
+}
+
+TEST_F(ModelCheckerTest, simple_model_test_eventually_always) {
+  using Engine = model_checker::SimulationEngine<MyState, MyTransition>;
+  auto driver = model_checker::lambda_driver{[&](MyState const& state) {
+    auto result = std::vector<std::pair<MyTransition, MyState>>{};
+    if (state.x < 10) {
+      result.emplace_back(MyTransition{.deltaX = 1}, MyState{.x = state.x + 1});
+    }
+    return result;
+  }};
+
+  auto test =
+      MC_EVENTUALLY_ALWAYS(MC_BOOL_PRED(state, { return state.x > 5; }));
+
+  auto result = Engine::run(driver, test, {.x = 0});
+  EXPECT_FALSE(result.failed) << *result.failed;
+
+  auto stats = result.stats;
+  EXPECT_EQ(stats.eliminatedStates, 0);
+  EXPECT_EQ(stats.discoveredStates, 10);
+  EXPECT_EQ(stats.uniqueStates, 10);
+  EXPECT_EQ(stats.finalStates, 1);
+}
+
+TEST_F(ModelCheckerTest, simple_model_test_eventually_always_fail) {
+  using Engine = model_checker::SimulationEngine<MyState, MyTransition>;
+  auto driver = model_checker::lambda_driver{[&](MyState const& state) {
+    auto result = std::vector<std::pair<MyTransition, MyState>>{};
+    if (state.x < 10) {
+      result.emplace_back(MyTransition{.deltaX = 1}, MyState{.x = state.x + 1});
+    }
+    return result;
+  }};
+
+  auto test =
+      MC_EVENTUALLY_ALWAYS(MC_BOOL_PRED(state, { return state.x > 11; }));
+
+  auto result = Engine::run(driver, test, {.x = 0});
+  EXPECT_TRUE(result.failed);
+}
+
+using ActorEngine = model_checker::ActorEngine<MyState, MyTransition>;
+
+TEST_F(ModelCheckerTest, simple_model_test_actor) {
+  auto driver = ActorDriver{
+      SupervisionDriver{},
+      DBServerActor{"A"},
+      DBServerActor{"B"},
+      DBServerActor{"C"},
+  };
+
+  auto driver = ActorDriver.addActor<ActorType>("D").addActor<ActorType2>();
+
+  auto driver = builder.make({.x = 0}, &gtestDriver);
+  ActorEngine engine;
+  Engine::run(driver);
+  std::cout << engine.statistics() << std::endl;
+}
+
+/*
+TEST_F(ModelCheckerTest, simple_model_test_with_loops) {
+  using Engine = model_checker::SimulationEngine<MyState, MyTransition>;
+
+  auto driver = model_checker::lambda_driver{[&](MyState const& state) {
     auto result = std::vector<std::pair<MyTransition, MyState>>{};
     if (state.x < 10) {
       result.emplace_back(MyTransition{.deltaX = 1}, MyState{.x = state.x + 1});
@@ -146,14 +401,20 @@ TEST_F(ModelCheckerTest, simple_model_test) {
     return result;
   }};
 
-  auto observer = GTestHelper<Engine>::Observer{[&](Engine::Step const& step) {
-    ASSERT_LE(step.state.x, 10);
-    ASSERT_GE(step.state.x, 0);
-  }};
+  auto observer =
+      model_checker::gtest_predicate{[&](Engine::State const& state) {
+        ASSERT_LE(state.x, 10);
+        ASSERT_GE(state.x, 0);
+      }};
 
-  engine.run(driver, observer, {.x = 3});
-  std::cout << engine.statistics() << std::endl;
-}
+  auto result = Engine::run(driver, observer, {.x = 3});
+  auto stats = result.stats;
+  EXPECT_EQ(stats.eliminatedStates, 10);
+  EXPECT_EQ(stats.discoveredStates, 20);
+  EXPECT_EQ(stats.uniqueStates, 10);
+  EXPECT_EQ(stats.finalStates, 0);
+}*/
+
 #if 0
 namespace {
 struct MyActor : model_checker::Actor<MyState, MyTransition> {
@@ -174,21 +435,4 @@ struct MyActor : model_checker::Actor<MyState, MyTransition> {
 };
 }  // namespace
 
-using ActorEngine = model_checker::ActorEngine<MyState, MyTransition>;
-
-TEST_F(ModelCheckerTest, simple_model_test_actor) {
-
-  GTestDriver<ActorEngine> gtestDriver({});
-  model_checker::ActorDriverBuilder<MyState, MyTransition> builder;
-  builder.addObserver([&](MyState const& state) {
-    ASSERT_LE(state.x, 10);
-    ASSERT_GE(state.x, 0);
-  });
-  builder.addActor(std::make_unique<MyActor>());
-
-  auto driver = builder.make({.x = 0}, &gtestDriver);
-  ActorEngine engine;
-  engine.run(driver);
-  std::cout << engine.statistics() << std::endl;
-}
 #endif

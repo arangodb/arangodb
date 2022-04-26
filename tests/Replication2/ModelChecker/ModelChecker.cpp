@@ -25,8 +25,10 @@
 using namespace arangodb::test;
 using namespace arangodb::test::model_checker;
 
-auto model_checker::operator<<(std::ostream& os, Stats const& stats) -> std::ostream& {
+auto model_checker::operator<<(std::ostream& os, Stats const& stats)
+    -> std::ostream& {
   return os << "unique: " << stats.uniqueStates
             << " eliminated: " << stats.eliminatedStates
-            << " discovered: " << stats.discoveredStates;
+            << " discovered: " << stats.discoveredStates
+            << " final: " << stats.finalStates;
 }

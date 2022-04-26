@@ -22,27 +22,71 @@
 #pragma once
 #include <memory>
 #include <chrono>
+#include <utility>
 #include <vector>
 #include <tuple>
 #include <optional>
 #include <unordered_set>
 #include <deque>
 #include <iostream>
+#include <variant>
 
 #include <boost/container_hash/hash_fwd.hpp>
 
 namespace arangodb::test::model_checker {
 
-enum class CheckResult {
-  kContinue,
-  kPrune,
-  kTerminate,
+struct CheckError {
+  explicit CheckError(std::string message) : message(std::move(message)) {}
+  std::string message;
+
+  friend auto operator<<(std::ostream& os, CheckError const& err)
+      -> std::ostream& {
+    return os << err.message << std::endl;
+  }
 };
+
+struct CheckResult2 {
+  struct Ok {};
+  struct Prune {};
+  struct Error : CheckError {
+    using CheckError::CheckError;
+  };
+
+  static auto withOk() noexcept -> CheckResult2 {
+    return CheckResult2{std::in_place_type<Ok>};
+  }
+  static auto withPrune() noexcept -> CheckResult2 {
+    return CheckResult2{std::in_place_type<Prune>};
+  }
+  static auto withError(std::string message) noexcept -> CheckResult2 {
+    return CheckResult2{std::in_place_type<Error>, std::move(message)};
+  }
+
+  friend auto isOk(CheckResult2 const& r) noexcept -> bool {
+    return std::holds_alternative<Ok>(r._variant);
+  }
+  friend auto isPrune(CheckResult2 const& r) noexcept -> bool {
+    return std::holds_alternative<Prune>(r._variant);
+  }
+  friend auto isError(CheckResult2 const& r) noexcept -> bool {
+    return std::holds_alternative<Error>(r._variant);
+  }
+
+  auto asError() -> Error& { return std::get<Error>(_variant); }
+
+ private:
+  template<typename... Ts>
+  explicit CheckResult2(Ts&&... ts) : _variant(std::forward<Ts>(ts)...) {}
+  std::variant<Ok, Prune, Error> _variant;
+};
+
+using CheckResult = CheckResult2;
 
 struct Stats {
   std::size_t uniqueStates;
   std::size_t eliminatedStates;
   std::size_t discoveredStates;
+  std::size_t finalStates;
 };
 
 auto operator<<(std::ostream& os, Stats const& stats) -> std::ostream&;
@@ -56,77 +100,11 @@ struct SimulationEngine {
 
   virtual ~SimulationEngine() = default;
 
-  template<typename Driver, typename Observer>
-  void run(Driver& driver, Observer& observer, State initialState) {
-    {
-      auto step = registerFingerprint(std::move(initialState));
-      activeSteps.push_back(std::move(step.second));
-    }
-    observer.initTick();
-    while (not activeSteps.empty()) {
-      auto nextStep = std::move(activeSteps.front());
-      activeSteps.pop_front();
-      auto newStates = driver.expand(nextStep->state);
-      if (newStates.empty()) {
-        observer.finalStep(*nextStep);
-      }
-      for (auto const& [transition, state] : newStates) {
-        stats.discoveredStates += 1;
-        // fingerprint this state
-        auto [wasNewState, step] = registerFingerprint(std::move(state));
-        // add previous step information
-        step->registerPreviousStep(nextStep, std::move(transition));
-        step->depth = nextStep->depth + 1;
-        // TODO loop detection?
-        if (!wasNewState) {
-          stats.eliminatedStates += 1;
-          continue;  // ignore
-        }
-
-        stats.uniqueStates += 1;
-
-        // run the check function for this step
-        auto checkResult = observer.check(*step);
-        if (checkResult == CheckResult::kTerminate) {
-          return;
-        } else if (checkResult == CheckResult::kPrune) {
-          continue;
-        }
-
-        // put step into active steps
-        activeSteps.push_back(step);
-      }
-
-      observer.tick();
-    }
-  }
-
-  auto statistics() const noexcept -> Stats { return stats; }
-
-  void printAllStates(std::ostream& os) {
-    std::size_t idx = 0;
-    os << "digraph foobar {" << std::endl;
-    for (auto const& s : fingerprints) {
-      os << "v" << s->_uniqueId;
-      if (s->_uniqueId == 0) {
-        os << "[label=\"initial\"]";
-      }
-      os << ";" << std::endl;
-    }
-
-    for (auto const& s : fingerprints) {
-      for (auto const& [p, action] : s->_previous) {
-        os << "v" << p->_uniqueId << " -> v" << s->_uniqueId << "[label=\""
-           << action->toString() << "\"];" << std::endl;
-      }
-    }
-
-    os << "}" << std::endl;
-  }
-
+  template<typename Observer>
   struct Step {
     std::size_t depth{0}, uniqueId{0};
     State state;
+    Observer observer;
     std::vector<std::pair<Transition, std::shared_ptr<Step const>>> parents;
     std::optional<std::size_t> hash;
 
@@ -135,42 +113,169 @@ struct SimulationEngine {
       parents.emplace_back(std::move(transition), std::move(step));
     }
 
-    void printTrace(std::ostream& os) const noexcept {}
+    void printTrace(std::ostream& os) const noexcept {
+      if (!parents.empty()) {
+        parents.front().second->printTrace(os);
+        os << parents.front().first << std::endl;
+      }
+      os << state << std::endl;
+    }
 
-    explicit Step(State state, std::size_t uniqueId)
-        : uniqueId(uniqueId), state(std::move(state)) {}
+    explicit Step(State state, std::size_t uniqueId, Observer observer)
+        : uniqueId(uniqueId),
+          state(std::move(state)),
+          observer(std::move(observer)) {}
+
+    friend auto operator<<(std::ostream& os, Step const& s) -> std::ostream& {
+      s.printTrace(os);
+      return os;
+    }
   };
 
- private:
   struct StepFingerprintHash {
-    auto operator()(std::shared_ptr<Step> const& s) const -> std::size_t {
+    template<typename Observer>
+    auto operator()(std::shared_ptr<Step<Observer>> const& s) const
+        -> std::size_t {
       if (!s->hash) {
-        s->hash.emplace(StateHash{}(s->state));
+        std::size_t seed = 0;
+        boost::hash_combine(seed, s->observer);
+        boost::hash_combine(seed, StateHash{}(s->state));
+        s->hash.emplace(seed);
       }
       return *s->hash;
     }
   };
 
+  template<typename Observer>
   struct StepFingerprintCompare {
-    auto operator()(std::shared_ptr<Step const> const& lhs,
-                    std::shared_ptr<Step const> const& rhs) const -> bool {
-      return StateCompare{}(lhs->state, rhs->state);
+    auto operator()(std::shared_ptr<Step<Observer> const> const& lhs,
+                    std::shared_ptr<Step<Observer> const> const& rhs) const
+        -> bool {
+      return StateCompare{}(lhs->state, rhs->state) &&
+             lhs->observer == rhs->observer;
     }
   };
 
-  auto registerFingerprint(State state)
-      -> std::pair<bool, std::shared_ptr<Step>> {
-    auto step = std::make_shared<Step>(std::move(state), ++nextUniqueId);
-    auto [iter, inserted] = fingerprints.emplace(step);
-    return {inserted, *iter};
-  }
+  template<typename Observer>
+  using FingerprintSet =
+      std::unordered_set<std::shared_ptr<Step<Observer>>, StepFingerprintHash,
+                         StepFingerprintCompare<Observer>>;
 
-  Stats stats{};
-  std::size_t nextUniqueId{0};
-  std::deque<std::shared_ptr<Step const>> activeSteps;
-  std::unordered_set<std::shared_ptr<Step>, StepFingerprintHash,
-                     StepFingerprintCompare>
-      fingerprints;
+  template<typename Observer>
+  struct Error {
+    Error(std::shared_ptr<Step<Observer> const> state, CheckError error)
+        : state(std::move(state)), error(std::move(error)) {}
+    std::shared_ptr<Step<Observer> const> state;
+    CheckError error;
+
+    friend auto operator<<(std::ostream& os, Error const& err)
+        -> std::ostream& {
+      os << *err.state << std::endl;
+      os << err.error << std::endl;
+      return os;
+    }
+  };
+
+  template<typename Observer>
+  struct Result {
+    Stats stats{};
+    FingerprintSet<Observer> fingerprints;
+
+    std::optional<Error<Observer>> failed;
+
+    void printAllStates(std::ostream& os) {
+      std::size_t idx = 0;
+      os << "digraph foobar {" << std::endl;
+      for (auto const& s : fingerprints) {
+        os << "v" << s->_uniqueId;
+        if (s->_uniqueId == 0) {
+          os << "[label=\"initial\"]";
+        }
+        os << ";" << std::endl;
+      }
+
+      for (auto const& s : fingerprints) {
+        for (auto const& [p, action] : s->_previous) {
+          os << "v" << p->_uniqueId << " -> v" << s->_uniqueId << "[label=\""
+             << action->toString() << "\"];" << std::endl;
+        }
+      }
+
+      os << "}" << std::endl;
+    }
+  };
+
+  template<typename Driver, typename Observer>
+  static auto run(Driver& driver, Observer initialObserver,
+                  State initialState) {
+    Result<Observer> result;
+
+    std::size_t nextUniqueId{0};
+    std::deque<std::shared_ptr<Step<Observer>>> activeSteps;
+
+    auto const registerFingerprint = [&](State state, Observer observer)
+        -> std::pair<bool, std::shared_ptr<Step<Observer>>> {
+      auto step = std::make_shared<Step<Observer>>(
+          std::move(state), ++nextUniqueId, std::move(observer));
+      auto [iter, inserted] = result.fingerprints.emplace(step);
+      return {inserted, *iter};
+    };
+
+    {
+      auto [inserted, step] = registerFingerprint(std::move(initialState),
+                                                  std::move(initialObserver));
+      auto checkResult = step->observer.check(step->state);
+      if (isPrune(checkResult)) {
+        return result;
+      } else if (isError(checkResult)) {
+        result.failed.emplace(step, checkResult.asError());
+        return result;
+      }
+      activeSteps.push_back(std::move(step));
+    }
+    while (not activeSteps.empty()) {
+      auto nextStep = std::move(activeSteps.front());
+      activeSteps.pop_front();
+      auto newStates = driver.expand(nextStep->state);
+      if (newStates.empty()) {
+        result.stats.finalStates += 1;
+        if (auto checkResult = nextStep->observer.finalStep(nextStep->state);
+            isError(checkResult)) {
+          result.failed.emplace(nextStep, checkResult.asError());
+          return result;
+        }
+      }
+      for (auto const& [transition, state] : newStates) {
+        result.stats.discoveredStates += 1;
+        // fingerprint this state
+        auto [wasNewState, step] =
+            registerFingerprint(std::move(state), nextStep->observer);
+        // add previous step information
+        step->registerPreviousStep(nextStep, std::move(transition));
+        step->depth = nextStep->depth + 1;
+        // TODO loop detection?
+        if (!wasNewState) {
+          result.stats.eliminatedStates += 1;
+          continue;  // ignore
+        }
+
+        result.stats.uniqueStates += 1;
+
+        // run the check function for this step
+        auto checkResult = step->observer.check(step->state);
+        if (isPrune(checkResult)) {
+          continue;
+        } else if (isError(checkResult)) {
+          result.failed.emplace(step, checkResult.asError());
+          return result;
+        }
+
+        // put step into active steps
+        activeSteps.push_back(step);
+      }
+    }
+    return result;
+  }
 };
 
 }  // namespace arangodb::test::model_checker

@@ -424,6 +424,7 @@ target_link_libraries(arangodbtests
   snappy
   gtest
   boost_boost
+  fmt
 )
 
 if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
@@ -434,6 +435,7 @@ if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
     arangoserver
     arango_replication2
     arango_iresearch
+    fmt
   )
 endif()
 

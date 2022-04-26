@@ -28,17 +28,17 @@ namespace arangodb::test::model_checker {
 
 template<typename State, typename Transition>
 struct Actor {
+  struct InternalState {};
+
   virtual ~Actor() = default;
   virtual auto clone() const -> std::shared_ptr<Actor> = 0;
-  virtual auto check(State const& s) -> CheckResult = 0;
-  virtual auto expand(State const& s)
-      -> std::vector<std::pair<State, Transition>> = 0;
+  virtual auto expand(State const&, InternalState const&)
+      -> std::vector<std::tuple<State, Transition, InternalState>> = 0;
   virtual auto toString() -> std::string { return ""; }
 };
 
 template<typename State, typename Transition>
 struct ActorModelState {
-
   State realState;
   std::vector<std::shared_ptr<Actor<State, Transition>>> actors;
 
@@ -88,7 +88,7 @@ struct ActorDriver {
   auto init() const -> StateType { return {initialState, initialActors}; }
 
   auto check(Step const& step) const -> model_checker::CheckResult {
-    CheckResult result = CheckResult::kContinue;
+    CheckResult result = CheckResult::withOk();
     for (auto const& actor : step.state.actors) {
       result = std::max(result, actor->check(step.state.realState));
     }
@@ -143,7 +143,7 @@ struct ActorDriverBuilder {
     auto check(State const& s) -> CheckResult override {
       static_assert(std::is_invocable_r_v<void, F, State const&>);
       F::operator()(s);
-      return CheckResult::kContinue;
+      return CheckResult::withOk();
     }
     auto clone() const -> std::shared_ptr<ActorType> override {
       return std::make_shared<ObserverActor>(*this);
