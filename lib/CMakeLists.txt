@@ -93,6 +93,7 @@ add_library(arango STATIC
   Basics/FileUtils.cpp
   Basics/FunctionUtils.cpp
   Basics/GlobalResourceMonitor.cpp
+  Basics/Guarded.cpp Basics/Guarded.h
   Basics/HybridLogicalClock.cpp
   Basics/Identifier.cpp
   Basics/IndexIter.h
