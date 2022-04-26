@@ -437,7 +437,7 @@ std::string const& LogicalCollection::smartJoinAttribute() const noexcept {
 #endif
 
 #ifndef USE_ENTERPRISE
-std::string const& LogicalCollection::smartGraphAttribute() const noexcept {
+std::string LogicalCollection::smartGraphAttribute() const {
   return StaticStrings::Empty;
 }
 
