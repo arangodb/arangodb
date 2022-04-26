@@ -24,6 +24,7 @@
 #include "RocksDBOptions.h"
 
 #include "Basics/PhysicalMemory.h"
+#include "Basics/overload.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 
 #include <rocksdb/filter_policy.h>
@@ -106,6 +107,11 @@ RocksDBOptions::RocksDBOptions()
                  .transactionLockTimeout =
                      rocksDBTrxDefaults.transaction_lock_timeout},
       _tableOptions{
+          .blockCache =
+              TableOptions::LruCacheOptions{
+                  .blockCacheSize = ::defaultBlockCacheSize(),
+                  .blockCacheShardBits = -1,
+                  .enforceBlockCacheSizeLimit = true},
           .cacheIndexAndFilterBlocks = true,
           .cacheIndexAndFilterBlocksWithHighPriority =
               rocksDBTableOptionsDefaults
@@ -115,22 +121,18 @@ RocksDBOptions::RocksDBOptions()
                   .pin_l0_filter_and_index_blocks_in_cache,
           .pinTopLevelIndexAndFilter =
               rocksDBTableOptionsDefaults.pin_top_level_index_and_filter,
-          // uint64_t blockSize;
 
-          // .tableBlockSize = std::max(
-          //     rocksDBTableOptionsDefaults.block_size,
-          //     static_cast<decltype(rocksDBTableOptionsDefaults.block_size)>(
-          //         16 * 1024)),
+          .blockSize = std::max(
+              rocksDBTableOptionsDefaults.block_size,
+              static_cast<decltype(rocksDBTableOptionsDefaults.block_size)>(
+                  16 * 1024)),
 
-          // .blockCacheSize = ::defaultBlockCacheSize(),
-          // .blockCacheShardBits = -1,
-
-          // .enforceBlockCacheSizeLimit = true,
-
-          // filterPolicy;
+          .filterPolicy =
+              TableOptions::BloomFilterPolicy{.bitsPerKey = 10,
+                                              .useBlockBasedBuilder = true},
           .formatVersion = 3,
           .blockAlignDataBlocks = rocksDBTableOptionsDefaults.block_align,
-          .checksum = rocksdb::kCRC32c,
+          .checksum = "crc32",  // TODO - use enum
       },
       _options{
           .numThreadsLow = 1,
@@ -343,16 +345,20 @@ rocksdb::Options RocksDBOptions::getOptions() const {
 rocksdb::BlockBasedTableOptions RocksDBOptions::getTableOptions() const {
   rocksdb::BlockBasedTableOptions result;
 
-  // if (_blockCacheSize > 0) {
-  //   result.block_cache = rocksdb::NewLRUCache(
-  //       _blockCacheSize, static_cast<int>(_blockCacheShardBits),
-  //       /*strict_capacity_limit*/ _enforceBlockCacheSizeLimit);
-  //   // result.cache_index_and_filter_blocks =
-  //   // result.pin_l0_filter_and_index_blocks_in_cache
-  //   // _compactionReadaheadSize > 0;
-  // } else {
-  //   result.no_block_cache = true;
-  // }
+  result.block_cache = std::visit(
+      [](TableOptions::LruCacheOptions const& opts)
+          -> std::shared_ptr<rocksdb::Cache> {
+        if (opts.blockCacheSize > 0) {
+          return rocksdb::NewLRUCache(
+              opts.blockCacheSize, opts.blockCacheShardBits,
+              /*strict_capacity_limit*/ opts.enforceBlockCacheSizeLimit);
+        }
+        return nullptr;
+      },
+      _tableOptions.blockCache);
+  if (result.block_cache == nullptr) {
+    result.no_block_cache = true;
+  }
 
   result.cache_index_and_filter_blocks =
       _tableOptions.cacheIndexAndFilterBlocks;
@@ -364,11 +370,31 @@ rocksdb::BlockBasedTableOptions RocksDBOptions::getTableOptions() const {
       _tableOptions.pinTopLevelIndexAndFilter;
 
   result.block_size = _tableOptions.blockSize;
-  // result.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, true));
-  // use slightly space-optimized format version 3
+  result.filter_policy = std::visit(
+      [](TableOptions::BloomFilterPolicy const& filter) {
+        return std::shared_ptr<const rocksdb::FilterPolicy>(
+            rocksdb::NewBloomFilterPolicy(filter.bitsPerKey,
+                                          filter.useBlockBasedBuilder));
+      },
+      _tableOptions.filterPolicy);
+
   result.format_version = _tableOptions.formatVersion;
   result.block_align = _tableOptions.blockAlignDataBlocks;
-  result.checksum = _tableOptions.checksum;
+  result.checksum = [&checksum = _tableOptions.checksum]() {
+    if (checksum == "none") {
+      return rocksdb::kNoChecksum;
+    } else if (checksum == "crc32") {
+      return rocksdb::kCRC32c;
+    } else if (checksum == "xxHash") {
+      return rocksdb::kxxHash;
+    } else if (checksum == "xxHash64") {
+      return rocksdb::kxxHash64;
+    } else if (checksum == "XXH3") {
+      return rocksdb::kXXH3;
+    } else {
+      throw std::runtime_error("Unsupported checksum type " + checksum);
+    }
+  }();
 
   return result;
 }

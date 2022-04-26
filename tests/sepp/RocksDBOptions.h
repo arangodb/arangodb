@@ -24,6 +24,9 @@
 #pragma once
 
 #include <memory>
+#include <variant>
+
+#include "Inspection/Types.h"
 
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
 
@@ -107,50 +110,71 @@ struct RocksDBOptions : arangodb::RocksDBOptionsProvider {
     template<class Inspector>
     inline friend auto inspect(Inspector& f, GeneralOptions& o) {
       return f.object(o).fields(
-          f.field("numThreadsLow", o.numThreadsLow),
-          f.field("numThreadsHigh", o.numThreadsHigh),
+          f.field("numThreadsLow", o.numThreadsLow).fallback(f.keep()),
+          f.field("numThreadsHigh", o.numThreadsHigh).fallback(f.keep()),
 
-          f.field("maxTotalWalSize", o.maxTotalWalSize),
-          f.field("allowFAllocate", o.allowFAllocate),
-          f.field("enablePipelinedWrite", o.enablePipelinedWrite),
-          f.field("writeBufferSize", o.writeBufferSize),
-          f.field("maxWriteBufferNumber", o.maxWriteBufferNumber),
+          f.field("maxTotalWalSize", o.maxTotalWalSize).fallback(f.keep()),
+          f.field("allowFAllocate", o.allowFAllocate).fallback(f.keep()),
+          f.field("enablePipelinedWrite", o.enablePipelinedWrite)
+              .fallback(f.keep()),
+          f.field("writeBufferSize", o.writeBufferSize).fallback(f.keep()),
+          f.field("maxWriteBufferNumber", o.maxWriteBufferNumber)
+              .fallback(f.keep()),
           f.field("maxWriteBufferNumberToMaintain",
-                  o.maxWriteBufferNumberToMaintain),
+                  o.maxWriteBufferNumberToMaintain)
+              .fallback(f.keep()),
           f.field("maxWriteBufferSizeToMaintain",
-                  o.maxWriteBufferSizeToMaintain),
-          f.field("delayedWriteRate", o.delayedWriteRate),
-          f.field("minWriteBufferNumberToMerge", o.minWriteBufferNumberToMerge),
-          f.field("numLevels", o.numLevels),
+                  o.maxWriteBufferSizeToMaintain)
+              .fallback(f.keep()),
+          f.field("delayedWriteRate", o.delayedWriteRate).fallback(f.keep()),
+          f.field("minWriteBufferNumberToMerge", o.minWriteBufferNumberToMerge)
+              .fallback(f.keep()),
+          f.field("numLevels", o.numLevels).fallback(f.keep()),
           f.field("levelCompactionDynamicLevelBytes",
-                  o.levelCompactionDynamicLevelBytes),
-          f.field("maxBytesForLevelBase", o.maxBytesForLevelBase),
-          f.field("maxBytesForLevelMultiplier", o.maxBytesForLevelMultiplier),
-          f.field("optimizeFiltersForHits", o.optimizeFiltersForHits),
-          f.field("useDirectReads", o.useDirectReads),
+                  o.levelCompactionDynamicLevelBytes)
+              .fallback(f.keep()),
+          f.field("maxBytesForLevelBase", o.maxBytesForLevelBase)
+              .fallback(f.keep()),
+          f.field("maxBytesForLevelMultiplier", o.maxBytesForLevelMultiplier)
+              .fallback(f.keep()),
+          f.field("optimizeFiltersForHits", o.optimizeFiltersForHits)
+              .fallback(f.keep()),
+          f.field("useDirectReads", o.useDirectReads).fallback(f.keep()),
           f.field("useDirectIoForFlushAndCompaction",
-                  o.useDirectIoForFlushAndCompaction),
-          f.field("targetFileSizeBase", o.targetFileSizeBase),
-          f.field("targetFileSizeMultiplier", o.targetFileSizeMultiplier),
-          f.field("maxBackgroundJobs", o.maxBackgroundJobs),
-          f.field("maxSubcompactions", o.maxSubcompactions),
-          f.field("useFSync", o.useFSync),
-          f.field("numUncompressedLevels", o.numUncompressedLevels),
+                  o.useDirectIoForFlushAndCompaction)
+              .fallback(f.keep()),
+          f.field("targetFileSizeBase", o.targetFileSizeBase)
+              .fallback(f.keep()),
+          f.field("targetFileSizeMultiplier", o.targetFileSizeMultiplier)
+              .fallback(f.keep()),
+          f.field("maxBackgroundJobs", o.maxBackgroundJobs).fallback(f.keep()),
+          f.field("maxSubcompactions", o.maxSubcompactions).fallback(f.keep()),
+          f.field("useFSync", o.useFSync).fallback(f.keep()),
+          f.field("numUncompressedLevels", o.numUncompressedLevels)
+              .fallback(f.keep()),
           f.field("level0FileNumCompactionTrigger",
-                  o.level0FileNumCompactionTrigger),
-          f.field("level0SlowdownWritesTrigger", o.level0SlowdownWritesTrigger),
-          f.field("level0StopWritesTrigger", o.level0StopWritesTrigger),
+                  o.level0FileNumCompactionTrigger)
+              .fallback(f.keep()),
+          f.field("level0SlowdownWritesTrigger", o.level0SlowdownWritesTrigger)
+              .fallback(f.keep()),
+          f.field("level0StopWritesTrigger", o.level0StopWritesTrigger)
+              .fallback(f.keep()),
           f.field("pendingCompactionBytesSlowdownTrigger",
-                  o.pendingCompactionBytesSlowdownTrigger),
+                  o.pendingCompactionBytesSlowdownTrigger)
+              .fallback(f.keep()),
           f.field("pendingCompactionBytesStopTrigger",
-                  o.pendingCompactionBytesStopTrigger),
-          f.field("recycleLogFileNum", o.recycleLogFileNum),
-          f.field("compactionReadaheadSize", o.compactionReadaheadSize),
-          f.field("enableStatistics", o.enableStatistics),
-          f.field("totalWriteBufferSize", o.totalWriteBufferSize),
+                  o.pendingCompactionBytesStopTrigger)
+              .fallback(f.keep()),
+          f.field("recycleLogFileNum", o.recycleLogFileNum).fallback(f.keep()),
+          f.field("compactionReadaheadSize", o.compactionReadaheadSize)
+              .fallback(f.keep()),
+          f.field("enableStatistics", o.enableStatistics).fallback(f.keep()),
+          f.field("totalWriteBufferSize", o.totalWriteBufferSize)
+              .fallback(f.keep()),
           f.field("memtablePrefixBloomSizeRatio",
-                  o.memtablePrefixBloomSizeRatio),
-          f.field("bloomLocality", o.bloomLocality));
+                  o.memtablePrefixBloomSizeRatio)
+              .fallback(f.keep()),
+          f.field("bloomLocality", o.bloomLocality).fallback(f.keep()));
     }
 
     // The following is a complete list of RocksDB options we currently do not
@@ -307,28 +331,37 @@ struct RocksDBOptions : arangodb::RocksDBOptionsProvider {
     template<class Inspector>
     inline friend auto inspect(Inspector& f, DBOptions& o) {
       return f.object(o).fields(
-          f.field("numStripes", o.numStripes),
-          f.field("transactionLockTimeout", o.transactionLockTimeout));
+          f.field("numStripes", o.numStripes).fallback(f.keep()),
+          f.field("transactionLockTimeout", o.transactionLockTimeout)
+              .fallback(f.keep()));
     }
   };
 
   struct TableOptions {
     struct LruCacheOptions {
       uint64_t blockCacheSize;
-      int64_t blockCacheShardBits{-1};
+      int blockCacheShardBits{-1};
       bool enforceBlockCacheSizeLimit{true};
 
       template<class Inspector>
       inline friend auto inspect(Inspector& f, LruCacheOptions& o) {
         return f.object(o).fields(
-            f.field("blockCacheSize", o.blockCacheSize),
-            f.field("blockCacheShardBits", o.blockCacheShardBits),
-            f.field("enforceBlockCacheSizeLimit",
-                    o.enforceBlockCacheSizeLimit));
+            f.field("blockCacheSize", o.blockCacheSize).fallback(f.keep()),
+            f.field("blockCacheShardBits", o.blockCacheShardBits)
+                .fallback(f.keep()),
+            f.field("enforceBlockCacheSizeLimit", o.enforceBlockCacheSizeLimit)
+                .fallback(f.keep()));
       }
     };
 
-    // blockCache;
+    using BlockCache = std::variant<LruCacheOptions>;
+    template<class Inspector>
+    inline friend auto inspect(Inspector& f, BlockCache& o) {
+      namespace insp = arangodb::inspection;
+      return f.variant(o).unqualified().alternatives(
+          insp::type<LruCacheOptions>("lru"));
+    }
+    BlockCache blockCache;
 
     bool cacheIndexAndFilterBlocks;
     bool cacheIndexAndFilterBlocksWithHighPriority;
@@ -344,32 +377,44 @@ struct RocksDBOptions : arangodb::RocksDBOptionsProvider {
       template<class Inspector>
       inline friend auto inspect(Inspector& f, BloomFilterPolicy& o) {
         return f.object(o).fields(
-            f.field("bitsPerKey", o.bitsPerKey),
-            f.field("useBlockBasedBuilder", o.useBlockBasedBuilder));
+            f.field("bitsPerKey", o.bitsPerKey).fallback(f.keep()),
+            f.field("useBlockBasedBuilder", o.useBlockBasedBuilder)
+                .fallback(f.keep()));
       }
     };
-    // filterPolicy;
+    using FilterPolicy = std::variant<BloomFilterPolicy>;
+    template<class Inspector>
+    inline friend auto inspect(Inspector& f, FilterPolicy& o) {
+      namespace insp = arangodb::inspection;
+      return f.variant(o).unqualified().alternatives(
+          insp::type<BloomFilterPolicy>("bloom"));
+    }
+    FilterPolicy filterPolicy;
 
     uint32_t formatVersion;
     bool blockAlignDataBlocks;
-    rocksdb::ChecksumType checksum;
+    std::string checksum;
 
     template<class Inspector>
     inline friend auto inspect(Inspector& f, TableOptions& o) {
       return f.object(o).fields(
-          // f.field("blockCache", o.blockCache),
-          f.field("cacheIndexAndFilterBlocks", o.cacheIndexAndFilterBlocks),
+          f.field("blockCache", o.blockCache).fallback(f.keep()),
+          f.field("cacheIndexAndFilterBlocks", o.cacheIndexAndFilterBlocks)
+              .fallback(f.keep()),
           f.field("cacheIndexAndFilterBlocksWithHighPriority",
-                  o.cacheIndexAndFilterBlocksWithHighPriority),
+                  o.cacheIndexAndFilterBlocksWithHighPriority)
+              .fallback(f.keep()),
           f.field("pinl0FilterAndIndexBlocksInCache",
-                  o.pinl0FilterAndIndexBlocksInCache),
-          f.field("pinTopLevelIndexAndFilter", o.pinTopLevelIndexAndFilter),
-          f.field("blockSize", o.blockSize),
-          f.field("formatVersion", o.formatVersion),
+                  o.pinl0FilterAndIndexBlocksInCache)
+              .fallback(f.keep()),
+          f.field("pinTopLevelIndexAndFilter", o.pinTopLevelIndexAndFilter)
+              .fallback(f.keep()),
+          f.field("blockSize", o.blockSize).fallback(f.keep()),
+          f.field("formatVersion", o.formatVersion).fallback(f.keep()),
           f.field("blockAlignDataBlocks", o.blockAlignDataBlocks)
-          // f.field("checksum", o.checksum),
-          // f.field("filterPolicy", o.filterPolicy),
-      );
+              .fallback(f.keep()),
+          f.field("checksum", o.checksum).fallback(f.keep()),
+          f.field("filterPolicy", o.filterPolicy).fallback(f.keep()));
     }
   };
 

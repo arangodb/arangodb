@@ -45,8 +45,7 @@ namespace arangodb::sepp {
 Runner::Runner(std::string_view executable, std::string_view reportFile,
                velocypack::Slice config)
     : _executable(executable), _reportFile(reportFile) {
-  velocypack::deserializeUnsafe(config, _options,
-                                {.ignoreMissingFields = true});
+  velocypack::deserializeUnsafe(config, _options);
 }
 
 Runner::~Runner() = default;

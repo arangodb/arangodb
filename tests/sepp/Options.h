@@ -58,11 +58,13 @@ auto inspect(Inspector& f, CollectionsSetup& o) {
 
 struct Setup {
   std::vector<CollectionsSetup> collections;
+  std::vector<workloads::InsertDocuments::Options> prefill;
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, Setup& o) {
-  return f.object(o).fields(f.field("collections", o.collections));
+  return f.object(o).fields(f.field("collections", o.collections),
+                            f.field("prefill", o.prefill).fallback(f.keep()));
 }
 
 struct Options {

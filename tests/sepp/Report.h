@@ -56,6 +56,7 @@ struct RoundReport {
 
 struct Report {
   std::int64_t timestamp;
+  // TODO - rocksdb statistics
   // velocypack::SliceContainer config;
   std::vector<RoundReport> rounds;
 };
