@@ -41,6 +41,7 @@ auto constexpr ElectibleLeaderSet = std::string_view{"electibleLeaderSet"};
 auto constexpr Election = std::string_view{"election"};
 auto constexpr Error = std::string_view{"error"};
 auto constexpr StatusMessage = std::string_view{"StatusMessage"};
+auto constexpr StatusReport = std::string_view{"StatusReport"};
 auto constexpr LeadershipEstablished =
     std::string_view{"leadershipEstablished"};
 auto constexpr CommitStatus = std::string_view{"commitStatus"};
@@ -53,37 +54,36 @@ auto constexpr MaxActionsTraceLength =
     std::string_view{"maxActionsTraceLength"};
 auto constexpr Code = std::string_view{"code"};
 auto constexpr Message = std::string_view{"message"};
-}  // namespace static_strings
+auto constexpr LastTimeModified = std::string_view{"lastTimeModified"};
+auto constexpr Participant = std::string_view{"participant"};
+} // namespace static_strings
 
-template<class Inspector>
-auto inspect(Inspector& f, LogPlanTermSpecification::Leader& x) {
+template <class Inspector>
+auto inspect(Inspector &f, LogPlanTermSpecification::Leader &x) {
   return f.object(x).fields(f.field(StaticStrings::ServerId, x.serverId),
                             f.field(StaticStrings::RebootId, x.rebootId));
 }
 
-template<class Inspector>
-auto inspect(Inspector& f, LogPlanTermSpecification& x) {
+template <class Inspector>
+auto inspect(Inspector &f, LogPlanTermSpecification &x) {
   return f.object(x).fields(f.field(StaticStrings::Term, x.term),
                             f.field(StaticStrings::Config, x.config),
                             f.field(StaticStrings::Leader, x.leader));
 }
 
-template<class Inspector>
-auto inspect(Inspector& f, LogPlanSpecification& x) {
+template <class Inspector> auto inspect(Inspector &f, LogPlanSpecification &x) {
   return f.object(x).fields(
       f.field(StaticStrings::Id, x.id),
       f.field(StaticStrings::CurrentTerm, x.currentTerm),
       f.field(static_strings::ParticipantsConfig, x.participantsConfig));
 };
 
-template<class Inspector>
-auto inspect(Inspector& f, LogCurrentLocalState& x) {
+template <class Inspector> auto inspect(Inspector &f, LogCurrentLocalState &x) {
   return f.object(x).fields(f.field(StaticStrings::Term, x.term),
                             f.field(StaticStrings::Spearhead, x.spearhead));
 }
 
-template<typename Enum>
-struct EnumStruct {
+template <typename Enum> struct EnumStruct {
   static_assert(std::is_enum_v<Enum>);
 
   EnumStruct() : code{0}, message{} {};
@@ -97,14 +97,14 @@ struct EnumStruct {
   std::string message;
 };
 
-template<class Inspector, typename Enum>
-auto inspect(Inspector& f, EnumStruct<Enum>& x) {
+template <class Inspector, typename Enum>
+auto inspect(Inspector &f, EnumStruct<Enum> &x) {
   return f.object(x).fields(f.field(static_strings::Code, x.code),
                             f.field(static_strings::Message, x.message));
 };
 
-template<class Inspector>
-auto inspect(Inspector& f, LogCurrentSupervisionError& x) {
+template <class Inspector>
+auto inspect(Inspector &f, LogCurrentSupervisionError &x) {
   if constexpr (Inspector::isLoading) {
     auto v = EnumStruct<LogCurrentSupervisionError>();
     auto res = f.apply(v);
@@ -118,8 +118,8 @@ auto inspect(Inspector& f, LogCurrentSupervisionError& x) {
   }
 }
 
-template<class Inspector>
-auto inspect(Inspector& f, LogCurrentSupervisionElection::ErrorCode& x) {
+template <class Inspector>
+auto inspect(Inspector &f, LogCurrentSupervisionElection::ErrorCode &x) {
   if constexpr (Inspector::isLoading) {
     auto v = EnumStruct<LogCurrentSupervisionElection::ErrorCode>();
     auto res = f.apply(v);
@@ -133,8 +133,8 @@ auto inspect(Inspector& f, LogCurrentSupervisionElection::ErrorCode& x) {
   }
 }
 
-template<class Inspector>
-auto inspect(Inspector& f, LogCurrentSupervisionElection& x) {
+template <class Inspector>
+auto inspect(Inspector &f, LogCurrentSupervisionElection &x) {
   return f.object(x).fields(
       f.field(StaticStrings::Term, x.term),
       f.field(static_strings::BestTermIndex, x.bestTermIndex),
@@ -144,17 +144,40 @@ auto inspect(Inspector& f, LogCurrentSupervisionElection& x) {
       f.field(static_strings::ElectibleLeaderSet, x.electibleLeaderSet));
 }
 
-template<class Inspector>
-auto inspect(Inspector& f, LogCurrentSupervision& x) {
+using StatusCode = LogCurrentSupervision::StatusCode;
+
+auto to_string(StatusCode) -> std::string_view;
+
+struct StatusCodeStringTransformer {
+  using SerializedType = std::string;
+  auto toSerialized(StatusCode source, std::string &target) const
+      -> inspection::Status;
+  auto fromSerialized(std::string const &source, StatusCode &target) const
+      -> inspection::Status;
+};
+
+template <class Inspector>
+auto inspect(Inspector &f, LogCurrentSupervision &x) {
   return f.object(x).fields(
       f.field(static_strings::Election, x.election),
       f.field(static_strings::Error, x.error),
       f.field(static_strings::TargetVersion, x.targetVersion),
-      f.field(static_strings::StatusMessage, x.statusMessage));
+      f.field(static_strings::StatusMessage, x.statusMessage),
+      f.field(static_strings::StatusReport, x.statusReport),
+      f.field(static_strings::LastTimeModified, x.lastTimeModified)
+          .transformWith(inspection::TimeStampTransformer{}));
 }
 
-template<class Inspector>
-auto inspect(Inspector& f, LogCurrent::Leader& x) {
+template <class Inspector>
+auto inspect(Inspector &f, LogCurrentSupervision::StatusMessage &x) {
+  return f.object(x).fields(
+      f.field(static_strings::Message, x.message),
+      f.field(static_strings::Code, x.code)
+          .transformWith(StatusCodeStringTransformer{}),
+      f.field(static_strings::Participant, x.participant));
+}
+
+template <class Inspector> auto inspect(Inspector &f, LogCurrent::Leader &x) {
   return f.object(x).fields(
       f.field(StaticStrings::ServerId, x.serverId),
       f.field(StaticStrings::Term, x.term),
@@ -165,8 +188,8 @@ auto inspect(Inspector& f, LogCurrent::Leader& x) {
       f.field(static_strings::CommitStatus, x.commitStatus));
 }
 
-template<class Inspector>
-auto inspect(Inspector& f, LogCurrent::ActionDummy& x) {
+template <class Inspector>
+auto inspect(Inspector &f, LogCurrent::ActionDummy &x) {
   if constexpr (Inspector::isLoading) {
     x = LogCurrent::ActionDummy{};
   } else {
@@ -174,8 +197,7 @@ auto inspect(Inspector& f, LogCurrent::ActionDummy& x) {
   return arangodb::inspection::Status::Success{};
 }
 
-template<class Inspector>
-auto inspect(Inspector& f, LogCurrent& x) {
+template <class Inspector> auto inspect(Inspector &f, LogCurrent &x) {
   return f.object(x).fields(
       f.field(StaticStrings::LocalStatus, x.localState)
           .fallback(std::unordered_map<ParticipantId, LogCurrentLocalState>{}),
@@ -185,14 +207,13 @@ auto inspect(Inspector& f, LogCurrent& x) {
           .fallback(std::vector<LogCurrent::ActionDummy>{}));
 }
 
-template<class Inspector>
-auto inspect(Inspector& f, LogTarget::Supervision& x) {
+template <class Inspector>
+auto inspect(Inspector &f, LogTarget::Supervision &x) {
   return f.object(x).fields(
       f.field(static_strings::MaxActionsTraceLength, x.maxActionsTraceLength));
 }
 
-template<class Inspector>
-auto inspect(Inspector& f, LogTarget& x) {
+template <class Inspector> auto inspect(Inspector &f, LogTarget &x) {
   return f.object(x).fields(
       f.field(StaticStrings::Id, x.id),
       f.field(StaticStrings::Participants, x.participants)
@@ -203,4 +224,4 @@ auto inspect(Inspector& f, LogTarget& x) {
       f.field(static_strings::Supervision, x.supervision));
 }
 
-}  // namespace arangodb::replication2::agency
+} // namespace arangodb::replication2::agency

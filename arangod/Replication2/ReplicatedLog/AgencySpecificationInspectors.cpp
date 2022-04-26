@@ -25,4 +25,39 @@
 
 namespace arangodb::replication2::agency {
 
-} // namespace arangodb::replication2::agency
+auto to_string(StatusCode code) -> std::string_view {
+  switch (code) {
+    case StatusCode::kTargetLeaderExcluded:
+      return "TargetLeaderExcluded";
+    case StatusCode::kTargetLeaderInvalid:
+      return "TargetLeaderInvalid";
+    case StatusCode::kTargetNotEnoughParticipants:
+      return "NotEnoughParticipants";
+    default:
+      return "(unknown status code)";
+  }
+}
+
+auto StatusCodeStringTransformer::toSerialized(StatusCode source,
+                                               std::string& target) const
+    -> inspection::Status {
+  target = to_string(source);
+  return {};
+}
+
+auto StatusCodeStringTransformer::fromSerialized(std::string const& source,
+                                                 StatusCode& target) const
+    -> inspection::Status {
+  if (source == "TargetLeaderExcluded") {
+    target = StatusCode::kTargetLeaderExcluded;
+  } else if (source == "TargetLeaderInvalid") {
+    target = StatusCode::kTargetLeaderInvalid;
+  } else if (source == "NotEnoughParticipants") {
+    target = StatusCode::kTargetNotEnoughParticipants;
+  } else {
+    inspection::Status{"Invalid status code name " + std::string{source}};
+  }
+  return {};
+}
+
+}  // namespace arangodb::replication2::agency

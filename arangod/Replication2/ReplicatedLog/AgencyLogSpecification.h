@@ -147,10 +147,33 @@ auto to_string(LogCurrentSupervisionError) noexcept -> std::string_view;
 auto toVelocyPack(LogCurrentSupervisionError, VPackBuilder&) -> void;
 
 struct LogCurrentSupervision {
+  using clock = std::chrono::system_clock;
+
+  enum class StatusCode {
+    kTargetLeaderInvalid,
+    kTargetLeaderExcluded,
+    kTargetNotEnoughParticipants
+  };
+  struct StatusMessage {
+    std::optional<std::string> message;
+    StatusCode code;
+    std::optional<ParticipantId> participant;
+
+    StatusMessage() = default;
+    StatusMessage(StatusCode code, std::optional<ParticipantId> participant)
+        : code(code), participant(std::move(participant)) {}
+
+    friend auto operator==(StatusMessage const&, StatusMessage const&) noexcept
+        -> bool = default;
+  };
+  using StatusReport = std::vector<StatusMessage>;
+
   std::optional<LogCurrentSupervisionElection> election;
   std::optional<LogCurrentSupervisionError> error;
   std::optional<std::string> statusMessage;
   std::optional<uint64_t> targetVersion;
+  std::optional<StatusReport> statusReport;
+  std::optional<clock::time_point> lastTimeModified;
 
   auto toVelocyPack(VPackBuilder&) const -> void;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice)
