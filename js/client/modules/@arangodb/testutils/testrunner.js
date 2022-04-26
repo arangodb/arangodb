@@ -313,8 +313,13 @@ class testRunner {
   // / @brief checks whether the SUT is alive and well:
   // //////////////////////////////////////////////////////////////////////////////
   healthCheck() {
-    return pu.arangod.check.instanceAlive(this.instanceInfo, this.options) &&
-      this.alive();
+    if (pu.arangod.check.instanceAlive(this.instanceInfo, this.options) &&
+        this.alive()) {
+      return true;
+    } else {
+      this.continueTesting = false;
+      return false;
+    }
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -523,6 +528,8 @@ class testRunner {
                 continue;
               }
             }
+          } else {
+            continue;
           }
           first = false;
 
