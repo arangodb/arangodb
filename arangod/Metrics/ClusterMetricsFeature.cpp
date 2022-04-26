@@ -191,8 +191,8 @@ void ClusterMetricsFeature::toPrometheus(std::string& result,
   std::string_view metricName;
   auto it = _toPrometheus.end();
   for (auto const& [key, value] : data->metrics) {
-    if (metricName != std::get<0>(key)) {
-      metricName = std::get<0>(key);
+    if (metricName != key.name) {
+      metricName = key.name;
       it = _toPrometheus.find(metricName);
       if (it != _toPrometheus.end()) {
         // TODO(MBkkt) read help and type from global constexpr map
@@ -200,7 +200,7 @@ void ClusterMetricsFeature::toPrometheus(std::string& result,
       }
     }
     if (it != _toPrometheus.end()) {
-      it->second(result, globals, key, value);
+      it->second(result, globals, metricName, key.labels, value);
     }
   }
 }

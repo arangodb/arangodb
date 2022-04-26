@@ -65,6 +65,7 @@ DatabaseTailingSyncer::DatabaseTailingSyncer(
                     useTick),
       _vocbase(&vocbase),
       _toTick(0),
+      _lastCancellationCheck(std::chrono::steady_clock::now()),
       _queriedTranslations(false),
       _unregisteredFromLeader(false) {
   _state.vocbases.try_emplace(vocbase.name(), vocbase);
@@ -308,6 +309,26 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
   while (true) {
     if (vocbase()->server().isStopping()) {
       return Result(TRI_ERROR_SHUTTING_DOWN);
+    }
+
+    if (_checkCancellation) {
+      // execute custom check for abortion only every few seconds, in case
+      // it is expensive
+      constexpr auto checkFrequency = std::chrono::seconds(5);
+
+      auto now = std::chrono::steady_clock::now();
+      TRI_IF_FAILURE("Replication::forceCheckCancellation") {
+        // always force the cancellation check!
+        _lastCancellationCheck = now - checkFrequency;
+      }
+
+      if (now - _lastCancellationCheck >= checkFrequency) {
+        _lastCancellationCheck = now;
+        if (_checkCancellation()) {
+          return Result(
+              TRI_ERROR_REPLICATION_SHARD_SYNC_ATTEMPT_TIMEOUT_EXCEEDED);
+        }
+      }
     }
 
     std::string url =
