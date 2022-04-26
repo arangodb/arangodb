@@ -22,6 +22,7 @@ const ParameterNodeColor = () => {
               NEWURLPARAMETERS.nodeColor = e.target.value.replace("#", "");
               setUrlParameters(NEWURLPARAMETERS);
             }}
+            disabled={urlParameters.nodeColorByCollection}
           />
         </label>
       </form>
