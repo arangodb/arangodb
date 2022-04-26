@@ -30,6 +30,8 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+
 #include <velocypack/Iterator.h>
 
 #include <type_traits>

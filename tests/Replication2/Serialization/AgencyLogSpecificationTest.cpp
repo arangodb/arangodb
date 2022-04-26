@@ -29,6 +29,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Inspection/VPack.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
