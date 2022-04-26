@@ -218,7 +218,6 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(graph != nullptr);
 
-  auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
   DisjointSmartToSatelliteTester disjointTest{};
 
   if (graph->type == NODE_TYPE_COLLECTION_LIST) {
@@ -228,36 +227,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
     _edgeColls.reserve(edgeCollectionCount);
     _directions.reserve(edgeCollectionCount);
 
-    // First determine whether all edge collections are smart and sharded
-    // like a common collection:
-    if (ServerState::instance()->isRunningInCluster()) {
-      _isSmart = true;
-      _isDisjoint = true;
-      std::string distributeShardsLike;
-      for (size_t i = 0; i < edgeCollectionCount; ++i) {
-        auto col = graph->getMember(i);
-        if (col->type == NODE_TYPE_DIRECTION) {
-          col = col->getMember(1);  // The first member always is the collection
-        }
-        std::string n = col->getString();
-        auto c = ci.getCollection(_vocbase->name(), n);
-        if (c->isSmart() && !c->isDisjoint()) {
-          _isDisjoint = false;
-        }
-        if (!c->isSmart() || c->distributeShardsLike().empty()) {
-          _isSmart = false;
-          _isDisjoint = false;
-          break;
-        }
-        if (distributeShardsLike.empty()) {
-          distributeShardsLike = c->distributeShardsLike();
-        } else if (distributeShardsLike != c->distributeShardsLike()) {
-          _isSmart = false;
-          _isDisjoint = false;
-          break;
-        }
-      }
-    }
+    determineEnterpriseFlags(graph);
 
     std::unordered_map<std::string, TRI_edge_direction_e> seenCollections;
     CollectionNameResolver const& resolver = plan->getAst()->query().resolver();
@@ -354,13 +324,12 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_EMPTY);
     }
 
-    // First determine whether all edge collections are smart and sharded
-    // like a common collection:
+    // Just use the Graph Object information
     if (ServerState::instance()->isRunningInCluster()) {
       _isSmart = _graphObj->isSmart();
       _isDisjoint = _graphObj->isDisjoint();
     }
-
+    auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
     auto& collections = plan->getAst()->query().collections();
     for (const auto& n : eColls) {
       if (_options->shouldExcludeEdgeCollection(n)) {
@@ -592,6 +561,13 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       _options(std::move(options)) {
   setGraphInfoAndCopyColls(edgeColls, vertexColls);
 }
+
+#ifndef USE_ENTERPRISE
+void GraphNode::determineEnterpriseFlags() {
+  _isSmart = false;
+  _isDisjoint = false;
+}
+#endif
 
 void GraphNode::setGraphInfoAndCopyColls(
     std::vector<Collection*> const& edgeColls,
