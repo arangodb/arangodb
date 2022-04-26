@@ -602,6 +602,22 @@ struct KillLeaderActor : ActorBase<KillLeaderActor> {
     return v;
   }
 };
+
+struct KillServerActor : ActorBase<KillServerActor> {
+  explicit KillServerActor(ParticipantId name) : name(std::move(name)) {}
+  auto step(AgencyState const& agency) const -> std::vector<AgencyTransition> {
+    std::vector<AgencyTransition> v;
+    auto const& health = agency.health;
+    auto isHealth = health.notIsFailed(name);
+    if (isHealth) {
+      v.emplace_back(KillServerAction{name});
+    }
+
+    return v;
+  }
+
+  ParticipantId name;
+};
 }  // namespace
 
 struct ReplicatedStateSupervisionSimulationTest2 : ::testing::Test {
@@ -625,6 +641,20 @@ auto isLeaderHealth() {
         auto const& health = global.state.health;
         return health.validRebootId(leader.serverId, leader.rebootId) &&
                health.notIsFailed(leader.serverId);
+      }
+    }
+    return false;
+  });
+}
+auto serverIsLeader(std::string_view id) {
+  return MC_BOOL_PRED(global, {
+    AgencyState const& state = global.state;
+    if (state.replicatedLog && state.replicatedLog->plan &&
+        state.replicatedLog->plan->currentTerm) {
+      auto const& term = *state.replicatedLog->plan->currentTerm;
+      if (term.leader) {
+        auto const& leader = *term.leader;
+        return leader.serverId == id;
       }
     }
     return false;
@@ -661,6 +691,42 @@ TEST_F(ReplicatedStateSupervisionSimulationTest2, check_state_and_log) {
   };
 
   auto test = MC_EVENTUALLY_ALWAYS(isLeaderHealth());
+  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+  auto result = Engine::run(driver, test, initState);
+  EXPECT_FALSE(result.failed) << *result.failed;
+  std::cout << result.stats << std::endl;
+}
+
+TEST_F(ReplicatedStateSupervisionSimulationTest2, check_state_and_log_with_leader) {
+  AgencyStateBuilder state;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C")
+      .setTargetVersion(20)
+      .setTargetLeader("A")
+      .setTargetConfig(defaultConfig);
+
+  replicated_log::ParticipantsHealth health;
+  health._health.emplace(
+      "A", replicated_log::ParticipantHealth{.rebootId = RebootId(1),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "B", replicated_log::ParticipantHealth{.rebootId = RebootId(1),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "C", replicated_log::ParticipantHealth{.rebootId = RebootId(1),
+                                             .notIsFailed = true});
+  auto initState = AgencyState{.replicatedState = state.get(),
+                               .replicatedLog = std::nullopt,
+                               .health = std::move(health)};
+
+  auto driver = model_checker::ActorDriver{
+      SupervisionActor{},
+      DBServerActor{"A"},
+      DBServerActor{"B"},
+      DBServerActor{"C"},
+  };
+
+  auto test = MC_EVENTUALLY_ALWAYS(serverIsLeader("A"));
   using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
   auto result = Engine::run(driver, test, initState);
   EXPECT_FALSE(result.failed) << *result.failed;
@@ -749,4 +815,57 @@ TEST_F(ReplicatedStateSupervisionSimulationTest2, everything_ok_kill_server) {
   auto result = Engine::run(driver, test, initState);
   EXPECT_FALSE(result.failed) << *result.failed;
   std::cout << result.stats << std::endl;
+}
+
+TEST_F(ReplicatedStateSupervisionSimulationTest2, change_leader) {
+  AgencyStateBuilder state;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C")
+      .setTargetVersion(20)
+      .setTargetConfig(defaultConfig)
+      .setTargetLeader("C");
+  state.setPlanParticipants("A", "B", "C");
+  state.setAllSnapshotsComplete();
+
+  AgencyLogBuilder log;
+  log.setId(logId)
+      .setTargetParticipant("A", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete)
+      .setTargetParticipant("C", flagsSnapshotComplete);
+
+  log.setPlanParticipant("A", flagsSnapshotComplete)
+      .setPlanParticipant("B", flagsSnapshotComplete)
+      .setPlanParticipant("C", flagsSnapshotComplete);
+  log.setPlanLeader("A");
+  log.establishLeadership();
+  log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
+
+  replicated_log::ParticipantsHealth health;
+  health._health.emplace(
+      "A", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "B", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  auto initState = AgencyState{.replicatedState = state.get(),
+                               .replicatedLog = log.get(),
+                               .health = std::move(health)};
+
+  auto driver = model_checker::ActorDriver{
+      SupervisionActor{}, KillServerActor{"A"}, DBServerActor{"A"},
+      DBServerActor{"B"}, DBServerActor{"C"},
+  };
+
+  auto test = MC_EVENTUALLY_ALWAYS(serverIsLeader("C"));
+  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+
+  auto result = Engine::run(driver, test, initState);
+  EXPECT_FALSE(result.failed) << *result.failed;
+  std::cout << result.stats << std::endl;
+  if (!result.finalStates.empty()) {
+    std::cout << *result.finalStates.front() << std::endl;
+  }
 }

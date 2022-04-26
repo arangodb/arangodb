@@ -226,11 +226,11 @@ struct FileLineType {
 
 #define MC_GTEST_PRED(name, pred)             \
   model_checker::gtest_predicate {            \
-    MC_HERE{}, [&](auto const& name) { pred } \
+    MC_HERE{}, [=](auto const& name) { pred } \
   }
 #define MC_BOOL_PRED(name, pred)              \
   model_checker::bool_predicate {             \
-    MC_HERE{}, [&](auto const& name) { pred } \
+    MC_HERE{}, [=](auto const& name) { pred } \
   }
 #define MC_EVENTUALLY(pred) \
   model_checker::eventually { MC_HERE{}, pred }
