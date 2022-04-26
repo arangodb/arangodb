@@ -170,7 +170,10 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   // Setting it to false does not require the mutex.
   _appendEntriesInFlight = true;
   auto inFlightScopeGuard =
-      ScopeGuard([&flag = _appendEntriesInFlight]() noexcept { flag = false; });
+      ScopeGuard([&flag = _appendEntriesInFlight, &cv = _appendEntriesInFlightCondVar]() noexcept {
+        flag = false;
+        cv.notify_one();
+      });
 
   {
     // Transactional Code Block
@@ -600,8 +603,8 @@ replicated_log::LogFollower::~LogFollower() {
 auto LogFollower::release(LogIndex doneWithIdx) -> Result {
   auto guard = _guardedFollowerData.getLockedGuard();
 
-  // guard.waitFor(_appendEntriesInFlightCondVar,
-  //               [&] { return !_appendEntriesInFlight; });
+  guard.wait(_appendEntriesInFlightCondVar,
+             [&] { return !_appendEntriesInFlight; });
 
   TRI_ASSERT(doneWithIdx <= guard->_inMemoryLog.getLastIndex());
   if (doneWithIdx <= guard->_releaseIndex) {
