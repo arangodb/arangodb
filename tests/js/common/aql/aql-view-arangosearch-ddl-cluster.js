@@ -987,7 +987,7 @@ function IResearchFeatureDDLTestSuite () {
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
         assertEqual(5, Object.keys(figures).length);
-        assertEqual(1278, figures.indexSize);
+        assertTrue(1000 < figures.indexSize);
         assertEqual(2, figures.numDocs);
         assertEqual(2, figures.numLiveDocs);
         assertEqual(6, figures.numFiles);
@@ -1013,7 +1013,7 @@ function IResearchFeatureDDLTestSuite () {
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
         assertEqual(5, Object.keys(figures).length);
-        assertEqual(1326, figures.indexSize);
+        assertTrue(1000 < figures.indexSize);
         assertEqual(2, figures.numDocs);
         assertEqual(1, figures.numLiveDocs);
         assertEqual(7, figures.numFiles);
