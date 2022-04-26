@@ -17,6 +17,7 @@ import ParameterEdgeColorByCollection from "./ParameterEdgeColorByCollection";
 import ParameterNodeLabel from "./ParameterNodeLabel";
 import ParameterEdgeLabel from "./ParameterEdgeLabel";
 import ParameterNodeColorAttribute from "./ParameterNodeColorAttribute";
+import ParameterEdgeColorAttribute from "./ParameterEdgeColorAttribute";
 import ParameterNodeColor from "./ParameterNodeColor";
 import ParameterEdgeColor from "./ParameterEdgeColor";
 import ParameterNodeSizeByEdges from "./ParameterNodeSizeByEdges";
@@ -226,6 +227,7 @@ const screenshotMenu = (
             <br />
             <ParameterEdgeColor />
             <br />
+            <ParameterEdgeColorAttribute />
             <Input
               addonBefore="Color attribute"
               placeholder="Attribute"
