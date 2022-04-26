@@ -221,7 +221,7 @@ class ldapTestRunner extends tu.runInArangoshRunner {
       return e.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
     };
 
-    const jwt = crypto.jwtEncode(this.options.server['server.jwt-secret'], {
+    const jwt = crypto.jwtEncode(this.serverOptions['server.jwt-secret'], {
       "preferred_username": "root",
       "iss": "arangodb",
       "exp": Math.floor(Date.now() / 1000) + 3600
