@@ -1289,6 +1289,13 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
       auto index = scorersSortElement.get(NODE_VIEW_SCORERS_SORT_INDEX);
       auto asc = scorersSortElement.get(NODE_VIEW_SCORERS_SORT_ASC);
       if (index.isNumber() && asc.isBoolean()) {
+        auto indexVal = index.getNumber<size_t>();
+        if (indexVal >= _scorers.size()) {
+          THROW_ARANGO_EXCEPTION_FORMAT(
+              TRI_ERROR_BAD_PARAMETER,
+              "\"scorersSort[%s].index\" attribute is out of range",
+              std::to_string(itr.index()).c_str());
+        }
         _scorersSort.emplace_back(index.getNumber<size_t>(), asc.getBool());
       } else {
         THROW_ARANGO_EXCEPTION_FORMAT(

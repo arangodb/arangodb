@@ -209,6 +209,16 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     _scorersSortLimit = limit;
   }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  size_t getScorersSortLimit() const noexcept {
+    return _scorersSortLimit;
+  }
+
+  auto getScorersSort() const noexcept {
+    return std::span(_scorersSort);
+  }
+#endif
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<aql::ExecutionBlock> createBlock(
       aql::ExecutionEngine& engine,
@@ -364,7 +374,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief internal order for scorers
   std::vector<std::pair<size_t, bool>> _scorersSort;
-  size_t _scorersSortLimit;
+  size_t _scorersSortLimit{0};
 };  // IResearchViewNode
 
 }  // namespace iresearch
