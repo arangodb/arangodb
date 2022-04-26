@@ -111,6 +111,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   // stop the feature
   virtual void stop() override;
 
+  void initializeMetrics();
   //
   // api features
   //
@@ -381,8 +382,6 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   static constexpr auto maxReplicationErrorsPerShardAge = std::chrono::hours(24);
   
  protected:
-  void initializeMetrics();
-
  private:
   /// @brief Search for first action matching hash and predicate
   /// @return shared pointer to action object if exists, empty shared_ptr if not

@@ -28,9 +28,13 @@
 #include "Basics/DataProtector.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
+#include "RestServer/MetricsFeature.h"
+#include "RestServer/Metrics.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/Methods/Databases.h"
+
+#include <condition_variable>
 
 struct TRI_vocbase_t;
 
@@ -63,6 +67,37 @@ class DatabaseManagerThread final : public Thread {
  private:
   // how long will the thread pause between iterations
   static constexpr unsigned long waitTime() { return static_cast<unsigned long>(500U * 1000U); }
+};
+
+class IOHeartbeatThread final : public Thread {
+ public:
+  IOHeartbeatThread(IOHeartbeatThread const&) = delete;
+  IOHeartbeatThread& operator=(IOHeartbeatThread const&) = delete;
+
+  explicit IOHeartbeatThread(application_features::ApplicationServer&,
+                             MetricsFeature& metricsFeature);
+  ~IOHeartbeatThread();
+
+  void run() override;
+  void wakeup() {
+    std::lock_guard<std::mutex> guard(_mutex);
+    _cv.notify_one();
+  }
+
+ private:
+  // how long will the thread pause between iterations, in case of trouble:
+  static constexpr std::chrono::duration<int64_t> checkIntervalTrouble =
+      std::chrono::seconds(1);
+  // how long will the thread pause between iterations:
+  static constexpr std::chrono::duration<int64_t> checkIntervalNormal =
+      std::chrono::seconds(15);
+
+  std::mutex _mutex;
+  std::condition_variable _cv;  // for waiting with wakeup
+
+  Histogram<log_scale_t<double>>& _exeTimeHistogram;
+  Counter& _failures;
+  Counter& _delays;
 };
 
 class DatabaseFeature : public application_features::ApplicationFeature {
@@ -187,7 +222,10 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   bool _forceSyncProperties;
   bool _ignoreDatafileErrors;
 
+  bool _performIOHeartbeat;
+
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
+  std::unique_ptr<IOHeartbeatThread> _ioHeartbeatThread;
 
   std::atomic<DatabasesLists*> _databasesLists;
   // TODO: Make this again a template once everybody has gcc >= 4.9.2
