@@ -15,4 +15,4 @@ shell_fuzzer
 http_server
 ssl_server
 http_replication
-
+server_http
