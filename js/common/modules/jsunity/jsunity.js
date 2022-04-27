@@ -566,10 +566,6 @@ var jsUnity = exports.jsUnity = (function () {
               } catch (e) {
                 let arangodb = require("@arangodb");
                 if ( typeof e === "string" ) {
-                  print(e);
-                  try {
-                    print(e.stack);
-                  } catch(x){}
                   e = new Error(e);
                 } else if (e instanceof arangodb.ArangoError && (
                            (e.errorNum === arangodb.errors.ERROR_CLUSTER_TIMEOUT) ||
