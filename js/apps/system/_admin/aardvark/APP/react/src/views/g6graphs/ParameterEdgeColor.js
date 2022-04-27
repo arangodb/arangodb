@@ -22,6 +22,7 @@ const ParameterEdgeColor = () => {
               NEWURLPARAMETERS.edgeColor = e.target.value.replace("#", "");
               setUrlParameters(NEWURLPARAMETERS);
             }}
+            style={{ height: "40px" }}
             disabled={urlParameters.edgeColorByCollection}
           />
         </label>
