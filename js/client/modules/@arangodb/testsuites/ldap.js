@@ -22,6 +22,10 @@
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
 //
+// assumes that
+//    docker run -d --name ldap -p 389:389 arangodb/ldap-test
+// is running.
+//
 // @author Heiko Kernbach
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -191,9 +195,18 @@ const tests = {
 };
 
 function parseOptions(options, ldap2) {
+  let verbose = {};
+  if (options.extremeVerbosity) {
+    verbose['log.level'] = 'ldap=trace';
+  }
+
   let toReturn = tests;
 
   _.each(toReturn, function(opt) {
+    Object.entries(verbose).forEach(entry => {
+      const [key, value] = entry;
+      opt.conf[key] = value;
+    });
     if (options.ldapHost) {
       opt.conf['ldap.server'] = options.ldapHost;
     }
