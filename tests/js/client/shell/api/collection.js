@@ -817,7 +817,12 @@ function unloadingSuite () {
       assertEqual(doc.parsedBody['code'], 200);
       assertEqual(doc.parsedBody['id'], cid._id);
       assertEqual(doc.parsedBody['name'], cn);
-      assertEqual(doc.parsedBody['status'], 3);
+      // effectively the status does not play any role for the RocksDB engine,
+      // so it is ok if any of the following statuses gets returned
+      // 2 = unloaded, 3 = loaded, 4 = unloading
+      // additionally, in a cluster there is no such thing as one status for a
+      // collection, as each shard can have a different status
+      assertTrue([2, 3, 4].find(elm => elm === doc.parsedBody['status']), JSON.stringify(doc));
     },
 
     test_unload_a_collection_by_name: function() {
@@ -830,7 +835,12 @@ function unloadingSuite () {
       assertEqual(doc.parsedBody['code'], 200);
       assertEqual(doc.parsedBody['id'], cid._id);
       assertEqual(doc.parsedBody['name'], cn);
-      assertEqual(doc.parsedBody['status'], 3);
+      // effectively the status does not play any role for the RocksDB engine,
+      // so it is ok if any of the following statuses gets returned
+      // 2 = unloaded, 3 = loaded, 4 = unloading
+      // additionally, in a cluster there is no such thing as one status for a
+      // collection, as each shard can have a different status
+      assertTrue([2, 3, 4].find(elm => elm === doc.parsedBody['status']), JSON.stringify(doc));
     },
   };
 }
