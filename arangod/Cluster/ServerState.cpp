@@ -895,9 +895,9 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm,
     {
       VPackObjectBuilder b(&localIdBuilder);
       localIdBuilder.add("TransactionID", VPackValue(num + 1));
-      std::stringstream ss;  // ShortName
       size_t width =
           std::max(std::to_string(num + 1).size(), static_cast<size_t>(4));
+      std::stringstream ss;  // ShortName
       ss << roleToAgencyKey(role) << std::setw(width) << std::setfill('0')
          << num + 1;
       localIdBuilder.add("ShortName", VPackValue(ss.str()));
@@ -936,12 +936,12 @@ std::string ServerState::getShortName() const {
   if (_role == ROLE_AGENT) {
     return getId().substr(0, 13);
   }
-  std::stringstream ss;  // ShortName
   auto num = getShortId();
   if (num == 0) {
     return std::string{};  // not yet known
   }
   size_t width = std::max(std::to_string(num).size(), static_cast<size_t>(4));
+  std::stringstream ss;  // ShortName
   ss << roleToAgencyKey(getRole()) << std::setw(width) << std::setfill('0')
      << num;
   return ss.str();
@@ -1047,12 +1047,10 @@ std::string ServerState::getId() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ServerState::setId(std::string const& id) {
-  if (id.empty()) {
-    return;
+  if (!id.empty()) {
+    std::lock_guard<std::mutex> guard(_idLock);
+    _id = id;
   }
-
-  std::lock_guard<std::mutex> guard(_idLock);
-  _id = id;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1068,11 +1066,9 @@ uint32_t ServerState::getShortId() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ServerState::setShortId(uint32_t id) {
-  if (id == 0) {
-    return;
+  if (id != 0) {
+    _shortId.store(id, std::memory_order_relaxed);
   }
-
-  _shortId.store(id, std::memory_order_relaxed);
 }
 
 RebootId ServerState::getRebootId() const {
@@ -1187,7 +1183,7 @@ bool ServerState::checkCoordinatorState(StateEnum state) {
 
 bool ServerState::isFoxxmaster() const {
   READ_LOCKER(readLocker, _foxxmasterLock);
-  return /*!isRunningInCluster() ||*/ _foxxmaster == getId();
+  return _foxxmaster == getId();
 }
 
 std::string ServerState::getFoxxmaster() const {

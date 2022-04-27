@@ -24,14 +24,15 @@
 #pragma once
 
 #include <atomic>
+#include <cstddef>
 #include <functional>
 #include <memory>
+#include <span>
 #include <string>
 #include <type_traits>
 #include <typeindex>
 #include <unordered_map>
 #include <vector>
-#include <span>
 #include <boost/type_index/ctti_type_index.hpp>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
