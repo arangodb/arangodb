@@ -301,7 +301,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase,
     arangodb::OperationOptions opOptions;
     opOptions.waitForSync = true;
     opOptions.returnOld = true;
-    opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
+    opOptions.overwriteMode = OperationOptions::OverwriteMode::kReplace;
 
     // find and load collection given by name or identifier
     auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);

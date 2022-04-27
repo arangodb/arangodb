@@ -30,7 +30,7 @@
 
 using namespace arangodb::aql;
 
-ModificationOptions::ModificationOptions(VPackSlice const& slice)
+ModificationOptions::ModificationOptions(VPackSlice slice)
     : OperationOptions() {
   VPackSlice obj = slice.get("modificationFlags");
 
@@ -38,8 +38,6 @@ ModificationOptions::ModificationOptions(VPackSlice const& slice)
       obj, StaticStrings::WaitForSyncString, false);
   validate = !basics::VelocyPackHelper::getBooleanValue(
       obj, StaticStrings::SkipDocumentValidation, false);
-  keepNull = basics::VelocyPackHelper::getBooleanValue(
-      obj, StaticStrings::KeepNullString, true);
   mergeObjects = basics::VelocyPackHelper::getBooleanValue(
       obj, StaticStrings::MergeObjectsString, true);
   ignoreRevs = basics::VelocyPackHelper::getBooleanValue(
@@ -49,6 +47,24 @@ ModificationOptions::ModificationOptions(VPackSlice const& slice)
   overwriteMode = OperationOptions::determineOverwriteMode(
       basics::VelocyPackHelper::getStringView(obj, StaticStrings::OverwriteMode,
                                               ""));
+
+  // special handling for "keepNull" and "removeNullAttributes"
+  nullBehavior = OperationOptions::NullBehavior::kKeepAllNulls;
+
+  bool keepNull = basics::VelocyPackHelper::getBooleanValue(
+      obj, StaticStrings::KeepNullString, true);
+  if (!keepNull) {
+    nullBehavior = OperationOptions::NullBehavior::kRemoveSomeNullsOnUpdate;
+  }
+  // "removeNullAttributes" always wins over "keepNull", if it is set
+  if (VPackSlice s = obj.get(StaticStrings::RemoveNullAttributesString);
+      s.isBoolean()) {
+    if (s.isTrue()) {
+      nullBehavior = OperationOptions::NullBehavior::kRemoveAllNulls;
+    } else {
+      nullBehavior = OperationOptions::NullBehavior::kKeepAllNulls;
+    }
+  }
 
   ignoreErrors =
       basics::VelocyPackHelper::getBooleanValue(obj, "ignoreErrors", false);
@@ -66,23 +82,30 @@ void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {
   // relevant attributes from OperationOptions
   builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
   builder.add(StaticStrings::SkipDocumentValidation, VPackValue(!validate));
-  builder.add(StaticStrings::KeepNullString, VPackValue(keepNull));
   builder.add(StaticStrings::MergeObjectsString, VPackValue(mergeObjects));
   builder.add(StaticStrings::IgnoreRevsString, VPackValue(ignoreRevs));
   builder.add(StaticStrings::IsRestoreString, VPackValue(isRestore));
 
-  if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
+  if (overwriteMode != OperationOptions::OverwriteMode::kUnknown) {
     builder.add(
         StaticStrings::OverwriteMode,
         VPackValue(OperationOptions::stringifyOverwriteMode(overwriteMode)));
   }
 
+  bool keepNull =
+      nullBehavior != OperationOptions::NullBehavior::kRemoveSomeNullsOnUpdate;
+  builder.add(StaticStrings::KeepNullString, VPackValue(keepNull));
+
+  if (keepNull) {
+    bool removeNullAttributes =
+        nullBehavior == OperationOptions::NullBehavior::kRemoveAllNulls;
+    builder.add(StaticStrings::RemoveNullAttributesString,
+                VPackValue(removeNullAttributes));
+  }
+
   // our own attributes
   builder.add("ignoreErrors", VPackValue(ignoreErrors));
   builder.add("ignoreDocumentNotFound", VPackValue(ignoreDocumentNotFound));
-  // "readCompleteInput" was removed in 3.9. We'll leave it here only to be
-  // downwards-compatible. TODO: remove attribute in 3.10
-  builder.add("readCompleteInput", VPackValue(false));
   builder.add("consultAqlWriteFilter", VPackValue(consultAqlWriteFilter));
   builder.add("exclusive", VPackValue(exclusive));
 }

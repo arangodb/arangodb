@@ -53,6 +53,8 @@
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 
+#include <optional>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -721,4 +723,31 @@ RestVocbaseBaseHandler::createTransactionContext(AccessMode::Type mode) const {
                                        "' not found");
   }
   return ctx;
+}
+
+void RestVocbaseBaseHandler::parseNullBehaviorOptions(OperationOptions& options,
+                                                      bool readKeepNull) const {
+  // default value
+  options.nullBehavior = OperationOptions::NullBehavior::kKeepAllNulls;
+
+  if (readKeepNull) {
+    // read "keepNull" attribute if requested
+    bool keepNull = _request->parsedValue(StaticStrings::KeepNullString, true);
+    if (!keepNull) {
+      options.nullBehavior =
+          OperationOptions::NullBehavior::kRemoveSomeNullsOnUpdate;
+    }
+  }
+
+  // read "removeNullAttributes" attribute.
+  // removeNullAttributes always takes precedence over keepNull, if set
+  auto removeNullAttributes =
+      _request->parsedValue<bool>(StaticStrings::RemoveNullAttributesString);
+  if (removeNullAttributes.has_value()) {
+    if (removeNullAttributes.value()) {
+      options.nullBehavior = OperationOptions::NullBehavior::kRemoveAllNulls;
+    } else {
+      options.nullBehavior = OperationOptions::NullBehavior::kKeepAllNulls;
+    }
+  }
 }

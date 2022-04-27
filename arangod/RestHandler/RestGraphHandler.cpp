@@ -603,10 +603,11 @@ std::unique_ptr<Graph> RestGraphHandler::getGraph(
 Result RestGraphHandler::edgeActionRemove(Graph& graph,
                                           std::string const& definitionName,
                                           std::string const& key) {
-  bool waitForSync =
+  OperationOptions options;
+  options.waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
-
-  bool returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false);
+  options.returnOld =
+      _request->parsedValue(StaticStrings::ReturnOldString, false);
 
   auto maybeRev = handleRevision();
 
@@ -614,7 +615,7 @@ Result RestGraphHandler::edgeActionRemove(Graph& graph,
   GraphOperations gops{graph, _vocbase, ctx};
 
   OperationResult result =
-      gops.removeEdge(definitionName, key, maybeRev, waitForSync, returnOld);
+      gops.removeEdge(definitionName, key, maybeRev, options);
 
   if (result.fail()) {
     generateTransactionError(/*collection*/ "", result, key,
@@ -841,11 +842,18 @@ Result RestGraphHandler::documentModify(graph::Graph& graph,
     return returnError(TRI_ERROR_BAD_PARAMETER, "unable to parse body");
   }
 
-  bool waitForSync =
+  OperationOptions options(_context);
+  options.waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
-  bool returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
-  bool returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false);
-  bool keepNull = _request->parsedValue(StaticStrings::KeepNullString, true);
+  options.returnNew =
+      _request->parsedValue(StaticStrings::ReturnNewString, false);
+  options.returnOld =
+      _request->parsedValue(StaticStrings::ReturnOldString, false);
+  options.mergeObjects =
+      _request->parsedValue(StaticStrings::MergeObjectsString, true);
+
+  // handle "keepNull" and "removeNullAttributes"
+  parseNullBehaviorOptions(options, /*readKeepNull*/ isPatch);
 
   // extract the revision, if single document variant and header given:
   auto maybeRev = handleRevision();
@@ -853,22 +861,17 @@ Result RestGraphHandler::documentModify(graph::Graph& graph,
   auto ctx = createTransactionContext(AccessMode::Type::WRITE);
   GraphOperations gops{graph, _vocbase, ctx};
 
-  OperationOptions options(_context);
   OperationResult result(Result(), options);
   // TODO get rid of this branching, rather use several functions and reuse the
   // common code another way.
   if (isPatch && colType == TRI_COL_TYPE_DOCUMENT) {
-    result = gops.updateVertex(collectionName, key, body, maybeRev, waitForSync,
-                               returnOld, returnNew, keepNull);
+    result = gops.updateVertex(collectionName, key, body, maybeRev, options);
   } else if (!isPatch && colType == TRI_COL_TYPE_DOCUMENT) {
-    result = gops.replaceVertex(collectionName, key, body, maybeRev,
-                                waitForSync, returnOld, returnNew, keepNull);
+    result = gops.replaceVertex(collectionName, key, body, maybeRev, options);
   } else if (isPatch && colType == TRI_COL_TYPE_EDGE) {
-    result = gops.updateEdge(collectionName, key, body, maybeRev, waitForSync,
-                             returnOld, returnNew, keepNull);
+    result = gops.updateEdge(collectionName, key, body, maybeRev, options);
   } else if (!isPatch && colType == TRI_COL_TYPE_EDGE) {
-    result = gops.replaceEdge(collectionName, key, body, maybeRev, waitForSync,
-                              returnOld, returnNew, keepNull);
+    result = gops.replaceEdge(collectionName, key, body, maybeRev, options);
   } else {
     TRI_ASSERT(false);
   }
@@ -910,19 +913,23 @@ Result RestGraphHandler::documentCreate(graph::Graph& graph,
     return returnError(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  bool waitForSync =
+  OperationOptions options(_context);
+  options.waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
-  bool returnNew = _request->parsedValue(StaticStrings::ReturnNewString, false);
+  options.returnNew =
+      _request->parsedValue(StaticStrings::ReturnNewString, false);
+
+  // handle "removeNullAttributes"
+  parseNullBehaviorOptions(options, /*readKeepNull*/ false);
 
   auto ctx = createTransactionContext(AccessMode::Type::WRITE);
   GraphOperations gops{graph, _vocbase, ctx};
 
-  OperationOptions options(_context);
   OperationResult result(Result(), options);
   if (colType == TRI_COL_TYPE_DOCUMENT) {
-    result = gops.createVertex(collectionName, body, waitForSync, returnNew);
+    result = gops.createVertex(collectionName, body, options);
   } else if (colType == TRI_COL_TYPE_EDGE) {
-    result = gops.createEdge(collectionName, body, waitForSync, returnNew);
+    result = gops.createEdge(collectionName, body, options);
   } else {
     TRI_ASSERT(false);
   }
@@ -951,10 +958,11 @@ Result RestGraphHandler::documentCreate(graph::Graph& graph,
 Result RestGraphHandler::vertexActionRemove(graph::Graph& graph,
                                             std::string const& collectionName,
                                             std::string const& key) {
-  bool waitForSync =
+  OperationOptions options(_context);
+  options.waitForSync =
       _request->parsedValue(StaticStrings::WaitForSyncString, false);
-
-  bool returnOld = _request->parsedValue(StaticStrings::ReturnOldString, false);
+  options.returnOld =
+      _request->parsedValue(StaticStrings::ReturnOldString, false);
 
   auto maybeRev = handleRevision();
 
@@ -962,7 +970,7 @@ Result RestGraphHandler::vertexActionRemove(graph::Graph& graph,
   GraphOperations gops{graph, _vocbase, ctx};
 
   OperationResult result =
-      gops.removeVertex(collectionName, key, maybeRev, waitForSync, returnOld);
+      gops.removeVertex(collectionName, key, maybeRev, options);
 
   if (result.fail()) {
     generateTransactionError(collectionName, result, key,

@@ -953,6 +953,7 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
     QueryContext& query, char const* operationName, AstNode const* node,
     bool addWarnings) {
   ModificationOptions options;
+  bool nullOptionSet = false;
 
   // parse the modification options we got
   if (node != nullptr && node->type == NODE_TYPE_OBJECT) {
@@ -971,22 +972,46 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
           options.waitForSync = value->isTrue();
         } else if (name == StaticStrings::SkipDocumentValidation) {
           options.validate = !value->isTrue();
+        } else if (name == StaticStrings::RemoveNullAttributesString) {
+          // removeNull will always have precedence over keepNull
+          if (value->isTrue()) {
+            options.nullBehavior =
+                OperationOptions::NullBehavior::kRemoveAllNulls;
+          } else {
+            options.nullBehavior =
+                OperationOptions::NullBehavior::kKeepAllNulls;
+          }
+          nullOptionSet = true;
         } else if (name == StaticStrings::KeepNullString) {
-          options.keepNull = value->isTrue();
+          if (nullOptionSet) {
+            if (addWarnings) {
+              invalidOptionAttribute(query, "ambiguous", operationName,
+                                     name.data(), name.size());
+            }
+          } else {
+            if (value->isTrue()) {
+              options.nullBehavior =
+                  OperationOptions::NullBehavior::kKeepAllNulls;
+            } else {
+              options.nullBehavior =
+                  OperationOptions::NullBehavior::kRemoveSomeNullsOnUpdate;
+            }
+            nullOptionSet = true;
+          }
         } else if (name == StaticStrings::MergeObjectsString) {
           options.mergeObjects = value->isTrue();
         } else if (name == StaticStrings::Overwrite) {
           // legacy: overwrite is set, superseded by overwriteMode
           // default behavior if only "overwrite" is specified
           if (!options.isOverwriteModeSet() && value->isTrue()) {
-            options.overwriteMode = OperationOptions::OverwriteMode::Replace;
+            options.overwriteMode = OperationOptions::OverwriteMode::kReplace;
           }
         } else if (name == StaticStrings::OverwriteMode &&
                    value->isStringValue()) {
           auto overwriteMode =
               OperationOptions::determineOverwriteMode(value->getStringView());
 
-          if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
+          if (overwriteMode != OperationOptions::OverwriteMode::kUnknown) {
             options.overwriteMode = overwriteMode;
           }
         } else if (name == StaticStrings::IgnoreRevsString) {
@@ -1011,9 +1036,8 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
 /// @brief create modification options from an AST node
 ModificationOptions ExecutionPlan::createModificationOptions(
     char const* operationName, AstNode const* node) {
-  ModificationOptions options = parseModificationOptions(
-      _ast->query(), operationName, node, /*addWarnings*/ true);
-  return options;
+  return parseModificationOptions(_ast->query(), operationName, node,
+                                  /*addWarnings*/ true);
 }
 
 /// @brief create COLLECT options from an AST node

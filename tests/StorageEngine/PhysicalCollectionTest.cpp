@@ -36,10 +36,11 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/Result.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Metrics/MetricsFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Utils/OperationOptions.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
@@ -118,8 +119,9 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
 
   arangodb::RevisionId revisionId = arangodb::RevisionId::none();
   arangodb::velocypack::Builder builder;
-  Result res = physical->newObjectForInsert(nullptr, doc->slice(), false,
-                                            builder, false, revisionId);
+  arangodb::OperationOptions options;
+  Result res = physical->newObjectForInsert(nullptr, options, doc->slice(),
+                                            false, builder, revisionId);
   EXPECT_TRUE(res.ok());
   EXPECT_TRUE(revisionId.isSet());
 

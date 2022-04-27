@@ -61,76 +61,6 @@ TRI_v8_global_t::TRI_v8_global_t(
       BufferTempl(),
       StreamQueryCursorTempl(),
 
-      BufferConstant(),
-      DeleteConstant(),
-      GetConstant(),
-      HeadConstant(),
-      OptionsConstant(),
-      PatchConstant(),
-      PostConstant(),
-      PutConstant(),
-
-      AddressKey(),
-      AllowUseDatabaseKey(),
-      AuthorizedKey(),
-      BodyFromFileKey(),
-      BodyKey(),
-      ClientKey(),
-      CodeKey(),
-      ContentTypeKey(),
-      CoordTransactionIDKey(),
-      DatabaseKey(),
-      DomainKey(),
-      EndpointKey(),
-      ErrorKey(),
-      ErrorMessageKey(),
-      ErrorNumKey(),
-      HeadersKey(),
-      HttpOnlyKey(),
-      IdKey(),
-      IsAdminUser(),
-      InitTimeoutKey(),
-      IsRestoreKey(),
-      IsSystemKey(),
-      KeepNullKey(),
-      KeyOptionsKey(),
-      LengthKey(),
-      LifeTimeKey(),
-      MergeObjectsKey(),
-      NameKey(),
-      OperationIDKey(),
-      OverwriteKey(),
-      OverwriteModeKey(),
-      SkipDocumentValidationKey(),
-      ParametersKey(),
-      PathKey(),
-      PrefixKey(),
-      PortKey(),
-      PortTypeKey(),
-      ProtocolKey(),
-      RawSuffixKey(),
-      RequestBodyKey(),
-      RawRequestBodyKey(),
-      RequestTypeKey(),
-      ResponseCodeKey(),
-      ReturnNewKey(),
-      ReturnOldKey(),
-      SecureKey(),
-      ServerKey(),
-      ShardIDKey(),
-      SilentKey(),
-      SingleRequestKey(),
-      StatusKey(),
-      SuffixKey(),
-      TimeoutKey(),
-      ToJsonKey(),
-      TransformationsKey(),
-      UrlKey(),
-      UserKey(),
-      ValueKey(),
-      VersionKeyHidden(),
-      WaitForSyncKey(),
-
       _DbCacheKey(),
       _DbNameKey(),
       _IdKey(),
@@ -211,18 +141,20 @@ TRI_v8_global_t::TRI_v8_global_t(
   OverwriteKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "overwrite"));
   OverwriteModeKey.Reset(isolate,
                          TRI_V8_ASCII_STRING(isolate, "overwriteMode"));
-  SkipDocumentValidationKey.Reset(
-      isolate, TRI_V8_ASCII_STRING(isolate, "skipDocumentValidation"));
   ParametersKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "parameters"));
   PathKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "path"));
   PrefixKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "prefix"));
   PortKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "port"));
   PortTypeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "portType"));
   ProtocolKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "protocol"));
-  RawSuffixKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "rawSuffix"));
-  RequestBodyKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "requestBody"));
   RawRequestBodyKey.Reset(isolate,
                           TRI_V8_ASCII_STRING(isolate, "rawRequestBody"));
+  RawSuffixKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "rawSuffix"));
+  RemoveNullAttributesKey.Reset(
+      isolate,
+      TRI_V8_ASCII_STD_STRING(
+          isolate, arangodb::StaticStrings::RemoveNullAttributesString));
+  RequestBodyKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "requestBody"));
   RequestTypeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "requestType"));
   ResponseCodeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "responseCode"));
   ReturnNewKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "returnNew"));
@@ -233,6 +165,8 @@ TRI_v8_global_t::TRI_v8_global_t(
   SilentKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "silent"));
   SingleRequestKey.Reset(isolate,
                          TRI_V8_ASCII_STRING(isolate, "singleRequest"));
+  SkipDocumentValidationKey.Reset(
+      isolate, TRI_V8_ASCII_STRING(isolate, "skipDocumentValidation"));
   StatusKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "status"));
   SuffixKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "suffix"));
   TimeoutKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "timeout"));

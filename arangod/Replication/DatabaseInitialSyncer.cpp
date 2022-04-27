@@ -168,7 +168,8 @@ arangodb::Result fetchRevisions(
   options.ignoreRevs = true;
   options.isRestore = true;
   options.validate = false;  // no validation during replication
-  options.indexOperationMode = arangodb::IndexOperationMode::internal;
+  options.indexOperationMode =
+      arangodb::OperationOptions::IndexOperationMode::kInternal;
   options.checkUniqueConstraintsInPreflight = true;
   options.waitForSync = false;  // no waitForSync during replication
   if (!state.leaderId.empty()) {
@@ -310,7 +311,8 @@ arangodb::Result fetchRevisions(
                             ": document revision is invalid");
         }
 
-        options.indexOperationMode = arangodb::IndexOperationMode::internal;
+        options.indexOperationMode =
+            arangodb::OperationOptions::IndexOperationMode::kInternal;
 
         // we need a retry loop here for unique indexes (we will always have at
         // least one unique index, which is the primary index, but there can be
@@ -323,14 +325,16 @@ arangodb::Result fetchRevisions(
         std::size_t tries = 1 + numUniqueIndexes;
         while (tries-- > 0) {
           if (tries == 0) {
-            options.indexOperationMode = arangodb::IndexOperationMode::normal;
+            options.indexOperationMode =
+                arangodb::OperationOptions::IndexOperationMode::kNormal;
           }
 
           double tInsert = TRI_microtime();
           Result res = physical->insert(&trx, leaderDoc, mdr, options);
           stats.waitedForInsertions += TRI_microtime() - tInsert;
 
-          options.indexOperationMode = arangodb::IndexOperationMode::internal;
+          options.indexOperationMode =
+              arangodb::OperationOptions::IndexOperationMode::kInternal;
 
           arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(leaderDoc);
           // We must see our own writes, because we may have to remove
@@ -795,8 +799,6 @@ Result DatabaseInitialSyncer::parseCollectionDump(
       options.ignoreRevs = true;
       options.isRestore = true;
       options.validate = false;
-      options.returnOld = false;
-      options.returnNew = false;
       options.checkUniqueConstraintsInPreflight = false;
       options.isSynchronousReplicationFrom = _state.leaderId;
 

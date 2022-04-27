@@ -64,6 +64,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/OperationOptions.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Collections.h"
 
@@ -3100,6 +3101,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_index_id_attr) {
   arangodb::RevisionId rev;
   VPackBuilder document;
   {
+    arangodb::OperationOptions options;
     auto analyzersCollection = sysVocbase->useCollection(
         arangodb::StaticStrings::AnalyzersCollection, false);
     ASSERT_TRUE(analyzersCollection);
@@ -3108,8 +3110,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_index_id_attr) {
     builder.add(arangodb::StaticStrings::KeyString, VPackValue("test"));
     builder.close();
     ASSERT_TRUE(analyzersCollection->getPhysical()
-                    ->newObjectForInsert(&trx, builder.slice(), false, document,
-                                         false, rev)
+                    ->newObjectForInsert(&trx, options, builder.slice(), false,
+                                         document, rev)
                     .ok());
     sysVocbase->releaseCollection(analyzersCollection.get());
   }
@@ -3174,6 +3176,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_dbServer_index_id_attr) {
   arangodb::RevisionId rev;
   VPackBuilder document;
   {
+    arangodb::OperationOptions options;
     auto analyzersCollection = sysVocbase->useCollection(
         arangodb::StaticStrings::AnalyzersCollection, false);
     ASSERT_TRUE(analyzersCollection);
@@ -3182,8 +3185,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_dbServer_index_id_attr) {
     builder.add(arangodb::StaticStrings::KeyString, VPackValue("test"));
     builder.close();
     ASSERT_TRUE(analyzersCollection->getPhysical()
-                    ->newObjectForInsert(&trx, builder.slice(), false, document,
-                                         false, rev)
+                    ->newObjectForInsert(&trx, options, builder.slice(), false,
+                                         document, rev)
                     .ok());
     sysVocbase->releaseCollection(analyzersCollection.get());
   }

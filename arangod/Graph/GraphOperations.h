@@ -23,10 +23,6 @@
 
 #pragma once
 
-#include <velocypack/Buffer.h>
-#include <chrono>
-#include <utility>
-
 #include "Aql/Query.h"
 #include "Aql/VariableGenerator.h"
 #include "Auth/Common.h"
@@ -38,7 +34,15 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationResult.h"
 
+#include <velocypack/Buffer.h>
+
+#include <memory>
+#include <string>
+#include <utility>
+
 namespace arangodb {
+class OperationOptions;
+
 namespace graph {
 
 // TODO rename to GraphMethods
@@ -49,7 +53,7 @@ class GraphOperations {
   TRI_vocbase_t& _vocbase;
   std::shared_ptr<transaction::Context> _ctx;
 
-  Graph const& graph() const { return _graph; };
+  Graph const& graph() const { return _graph; }
   std::shared_ptr<transaction::Context> ctx();
 
  public:
@@ -83,40 +87,40 @@ class GraphOperations {
   /// @brief Remove a single edge document from definitionName.
   OperationResult removeEdge(std::string const& definitionName,
                              std::string const& key,
-                             std::optional<RevisionId> rev, bool waitForSync,
-                             bool returnOld);
+                             std::optional<RevisionId> rev,
+                             OperationOptions const& options);
 
   /// @brief Remove a vertex and all incident edges in the graph
   OperationResult removeVertex(std::string const& collectionName,
                                std::string const& key,
-                               std::optional<RevisionId> rev, bool waitForSync,
-                               bool returnOld);
+                               std::optional<RevisionId> rev,
+                               OperationOptions const& options);
 
   /// @brief Remove an edge or vertex and all incident edges in the graph
   OperationResult removeEdgeOrVertex(std::string const& collectionName,
                                      std::string const& key,
                                      std::optional<RevisionId> rev,
-                                     bool waitForSync, bool returnOld);
+                                     OperationOptions const& options);
 
   OperationResult updateEdge(std::string const& definitionName,
                              std::string const& key, VPackSlice document,
-                             std::optional<RevisionId> rev, bool waitForSync,
-                             bool returnOld, bool returnNew, bool keepNull);
+                             std::optional<RevisionId> rev,
+                             OperationOptions const& options);
 
   OperationResult replaceEdge(std::string const& definitionName,
                               std::string const& key, VPackSlice document,
-                              std::optional<RevisionId> rev, bool waitForSync,
-                              bool returnOld, bool returnNew, bool keepNull);
+                              std::optional<RevisionId> rev,
+                              OperationOptions const& options);
 
   OperationResult createEdge(std::string const& definitionName,
-                             VPackSlice document, bool waitForSync,
-                             bool returnNew);
+                             VPackSlice document,
+                             OperationOptions const& options);
 
   // @brief This function is a helper function which is setting up a transaction
   // and calls validateEdgeVertices and validateEdgeContent methods.
   std::pair<OperationResult, std::unique_ptr<transaction::Methods>>
-  validateEdge(std::string const& definitionName, const VPackSlice& document,
-               bool waitForSync, bool isUpdate);
+  validateEdge(std::string const& definitionName, VPackSlice document,
+               bool isUpdate);
 
   // @brief This function is checking whether the given _from and _to vertex
   // documents are available or not
@@ -130,23 +134,23 @@ class GraphOperations {
   // and _to attributes or not and checks if they are correct or invalid if they
   // are available.
   std::pair<OperationResult, bool> validateEdgeContent(
-      const VPackSlice& document, std::string& fromCollectionName,
+      VPackSlice document, std::string& fromCollectionName,
       std::string& fromCollectionKey, std::string& toCollectionName,
       std::string& toCollectionKey, bool isUpdate);
 
   OperationResult updateVertex(std::string const& collectionName,
                                std::string const& key, VPackSlice document,
-                               std::optional<RevisionId> rev, bool waitForSync,
-                               bool returnOld, bool returnNew, bool keepNull);
+                               std::optional<RevisionId> rev,
+                               OperationOptions const& options);
 
   OperationResult replaceVertex(std::string const& collectionName,
                                 std::string const& key, VPackSlice document,
-                                std::optional<RevisionId> rev, bool waitForSync,
-                                bool returnOld, bool returnNew, bool keepNull);
+                                std::optional<RevisionId> rev,
+                                OperationOptions const& options);
 
   OperationResult createVertex(std::string const& collectionName,
-                               VPackSlice document, bool waitForSync,
-                               bool returnNew);
+                               VPackSlice document,
+                               OperationOptions const& options);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief add an orphan to collection to an existing graph
@@ -209,14 +213,13 @@ class GraphOperations {
   OperationResult modifyDocument(std::string const& collectionName,
                                  std::string const& key, VPackSlice document,
                                  bool isPatch, std::optional<RevisionId> rev,
-                                 bool waitForSync, bool returnOld,
-                                 bool returnNew, bool keepNull,
+                                 OperationOptions const& options,
                                  transaction::Methods& trx);
 
   OperationResult createDocument(transaction::Methods* trx,
                                  std::string const& collectionName,
-                                 VPackSlice document, bool waitForSync,
-                                 bool returnNew);
+                                 VPackSlice document,
+                                 OperationOptions const& options);
 
   Result checkEdgeCollectionAvailability(std::string const& edgeCollectionName);
   Result checkVertexCollectionAvailability(

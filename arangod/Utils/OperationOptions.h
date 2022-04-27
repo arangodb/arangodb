@@ -26,6 +26,7 @@
 #include "Basics/Common.h"
 #include "Utils/ExecContext.h"
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 
@@ -56,9 +57,6 @@ enum class ReadOwnWrites : bool {
   yes,
 };
 
-/// @brief: mode to signal how operation should behave
-enum class IndexOperationMode : uint8_t { normal, internal, rollback };
-
 // a struct for keeping document modification operations in transactions
 #if defined(__GNUC__) && \
     (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
@@ -67,18 +65,32 @@ enum class IndexOperationMode : uint8_t { normal, internal, rollback };
 #endif
 
 struct OperationOptions {
+  /// @brief: mode to signal how operation should behave
+  enum class IndexOperationMode : uint8_t { kNormal, kInternal, kRollback };
+
   /// @brief behavior when inserting a document by _key using INSERT with
   /// overwrite when the target document already exists
-  enum class OverwriteMode {
-    Unknown,   // undefined/not set
-    Conflict,  // fail with unique constraint violation
-    Replace,   // replace the target document
-    Update,    // (partially) update the target document
-    Ignore     // keep the target document unmodified (no writes)
+  enum class OverwriteMode : uint8_t {
+    kUnknown,   // undefined/not set
+    kConflict,  // fail with unique constraint violation
+    kReplace,   // replace the target document
+    kUpdate,    // (partially) update the target document
+    kIgnore     // keep the target document unmodified (no writes)
   };
 
-  OperationOptions();
-  explicit OperationOptions(ExecContext const&);
+  enum class NullBehavior : uint8_t {
+    // keep all null values (default)
+    kKeepAllNulls,
+    // keep null values, except on update on the top-level and some
+    // sub-attributes.
+    // this mimics the old "keepNull=false" behavior
+    kRemoveSomeNullsOnUpdate,
+    // remove all null values
+    kRemoveAllNulls,
+  };
+
+  OperationOptions() noexcept;
+  explicit OperationOptions(ExecContext const&) noexcept;
 
 // The following code does not work with VisualStudi 2019's `cl`
 // Lets keep it for debugging on linux.
@@ -87,21 +99,27 @@ struct OperationOptions {
                                   OperationOptions const& ops);
 #endif
 
-  bool isOverwriteModeSet() const {
-    return (overwriteMode != OverwriteMode::Unknown);
+  bool isOverwriteModeSet() const noexcept {
+    return (overwriteMode != OverwriteMode::kUnknown);
   }
 
-  bool isOverwriteModeUpdateReplace() const {
-    return (overwriteMode == OverwriteMode::Update ||
-            overwriteMode == OverwriteMode::Replace);
+  bool isOverwriteModeUpdateReplace() const noexcept {
+    return (overwriteMode == OverwriteMode::kUpdate ||
+            overwriteMode == OverwriteMode::kReplace);
   }
 
   /// @brief stringifies the overwrite mode
-  static char const* stringifyOverwriteMode(
-      OperationOptions::OverwriteMode mode);
+  static std::string_view stringifyOverwriteMode(
+      OperationOptions::OverwriteMode mode) noexcept;
 
   /// @brief determine the overwrite mode from the string value
-  static OverwriteMode determineOverwriteMode(std::string_view value);
+  static OverwriteMode determineOverwriteMode(std::string_view value) noexcept;
+
+  static std::string_view stringifyIndexOperationMode(
+      OperationOptions::IndexOperationMode mode) noexcept;
+
+  static std::string_view stringifyNullBehavior(
+      OperationOptions::NullBehavior nullBehavior) noexcept;
 
  public:
   // for synchronous replication operations, we have to mark them such that
@@ -116,15 +134,14 @@ struct OperationOptions {
   // - replace an existing document, update an existing document, or do nothing
   OverwriteMode overwriteMode;
 
+  // behavior upon encountering null values:
+  NullBehavior nullBehavior;
+
   // wait until the operation has been synced
   bool waitForSync;
 
-  // apply document vaidators if there are any available
+  // apply document schema validation if available
   bool validate;
-
-  // keep null values on update (=true) or remove them (=false). only used for
-  // update operations
-  bool keepNull;
 
   // merge objects. only used for update operations
   bool mergeObjects;

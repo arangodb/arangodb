@@ -270,7 +270,7 @@ class EdgeIndexMock final : public arangodb::Index {
   arangodb::Result remove(arangodb::transaction::Methods& trx,
                           arangodb::LocalDocumentId const&,
                           arangodb::velocypack::Slice const& doc,
-                          arangodb::IndexOperationMode) {
+                          arangodb::OperationOptions::IndexOperationMode) {
     if (!doc.isObject()) {
       return {TRI_ERROR_INTERNAL};
     }
@@ -1172,8 +1172,8 @@ arangodb::Result PhysicalCollectionMock::insert(
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
   arangodb::RevisionId revisionId;
-  auto res = newObjectForInsert(trx, newSlice, isEdgeCollection, builder,
-                                options.isRestore, revisionId);
+  auto res = newObjectForInsert(trx, options, newSlice, isEdgeCollection,
+                                builder, revisionId);
 
   if (res.fail()) {
     return res;
@@ -1458,15 +1458,13 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
     auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
     if (isUpdate) {
       arangodb::Result res = mergeObjectsForUpdate(
-          trx, doc, newSlice, isEdgeCollection, options.mergeObjects,
-          options.keepNull, builder, options.isRestore, revisionId);
+          trx, options, doc, newSlice, isEdgeCollection, builder, revisionId);
       if (res.fail()) {
         return res;
       }
     } else {
-      arangodb::Result res =
-          newObjectForReplace(trx, doc, newSlice, isEdgeCollection, builder,
-                              options.isRestore, revisionId);
+      arangodb::Result res = newObjectForReplace(
+          trx, options, doc, newSlice, isEdgeCollection, builder, revisionId);
       if (res.fail()) {
         return res;
       }

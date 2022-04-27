@@ -192,7 +192,7 @@ RestStatus RestDocumentHandler::insertDocument() {
 
   if (_request->parsedValue(StaticStrings::Overwrite, false)) {
     // the default behavior if just "overwrite" is set
-    opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
+    opOptions.overwriteMode = OperationOptions::OverwriteMode::kReplace;
   }
 
   std::string const& mode = _request->value(StaticStrings::OverwriteMode);
@@ -200,17 +200,20 @@ RestStatus RestDocumentHandler::insertDocument() {
     auto overwriteMode =
         OperationOptions::determineOverwriteMode(std::string_view(mode));
 
-    if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
+    if (overwriteMode != OperationOptions::OverwriteMode::kUnknown) {
       opOptions.overwriteMode = overwriteMode;
 
-      if (opOptions.overwriteMode == OperationOptions::OverwriteMode::Update) {
+      if (opOptions.overwriteMode == OperationOptions::OverwriteMode::kUpdate) {
         opOptions.mergeObjects =
             _request->parsedValue(StaticStrings::MergeObjectsString, true);
-        opOptions.keepNull =
-            _request->parsedValue(StaticStrings::KeepNullString, false);
       }
     }
   }
+
+  // handle "keepNull" and "removeNullAttributes"
+  parseNullBehaviorOptions(opOptions,
+                           /*readKeepNull*/ opOptions.overwriteMode ==
+                               OperationOptions::OverwriteMode::kUpdate);
 
   opOptions.returnOld =
       _request->parsedValue(StaticStrings::ReturnOldString, false) &&
@@ -516,6 +519,9 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
+  // handle "keepNull" and "removeNullAttributes"
+  parseNullBehaviorOptions(opOptions, /*readKeepNull*/ isPatch);
+
   TRI_IF_FAILURE("delayed_synchronous_replication_request_processing") {
     if (!opOptions.isSynchronousReplicationFrom.empty()) {
       std::this_thread::sleep_for(
@@ -547,7 +553,8 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
       VPackBuilder builder(buffer);
       {
         VPackObjectBuilder guard(&builder);
-        TRI_SanitizeObject(body, builder);
+        TRI_SanitizeObject(body, builder,
+                           OperationOptions::NullBehavior::kKeepAllNulls);
         builder.add(StaticStrings::KeyString, VPackValue(key));
         if (headerRev.isSet()) {
           builder.add(StaticStrings::RevString,
@@ -606,8 +613,6 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   auto f = futures::Future<OperationResult>::makeEmpty();
   if (isPatch) {
     // patching an existing document
-    opOptions.keepNull =
-        _request->parsedValue(StaticStrings::KeepNullString, true);
     opOptions.mergeObjects =
         _request->parsedValue(StaticStrings::MergeObjectsString, true);
     f = _activeTrx->updateAsync(cname, body, opOptions);

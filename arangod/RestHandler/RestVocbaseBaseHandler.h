@@ -33,6 +33,7 @@
 #include "VocBase/vocbase.h"
 
 #include <memory>
+#include <string>
 
 struct TRI_vocbase_t;
 
@@ -41,6 +42,7 @@ namespace transaction {
 class Methods;
 }
 
+class OperationOptions;
 class VocbaseContext;
 
 /// @brief abstract base request handler
@@ -124,7 +126,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief Internal Traverser path
   static std::string const INTERNAL_TRAVERSER_PATH;
 
- public:
   RestVocbaseBaseHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
   ~RestVocbaseBaseHandler();
 
@@ -138,6 +139,11 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   void shutdownExecute(bool isFinalized) noexcept override;
 
  protected:
+  /// @brief handle URL parameters "keepNull" and "removeNullAttributes".
+  /// "keepNull" is only processed if readKeepNull = true
+  void parseNullBehaviorOptions(OperationOptions& options,
+                                bool readKeepNull) const;
+
   /// @brief returns the short id of the server which should handle this request
   ResultT<std::pair<std::string, bool>> forwardingTarget() override;
 

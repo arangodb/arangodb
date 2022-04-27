@@ -250,11 +250,11 @@ ArangoCollection.prototype.removeByExample = function (example,
     if (typeof limit !== 'undefined') {
       throw 'too many parameters';
     }
-    var tmp_options = waitForSync === null ? {} : waitForSync;
+    var tmpOptions = waitForSync === null ? {} : waitForSync;
     // avoiding jslint error
     // see: http://jslinterrors.com/unexpected-sync-method-a/
-    waitForSync = tmp_options.waitForSync;
-    limit = tmp_options.limit;
+    waitForSync = tmpOptions.waitForSync;
+    limit = tmpOptions.limit;
   }
 
   var query = buildExampleQuery(this, example, limit);
@@ -296,11 +296,11 @@ ArangoCollection.prototype.replaceByExample = function (example,
     if (typeof limit !== 'undefined') {
       throw 'too many parameters';
     }
-    var tmp_options = waitForSync === null ? {} : waitForSync;
+    var tmpOptions = waitForSync === null ? {} : waitForSync;
     // avoiding jslint error
     // see: http://jslinterrors.com/unexpected-sync-method-a/
-    waitForSync = tmp_options.waitForSync;
-    limit = tmp_options.limit;
+    waitForSync = tmpOptions.waitForSync;
+    limit = tmpOptions.limit;
   }
 
   var query = buildExampleQuery(this, example, limit);
@@ -347,15 +347,15 @@ ArangoCollection.prototype.updateByExample = function (example,
     if (typeof waitForSync !== 'undefined') {
       throw 'too many parameters';
     }
-    var tmp_options = keepNull === null ? {} : keepNull;
+    var tmpOptions = keepNull === null ? {} : keepNull;
 
     // avoiding jslint error
     // see: http://jslinterrors.com/unexpected-sync-method-a/
-    keepNull = tmp_options.keepNull;
-    waitForSync = tmp_options.waitForSync;
-    limit = tmp_options.limit;
-    if (tmp_options.hasOwnProperty('mergeObjects')) {
-      mergeObjects = tmp_options.mergeObjects || false;
+    keepNull = tmpOptions.keepNull;
+    waitForSync = tmpOptions.waitForSync;
+    limit = tmpOptions.limit;
+    if (tmpOptions.hasOwnProperty('mergeObjects')) {
+      mergeObjects = tmpOptions.mergeObjects || false;
     }
   }
 

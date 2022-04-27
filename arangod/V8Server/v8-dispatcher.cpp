@@ -368,7 +368,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   OperationOptions opts;
-  opts.overwriteMode = OperationOptions::OverwriteMode::Replace;
+  opts.overwriteMode = OperationOptions::OverwriteMode::kReplace;
   OperationResult result =
       trx.insert(StaticStrings::QueuesCollection, doc.slice(), opts);
 

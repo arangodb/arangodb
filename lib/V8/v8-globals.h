@@ -701,7 +701,6 @@ struct TRI_v8_global_t {
   /// @brief "isSystem" key name
   v8::Persistent<v8::String> IsSystemKey;
 
-  /// @brief "keepNull" key name
   v8::Persistent<v8::String> KeepNullKey;
 
   /// @brief "keyOptions" key name
@@ -727,9 +726,6 @@ struct TRI_v8_global_t {
 
   /// @brief "overwriteMode" key
   v8::Persistent<v8::String> OverwriteModeKey;
-
-  /// @brief "overwriteMode" key
-  v8::Persistent<v8::String> SkipDocumentValidationKey;
 
   /// @brief "parameters" key name
   v8::Persistent<v8::String> ParametersKey;
@@ -758,6 +754,9 @@ struct TRI_v8_global_t {
   /// @brief "rawRequestBody" key name
   v8::Persistent<v8::String> RawRequestBodyKey;
 
+  /// @brief "removeNullAttributes" key name
+  v8::Persistent<v8::String> RemoveNullAttributesKey;
+
   /// @brief "requestType" key name
   v8::Persistent<v8::String> RequestTypeKey;
 
@@ -784,6 +783,9 @@ struct TRI_v8_global_t {
 
   /// @brief "singleRequest" key name
   v8::Persistent<v8::String> SingleRequestKey;
+
+  /// @brief "overwriteMode" key
+  v8::Persistent<v8::String> SkipDocumentValidationKey;
 
   /// @brief "status" key name
   v8::Persistent<v8::String> StatusKey;

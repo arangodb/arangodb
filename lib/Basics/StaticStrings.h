@@ -61,6 +61,7 @@ class StaticStrings {
   static std::string const IsRestoreString;
   static std::string const KeepNullString;
   static std::string const MergeObjectsString;
+  static std::string const RemoveNullAttributesString;
   static std::string const ReturnNewString;
   static std::string const ReturnOldString;
   static std::string const SilentString;

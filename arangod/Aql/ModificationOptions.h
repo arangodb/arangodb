@@ -37,7 +37,7 @@ namespace aql {
 /// @brief ModificationOptions
 struct ModificationOptions : OperationOptions {
   /// @brief constructor, using default values
-  explicit ModificationOptions(arangodb::velocypack::Slice const&);
+  explicit ModificationOptions(arangodb::velocypack::Slice slice);
 
   ModificationOptions()
       : OperationOptions(),

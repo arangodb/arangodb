@@ -1062,7 +1062,7 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
 }
 
 Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
-                                 arangodb::velocypack::Slice const slice,
+                                 arangodb::velocypack::Slice slice,
                                  arangodb::ManagedDocumentResult& resultMdr,
                                  OperationOptions& options) {
   RocksDBTransactionStateGuard transactionStateGuard(
@@ -1079,8 +1079,8 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       (TRI_COL_TYPE_EDGE == _logicalCollection.type());
   transaction::BuilderLeaser builder(trx);
   RevisionId revisionId;
-  Result res(newObjectForInsert(trx, slice, isEdgeCollection, *builder.get(),
-                                options.isRestore, revisionId));
+  Result res(newObjectForInsert(trx, options, slice, isEdgeCollection, *builder,
+                                revisionId));
   if (res.fail()) {
     return res;
   }
@@ -1239,12 +1239,11 @@ Result RocksDBCollection::performUpdateOrReplace(
 
   transaction::BuilderLeaser builder(trx);
   if (isUpdate) {
-    res = mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
-                                options.mergeObjects, options.keepNull,
-                                *builder.get(), options.isRestore, revisionId);
+    res = mergeObjectsForUpdate(trx, options, oldDoc, newSlice,
+                                isEdgeCollection, *builder, revisionId);
   } else {
-    res = newObjectForReplace(trx, oldDoc, newSlice, isEdgeCollection,
-                              *builder.get(), options.isRestore, revisionId);
+    res = newObjectForReplace(trx, options, oldDoc, newSlice, isEdgeCollection,
+                              *builder, revisionId);
   }
   if (res.fail()) {
     return res;
@@ -1778,7 +1777,8 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
           ::reverseIdxOps(
               _indexes, it, [mthds, trx, &documentId, &doc](RocksDBIndex* rid) {
                 OperationOptions options;
-                options.indexOperationMode = IndexOperationMode::rollback;
+                options.indexOperationMode =
+                    OperationOptions::IndexOperationMode::kRollback;
                 return rid->insert(*trx, mthds, documentId, doc, options,
                                    /*performChecks*/ true);
               });

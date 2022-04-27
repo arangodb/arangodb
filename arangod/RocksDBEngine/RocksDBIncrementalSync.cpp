@@ -186,7 +186,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
-  options.indexOperationMode = IndexOperationMode::internal;
+  options.indexOperationMode = OperationOptions::IndexOperationMode::kInternal;
   options.waitForSync = false;
   options.validate = false;
   options.checkUniqueConstraintsInPreflight = true;
@@ -544,7 +544,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
                                         lookupResult, ReadOwnWrites::yes)
                             .is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 
-      TRI_ASSERT(options.indexOperationMode == IndexOperationMode::internal);
+      TRI_ASSERT(options.indexOperationMode ==
+                 OperationOptions::IndexOperationMode::kInternal);
 
       // there exists the problem of secondary unique index violations when we
       // insert documents here. we may need as many retries as there are unique
@@ -552,7 +553,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
       std::size_t tries = 1 + numUniqueIndexes;
       while (tries-- > 0) {
         if (tries == 0) {
-          options.indexOperationMode = arangodb::IndexOperationMode::normal;
+          options.indexOperationMode =
+              OperationOptions::IndexOperationMode::kNormal;
         }
 
         Result res;
@@ -567,7 +569,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
           // persisted document count later!!
         }
 
-        options.indexOperationMode = arangodb::IndexOperationMode::internal;
+        options.indexOperationMode =
+            OperationOptions::IndexOperationMode::kInternal;
 
         // this will be very verbose, so intentionally not active
         // LOG_TOPIC("8cbd1", TRACE, Logger::REPLICATION)

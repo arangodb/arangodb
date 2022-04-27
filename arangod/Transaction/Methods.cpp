@@ -1102,7 +1102,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
     Result res;
 
     if (options.isOverwriteModeSet() &&
-        options.overwriteMode != OperationOptions::OverwriteMode::Conflict) {
+        options.overwriteMode != OperationOptions::OverwriteMode::kConflict) {
       key = value.get(StaticStrings::KeyString);
       if (key.isString()) {
         std::pair<LocalDocumentId, RevisionId> lookupResult;
@@ -1133,10 +1133,10 @@ Future<OperationResult> transaction::Methods::insertLocal(
       // ignore!
       TRI_ASSERT(options.isOverwriteModeSet());
       TRI_ASSERT(options.overwriteMode !=
-                 OperationOptions::OverwriteMode::Conflict);
+                 OperationOptions::OverwriteMode::kConflict);
       TRI_ASSERT(res.ok());
 
-      if (options.overwriteMode == OperationOptions::OverwriteMode::Ignore) {
+      if (options.overwriteMode == OperationOptions::OverwriteMode::kIgnore) {
         // in case of unique constraint violation: ignore and do nothing (no
         // write!)
         buildDocumentIdentity(collection.get(), resultBuilder, cid,
@@ -1153,7 +1153,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
         return res;
       }
 
-      if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
+      if (options.overwriteMode == OperationOptions::OverwriteMode::kUpdate) {
         // in case of unique constraint violation: (partially) update existing
         // document
         res =
@@ -1166,7 +1166,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
 #endif
         }
       } else if (options.overwriteMode ==
-                 OperationOptions::OverwriteMode::Replace) {
+                 OperationOptions::OverwriteMode::kReplace) {
         // in case of unique constraint violation: replace existing document
         // this is also the default behavior
         res =
@@ -2539,26 +2539,27 @@ Future<Result> Methods::replicateOperations(
       requestType = arangodb::fuerte::RestVerb::Post;
 
       opName = "insert";
+      // reqOpts.param(StaticStrings::KeepNullString, options.keepNull);
       // handle overwrite modes
       if (options.isOverwriteModeSet()) {
-        if (options.overwriteMode != OperationOptions::OverwriteMode::Unknown) {
+        if (options.overwriteMode !=
+            OperationOptions::OverwriteMode::kUnknown) {
           reqOpts.param(
               StaticStrings::OverwriteMode,
               OperationOptions::stringifyOverwriteMode(options.overwriteMode));
           if (options.overwriteMode ==
-              OperationOptions::OverwriteMode::Update) {
+              OperationOptions::OverwriteMode::kUpdate) {
             opName = "insert w/ overwriteMode update";
           } else if (options.overwriteMode ==
-                     OperationOptions::OverwriteMode::Replace) {
+                     OperationOptions::OverwriteMode::kReplace) {
             opName = "insert w/ overwriteMode replace";
           } else if (options.overwriteMode ==
-                     OperationOptions::OverwriteMode::Ignore) {
+                     OperationOptions::OverwriteMode::kIgnore) {
             opName = "insert w/ overwriteMode ingore";
           }
         }
-        if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
+        if (options.overwriteMode == OperationOptions::OverwriteMode::kUpdate) {
           // extra parameters only required for update
-          reqOpts.param(StaticStrings::KeepNullString, options.keepNull);
           reqOpts.param(StaticStrings::MergeObjectsString,
                         options.mergeObjects);
         }
@@ -2590,7 +2591,8 @@ Future<Result> Methods::replicateOperations(
     s = result.get(StaticStrings::RevString);
     payload->add(StaticStrings::RevString, s);
     if (operation != TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-      TRI_SanitizeObject(doc, *payload);
+      TRI_SanitizeObject(doc, *payload,
+                         OperationOptions::NullBehavior::kKeepAllNulls);
     }
   };
 

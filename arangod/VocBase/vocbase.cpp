@@ -2162,7 +2162,10 @@ bool TRI_vocbase_t::visitDataSources(dataSourceVisitor const& visitor) {
 /// @brief sanitize an object, given as slice, builder must contain an
 /// open object which will remain open
 /// the result is the object excluding _id, _key and _rev
-void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
+void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder,
+                        arangodb::OperationOptions::NullBehavior nullBehavior) {
+  bool keepNull =
+      nullBehavior == arangodb::OperationOptions::NullBehavior::kKeepAllNulls;
   TRI_ASSERT(slice.isObject());
   VPackObjectIterator it(slice);
   while (it.valid()) {
@@ -2171,7 +2174,18 @@ void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
     if (key.size() < 3 || key[0] != '_' ||
         (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
          key != StaticStrings::RevString)) {
-      builder.add(key.data(), key.size(), it.value());
+      if (keepNull) {
+        builder.addUnchecked(key, it.value());
+      } else {
+        if (it.value().isObject()) {
+          builder.add(VPackValue(key));
+          builder.openObject();
+          TRI_SanitizeObject(it.value(), builder, nullBehavior);
+          builder.close();
+        } else if (!it.value().isNull()) {
+          builder.addUnchecked(key, it.value());
+        }
+      }
     }
     it.next();
   }
@@ -2179,8 +2193,11 @@ void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
 
 /// @brief sanitize an object, given as slice, builder must contain an
 /// open object which will remain open. also excludes _from and _to
-void TRI_SanitizeObjectWithEdges(VPackSlice const slice,
-                                 VPackBuilder& builder) {
+void TRI_SanitizeObjectWithEdges(
+    VPackSlice slice, VPackBuilder& builder,
+    arangodb::OperationOptions::NullBehavior nullBehavior) {
+  bool keepNull =
+      nullBehavior == arangodb::OperationOptions::NullBehavior::kKeepAllNulls;
   TRI_ASSERT(slice.isObject());
   VPackObjectIterator it(slice, true);
   while (it.valid()) {
@@ -2190,7 +2207,18 @@ void TRI_SanitizeObjectWithEdges(VPackSlice const slice,
         (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
          key != StaticStrings::RevString && key != StaticStrings::FromString &&
          key != StaticStrings::ToString)) {
-      builder.add(key.data(), key.length(), it.value());
+      if (keepNull) {
+        builder.addUnchecked(key, it.value());
+      } else {
+        if (it.value().isObject()) {
+          builder.add(VPackValue(key));
+          builder.openObject();
+          TRI_SanitizeObjectWithEdges(it.value(), builder, nullBehavior);
+          builder.close();
+        } else if (!it.value().isNull()) {
+          builder.addUnchecked(key, it.value());
+        }
+      }
     }
     it.next();
   }

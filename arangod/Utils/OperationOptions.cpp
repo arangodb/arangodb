@@ -27,12 +27,12 @@
 
 using namespace arangodb;
 
-OperationOptions::OperationOptions()
-    : indexOperationMode(IndexOperationMode::normal),
-      overwriteMode(OverwriteMode::Unknown),
+OperationOptions::OperationOptions() noexcept
+    : indexOperationMode(IndexOperationMode::kNormal),
+      overwriteMode(OverwriteMode::kUnknown),
+      nullBehavior(NullBehavior::kKeepAllNulls),
       waitForSync(false),
       validate(true),
-      keepNull(true),
       mergeObjects(true),
       silent(false),
       ignoreRevs(true),
@@ -44,34 +44,19 @@ OperationOptions::OperationOptions()
       documentCallFromAql(false),
       _context(nullptr) {}
 
-OperationOptions::OperationOptions(ExecContext const& context)
+OperationOptions::OperationOptions(ExecContext const& context) noexcept
     : OperationOptions() {
   _context = &context;
 }
-
-namespace {
-const char* indexOpModeString(IndexOperationMode mode) {
-  switch (mode) {
-    case IndexOperationMode::normal:
-      return "normal";
-    case IndexOperationMode::rollback:
-      return "rollback";
-    case IndexOperationMode::internal:
-      return "internal";
-  }
-  TRI_ASSERT(false);
-  return "invalid";
-}
-}  // namespace
 
 std::ostream& operator<<(std::ostream& os, OperationOptions const& ops) {
   // clang-format off
   os << "OperationOptions : " << std::boolalpha
      << "{ isSynchronousReplicationFrom : '" << ops.isSynchronousReplicationFrom << "'"
-     << ", indexOperationMode : " << ::indexOpModeString(ops.indexOperationMode)
+     << ", indexOperationMode : " << OperationOptions::stringifyIndexOperationMode(ops.indexOperationMode)
+     << ", nullBehavior : " << OperationOptions::stringifyNullBehavior(ops.nullBehavior)
      << ", waitForSync : " << ops.waitForSync
      << ", validate : " << ops.validate
-     << ", keepNull : " << ops.keepNull
      << ", mergeObjects : " << ops.mergeObjects
      << ", silent : " << ops.silent
      << ", ignoreRevs : " << ops.ignoreRevs
@@ -94,18 +79,18 @@ ExecContext const& OperationOptions::context() const {
 }
 
 /// @brief stringifies the overwrite mode
-char const* OperationOptions::stringifyOverwriteMode(
-    OperationOptions::OverwriteMode mode) {
+std::string_view OperationOptions::stringifyOverwriteMode(
+    OperationOptions::OverwriteMode mode) noexcept {
   switch (mode) {
-    case OverwriteMode::Unknown:
+    case OverwriteMode::kUnknown:
       return "unknown";
-    case OverwriteMode::Conflict:
+    case OverwriteMode::kConflict:
       return "conflict";
-    case OverwriteMode::Replace:
+    case OverwriteMode::kReplace:
       return "replace";
-    case OverwriteMode::Update:
+    case OverwriteMode::kUpdate:
       return "update";
-    case OverwriteMode::Ignore:
+    case OverwriteMode::kIgnore:
       return "ignore";
   }
   TRI_ASSERT(false);
@@ -113,18 +98,46 @@ char const* OperationOptions::stringifyOverwriteMode(
 }
 
 OperationOptions::OverwriteMode OperationOptions::determineOverwriteMode(
-    std::string_view value) {
+    std::string_view value) noexcept {
   if (value == "conflict") {
-    return OverwriteMode::Conflict;
+    return OverwriteMode::kConflict;
   }
   if (value == "ignore") {
-    return OverwriteMode::Ignore;
+    return OverwriteMode::kIgnore;
   }
   if (value == "update") {
-    return OverwriteMode::Update;
+    return OverwriteMode::kUpdate;
   }
   if (value == "replace") {
-    return OverwriteMode::Replace;
+    return OverwriteMode::kReplace;
   }
-  return OverwriteMode::Unknown;
+  return OverwriteMode::kUnknown;
+}
+
+std::string_view OperationOptions::stringifyIndexOperationMode(
+    OperationOptions::IndexOperationMode mode) noexcept {
+  switch (mode) {
+    case IndexOperationMode::kNormal:
+      return "normal";
+    case IndexOperationMode::kRollback:
+      return "rollback";
+    case IndexOperationMode::kInternal:
+      return "internal";
+  }
+  TRI_ASSERT(false);
+  return "invalid";
+}
+
+std::string_view OperationOptions::stringifyNullBehavior(
+    OperationOptions::NullBehavior nullBehavior) noexcept {
+  switch (nullBehavior) {
+    case NullBehavior::kKeepAllNulls:
+      return "keepAllNulls";
+    case NullBehavior::kRemoveSomeNullsOnUpdate:
+      return "removeSomeNullsOnUpdate";
+    case NullBehavior::kRemoveAllNulls:
+      return "removeAllNulls";
+  }
+  TRI_ASSERT(false);
+  return "invalid";
 }

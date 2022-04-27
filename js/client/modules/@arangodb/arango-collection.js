@@ -116,18 +116,6 @@ var ArangoError = require('@arangodb').ArangoError;
 // / @brief append the waitForSync parameter to a URL
 // //////////////////////////////////////////////////////////////////////////////
 
-let appendSyncParameter = function (url, waitForSync) {
-  if (waitForSync) {
-    if (url.indexOf('?') === -1) {
-      url += '?';
-    }else {
-      url += '&';
-    }
-    url += 'waitForSync=true';
-  }
-  return url;
-};
-
 let appendOverwriteModeParameter = function (url, mode) {
   if (mode) {
     if (url.indexOf('?') === -1) {
@@ -284,12 +272,11 @@ var helpArangoCollection = arangosh.createHelpHeadline('ArangoCollection help') 
   '                                                                          ' + '\n' +
   'Document Functions:                                                       ' + '\n' +
   '  count()                               return number of documents        ' + '\n' +
-  '  save(<data>)                          create document and return handle ' + '\n' +
+  '  insert(<data>, <options>)             create document and return handle ' + '\n' +
   '  document(<id>)                        get document by handle (_id or _key)' + '\n' +
-  '  replace(<id>, <data>, <overwrite>)    overwrite document                ' + '\n' +
-  '  update(<id>, <data>, <overwrite>,     partially update document         ' + '\n' +
-  '         <keepNull>)                                                      ' + '\n' +
-  '  remove(<id>)                          remove document                   ' + '\n' +
+  '  replace(<id>, <data>, <options>)      overwrite document                ' + '\n' +
+  '  update(<id>, <data>, <options>)       partially update document         ' + '\n' +
+  '  remove(<id>, <options>)               remove document                   ' + '\n' +
   '  exists(<id>)                          check whether a document exists   ' + '\n' +
   '                                                                          ' + '\n' +
   'Attributes:                                                               ' + '\n' +
@@ -911,27 +898,14 @@ ArangoCollection.prototype.save =
       options = {};
     }
 
-    // the following parameters are optional, so we only append them if necessary
-    if (options.waitForSync) {
-      url = appendSyncParameter(url, options.waitForSync);
-    }
-
-    ["skipDocumentValidation", "returnNew", "returnOld", "silent", "overwrite", "isRestore"].forEach(function(key) {
-      if (options[key]) {
+    ["waitForSync", "skipDocumentValidation", "returnNew", "keepNull", "mergeObjects", "returnOld", "silent", "overwrite", "isRestore", "removeNullAttributes"].forEach(function(key) {
+      if (options.hasOwnProperty(key)) {
         url = appendBoolParameter(url, key, options[key]);
       }
     });
-
+      
     if (options.overwriteMode) {
       url = appendOverwriteModeParameter(url, options.overwriteMode);
-
-      if (options.keepNull) {
-        url = appendBoolParameter(url, 'keepNull', options.keepNull);
-      }
-
-      if (options.mergeObjects !== undefined) {
-        url = appendBoolParameter(url, 'mergeObjects', options.mergeObjects);
-      }
     }
 
     let headers = {};
@@ -977,7 +951,7 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
   }
 
   let ignoreRevs = false;
-  let options;
+  let options = {};
   if (typeof overwrite === 'object') {
     // we assume the caller uses new signature (id, data, options)
     if (typeof waitForSync !== 'undefined') {
@@ -987,14 +961,14 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
     if (options.hasOwnProperty('overwrite') && options.overwrite) {
       ignoreRevs = true;
     }
-    if (options.hasOwnProperty('waitForSync')) {
-      waitForSync = options.waitForSync;
-    }
   } else {
+    if (typeof waitForSync !== 'undefined') {
+      options.waitForSync = waitForSync;
+    }
+
     if (overwrite) {
       ignoreRevs = true;
     }
-    options = {};
   }
 
   if (ignoreRevs) {
@@ -1023,13 +997,12 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
 
   url = appendBoolParameter(url, 'ignoreRevs', ignoreRevs);
   // the following parameters are optional, so we only append them if necessary
-
-  if (options.returnOld) {
-    url = appendBoolParameter(url, 'returnOld', options.returnOld);
-  }
-  if (options.silent) {
-    url = appendBoolParameter(url, 'silent', options.silent);
-  }
+ 
+  ["waitForSync", "returnOld", "silent"].forEach((key) => {
+    if (options.hasOwnProperty(key)) {
+      url = appendBoolParameter(url, key, options[key]);
+    }
+  });
 
   let headers = {};
   if (options.transactionId) {
@@ -1116,7 +1089,7 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
   }
 
   var ignoreRevs = false;
-  var options;
+  let options = {};
   if (typeof overwrite === 'object') {
     if (typeof waitForSync !== 'undefined') {
       throw 'too many arguments';
@@ -1126,18 +1099,13 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
     if (options.hasOwnProperty('overwrite') && options.overwrite) {
       ignoreRevs = true;
     }
-    if (options.hasOwnProperty('waitForSync')) {
-      waitForSync = options.waitForSync;
-    }
-
-    if (!options.hasOwnProperty('skipDocumentValidation')) {
-      options.skipDocumentValidation = false;
-    }
   } else {
+    if (typeof waitForSync !== "undefined") {
+      options.waitForSync = waitForSync;
+    }
     if (overwrite) {
       ignoreRevs = true;
     }
-    options = {};
   }
 
   let url;
@@ -1170,21 +1138,11 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
 
   url = appendBoolParameter(url, 'ignoreRevs', ignoreRevs);
   // the following parameters are optional, so we only append them if necessary
-  if (waitForSync) {
-    url = appendSyncParameter(url, waitForSync);
-  }
-  if (options.skipDocumentValidation) {
-    url = appendBoolParameter(url, 'skipDocumentValidation', options.skipDocumentValidation);
-  }
-  if (options.returnOld) {
-    url = appendBoolParameter(url, 'returnOld', options.returnOld);
-  }
-  if (options.returnNew) {
-    url = appendBoolParameter(url, 'returnNew', options.returnNew);
-  }
-  if (options.silent) {
-    url = appendBoolParameter(url, 'silent', options.silent);
-  }
+  ["waitForSync", "skipDocumentValidation", "returnOld", "returnNew", "silent", "removeNullAttributes"].forEach((key) => {
+    if (options.hasOwnProperty(key)) {
+      url = appendBoolParameter(url, key, options[key]);
+    }
+  });
 
   let headers ={};
   if (options.transactionId) {
@@ -1229,9 +1187,8 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     });
   }
 
-  var params = '';
   var ignoreRevs = false;
-  var options;
+  let options = {};
 
   if (typeof overwrite === 'object') {
     if (typeof keepNull !== 'undefined') {
@@ -1240,34 +1197,20 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     // we assume the caller uses new signature (id, data, options)
     options = overwrite;
 
-    if (!options.hasOwnProperty('skipDocumentValidation')) {
-      options.skipDocumentValidation = false;
-    }
-    params = '?skipDocumentValidation=' + options.skipDocumentValidation;
-
-    if (! options.hasOwnProperty('keepNull')) {
-      options.keepNull = true;
-    }
-    params += '&keepNull=' + options.keepNull;
-
-    if (!options.hasOwnProperty('mergeObjects')) {
-      options.mergeObjects = true;
-    }
-    params += '&mergeObjects=' + options.mergeObjects;
-
     if (options.hasOwnProperty('overwrite') && options.overwrite) {
       ignoreRevs = true;
     }
   } else {
-    // set default value for keepNull
-    var keepNullValue = ((typeof keepNull === 'undefined') ? true : keepNull);
-    params = '?keepNull=' + (keepNullValue ? 'true' : 'false');
+    if (typeof waitForSync !== "undefined") {
+      options.waitForSync = waitForSync;
+    }
+    if (typeof keepNull !== 'undefined') {
+      options.keepNull = keepNull;
+    }
 
     if (overwrite) {
       ignoreRevs = true;
     }
-
-    options = {};
   }
 
   var url;
@@ -1281,7 +1224,7 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     for (var i = 0; i < id.length; i++) {
       fillInSpecial(id[i], data[i]);
     }
-    url = this._documentcollectionurl() + params;
+    url = this._documentcollectionurl();
   } else if (typeof id === 'object') {
     if (id.hasOwnProperty('_rev')) {
       rev = id._rev;
@@ -1291,26 +1234,18 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     } else if (id.hasOwnProperty('_key')) {
       id = id._key;
     }
-    url = this._documenturl(id) + params;
+    url = this._documenturl(id);
   } else {
-    url = this._documenturl(id) + params;
+    url = this._documenturl(id);
   }
 
   url = appendBoolParameter(url, 'ignoreRevs', ignoreRevs);
   // the following parameters are optional, so we only append them if necessary
-  if (waitForSync) {
-    url = appendSyncParameter(url, waitForSync);
-  }
-
-  if (options.returnOld) {
-    url = appendBoolParameter(url, 'returnOld', options.returnOld);
-  }
-  if (options.returnNew) {
-    url = appendBoolParameter(url, 'returnNew', options.returnNew);
-  }
-  if (options.silent) {
-    url = appendBoolParameter(url, 'silent', options.silent);
-  }
+  ["waitForSync", "skipDocumentValidation", "keepNull", "mergeObjects", "removeNullAttributes", "returnOld", "returnNew", "silent"].forEach((key) => {
+    if (options.hasOwnProperty(key)) {
+      url = appendBoolParameter(url, key, options[key]);
+    }
+  });
 
   let headers = {};
   if (options.transactionId) {

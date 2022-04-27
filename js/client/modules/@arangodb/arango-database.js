@@ -71,22 +71,6 @@ ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
 ArangoDatabase.keyRegex = /^([a-zA-Z0-9_:\-@\.\(\)\+,=;\$!\*'%])+$/;
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief append the waitForSync parameter to a URL
-// //////////////////////////////////////////////////////////////////////////////
-
-let appendSyncParameter = function (url, waitForSync) {
-  if (waitForSync) {
-    if (url.indexOf('?') === -1) {
-      url += '?';
-    } else {
-      url += '&';
-    }
-    url += 'waitForSync=true';
-  }
-  return url;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief append some boolean parameter to a URL
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -241,10 +225,9 @@ var helpArangoDatabase = arangosh.createHelpHeadline('ArangoDatabase (db) help')
   '                                                                          ' + '\n' +
   'Document Functions:                                                       ' + '\n' +
   '  _document(<id>)                       get document by handle (_id)      ' + '\n' +
-  '  _replace(<id>, <data>, <overwrite>)   overwrite document                ' + '\n' +
-  '  _update(<id>, <data>, <overwrite>,    partially update document         ' + '\n' +
-  '          <keepNull>)                                                     ' + '\n' +
-  '  _remove(<id>)                         delete document                   ' + '\n' +
+  '  _replace(<id>, <data>, <options>)     overwrite document                ' + '\n' +
+  '  _update(<id>, <data>, <options>)      partially update document         ' + '\n' +
+  '  _remove(<id>, <options>)              delete document                   ' + '\n' +
   '  _exists(<id>)                         checks whether a document exists  ' + '\n' +
   '  _truncate()                           delete all documents              ' + '\n' +
   '                                                                          ' + '\n' +
@@ -252,12 +235,12 @@ var helpArangoDatabase = arangosh.createHelpHeadline('ArangoDatabase (db) help')
   '  _createDatabase(<name>)               creates a new database            ' + '\n' +
   '  _dropDatabase(<name>)                 drops an existing database        ' + '\n' +
   '  _useDatabase(<name>)                  switches into an existing database' + '\n' +
-  '  _drop(<name>)                         delete a collection               ' + '\n' +
   '  _name()                               name of the current database      ' + '\n' +
   '                                                                          ' + '\n' +
   'Query / Transaction Functions:                                            ' + '\n' +
   '  _executeTransaction(<transaction>)    execute transaction               ' + '\n' +
-  '  _query(<query>)                       execute AQL query                 ' + '\n' +
+  '  _query(<query>, <bindVars>)           execute AQL query                 ' + '\n' +
+  '  _explain(<query>, <bindVars>)         explain an AQL query              ' + '\n' +
   '  _createStatement(<data>)              create and return AQL query       ' + '\n' +
   '                                                                          ' + '\n' +
   'View Functions:                                                           ' + '\n' +
@@ -843,7 +826,6 @@ ArangoDatabase.prototype._remove = function (id, overwrite, waitForSync) {
     }
   }
 
-  var params = '';
   var ignoreRevs = false;
   var options;
 
@@ -856,20 +838,23 @@ ArangoDatabase.prototype._remove = function (id, overwrite, waitForSync) {
     if (options.hasOwnProperty('overwrite') && options.overwrite) {
       ignoreRevs = true;
     }
-    if (options.hasOwnProperty('waitForSync')) {
-      waitForSync = options.waitForSync;
-    }
   } else {
+    options = {};
+    if (typeof waitForSync !== 'undefined') {
+      options.waitForSync = waitForSync;
+    }
     if (overwrite) {
       ignoreRevs = true;
     }
-    options = {};
   }
 
-  var url = this._documenturl(id) + params;
-  url = appendSyncParameter(url, waitForSync);
+  var url = this._documenturl(id);
   url = appendBoolParameter(url, 'ignoreRevs', ignoreRevs);
-  url = appendBoolParameter(url, 'returnOld', options.returnOld);
+  [ "waitForSync", "returnOld", "silent"].forEach((key) => {
+    if (options.hasOwnProperty(key)) {
+      url = appendBoolParameter(url, key, options[key]);
+    }
+  });
 
   if (rev === null || ignoreRevs) {
     requestResult = this._connection.DELETE(url);
@@ -914,9 +899,8 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite, waitForSync) 
     }
   }
 
-  var params = '';
   var ignoreRevs = false;
-  var options;
+  let options = {};
 
   if (typeof overwrite === 'object') {
     if (typeof waitForSync !== 'undefined') {
@@ -927,20 +911,21 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite, waitForSync) 
     if (options.hasOwnProperty('overwrite') && options.overwrite) {
       ignoreRevs = true;
     }
-    if (options.hasOwnProperty('waitForSync')) {
-      waitForSync = options.waitForSync;
-    }
   } else {
+    if (typeof waitForSync !== "undefined") {
+      options.waitForSync = waitForSync;
+    }
     if (overwrite) {
       ignoreRevs = true;
     }
-    options = {};
   }
-  var url = this._documenturl(id) + params;
-  url = appendSyncParameter(url, waitForSync);
+  var url = this._documenturl(id);
   url = appendBoolParameter(url, 'ignoreRevs', true);
-  url = appendBoolParameter(url, 'returnOld', options.returnOld);
-  url = appendBoolParameter(url, 'returnNew', options.returnNew);
+  ["waitForSync", "returnOld", "returnNew", "removeNullAttributes", "skipDocumentValidation", "silent"].forEach((key) => {
+    if (options.hasOwnProperty(key)) {
+      url = appendBoolParameter(url, key, options[key]);
+    }
+  });
 
   if (rev === null || ignoreRevs) {
     requestResult = this._connection.PUT(url, data);
@@ -985,42 +970,38 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
     }
   }
 
-  var params = '';
   var ignoreRevs = false;
-  var options;
+  let options = {};
   if (typeof overwrite === 'object') {
     if (typeof keepNull !== 'undefined') {
       throw 'too many arguments';
     }
     // we assume the caller uses new signature (id, data, options)
     options = overwrite;
-    if (!options.hasOwnProperty('keepNull')) {
-      options.keepNull = true;
-    }
-    params = '?keepNull=' + options.keepNull;
-    if (!options.hasOwnProperty('mergeObjects')) {
-      options.mergeObjects = true;
-    }
-    params += '&mergeObjects=' + options.mergeObjects;
 
     if (options.hasOwnProperty('overwrite') && options.overwrite) {
       ignoreRevs = true;
     }
   } else {
     // set default value for keepNull
-    var keepNullValue = ((typeof keepNull === 'undefined') ? true : keepNull);
-    params = '?keepNull=' + (keepNullValue ? 'true' : 'false');
+    if (typeof keepNull !== 'undefined') {
+      options.keepNull = keepNull;
+    }
+    if (typeof waitForSync !== 'undefined') {
+      options.waitForSync = waitForSync;
+    }
 
     if (overwrite) {
       ignoreRevs = true;
     }
-    options = {};
   }
-  var url = this._documenturl(id) + params;
-  url = appendSyncParameter(url, waitForSync);
+  var url = this._documenturl(id);
   url = appendBoolParameter(url, 'ignoreRevs', true);
-  url = appendBoolParameter(url, 'returnOld', options.returnOld);
-  url = appendBoolParameter(url, 'returnNew', options.returnNew);
+  ["waitForSync", "returnOld", "returnNew", "keepNull", "mergeObjects", "skipDocumentValidation", "removeNullAttributes", "silent"].forEach((key) => {
+    if (options.hasOwnProperty(key)) {
+      url = appendBoolParameter(url, key, options[key]);
+    }
+  });
 
   if (rev === null || ignoreRevs) {
     requestResult = this._connection.PATCH(url, data);

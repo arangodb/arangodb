@@ -1713,7 +1713,7 @@ Result RestReplicationHandler::processRestoreDataBatch(
   options.ignoreRevs = true;
   options.isRestore = true;
   options.waitForSync = false;
-  options.overwriteMode = OperationOptions::OverwriteMode::Replace;
+  options.overwriteMode = OperationOptions::OverwriteMode::kReplace;
   OperationResult opRes(Result(), options);
 
   // only go into the remove documents case when we really have to.

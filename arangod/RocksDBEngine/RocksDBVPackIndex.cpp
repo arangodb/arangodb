@@ -1382,7 +1382,7 @@ Result RocksDBVPackIndex::checkOperation(transaction::Methods& trx,
   if (_unique) {
     // unique indexes...
 
-    IndexOperationMode mode = options.indexOperationMode;
+    OperationOptions::IndexOperationMode mode = options.indexOperationMode;
     rocksdb::Status s;
     ::arangodb::containers::SmallVector<RocksDBKey>::allocator_type::arena_type
         elementsArena;
@@ -1429,7 +1429,7 @@ Result RocksDBVPackIndex::checkOperation(transaction::Methods& trx,
             [&](LocalDocumentId const&, VPackSlice doc) {
               VPackSlice key =
                   transaction::helpers::extractKeyFromDocument(doc);
-              if (mode == IndexOperationMode::internal) {
+              if (mode == OperationOptions::IndexOperationMode::kInternal) {
                 // in this error mode, we return the conflicting document's key
                 // inside the error message string (and nothing else)!
                 res = Result{res.errorNumber(), key.copyString()};
@@ -1535,10 +1535,11 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
         auto readResult = _collection.getPhysical()->read(
             &trx, docId,
             [&](LocalDocumentId const&, VPackSlice doc) {
-              IndexOperationMode mode = options.indexOperationMode;
+              OperationOptions::IndexOperationMode mode =
+                  options.indexOperationMode;
               VPackSlice key =
                   transaction::helpers::extractKeyFromDocument(doc);
-              if (mode == IndexOperationMode::internal) {
+              if (mode == OperationOptions::IndexOperationMode::kInternal) {
                 // in this error mode, we return the conflicting document's key
                 // inside the error message string (and nothing else)!
                 res = Result{res.errorNumber(), key.copyString()};

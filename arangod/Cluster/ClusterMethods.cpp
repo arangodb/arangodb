@@ -1566,17 +1566,38 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
     reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
     reqOpts.retryNotFound = true;
     reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
-    reqOpts.param(StaticStrings::WaitForSyncString, options.waitForSync)
-        .param(StaticStrings::ReturnNewString, options.returnNew)
-        .param(StaticStrings::ReturnOldString, options.returnOld)
-        .param(StaticStrings::IsRestoreString, options.isRestore)
-        .param(StaticStrings::KeepNullString, options.keepNull)
-        .param(StaticStrings::MergeObjectsString, options.mergeObjects)
-        .param(StaticStrings::SkipDocumentValidation, !options.validate);
+
+    // append options
+    reqOpts.param(StaticStrings::WaitForSyncString, options.waitForSync);
+    if (options.returnNew) {
+      reqOpts.param(StaticStrings::ReturnNewString, options.returnNew);
+    }
+    if (options.returnOld) {
+      reqOpts.param(StaticStrings::ReturnOldString, options.returnOld);
+    }
+    if (!options.validate) {
+      reqOpts.param(StaticStrings::SkipDocumentValidation, !options.validate);
+    }
+    if (options.isRestore) {
+      reqOpts.param(StaticStrings::IsRestoreString, options.isRestore);
+    }
+    // special options
+    if (options.nullBehavior ==
+        OperationOptions::NullBehavior::kRemoveSomeNullsOnUpdate) {
+      reqOpts.param(StaticStrings::KeepNullString, false);
+    } else if (options.nullBehavior ==
+               OperationOptions::NullBehavior::kRemoveAllNulls) {
+      reqOpts.param(StaticStrings::RemoveNullAttributesString, true);
+    }
+
     if (options.isOverwriteModeSet()) {
-      reqOpts.parameters.insert_or_assign(
+      reqOpts.param(
           StaticStrings::OverwriteMode,
           OperationOptions::stringifyOverwriteMode(options.overwriteMode));
+
+      if (options.overwriteMode == OperationOptions::OverwriteMode::kUpdate) {
+        reqOpts.param(StaticStrings::MergeObjectsString, options.mergeObjects);
+      }
     }
 
     // Now prepare the requests:
@@ -1595,7 +1616,7 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
         } else {
           reqBuilder.openObject();
           reqBuilder.add(StaticStrings::KeyString, VPackValue(idx.second));
-          TRI_SanitizeObject(slice, reqBuilder);
+          TRI_SanitizeObject(slice, reqBuilder, options.nullBehavior);
           reqBuilder.close();
         }
       } else {
@@ -1606,7 +1627,7 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
           } else {
             reqBuilder.openObject();
             reqBuilder.add(StaticStrings::KeyString, VPackValue(idx.second));
-            TRI_SanitizeObject(idx.first, reqBuilder);
+            TRI_SanitizeObject(idx.first, reqBuilder, options.nullBehavior);
             reqBuilder.close();
           }
         }
@@ -1700,10 +1721,13 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
   reqOpts.param(StaticStrings::WaitForSyncString, options.waitForSync)
-      .param(StaticStrings::ReturnOldString, options.returnOld)
       .param(StaticStrings::IgnoreRevsString, options.ignoreRevs);
 
-  const bool isManaged =
+  if (options.returnOld) {
+    reqOpts.param(StaticStrings::ReturnOldString, options.returnOld);
+  }
+
+  bool const isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   if (canUseFastPath) {
@@ -2491,19 +2515,12 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
   reqOpts.retryNotFound = true;
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
   reqOpts.param(StaticStrings::WaitForSyncString, options.waitForSync)
-      .param(StaticStrings::IgnoreRevsString, options.ignoreRevs)
-      .param(StaticStrings::SkipDocumentValidation, !options.validate)
-      .param(StaticStrings::IsRestoreString, options.isRestore);
-
-  fuerte::RestVerb restVerb;
-  if (isPatch) {
-    restVerb = fuerte::RestVerb::Patch;
-    if (!options.keepNull) {
-      reqOpts.param(StaticStrings::KeepNullString, false);
-    }
-    reqOpts.param(StaticStrings::MergeObjectsString, options.mergeObjects);
-  } else {
-    restVerb = fuerte::RestVerb::Put;
+      .param(StaticStrings::IgnoreRevsString, options.ignoreRevs);
+  if (!options.validate) {
+    reqOpts.param(StaticStrings::SkipDocumentValidation, !options.validate);
+  }
+  if (options.isRestore) {
+    reqOpts.param(StaticStrings::IsRestoreString, options.isRestore);
   }
   if (options.returnNew) {
     reqOpts.param(StaticStrings::ReturnNewString, true);
@@ -2511,8 +2528,24 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
   if (options.returnOld) {
     reqOpts.param(StaticStrings::ReturnOldString, true);
   }
+  // special options
+  if (options.nullBehavior ==
+      OperationOptions::NullBehavior::kRemoveSomeNullsOnUpdate) {
+    reqOpts.param(StaticStrings::KeepNullString, false);
+  } else if (options.nullBehavior ==
+             OperationOptions::NullBehavior::kRemoveAllNulls) {
+    reqOpts.param(StaticStrings::RemoveNullAttributesString, true);
+  }
 
-  const bool isManaged =
+  fuerte::RestVerb restVerb;
+  if (isPatch) {
+    restVerb = fuerte::RestVerb::Patch;
+    reqOpts.param(StaticStrings::MergeObjectsString, options.mergeObjects);
+  } else {
+    restVerb = fuerte::RestVerb::Put;
+  }
+
+  bool const isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   if (canUseFastPath) {

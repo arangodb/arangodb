@@ -43,7 +43,8 @@ std::unique_ptr<VPackBuilder> merge(VPackSlice document, std::string const& key,
   auto builder = std::make_unique<VPackBuilder>();
   {
     VPackObjectBuilder guard(builder.get());
-    TRI_SanitizeObject(document, *builder);
+    TRI_SanitizeObject(document, *builder,
+                       OperationOptions::NullBehavior::kKeepAllNulls);
     VPackSlice keyInBody = document.get(StaticStrings::KeyString);
 
     if (keyInBody.isNone() || keyInBody.isNull() || keyInBody.isString() ||
@@ -117,11 +118,11 @@ auto SingleRemoteModificationExecutor<
 
   OperationResult result(Result(), _info._options);
 
-  const bool isIndex = std::is_same<Modifier, IndexTag>::value;
-  const bool isInsert = std::is_same<Modifier, Insert>::value;
-  const bool isRemove = std::is_same<Modifier, Remove>::value;
-  const bool isUpdate = std::is_same<Modifier, Update>::value;
-  const bool isReplace = std::is_same<Modifier, Replace>::value;
+  bool const isIndex = std::is_same<Modifier, IndexTag>::value;
+  bool const isInsert = std::is_same<Modifier, Insert>::value;
+  bool const isRemove = std::is_same<Modifier, Remove>::value;
+  bool const isUpdate = std::is_same<Modifier, Update>::value;
+  bool const isReplace = std::is_same<Modifier, Replace>::value;
 
   int possibleWrites = 0;  // TODO - get real statistic values!
 
@@ -189,8 +190,7 @@ auto SingleRemoteModificationExecutor<
       // don't throw an excetpion.
       return result;
     } else if (!_info._ignoreErrors) {  // TODO remove if
-      THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(),
-                                     result.errorMessage());
+      THROW_ARANGO_EXCEPTION(result.result);
     }
 
     if (isIndex) {

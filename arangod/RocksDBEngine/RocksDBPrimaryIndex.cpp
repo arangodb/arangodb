@@ -685,8 +685,8 @@ Result RocksDBPrimaryIndex::probeKey(transaction::Methods& trx,
   if (insert) {
     // INSERT case
     if (s.ok()) {  // detected conflicting primary key
-      IndexOperationMode mode = options.indexOperationMode;
-      if (mode == IndexOperationMode::internal) {
+      OperationOptions::IndexOperationMode mode = options.indexOperationMode;
+      if (mode == OperationOptions::IndexOperationMode::kInternal) {
         // in this error mode, we return the conflicting document's key
         // inside the error message string (and nothing else)!
         return res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED,

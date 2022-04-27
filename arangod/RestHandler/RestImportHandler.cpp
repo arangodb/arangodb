@@ -1046,7 +1046,7 @@ bool RestImportHandler::checkKeys(VPackSlice const& keys) const {
     return false;
   }
 
-  for (VPackSlice const& key : VPackArrayIterator(keys)) {
+  for (VPackSlice key : VPackArrayIterator(keys)) {
     if (!key.isString()) {
       return false;
     }
@@ -1063,12 +1063,17 @@ OperationOptions RestImportHandler::buildOperationOptions() const {
   opOptions.validate =
       !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
   if (_onDuplicateAction == DUPLICATE_UPDATE) {
-    opOptions.overwriteMode = OperationOptions::OverwriteMode::Update;
+    opOptions.overwriteMode = OperationOptions::OverwriteMode::kUpdate;
     opOptions.returnOld = false;
   } else if (_onDuplicateAction == DUPLICATE_REPLACE) {
-    opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
+    opOptions.overwriteMode = OperationOptions::OverwriteMode::kReplace;
     opOptions.returnOld = false;
   }
+
+  // handle "keepNull" and "removeNullAttributes"
+  parseNullBehaviorOptions(opOptions,
+                           /*readKeepNull*/ opOptions.overwriteMode ==
+                               OperationOptions::OverwriteMode::kUpdate);
 
   return opOptions;
 }

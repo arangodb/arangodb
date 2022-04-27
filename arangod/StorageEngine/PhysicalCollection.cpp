@@ -34,6 +34,7 @@
 #include "Basics/encoding.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Containers/FlatHashMap.h"
 #include "Futures/Utilities.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
@@ -206,9 +207,9 @@ RevisionId PhysicalCollection::newRevisionId() const {
 /// @brief merge two objects for update, oldValue must have correctly set
 /// _key and _id attributes
 Result PhysicalCollection::mergeObjectsForUpdate(
-    transaction::Methods*, VPackSlice oldValue, VPackSlice newValue,
-    bool isEdgeCollection, bool mergeObjects, bool keepNull, VPackBuilder& b,
-    bool isRestore, RevisionId& revisionId) const {
+    transaction::Methods* /*trx*/, OperationOptions const& options,
+    VPackSlice oldValue, VPackSlice newValue, bool isEdgeCollection,
+    VPackBuilder& b, RevisionId& revisionId) const {
   b.openObject();
 
   VPackSlice keySlice = oldValue.get(StaticStrings::KeyString);
@@ -220,7 +221,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
   VPackSlice fromSlice;
   VPackSlice toSlice;
 
-  std::unordered_map<std::string_view, VPackSlice> newValues;
+  containers::FlatHashMap<std::string_view, VPackSlice> newValues;
   {
     VPackObjectIterator it(newValue, true);
     while (it.valid()) {
@@ -252,12 +253,12 @@ Result PhysicalCollection::mergeObjectsForUpdate(
     if (fromSlice.isNone()) {
       fromSlice = oldValue.get(StaticStrings::FromString);
     } else if (!isValidEdgeAttribute(fromSlice)) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+      return {TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE};
     }
     if (toSlice.isNone()) {
       toSlice = oldValue.get(StaticStrings::ToString);
     } else if (!isValidEdgeAttribute(toSlice)) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+      return {TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE};
     }
   }
 
@@ -280,7 +281,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
 
   // _rev
   bool handled = false;
-  if (isRestore) {
+  if (options.isRestore) {
     // copy revision id verbatim
     VPackSlice s = newValue.get(StaticStrings::RevString);
     if (s.isString()) {
@@ -298,6 +299,8 @@ Result PhysicalCollection::mergeObjectsForUpdate(
     b.add(StaticStrings::RevString, revisionId.toValuePair(ridBuffer));
   }
 
+  bool keepNull =
+      options.nullBehavior == OperationOptions::NullBehavior::kKeepAllNulls;
   // add other attributes after the system attributes
   {
     VPackObjectIterator it(oldValue, true);
@@ -310,33 +313,33 @@ Result PhysicalCollection::mergeObjectsForUpdate(
            key == StaticStrings::RevString ||
            key == StaticStrings::FromString ||
            key == StaticStrings::ToString)) {
-        it.next();
-        continue;
-      }
-
-      auto found = newValues.find(key);
-
-      if (found == newValues.end()) {
-        // use old value
-        b.addUnchecked(key.data(), key.size(), current.value);
-      } else if (mergeObjects && current.value.isObject() &&
-                 (*found).second.isObject()) {
-        // merge both values
-        auto& value = (*found).second;
-        if (keepNull || (!value.isNone() && !value.isNull())) {
-          b.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
-          VPackCollection::merge(b, current.value, value, true, !keepNull);
-        }
-        // clear the value in the map so its not added again
-        (*found).second = VPackSlice();
+        // skip attribute
       } else {
-        // use new value
-        auto& value = (*found).second;
-        if (keepNull || (!value.isNone() && !value.isNull())) {
-          b.addUnchecked(key.data(), key.size(), value);
+        auto found = newValues.find(key);
+
+        if (found == newValues.end()) {
+          // use old value
+          b.addUnchecked(key, current.value);
+        } else if (options.mergeObjects && current.value.isObject() &&
+                   (*found).second.isObject()) {
+          // merge both values
+          auto& value = (*found).second;
+          if (keepNull || (!value.isNone() && !value.isNull())) {
+            b.add(
+                VPackValuePair(key.data(), key.size(), VPackValueType::String));
+            VPackCollection::merge(b, current.value, value, true, !keepNull);
+          }
+          // clear the value in the map so its not added again
+          (*found).second = VPackSlice();
+        } else {
+          // use new value
+          auto& value = (*found).second;
+          if (keepNull || (!value.isNone() && !value.isNull())) {
+            b.addUnchecked(key.data(), key.size(), value);
+          }
+          // clear the value in the map so its not added again
+          (*found).second = VPackSlice();
         }
-        // clear the value in the map so its not added again
-        (*found).second = VPackSlice();
       }
       it.next();
     }
@@ -344,7 +347,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
 
   // add remaining values that were only in new object
   for (auto const& it : newValues) {
-    VPackSlice const& s = it.second;
+    VPackSlice s = it.second;
     if (s.isNone()) {
       continue;
     }
@@ -352,22 +355,27 @@ Result PhysicalCollection::mergeObjectsForUpdate(
       continue;
     }
     if (!keepNull && s.isObject()) {
-      b.add(VPackValuePair(it.first.data(), it.first.size(),
-                           VPackValueType::String));
+      b.add(VPackValue(it.first));
       VPackCollection::merge(b, VPackSlice::emptyObjectSlice(), s, true, true);
     } else {
-      b.addUnchecked(it.first.data(), it.first.size(), s);
+      b.addUnchecked(it.first, s);
     }
   }
 
   b.close();
-  return Result();
+  return {};
 }
 
 /// @brief new object for insert, computes the hash of the key
-Result PhysicalCollection::newObjectForInsert(
-    transaction::Methods*, VPackSlice value, bool isEdgeCollection,
-    VPackBuilder& builder, bool isRestore, RevisionId& revisionId) const {
+Result PhysicalCollection::newObjectForInsert(transaction::Methods* /*trx*/,
+                                              OperationOptions const& options,
+                                              VPackSlice value,
+                                              bool isEdgeCollection,
+                                              VPackBuilder& builder,
+                                              RevisionId& revisionId) const {
+  bool keepNull =
+      options.nullBehavior == OperationOptions::NullBehavior::kKeepAllNulls;
+
   builder.openObject();
 
   // add system attributes first, in this order:
@@ -375,26 +383,26 @@ Result PhysicalCollection::newObjectForInsert(
 
   // _key
   VPackSlice s = value.get(StaticStrings::KeyString);
-  if (s.isNone()) {
-    TRI_ASSERT(!isRestore);  // need key in case of restore
+  if (s.isNone() || (!keepNull && s.isNull())) {
+    TRI_ASSERT(!options.isRestore);  // need key in case of restore
     auto keyString = _logicalCollection.keyGenerator().generate(value);
 
     if (keyString.empty()) {
-      return Result(TRI_ERROR_ARANGO_OUT_OF_KEYS);
+      return {TRI_ERROR_ARANGO_OUT_OF_KEYS};
     }
 
     builder.add(StaticStrings::KeyString, VPackValue(keyString));
   } else if (!s.isString()) {
-    return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
+    return {TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD};
   } else {
     TRI_ASSERT(s.isString());
 
     // validate and track the key just used
     auto res = _logicalCollection.keyGenerator().validate(s.stringView(), value,
-                                                          isRestore);
+                                                          options.isRestore);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      return Result(res);
+      return {res};
     }
 
     builder.add(StaticStrings::KeyString, s);
@@ -424,13 +432,13 @@ Result PhysicalCollection::newObjectForInsert(
     VPackSlice fromSlice = value.get(StaticStrings::FromString);
 
     if (!isValidEdgeAttribute(fromSlice)) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+      return {TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE};
     }
 
     VPackSlice toSlice = value.get(StaticStrings::ToString);
 
     if (!isValidEdgeAttribute(toSlice)) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+      return {TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE};
     }
 
     TRI_ASSERT(fromSlice.isString());
@@ -441,6 +449,7 @@ Result PhysicalCollection::newObjectForInsert(
 
   // _rev
   bool handled = false;
+  bool isRestore = options.isRestore;
   TRI_IF_FAILURE("Insert::useRev") { isRestore = true; }
   if (isRestore) {
     // copy revision id verbatim
@@ -461,17 +470,18 @@ Result PhysicalCollection::newObjectForInsert(
   }
 
   // add other attributes after the system attributes
-  TRI_SanitizeObjectWithEdges(value, builder);
+  TRI_SanitizeObjectWithEdges(value, builder, options.nullBehavior);
 
   builder.close();
-  return Result();
+
+  return {};
 }
 
 /// @brief new object for remove, must have _key set
-void PhysicalCollection::newObjectForRemove(transaction::Methods*,
+void PhysicalCollection::newObjectForRemove(transaction::Methods* /*trx*/,
+                                            OperationOptions const& /*options*/,
                                             VPackSlice oldValue,
                                             VPackBuilder& builder,
-                                            bool isRestore,
                                             RevisionId& revisionId) const {
   // create an object consisting of _key and _rev (in this order)
   builder.openObject();
@@ -493,9 +503,9 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods*,
 /// @brief new object for replace, oldValue must have _key and _id correctly
 /// set
 Result PhysicalCollection::newObjectForReplace(
-    transaction::Methods*, VPackSlice oldValue, VPackSlice newValue,
-    bool isEdgeCollection, VPackBuilder& builder, bool isRestore,
-    RevisionId& revisionId) const {
+    transaction::Methods* /*trx*/, OperationOptions const& options,
+    VPackSlice oldValue, VPackSlice newValue, bool isEdgeCollection,
+    VPackBuilder& builder, RevisionId& revisionId) const {
   builder.openObject();
 
   // add system attributes first, in this order:
@@ -515,12 +525,12 @@ Result PhysicalCollection::newObjectForReplace(
   if (isEdgeCollection) {
     VPackSlice fromSlice = newValue.get(StaticStrings::FromString);
     if (!isValidEdgeAttribute(fromSlice)) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+      return {TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE};
     }
 
     VPackSlice toSlice = newValue.get(StaticStrings::ToString);
     if (!isValidEdgeAttribute(toSlice)) {
-      return Result(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+      return {TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE};
     }
 
     TRI_ASSERT(fromSlice.isString());
@@ -531,7 +541,7 @@ Result PhysicalCollection::newObjectForReplace(
 
   // _rev
   bool handled = false;
-  if (isRestore) {
+  if (options.isRestore) {
     // copy revision id verbatim
     s = newValue.get(StaticStrings::RevString);
     if (s.isString()) {
@@ -551,10 +561,10 @@ Result PhysicalCollection::newObjectForReplace(
   }
 
   // add other attributes after the system attributes
-  TRI_SanitizeObjectWithEdges(newValue, builder);
+  TRI_SanitizeObjectWithEdges(newValue, builder, options.nullBehavior);
 
   builder.close();
-  return Result();
+  return {};
 }
 
 std::unique_ptr<containers::RevisionTree> PhysicalCollection::revisionTree(

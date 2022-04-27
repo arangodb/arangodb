@@ -212,19 +212,40 @@ static void getOperationOptionsFromObject(v8::Isolate* isolate,
         TRI_ObjectToBoolean(isolate, optionsObject->Get(context, IsRestoreKey)
                                          .FromMaybe(v8::Local<v8::Value>()));
   }
+
+  options.nullBehavior = OperationOptions::NullBehavior::kKeepAllNulls;
+
   if (getUpdateFlags) {
-    // intentionally not called for TRI_VOC_DOCUMENT_OPERATION_REPLACE
     TRI_GET_GLOBAL_STRING(KeepNullKey);
     if (TRI_HasProperty(context, isolate, optionsObject, KeepNullKey)) {
-      options.keepNull =
+      bool keepNull =
           TRI_ObjectToBoolean(isolate, optionsObject->Get(context, KeepNullKey)
                                            .FromMaybe(v8::Local<v8::Value>()));
+      if (!keepNull) {
+        options.nullBehavior =
+            OperationOptions::NullBehavior::kRemoveSomeNullsOnUpdate;
+      }
     }
     TRI_GET_GLOBAL_STRING(MergeObjectsKey);
     if (TRI_HasProperty(context, isolate, optionsObject, MergeObjectsKey)) {
       options.mergeObjects = TRI_ObjectToBoolean(
           isolate, optionsObject->Get(context, MergeObjectsKey)
                        .FromMaybe(v8::Local<v8::Value>()));
+    }
+  }
+
+  // check "removeNullAttributes" attribute. this always has precedence over
+  // "keepNull"
+  TRI_GET_GLOBAL_STRING(RemoveNullAttributesKey);
+  if (TRI_HasProperty(context, isolate, optionsObject,
+                      RemoveNullAttributesKey)) {
+    bool removeNullAttributes = TRI_ObjectToBoolean(
+        isolate, optionsObject->Get(context, RemoveNullAttributesKey)
+                     .FromMaybe(v8::Local<v8::Value>()));
+    if (removeNullAttributes) {
+      options.nullBehavior = OperationOptions::NullBehavior::kRemoveAllNulls;
+    } else {
+      options.nullBehavior = OperationOptions::NullBehavior::kKeepAllNulls;
     }
   }
 }
@@ -1352,7 +1373,13 @@ static void parseReplaceAndUpdateOptions(
       if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
         options.waitForSync = TRI_ObjectToBoolean(isolate, args[3]);
       } else {  // UPDATE
-        options.keepNull = TRI_ObjectToBoolean(isolate, args[3]);
+        bool keepNull = TRI_ObjectToBoolean(isolate, args[3]);
+        if (keepNull) {
+          options.nullBehavior = OperationOptions::NullBehavior::kKeepAllNulls;
+        } else {
+          options.nullBehavior =
+              OperationOptions::NullBehavior::kRemoveSomeNullsOnUpdate;
+        }
         if (args.Length() > 4) {
           options.waitForSync = TRI_ObjectToBoolean(isolate, args[4]);
         }
@@ -2021,9 +2048,11 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
       if (overwrite) {
         // this is the default mode in case only "overwrite" is set.
         TRI_ASSERT(!options.isOverwriteModeSet());
-        options.overwriteMode = OperationOptions::OverwriteMode::Replace;
+        options.overwriteMode = OperationOptions::OverwriteMode::kReplace;
       }
     }
+
+    options.nullBehavior = OperationOptions::NullBehavior::kKeepAllNulls;
 
     TRI_GET_GLOBAL_STRING(OverwriteModeKey);
     if (TRI_HasProperty(context, isolate, optionsObject, OverwriteModeKey)) {
@@ -2032,16 +2061,21 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
                        .FromMaybe(v8::Local<v8::Value>()));
 
       auto overwriteMode = OperationOptions::determineOverwriteMode(mode);
-      if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
+      if (overwriteMode != OperationOptions::OverwriteMode::kUnknown) {
         options.overwriteMode = overwriteMode;
 
-        if (overwriteMode == OperationOptions::OverwriteMode::Update) {
+        if (overwriteMode == OperationOptions::OverwriteMode::kUpdate) {
           TRI_GET_GLOBAL_STRING(KeepNullKey);
           if (TRI_HasProperty(context, isolate, optionsObject, KeepNullKey)) {
-            options.keepNull = TRI_ObjectToBoolean(
+            bool keepNull = TRI_ObjectToBoolean(
                 isolate, optionsObject->Get(context, KeepNullKey)
                              .FromMaybe(v8::Local<v8::Value>()));
+            if (!keepNull) {
+              options.nullBehavior =
+                  OperationOptions::NullBehavior::kRemoveSomeNullsOnUpdate;
+            }
           }
+
           TRI_GET_GLOBAL_STRING(MergeObjectsKey);
           if (TRI_HasProperty(context, isolate, optionsObject,
                               MergeObjectsKey)) {
@@ -2050,6 +2084,21 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
                              .FromMaybe(v8::Local<v8::Value>()));
           }
         }
+      }
+    }
+
+    // check "removeNullAttributes" attribute. this always has precedence over
+    // "keepNull"
+    TRI_GET_GLOBAL_STRING(RemoveNullAttributesKey);
+    if (TRI_HasProperty(context, isolate, optionsObject,
+                        RemoveNullAttributesKey)) {
+      bool removeNullAttributes = TRI_ObjectToBoolean(
+          isolate, optionsObject->Get(context, RemoveNullAttributesKey)
+                       .FromMaybe(v8::Local<v8::Value>()));
+      if (removeNullAttributes) {
+        options.nullBehavior = OperationOptions::NullBehavior::kRemoveAllNulls;
+      } else {
+        options.nullBehavior = OperationOptions::NullBehavior::kKeepAllNulls;
       }
     }
 
