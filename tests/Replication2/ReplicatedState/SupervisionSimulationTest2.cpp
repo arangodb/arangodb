@@ -83,8 +83,10 @@ TEST_F(ReplicatedStateSupervisionSimulationTest2, check_state_and_log) {
   };
 
   auto test = MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth());
+  auto test2 = MC_ALWAYS(MC_BOOL_PRED(global, { return true; }));
   using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
-  auto result = Engine::run(driver, test, initState);
+  auto result =
+      Engine::run(driver, model_checker::combined{test, test2}, initState);
   EXPECT_FALSE(result.failed) << *result.failed;
   std::cout << result.stats << std::endl;
 }

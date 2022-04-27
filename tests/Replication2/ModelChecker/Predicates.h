@@ -151,15 +151,16 @@ struct eventually_always : private F {
   }
 };
 
-template<typename F>
+template<typename Location, typename F>
 struct always : F {
-  explicit always(F&& f) : F(std::forward<F>(f)) {}
+  explicit always(Location, F&& f) : F(std::forward<F>(f)) {}
   template<typename S>
   auto check(S const& state) {
     if (F::operator()(state)) {
       return CheckResult::withOk();
     } else {
-      return CheckResult::withError("Predicate was violated");
+      return CheckResult::withError(
+          Location::annotate("Predicate was violated"));
     }
   }
 
@@ -179,6 +180,8 @@ struct Tagged : O {
   friend auto operator<<(std::ostream& os, Tagged const& b) -> std::ostream& {
     return os << static_cast<O const&>(b);
   }
+  friend auto operator==(Tagged const&, Tagged const&) noexcept
+      -> bool = default;
 };
 
 template<typename, typename...>
@@ -186,10 +189,35 @@ struct combined_base;
 template<std::size_t... Idx, typename... Os>
 struct combined_base<std::index_sequence<Idx...>, Os...> : Tagged<Idx, Os>... {
   auto finalStep(auto const& step) {
-    // return max(Tagged<Idx, Os>::check(step)...);
+    return invokeAll<0>([&](auto& x) { return x.finalStep(step); });
   }
   auto check(auto const& step) -> model_checker::CheckResult {
-    // return max(Tagged<Idx, Os>::check(step)...);
+    return invokeAll<0>([&](auto& x) { return x.check(step); });
+  }
+
+  template<std::size_t I, typename F>
+  auto invokeAll(F&& fn) {
+    if constexpr (I >= sizeof...(Os)) {
+      return CheckResult::withOk();
+    } else {
+      auto result = fn(get_ith<I>());
+      if (isError(result)) {
+        return result;
+      } else {
+        auto nextLayer = invokeAll<I + 1>(std::forward<F>(fn));
+        if (!isOk(nextLayer)) {
+          return nextLayer;
+        } else {
+          return result;
+        }
+      }
+    }
+  }
+
+  template<std::size_t I>
+  auto& get_ith() {
+    using type = std::tuple_element_t<I, std::tuple<Os...>>;
+    return static_cast<Tagged<I, type>&>(*this);
   }
 
   friend auto hash_value(combined_base const& c) noexcept -> std::size_t {
@@ -234,5 +262,7 @@ struct FileLineType {
   }
 #define MC_EVENTUALLY(pred) \
   model_checker::eventually { MC_HERE{}, pred }
+#define MC_ALWAYS(pred) \
+  model_checker::always { MC_HERE{}, pred }
 #define MC_EVENTUALLY_ALWAYS(pred) \
   model_checker::eventually_always { MC_HERE{}, pred }
