@@ -210,13 +210,9 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  size_t getScorersSortLimit() const noexcept {
-    return _scorersSortLimit;
-  }
+  size_t getScorersSortLimit() const noexcept { return _scorersSortLimit; }
 
-  auto getScorersSort() const noexcept {
-    return std::span(_scorersSort);
-  }
+  auto getScorersSort() const noexcept { return std::span(_scorersSort); }
 #endif
 
   /// @brief creates corresponding ExecutionBlock
