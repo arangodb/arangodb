@@ -293,6 +293,10 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
 
   this->_generalServerFeature.countVstRequest(buffer.size());
 
+  if (!this->checkServerAvailability(messageId, ContentType::UNSET)) {
+    return;
+  }
+
   try {
     // handle request types
     if (mt == fu::MessageType::Authentication) {  // auth
@@ -326,7 +330,7 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
           << url(req.get()) << "\"";
 
       // TODO use different token if authentication header is present
-      CommTask::Flow cont = this->prepareExecution(_authToken, *req.get());
+      CommTask::Flow cont = this->prepareExecution(_authToken, *req);
       if (cont == CommTask::Flow::Continue) {
         auto resp = std::make_unique<VstResponse>(
             rest::ResponseCode::SERVER_ERROR, messageId);
@@ -513,7 +517,7 @@ void VstCommTask<T>::doWrite() {
 template<SocketType T>
 void VstCommTask<T>::handleVstAuthRequest(VPackSlice header, uint64_t mId) {
   std::string authString;
-  std::string user = "";
+  std::string user;
   _authMethod = AuthenticationMethod::NONE;
 
   std::string encryption = header.at(2).copyString();

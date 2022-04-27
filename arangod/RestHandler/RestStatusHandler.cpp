@@ -123,7 +123,8 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
   if (serverState != nullptr) {
     result.add("serverInfo", VPackValue(VPackValueType::Object));
 
-    result.add("maintenance", VPackValue(serverState->isMaintenance()));
+    result.add("maintenance",
+               VPackValue(serverState->isStartupOrMaintenance()));
     result.add("role",
                VPackValue(ServerState::roleToString(serverState->getRole())));
     result.add(

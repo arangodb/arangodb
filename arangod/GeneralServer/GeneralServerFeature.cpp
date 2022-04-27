@@ -307,7 +307,7 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 }
 
 void GeneralServerFeature::prepare() {
-  ServerState::instance()->setServerMode(ServerState::Mode::MAINTENANCE);
+  ServerState::instance()->setServerMode(ServerState::Mode::STARTUP);
 
   if (ServerState::instance()->isDBServer() &&
       !server().options()->processingResult().touched(
@@ -316,18 +316,26 @@ void GeneralServerFeature::prepare() {
     // directly, so we can turn off the Server signature header.
     HttpResponse::HIDE_PRODUCT_HEADER = true;
   }
-}
 
-void GeneralServerFeature::start() {
   _jobManager = std::make_unique<AsyncJobManager>();
   _handlerFactory = std::make_unique<RestHandlerFactory>();
 
-  defineHandlers();
+  defineInitialHandlers();
+
   buildServers();
 
+  EndpointFeature& endpoint =
+      server().getFeature<HttpEndpointProvider, EndpointFeature>();
+  auto& endpointList = endpoint.endpointList();
+
   for (auto& server : _servers) {
-    server->startListening();
+    server->startListening(endpointList);
   }
+}
+
+void GeneralServerFeature::start() {
+  ServerState::instance()->setServerMode(ServerState::Mode::MAINTENANCE);
+  defineHandlers();
 }
 
 void GeneralServerFeature::initiateSoftShutdown() {
@@ -412,8 +420,6 @@ rest::AsyncJobManager& GeneralServerFeature::jobManager() {
 }
 
 void GeneralServerFeature::buildServers() {
-  TRI_ASSERT(_jobManager != nullptr);
-
   EndpointFeature& endpoint =
       server().getFeature<HttpEndpointProvider, EndpointFeature>();
   auto const& endpointList = endpoint.endpointList();
@@ -430,9 +436,14 @@ void GeneralServerFeature::buildServers() {
     ssl.verifySslOptions();
   }
 
-  auto server = std::make_unique<GeneralServer>(*this, _numIoThreads);
-  server->setEndpointList(&endpointList);
-  _servers.push_back(std::move(server));
+  _servers.emplace_back(std::make_unique<GeneralServer>(*this, _numIoThreads));
+}
+
+void GeneralServerFeature::defineInitialHandlers() {
+  _handlerFactory->addHandler(
+      "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
+  _handlerFactory->addHandler(
+      "/_admin/version", RestHandlerCreator<RestVersionHandler>::createNoData);
 }
 
 void GeneralServerFeature::defineHandlers() {
@@ -657,9 +668,6 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_api/engine", RestHandlerCreator<RestEngineHandler>::createNoData);
 
-  _handlerFactory->addHandler(
-      "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
-
   _handlerFactory->addPrefixHandler(
       "/_api/transaction",
       RestHandlerCreator<RestTransactionHandler>::createNoData);
@@ -693,9 +701,6 @@ void GeneralServerFeature::defineHandlers() {
       RestHandlerCreator<arangodb::RestJobHandler>::createData<
           AsyncJobManager*>,
       _jobManager.get());
-
-  _handlerFactory->addHandler(
-      "/_admin/version", RestHandlerCreator<RestVersionHandler>::createNoData);
 
   // further admin handlers
   _handlerFactory->addPrefixHandler(

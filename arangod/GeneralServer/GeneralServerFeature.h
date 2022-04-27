@@ -81,9 +81,9 @@ class GeneralServerFeature final : public ArangodFeature {
 
  private:
   void buildServers();
+  void defineInitialHandlers();
   void defineHandlers();
 
- private:
   double _keepAliveTimeout = 300.0;
   bool _allowMethodOverride;
   bool _proxyCheck;

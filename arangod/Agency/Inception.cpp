@@ -479,7 +479,7 @@ void Inception::reportVersionForEp(std::string const& endpoint,
 // @brief Thread main
 void Inception::run() {
   auto server = ServerState::instance();
-  while (server->isMaintenance() && !this->isStopping() &&
+  while (server->isStartupOrMaintenance() && !this->isStopping() &&
          !_agent.isStopping()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     LOG_TOPIC("1b613", DEBUG, Logger::AGENCY)

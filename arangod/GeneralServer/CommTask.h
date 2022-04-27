@@ -96,9 +96,15 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   virtual void sendResponse(std::unique_ptr<GeneralResponse>,
                             RequestStatistics::Item) = 0;
 
- protected:
   enum class Flow : bool { Continue = true, Abort = false };
   static constexpr size_t MaximalBodySize = 1024 * 1024 * 1024;  // 1024 MB
+
+  /// checks the server's availability. will return false if the server is
+  /// currently starting up or in shutdown. in this case, the method will
+  /// also send an appropriate error response. will return true in all other
+  /// cases.
+  bool checkServerAvailability(uint64_t messageId,
+                               ContentType contentTypeResponse);
 
   /// Must be called before calling executeRequest, will add an error
   /// response if execution is supposed to be aborted

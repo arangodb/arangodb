@@ -578,6 +578,11 @@ void H2CommTask<T>::processRequest(Stream& stream,
   stat.SET_READ_END();
   stat.SET_WRITE_START();
 
+  if (!this->checkServerAvailability(messageId, req->contentTypeResponse())) {
+    // error message already sent here.
+    return;
+  }
+
   // OPTIONS requests currently go unauthenticated
   if (req->requestType() == rest::RequestType::OPTIONS) {
     this->processCorsOptions(std::move(req), stream.origin);

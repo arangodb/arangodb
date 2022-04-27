@@ -23,6 +23,8 @@
 
 #include "RestHandlerFactory.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -33,10 +35,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-namespace {
-static std::string const ROOT_PATH = "/";
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new handler
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,6 +43,8 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
     ArangodServer& server, std::unique_ptr<GeneralRequest> req,
     std::unique_ptr<GeneralResponse> res) const {
   std::string const& path = req->requestPath();
+
+  READ_LOCKER(locker, _lock);
 
   auto it = _constructors.find(path);
 
@@ -88,7 +88,7 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
     LOG_TOPIC("7c476", TRACE, arangodb::Logger::FIXME)
         << "no prefix handler found, using catch all";
 
-    it = _constructors.find(ROOT_PATH);
+    it = _constructors.find("/");
     l = 1;
   } else {
     TRI_ASSERT(!prefix->empty());
@@ -129,6 +129,8 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
 
 void RestHandlerFactory::addHandler(std::string const& path, create_fptr func,
                                     void* data) {
+  WRITE_LOCKER(locker, _lock);
+
   if (!_constructors.try_emplace(path, func, data).second) {
     // there should only be one handler for each path
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -145,6 +147,8 @@ void RestHandlerFactory::addHandler(std::string const& path, create_fptr func,
 void RestHandlerFactory::addPrefixHandler(std::string const& path,
                                           create_fptr func, void* data) {
   addHandler(path, func, data);
+
+  WRITE_LOCKER(locker, _lock);
 
   // add to list of prefixes and (re-)sort them
   _prefixes.emplace_back(path);

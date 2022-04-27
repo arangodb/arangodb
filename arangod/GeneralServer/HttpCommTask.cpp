@@ -472,7 +472,7 @@ void HttpCommTask<T>::doProcessRequest() {
     }
   }
 
-  // ensure there is a null byte termination. RestHandlers use
+  // ensure there is a null byte termination. Some RestHandlers use
   // C functions like strchr that except a C string as input
   _request->body().push_back('\0');
   _request->body().resetTo(_request->body().size() - 1);
@@ -491,6 +491,12 @@ void HttpCommTask<T>::doProcessRequest() {
           << "\"http-request-body\",\"" << (void*)this << "\",\""
           << StringUtils::escapeUnicode(std::string(body)) << "\"";
     }
+  }
+
+  if (!this->checkServerAvailability(_request->messageId(),
+                                     _request->contentTypeResponse())) {
+    // error message already sent here.
+    return;
   }
 
   // store origin header for later use

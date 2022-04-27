@@ -142,9 +142,9 @@ void FileDescriptorsFeature::validateOptions(
   }
 }
 
-void FileDescriptorsFeature::prepare() { adjustFileDescriptors(); }
+void FileDescriptorsFeature::prepare() {
+  adjustFileDescriptors();
 
-void FileDescriptorsFeature::start() {
   FileDescriptors current = FileDescriptors::load();
 
   LOG_TOPIC("a1c60", INFO, arangodb::Logger::SYSCALL)

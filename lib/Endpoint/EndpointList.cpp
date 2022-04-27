@@ -25,7 +25,6 @@
 
 #include "EndpointList.h"
 
-#include "Basics/StringUtils.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -33,25 +32,9 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-static std::vector<std::string> const EmptyMapping;
+EndpointList::EndpointList() {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an endpoint list
-////////////////////////////////////////////////////////////////////////////////
-
-EndpointList::EndpointList() : _endpoints() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy an endpoint list
-////////////////////////////////////////////////////////////////////////////////
-
-EndpointList::~EndpointList() {
-  for (auto& it : _endpoints) {
-    delete it.second;
-  }
-
-  _endpoints.clear();
-}
+EndpointList::~EndpointList() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a new endpoint
@@ -59,7 +42,7 @@ EndpointList::~EndpointList() {
 
 bool EndpointList::add(std::string const& specification, int backLogSize,
                        bool reuseAddress) {
-  std::string const key = Endpoint::unifiedForm(specification);
+  std::string key = Endpoint::unifiedForm(specification);
 
   if (key.empty()) {
     return false;
@@ -71,42 +54,14 @@ bool EndpointList::add(std::string const& specification, int backLogSize,
     return true;
   }
 
-  Endpoint* ep = Endpoint::serverFactory(key, backLogSize, reuseAddress);
+  std::unique_ptr<Endpoint> ep(
+      Endpoint::serverFactory(key, backLogSize, reuseAddress));
 
   if (ep == nullptr) {
     return false;
   }
 
-  _endpoints[key] = ep;
-  return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove a specific endpoint
-////////////////////////////////////////////////////////////////////////////////
-
-bool EndpointList::remove(std::string const& specification, Endpoint** dst) {
-  std::string const key = Endpoint::unifiedForm(specification);
-
-  if (key.empty()) {
-    return false;
-  }
-
-  if (_endpoints.size() <= 1) {
-    // must not remove last endpoint
-    return false;
-  }
-
-  auto it = _endpoints.find(key);
-
-  if (it == _endpoints.end()) {
-    // not in list
-    return false;
-  }
-
-  *dst = (*it).second;
-  _endpoints.erase(key);
-
+  _endpoints.emplace(std::move(key), std::move(ep));
   return true;
 }
 
@@ -116,6 +71,7 @@ bool EndpointList::remove(std::string const& specification, Endpoint** dst) {
 
 std::vector<std::string> EndpointList::all() const {
   std::vector<std::string> result;
+  result.reserve(_endpoints.size());
 
   for (auto& it : _endpoints) {
     result.emplace_back(it.first);
@@ -130,8 +86,7 @@ std::vector<std::string> EndpointList::all() const {
 
 std::vector<std::string> EndpointList::all(
     Endpoint::TransportType transport) const {
-  std::vector<std::string> result;
-  std::string prefix;
+  std::string_view prefix;
 
   switch (transport) {
     case Endpoint::TransportType::HTTP:
@@ -143,10 +98,9 @@ std::vector<std::string> EndpointList::all(
       break;
   }
 
+  std::vector<std::string> result;
   for (auto& it : _endpoints) {
-    std::string const& key = it.first;
-
-    if (StringUtils::isPrefix(key, prefix)) {
+    if (it.first.starts_with(prefix)) {
       result.emplace_back(it.first);
     }
   }
@@ -154,44 +108,13 @@ std::vector<std::string> EndpointList::all(
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return all endpoints with a certain encryption type
-////////////////////////////////////////////////////////////////////////////////
-
-// std::map<std::string, Endpoint*> EndpointList::matching(
-//    Endpoint::TransportType transport,
-//    Endpoint::EncryptionType encryption) const {
-//  std::string prefix;
-//
-//  switch (transport) {
-//    case Endpoint::TransportType::HTTP:
-//      prefix = "http+";
-//      break;
-//
-//    case Endpoint::TransportType::VST:
-//      prefix = "vpp+";
-//      break;
-//  }
-//
-//  std::map<std::string, Endpoint*> result;
-//
-//  for (auto& it : _endpoints) {
-//    std::string const& key = it.first;
-//
-//    if (encryption == Endpoint::EncryptionType::SSL) {
-//      if (StringUtils::isPrefix(key, prefix + "ssl://")) {
-//        result[key] = it.second;
-//      }
-//    } else {
-//      if (StringUtils::isPrefix(key, prefix + "tcp://") ||
-//          StringUtils::isPrefix(key, prefix + "unix://")) {
-//        result[key] = it.second;
-//      }
-//    }
-//  }
-//
-//  return result;
-//}
+void EndpointList::apply(
+    std::function<void(std::string const&, Endpoint&)> const& cb) {
+  for (auto& it : _endpoints) {
+    TRI_ASSERT(it.second != nullptr);
+    cb(it.first, *it.second);
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return if there is an endpoint with SSL
@@ -199,13 +122,8 @@ std::vector<std::string> EndpointList::all(
 
 bool EndpointList::hasSsl() const {
   for (auto& it : _endpoints) {
-    std::string const& key = it.first;
-
-    if (StringUtils::isPrefix(key, "http+ssl://")) {
-      return true;
-    }
-
-    if (StringUtils::isPrefix(key, "vst+ssl://")) {
+    if (it.first.starts_with("http+ssl://") ||
+        it.first.starts_with("vst+ssl://")) {
       return true;
     }
   }
@@ -218,12 +136,11 @@ bool EndpointList::hasSsl() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void EndpointList::dump() const {
-  for (auto& it : _endpoints) {
-    Endpoint const* ep = it.second;
-
+  for (auto const& it : _endpoints) {
+    TRI_ASSERT(it.second != nullptr);
     LOG_TOPIC("6ea38", INFO, arangodb::Logger::FIXME)
         << "using endpoint '" << it.first << "' for "
-        << encryptionName(ep->encryption()) << " requests";
+        << encryptionName(it.second->encryption()) << " requests";
   }
 }
 
@@ -231,7 +148,8 @@ void EndpointList::dump() const {
 /// @brief return an encryption name
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string EndpointList::encryptionName(Endpoint::EncryptionType encryption) {
+std::string_view EndpointList::encryptionName(
+    Endpoint::EncryptionType encryption) {
   switch (encryption) {
     case Endpoint::EncryptionType::SSL:
       return "ssl-encrypted";

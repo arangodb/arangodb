@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -68,6 +69,9 @@ class RestHandlerFactory {
                         void* data = nullptr);
 
  private:
+  // lock protecting _constructors and _prefixes
+  mutable arangodb::basics::ReadWriteLock _lock;
+
   // list of constructors
   std::unordered_map<std::string, std::pair<create_fptr, void*>> _constructors;
 

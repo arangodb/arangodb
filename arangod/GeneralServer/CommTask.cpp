@@ -58,12 +58,6 @@ std::string const AdminAardvark("/_admin/aardvark/");
 std::string const ApiUser("/_api/user/");
 std::string const Open("/_open/");
 
-inline bool startsWith(std::string const& path, char const* other) {
-  size_t const size = std::char_traits<char>::length(other);
-
-  return (size <= path.size() && path.compare(0, size, other, size) == 0);
-}
-
 TRI_vocbase_t* lookupDatabaseFromRequest(ArangodServer& server,
                                          GeneralRequest& req) {
   // get database name from request
@@ -151,21 +145,33 @@ CommTask::CommTask(GeneralServer& server, ConnectionInfo info)
 
 CommTask::~CommTask() { _connectionStatistics.SET_END(); }
 
+bool CommTask::checkServerAvailability(uint64_t messageId,
+                                       ContentType contentTypeResponse) {
+  if (ServerState::mode() == ServerState::Mode::STARTUP) {
+    this->sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE,
+                            contentTypeResponse, messageId,
+                            TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                            "service unavailable due to startup");
+    return false;
+  }
+
+  if (_server.server().isStopping()) {
+    this->sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE,
+                            contentTypeResponse, messageId,
+                            TRI_ERROR_SHUTTING_DOWN);
+    return false;
+  }
+
+  return true;
+}
+
 /// Must be called before calling executeRequest, will send an error
 /// response if execution is supposed to be aborted
-
 CommTask::Flow CommTask::prepareExecution(
     auth::TokenCache::Entry const& authToken, GeneralRequest& req) {
   DTRACE_PROBE1(arangod, CommTaskPrepareExecution, this);
 
   // Step 1: In the shutdown phase we simply return 503:
-  if (_server.server().isStopping()) {
-    sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE,
-                      req.contentTypeResponse(), req.messageId(),
-                      TRI_ERROR_SHUTTING_DOWN);
-    return Flow::Abort;
-  }
-
   if (Logger::isEnabled(arangodb::LogLevel::DEBUG, Logger::REQUESTS)) {
     bool found;
     std::string const& source =
@@ -182,13 +188,23 @@ CommTask::Flow CommTask::prepareExecution(
 
   ServerState::Mode mode = ServerState::mode();
   switch (mode) {
+    case ServerState::Mode::STARTUP: {
+      // should not happen, because it is checked before the call to
+      // prepareExecution, but doesn't do any harm here to handle it correctly.
+      sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE,
+                        req.contentTypeResponse(), req.messageId(),
+                        TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                        "service unavailable due to startup");
+      return Flow::Abort;
+    }
+
     case ServerState::Mode::MAINTENANCE: {
       // In the bootstrap phase, we would like that coordinators answer the
       // following endpoints, but not yet others:
       if ((!ServerState::instance()->isCoordinator() &&
-           !::startsWith(path, "/_api/agency/agency-callbacks")) ||
-          (!::startsWith(path, "/_api/agency/agency-callbacks") &&
-           !::startsWith(path, "/_api/aql"))) {
+           !path.starts_with("/_api/agency/agency-callbacks")) ||
+          (!path.starts_with("/_api/agency/agency-callbacks") &&
+           !path.starts_with("/_api/aql"))) {
         LOG_TOPIC("63f47", TRACE, arangodb::Logger::FIXME)
             << "Maintenance mode: refused path: " << path;
         sendErrorResponse(
@@ -210,26 +226,25 @@ CommTask::Flow CommTask::prepareExecution(
       [[fallthrough]];
     case ServerState::Mode::TRYAGAIN: {
       // the following paths are allowed on followers
-      if (!::startsWith(path, "/_admin/shutdown") &&
-          !::startsWith(path, "/_admin/cluster/health") &&
-          !(path == "/_admin/compact") &&
-          !::startsWith(path, "/_admin/license") &&
-          !::startsWith(path, "/_admin/log") &&
-          !::startsWith(path, "/_admin/metrics") &&
-          !::startsWith(path, "/_admin/server/") &&
-          !::startsWith(path, "/_admin/status") &&
-          !::startsWith(path, "/_admin/statistics") &&
-          !::startsWith(path, "/_admin/support-info") &&
-          !::startsWith(path, "/_api/agency/agency-callbacks") &&
+      if (!path.starts_with("/_admin/shutdown") &&
+          !path.starts_with("/_admin/cluster/health") &&
+          path != "/_admin/compact" && !path.starts_with("/_admin/license") &&
+          !path.starts_with("/_admin/log") &&
+          !path.starts_with("/_admin/metrics") &&
+          !path.starts_with("/_admin/server/") &&
+          !path.starts_with("/_admin/status") &&
+          !path.starts_with("/_admin/statistics") &&
+          !path.starts_with("/_admin/support-info") &&
+          !path.starts_with("/_api/agency/agency-callbacks") &&
           !(req.requestType() == RequestType::GET &&
-            ::startsWith(path, "/_api/collection")) &&
-          !::startsWith(path, "/_api/cluster/") &&
-          !::startsWith(path, "/_api/engine/stats") &&
-          !::startsWith(path, "/_api/replication") &&
-          !::startsWith(path, "/_api/ttl/statistics") &&
+            path.starts_with("/_api/collection")) &&
+          !path.starts_with("/_api/cluster/") &&
+          !path.starts_with("/_api/engine/stats") &&
+          !path.starts_with("/_api/replication") &&
+          !path.starts_with("/_api/ttl/statistics") &&
           (mode == ServerState::Mode::TRYAGAIN ||
-           !::startsWith(path, "/_api/version")) &&
-          !::startsWith(path, "/_api/wal")) {
+           !path.starts_with("/_api/version")) &&
+          !path.starts_with("/_api/wal")) {
         LOG_TOPIC("a5119", TRACE, arangodb::Logger::FIXME)
             << "Redirect/Try-again: refused path: " << path;
         std::unique_ptr<GeneralResponse> res =
@@ -360,9 +375,10 @@ void CommTask::finishExecution(GeneralResponse& res,
 }
 
 /// Push this request into the execution pipeline
-
 void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
                               std::unique_ptr<GeneralResponse> response) {
+  TRI_ASSERT(ServerState::mode() != ServerState::Mode::STARTUP);
+
   DTRACE_PROBE1(arangod, CommTaskExecuteRequest, this);
 
   response->setContentTypeRequested(request->contentTypeResponse());

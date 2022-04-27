@@ -1,6 +1,19 @@
 devel
 -----
 
+* Start up HTTP interface of servers earlier, so that ping probes from tools
+  can already be responded to when the server is not fully started. Previously,
+  the HTTP interface of a server was only openend after a successful recovery
+  procedure, but the recovery procedure can take time proportional to the
+  amount of data to recover. In order to make servers respond to probes quickly
+  after a restart, the HTTP interface is now opened earlier in the startup
+  sequence.
+  When a server is not through the successful recovery procedure yet, it will
+  respond to _all_ requests with an HTTP response code 503 and an "errorNum"
+  value of 503 as well, so that callers can see that the server is not fully
+  ready. No distinction is made between authenticated and non-authenticated
+  requests here.
+
 * Added startup option `--cluster.shard-synchronization-attempt-timeout` to
   limit the amount of time to spend in shard synchronization attempts. The
   default timeout value is 20 minutes.
