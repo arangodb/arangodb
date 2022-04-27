@@ -569,7 +569,7 @@ var jsUnity = exports.jsUnity = (function () {
                   print(e);
                   try {
                     print(e.stack);
-                  } catch(){}
+                  } catch(x){}
                   e = new Error(e);
                 } else if (e instanceof arangodb.ArangoError && (
                            (e.errorNum === arangodb.errors.ERROR_CLUSTER_TIMEOUT) ||
