@@ -20,6 +20,7 @@ import ParameterNodeColorAttribute from "./ParameterNodeColorAttribute";
 import ParameterEdgeColorAttribute from "./ParameterEdgeColorAttribute";
 import ParameterNodeColor from "./ParameterNodeColor";
 import ParameterEdgeColor from "./ParameterEdgeColor";
+import ParameterNodeSize from './ParameterNodeSize';
 import ParameterNodeSizeByEdges from "./ParameterNodeSizeByEdges";
 import ButtonSave from "./ButtonSave";
 
@@ -199,16 +200,7 @@ const screenshotMenu = (
             <br />
             <ParameterNodeSizeByEdges />
             <br />
-            <Input
-              addonBefore="Sizing attribute"
-              placeholder="Attribute"
-              suffix={
-                <Tooltip title="Default node size. Numeric value > 0.">
-                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                </Tooltip>
-              }
-              style={{ width: 240, marginTop: '24px', marginBottom: '24px' }}
-            />
+            <ParameterNodeSize />
           </TabPane>
           <TabPane
             tab={
