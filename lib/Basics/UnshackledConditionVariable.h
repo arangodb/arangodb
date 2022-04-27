@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/UnshackledMutex.h"
+#include "Basics/debugging.h"
 
 #include <mutex>
 

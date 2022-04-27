@@ -102,18 +102,18 @@ class MutexGuard {
   // Feel free to add waitFor and/or waitUntil if needed.
   template<typename ConditionVariable>
   std::enable_if_t<
-      std::is_same_v<ConditionVariable, std::condition_variable> &&
-          std::is_same_v<L, std::unique_lock<std::mutex>> ||
-      std::is_same_v<ConditionVariable, basics::UnshackledConditionVariable> &&
-          std::is_same_v<L, std::unique_lock<basics::UnshackledMutex>>>
+      (std::is_same_v<ConditionVariable, std::condition_variable> &&
+       std::is_same_v<L, std::unique_lock<std::mutex>>) ||
+      (std::is_same_v<ConditionVariable, basics::UnshackledConditionVariable> &&
+       std::is_same_v<L, std::unique_lock<basics::UnshackledMutex>>)>
   wait(ConditionVariable& cv);
 
   template<class Predicate, typename ConditionVariable>
   std::enable_if_t<
-      std::is_same_v<ConditionVariable, std::condition_variable> &&
-          std::is_same_v<L, std::unique_lock<std::mutex>> ||
-      std::is_same_v<ConditionVariable, basics::UnshackledConditionVariable> &&
-          std::is_same_v<L, std::unique_lock<basics::UnshackledMutex>>>
+      (std::is_same_v<ConditionVariable, std::condition_variable> &&
+       std::is_same_v<L, std::unique_lock<std::mutex>>) ||
+      (std::is_same_v<ConditionVariable, basics::UnshackledConditionVariable> &&
+       std::is_same_v<L, std::unique_lock<basics::UnshackledMutex>>)>
   wait(ConditionVariable& cv, Predicate stop_waiting);
 
   // @brief Unlocks and releases the mutex, and releases the value.
@@ -156,55 +156,26 @@ void MutexGuard<T, L>::unlock() noexcept(noexcept(std::declval<L>().unlock())) {
   _mutexLock.release();
 }
 
-namespace detail {
-template<typename Lock, typename ConditionVariable>
-std::enable_if_t<
-    std::is_same_v<ConditionVariable, std::condition_variable> &&
-        std::is_same_v<Lock, std::unique_lock<std::mutex>> ||
-    std::is_same_v<ConditionVariable, basics::UnshackledConditionVariable> &&
-        std::is_same_v<Lock, std::unique_lock<basics::UnshackledMutex>>>
-wait(Lock&, ConditionVariable&);
-
-template<typename Lock, typename ConditionVariable, class Predicate>
-std::enable_if_t<
-    std::is_same_v<ConditionVariable, std::condition_variable> &&
-        std::is_same_v<Lock, std::unique_lock<std::mutex>> ||
-    std::is_same_v<ConditionVariable, basics::UnshackledConditionVariable> &&
-        std::is_same_v<Lock, std::unique_lock<basics::UnshackledMutex>>>
-wait(Lock&, ConditionVariable&, Predicate stop_waiting);
-
-}  // namespace detail
-
-template<typename Lock, typename ConditionVariable, class Predicate>
-std::enable_if_t<
-    std::is_same_v<ConditionVariable, std::condition_variable> &&
-        std::is_same_v<Lock, std::unique_lock<std::mutex>> ||
-    std::is_same_v<ConditionVariable, basics::UnshackledConditionVariable> &&
-        std::is_same_v<Lock, std::unique_lock<basics::UnshackledMutex>>>
-detail::wait(Lock& lock, ConditionVariable& cv, Predicate stop_waiting) {
-  return cv.wait(lock, std::forward<Predicate>(stop_waiting));
-}
-
 template<class T, class L>
 template<typename ConditionVariable>
 std::enable_if_t<
-    std::is_same_v<ConditionVariable, std::condition_variable> &&
-        std::is_same_v<L, std::unique_lock<std::mutex>> ||
-    std::is_same_v<ConditionVariable, basics::UnshackledConditionVariable> &&
-        std::is_same_v<L, std::unique_lock<basics::UnshackledMutex>>>
+    (std::is_same_v<ConditionVariable, std::condition_variable> &&
+     std::is_same_v<L, std::unique_lock<std::mutex>>) ||
+    (std::is_same_v<ConditionVariable, basics::UnshackledConditionVariable> &&
+     std::is_same_v<L, std::unique_lock<basics::UnshackledMutex>>)>
 MutexGuard<T, L>::wait(ConditionVariable& cv) {
-  return detail::wait(_mutexLock, cv);
+  return cv.wait(_mutexLock);
 }
 
 template<class T, class L>
 template<class Predicate, typename ConditionVariable>
 std::enable_if_t<
-    std::is_same_v<ConditionVariable, std::condition_variable> &&
-        std::is_same_v<L, std::unique_lock<std::mutex>> ||
-    std::is_same_v<ConditionVariable, basics::UnshackledConditionVariable> &&
-        std::is_same_v<L, std::unique_lock<basics::UnshackledMutex>>>
+    (std::is_same_v<ConditionVariable, std::condition_variable> &&
+     std::is_same_v<L, std::unique_lock<std::mutex>>) ||
+    (std::is_same_v<ConditionVariable, basics::UnshackledConditionVariable> &&
+     std::is_same_v<L, std::unique_lock<basics::UnshackledMutex>>)>
 MutexGuard<T, L>::wait(ConditionVariable& cv, Predicate stop_waiting) {
-  return detail::wait(_mutexLock, cv, std::forward<Predicate>(stop_waiting));
+  return cv.wait(_mutexLock, std::forward<Predicate>(stop_waiting));
 }
 
 template<class T, class M = std::mutex,
