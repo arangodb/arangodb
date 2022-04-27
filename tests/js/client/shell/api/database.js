@@ -358,6 +358,5 @@ function dealing_with_database_manipulation_methodsSuite () {
   };
 }
 jsunity.run(dealing_with_database_information_methodsSuite);
-jsunity.run(dealing_with_Unicode_database_namesSuite);
 jsunity.run(dealing_with_database_manipulation_methodsSuite);
 return jsunity.done();
