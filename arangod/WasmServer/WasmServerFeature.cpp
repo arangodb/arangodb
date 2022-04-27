@@ -15,6 +15,7 @@
 #include "WasmServer/WasmCommon.h"
 #include "WasmServer/WasmModuleCollection.h"
 #include "WasmServer/WasmVm/wasm_with_slices.hpp"
+#include "allocate.h"
 
 namespace arangodb {
 namespace application_features {
@@ -47,6 +48,14 @@ void WasmServerFeature::start() {
   arangodb::registerWasmModuleCollectionUpgradeTask(server());
 }
 
+void WasmServerFeature::setupAllocation() {
+  // auto decodedString =
+  //   arangodb::basics::StringUtils::decodeBase64(allocateCode);
+  // _wasmModuleCollection->add(Module{ModuleName{"allocate"}, Code{{decodedString.begin(), decodedString.end()}}, true});
+  loadModuleIntoRuntime(ModuleName{"allocate"});
+}
+  
+
 void WasmServerFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions>) {}
 void WasmServerFeature::validateOptions(
@@ -59,7 +68,7 @@ auto WasmServerFeature::loadModuleIntoRuntime(ModuleName const& name)
     return Result{TRI_ERROR_WASM_EXECUTION_ERROR, module.errorMessage()};
   }
   auto code = module.get().code.bytes;
-  if (auto res = _vm.load_module(module.get().code.bytes); res.fail()) {
+  if (auto res = _vm.load_module(name.string.data(), module.get().code.bytes); res.fail()) {
     return Result{TRI_ERROR_WASM_EXECUTION_ERROR, res.errorMessage()};
   }
   _guardedModules.doUnderLock([&name](GuardedModules& guardedModules) {
@@ -84,7 +93,7 @@ auto WasmServerFeature::executeFunction(ModuleName const& moduleName,
   }
 
   auto output = arangodb::wasm_interface::call_function(
-      _vm, functionName.string.data(), parameters);
+							_vm, moduleName.string.data(), functionName.string.data(), parameters);
   if (output.fail()) {
     return ResultT<FunctionOutput>::error(
         TRI_ERROR_WASM_EXECUTION_ERROR,

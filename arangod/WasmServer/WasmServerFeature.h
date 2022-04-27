@@ -58,6 +58,7 @@ class WasmServerFeature final : public ArangodFeature {
   void prepare() override;
   void start() override;
 
+  void setupAllocation();
   auto loadModuleIntoRuntime(wasm::ModuleName const& name) -> Result;
   auto executeFunction(wasm::ModuleName const& moduleName,
                        wasm::FunctionName const& functionName,

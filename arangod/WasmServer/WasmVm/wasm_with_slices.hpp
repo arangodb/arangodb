@@ -6,7 +6,7 @@
 
 namespace arangodb::wasm_interface {
 
-auto call_function(WasmVm& vm, const char* function_name,
+  auto call_function(WasmVm& vm, std::string const& module_name, const char* function_name,
                    arangodb::velocypack::Slice const& input)
     -> ResultT<arangodb::velocypack::Slice>;
 

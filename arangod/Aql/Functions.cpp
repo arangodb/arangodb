@@ -9069,6 +9069,7 @@ AqlValue Functions::CallWasm(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintEmptyArray());
   }
   WasmServerFeature& feature = server.getFeature<WasmServerFeature>();
+  feature.setupAllocation();
   auto result = feature.executeFunction(moduleName.slice().copyString(),
                                         functionName.slice().copyString(),
                                         parameterBuilder->slice());

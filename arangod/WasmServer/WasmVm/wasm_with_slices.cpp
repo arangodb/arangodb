@@ -11,8 +11,8 @@ using namespace arangodb;
 using namespace arangodb::wasm_interface;
 using namespace arangodb::velocypack;
 
-auto copy_to_wasm(WasmVm& vm, Slice input) -> ResultT<WasmPtr> {
-  auto ptr = vm.call_function<WasmPtr>("allocate",
+auto copy_to_wasm(WasmVm& vm, std::string const& module_name, Slice input) -> ResultT<WasmPtr> {
+  auto ptr = vm.call_function<WasmPtr>("allocate", "allocate",
                                        static_cast<uint32_t>(input.byteSize()));
   if (ptr.fail()) {
     return ResultT<WasmPtr>::error(
@@ -21,12 +21,12 @@ auto copy_to_wasm(WasmVm& vm, Slice input) -> ResultT<WasmPtr> {
             "Unable to allocate memory in WebAssembly VM to copy input: {}",
             ptr.errorMessage()));
   }
-  memcpy(vm.memory_pointer(ptr.get()), input.start(), input.byteSize());
+  memcpy(vm.memory_pointer(module_name, ptr.get()), input.start(), input.byteSize());
   return ptr;
 }
 
 auto deallocate_in_wasm(WasmVm& vm, WasmPtr ptr) -> Result {
-  if (auto res = vm.call_function<uint32_t>("deallocate", ptr); res.fail()) {
+  if (auto res = vm.call_function<uint32_t>("allocate", "deallocate", ptr); res.fail()) {
     return Result{
         TRI_ERROR_WASM_EXECUTION_ERROR,
         fmt::format("Unable to deallocate memory in WebAssembly VM: {}",
@@ -59,18 +59,20 @@ auto copy_from_wasm(uint8_t* ptr) -> ResultT<Slice> {
 }
 
 auto arangodb::wasm_interface::call_function(WasmVm& vm,
+					     std::string const& module_name,
                                              const char* function_name,
                                              Slice const& input)
     -> ResultT<Slice> {
-  auto inPtr = copy_to_wasm(vm, input);
+  auto inPtr = copy_to_wasm(vm, module_name, input);
+
   if (inPtr.fail()) {
-    // TODO dealloc in
+   // TODO dealloc in
     return ResultT<Slice>::error(
         TRI_ERROR_WASM_EXECUTION_ERROR,
         fmt::format("Function {}: {}", function_name, inPtr.errorMessage()));
   }
 
-  auto outPtr = vm.call_function<WasmPtr>(function_name, inPtr.get());
+  auto outPtr = vm.call_function<WasmPtr>(module_name, function_name, inPtr.get());
   if (outPtr.fail()) {
     // TODO dealloc in
     return ResultT<Slice>::error(
@@ -78,7 +80,7 @@ auto arangodb::wasm_interface::call_function(WasmVm& vm,
         fmt::format("Function {}: {}", function_name, outPtr.errorMessage()));
   }
 
-  auto wasmResult = reinterpret_cast<uint8_t*>(vm.memory_pointer(outPtr.get()));
+  auto wasmResult = reinterpret_cast<uint8_t*>(vm.memory_pointer(module_name, outPtr.get()));
   auto output = copy_from_wasm(wasmResult);
   if (output.fail()) {
     // TODO dealloc in and out
