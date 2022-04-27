@@ -40,7 +40,8 @@ class UnshackledConditionVariable {
   void wait(std::unique_lock<UnshackledMutex>& lock) noexcept;
 
   template<class Predicate>
-  void wait(std::unique_lock<UnshackledMutex>& lock, Predicate stop_waiting) noexcept;
+  void wait(std::unique_lock<UnshackledMutex>& lock,
+            Predicate stop_waiting) noexcept;
 
   template<class Rep, class Period>
   auto wait_for(std::unique_lock<UnshackledMutex>& lock,
@@ -53,8 +54,9 @@ class UnshackledConditionVariable {
                 Predicate stop_waiting) noexcept -> bool;
 
   template<class Clock, class Duration>
-  auto wait_until(std::unique_lock<std::mutex>& lock,
-                  std::chrono::time_point<Clock, Duration> const& timeout_time) noexcept
+  auto wait_until(
+      std::unique_lock<std::mutex>& lock,
+      std::chrono::time_point<Clock, Duration> const& timeout_time) noexcept
       -> std::cv_status;
 
   template<class Clock, class Duration, class Predicate>
@@ -76,7 +78,7 @@ void UnshackledConditionVariable::wait(std::unique_lock<UnshackledMutex>& lock,
     // unlock before suspending the thread
     lock.unlock();
     _cv.wait(guard);
-    // to prevent deadlocks, `guard` must not be locked while acquiring `lock`
+    // to prevent deadlocks, `guard` must not be locked while reacquiring `lock`
     guard.unlock();
     lock.lock();
     // guard must be locked while checking the predicate
@@ -87,27 +89,46 @@ void UnshackledConditionVariable::wait(std::unique_lock<UnshackledMutex>& lock,
   std::abort();
 }
 
-/* Commented out for the moment, implementation has to be fixed */
-// template<class Rep, class Period, class Predicate>
-// auto UnshackledConditionVariable::wait_for(
-//     std::unique_lock<UnshackledMutex>& lock,
-//     std::chrono::duration<Rep, Period> const& rel_time, Predicate stop_waiting)
-//     -> bool {
-//   return wait_until(lock, std::chrono::steady_clock::now() + rel_time,
-//                     std::forward<Predicate>(stop_waiting));
-// }
-//
-// template<class Clock, class Duration, class Predicate>
-// auto UnshackledConditionVariable::wait_until(
-//     std::unique_lock<std::mutex>& lock,
-//     std::chrono::time_point<Clock, Duration> const& timeout_time,
-//     Predicate stop_waiting) -> bool {
-//   while (!stop_waiting()) {
-//     if (wait_until(lock, timeout_time) == std::cv_status::timeout) {
-//       return stop_waiting();
-//     }
-//   }
-//   return true;
-// }
+template<class Rep, class Period, class Predicate>
+auto UnshackledConditionVariable::wait_for(
+    std::unique_lock<UnshackledMutex>& lock,
+    std::chrono::duration<Rep, Period> const& rel_time,
+    Predicate stop_waiting) noexcept -> bool {
+  return wait_until(lock, std::chrono::steady_clock::now() + rel_time,
+                    std::forward<Predicate>(stop_waiting));
+}
+
+template<class Clock, class Duration, class Predicate>
+auto UnshackledConditionVariable::wait_until(
+    std::unique_lock<std::mutex>& lock,
+    std::chrono::time_point<Clock, Duration> const& timeout_time,
+    Predicate stop_waiting) noexcept -> bool try {
+  auto guard = std::unique_lock(_mutex);
+
+  while (!stop_waiting()) {
+    // unlock before suspending the thread
+    lock.unlock();
+    if (wait_until(guard, timeout_time) == std::cv_status::timeout) {
+      // to prevent deadlocks, `guard` must not be locked while reacquiring
+      // `lock`
+      guard.unlock();
+      lock.lock();
+      // this is the only case where the predicate is not checked under _mutex;
+      // because it is not necessary here to establish an order with notify, as
+      // we're no longer waiting.
+      return stop_waiting();
+    }
+    // to prevent deadlocks, `guard` must not be locked while reacquiring `lock`
+    guard.unlock();
+    lock.lock();
+    // guard must be locked while checking the predicate
+    guard.lock();
+  }
+
+  return true;
+} catch (...) {
+  // We cannot handle any exceptions here.
+  std::abort();
+}
 
 }  // namespace arangodb::basics
