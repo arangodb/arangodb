@@ -2465,7 +2465,6 @@ TEST_F(IResearchViewNodeTest, clone) {
     auto varsSetOriginal = node.getVariablesSetHere();
     // clone without properties into the same plan
     {
-      auto const nextId = node.plan()->nextId();
       auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
           *node.clone(query.plan(), true, false));
       auto varsSetCloned = cloned.getVariablesSetHere();
