@@ -20,6 +20,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
+#include <boost/container_hash/hash.hpp>
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
@@ -101,6 +102,24 @@ struct KillServerActor : ActorBase<KillServerActor> {
   auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
 
   replication2::ParticipantId name;
+};
+
+struct KillAnyServerActor {
+  struct InternalState {
+    bool wasKilled = false;
+    friend auto operator==(InternalState const& lhs,
+                           InternalState const& rhs) noexcept -> bool = default;
+    friend auto operator<<(std::ostream& os, InternalState const& s) noexcept
+        -> std::ostream& {
+      return os << "was killed = " << std::boolalpha << s.wasKilled;
+    }
+    friend auto hash_value(InternalState const& i) noexcept -> std::size_t {
+      return boost::hash_value(i.wasKilled);
+    }
+  };
+
+  auto expand(AgencyState const& s, InternalState const& i)
+      -> std::vector<std::tuple<AgencyTransition, AgencyState, InternalState>>;
 };
 
 }  // namespace arangodb::test

@@ -228,4 +228,20 @@ auto KillServerActor::step(AgencyState const& agency) const
 
 KillServerActor::KillServerActor(ParticipantId name) : name(std::move(name)) {}
 
+auto KillAnyServerActor::expand(AgencyState const& s,
+                                KillAnyServerActor::InternalState const& i)
+    -> std::vector<std::tuple<AgencyTransition, AgencyState, InternalState>> {
+  if (i.wasKilled) {
+    return {};
+  }
+  std::vector<std::tuple<AgencyTransition, AgencyState, InternalState>> result;
+  for (auto const& [pid, health] : s.health._health) {
+    auto action = KillServerAction{pid};
+    auto newState = s;
+    action.apply(newState);
+    result.emplace_back(std::move(action), std::move(newState),
+                        InternalState{.wasKilled = true});
+  }
+  return result;
+}
 }  // namespace arangodb::test

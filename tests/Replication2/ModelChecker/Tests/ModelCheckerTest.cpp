@@ -207,8 +207,8 @@ TEST_F(ModelCheckerTest, simple_model_test_actor) {
       IncrementActor{},
   };
 
-  auto test =
-      MC_EVENTUALLY_ALWAYS(MC_BOOL_PRED(global, { return global.state.x > 2; }));
+  auto test = MC_EVENTUALLY_ALWAYS(
+      MC_BOOL_PRED(global, { return global.state.x > 2; }));
   using Engine = model_checker::ActorEngine<MyState, MyTransition>;
 
   auto result = Engine::run(driver, test, {.x = 0});

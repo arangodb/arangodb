@@ -24,8 +24,6 @@
 
 #include <utility>
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
-#include "Replication2/ReplicatedState/Supervision.h"
 #include "Replication2/Helper/AgencyStateBuilder.h"
 #include "Replication2/Helper/AgencyLogBuilder.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
@@ -122,6 +120,40 @@ TEST_F(ReplicatedStateSupervisionSimulationTest2,
   };
 
   auto test = MC_EVENTUALLY_ALWAYS(mcpreds::serverIsLeader("A"));
+  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+  auto result = Engine::run(driver, test, initState);
+  EXPECT_FALSE(result.failed) << *result.failed;
+  std::cout << result.stats << std::endl;
+}
+
+TEST_F(ReplicatedStateSupervisionSimulationTest2,
+       check_state_and_log_kill_any) {
+  AgencyStateBuilder state;
+  state.setId(logId)
+      .setTargetParticipants("A", "B", "C")
+      .setTargetVersion(20)
+      .setTargetConfig(defaultConfig);
+
+  replicated_log::ParticipantsHealth health;
+  health._health.emplace(
+      "A", replicated_log::ParticipantHealth{.rebootId = RebootId(1),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "B", replicated_log::ParticipantHealth{.rebootId = RebootId(1),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "C", replicated_log::ParticipantHealth{.rebootId = RebootId(1),
+                                             .notIsFailed = true});
+  auto initState = AgencyState{.replicatedState = state.get(),
+                               .replicatedLog = std::nullopt,
+                               .health = std::move(health)};
+
+  auto driver = model_checker::ActorDriver{
+      SupervisionActor{}, KillAnyServerActor{}, DBServerActor{"A"},
+      DBServerActor{"B"}, DBServerActor{"C"},
+  };
+
+  auto test = MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth());
   using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
   auto result = Engine::run(driver, test, initState);
   EXPECT_FALSE(result.failed) << *result.failed;
