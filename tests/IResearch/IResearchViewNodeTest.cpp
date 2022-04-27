@@ -1949,8 +1949,9 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.scorers(), cloned.scorers());
       EXPECT_EQ(node.volatility(), cloned.volatility());
       EXPECT_EQ(node.sort(), cloned.sort());
-
       EXPECT_EQ(node.getCost(), cloned.getCost());
+      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
+      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
     }
 
     // clone with properties into another plan
@@ -1977,8 +1978,9 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.volatility(), cloned.volatility());
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
-
       EXPECT_EQ(node.getCost(), cloned.getCost());
+      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
+      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
     }
 
     // clone without properties into another plan
@@ -2003,8 +2005,9 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.volatility(), cloned.volatility());
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
-
       EXPECT_EQ(node.getCost(), cloned.getCost());
+      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
+      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
     }
   }
 
@@ -2048,8 +2051,9 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.scorers(), cloned.scorers());
       EXPECT_EQ(node.volatility(), cloned.volatility());
       EXPECT_EQ(node.sort(), cloned.sort());
-
       EXPECT_EQ(node.getCost(), cloned.getCost());
+      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
+      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
     }
 
     // clone with properties into another plan
@@ -2076,8 +2080,9 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.volatility(), cloned.volatility());
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
-
       EXPECT_EQ(node.getCost(), cloned.getCost());
+      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
+      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
     }
 
     // clone without properties into another plan
@@ -2102,8 +2107,9 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.volatility(), cloned.volatility());
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
-
       EXPECT_EQ(node.getCost(), cloned.getCost());
+      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
+      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
     }
   }
 
@@ -2144,8 +2150,9 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.volatility(), cloned.volatility());
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
-
       EXPECT_EQ(node.getCost(), cloned.getCost());
+      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
+      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
     }
 
     // clone with properties into another plan
@@ -2175,8 +2182,9 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.volatility(), cloned.volatility());
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
-
       EXPECT_EQ(node.getCost(), cloned.getCost());
+      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
+      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
     }
 
     // clone without properties into another plan
@@ -2204,8 +2212,9 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.volatility(), cloned.volatility());
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
-
       EXPECT_EQ(node.getCost(), cloned.getCost());
+      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
+      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
     }
   }
 
@@ -2248,8 +2257,9 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.volatility(), cloned.volatility());
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
-
       EXPECT_EQ(node.getCost(), cloned.getCost());
+      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
+      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
     }
 
     // clone with properties into another plan
@@ -2279,8 +2289,9 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.volatility(), cloned.volatility());
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
-
       EXPECT_EQ(node.getCost(), cloned.getCost());
+      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
+      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
     }
 
     // clone without properties into another plan
@@ -2308,8 +2319,9 @@ TEST_F(IResearchViewNodeTest, clone) {
       EXPECT_EQ(node.volatility(), cloned.volatility());
       EXPECT_EQ(node.options().forceSync, cloned.options().forceSync);
       EXPECT_EQ(node.sort(), cloned.sort());
-
       EXPECT_EQ(node.getCost(), cloned.getCost());
+      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
+      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
     }
   }
 
@@ -2354,6 +2366,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       ASSERT_EQ(varsSetOriginal.size(), varsSetCloned.size());
       EXPECT_EQ(varsSetOriginal[0], varsSetCloned[0]);
       EXPECT_EQ(varsSetOriginal[1], varsSetCloned[1]);
+      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
+      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
     }
 
     // clone with properties into another plan
@@ -2389,6 +2403,8 @@ TEST_F(IResearchViewNodeTest, clone) {
       ASSERT_EQ(varsSetOriginal.size(), varsSetCloned.size());
       EXPECT_NE(varsSetOriginal[0], varsSetCloned[0]);
       EXPECT_NE(varsSetOriginal[1], varsSetCloned[1]);
+      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
+      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
     }
     // clone without properties into another plan
     {
@@ -2421,6 +2437,79 @@ TEST_F(IResearchViewNodeTest, clone) {
       ASSERT_EQ(varsSetOriginal.size(), varsSetCloned.size());
       EXPECT_EQ(varsSetOriginal[0], varsSetCloned[0]);
       EXPECT_EQ(varsSetOriginal[1], varsSetCloned[1]);
+      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
+      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+    }
+  }
+
+  // with scorers sort
+  {
+    arangodb::iresearch::IResearchViewNode node(
+        *query.plan(), arangodb::aql::ExecutionNodeId{42},
+        vocbase,      // database
+        logicalView,  // view
+        outVariable,
+        nullptr,  // no filter condition
+        nullptr,  // no options
+        {});      // no sort condition
+    arangodb::aql::Variable const outNmColPtr("variable100", 100, false);
+    arangodb::aql::Variable const outNmDocId("variable101", 101, false);
+    std::vector<std::pair<size_t, bool>> scorersSort{{0, true}};
+    node.setScorersSort(std::move(scorersSort), 42);
+    auto varsSetOriginal = node.getVariablesSetHere();
+    // clone without properties into the same plan
+    {
+      auto const nextId = node.plan()->nextId();
+      auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
+          *node.clone(query.plan(), true, false));
+      auto varsSetCloned = cloned.getVariablesSetHere();
+      EXPECT_EQ(varsSetCloned, varsSetOriginal);
+      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
+      auto orig = node.getScorersSort();
+      auto clone = cloned.getScorersSort();
+      EXPECT_TRUE(
+          std::equal(orig.begin(), orig.end(), clone.begin(), clone.end()));
+    }
+    // clone with properties into another plan
+    {
+      // another dummy query
+      MockQuery otherQuery(
+          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::aql::QueryString(std::string_view("RETURN 1")));
+      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+
+      node.plan()->nextId();
+      auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
+          *node.clone(otherQuery.plan(), true, false));
+      auto varsSetCloned = cloned.getVariablesSetHere();
+      ASSERT_EQ(varsSetOriginal.size(), varsSetCloned.size());
+      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
+      auto orig = node.getScorersSort();
+      auto clone = cloned.getScorersSort();
+      EXPECT_TRUE(
+          std::equal(orig.begin(), orig.end(), clone.begin(), clone.end()));
+    }
+    // clone without properties into another plan
+    {
+      // another dummy query
+      MockQuery otherQuery(
+          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::aql::QueryString(std::string_view("RETURN 1")));
+      otherQuery.prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+
+      node.plan()->nextId();
+      auto& cloned = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(
+          *node.clone(otherQuery.plan(), true, true));
+      auto varsSetCloned = cloned.getVariablesSetHere();
+      ASSERT_EQ(varsSetOriginal.size(), varsSetCloned.size());
+      EXPECT_EQ(node.getScorersSortLimit(), cloned.getScorersSortLimit());
+      EXPECT_EQ(node.getScorersSort().size(), cloned.getScorersSort().size());
+      auto orig = node.getScorersSort();
+      auto clone = cloned.getScorersSort();
+      EXPECT_TRUE(
+          std::equal(orig.begin(), orig.end(), clone.begin(), clone.end()));
     }
   }
 }

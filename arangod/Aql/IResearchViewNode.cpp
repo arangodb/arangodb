@@ -1522,6 +1522,8 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
   }
   node->_noMaterialization = _noMaterialization;
   node->_outNonMaterializedViewVars = std::move(outNonMaterializedViewVars);
+  node->setScorersSort(std::vector<std::pair<size_t, bool>>(_scorersSort),
+                       _scorersSortLimit);
   return cloneHelper(std::move(node), withDependencies, withProperties);
 }
 
