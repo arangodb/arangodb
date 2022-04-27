@@ -1386,6 +1386,7 @@ authRouter.get('/g6graph/:name', function (req, res) {
          nodeObj = {
             id: node._id,
             label: nodeLabel,
+            size: nodeSize || 40,
             style: {
               label: {
                 value: nodeLabel
