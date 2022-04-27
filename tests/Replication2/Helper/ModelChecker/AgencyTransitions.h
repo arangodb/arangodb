@@ -95,10 +95,20 @@ struct DBServerCommitConfigAction {
   replication2::LogTerm term;
 };
 
+struct ReplaceServerTargetState {
+  ReplaceServerTargetState(replication2::ParticipantId oldServer,
+                           replication2::ParticipantId newServer);
+  void apply(AgencyState& agency) const;
+  auto toString() const -> std::string;
+  replication2::ParticipantId oldServer;
+  replication2::ParticipantId newServer;
+};
+
 using AgencyTransition =
     std::variant<SupervisionStateAction, SupervisionLogAction,
                  DBServerSnapshotCompleteAction, DBServerReportTermAction,
-                 DBServerCommitConfigAction, KillServerAction>;
+                 DBServerCommitConfigAction, KillServerAction,
+                 ReplaceServerTargetState>;
 
 auto operator<<(std::ostream& os, AgencyTransition const& a) -> std::ostream&;
 }  // namespace arangodb::test

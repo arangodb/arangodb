@@ -244,4 +244,39 @@ auto KillAnyServerActor::expand(AgencyState const& s,
   }
   return result;
 }
+ReplaceAnyServerActor::ReplaceAnyServerActor(ParticipantId newServer)
+    : newServer(std::move(newServer)) {}
+
+auto ReplaceAnyServerActor::step(AgencyState const& agency) const
+    -> std::vector<AgencyTransition> {
+  if (!agency.replicatedState) {
+    return {};
+  }
+
+  auto const& target = agency.replicatedState->target;
+  TRI_ASSERT(!target.participants.contains(newServer));
+  auto result = std::vector<AgencyTransition>{};
+  result.reserve(target.participants.size());
+  for (auto const& [p, stat] : target.participants) {
+    result.emplace_back(ReplaceServerTargetState{p, newServer});
+  }
+
+  return result;
+}
+ReplaceSpecificServerActor::ReplaceSpecificServerActor(ParticipantId oldServer,
+                                                       ParticipantId newServer)
+    : oldServer(std::move(oldServer)), newServer(std::move(newServer)) {}
+
+auto ReplaceSpecificServerActor::step(AgencyState const& agency) const
+    -> std::vector<AgencyTransition> {
+  if (!agency.replicatedState) {
+    return {};
+  }
+
+  auto const& target = agency.replicatedState->target;
+  TRI_ASSERT(!target.participants.contains(newServer));
+  TRI_ASSERT(target.participants.contains(oldServer));
+
+  return {ReplaceServerTargetState{oldServer, newServer}};
+}
 }  // namespace arangodb::test

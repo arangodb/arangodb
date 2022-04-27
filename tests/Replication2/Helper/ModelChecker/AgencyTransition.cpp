@@ -20,6 +20,8 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <fmt/core.h>
+
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/ReplicatedState/Supervision.h"
@@ -168,6 +170,22 @@ void DBServerCommitConfigAction::apply(AgencyState& agency) const {
 auto operator<<(std::ostream& os, AgencyTransition const& a) -> std::ostream& {
   return os << std::visit([](auto const& action) { return action.toString(); },
                           a);
+}
+
+ReplaceServerTargetState::ReplaceServerTargetState(ParticipantId oldServer,
+                                                   ParticipantId newServer)
+    : oldServer(std::move(oldServer)), newServer(std::move(newServer)) {}
+
+auto ReplaceServerTargetState::toString() const -> std::string {
+  return fmt::format("replacing {} with {}", oldServer, newServer);
+}
+
+void ReplaceServerTargetState::apply(AgencyState& agency) const {
+  TRI_ASSERT(agency.replicatedState.has_value());
+  auto& target = agency.replicatedState->target;
+  target.participants.erase(oldServer);
+  target.participants[newServer];
+  target.version.emplace(target.version.value_or(0) + 1);
 }
 
 }  // namespace arangodb::test

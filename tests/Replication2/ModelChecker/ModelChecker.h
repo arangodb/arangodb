@@ -257,12 +257,12 @@ struct SimulationEngine {
             registerFingerprint(std::move(state), nextStep->observer);
         // add previous step information
         step->registerPreviousStep(nextStep, std::move(transition));
-        step->depth = nextStep->depth + 1;
         // TODO loop detection?
         if (!wasNewState) {
           result.stats.eliminatedStates += 1;
           continue;  // ignore
         }
+        step->depth = nextStep->depth + 1;
 
         result.stats.uniqueStates += 1;
 
@@ -281,7 +281,8 @@ struct SimulationEngine {
 
       auto now = clock::now();
       if ((now - last) > std::chrono::seconds{5}) {
-        std::cout << result.stats << std::endl;
+        std::cout << result.stats << " current depth = " << nextStep->depth
+                  << std::endl;
         last = now;
       }
     }

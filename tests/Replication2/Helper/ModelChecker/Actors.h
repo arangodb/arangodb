@@ -66,6 +66,44 @@ struct ActorBase {
   }
 };
 
+struct OnceInternalState {
+  bool wasTriggered = false;
+  friend auto operator==(OnceInternalState const& lhs,
+                         OnceInternalState const& rhs) noexcept
+      -> bool = default;
+  friend auto operator<<(std::ostream& os, OnceInternalState const& s) noexcept
+      -> std::ostream& {
+    return os << "was triggered = " << std::boolalpha << s.wasTriggered;
+  }
+  friend auto hash_value(OnceInternalState const& i) noexcept -> std::size_t {
+    return boost::hash_value(i.wasTriggered);
+  }
+};
+
+template<typename Derived>
+struct OnceActorBase {
+  using InternalState = OnceInternalState;
+
+  auto expand(AgencyState const& s, InternalState const& i)
+      -> std::vector<std::tuple<AgencyTransition, AgencyState, InternalState>> {
+    if (i.wasTriggered) {
+      return {};
+    }
+    auto result =
+        std::vector<std::tuple<AgencyTransition, AgencyState, InternalState>>{};
+
+    auto actions = reinterpret_cast<Derived const&>(*this).step(s);
+    for (auto& action : actions) {
+      auto newState = s;
+      std::visit([&](auto& action) { action.apply(newState); }, action);
+      result.emplace_back(std::move(action), std::move(newState),
+                          InternalState{.wasTriggered = true});
+    }
+
+    return result;
+  }
+};
+
 struct SupervisionActor : ActorBase<SupervisionActor> {
   static auto stepReplicatedState(AgencyState const& agency)
       -> std::optional<AgencyTransition>;
@@ -120,6 +158,21 @@ struct KillAnyServerActor {
 
   auto expand(AgencyState const& s, InternalState const& i)
       -> std::vector<std::tuple<AgencyTransition, AgencyState, InternalState>>;
+};
+
+struct ReplaceAnyServerActor : OnceActorBase<ReplaceAnyServerActor> {
+  explicit ReplaceAnyServerActor(replication2::ParticipantId newServer);
+  auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
+
+  replication2::ParticipantId newServer;
+};
+struct ReplaceSpecificServerActor : OnceActorBase<ReplaceSpecificServerActor> {
+  explicit ReplaceSpecificServerActor(replication2::ParticipantId oldServer,
+                                      replication2::ParticipantId newServer);
+  auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
+
+  replication2::ParticipantId oldServer;
+  replication2::ParticipantId newServer;
 };
 
 }  // namespace arangodb::test
