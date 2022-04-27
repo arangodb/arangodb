@@ -68,8 +68,8 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 const sharedConf = Object.assign({}, {
-  'server.authentication-system-only': 'true',
-  'server.local-authentication': true,
+  'server.authentication-system-only': true,
+  'server.local-authentication': 'true',
   'javascript.allow-admin-execute': 'true',
 
   'ldap.enabled': true,
@@ -196,9 +196,9 @@ const tests = {
 
 function parseOptions(options, ldap2) {
   let verbose = {};
-  //if (options.extremeVerbosity) {
+  if (options.extremeVerbosity) {
     verbose['log.level'] = 'ldap=trace';
-  //}
+  }
 
   let toReturn = tests;
 
