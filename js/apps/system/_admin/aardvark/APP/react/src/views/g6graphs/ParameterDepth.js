@@ -8,10 +8,13 @@ const ParameterDepth = () => {
   const [depth, setDepth] = useState(urlParameters.depth);
 
   const NEWURLPARAMETERS = { ...urlParameters };
+
+  /*
+  <h5>urlParameters (context value): {JSON.stringify(urlParameters)}</h5>
+  */
   
   return (
     <>
-      <h5>urlParameters (context value): {JSON.stringify(urlParameters)}</h5>
       <form>
         <label>
           Depth:

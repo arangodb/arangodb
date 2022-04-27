@@ -8,10 +8,13 @@ const ParameterEdgeLabel = () => {
   const [edgeLabel, setEdgeLabel] = useState(urlParameters.edgeLabel);
 
   const NEWURLPARAMETERS = { ...urlParameters };  
+
+  /*
+  <h5>urlParameters (in ParameterEdgeLabel): {JSON.stringify(urlParameters)}</h5>
+  */
   
   return (
     <>
-      <h5>urlParameters (in ParameterEdgeLabel): {JSON.stringify(urlParameters)}</h5>
       <form>
         <label>
           edgeLabel:

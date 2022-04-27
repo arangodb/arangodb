@@ -8,10 +8,13 @@ const ParameterNodeLabel = () => {
   const [nodeLabel, setNodeLabel] = useState(urlParameters.nodeLabel);
 
   const NEWURLPARAMETERS = { ...urlParameters };
+
+  /*
+  <h5>urlParameters (in ParameterNodeLabel): {JSON.stringify(urlParameters)}</h5>
+  */
   
   return (
     <>
-      <h5>urlParameters (in ParameterNodeLabel): {JSON.stringify(urlParameters)}</h5>
       <form>
         <label>
           nodeLabel:

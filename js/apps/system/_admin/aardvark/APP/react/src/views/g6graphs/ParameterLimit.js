@@ -8,10 +8,13 @@ const ParameterLimit = () => {
   const [limit, setLimit] = useState(urlParameters.limit);
 
   const NEWURLPARAMETERS = { ...urlParameters };
+
+  /*
+  <h5>urlParameters (in ParameterLimit): {JSON.stringify(urlParameters)}</h5>
+  */
   
   return (
     <>
-      <h5>urlParameters (in ParameterLimit): {JSON.stringify(urlParameters)}</h5>
       <form>
         <label>
           Limit:

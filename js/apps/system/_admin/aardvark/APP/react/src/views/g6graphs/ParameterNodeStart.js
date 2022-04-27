@@ -10,12 +10,17 @@ const ParameterNodeStart = ({ nodes, onNodeSelect }) => {
 
   const NEWURLPARAMETERS = { ...urlParameters };
 
-  return (
-    <>
-      <h5>urlParameters (in ParameterNodeStart): {JSON.stringify(urlParameters)}</h5>
+  /*
+  <h5>urlParameters (in ParameterNodeStart): {JSON.stringify(urlParameters)}</h5>
       <p>nodeStart: {JSON.stringify(urlParameters.nodeStart)}</p>
       <p>depth: {JSON.stringify(urlParameters.depth)}</p>
       <p>limit: {JSON.stringify(urlParameters.limit)}</p>
+      <p>nodeLabelByCollection: {JSON.stringify(urlParameters.nodeLabelByCollection)}</p>
+      <p>edgeLabelByCollection: {JSON.stringify(urlParameters.edgeLabelByCollection)}</p>
+      */
+
+  return (
+    <>
       <div>
       <label>
       <div className="node-list">
