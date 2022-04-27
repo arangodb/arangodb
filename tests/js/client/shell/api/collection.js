@@ -796,29 +796,18 @@ function loadingSuite () {
 
 function unloadingSuite () {
   let cn = "UnitTestsCollectionBasics";
+  let cid;
   return {
-    test_unload_a_collection_by_identifier: function() {
+    setUp: function() {
       db._drop(cn);
-      let cid = db._create(cn);
+      cid = db._create(cn);
+    },
 
-      let cmd = api + "/" + cn + "/unload";
-      let doc = arango.PUT_RAW(cmd, '');
-
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(doc.parsedBody['id'], cid._id);
-      assertEqual(doc.parsedBody['name'], cn);
-      assertEqual(doc.parsedBody['status'], 3);
-
+    tearDown: function() {
       db._drop(cn);
     },
 
-    test_unload_a_collection_by_name: function() {
-      db._drop(cn);
-      let cid = db._create(cn);
-
+    test_unload_a_collection_by_identifier: function() {
       let cmd = api + "/" + cn + "/unload";
       let doc = arango.PUT_RAW(cmd, '');
 
@@ -829,8 +818,19 @@ function unloadingSuite () {
       assertEqual(doc.parsedBody['id'], cid._id);
       assertEqual(doc.parsedBody['name'], cn);
       assertEqual(doc.parsedBody['status'], 3);
+    },
 
-      db._drop(cn);
+    test_unload_a_collection_by_name: function() {
+      let cmd = api + "/" + cn + "/unload";
+      let doc = arango.PUT_RAW(cmd, '');
+
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['code'], 200);
+      assertEqual(doc.parsedBody['id'], cid._id);
+      assertEqual(doc.parsedBody['name'], cn);
+      assertEqual(doc.parsedBody['status'], 3);
     },
   };
 }
