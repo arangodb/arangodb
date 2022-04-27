@@ -50,9 +50,11 @@ void UnshackledConditionVariable::wait(
     std::unique_lock<UnshackledMutex>& lock) noexcept try {
   {
     auto guard = std::unique_lock(_mutex);
+    // unlock before suspending the thread
     lock.unlock();
     _cv.wait(guard);
-  }
+  }  // to prevent deadlocks, `guard` must not be locked while reacquiring
+     // `lock`
   lock.lock();
 } catch (...) {
   // We cannot handle any exceptions here.
@@ -75,9 +77,11 @@ auto UnshackledConditionVariable::wait_until(
   auto res = std::cv_status{};
   {
     auto guard = std::unique_lock(_mutex);
+    // unlock before suspending the thread
     lock.unlock();
     res = _cv.wait_until(guard, timeout_time);
-  }
+  }  // to prevent deadlocks, `guard` must not be locked while reacquiring
+     // `lock`
   lock.lock();
 
   return res;

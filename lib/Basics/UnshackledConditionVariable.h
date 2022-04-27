@@ -72,17 +72,15 @@ class UnshackledConditionVariable {
 template<class Predicate>
 void UnshackledConditionVariable::wait(std::unique_lock<UnshackledMutex>& lock,
                                        Predicate stop_waiting) noexcept try {
-  auto guard = std::unique_lock(_mutex);
-
-  while (!stop_waiting()) {
+  TRI_ASSERT(lock.owns_lock());
+  // guard must be locked while checking the predicate
+  for (auto guard = std::unique_lock(_mutex); !stop_waiting(); guard.lock()) {
     // unlock before suspending the thread
     lock.unlock();
     _cv.wait(guard);
     // to prevent deadlocks, `guard` must not be locked while reacquiring `lock`
     guard.unlock();
     lock.lock();
-    // guard must be locked while checking the predicate
-    guard.lock();
   }
 } catch (...) {
   // We cannot handle any exceptions here.
@@ -103,26 +101,25 @@ auto UnshackledConditionVariable::wait_until(
     std::unique_lock<std::mutex>& lock,
     std::chrono::time_point<Clock, Duration> const& timeout_time,
     Predicate stop_waiting) noexcept -> bool try {
-  auto guard = std::unique_lock(_mutex);
-
-  while (!stop_waiting()) {
+  TRI_ASSERT(lock.owns_lock());
+  // guard must be locked while checking the predicate
+  for (auto guard = std::unique_lock(_mutex); !stop_waiting(); guard.lock()) {
     // unlock before suspending the thread
     lock.unlock();
-    if (wait_until(guard, timeout_time) == std::cv_status::timeout) {
+    if (_cv.wait_until(guard, timeout_time) == std::cv_status::timeout) {
       // to prevent deadlocks, `guard` must not be locked while reacquiring
       // `lock`
       guard.unlock();
       lock.lock();
       // this is the only case where the predicate is not checked under _mutex;
-      // because it is not necessary here to establish an order with notify, as
-      // we're no longer waiting.
+      // because here it is no longer necessary to establish an order with
+      // notify, as we're no longer waiting.
       return stop_waiting();
     }
-    // to prevent deadlocks, `guard` must not be locked while reacquiring `lock`
+    // to prevent deadlocks, `guard` must not be locked while reacquiring
+    // `lock`
     guard.unlock();
     lock.lock();
-    // guard must be locked while checking the predicate
-    guard.lock();
   }
 
   return true;
