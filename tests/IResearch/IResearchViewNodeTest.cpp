@@ -1265,7 +1265,6 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     auto const setHere = node.getVariablesSetHere();
     EXPECT_EQ(3, setHere.size());
     EXPECT_FALSE(node.options().forceSync);
-
     EXPECT_EQ(0., node.getCost().estimatedCost);    // no dependencies
     EXPECT_EQ(0, node.getCost().estimatedNrItems);  // no dependencies
     EXPECT_EQ(node.options().countApproximate,
@@ -1277,6 +1276,36 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
     EXPECT_TRUE(actualScorersSort[0].second);
     EXPECT_EQ(1, actualScorersSort[1].first);
     EXPECT_FALSE(actualScorersSort[1].second);
+  }
+
+    // no options with invalid index scorersSort
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+        "{ \"id\":42, \"depth\":0, \"totalNrRegs\":0, \"varInfoList\":[], "
+        "\"nrRegs\":[], \"nrRegsHere\":[], \"regsToClear\":[], "
+        "\"varsUsedLaterStack\":[[]], \"varsValid\":[], \"outVariable\": { "
+        "\"name\":\"variable\", \"id\":0 }, \"viewId\": \"" +
+        std::to_string(logicalView->id().id()) +
+        "\", \"scorersSortLimit\":42, \"scorersSort\":[{\"index\":10, "
+        "\"asc\":true}, {\"index\":1, \"asc\":false}], "
+        "\"scorers\": [ { \"id\": 1, \"name\": \"5\", \"node\": { "
+        "\"type\": \"function call\", \"typeID\": 47, \"name\": \"TFIDF\", "
+        "\"subNodes\": [{\"type\": \"array\", \"typeID\": 41, \"sorted\": false, "
+        "\"subNodes\": [{\"type\": \"reference\", \"typeID\": 45, "
+        "\"name\": \"d\",\"id\": 0 }]}]}}, "
+        "{ \"id\": 2, \"name\": \"5\", \"node\": { "
+        "\"type\": \"function call\", \"typeID\": 47, \"name\": \"BM25\", "
+        "\"subNodes\": [{\"type\": \"array\", \"typeID\": 41, \"sorted\": false, "
+        "\"subNodes\": [{\"type\": \"reference\", \"typeID\": 45, "
+        "\"name\": \"d\",\"id\": 0 }]}]}}] "
+        " }");
+    try {
+      arangodb::iresearch::IResearchViewNode node(*query.plan(),  // plan
+                                                  json->slice());
+      EXPECT_TRUE(false);
+    } catch (arangodb::basics::Exception const& ex) {
+      EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, ex.code());
+    }
   }
 
 
