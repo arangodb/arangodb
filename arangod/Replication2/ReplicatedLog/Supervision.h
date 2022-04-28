@@ -87,4 +87,10 @@ auto checkReplicatedLog(LogTarget const& target,
                         std::optional<LogCurrent> const& current,
                         ParticipantsHealth const& health) -> Action;
 
+auto executeCheckReplicatedLog(DatabaseID const& database,
+                               std::string const& idString, Log log,
+                               ParticipantsHealth const& health,
+                               arangodb::agency::envelope envelope) noexcept
+    -> arangodb::agency::envelope;
+
 }  // namespace arangodb::replication2::replicated_log

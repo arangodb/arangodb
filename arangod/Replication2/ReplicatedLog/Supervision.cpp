@@ -27,6 +27,8 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
+#include "Basics/TimeString.h"
+#include "Agency/AgencyPaths.h"
 #include "Random/RandomGenerator.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -600,6 +602,61 @@ auto checkReplicatedLog(LogTarget const& target,
     // reported?
     return EmptyAction("There was nothing to do.");
   }
+}
+
+// TODO: remove once refactored
+using namespace arangodb::cluster::paths;
+
+auto executeCheckReplicatedLog(DatabaseID const& dbName,
+                               std::string const& idString, Log log,
+                               ParticipantsHealth const& health,
+                               arangodb::agency::envelope envelope) noexcept
+    -> arangodb::agency::envelope {
+  auto const now = std::chrono::system_clock::now();
+  auto const& target = log.target;
+  auto const& plan = log.plan;
+  auto const& current = log.current;
+
+  auto maybeAction =
+      std::invoke([&, &dbName = dbName]() -> std::optional<Action> {
+        try {
+          return checkReplicatedLog(log.target, log.plan, log.current, health);
+        } catch (std::exception const& err) {
+          LOG_TOPIC("576c1", ERR, Logger::REPLICATION2)
+              << "Supervision caught exception in checkReplicatedLog for "
+                 "replicated log "
+              << dbName << "/" << log.target.id << ": " << err.what();
+          return std::nullopt;
+        }
+      });
+
+  if (maybeAction) {
+    auto const& action = *maybeAction;
+
+    if (target.supervision.has_value() &&
+        target.supervision->maxActionsTraceLength > 0) {
+      envelope = envelope.write()
+                     .push_queue_emplace(
+                         aliases::current()
+                             ->replicatedLogs()
+                             ->database(dbName)
+                             ->log(idString)
+                             ->actions()
+                             ->str(),
+                         [&](velocypack::Builder& b) {
+                           VPackObjectBuilder ob(&b);
+                           b.add("time", VPackValue(timepointToString(now)));
+                           b.add(VPackValue("desc"));
+                           arangodb::replication2::replicated_log::toVelocyPack(
+                               action, b);
+                         },
+                         target.supervision->maxActionsTraceLength)
+                     .end();
+    }
+    envelope = arangodb::replication2::replicated_log::execute(
+        action, dbName, target.id, plan, current, std::move(envelope));
+  }
+  return envelope;
 }
 
 }  // namespace arangodb::replication2::replicated_log
