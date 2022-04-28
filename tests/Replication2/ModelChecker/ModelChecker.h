@@ -30,6 +30,7 @@
 #include <deque>
 #include <iostream>
 #include <variant>
+#include <random>
 
 #include <boost/container_hash/hash_fwd.hpp>
 
@@ -87,6 +88,12 @@ struct Stats {
   std::size_t eliminatedStates;
   std::size_t discoveredStates;
   std::size_t finalStates;
+  std::size_t dismissedStates;
+};
+
+struct RandomizeSearchParameter {
+  std::uint64_t seed;
+  std::size_t maxActiveStates;
 };
 
 auto operator<<(std::ostream& os, Stats const& stats) -> std::ostream&;
@@ -285,6 +292,106 @@ struct SimulationEngine {
         last = now;
       }
     }
+    return result;
+  }
+
+  template<typename Driver, typename Observer>
+  static auto runRandomized(Driver& driver, Observer initialObserver,
+                            State initialState,
+                            RandomizeSearchParameter const& params) {
+    Result<Observer> result;
+    std::seed_seq seedSeq{params.seed};
+    std::mt19937_64 rd{seedSeq};
+
+    std::size_t nextUniqueId{0};
+    std::vector<std::shared_ptr<Step<Observer>>> activeSteps;
+
+    auto const registerFingerprint = [&](State state, Observer observer)
+        -> std::pair<bool, std::shared_ptr<Step<Observer>>> {
+      auto step = std::make_shared<Step<Observer>>(
+          std::move(state), ++nextUniqueId, std::move(observer));
+      auto [iter, inserted] = result.fingerprints.emplace(step);
+      return {inserted, *iter};
+    };
+
+    using clock = std::chrono::steady_clock;
+    auto last = clock::now();
+
+    {
+      auto [inserted, step] = registerFingerprint(std::move(initialState),
+                                                  std::move(initialObserver));
+      auto checkResult = step->observer.check(step->state);
+      if (isPrune(checkResult)) {
+        return result;
+      } else if (isError(checkResult)) {
+        result.failed.emplace(step, checkResult.asError());
+        return result;
+      }
+      activeSteps.push_back(std::move(step));
+    }
+    while (not activeSteps.empty()) {
+      // expand all steps into a separate list
+      std::vector<std::shared_ptr<Step<Observer>>> newActiveSteps;
+
+      for (auto const& nextStep : activeSteps) {
+        auto newStates = driver.expand(nextStep->state);
+        if (newStates.empty()) {
+          result.stats.finalStates += 1;
+          result.finalStates.emplace_back(nextStep);
+          if (auto checkResult = nextStep->observer.finalStep(nextStep->state);
+              isError(checkResult)) {
+            result.failed.emplace(nextStep, checkResult.asError());
+            return result;
+          }
+        }
+        for (auto const& [transition, state] : newStates) {
+          result.stats.discoveredStates += 1;
+          // fingerprint this state
+          auto [wasNewState, step] =
+              registerFingerprint(std::move(state), nextStep->observer);
+          // add previous step information
+          step->registerPreviousStep(nextStep, std::move(transition));
+          // TODO loop detection?
+          if (!wasNewState) {
+            result.stats.eliminatedStates += 1;
+            continue;  // ignore
+          }
+          step->depth = nextStep->depth + 1;
+
+          result.stats.uniqueStates += 1;
+
+          // run the check function for this step
+          auto checkResult = step->observer.check(step->state);
+          if (isPrune(checkResult)) {
+            continue;
+          } else if (isError(checkResult)) {
+            result.failed.emplace(step, checkResult.asError());
+            return result;
+          }
+
+          // put step into active steps
+          newActiveSteps.push_back(step);
+        }
+      }
+
+      std::vector<std::shared_ptr<Step<Observer>>> selectedActiveSteps;
+      selectedActiveSteps.reserve(params.maxActiveStates);
+
+      std::sample(newActiveSteps.begin(), newActiveSteps.end(),
+                  std::back_inserter(selectedActiveSteps),
+                  params.maxActiveStates, rd);
+      std::swap(activeSteps, selectedActiveSteps);
+      result.stats.dismissedStates +=
+          newActiveSteps.size() - selectedActiveSteps.size();
+
+      auto now = clock::now();
+      if ((now - last) > std::chrono::seconds{5}) {
+        std::cout << result.stats << " active steps = " << activeSteps.size()
+                  << std::endl;
+        last = now;
+      }
+    }
+
     return result;
   }
 };

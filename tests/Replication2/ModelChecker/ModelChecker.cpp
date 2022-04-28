@@ -30,5 +30,6 @@ auto model_checker::operator<<(std::ostream& os, Stats const& stats)
   return os << "unique: " << stats.uniqueStates
             << " eliminated: " << stats.eliminatedStates
             << " discovered: " << stats.discoveredStates
-            << " final: " << stats.finalStates;
+            << " final: " << stats.finalStates
+            << " dismissed: " << stats.dismissedStates;
 }

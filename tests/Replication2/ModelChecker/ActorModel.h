@@ -110,6 +110,18 @@ struct ActorEngine {
         driver, std::forward<Observer>(observer),
         driver.template initialState<Transition>(std::move(initState)));
   }
+
+  template<typename... Actors, typename Observer>
+  static auto runRandomized(ActorDriver<Actors...>& driver, Observer&& observer,
+                            State initState,
+                            RandomizeSearchParameter const& params) {
+    using GlobalState = GlobalActorState<State, Transition, Actors...>;
+    using BaseEngine = SimulationEngine<GlobalState, Transition>;
+
+    return BaseEngine::runRandomized(
+        driver, std::forward<Observer>(observer),
+        driver.template initialState<Transition>(std::move(initState)), params);
+  }
 };
 
 }  // namespace arangodb::test::model_checker
