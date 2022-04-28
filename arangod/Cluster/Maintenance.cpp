@@ -920,8 +920,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
                                               ->vec());
       if (planLogInDatabaseSlice.isObject()) {
         for (auto [key, value] : VPackObjectIterator(planLogInDatabaseSlice)) {
-          auto spec =
-              agency::LogPlanSpecification(agency::from_velocypack, value);
+          auto spec = agency::LogPlanSpecification::fromVelocyPack(value);
           planLogsInDatabase.emplace(spec.id, std::move(spec));
         }
       }

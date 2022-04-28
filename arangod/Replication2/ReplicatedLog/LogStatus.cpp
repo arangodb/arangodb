@@ -364,7 +364,7 @@ auto GlobalStatus::SupervisionStatus::fromVelocyPack(
   auto connection = Connection::fromVelocyPack(s.get("connection"));
   auto response = std::optional<agency::LogCurrentSupervision>{};
   if (auto rs = s.get("response"); !rs.isNone()) {
-    response = agency::LogCurrentSupervision{agency::from_velocypack, rs};
+    response = agency::LogCurrentSupervision::fromVelocyPack(rs);
   }
   return SupervisionStatus{.connection = std::move(connection),
                            .response = std::move(response)};
