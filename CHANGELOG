@@ -6,6 +6,50 @@ v3.9.2 (XXXX-XX-XX)
   _rev for the inserted/modified/removed documents, which would be ignored 
   by the leader anyway.
 
+* Fix: for the Windows build, the new Snappy version, which was introduced in
+  3.9, generated code that contained BMI2 instructions which where introduced
+  with the Intel Haswell architecture. However, our target architecture for 3.9
+  is actually Sandy Bridge, which predates Haswell. Running the build on these
+  older CPUs thus resulted in illegal instruction exceptions.
+
+* Increase internal transaction lock timeout on followers during cluster write
+  operations. Although writes to the same keys on followers should be serialized
+  by the key locks held on the leader, it is still possible that the global
+  transaction lock striped mutex is a source of contention and that concurrent
+  write operations time out while waiting to acquire this global mutex. The lock
+  timeout on followers is now significantly increased to make this very
+  unlikely.
+
+* Updated arangosync to v2.9.0.
+
+* Improve validation for variables used in the `KEEP` part of AQL COLLECT
+  operations. Previously referring to a variable that was introduced by the
+  COLLECT itself from out of the KEEP part triggered an internal error. The case
+  is detected properly now and handled with a descriptive error message.
+
+* Added startup option `--rocksdb.transaction-lock-stripes` to configure the
+  number of lock stripes to be used by RocksDB transactions. The option defaults
+  to the number of available cores, but is bumped to a value of 16 if the number
+  of cores is lower.
+
+* Fix deadlocked shard synchronisations when planned shard leader has not yet
+  taken over leadership.
+
+* Added an IO heartbeat which checks that the underlying volume is writable with
+  reasonable performance. The test is done every 15 seconds and can be
+  explicitly switched off. New metrics to give visibility if the test fails.
+
+* Fix lock order in Agent::advanceCommitIndex for State's _logLock and Agent's
+  _waitForCV.
+
+* BugFix (enterprise-only): (BTS-787) In a hybrid disjoint SmartGraph, having
+  more than one relation, if you add a new vertex collection to a Smart -> Smart
+  edge relation this vertex collection was rejected with "has to be satellite"
+  error.
+  Now the collection is created as a SmartVertexCollection as desired.
+
+* Resync follower shard after a follower restart immediately and not lazily.
+
 
 v3.9.1 (2022-04-04)
 -------------------
