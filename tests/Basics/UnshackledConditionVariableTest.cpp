@@ -25,8 +25,6 @@
 
 #include <Basics/UnshackledConditionVariable.h>
 
-#include "ThreadTestHelper.h"
-
 #include <fmt/core.h>
 
 #include <array>

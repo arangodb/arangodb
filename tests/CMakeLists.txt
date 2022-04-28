@@ -201,7 +201,6 @@ set(ARANGODB_TESTS_SOURCES
   Basics/SpinLockTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
-  Basics/ThreadTestHelper.cpp Basics/ThreadTestHelper.h
   Basics/UnshackledConditionVariableTest.cpp
   Basics/UnshackledMutexTest.cpp
   Basics/VelocyPackHelperTest.cpp
