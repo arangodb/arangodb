@@ -32,7 +32,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
-
+namespace arangodb {
 namespace trx {
 struct BuilderTrx : public arangodb::transaction::Methods {
   BuilderTrx(
@@ -57,8 +57,6 @@ struct BuilderTrx : public arangodb::transaction::Methods {
 };
 }  // namespace trx
 
-namespace arangodb {
-
 class SharedWorkEnv;
 
 class RocksDBCollection;
@@ -66,34 +64,37 @@ class RocksDBCollection;
 class IndexCreatorThread final : public Thread {
  public:
   IndexCreatorThread(bool isUniqueIndex, bool isForeground,
-                     uint64_t lastDocIdInRange,
                      std::atomic<uint64_t>& docsProcessed,
                      std::shared_ptr<SharedWorkEnv> sharedWorkEnv,
                      RocksDBCollection* rcoll, rocksdb::DB* rootDB,
-                     RocksDBIndex& ridx, trx::BuilderTrx& trx);
+                     RocksDBIndex& ridx, rocksdb::Snapshot const* snap);
 
   ~IndexCreatorThread() { Thread::shutdown(); }
+  void beginShutdown() override;
 
+ protected:
   void run() override;
 
+ private:
   Result commitInsertions();
 
  private:
   bool _isUniqueIndex = false;
   bool _isForeground = false;
-  uint64_t const _lastDocIdInRange;
   std::atomic<uint64_t>& _docsProcessed;
   std::shared_ptr<SharedWorkEnv> _sharedWorkEnv;
   RocksDBCollection* _rcoll;
   rocksdb::DB* _rootDB;
   RocksDBIndex& _ridx;
-  trx::BuilderTrx& _trx;
+  rocksdb::Snapshot const* _snap;
+  trx::BuilderTrx _trx;
   RocksDBTransactionCollection* _trxColl;
 
   // ptrs because of abstract class, have to know which type to craete
   std::unique_ptr<rocksdb::WriteBatchBase> _batch;
   std::unique_ptr<RocksDBMethods> _methods;
   rocksdb::ReadOptions _readOptions;
+  arangodb::AccessMode::Type _mode;
 };
 
 /// Dummy index class that contains the logic to build indexes
@@ -193,24 +194,20 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
 using WorkItem = std::pair<uint64_t, uint64_t>;
 class SharedWorkEnv {
-  // will change here for std::condition_variable
  public:
-  SharedWorkEnv(std::deque<WorkItem>& workItems)
-      : _ranges(std::move(workItems)) {}
-  void markAsDone() {
-    std::unique_lock<std::mutex> lock(mtx);
-    _done = true;
-  }
+  SharedWorkEnv(size_t numThreads, std::deque<WorkItem>& workItems)
+      : _numThreads(numThreads), _ranges(std::move(workItems)) {}
+  void markAsDone() { std::unique_lock<std::mutex> lock(_mtx); }
 
   Result result() {
-    std::unique_lock<std::mutex> lock(mtx);
+    std::unique_lock<std::mutex> lock(_mtx);
     return _res;
   }
 
   void registerError(Result res) {
     TRI_ASSERT(res.fail());
     {
-      std::unique_lock<std::mutex> lock(mtx);
+      std::unique_lock<std::mutex> lock(_mtx);
       if (_res.ok()) {
         _res = std::move(res);
       }
@@ -220,7 +217,7 @@ class SharedWorkEnv {
   }
 
   bool fetchWorkItem(WorkItem& data) {
-    std::unique_lock<std::mutex> lock(mtx);
+    std::unique_lock<std::mutex> lock(_mtx);
     if (_ranges.empty()) {
       return false;
     }
@@ -232,35 +229,55 @@ class SharedWorkEnv {
 
   void enqueueWorkItem(WorkItem item) {
     {
-      std::unique_lock<std::mutex> lock(mtx);
+      std::unique_lock<std::mutex> lock(_mtx);
       _ranges.emplace_back(std::move(item));
     }
-    _condition.notify_one();
+    _condition.notify_all();
   }
 
   void waitForWork() {
-    std::unique_lock<std::mutex> lock(mtx);
-    _condition.wait(lock);
+    std::unique_lock<std::mutex> lock(_mtx);
+    _numWaitingThreads++;
+    if (_numWaitingThreads == _numThreads && _ranges.empty()) {
+      _done = true;
+      _numWaitingThreads--;
+      _condition.notify_all();
+      return;
+    }
+    _condition.wait(lock, [&]() { return !_ranges.empty() || _done; });
+    _numWaitingThreads--;
   }
 
   bool shouldStop() {
-    std::unique_lock<std::mutex> lock(mtx);
+    std::unique_lock<std::mutex> lock(_mtx);
     return _done;
   }
 
   void incTerminatedThreads() {
-    std::unique_lock<std::mutex> lock(mtx);
+    std::unique_lock<std::mutex> extLock(_mtx);
     ++_numTerminatedThreads;
+    if (_numTerminatedThreads == _numThreads) {
+      _condition.notify_all();
+    }
   }
 
   size_t getNumTerminatedThreads() { return _numTerminatedThreads; }
+  Result getResponse() { return _res; }
+
+  void waitUntilAllThreadsTerminate() {
+    std::unique_lock<std::mutex> extLock(_mtx);
+    _condition.wait(extLock,
+                    [&]() { return _numTerminatedThreads == _numThreads; });
+  }
 
  private:
+  bool _done = false;
+  size_t _numWaitingThreads = 0;
+  size_t _numThreads = 1;
+  size_t _numTerminatedThreads = 0;
   std::condition_variable _condition;
   std::deque<WorkItem> _ranges;
   Result _res;
-  bool _done = false;
-  std::atomic<size_t> _numTerminatedThreads = 0;
-  std::mutex mtx;
+  std::mutex _mtx;
 };
 }  // namespace arangodb
