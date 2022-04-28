@@ -3,7 +3,7 @@
 import { cloneDeep } from 'lodash';
 import React, { useEffect, useReducer, useRef, useState } from 'react';
 import Textbox from '../../components/pure-css/form/Textbox';
-import ToolTip from "../../components/arango/tootip";
+import ToolTip from '../../components/arango/tootip';
 import {
   getNumericFieldSetter, getNumericFieldValue, getReducer, isAdminUser as userIsAdmin,
   usePermissions
@@ -53,6 +53,7 @@ const ViewSettingsReactView = ({ name }) => {
   }
 
   const formState = state.formState;
+  const nameEditDisabled = frontendConfig.isCluster || !isAdminUser;
 
   return <div className={'centralContent'} id={'content'}>
     <div id={'modal-dialog'} className={'createModalDialog'} tabIndex={-1} role={'dialog'}
@@ -60,7 +61,7 @@ const ViewSettingsReactView = ({ name }) => {
       <div className="modal-body">
         <div className={'tab-content'}>
           <div className="tab-pane tab-pane-modal active" id="General">
-            <table style={{ margin: 30, marginLeft: 20 }}>
+            <table>
               <tbody>
               <tr className="tableRow" id="row_change-view-name">
                 <th className="collectionTh">
@@ -68,11 +69,11 @@ const ViewSettingsReactView = ({ name }) => {
                 </th>
                 <th className="collectionTh">
                   <Textbox type={'text'} value={formState.name} onChange={updateName}
-                           required={true} disabled={frontendConfig.isCluster || !isAdminUser}/>
+                           required={true} disabled={nameEditDisabled}/>
                 </th>
                 <th className="collectionTh">
                   <ToolTip
-                    title="The View name (string, immutable)."
+                    title={`The View name (string${nameEditDisabled ? ', immutable' : ''}).`}
                     setArrow={true}
                   >
                     <span className="arangoicon icon_arangodb_info"></span>
@@ -85,13 +86,13 @@ const ViewSettingsReactView = ({ name }) => {
                   Cleanup Interval Step:
                 </th>
                 <th className="collectionTh">
-                  <Textbox type={'number'} disabled={!isAdminUser}
+                  <Textbox type={'number'} disabled={!isAdminUser} min={0} step={1}
                            value={getNumericFieldValue(formState.cleanupIntervalStep)}
                            onChange={getNumericFieldSetter('cleanupIntervalStep', dispatch)}/>
                 </th>
                 <th className="collectionTh">
                   <ToolTip
-                    title="The steps to wait before removing unused segments after release of internal resource."
+                    title={`ArangoSearch waits at least this many commits between removing unused files in its data directory.`}
                     setArrow={true}
                   >
                     <span className="arangoicon icon_arangodb_info"></span>
@@ -103,14 +104,14 @@ const ViewSettingsReactView = ({ name }) => {
                 <th className="collectionTh">
                   Commit Interval (msec):
                 </th>
-                <th className="collectionTh" style={{ width: "100%" }}>
-                  <Textbox type={'number'} disabled={!isAdminUser}
+                <th className="collectionTh" style={{ width: '100%' }}>
+                  <Textbox type={'number'} disabled={!isAdminUser} min={0} step={1}
                            value={getNumericFieldValue(formState.commitIntervalMsec)}
                            onChange={getNumericFieldSetter('commitIntervalMsec', dispatch)}/>
                 </th>
                 <th className="collectionTh">
                   <ToolTip
-                    title="The wait time in milliseconds before performing View data store changes."
+                    title="Wait at least this many milliseconds between committing View data store changes and making documents visible to queries."
                     setArrow={true}
                   >
                     <span className="arangoicon icon_arangodb_info"></span>
@@ -123,50 +124,17 @@ const ViewSettingsReactView = ({ name }) => {
                   Consolidation Interval (msec):
                 </th>
                 <th className="collectionTh">
-                  <Textbox type={'number'} disabled={!isAdminUser}
+                  <Textbox type={'number'} disabled={!isAdminUser} min={0} step={1}
                            value={getNumericFieldValue(formState.consolidationIntervalMsec)}
                            onChange={getNumericFieldSetter('consolidationIntervalMsec', dispatch)}/>
                 </th>
                 <th className="collectionTh">
                   <ToolTip
-                    title="The wait time in milliseconds before performing View data store changes."
+                    title="Wait at least this many milliseconds between index segments consolidations."
                     setArrow={true}
                   >
                     <span className="arangoicon icon_arangodb_info"></span>
                   </ToolTip>
-                </th>
-              </tr>
-
-              <tr className="tableRow" id="row_change-view-id">
-                <th className="collectionTh">
-                  ID:
-                </th>
-                <th className="collectionTh">
-                  <div className="modal-text" id="change-view-id">
-                    {formState.id}
-                  </div>
-                </th>
-              </tr>
-
-              <tr className="tableRow" id="row_change-view-globallyUniqueId">
-                <th className="collectionTh">
-                  Globally Unique ID:
-                </th>
-                <th className="collectionTh">
-                  <div className="modal-text" id="change-view-globallyUniqueId">
-                    {formState.globallyUniqueId}
-                  </div>
-                </th>
-              </tr>
-
-              <tr className="tableRow" id="row_change-view-type">
-                <th className="collectionTh">
-                  Type:
-                </th>
-                <th className="collectionTh">
-                  <div className="modal-text" id="change-view-type">
-                    {formState.type}
-                  </div>
                 </th>
               </tr>
               </tbody>

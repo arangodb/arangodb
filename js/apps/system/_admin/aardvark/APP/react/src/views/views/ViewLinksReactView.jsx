@@ -77,16 +77,6 @@ const ViewLinksReactView = ({ name }) => {
 
   const formState = state.formState;
 
-  const removeLink = l => {
-    dispatch({
-      type: "setField",
-      field: {
-        path: `links[${l}]`,
-        value: null
-      }
-    });
-  };
-
   const handleView = l => {
     setParentLink(l);
     setShow("ViewParent");
@@ -135,7 +125,7 @@ const ViewLinksReactView = ({ name }) => {
                     formState={formState}
                     disabled={!isAdminUser}
                     view={name}
-                  />
+                   dispatch={dispatch}/>
                 </div>
               </div>
             </div>

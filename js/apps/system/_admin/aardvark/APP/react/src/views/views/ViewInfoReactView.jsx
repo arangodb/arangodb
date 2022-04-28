@@ -180,6 +180,16 @@ const ViewInfoReactView = ({ name }) => {
           <ArangoTable id={'viewPrimarySortTable'}>
             <tbody>
             <tr>
+              <th className="collectionInfoTh2">Primary Sort Order:</th>
+              <th className="collectionInfoTh">
+                <div className="modal-text">
+                  <PrimarySortView primarySort={view.primarySort}/>
+                </div>
+              </th>
+              <th className="collectionTh"/>
+            </tr>
+
+            <tr>
               <th className="collectionInfoTh2">Primary Sort Compression:</th>
               <th className="collectionInfoTh">
                 <div className="modal-text">
@@ -194,16 +204,6 @@ const ViewInfoReactView = ({ name }) => {
                     <span className="arangoicon icon_arangodb_info"></span>
                   </ToolTip>
                 </th>
-            </tr>
-
-            <tr>
-              <th className="collectionInfoTh2">Primary Sort Order:</th>
-              <th className="collectionInfoTh">
-                <div className="modal-text">
-                  <PrimarySortView primarySort={view.primarySort}/>
-                </div>
-              </th>
-              <th className="tooltipInfoTh"/>
             </tr>
             </tbody>
           </ArangoTable>
