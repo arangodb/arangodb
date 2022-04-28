@@ -45,17 +45,176 @@
 
 #include "datagen.h"     /* RDG_genBuffer */
 #include "xxhash.h"
+#include "bench.h"
 
-
+#define LZ4_STATIC_LINKING_ONLY
 #include "lz4.h"
-#define COMPRESSOR0 LZ4_compress_local
-static int LZ4_compress_local(const char* src, char* dst, int srcSize, int dstSize, int clevel) {
-  int const acceleration = (clevel < 0) ? -clevel + 1 : 1;
-  return LZ4_compress_fast(src, dst, srcSize, dstSize, acceleration);
-}
+#define LZ4_HC_STATIC_LINKING_ONLY
 #include "lz4hc.h"
-#define COMPRESSOR1 LZ4_compress_HC
-#define DEFAULTCOMPRESSOR COMPRESSOR0
+
+
+/* *************************************
+*  Compression parameters and functions
+***************************************/
+
+struct compressionParameters
+{
+    int cLevel;
+    const char* dictBuf;
+    int dictSize;
+
+    LZ4_stream_t* LZ4_stream;
+    LZ4_stream_t* LZ4_dictStream;
+    LZ4_streamHC_t* LZ4_streamHC;
+    LZ4_streamHC_t* LZ4_dictStreamHC;
+
+    void (*initFunction)(
+        struct compressionParameters* pThis);
+    void (*resetFunction)(
+        const struct compressionParameters* pThis);
+    int (*blockFunction)(
+        const struct compressionParameters* pThis,
+        const char* src, char* dst, int srcSize, int dstSize);
+    void (*cleanupFunction)(
+        const struct compressionParameters* pThis);
+};
+
+static void LZ4_compressInitNoStream(
+    struct compressionParameters* pThis)
+{
+    pThis->LZ4_stream = NULL;
+    pThis->LZ4_dictStream = NULL;
+    pThis->LZ4_streamHC = NULL;
+    pThis->LZ4_dictStreamHC = NULL;
+}
+
+static void LZ4_compressInitStream(
+    struct compressionParameters* pThis)
+{
+    pThis->LZ4_stream = LZ4_createStream();
+    pThis->LZ4_dictStream = LZ4_createStream();
+    pThis->LZ4_streamHC = NULL;
+    pThis->LZ4_dictStreamHC = NULL;
+    LZ4_loadDict(pThis->LZ4_dictStream, pThis->dictBuf, pThis->dictSize);
+}
+
+static void LZ4_compressInitStreamHC(
+    struct compressionParameters* pThis)
+{
+    pThis->LZ4_stream = NULL;
+    pThis->LZ4_dictStream = NULL;
+    pThis->LZ4_streamHC = LZ4_createStreamHC();
+    pThis->LZ4_dictStreamHC = LZ4_createStreamHC();
+    LZ4_loadDictHC(pThis->LZ4_dictStreamHC, pThis->dictBuf, pThis->dictSize);
+}
+
+static void LZ4_compressResetNoStream(
+    const struct compressionParameters* pThis)
+{
+    (void)pThis;
+}
+
+static void LZ4_compressResetStream(
+    const struct compressionParameters* pThis)
+{
+    LZ4_resetStream_fast(pThis->LZ4_stream);
+    LZ4_attach_dictionary(pThis->LZ4_stream, pThis->LZ4_dictStream);
+}
+
+static void LZ4_compressResetStreamHC(
+    const struct compressionParameters* pThis)
+{
+    LZ4_resetStreamHC_fast(pThis->LZ4_streamHC, pThis->cLevel);
+    LZ4_attach_HC_dictionary(pThis->LZ4_streamHC, pThis->LZ4_dictStreamHC);
+}
+
+static int LZ4_compressBlockNoStream(
+    const struct compressionParameters* pThis,
+    const char* src, char* dst,
+    int srcSize, int dstSize)
+{
+    int const acceleration = (pThis->cLevel < 0) ? -pThis->cLevel + 1 : 1;
+    return LZ4_compress_fast(src, dst, srcSize, dstSize, acceleration);
+}
+
+static int LZ4_compressBlockNoStreamHC(
+    const struct compressionParameters* pThis,
+    const char* src, char* dst,
+    int srcSize, int dstSize)
+{
+    return LZ4_compress_HC(src, dst, srcSize, dstSize, pThis->cLevel);
+}
+
+static int LZ4_compressBlockStream(
+    const struct compressionParameters* pThis,
+    const char* src, char* dst,
+    int srcSize, int dstSize)
+{
+    int const acceleration = (pThis->cLevel < 0) ? -pThis->cLevel + 1 : 1;
+    return LZ4_compress_fast_continue(pThis->LZ4_stream, src, dst, srcSize, dstSize, acceleration);
+}
+
+static int LZ4_compressBlockStreamHC(
+    const struct compressionParameters* pThis,
+    const char* src, char* dst,
+    int srcSize, int dstSize)
+{
+    return LZ4_compress_HC_continue(pThis->LZ4_streamHC, src, dst, srcSize, dstSize);
+}
+
+static void LZ4_compressCleanupNoStream(
+    const struct compressionParameters* pThis)
+{
+    (void)pThis;
+}
+
+static void LZ4_compressCleanupStream(
+    const struct compressionParameters* pThis)
+{
+    LZ4_freeStream(pThis->LZ4_stream);
+    LZ4_freeStream(pThis->LZ4_dictStream);
+}
+
+static void LZ4_compressCleanupStreamHC(
+    const struct compressionParameters* pThis)
+{
+    LZ4_freeStreamHC(pThis->LZ4_streamHC);
+    LZ4_freeStreamHC(pThis->LZ4_dictStreamHC);
+}
+
+static void LZ4_buildCompressionParameters(
+    struct compressionParameters* pParams,
+    int cLevel, const char* dictBuf, int dictSize)
+{
+    pParams->cLevel = cLevel;
+    pParams->dictBuf = dictBuf;
+    pParams->dictSize = dictSize;
+
+    if (dictSize) {
+        if (cLevel < LZ4HC_CLEVEL_MIN) {
+            pParams->initFunction = LZ4_compressInitStream;
+            pParams->resetFunction = LZ4_compressResetStream;
+            pParams->blockFunction = LZ4_compressBlockStream;
+            pParams->cleanupFunction = LZ4_compressCleanupStream;
+        } else {
+            pParams->initFunction = LZ4_compressInitStreamHC;
+            pParams->resetFunction = LZ4_compressResetStreamHC;
+            pParams->blockFunction = LZ4_compressBlockStreamHC;
+            pParams->cleanupFunction = LZ4_compressCleanupStreamHC;
+        }
+    } else {
+        pParams->initFunction = LZ4_compressInitNoStream;
+        pParams->resetFunction = LZ4_compressResetNoStream;
+        pParams->cleanupFunction = LZ4_compressCleanupNoStream;
+
+        if (cLevel < LZ4HC_CLEVEL_MIN) {
+            pParams->blockFunction = LZ4_compressBlockNoStream;
+        } else {
+            pParams->blockFunction = LZ4_compressBlockNoStreamHC;
+        }
+    }
+}
+
 #define LZ4_isError(errcode) (errcode==0)
 
 
@@ -78,6 +237,8 @@ static int LZ4_compress_local(const char* src, char* dst, int srcSize, int dstSi
 #define KB *(1 <<10)
 #define MB *(1 <<20)
 #define GB *(1U<<30)
+
+#define LZ4_MAX_DICT_SIZE (64 KB)
 
 static const size_t maxMemory = (sizeof(size_t)==4)  ?  (2 GB - 64 MB) : (size_t)(1ULL << ((sizeof(size_t)*8)-31));
 
@@ -152,17 +313,13 @@ typedef struct {
     size_t resSize;
 } blockParam_t;
 
-struct compressionParameters
-{
-    int (*compressionFunction)(const char* src, char* dst, int srcSize, int dstSize, int cLevel);
-};
-
 #define MIN(a,b) ((a)<(b) ? (a) : (b))
 #define MAX(a,b) ((a)>(b) ? (a) : (b))
 
 static int BMK_benchMem(const void* srcBuffer, size_t srcSize,
                         const char* displayName, int cLevel,
-                        const size_t* fileSizes, U32 nbFiles)
+                        const size_t* fileSizes, U32 nbFiles,
+                        const char* dictBuf, int dictSize)
 {
     size_t const blockSize = (g_blockSize>=32 ? g_blockSize : srcSize) + (!srcSize) /* avoid div by 0 */ ;
     U32 const maxNbBlocks = (U32) ((srcSize + (blockSize-1)) / blockSize) + nbFiles;
@@ -172,27 +329,16 @@ static int BMK_benchMem(const void* srcBuffer, size_t srcSize,
     void* const resultBuffer = malloc(srcSize);
     U32 nbBlocks;
     struct compressionParameters compP;
-    int cfunctionId;
 
     /* checks */
     if (!compressedBuffer || !resultBuffer || !blockTable)
         EXM_THROW(31, "allocation error : not enough memory");
 
-    /* init */
     if (strlen(displayName)>17) displayName += strlen(displayName)-17;   /* can only display 17 characters */
 
-    /* Init */
-    if (cLevel < LZ4HC_CLEVEL_MIN) cfunctionId = 0; else cfunctionId = 1;
-    switch (cfunctionId)
-    {
-#ifdef COMPRESSOR0
-    case 0 : compP.compressionFunction = COMPRESSOR0; break;
-#endif
-#ifdef COMPRESSOR1
-    case 1 : compP.compressionFunction = COMPRESSOR1; break;
-#endif
-    default : compP.compressionFunction = DEFAULTCOMPRESSOR;
-    }
+    /* init */
+    LZ4_buildCompressionParameters(&compP, cLevel, dictBuf, dictSize);
+    compP.initFunction(&compP);
 
     /* Init blockTable data */
     {   const char* srcPtr = (const char*)srcBuffer;
@@ -256,8 +402,12 @@ static int BMK_benchMem(const void* srcBuffer, size_t srcSize,
                 U32 nbLoops;
                 for (nbLoops=0; nbLoops < nbCompressionLoops; nbLoops++) {
                     U32 blockNb;
+                    compP.resetFunction(&compP);
                     for (blockNb=0; blockNb<nbBlocks; blockNb++) {
-                        size_t const rSize = (size_t)compP.compressionFunction(blockTable[blockNb].srcPtr, blockTable[blockNb].cPtr, (int)blockTable[blockNb].srcSize, (int)blockTable[blockNb].cRoom, cLevel);
+                        size_t const rSize = (size_t)compP.blockFunction(
+                            &compP,
+                            blockTable[blockNb].srcPtr, blockTable[blockNb].cPtr,
+                            (int)blockTable[blockNb].srcSize, (int)blockTable[blockNb].cRoom);
                         if (LZ4_isError(rSize)) EXM_THROW(1, "LZ4 compression failed");
                         blockTable[blockNb].cSize = rSize;
                 }   }
@@ -298,9 +448,12 @@ static int BMK_benchMem(const void* srcBuffer, size_t srcSize,
                 for (nbLoops=0; nbLoops < nbDecodeLoops; nbLoops++) {
                     U32 blockNb;
                     for (blockNb=0; blockNb<nbBlocks; blockNb++) {
-                        int const regenSize = LZ4_decompress_safe(blockTable[blockNb].cPtr, blockTable[blockNb].resPtr, (int)blockTable[blockNb].cSize, (int)blockTable[blockNb].srcSize);
+                        int const regenSize = LZ4_decompress_safe_usingDict(
+                            blockTable[blockNb].cPtr, blockTable[blockNb].resPtr,
+                            (int)blockTable[blockNb].cSize, (int)blockTable[blockNb].srcSize,
+                            dictBuf, dictSize);
                         if (regenSize < 0) {
-                            DISPLAY("LZ4_decompress_safe() failed on block %u \n", blockNb);
+                            DISPLAY("LZ4_decompress_safe_usingDict() failed on block %u \n", blockNb);
                             break;
                         }
                         blockTable[blockNb].resSize = (size_t)regenSize;
@@ -364,6 +517,7 @@ static int BMK_benchMem(const void* srcBuffer, size_t srcSize,
     }   /* Bench */
 
     /* clean up */
+    compP.cleanupFunction(&compP);
     free(blockTable);
     free(compressedBuffer);
     free(resultBuffer);
@@ -397,7 +551,8 @@ static size_t BMK_findMaxMem(U64 requiredMem)
 
 static void BMK_benchCLevel(void* srcBuffer, size_t benchedSize,
                             const char* displayName, int cLevel, int cLevelLast,
-                            const size_t* fileSizes, unsigned nbFiles)
+                            const size_t* fileSizes, unsigned nbFiles,
+                            const char* dictBuf, int dictSize)
 {
     int l;
 
@@ -415,7 +570,8 @@ static void BMK_benchCLevel(void* srcBuffer, size_t benchedSize,
     for (l=cLevel; l <= cLevelLast; l++) {
         BMK_benchMem(srcBuffer, benchedSize,
                      displayName, l,
-                     fileSizes, nbFiles);
+                     fileSizes, nbFiles,
+                     dictBuf, dictSize);
     }
 }
 
@@ -456,7 +612,8 @@ static void BMK_loadFiles(void* buffer, size_t bufferSize,
 }
 
 static void BMK_benchFileTable(const char** fileNamesTable, unsigned nbFiles,
-                               int cLevel, int cLevelLast)
+                               int cLevel, int cLevelLast,
+                               const char* dictBuf, int dictSize)
 {
     void* srcBuffer;
     size_t benchedSize;
@@ -488,7 +645,8 @@ static void BMK_benchFileTable(const char** fileNamesTable, unsigned nbFiles,
     {   const char* displayName = (nbFiles > 1) ? mfName : fileNamesTable[0];
         BMK_benchCLevel(srcBuffer, benchedSize,
                         displayName, cLevel, cLevelLast,
-                        fileSizes, nbFiles);
+                        fileSizes, nbFiles,
+                        dictBuf, dictSize);
     }
 
     /* clean up */
@@ -497,7 +655,8 @@ static void BMK_benchFileTable(const char** fileNamesTable, unsigned nbFiles,
 }
 
 
-static void BMK_syntheticTest(int cLevel, int cLevelLast, double compressibility)
+static void BMK_syntheticTest(int cLevel, int cLevelLast, double compressibility,
+                              const char* dictBuf, int dictSize)
 {
     char name[20] = {0};
     size_t benchedSize = 10000000;
@@ -511,7 +670,7 @@ static void BMK_syntheticTest(int cLevel, int cLevelLast, double compressibility
 
     /* Bench */
     snprintf (name, sizeof(name), "Synthetic %2u%%", (unsigned)(compressibility*100));
-    BMK_benchCLevel(srcBuffer, benchedSize, name, cLevel, cLevelLast, &benchedSize, 1);
+    BMK_benchCLevel(srcBuffer, benchedSize, name, cLevel, cLevelLast, &benchedSize, 1, dictBuf, dictSize);
 
     /* clean up */
     free(srcBuffer);
@@ -519,7 +678,8 @@ static void BMK_syntheticTest(int cLevel, int cLevelLast, double compressibility
 
 
 int BMK_benchFilesSeparately(const char** fileNamesTable, unsigned nbFiles,
-                   int cLevel, int cLevelLast)
+                   int cLevel, int cLevelLast,
+                   const char* dictBuf, int dictSize)
 {
     unsigned fileNb;
     if (cLevel > LZ4HC_CLEVEL_MAX) cLevel = LZ4HC_CLEVEL_MAX;
@@ -528,29 +688,59 @@ int BMK_benchFilesSeparately(const char** fileNamesTable, unsigned nbFiles,
     if (cLevelLast > cLevel) DISPLAYLEVEL(2, "Benchmarking levels from %d to %d\n", cLevel, cLevelLast);
 
     for (fileNb=0; fileNb<nbFiles; fileNb++)
-        BMK_benchFileTable(fileNamesTable+fileNb, 1, cLevel, cLevelLast);
+        BMK_benchFileTable(fileNamesTable+fileNb, 1, cLevel, cLevelLast, dictBuf, dictSize);
 
     return 0;
 }
 
 
 int BMK_benchFiles(const char** fileNamesTable, unsigned nbFiles,
-                   int cLevel, int cLevelLast)
+                   int cLevel, int cLevelLast,
+                   const char* dictFileName)
 {
     double const compressibility = (double)g_compressibilityDefault / 100;
+    char* dictBuf = NULL;
+    int dictSize = 0;
 
     if (cLevel > LZ4HC_CLEVEL_MAX) cLevel = LZ4HC_CLEVEL_MAX;
     if (cLevelLast > LZ4HC_CLEVEL_MAX) cLevelLast = LZ4HC_CLEVEL_MAX;
     if (cLevelLast < cLevel) cLevelLast = cLevel;
     if (cLevelLast > cLevel) DISPLAYLEVEL(2, "Benchmarking levels from %d to %d\n", cLevel, cLevelLast);
 
+    if (dictFileName) {
+        FILE* dictFile = NULL;
+        U64 dictFileSize = UTIL_getFileSize(dictFileName);
+        if (!dictFileSize) EXM_THROW(25, "Dictionary error : could not stat dictionary file");
+
+        dictFile = fopen(dictFileName, "rb");
+        if (!dictFile) EXM_THROW(25, "Dictionary error : could not open dictionary file");
+
+        if (dictFileSize > LZ4_MAX_DICT_SIZE) {
+            dictSize = LZ4_MAX_DICT_SIZE;
+            if (UTIL_fseek(dictFile, dictFileSize - dictSize, SEEK_SET))
+                EXM_THROW(25, "Dictionary error : could not seek dictionary file");
+        } else {
+            dictSize = (int)dictFileSize;
+        }
+
+        dictBuf = (char *)malloc(dictSize);
+        if (!dictBuf) EXM_THROW(25, "Allocation error : not enough memory");
+
+        if (fread(dictBuf, 1, dictSize, dictFile) != (size_t)dictSize)
+            EXM_THROW(25, "Dictionary error : could not read dictionary file");
+
+        fclose(dictFile);
+    }
+
     if (nbFiles == 0)
-        BMK_syntheticTest(cLevel, cLevelLast, compressibility);
+        BMK_syntheticTest(cLevel, cLevelLast, compressibility, dictBuf, dictSize);
     else {
         if (g_benchSeparately)
-            BMK_benchFilesSeparately(fileNamesTable, nbFiles, cLevel, cLevelLast);
+            BMK_benchFilesSeparately(fileNamesTable, nbFiles, cLevel, cLevelLast, dictBuf, dictSize);
         else
-            BMK_benchFileTable(fileNamesTable, nbFiles, cLevel, cLevelLast);
+            BMK_benchFileTable(fileNamesTable, nbFiles, cLevel, cLevelLast, dictBuf, dictSize);
     }
+
+    free(dictBuf);
     return 0;
 }
