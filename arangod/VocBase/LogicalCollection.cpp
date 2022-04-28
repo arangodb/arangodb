@@ -947,6 +947,18 @@ Result LogicalCollection::properties(velocypack::Slice slice, bool) {
       _internalValidators.clear();
       decorateWithInternalValidators();
     }
+
+    // Inject SmartGraphAttribute into Shards
+    if (slice.hasKey(StaticStrings::GraphSmartGraphAttribute) &&
+        smartGraphAttribute().empty()) {
+      // This is a bit dangerous operation and should only be run in MAINTENANCE
+      // task we upgrade the SmartGraphAttribute within the Shard, this is
+      // required to allow the DBServer to generate new ID values
+      auto sga = slice.get(StaticStrings::GraphSmartGraphAttribute);
+      if (sga.isString()) {
+        setSmartGraphAttribute(sga.copyString());
+      }
+    }
   }
 
   if (ServerState::instance()->isCoordinator()) {
