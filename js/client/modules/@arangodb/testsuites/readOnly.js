@@ -33,6 +33,7 @@ const optionsDocumentation = [
 ];
 
 const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const request = require('@arangodb/request');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -77,11 +78,11 @@ function readOnly (options) {
     };
   }
 
-  const conf = {
-    'server.authentication': true,
-    'server.authentication-system-only': false,
-    'server.jwt-secret': 'haxxmann'
-  };
+  const conf = Object.assign(
+    {},
+    tu.testServerAuthInfo, {
+      'server.authentication-system-only': false
+    });
 
   print(CYAN + 'readOnly tests...' + RESET);
 

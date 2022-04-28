@@ -117,6 +117,8 @@ auto replicated_log::AppendEntriesErrorReason::getErrorMessage() const noexcept
       return "Persisting the log entries failed";
     case ErrorType::kCommunicationError:
       return "Communicating with participant failed - network error";
+    case ErrorType::kPrevAppendEntriesInFlight:
+      return "A previous appendEntries request is still in flight";
   }
   LOG_TOPIC("ff21c", FATAL, Logger::REPLICATION2)
       << "Invalid AppendEntriesErrorReason "
@@ -134,6 +136,8 @@ constexpr static std::string_view kPersistenceFailureString =
     "PersistenceFailure";
 constexpr static std::string_view kCommunicationErrorString =
     "CommunicationError";
+constexpr static std::string_view kPrevAppendEntriesInFlightString =
+    "PrevAppendEntriesInFlight";
 
 auto replicated_log::AppendEntriesErrorReason::errorTypeFromString(
     std::string_view str) -> ErrorType {
@@ -153,6 +157,8 @@ auto replicated_log::AppendEntriesErrorReason::errorTypeFromString(
     return ErrorType::kPersistenceFailure;
   } else if (str == kCommunicationErrorString) {
     return ErrorType::kCommunicationError;
+  } else if (str == kPrevAppendEntriesInFlightString) {
+    return ErrorType::kPrevAppendEntriesInFlight;
   }
   THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
                                 "unknown error type %*s", str.size(),
@@ -178,6 +184,8 @@ auto replicated_log::to_string(
       return kPersistenceFailureString;
     case AppendEntriesErrorReason::ErrorType::kCommunicationError:
       return kCommunicationErrorString;
+    case AppendEntriesErrorReason::ErrorType::kPrevAppendEntriesInFlight:
+      return kPrevAppendEntriesInFlightString;
   }
   LOG_TOPIC("c2058", FATAL, Logger::REPLICATION2)
       << "Invalid AppendEntriesErrorReason "

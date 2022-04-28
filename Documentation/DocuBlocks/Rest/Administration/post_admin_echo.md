@@ -16,69 +16,84 @@ The call returns an object with the servers request information
 Echo was returned successfully.
 
 @RESTREPLYBODY{authorized,boolean,required,}
-whether the session is authorized
+Whether the session is authorized
 
 @RESTREPLYBODY{user,string,required,}
-the currently user that sent this request
+The name of the current user that sent this request
+
+@RESTREPLYBODY{isAdminUser,boolean,required,}
+Whether the current user is an administrator
 
 @RESTREPLYBODY{database,string,required,}
-the database this request was executed on
+The name of the database this request was executed on
 
 @RESTREPLYBODY{url,string,required,}
-the raw request URL
+The raw request URL
 
 @RESTREPLYBODY{protocol,string,required,}
-the transport, one of ['http', 'https', 'velocystream']
+The transport protocol, one of `"http"`, `"https"`, `"velocystream"`
+
+@RESTREPLYBODY{portType,string,required,}
+The type of the socket, one of `"tcp/ip"`, `"unix"`, `"unknown"`
 
 @RESTREPLYBODY{server,object,required,admin_echo_server_struct}
+Attributes of the server connection
 
 @RESTSTRUCT{address,admin_echo_server_struct,string,required,}
-the bind address of the endpoint this request was sent to
+The bind address of the endpoint this request was sent to
 
 @RESTSTRUCT{port,admin_echo_server_struct,integer,required,}
-the port this request was sent to
+The port this request was sent to
+
+@RESTSTRUCT{endpoint,admin_echo_server_struct,string,required,}
+The endpoint this request was sent to
 
 @RESTREPLYBODY{client,object,required,admin_echo_client_struct}
-attributes of the client connection
+Attributes of the client connection
 
-@RESTSTRUCT{address,admin_echo_server_struct,integer,required,}
-the ip address of the client
+@RESTSTRUCT{address,admin_echo_client_struct,integer,required,}
+The IP address of the client
 
-@RESTSTRUCT{port,admin_echo_server_struct,integer,required,}
-port of the client side of the tcp connection
+@RESTSTRUCT{port,admin_echo_client_struct,integer,required,}
+The port of the TCP connection on the client-side
 
-@RESTSTRUCT{id,admin_echo_server_struct,string,required,}
-a server generated id
+@RESTSTRUCT{id,admin_echo_client_struct,string,required,}
+A server generated ID
 
 @RESTREPLYBODY{internals,object,required,}
-contents of the server internals struct
+Contents of the server internals struct
 
 @RESTREPLYBODY{prefix,object,required,}
-prefix of the database
+The prefix of the database
 
 @RESTREPLYBODY{headers,object,required,}
-the list of the HTTP headers you sent
+The list of the HTTP headers you sent
 
 @RESTREPLYBODY{requestType,string,required,}
-In this case *POST*, if you use another HTTP-Verb, you will se that (GET/DELETE, ...)
+The HTTP method that was used for the request (`"POST"`). The endpoint can be
+queried using other verbs, too (`"GET"`, `"PUT"`, `"PATCH"`, `"DELETE"`).
 
 @RESTREPLYBODY{requestBody,string,required,}
-stringified version of the POST body we sent
+Stringified version of the request body you sent
+
+@RESTREPLYBODY{rawRequestBody,object,required,}
+The sent payload as a JSON-encoded Buffer object
 
 @RESTREPLYBODY{parameters,object,required,}
-Object containing the query parameters
+An object containing the query parameters
 
 @RESTREPLYBODY{cookies,object,required,}
-list of the cookies you sent
+A list of the cookies you sent
 
 @RESTREPLYBODY{suffix,array,required,}
+A list of the decoded URL path suffixes. You can query the endpoint with
+arbitrary suffixes, e.g. `/_admin/echo/foo/123`
 
 @RESTREPLYBODY{rawSuffix,array,required,}
+A list of the percent-encoded URL path suffixes
 
 @RESTREPLYBODY{path,string,required,}
-relative path of this request
+The relative path of this request (decoded, excluding `/_admin/echo`)
 
-@RESTREPLYBODY{rawRequestBody,array,required,}
-List of digits of the sent characters
 
 @endDocuBlock

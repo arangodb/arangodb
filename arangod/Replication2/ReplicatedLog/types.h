@@ -92,6 +92,7 @@ struct AppendEntriesErrorReason {
     kNoPrevLogMatch,
     kPersistenceFailure,
     kCommunicationError,
+    kPrevAppendEntriesInFlight,
   };
 
   ErrorType error = ErrorType::kNone;

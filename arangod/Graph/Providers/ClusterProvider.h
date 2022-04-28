@@ -83,6 +83,8 @@ class ClusterProvider {
                    double weight = 0.0) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;
+  auto fetchVertices(std::vector<Step*> const& looseEnds) -> std::vector<Step*>;
+  auto fetchEdges(const std::vector<Step*>& fetchedVertices) -> Result;
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;
 

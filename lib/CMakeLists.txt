@@ -272,11 +272,8 @@ endif ()
 
 # Rebuild generated error files so they are up-to-date when all
 # dependent stuff is built
-if (USE_MAINTAINER_MODE)
-  add_dependencies(arango errorfiles)
-  add_dependencies(arango exitcodefiles)
-endif ()
-
+add_dependencies(arango errorfiles)
+add_dependencies(arango exitcodefiles)
 
 # Enterprise
 if (USE_ENTERPRISE)

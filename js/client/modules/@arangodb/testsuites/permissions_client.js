@@ -47,7 +47,6 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const functionsDocumentation = {
-  'arangosh': 'arangosh exit codes tests',
   'permissions': 'arangosh javascript access permissions'
 };
 const optionsDocumentation = [
@@ -57,48 +56,56 @@ const optionsDocumentation = [
 const testPaths = {
   'permissions': [tu.pathForTesting('client/permissions')]
 };
+class permissionsRunner extends tu.runInArangoshRunner {
+  constructor(options, testname, ...optionalArgs) {
+    super(options, testname, ...optionalArgs);
+    this.info = "runImport";
+  }
+  
+  run() {
+    let obj = this;
+    let res = {};
+    let filtered = {};
+    let rootDir = fs.join(fs.getTempPath(), 'permissions');
+    const tests = tu.scanTestPaths(testPaths.permissions, this.options);
+    this.instanceInfo = {
+      endpoint: 'tcp://127.0.0.1:8888',
+    };
 
-function permissions(options) {
-  let res = {};
-  let filtered = {};
-  let rootDir = fs.join(fs.getTempPath(), 'permissions');
-  const tests = tu.scanTestPaths(testPaths.permissions, options);
+    fs.makeDirectoryRecursive(rootDir);
+    tests.forEach(function (f, i) {
+      if (tu.filterTestcaseByOptions(f, obj.options, filtered)) {
+        let t = f.split(fs.pathSeparator);
+        let testName = t[t.length - 1].replace(/\.js/, '');
+        let instanceRoot = fs.join(rootDir, testName);
+        obj.instanceInfo['rootDir'] = instanceRoot;
+        let testResultJson = fs.join(instanceRoot, 'testresult.json');;
+        process.env['RESULT'] = testResultJson;
+        fs.makeDirectoryRecursive(instanceRoot);
+        pu.cleanupDBDirectoriesAppend(instanceRoot);
 
-  fs.makeDirectoryRecursive(rootDir);
-
-  tests.forEach(function (f, i) {
-    if (tu.filterTestcaseByOptions(f, options, filtered)) {
-      let t = f.split(fs.pathSeparator);
-      let testName = t[t.length - 1].replace(/\.js/, '');
-      let instanceRoot = fs.join(rootDir, testName);
-      let testResultJson = fs.join(instanceRoot, 'testresult.json');;
-      process.env['RESULT'] = testResultJson;
-      fs.makeDirectoryRecursive(instanceRoot);
-      pu.cleanupDBDirectoriesAppend(instanceRoot);
-
-      let content = fs.read(f);
-      content = `(function(){ const getOptions = true; ${content} 
+        let content = fs.read(f);
+        content = `(function(){ const getOptions = true; ${content} 
 }())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
-      let testOptions = executeScript(content, true, f);
+        let testOptions = executeScript(content, true, f);
 
-      res[f] = tu.runInArangosh(options,
-                                {
-                                  endpoint: 'tcp://127.0.0.1:8888',
-                                  rootDir: instanceRoot
-                                },
-                                f,
-                                testOptions
-                               );
-    } else {
-      if (options.extremeVerbosity) {
-        print('Skipped ' + f + ' because of ' + filtered.filter);
+        obj.addArgs = testOptions;
+        res[f] = obj.runOneTest(/*  ,*/
+          f                                
+        );
+      } else {
+        if (obj.options.extremeVerbosity) {
+          print('Skipped ' + f + ' because of ' + filtered.filter);
+        }
       }
-    }
 
-  });
-  return res;
+    });
+    return res;
+  }
 }
-
+function permissions(options) {
+  return new permissionsRunner(options, "permissions").run();
+}
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['permissions'] = permissions;

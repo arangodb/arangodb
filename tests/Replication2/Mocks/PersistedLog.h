@@ -70,6 +70,28 @@ struct MockLog : replication2::replicated_log::PersistedLog {
   std::unordered_set<LogIndex> _writtenWithWaitForSync;
 };
 
+struct DelayedMockLog : MockLog {
+  explicit DelayedMockLog(replication2::LogId id) : MockLog(id) {}
+
+  auto insertAsync(std::unique_ptr<replication2::PersistedLogIterator> iter,
+                   WriteOptions const&) -> futures::Future<Result> override;
+
+  auto hasPendingInsert() const noexcept -> bool {
+    return _pending.has_value();
+  }
+  void runAsyncInsert();
+
+  struct PendingRequest {
+    PendingRequest(std::unique_ptr<replication2::PersistedLogIterator> iter,
+                   WriteOptions options);
+    std::unique_ptr<replication2::PersistedLogIterator> iter;
+    WriteOptions options;
+    futures::Promise<Result> promise;
+  };
+
+  std::optional<PendingRequest> _pending;
+};
+
 struct AsyncMockLog : MockLog {
   explicit AsyncMockLog(replication2::LogId id);
 

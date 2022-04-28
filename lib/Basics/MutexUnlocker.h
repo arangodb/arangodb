@@ -28,10 +28,6 @@
 #include "Basics/Locking.h"
 #include "Basics/debugging.h"
 
-#ifdef ARANGODB_SHOW_LOCK_TIME
-#include "Logger/Logger.h"
-#endif
-
 #include <thread>
 
 #define MUTEX_UNLOCKER(obj, lock)                                            \

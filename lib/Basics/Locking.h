@@ -25,9 +25,6 @@
 
 #include "Basics/Common.h"
 
-#undef ARANGODB_SHOW_LOCK_TIME
-#define TRI_SHOW_LOCK_THRESHOLD 0.000199
-
 namespace arangodb {
 namespace basics {
 

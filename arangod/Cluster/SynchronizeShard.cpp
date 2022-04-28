@@ -25,10 +25,10 @@
 #include "SynchronizeShard.h"
 
 #include "Agency/AgencyStrings.h"
-#include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
+#include "Basics/TimeString.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 #include "Cluster/ActionDescription.h"
@@ -38,6 +38,7 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Network/Methods.h"
@@ -46,8 +47,6 @@
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/DatabaseTailingSyncer.h"
-#include "Replication/GlobalInitialSyncer.h"
-#include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -165,7 +164,7 @@ static std::stringstream& AppendShardInformationToMessage(
     std::string const& planId,
     std::chrono::system_clock::time_point const& startTime,
     std::stringstream& msg) {
-  auto const endTime = system_clock::now();
+  auto const endTime = std::chrono::system_clock::now();
   msg << "local shard: '" << database << "/" << shard << "', "
       << "for central: '" << database << "/" << planId << "', "
       << "started: " << timepointToString(startTime) << ", "
@@ -316,7 +315,6 @@ static arangodb::Result addShardFollower(
           result.errorNumber(),
           StringUtils::concatT(errorMessage, ", ", result.errorMessage()));
     }
-
     LOG_TOPIC("79935", DEBUG, Logger::MAINTENANCE)
         << "addShardFollower: success";
     return arangodb::Result();
@@ -392,11 +390,13 @@ arangodb::Result SynchronizeShard::collectionCountOnLeader(
   options.database = getDatabase();
   options.timeout = network::Timeout(60);
   options.skipScheduler = true;  // hack to speed up future.get()
+  network::Headers headers;
+  headers.insert_or_assign("X-Arango-Frontend", "true");
 
   auto response =
       network::sendRequest(pool, leaderEndpoint, fuerte::RestVerb::Get,
                            "/_api/collection/" + getShard() + "/count",
-                           VPackBuffer<uint8_t>(), options)
+                           VPackBuffer<uint8_t>(), options, std::move(headers))
           .get();
   auto res = response.combinedResult();
   if (res.fail()) {
@@ -500,7 +500,7 @@ arangodb::Result SynchronizeShard::getReadLock(network::ConnectionPool* pool,
         }
       }
     }
-    return arangodb::Result();
+    return {};
   }
 
   LOG_TOPIC("cba32", DEBUG, Logger::MAINTENANCE)
@@ -516,22 +516,25 @@ arangodb::Result SynchronizeShard::getReadLock(network::ConnectionPool* pool,
 
   // Ambiguous POST, we'll try to DELETE a potentially acquired lock
   try {
-    auto response =
+    auto cancelResponse =
         network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete,
                              REPL_HOLD_READ_LOCK, *buf, options)
             .get();
-    auto res = response.combinedResult();
-    if (res.fail()) {
+    auto cancelRes = cancelResponse.combinedResult();
+    if (cancelRes.fail()) {
       LOG_TOPIC("4f34d", WARN, Logger::MAINTENANCE)
           << "startReadLockOnLeader: cancelation error for shard "
-          << getDatabase() << "/" << collection << ": " << res.errorMessage();
+          << getDatabase() << "/" << collection << ": "
+          << cancelRes.errorMessage();
     }
   } catch (std::exception const& e) {
     LOG_TOPIC("7fcc9", WARN, Logger::MAINTENANCE)
         << "startReadLockOnLeader: exception in cancel: " << e.what();
   }
 
-  return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT);
+  // original response that we received when ordering the lock
+  TRI_ASSERT(res.fail());
+  return res;
 }
 
 arangodb::Result SynchronizeShard::startReadLockOnLeader(
@@ -559,6 +562,7 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
 
 static arangodb::ResultT<SyncerId> replicationSynchronize(
     SynchronizeShard& job,
+    std::chrono::time_point<std::chrono::steady_clock> endTime,
     std::shared_ptr<arangodb::LogicalCollection> const& col, VPackSlice config,
     std::shared_ptr<DatabaseTailingSyncer> tailingSyncer, VPackBuilder& sy) {
   auto& vocbase = col->vocbase();
@@ -593,9 +597,25 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
 
   auto& agencyCache =
       job.feature().server().getFeature<ClusterFeature>().agencyCache();
+  ReplicationTimeoutFeature& timeouts =
+      job.feature().server().getFeature<ReplicationTimeoutFeature>();
 
-  syncer->setCancellationCheckCallback([=, &agencyCache]() -> bool {
+  syncer->setCancellationCheckCallback([=, &agencyCache, &timeouts]() -> bool {
     // Will return true if the SynchronizeShard job should be aborted.
+    LOG_TOPIC("39856", DEBUG, Logger::REPLICATION)
+        << "running synchronization cancelation check for shard " << database
+        << "/" << col->name();
+    if (endTime.time_since_epoch().count() > 0 &&
+        std::chrono::steady_clock::now() >= endTime) {
+      // configured timeout exceeded
+      LOG_TOPIC("47154", INFO, Logger::REPLICATION)
+          << "stopping initial sync attempt for " << database << "/"
+          << col->name() << " after configured timeout of "
+          << timeouts.shardSynchronizationAttemptTimeout() << " s. "
+          << "a new sync attempt will be scheduled...";
+      return true;
+    }
+
     std::string path = "Plan/Collections/" + database + "/" +
                        std::to_string(col->planId().id()) + "/shards/" +
                        col->name();
@@ -677,8 +697,12 @@ bool SynchronizeShard::first() {
   std::string const& planId = _description.get(COLLECTION);
   std::string const& shard = getShard();
   std::string const& leader = _description.get(THE_LEADER);
+  bool forcedResync = _description.has(FORCED_RESYNC) &&
+                      _description.get(FORCED_RESYNC) == "true";
+  bool syncByRevision = _description.has(SYNC_BY_REVISION) &&
+                        _description.get(SYNC_BY_REVISION) == "true";
 
-  size_t failuresInRow = feature().replicationErrors(database, shard);
+  size_t failuresInRow = _feature.replicationErrors(database, shard);
 
   // from this many number of failures in a row, we will step on the brake
   constexpr size_t delayThreshold = 4;
@@ -705,8 +729,7 @@ bool SynchronizeShard::first() {
       // state
       _feature.removeReplicationError(getDatabase(), getShard());
 
-      ++feature()
-            .server()
+      ++_feature.server()
             .getFeature<ClusterFeature>()
             .followersTotalRebuildCounter();
 
@@ -735,7 +758,7 @@ bool SynchronizeShard::first() {
     TRI_IF_FAILURE("SynchronizeShard::noSleepOnSyncError") { sleepTime = 0.0; }
 
     while (sleepTime > 0.0) {
-      if (feature().server().isStopping()) {
+      if (_feature.server().isStopping()) {
         result(TRI_ERROR_SHUTTING_DOWN);
         return false;
       }
@@ -754,9 +777,9 @@ bool SynchronizeShard::first() {
       << "' for central '" << database << "/" << planId << "'";
 
   auto& clusterInfo =
-      feature().server().getFeature<ClusterFeature>().clusterInfo();
+      _feature.server().getFeature<ClusterFeature>().clusterInfo();
   auto const ourselves = arangodb::ServerState::instance()->getId();
-  auto startTime = system_clock::now();
+  auto startTime = std::chrono::system_clock::now();
   auto const startTimeStr = timepointToString(startTime);
   std::string const clientId(database + planId + shard + leader);
 
@@ -764,7 +787,7 @@ bool SynchronizeShard::first() {
   // Current in the Agency) or we or the shard have vanished from
   // the plan:
   while (true) {
-    if (feature().server().isStopping()) {
+    if (_feature.server().isStopping()) {
       result(TRI_ERROR_SHUTTING_DOWN);
       return false;
     }
@@ -810,14 +833,36 @@ bool SynchronizeShard::first() {
           current.end()) {
         break;  // start synchronization work
       }
-      // We are already there, this is rather strange, but never mind:
+      // This was the normal case. However, if we have been away for a short
+      // amount of time and the leader has not yet noticed that we were gone,
+      // we might actually get here and try to resync and are still in
+      // Current. In this case, we write a log message and sync anyway:
       std::stringstream error;
+      if (forcedResync) {
+        error << "found ourselves in Current, but resyncing anyways because of "
+                 "a recent restart, ";
+        AppendShardInformationToMessage(database, shard, planId, startTime,
+                                        error);
+        LOG_TOPIC("4abcd", DEBUG, Logger::MAINTENANCE)
+            << "SynchronizeOneShard: " << error.str();
+        break;
+      }
+      // Otherwise, we give up on the job, since we do not want to repeat
+      // a SynchronizeShard if we are already in Current:
       error << "already done, ";
       AppendShardInformationToMessage(database, shard, planId, startTime,
                                       error);
       LOG_TOPIC("4abcb", DEBUG, Logger::MAINTENANCE)
           << "SynchronizeOneShard: " << error.str();
       result(TRI_ERROR_FAILED, error.str());
+      return false;
+    } else {
+      // we need to immediately exit, as the planned leader is not yet leading
+      // in current
+      LOG_TOPIC("4acdc", DEBUG, Logger::MAINTENANCE)
+          << "SynchronizeOneShard: Planned leader has not taken over "
+             "leadership";
+      result(TRI_ERROR_FAILED, "Planned leader has not taken over leadership");
       return false;
     }
 
@@ -897,6 +942,26 @@ bool SynchronizeShard::first() {
                           resolver.getCollectionName(collection->id());
     }
 
+    // determine end timestamp for shard synchronization attempt, if any
+    if (syncByRevision) {
+      // note: we can only set the timeout if we can use the Merkle-tree
+      // based synchronization protocol. this protocol can work incrementally
+      // and can make progress within limited time even if the number of
+      // documents in the underlying shard is very large.
+      // the pre-Merkle tree protocol requires a setup time proportional
+      // to the number of documents in the collection, and may not make
+      // progress within the configured timeout value.
+      ReplicationTimeoutFeature& timeouts =
+          _feature.server().getFeature<ReplicationTimeoutFeature>();
+      double attemptTimeout = timeouts.shardSynchronizationAttemptTimeout();
+      if (attemptTimeout > 0.0) {
+        // set end time for synchronization attempt
+        _endTimeForAttempt =
+            std::chrono::steady_clock::now() +
+            std::chrono::seconds(static_cast<int64_t>(attemptTimeout));
+      }
+    }
+
     LOG_TOPIC("53337", DEBUG, Logger::MAINTENANCE)
         << "synchronizeOneShard: trying to synchronize local shard '"
         << database << "/" << shard << "' for central '" << database << "/"
@@ -922,7 +987,7 @@ bool SynchronizeShard::first() {
 
       // First once without a read transaction:
 
-      if (feature().server().isStopping()) {
+      if (_feature.server().isStopping()) {
         std::string errorMessage(
             "SynchronizeShard: synchronization failed for shard ");
         errorMessage += shard + ": shutdown in progress, giving up";
@@ -954,13 +1019,14 @@ bool SynchronizeShard::first() {
       // term id:
       collection->followers()->setTheLeader(leader);
 
-      startTime = system_clock::now();
+      startTime = std::chrono::system_clock::now();
 
       VPackBuilder builder;
-      ResultT<SyncerId> syncRes = replicationSynchronize(
-          *this, collection, config.slice(), tailingSyncer, builder);
+      ResultT<SyncerId> syncRes =
+          replicationSynchronize(*this, _endTimeForAttempt, collection,
+                                 config.slice(), tailingSyncer, builder);
 
-      auto const endTime = system_clock::now();
+      auto const endTime = std::chrono::system_clock::now();
 
       // Long shard sync initialization
       if (endTime - startTime > seconds(5)) {
@@ -968,17 +1034,27 @@ bool SynchronizeShard::first() {
             << "synchronizeOneShard: long call to syncCollection for shard"
             << database << "/" << shard << " " << syncRes.errorMessage()
             << " start time: " << timepointToString(startTime)
-            << ", end time: " << timepointToString(system_clock::now());
+            << ", end time: " << timepointToString(endTime);
       }
 
       // If this did not work, then we cannot go on:
       if (!syncRes.ok()) {
+        if (_endTimeForAttempt.time_since_epoch().count() > 0 &&
+            std::chrono::steady_clock::now() >= _endTimeForAttempt) {
+          // we reached the configured timeout.
+          // rebrand the error. this is important because this is a special
+          // error that does not count towards the "failed" attempts.
+          syncRes =
+              Result(TRI_ERROR_REPLICATION_SHARD_SYNC_ATTEMPT_TIMEOUT_EXCEEDED);
+        }
+
         std::stringstream error;
         error << "could not initially synchronize shard " << database << "/"
               << shard << ": " << syncRes.errorMessage();
         LOG_TOPIC("c1b31", DEBUG, Logger::MAINTENANCE)
             << "SynchronizeOneShard: " << error.str();
-        result(TRI_ERROR_INTERNAL, error.str());
+
+        result(syncRes.errorNumber(), error.str());
         return false;
       }
 
@@ -987,7 +1063,7 @@ bool SynchronizeShard::first() {
       VPackSlice sy = builder.slice();
       VPackSlice collections = sy.get(COLLECTIONS);
       if (collections.length() == 0 ||
-          collections[0].get("name").copyString() != shard) {
+          collections[0].get("name").stringView() != shard) {
         std::stringstream error;
         error
             << "shard " << database << "/" << shard
@@ -998,6 +1074,29 @@ bool SynchronizeShard::first() {
         result(TRI_ERROR_INTERNAL, error.str());
         return false;
       }
+
+      ReplicationTimeoutFeature& timeouts =
+          _feature.server().getFeature<ReplicationTimeoutFeature>();
+
+      tailingSyncer->setCancellationCheckCallback(
+          [=, endTime = _endTimeForAttempt, &timeouts]() -> bool {
+            // Will return true if the tailing syncer should be aborted.
+            LOG_TOPIC("54ec2", DEBUG, Logger::REPLICATION)
+                << "running tailing cancelation check for shard " << database
+                << "/" << collection->name();
+            if (endTime.time_since_epoch().count() > 0 &&
+                std::chrono::steady_clock::now() >= endTime) {
+              // configured timeout exceeded
+              LOG_TOPIC("66e75", INFO, Logger::REPLICATION)
+                  << "stopping tailing sync attempt for " << database << "/"
+                  << collection->name() << " after configured timeout of "
+                  << timeouts.shardSynchronizationAttemptTimeout() << " s. "
+                  << "a new sync attempt will be scheduled...";
+              return true;
+            }
+
+            return false;
+          });
 
       auto lastTick =
           arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_tick_t>(
@@ -1080,7 +1179,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
   TRI_voc_tick_t tickReached = 0;
   while (didTimeout && tries++ < 18) {  // This will try to sync for at most ~1
                                         // hour. ((300 * 0.6) * 18 == 3240)
-    if (feature().server().isStopping()) {
+    if (_feature.server().isStopping()) {
       std::string errorMessage =
           "SynchronizeShard: startReadLockOnLeader (soft): shutting down";
       return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_SHUTTING_DOWN,
@@ -1150,9 +1249,10 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
 
     if (!res.ok()) {
       std::string errorMessage(
-          "synchronizeOneShard: error in syncCollectionCatchup: ");
+          "synchronizeOneShard: error in syncCollectionCatchup for shard ");
+      errorMessage += getDatabase() + "/" + getShard() + ": ";
       errorMessage += res.errorMessage();
-      return ResultT<TRI_voc_tick_t>::error(TRI_ERROR_INTERNAL, errorMessage);
+      return ResultT<TRI_voc_tick_t>::error(res.errorNumber(), errorMessage);
     }
 
     // Stop the read lock again:
@@ -1261,9 +1361,10 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
   if (!res.ok()) {
     std::string errorMessage(
-        "synchronizeOneshard: error in syncCollectionFinalize: ");
+        "synchronizeOneshard: error in syncCollectionFinalize for shard ");
+    errorMessage += getDatabase() + "/" + collection.name() + ": ";
     errorMessage += res.errorMessage();
-    return {TRI_ERROR_INTERNAL, errorMessage};
+    return {res.errorNumber(), errorMessage};
   }
 
   NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
@@ -1375,7 +1476,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     std::string errorMessage(
         "synchronizeOneshard: error in addShardFollower: ");
     errorMessage += res.errorMessage();
-    return {TRI_ERROR_INTERNAL, errorMessage};
+    return {res.errorNumber(), errorMessage};
   }
 
   // Report success:
@@ -1409,9 +1510,20 @@ void SynchronizeShard::setState(ActionState state) {
       _feature.removeReplicationError(getDatabase(), getShard());
     } else {
       TRI_ASSERT(FAILED == state);
-      if (!haveRequeued) {
-        // increase failure counter for this shard
+
+      // check if we have hit the configured shard synchronization attempt
+      // timeout. if so, this does not count as an error
+      bool isTimeoutExceeded = result().is(
+          TRI_ERROR_REPLICATION_SHARD_SYNC_ATTEMPT_TIMEOUT_EXCEEDED);
+      if (!haveRequeued && !isTimeoutExceeded) {
+        // increase failure counter for this shard. if we have accumulated
+        // x many failures in a row, the shard on the follower will be
+        // dropped and completely rebuilt.
         _feature.storeReplicationError(getDatabase(), getShard());
+      }
+      if (isTimeoutExceeded) {
+        // track the number of timeouts
+        _feature.countTimedOutSyncAttempt();
       }
     }
 
@@ -1420,12 +1532,11 @@ void SynchronizeShard::setState(ActionState state) {
     // the version is incremented by the leader ahead of getting here on the
     // follower.
     uint64_t v = 0;
-    using namespace std::chrono;
-    using clock = steady_clock;
-    auto timeout = duration<double>(600.0);
-    auto stoppage = clock::now() + timeout;
-    auto snooze = milliseconds(100);
-    while (!_feature.server().isStopping() && clock::now() < stoppage) {
+    auto timeout = std::chrono::duration<double>(600.0);
+    auto stoppage = std::chrono::steady_clock::now() + timeout;
+    auto snooze = std::chrono::milliseconds(100);
+    while (!_feature.server().isStopping() &&
+           std::chrono::steady_clock::now() < stoppage) {
       cluster::fetchCurrentVersion(0.1 * timeout)
           .thenValue([&v](auto&& res) {
             // we need to check if res is ok() in order to not trigger a
@@ -1446,8 +1557,8 @@ void SynchronizeShard::setState(ActionState state) {
         break;
       }
       std::this_thread::sleep_for(snooze);
-      if (snooze < seconds(2)) {
-        snooze += milliseconds(100);
+      if (snooze < std::chrono::seconds(2)) {
+        snooze += std::chrono::milliseconds(100);
       }
     }
 
@@ -1470,15 +1581,14 @@ void SynchronizeShard::setState(ActionState state) {
 std::shared_ptr<DatabaseTailingSyncer> SynchronizeShard::buildTailingSyncer(
     TRI_vocbase_t& vocbase, std::string const& endpoint) {
   // build configuration for WAL tailing
-  ReplicationApplierConfiguration configuration(feature().server());
+  ReplicationApplierConfiguration configuration(_feature.server());
   configuration._endpoint = endpoint;
   configuration._database = getDatabase();
   configuration._requestTimeout = 600.0;
   configuration._connectTimeout = 30.0;
   // set JWT
-  if (feature().server().hasFeature<AuthenticationFeature>()) {
-    configuration._jwt = feature()
-                             .server()
+  if (_feature.server().hasFeature<AuthenticationFeature>()) {
+    configuration._jwt = _feature.server()
                              .getFeature<AuthenticationFeature>()
                              .tokenCache()
                              .jwtToken();

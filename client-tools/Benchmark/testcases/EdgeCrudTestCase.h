@@ -38,8 +38,12 @@ struct EdgeCrudTest : public Benchmark<EdgeCrudTest> {
       : Benchmark<EdgeCrudTest>(arangobench) {}
 
   bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-    return DeleteCollection(client, _arangobench.collection()) &&
-           CreateCollection(client, _arangobench.collection(), 3, _arangobench);
+    if (_arangobench.createCollection()) {
+      return DeleteCollection(client, _arangobench.collection()) &&
+             CreateCollection(client, _arangobench.collection(), 3,
+                              _arangobench);
+    }
+    return true;
   }
 
   void tearDown() override {}

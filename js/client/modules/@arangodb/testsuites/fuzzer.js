@@ -56,7 +56,7 @@ function shellFuzzer(options) {
   let testCases = tu.scanTestPaths(testPaths.shell_fuzzer, options);
 
   testCases = tu.splitBuckets(options, testCases);
-  let rc = tu.performTests(options, testCases, 'shell_fuzzer', tu.runInLocalArangosh);
+  let rc = new tu.runLocalInArangoshRunner(options, 'shell_fuzzer').run(testCases);
   return rc;
 }
 

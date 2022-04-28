@@ -101,9 +101,9 @@ class EnumerateCollectionExecutorInfos {
   arangodb::aql::Projections _projections;
   RegisterId _outputRegisterId;
   std::vector<std::pair<VariableId, RegisterId>> _filterVarsToRegs;
-  bool _produceResult;
-  bool _random;
-  bool _count;
+  bool const _produceResult;
+  bool const _random;
+  bool const _count;
   ReadOwnWrites const _readOwnWrites;
 };
 

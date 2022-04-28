@@ -87,9 +87,6 @@ class ClusterCollection final : public PhysicalCollection {
   RevisionId revision(arangodb::transaction::Methods* trx) const override;
   uint64_t numberDocuments(transaction::Methods* trx) const override;
 
-  /// @brief report extra memory used by indexes etc.
-  size_t memory() const override;
-
   ////////////////////////////////////
   // -- SECTION Indexes --
   ///////////////////////////////////

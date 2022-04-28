@@ -22,20 +22,27 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <cstddef>
 #include <string_view>
 
 namespace arangodb::metrics {
 
+template<typename T>
 struct MetricKey {
-  std::string_view name;
-  std::string_view labels;
-
-  MetricKey() noexcept;
-  MetricKey(std::string_view name) noexcept;
-  MetricKey(std::string_view name, std::string_view labels) noexcept;
+  T name;
+  T labels;
 };
 
-bool operator<(MetricKey const& lhs, MetricKey const& rhs);
+using MetricKeyView = MetricKey<std::string_view>;
+
+template<typename L, typename R>
+bool operator==(const MetricKey<L>& lhs, const MetricKey<R>& rhs) noexcept {
+  return lhs.name == rhs.name && lhs.labels == rhs.labels;
+}
+
+template<typename L, typename R>
+bool operator<(const MetricKey<L>& lhs, const MetricKey<R>& rhs) noexcept {
+  const auto comp_name = lhs.name.compare(rhs.name);
+  return comp_name < 0 || (comp_name == 0 && lhs.labels < rhs.labels);
+}
 
 }  // namespace arangodb::metrics

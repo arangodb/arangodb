@@ -60,6 +60,14 @@ class LifoQueue {
     guard.steal();  // now we are responsible for tracking the memory
   }
 
+  bool firstIsVertexFetched() const {
+    if (not isEmpty()) {
+      auto const& first = _queue.front();
+      return first.vertexFetched();
+    }
+    return false;
+  }
+
   bool hasProcessableElement() const {
     if (!isEmpty()) {
       auto const& first = _queue.front();
@@ -94,6 +102,24 @@ class LifoQueue {
     _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
     _queue.pop_front();
     return first;
+  }
+
+  std::vector<Step*> getStepsWithoutFetchedVertex() {
+    std::vector<Step*> steps{};
+    for (auto& step : _queue) {
+      if (!step.vertexFetched()) {
+        steps.emplace_back(&step);
+      }
+    }
+    return steps;
+  }
+
+  void getStepsWithoutFetchedEdges(std::vector<Step*>& steps) {
+    for (auto& step : _queue) {
+      if (!step.edgeFetched()) {
+        steps.emplace_back(&step);
+      }
+    }
   }
 
  private:

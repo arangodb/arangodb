@@ -647,7 +647,7 @@ void arangodb::maintenance::diffReplicatedStates(
     return StringUtils::encodeBase64(slice.startAs<char>(), slice.byteSize());
   };
 
-  auto const createReplicatedStateAction =
+  auto const updateReplicatedStateAction =
       [&](LogId id, replicated_state::agency::Plan const* spec,
           replicated_state::agency::Current const* current) {
         auto specStr = objectToVelocyPackString(spec);
@@ -672,15 +672,18 @@ void arangodb::maintenance::diffReplicatedStates(
       [&](LogId id, replicated_state::agency::Plan const& spec,
           replicated_state::agency::Current const* current) {
         if (spec.participants.contains(serverId)) {
+          if (!localLogs.contains(id)) {
+            return;  // wait for replicated log first
+          }
           if (!localStates.contains(id)) {
             // we have to create this replicated state
-            createReplicatedStateAction(id, &spec, nullptr);
+            updateReplicatedStateAction(id, &spec, current);
           }
         }
       };
 
   auto const forEachReplicatedStateInLocal =
-      [&](LogId id, replicated_state::StateStatus const& status,
+      [&](LogId id, std::optional<replicated_state::StateStatus> const& status,
           replicated_state::agency::Plan const* plan,
           replicated_state::agency::Current const* current) {
         bool const shouldDeleted = std::invoke([&] {
@@ -688,12 +691,12 @@ void arangodb::maintenance::diffReplicatedStates(
         });
 
         if (shouldDeleted) {
-          createReplicatedStateAction(id, nullptr, nullptr);
-        } else {
+          updateReplicatedStateAction(id, nullptr, nullptr);
+        } else if (status.has_value()) {
           TRI_ASSERT(plan != nullptr);
           auto const& participant = plan->participants.at(serverId);
-          if (participant.generation != status.getGeneration()) {
-            createReplicatedStateAction(id, plan, nullptr);
+          if (participant.generation != status->getGeneration()) {
+            updateReplicatedStateAction(id, plan, nullptr);
           }
         }
       };
@@ -917,8 +920,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
                                               ->vec());
       if (planLogInDatabaseSlice.isObject()) {
         for (auto [key, value] : VPackObjectIterator(planLogInDatabaseSlice)) {
-          auto spec =
-              agency::LogPlanSpecification(agency::from_velocypack, value);
+          auto spec = agency::LogPlanSpecification::fromVelocyPack(value);
           planLogsInDatabase.emplace(spec.id, std::move(spec));
         }
       }
@@ -1658,9 +1660,6 @@ static void reportCurrentReplicatedState(
     replication2::replicated_state::StateStatus const& status, VPackSlice cur,
     replication2::LogId id, std::string const& dbName,
     std::string const& serverId) {
-  // update the local snapshot information
-  auto const& snapshot = status.getSnapshotInfo();
-
   // load current into memory
   auto current = std::invoke(
       [&]() -> std::optional<replication2::replicated_state::agency::Current> {
@@ -1687,7 +1686,7 @@ static void reportCurrentReplicatedState(
       if (cs.generation != status.getGeneration()) {
         return true;
       }
-      if (cs.snapshot.status != snapshot.status) {
+      if (cs.snapshot.status != status.getSnapshotInfo().status) {
         return true;
       }
     } else {
@@ -2101,8 +2100,10 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       if (auto stateIter = localStates.find(dbName);
           stateIter != std::end(localStates)) {
         for (auto const& [id, status] : stateIter->second) {
-          reportCurrentReplicatedState(report, status, cur, id, dbName,
-                                       serverId);
+          if (status.has_value()) {
+            reportCurrentReplicatedState(report, *status, cur, id, dbName,
+                                         serverId);
+          }
         }
       }
     } catch (std::exception const& ex) {
@@ -2331,12 +2332,33 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         // Current's servers
         VPackSlice const cservers = cshrd.get(SERVERS);
 
+        // From above, we know that the shard exists locally. For the case
+        // that we have been restarted but the leader did not notice that
+        // we were gone, we must check if the leader is set correctly here
+        // locally for our shard:
+        VPackSlice lshard = localdb.get(shname);
+        TRI_ASSERT(lshard.isObject());
+        bool needsResyncBecauseOfRestart = false;
+        if (lshard.isObject()) {  // just in case
+          VPackSlice theLeader = lshard.get("theLeader");
+          if (theLeader.isString() &&
+              theLeader.stringView() ==
+                  maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
+            needsResyncBecauseOfRestart = true;
+          }
+        }
+
         // if we are considered to be in sync there is nothing to do
-        if (indexOf(cservers, serverId) > 0) {
+        if (!needsResyncBecauseOfRestart && indexOf(cservers, serverId) > 0) {
           continue;
         }
 
         std::string leader = pservers[0].copyString();
+        std::string forcedResync =
+            needsResyncBecauseOfRestart ? "true" : "false";
+        std::string syncByRevision =
+            pcol.value.get(StaticStrings::SyncByRevision).isTrue() ? "true"
+                                                                   : "false";
         std::shared_ptr<ActionDescription> description =
             std::make_shared<ActionDescription>(
                 std::map<std::string, std::string>{
@@ -2345,6 +2367,8 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
                     {COLLECTION, std::string(colname)},
                     {SHARD, std::string(shname)},
                     {THE_LEADER, std::move(leader)},
+                    {FORCED_RESYNC, std::move(forcedResync)},
+                    {SYNC_BY_REVISION, syncByRevision},
                     {SHARD_VERSION, std::to_string(feature.shardVersion(
                                         std::string(shname)))}},
                 SYNCHRONIZE_PRIORITY, true);

@@ -76,7 +76,18 @@ return require('internal').options()["log.output"];
     return filtered;
   };
 
+  let oldLogLevel;
+
   return {
+    setUpAll : function() {
+      oldLogLevel = arango.GET("/_admin/log/level").general;
+      arango.PUT("/_admin/log/level", { general: "info" });
+    },
+
+    tearDownAll : function () {
+      // restore previous log level for "general" topic;
+      arango.PUT("/_admin/log/level", { general: oldLogLevel });
+    },
 
     testStartingParameters: function () {
       let res = arango.GET("/_admin/log/structured");

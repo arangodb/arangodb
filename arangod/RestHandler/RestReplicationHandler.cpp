@@ -280,7 +280,6 @@ std::string const RestReplicationHandler::LoggerTickRanges =
 std::string const RestReplicationHandler::LoggerFirstTick = "logger-first-tick";
 std::string const RestReplicationHandler::LoggerFollow = "logger-follow";
 std::string const RestReplicationHandler::Batch = "batch";
-std::string const RestReplicationHandler::Barrier = "barrier";
 std::string const RestReplicationHandler::Inventory = "inventory";
 std::string const RestReplicationHandler::Keys = "keys";
 std::string const RestReplicationHandler::Revisions = "revisions";
@@ -375,11 +374,6 @@ RestStatus RestReplicationHandler::execute() {
       } else {
         handleCommandBatch();
       }
-    } else if (command == Barrier) {
-      if (isCoordinatorError()) {
-        return RestStatus::DONE;
-      }
-      handleCommandBarrier();
     } else if (command == Inventory) {
       // get overview of collections and indexes followed by some extra data
       // example call: curl --dump -
@@ -2734,7 +2728,7 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
 void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   TRI_ASSERT(ServerState::instance()->isDBServer());
   bool success = false;
-  VPackSlice const body = this->parseVPackBody(success);
+  VPackSlice body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
@@ -3424,7 +3418,7 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
 
   // Initializing creation options
   TRI_col_type_e collectionType = Helper::getNumericValue<TRI_col_type_e, int>(
-      slice, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN);
+      slice, StaticStrings::DataSourceType, TRI_COL_TYPE_DOCUMENT);
   std::vector<CollectionCreationInfo> infos{{name, collectionType, slice}};
   bool isNewDatabase = false;
   bool allowSystem = true;
@@ -3442,9 +3436,10 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
   OperationOptions options(_context);
   std::vector<std::shared_ptr<LogicalCollection>> collections;
   Result res = methods::Collections::create(
-      _vocbase, options, infos, true, enforceReplicationFactor, isNewDatabase,
-      nullptr, collections, allowSystem,
-      allowEnterpriseCollectionsOnSingleServer, true);
+      _vocbase, options, infos, /*createWaitsForSyncReplication*/ true,
+      enforceReplicationFactor, isNewDatabase, nullptr, collections,
+      allowSystem, allowEnterpriseCollectionsOnSingleServer,
+      /*isRestore*/ true);
   if (res.fail()) {
     return res.errorNumber();
   }
@@ -3533,6 +3528,14 @@ Result RestReplicationHandler::createBlockingTransaction(
     TransactionId id, LogicalCollection& col, double ttl,
     AccessMode::Type access, RebootId const& rebootId,
     std::string const& serverId) {
+  // it is ok to acquire the scope here in all cases. otherwise we
+  // may block replication. note: we need this here in case the
+  // leader is read-only (e.g. because the license has expired).
+  // if we are not using superuser scope here and the leader is
+  // read-only, trying to grab the lock in exclusive mode will
+  // return a "read-only" error.
+  ExecContextScope scope(&ExecContext::superuser());
+
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
@@ -3782,7 +3785,9 @@ RequestLane RestReplicationHandler::lane() const {
         return RequestLane::SERVER_REPLICATION_CATCHUP;
       }
     }
-    if (command == RemoveFollower || command == LoggerFollow) {
+    if (command == RemoveFollower || command == LoggerFollow ||
+        command == Batch || command == Inventory || command == Revisions ||
+        command == Dump) {
       return RequestLane::SERVER_REPLICATION_CATCHUP;
     }
   }

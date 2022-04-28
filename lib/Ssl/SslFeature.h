@@ -45,9 +45,6 @@ class SslFeature final : public application_features::ApplicationFeature {
     startsAfter<application_features::GreetingsFeaturePhase, Server>();
   }
 
-  void prepare() override final;
-  void unprepare() override final;
-
  private:
   static const asio_ns::ssl::detail::openssl_init<true> sslBase;
 };

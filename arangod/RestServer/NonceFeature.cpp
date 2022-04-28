@@ -44,11 +44,4 @@ void NonceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                              "the size of the hash array for nonces", true);
 }
 
-void NonceFeature::prepare() {
-  constexpr uint64_t initialSize = 2 * 1024 * 1024;
-  Nonce::setInitialSize(static_cast<size_t>(initialSize));
-}
-
-void NonceFeature::unprepare() { Nonce::destroy(); }
-
 }  // namespace arangodb

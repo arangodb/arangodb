@@ -62,6 +62,9 @@ class ProviderTracer {
 
   auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0)
       -> Step;
+  auto fetchVertices(std::vector<Step*> const& looseEnds)
+      -> futures::Future<std::vector<Step*>>;
+  auto fetchEdges(const std::vector<Step*>& fetchedVertices) -> Result;
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;
   auto expand(Step const& from, size_t previous,

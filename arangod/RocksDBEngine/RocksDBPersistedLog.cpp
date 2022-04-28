@@ -239,7 +239,10 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
 
         // resolve all promises in [nextReqToResolve, nextReqToWrite)
         for (; nextReqToResolve != nextReqToWrite; ++nextReqToResolve) {
-          nextReqToResolve->promise.setValue(TRI_ERROR_NO_ERROR);
+          _executor->operator()(
+              [reqToResolve = std::move(*nextReqToResolve)]() mutable noexcept {
+                reqToResolve.promise.setValue(TRI_ERROR_NO_ERROR);
+              });
         }
       }
 
@@ -254,7 +257,11 @@ void RocksDBLogPersistor::runPersistorWorker(Lane& lane) noexcept {
         // should always be increased as well; meaning we only exactly iterate
         // over the unfulfilled promises here.
         TRI_ASSERT(!nextReqToResolve->promise.isFulfilled());
-        nextReqToResolve->promise.setValue(result);
+        _executor->operator()([reqToResolve = std::move(*nextReqToResolve),
+                               result = result]() mutable noexcept {
+          TRI_ASSERT(!reqToResolve.promise.isFulfilled());
+          reqToResolve.promise.setValue(std::move(result));
+        });
       }
     }
   }

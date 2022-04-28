@@ -822,6 +822,15 @@ std::string getSingleShardId(
 
   // all shard keys found!!
 
+  if (node->getType() == EN::INSERT && collection->numberOfShards() != 1 &&
+      (shardKeys.size() != 1 ||
+       shardKeys[0] != arangodb::StaticStrings::KeyString) &&
+      builder.slice().get(arangodb::StaticStrings::KeyString).isNone()) {
+    // insert into a collection with more than one shard or custom shard keys,
+    // and _key is not given in inputs.
+    return std::string();
+  }
+
   // find the responsible shard for the data
   std::string shardId;
 

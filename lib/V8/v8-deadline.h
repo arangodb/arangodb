@@ -33,5 +33,6 @@ bool isExecutionDeadlineReached(v8::Isolate* isolate);
 double correctTimeoutToExecutionDeadlineS(double timeoutSeconds);
 std::chrono::milliseconds correctTimeoutToExecutionDeadline(
     std::chrono::milliseconds timeout);
+uint32_t correctTimeoutToExecutionDeadline(uint32_t timeout);
 
 void TRI_InitV8Deadline(v8::Isolate* isolate);

@@ -524,8 +524,8 @@ _Enterprise Edition only_
 ### zlib
 
 * Name: zlib
-* Version: 1.2.11
-* Date: 2017-01-15 17:57:23Z
+* Version: 1.2.12
+* Date: 2022-03-27 15:47:03 -0700
 * Project Home: https://github.com/madler/zlib/
 * License: https://raw.githubusercontent.com/madler/zlib/master/README
 * License Comment: free as-is license

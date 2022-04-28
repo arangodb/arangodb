@@ -132,13 +132,14 @@ V8ClientConnection::~V8ClientConnection() {
   _loop.stop();
 }
 
-std::shared_ptr<fu::Connection> V8ClientConnection::createConnection() {
+std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
+    bool bypassCache) {
   if (_client.endpoint() == "none") {
     setCustomError(400, "no endpoint specified");
     return nullptr;
   }
 
-  auto findConnection = [this]() {
+  auto findConnection = [bypassCache, this]() {
     std::string id = connectionIdentifier(_builder);
 
     // check if we have a connection for that endpoint in our cache
@@ -147,7 +148,9 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection() {
       auto c = (*it).second;
       // cache hit. remove the connection from the cache and return it!
       _connectionCache.erase(it);
-      return std::make_pair(c, true);
+      if (!bypassCache) {
+        return std::make_pair(c, true);
+      }
     }
     // no connection found in cache. create a new one
     return std::make_pair(_builder.connect(_loop), false);
@@ -1054,8 +1057,13 @@ static void ClientConnection_httpFuzzRequests(
   }
   std::unordered_map<uint32_t, uint32_t> fuzzReturnCodesCount;
 
+  // by creating a new connection here we make sure that we always use a new
+  // connection when starting the fuzzing. that way the fuzzing results for the
+  // same input seed value should be fully deterministic.
+  v8connection->forceNewConnection();
+
   for (uint64_t i = 0; i < numReqs; ++i) {
-    uint32_t returnCode = v8connection->requestFuzz(fuzzer);
+    uint32_t returnCode = v8connection->sendFuzzRequest(fuzzer);
     fuzzReturnCodesCount[returnCode]++;
   }
 
@@ -2270,7 +2278,7 @@ void setResultMessage(v8::Isolate* isolate, v8::Local<v8::Context> context,
 }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-uint32_t V8ClientConnection::requestFuzz(fuzzer::RequestFuzzer& fuzzer) {
+uint32_t V8ClientConnection::sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer) {
   std::shared_ptr<fu::Connection> connection = acquireConnection();
   if (!connection || connection->state() == fu::Connection::State::Closed) {
     return kFuzzNotConnected;
@@ -2472,6 +2480,17 @@ again:
   }
   // and returns
   return result;
+}
+
+// forces a new connection to be used
+void V8ClientConnection::forceNewConnection() {
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+
+  _lastErrorMessage = "";
+  _lastHttpReturnCode = 0;
+
+  // createConnection will populate _connection
+  createConnection(/*bypassCache*/ true);
 }
 
 void V8ClientConnection::initServer(v8::Isolate* isolate,

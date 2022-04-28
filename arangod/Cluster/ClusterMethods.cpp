@@ -24,13 +24,13 @@
 
 #include "ClusterMethods.h"
 
-#include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/TimeString.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
@@ -464,7 +464,7 @@ struct CrudOperationCtx {
 
 ::ErrorCode distributeBabyOnShards(CrudOperationCtx& opCtx,
                                    LogicalCollection& collinfo,
-                                   VPackSlice const value) {
+                                   VPackSlice value) {
   TRI_ASSERT(!collinfo.isSmart() || collinfo.type() == TRI_COL_TYPE_DOCUMENT);
 
   ShardID shardID;
@@ -501,7 +501,7 @@ struct CrudOperationCtx {
   return TRI_ERROR_NO_ERROR;
 }
 
-struct CreateOperationCtx {
+struct InsertOperationCtx {
   std::vector<std::pair<ShardID, VPackValueLength>> reverseMapping;
   std::map<ShardID, std::vector<std::pair<VPackSlice, std::string>>> shardMap;
   arangodb::OperationOptions options;
@@ -514,11 +514,15 @@ struct CreateOperationCtx {
 ///        Also generates a key if necessary.
 ////////////////////////////////////////////////////////////////////////////////
 
-::ErrorCode distributeBabyOnShards(CreateOperationCtx& opCtx,
-                                   LogicalCollection& collinfo,
-                                   VPackSlice value, bool isRestore) {
+::ErrorCode distributeInsertBatchOnShards(InsertOperationCtx& opCtx,
+                                          LogicalCollection& collinfo,
+                                          VPackSlice value) {
+  // this function must not be called for smart edge collections
+  TRI_ASSERT(collinfo.type() != TRI_COL_TYPE_EDGE || !collinfo.isSmart());
+
+  bool isRestore = opCtx.options.isRestore;
   ShardID shardID;
-  std::string _key;
+  std::string key;
 
   if (!value.isObject()) {
     // We have invalid input at this point.
@@ -527,12 +531,6 @@ struct CreateOperationCtx {
     // We just assign it to any shard and pretend the user has given a key
     shardID = collinfo.shardingInfo()->shardListAsShardID()->at(0);
   } else {
-    auto r = transaction::Methods::validateSmartJoinAttribute(collinfo, value);
-
-    if (r != TRI_ERROR_NO_ERROR) {
-      return r;
-    }
-
     // Sort out the _key attribute:
     // The user is allowed to specify _key, provided that _key is the one
     // and only sharding attribute, because in this case we can delegate
@@ -545,14 +543,21 @@ struct CreateOperationCtx {
     bool userSpecifiedKey = false;
     VPackSlice keySlice = value.get(StaticStrings::KeyString);
     if (keySlice.isNone()) {
-      // The user did not specify a key, let's create one:
-      _key = collinfo.createKey(value);
+      // The user did not specify a key, let's (probably) create one...
+
+      // if we only have a single shard, we can let the DB server generate
+      // the key. this is beneficial so that the key generators can generate
+      // an increasing sequence of keys, regardless of how many coordinators
+      // there are.
+      if (collinfo.mustCreateKeyOnCoordinator()) {
+        key = collinfo.keyGenerator().generate(value);
+      }
     } else {
       userSpecifiedKey = true;
       if (keySlice.isString()) {
-        VPackValueLength l;
-        char const* p = keySlice.getString(l);
-        auto res = collinfo.keyGenerator()->validate(p, l, isRestore);
+        // validate the key provided by the user
+        auto res = collinfo.keyGenerator().validate(keySlice.stringView(),
+                                                    value, isRestore);
         if (res != TRI_ERROR_NO_ERROR) {
           return res;
         }
@@ -568,9 +573,10 @@ struct CreateOperationCtx {
     } else {
       // we pass in the generated _key so we do not need to rebuild the input
       // slice
+      TRI_ASSERT(!key.empty() || !collinfo.mustCreateKeyOnCoordinator());
       error = collinfo.getResponsibleShard(value, /*docComplete*/ true, shardID,
                                            usesDefaultShardingAttributes,
-                                           std::string_view(_key));
+                                           std::string_view(key));
     }
     if (error == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
       return TRI_ERROR_CLUSTER_SHARD_GONE;
@@ -587,12 +593,12 @@ struct CreateOperationCtx {
   // We found the responsible shard. Add it to the list.
   auto it = opCtx.shardMap.find(shardID);
   if (it == opCtx.shardMap.end()) {
-    opCtx.shardMap.try_emplace(
-        shardID,
-        std::vector<std::pair<VPackSlice, std::string>>{{value, _key}});
+    opCtx.shardMap.try_emplace(shardID,
+                               std::vector<std::pair<VPackSlice, std::string>>{
+                                   {value, std::move(key)}});
     opCtx.reverseMapping.emplace_back(shardID, 0);
   } else {
-    it->second.emplace_back(value, _key);
+    it->second.emplace_back(value, std::move(key));
     opCtx.reverseMapping.emplace_back(shardID, it->second.size() - 1);
   }
   return TRI_ERROR_NO_ERROR;
@@ -1512,25 +1518,24 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature,
 ////////////////////////////////////////////////////////////////////////////////
 
 futures::Future<OperationResult> createDocumentOnCoordinator(
-    transaction::Methods const& trx, LogicalCollection& coll,
-    VPackSlice const slice, OperationOptions const& options,
-    transaction::MethodsApi api) {
+    transaction::Methods const& trx, LogicalCollection& coll, VPackSlice slice,
+    OperationOptions const& options, transaction::MethodsApi api) {
   // create vars used in this function
   std::shared_ptr<ShardMap> shardIds = coll.shardIds();
   bool const useMultiple = slice.isArray();  // insert more than one document
-  CreateOperationCtx opCtx;
+  InsertOperationCtx opCtx;
   opCtx.options = options;
 
   // create shard map
   if (useMultiple) {
     for (VPackSlice value : VPackArrayIterator(slice)) {
-      auto res = distributeBabyOnShards(opCtx, coll, value, options.isRestore);
+      auto res = distributeInsertBatchOnShards(opCtx, coll, value);
       if (res != TRI_ERROR_NO_ERROR) {
         return makeFuture(OperationResult(res, options));
       }
     }
   } else {
-    auto res = distributeBabyOnShards(opCtx, coll, slice, options.isRestore);
+    auto res = distributeInsertBatchOnShards(opCtx, coll, slice);
     if (res != TRI_ERROR_NO_ERROR) {
       return makeFuture(OperationResult(res, options));
     }
@@ -1540,7 +1545,7 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
       coll.system() && coll.name() == StaticStrings::JobsCollection;
 
   Future<Result> f = makeFuture(Result());
-  const bool isManaged =
+  bool const isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
   if (isManaged &&
       opCtx.shardMap.size() > 1) {  // lazily begin transactions on leaders
@@ -2903,8 +2908,10 @@ ClusterMethods::persistCollectionsInAgency(
       col->setShardMap(shards);
 
       std::unordered_set<std::string> const ignoreKeys{
-          "allowUserKeys", "cid",     "globallyUniqueId", "count",
-          "planId",        "version", "objectId"};
+          StaticStrings::AllowUserKeys,    StaticStrings::DataSourceCid,
+          StaticStrings::DataSourceGuid,   "count",
+          StaticStrings::DataSourcePlanId, StaticStrings::Version,
+          StaticStrings::ObjectId};
       col->setStatus(TRI_VOC_COL_STATUS_LOADED);
       VPackBuilder velocy = col->toVelocyPackIgnore(
           ignoreKeys, LogicalDataSource::Serialization::List);

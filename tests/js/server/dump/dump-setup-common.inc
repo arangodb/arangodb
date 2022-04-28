@@ -574,6 +574,11 @@ function createSmartGraphSingleServer() {
     toVertices: [vertices],
     orphans: [orphans]
   });
+  
+  let properties = db[edges].properties();
+  assertTrue(properties.isSmart);
+  properties = db[vertices].properties();
+  assertTrue(properties.isSmart);
 
   const size = 100;
 

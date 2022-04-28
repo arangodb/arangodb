@@ -29,17 +29,8 @@
 
 #include <chrono>
 
-/// @brief construct locker with file and line information
-#ifdef ARANGODB_SHOW_LOCK_TIME
-
-#define CONDITION_LOCKER(a, b) \
-  arangodb::basics::ConditionLocker a(&(b), __FILE__, __LINE__)
-
-#else
-
+/// @brief construct locker
 #define CONDITION_LOCKER(a, b) ::arangodb::basics::ConditionLocker a(&(b))
-
-#endif
 
 namespace arangodb::basics {
 class ConditionVariable;
@@ -54,20 +45,9 @@ class ConditionLocker {
   ConditionLocker(ConditionLocker const&) = delete;
   ConditionLocker& operator=(ConditionLocker const&) = delete;
 
-/// @brief locks the condition variable
-///
-/// The constructor locks the condition variable, the destructor unlocks
-/// the condition variable
-#ifdef ARANGODB_SHOW_LOCK_TIME
-
-  ConditionLocker(ConditionVariable* conditionVariable, char const* file,
-                  int line, bool showLockTime = true);
-
-#else
-
+  /// The constructor locks the condition variable, the destructor unlocks
+  /// the condition variable
   explicit ConditionLocker(ConditionVariable* conditionVariable) noexcept;
-
-#endif
 
   /// @brief unlocks the condition variable
   ~ConditionLocker();
@@ -105,20 +85,5 @@ class ConditionLocker {
 
   /// @brief lock state
   bool _isLocked;
-
-#ifdef ARANGODB_SHOW_LOCK_TIME
-
-  /// @brief file
-  char const* _file;
-
-  /// @brief line number
-  int _line;
-
-  bool _showLockTime;
-
-  /// @brief lock time
-  double _time;
-
-#endif
 };
 }  // namespace arangodb::basics

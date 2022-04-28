@@ -25,21 +25,12 @@
 const jsunity = require('jsunity');
 const arangodb = require("@arangodb");
 const _ = require('lodash');
-const db = arangodb.db;
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const sh = require("@arangodb/testutils/replicated-state-helper");
 const spreds = require("@arangodb/testutils/replicated-state-predicates");
+const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 
 const database = "replication2_supervision_test_db";
-
-const updateReplicatedStateTarget = function (dbname, stateId, callback) {
-  let {target: targetState} = sh.readReplicatedStateAgency(database, stateId);
-
-  const state = callback(targetState);
-
-  global.ArangoAgency.set(`Target/ReplicatedStates/${database}/${stateId}`, state);
-  global.ArangoAgency.increaseVersion(`Target/Version`);
-};
 
 const replicatedStateSuite = function () {
   const targetConfig = {
@@ -49,80 +40,17 @@ const replicatedStateSuite = function () {
     waitForSync: false,
   };
 
-  const {setUpAll, tearDownAll, stopServer, continueServer, resumeAll} = (function () {
-    let previousDatabase, databaseExisted = true;
-    let stoppedServers = {};
-    return {
-      setUpAll: function () {
-        previousDatabase = db._name();
-        if (!_.includes(db._databases(), database)) {
-          db._createDatabase(database);
-          databaseExisted = false;
-        }
-        db._useDatabase(database);
-      },
+  const {setUpAll, tearDownAll, stopServer, continueServer, setUp, tearDown} = lh.testHelperFunctions(database);
 
-      tearDownAll: function () {
-        db._useDatabase(previousDatabase);
-        if (!databaseExisted) {
-          db._dropDatabase(database);
-        }
-      },
-      stopServer: function (serverId) {
-        if (stoppedServers[serverId] !== undefined) {
-          throw Error(`{serverId} already stopped`);
-        }
-        lh.stopServer(serverId);
-        stoppedServers[serverId] = true;
-      },
-      continueServer: function (serverId) {
-        if (stoppedServers[serverId] === undefined) {
-          throw Error(`{serverId} not stopped`);
-        }
-        lh.continueServer(serverId);
-        delete stoppedServers[serverId];
-      },
-      resumeAll: function () {
-        Object.keys(stoppedServers).forEach(function (key) {
-          continueServer(key);
-        });
-      }
-    };
-  }());
-
+  const createReplicatedStateWithServers = function (servers) {
+    return sh.createReplicatedStateTargetWithServers(database, targetConfig, "black-hole", servers);
+  };
   const createReplicatedState = function () {
-    const stateId = lh.nextUniqueLogId();
-
-    const servers = _.sampleSize(lh.dbservers, targetConfig.replicationFactor);
-    let participants = {};
-    for (const server of servers) {
-      participants[server] = {};
-    }
-
-    updateReplicatedStateTarget(database, stateId,
-        function () {
-          return {
-            id: stateId,
-            participants: participants,
-            config: targetConfig,
-            properties: {
-              implementation: {
-                type: "black-hole"
-              }
-            }
-          };
-        });
-
-    lh.waitFor(spreds.replicatedStateIsReady(database, stateId, servers));
-    const leader = lh.getReplicatedLogLeaderPlan(database, stateId).leader;
-    const followers = _.difference(servers, [leader]);
-    return {stateId, servers, leader, followers};
+    return sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
   };
 
   return {
-    setUpAll, tearDownAll,
-    setUp: lh.registerAgencyTestBegin,
-    tearDown: lh.registerAgencyTestEnd,
+    setUpAll, tearDownAll, setUp, tearDown,
 
     // Request creation of a replicated state by
     // writing a configuration to Target
@@ -137,8 +65,8 @@ const replicatedStateSuite = function () {
         participants[server] = {};
       }
 
-      updateReplicatedStateTarget(database, stateId,
-          function (target) {
+      sh.updateReplicatedStateTarget(database, stateId,
+          function () {
             return {
               id: stateId,
               participants: participants,
@@ -160,12 +88,10 @@ const replicatedStateSuite = function () {
     },
 
     testAddParticipant: function () {
-      const {stateId, servers} = createReplicatedState();
+      const {stateId, servers, others} = createReplicatedState();
+      const newParticipant = _.sample(others);
 
-      const remainingServers = _.difference(lh.dbservers, servers);
-      const newParticipant = _.sample(remainingServers);
-
-      updateReplicatedStateTarget(database, stateId,
+      sh.updateReplicatedStateTarget(database, stateId,
           function (target) {
             target.participants[newParticipant] = {};
             return target;
@@ -174,7 +100,7 @@ const replicatedStateSuite = function () {
 
       lh.waitFor(spreds.replicatedStateIsReady(database, stateId, newServers));
 
-      lh.waitFor(lh.replicatedLogParticipantsFlag(database, stateId, {
+      lh.waitFor(lpreds.replicatedLogParticipantsFlag(database, stateId, {
         [newParticipant]: {allowedInQuorum: true, allowedAsLeader: true, forced: false},
       }));
     },
@@ -183,7 +109,7 @@ const replicatedStateSuite = function () {
       const {stateId} = createReplicatedState();
 
       const version = 4;
-      updateReplicatedStateTarget(database, stateId,
+      sh.updateReplicatedStateTarget(database, stateId,
           function (target) {
             target.version = version;
             return target;
@@ -192,7 +118,7 @@ const replicatedStateSuite = function () {
       lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, version));
 
       const newVersion = 6;
-      updateReplicatedStateTarget(database, stateId,
+      sh.updateReplicatedStateTarget(database, stateId,
           function (target) {
             target.version = newVersion;
             return target;
@@ -204,32 +130,18 @@ const replicatedStateSuite = function () {
     testSetLeader: function () {
       const {stateId, followers} = createReplicatedState();
       const newLeader = _.sample(followers);
-      updateReplicatedStateTarget(database, stateId,
+      sh.updateReplicatedStateTarget(database, stateId,
           (target) => {
             target.leader = newLeader;
             return target;
           });
-      lh.waitFor(() => {
-        const currentLeader = lh.getReplicatedLogLeaderTarget(database, stateId);
-        if (currentLeader === newLeader) {
-          return true;
-        } else {
-          return new Error(`Expected log leader to switch to ${newLeader}, but is still ${currentLeader}`);
-        }
-      });
-      lh.waitFor(() => {
-        const {leader: currentLeader} = lh.getReplicatedLogLeaderPlan(database, stateId);
-        if (currentLeader === newLeader) {
-          return true;
-        } else {
-          return new Error(`Expected log leader to switch to ${newLeader}, but is still ${currentLeader}`);
-        }
-      });
+      lh.waitFor(lpreds.replicatedLogLeaderTargetIs(database, stateId, newLeader));
+      lh.waitFor(lpreds.replicatedLogLeaderPlanIs(database, stateId, newLeader));
     },
 
     testUnsetLeader: function () {
       const {stateId} = createReplicatedState();
-      updateReplicatedStateTarget(database, stateId,
+      sh.updateReplicatedStateTarget(database, stateId,
           (target) => {
             delete target.leader;
             return target;
@@ -243,6 +155,75 @@ const replicatedStateSuite = function () {
         }
       });
     },
+
+    testRemoveLeader: function () {
+      const servers = _.sampleSize(lh.dbservers, 4);
+      const {stateId, leader} = createReplicatedStateWithServers(servers);
+
+      const serverToBeRemoved = leader;
+      sh.updateReplicatedStateTarget(database, stateId,
+          function (target) {
+            delete target.participants[serverToBeRemoved];
+            target.version = 2;
+            return target;
+          });
+      lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, 2));
+      const newServers = _.without(servers, serverToBeRemoved);
+      lh.waitFor(lpreds.replicatedLogParticipantsFlag(database, stateId, {
+        [serverToBeRemoved]: null,
+      }));
+      lh.waitFor(spreds.replicatedStateIsReady(database, stateId, newServers));
+    },
+
+    testReplaceAllServers: function () {
+      const {stateId, others} = createReplicatedState();
+      const otherServers = _.sampleSize(others, targetConfig.replicationFactor);
+
+      sh.updateReplicatedStateTarget(database, stateId, function (target) {
+        target.participants = Object.assign({}, ...otherServers.map((x) => ({[x]: {}})));
+        target.version = 3;
+        return target;
+      });
+      lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, 3));
+      lh.waitFor(spreds.replicatedStateIsReady(database, stateId, otherServers));
+    },
+
+    testReplaceWithBadParticipant: function () {
+      const {stateId, servers, others, followers} = createReplicatedState();
+      const toBeReplaced = _.sample(followers);
+      const newParticipant = _.sample(others);
+
+      // first stop that new server
+      stopServer(newParticipant);
+
+      sh.updateReplicatedStateTarget(database, stateId,
+          function (target) {
+            delete target.participants[toBeReplaced];
+            target.participants[newParticipant] = {};
+            target.version = 4;
+            return target;
+          });
+      const newServers = [..._.without(servers, toBeReplaced), newParticipant];
+
+      // wait for the server to find its way into the current flags
+      lh.waitFor(lpreds.replicatedLogParticipantsFlag(database, stateId, {
+        [newParticipant]: {allowedAsLeader: false, allowedInQuorum: false, forced: false},
+      }));
+
+      // wait for the supervision to report that the snapshot is missing
+      lh.waitFor(spreds.replicatedStateSupervisionStatus(database, stateId, [
+        {participant: newParticipant, code: "ServerSnapshotMissing"},
+        {participant: toBeReplaced, code: "InsufficientSnapshotCoverage"}
+      ], true));
+
+      continueServer(newParticipant);
+      lh.waitFor(spreds.replicatedStateIsReady(database, stateId, newServers));
+      lh.waitFor(lpreds.replicatedLogParticipantsFlag(database, stateId, {
+        [newParticipant]: {allowedInQuorum: true, allowedAsLeader: true, forced: false},
+      }));
+      lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, 4));
+    },
+
   };
 };
 

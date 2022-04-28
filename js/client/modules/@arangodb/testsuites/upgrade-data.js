@@ -198,12 +198,11 @@ const upgradeData = (engine, version) => {
     const testCases = tu.scanTestPaths(['tests/js/server/upgrade-data'], options)
       .filter(byMinimumSuportedVersion(version));
     require('internal').print('Checking results...');
-    return tu.performTests(
+    
+    return new tu.runOnArangodRunner(
       options,
-      testCases,
       `upgrade_data_${engine}_${version}`,
-      tu.runThere,
-      args);
+      args).run(testCases);
   };
 };
 

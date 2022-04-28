@@ -27,7 +27,9 @@
 
 #include "Aql/VelocyPackHelper.h"
 #include "Cluster/ClusterTypes.h"
+#include "Inspection/VPack.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -47,7 +49,7 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
   VPackBuilder builder;
   spec.toVelocyPack(builder);
   auto slice = builder.slice();
-  const LogPlanSpecification fromVPack(from_velocypack, slice);
+  auto const fromVPack = LogPlanSpecification::fromVelocyPack(slice);
   EXPECT_EQ(spec, fromVPack);
 
   auto jsonBuffer = R"({
@@ -104,7 +106,7 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
   })"_vpack;
 
   jsonSlice = velocypack::Slice(jsonBuffer->data());
-  spec = LogPlanSpecification{from_velocypack, jsonSlice};
+  spec = LogPlanSpecification::fromVelocyPack(jsonSlice);
   EXPECT_EQ(spec.currentTerm->leader, std::nullopt);
 
   jsonBuffer = R"({
@@ -116,7 +118,7 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
   })"_vpack;
 
   jsonSlice = velocypack::Slice(jsonBuffer->data());
-  spec = LogPlanSpecification{from_velocypack, jsonSlice};
+  spec = LogPlanSpecification::fromVelocyPack(jsonSlice);
   EXPECT_EQ(spec.currentTerm, std::nullopt);
 }
 
