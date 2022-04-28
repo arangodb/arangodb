@@ -111,11 +111,19 @@ struct AddLogParticipantAction {
   replication2::ParticipantId server;
 };
 
+struct RemoveLogParticipantAction {
+  RemoveLogParticipantAction(replication2::ParticipantId server);
+  void apply(AgencyState& agency) const;
+  auto toString() const -> std::string;
+  replication2::ParticipantId server;
+};
+
 using AgencyTransition =
     std::variant<SupervisionStateAction, SupervisionLogAction,
                  DBServerSnapshotCompleteAction, DBServerReportTermAction,
                  DBServerCommitConfigAction, KillServerAction,
-                 ReplaceServerTargetState, AddLogParticipantAction>;
+                 ReplaceServerTargetState, AddLogParticipantAction,
+                 RemoveLogParticipantAction>;
 
 auto operator<<(std::ostream& os, AgencyTransition const& a) -> std::ostream&;
 }  // namespace arangodb::test

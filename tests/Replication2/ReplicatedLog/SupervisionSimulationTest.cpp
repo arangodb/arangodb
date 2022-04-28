@@ -92,7 +92,8 @@ TEST_F(ReplicatedLogSupervisionSimulationTest,
   log.setId(logId)
       .setTargetParticipant("A", defaultFlags)
       .setTargetParticipant("B", defaultFlags)
-      .setTargetParticipant("C", defaultFlags);
+      .setTargetParticipant("C", defaultFlags)
+      .setTargetParticipant("F", defaultFlags);
 
   replicated_log::ParticipantsHealth health;
   health._health.emplace(
@@ -110,15 +111,18 @@ TEST_F(ReplicatedLogSupervisionSimulationTest,
 
   // TODO once actor that adds a participant
   auto driver = model_checker::ActorDriver{
-      SupervisionActor{},  // KillLeaderActor{},  KillAnyServerActor{},
-      AddServerActor{"D"}, DBServerActor{"A"}, DBServerActor{"B"},
-      DBServerActor{"C"},  DBServerActor{"D"}};
+      SupervisionActor{}, AddServerActor{"D"}, RemoveServerActor{"F"},
+      DBServerActor{"A"}, DBServerActor{"B"},  DBServerActor{"C"},
+      DBServerActor{"D"}};
 
   // TODO predicate that checks participant is there
   auto allTests = model_checker::combined{
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
       MC_EVENTUALLY_ALWAYS(mcpreds::isParticipantPlanned("D")),
-      MC_EVENTUALLY_ALWAYS(mcpreds::isParticipantCurrent("D"))};
+      MC_EVENTUALLY_ALWAYS(mcpreds::isParticipantCurrent("D")),
+      MC_ALWAYS(mcpreds::isParticipantNotPlanned("E")),
+      MC_EVENTUALLY_ALWAYS(mcpreds::isParticipantNotPlanned("F")),
+  };
   using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
 
   auto result = Engine::run(driver, allTests, initState);

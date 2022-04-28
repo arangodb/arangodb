@@ -203,4 +203,19 @@ auto AddLogParticipantAction::toString() const -> std::string {
   return fmt::format("adding participant {}", server);
 }
 
+RemoveLogParticipantAction::RemoveLogParticipantAction(
+    replication2::ParticipantId server)
+    : server(std::move(server)) {}
+
+void RemoveLogParticipantAction::apply(AgencyState& agency) const {
+  TRI_ASSERT(agency.replicatedLog.has_value());
+  auto& target = agency.replicatedLog->target;
+  target.participants.erase(server);
+  target.version.emplace(target.version.value_or(0) + 1);
+}
+
+auto RemoveLogParticipantAction::toString() const -> std::string {
+  return fmt::format("removing participant {}", server);
+}
+
 }  // namespace arangodb::test
