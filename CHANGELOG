@@ -3,10 +3,10 @@ devel
 
 * Fix: Highly unlikely race in cluster maintenance. For every shard only
   one operation (change attribute, change leadership) should be performed
-	at the same time. However if two changes are detected in the same hearbeat
-	it could lead to both operations to be executed in parallel. In most cases
-	this is also fine, but could lead to races on the same attribute, however
-	the race will be sorted out in the next heartbeat interval.
+  at the same time. However if two changes are detected in the same hearbeat
+  it could lead to both operations to be executed in parallel. In most cases
+  this is also fine, but could lead to races on the same attribute, however
+  the race will be sorted out in the next heartbeat interval.
 
 * Added option `--custom-query-file` to arangoexport, so that a custom query
   string can also be read from an input file.
