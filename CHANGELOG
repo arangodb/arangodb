@@ -1,6 +1,9 @@
 v3.9.2 (XXXX-XX-XX)
 -------------------
 
+* Improve log output for WAL recovery, by providing more information and
+  making the wording more clear.
+
 * Fix: for the Windows build, the new Snappy version, which was introduced in
   3.9, generated code that contained BMI2 instructions which where introduced
   with the Intel Haswell architecture. However, our target architecture for 3.9
