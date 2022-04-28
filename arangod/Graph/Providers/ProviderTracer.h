@@ -94,6 +94,7 @@ class ProviderTracer {
 
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();
+  [[nodiscard]] bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 
  private:
   ProviderImpl _impl;

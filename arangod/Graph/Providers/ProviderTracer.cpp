@@ -217,6 +217,12 @@ void ProviderTracer<ProviderImpl>::unPrepareContext() {
   _impl.unPrepareContext();
 }
 
+template<class ProviderImpl>
+bool ProviderTracer<ProviderImpl>::hasDepthSpecificLookup(
+    uint64_t depth) const noexcept {
+  return _impl.hasDepthSpecificLookup(depth);
+}
+
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
 template class ::arangodb::graph::ProviderTracer<

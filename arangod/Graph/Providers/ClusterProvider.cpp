@@ -566,4 +566,9 @@ void ClusterProvider<StepImpl>::unPrepareContext() {
   _opts.unPrepareContext();
 }
 
+template<class StepImpl>
+bool ClusterProvider<StepImpl>::hasDepthSpecificLookup(uint64_t depth) const noexcept {
+  return _opts.hasDepthSpecificLookup(depth);
+}
+
 template class graph::ClusterProvider<ClusterProviderStep>;

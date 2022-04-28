@@ -110,6 +110,7 @@ class SingleServerProvider {
 
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();
+  [[nodiscard]] bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 
  private:
   void activateCache(bool enableDocumentCache);

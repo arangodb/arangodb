@@ -161,14 +161,17 @@ ClusterBaseProviderOptions::ClusterBaseProviderOptions(
     std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
     bool produceVertices, aql::FixedVarExpressionContext* expressionContext,
     std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
-        filterConditionVariables)
+        filterConditionVariables,
+    std::unordered_set<uint64_t> availableDepthsSpecificConditions)
     : _cache(std::move(cache)),
       _engines(engines),
       _backward(backward),
       _produceVertices(produceVertices),
       _expressionContext(expressionContext),
       _filterConditionVariables(filterConditionVariables),
-      _weightCallback(std::nullopt) {
+      _weightCallback(std::nullopt),
+      _availableDepthsSpecificConditions(
+          std::move(availableDepthsSpecificConditions)) {
   TRI_ASSERT(_cache != nullptr);
   TRI_ASSERT(_engines != nullptr);
 }
@@ -241,5 +244,9 @@ enterprise::SmartGraphRPCCommunicator&
 ClusterBaseProviderOptions::getRPCCommunicator() {
   TRI_ASSERT(_communicator != nullptr);
   return *_communicator;
+}
+bool ClusterBaseProviderOptions::hasDepthSpecificLookup(
+    uint64_t depth) const noexcept {
+  return _availableDepthsSpecificConditions.contains(depth);
 }
 #endif
