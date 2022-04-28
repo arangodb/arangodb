@@ -19,6 +19,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "fullbench-dll", "fullbench-
 		{9800039D-4AAA-43A4-BB78-FEF6F4836927} = {9800039D-4AAA-43A4-BB78-FEF6F4836927}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "lz4", "lz4\lz4.vcxproj", "{60A3115E-B988-41EE-8815-F4D4F253D866}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -83,6 +85,14 @@ Global
 		{13992FD2-077E-4954-B065-A428198201A9}.Release|Win32.Build.0 = Release|Win32
 		{13992FD2-077E-4954-B065-A428198201A9}.Release|x64.ActiveCfg = Release|x64
 		{13992FD2-077E-4954-B065-A428198201A9}.Release|x64.Build.0 = Release|x64
+		{60A3115E-B988-41EE-8815-F4D4F253D866}.Debug|Win32.ActiveCfg = Debug|Win32
+		{60A3115E-B988-41EE-8815-F4D4F253D866}.Debug|Win32.Build.0 = Debug|Win32
+		{60A3115E-B988-41EE-8815-F4D4F253D866}.Debug|x64.ActiveCfg = Debug|x64
+		{60A3115E-B988-41EE-8815-F4D4F253D866}.Debug|x64.Build.0 = Debug|x64
+		{60A3115E-B988-41EE-8815-F4D4F253D866}.Release|Win32.ActiveCfg = Release|Win32
+		{60A3115E-B988-41EE-8815-F4D4F253D866}.Release|Win32.Build.0 = Release|Win32
+		{60A3115E-B988-41EE-8815-F4D4F253D866}.Release|x64.ActiveCfg = Release|x64
+		{60A3115E-B988-41EE-8815-F4D4F253D866}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

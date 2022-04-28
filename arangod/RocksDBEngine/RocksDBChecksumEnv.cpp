@@ -24,9 +24,11 @@
 #include "RocksDBChecksumEnv.h"
 
 #include "Basics/Exceptions.h"
-#include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/RocksDBUtils.h"
+#include "Basics/error.h"
+#include "Basics/files.h"
 #include "Logger/LogMacros.h"
 
 #undef DeleteFile
@@ -248,19 +250,21 @@ rocksdb::Status ChecksumEnv::DeleteFile(const std::string& fileName) {
             << "deleteCalcFile: delete file succeeded for " << shaFileName;
       } else {
         LOG_TOPIC("acb34", WARN, arangodb::Logger::ENGINES)
-            << "deleteCalcFile: delete file failed for " << shaFileName;
+            << "deleteCalcFile: delete file failed for " << shaFileName << ": "
+            << TRI_errno_string(res);
       }
     }
   }
-  rocksdb::Status res = rocksdb::EnvWrapper::DeleteFile(fileName);
-  if (res.ok()) {
+  rocksdb::Status s = rocksdb::EnvWrapper::DeleteFile(fileName);
+  if (s.ok()) {
     LOG_TOPIC("77a2a", DEBUG, arangodb::Logger::ENGINES)
         << "deleteCalcFile: delete file succeeded for " << fileName;
   } else {
     LOG_TOPIC("ce937", WARN, arangodb::Logger::ENGINES)
-        << "deleteCalcFile: delete file failed for " << fileName;
+        << "deleteCalcFile: delete file failed for " << fileName << ": "
+        << rocksutils::convertStatus(s).errorMessage();
   }
-  return res;
+  return s;
 }
 
 }  // namespace arangodb::checksum
