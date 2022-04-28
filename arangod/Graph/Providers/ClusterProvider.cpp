@@ -567,7 +567,8 @@ void ClusterProvider<StepImpl>::unPrepareContext() {
 }
 
 template<class StepImpl>
-bool ClusterProvider<StepImpl>::hasDepthSpecificLookup(uint64_t depth) const noexcept {
+bool ClusterProvider<StepImpl>::hasDepthSpecificLookup(
+    uint64_t depth) const noexcept {
   return _opts.hasDepthSpecificLookup(depth);
 }
 
