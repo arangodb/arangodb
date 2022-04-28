@@ -188,10 +188,12 @@ template<typename, typename...>
 struct combined_base;
 template<std::size_t... Idx, typename... Os>
 struct combined_base<std::index_sequence<Idx...>, Os...> : Tagged<Idx, Os>... {
-  auto finalStep(auto const& step) {
+  template<typename S>
+  auto finalStep(S const& step) {
     return invokeAll<0>([&](auto& x) { return x.finalStep(step); });
   }
-  auto check(auto const& step) -> model_checker::CheckResult {
+  template<typename S>
+  auto check(S const& step) -> model_checker::CheckResult {
     return invokeAll<0>([&](auto& x) { return x.check(step); });
   }
 
