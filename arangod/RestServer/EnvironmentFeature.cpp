@@ -80,7 +80,9 @@ EnvironmentFeature::EnvironmentFeature(Server& server)
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
 
-  startsAfter<FileDescriptorsFeature>();
+  if constexpr (Server::contains<FileDescriptorsFeature>()) {
+    startsAfter<FileDescriptorsFeature>();
+  }
   startsAfter<LogBufferFeature>();
   startsAfter<MaxMapCountFeature>();
   startsAfter<SharedPRNGFeature>();
