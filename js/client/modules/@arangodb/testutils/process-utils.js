@@ -74,16 +74,75 @@ class ConfigBuilder {
     };
     this.type = type;
     switch (type) {
-      case 'restore':
-        this.config.configuration = fs.join(CONFIG_DIR, 'arangorestore.conf');
-        this.executable = ARANGORESTORE_BIN;
-        break;
-      case 'dump':
-        this.config.configuration = fs.join(CONFIG_DIR, 'arangodump.conf');
-        this.executable = ARANGODUMP_BIN;
-        break;
-      default:
-        throw 'Sorry this type of Arango-Binary is not yet implemented: ' + type;
+    case 'restore':
+      this.config.configuration = fs.join(CONFIG_DIR, 'arangorestore.conf');
+      this.executable = ARANGORESTORE_BIN;
+      break;
+    case 'dump':
+      this.config.configuration = fs.join(CONFIG_DIR, 'arangodump.conf');
+      this.executable = ARANGODUMP_BIN;
+      break;
+    case 'import':
+      this.config.configuration = fs.join(CONFIG_DIR, 'arangoimport.conf');
+      this.executable = ARANGOIMPORT_BIN;
+      break;
+    default:
+      throw 'Sorry this type of Arango-Binary is not yet implemented: ' + type;
+    }
+  }
+
+  setWhatToImport(what) {
+    this.config['file'] = fs.join(TOP_DIR, what.data);
+    this.config['collection'] = what.coll;
+    this.config['type'] = what.type;
+    this.config['on-duplicate'] = what.onDuplicate || 'error';
+    this.config['ignore-missing'] = what.ignoreMissing || false;
+    if (what.headers !== undefined) {
+      this.config['headers-file'] = fs.join(TOP_DIR, what.headers);
+    }
+
+    if (what.skipLines !== undefined) {
+      this.config['skip-lines'] = what.skipLines;
+    }
+
+    if (what.create !== undefined) {
+      this.config['create-collection'] = what.create;
+    }
+
+    if (what.createDatabase !== undefined) {
+      this.config['create-database'] = what.createDatabase;
+    }
+
+    if (what.database !== undefined) {
+      this.config['server.database'] = what.database;
+    }
+
+    if (what.backslash !== undefined) {
+      this.config['backslash-escape'] = what.backslash;
+    }
+
+    if (what.separator !== undefined) {
+      this.config['separator'] = what.separator;
+    }
+
+    if (what.convert !== undefined) {
+      this.config['convert'] = what.convert ? 'true' : 'false';
+    }
+
+    if (what.removeAttribute !== undefined) {
+      this.config['remove-attribute'] = what.removeAttribute;
+    }
+
+    if (what.datatype !== undefined) {
+      this.config['datatype'] = what.datatype;
+    }
+
+    if (what.mergeAttributes !== undefined) {
+      this.config['merge-attributes'] = what.mergeAttributes;
+    }
+
+    if (what.batchSize !== undefined) {
+      this.config['batch-size'] = what.batchSize;
     }
   }
 
@@ -376,6 +435,151 @@ function setupBinaries (builddir, buildType, configDir) {
     }
   }
   global.ARANGOSH_BIN = ARANGOSH_BIN;
+}
+
+
+// //////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / operate the arango commandline utilities
+// //////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief arguments for testing (client)
+// //////////////////////////////////////////////////////////////////////////////
+
+function makeArgsArangosh (options) {
+  return {
+    'configuration': fs.join(CONFIG_DIR, 'arangosh.conf'),
+    'javascript.startup-directory': JS_DIR,
+    'javascript.module-directory': JS_ENTERPRISE_DIR,
+    'server.username': options.username,
+    'server.password': options.password,
+    'flatCommands': ['--console.colors', 'false', '--quiet']
+  };
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief runs arangosh
+// //////////////////////////////////////////////////////////////////////////////
+
+function runArangoshCmd (options, instanceInfo, addArgs, cmds, coreCheck = false) {
+  let args = makeArgsArangosh(options);
+  args['server.endpoint'] = instanceInfo.endpoint;
+
+  if (addArgs !== undefined) {
+    args = Object.assign(args, addArgs);
+  }
+
+  internal.env.INSTANCEINFO = JSON.stringify(instanceInfo);
+  const argv = toArgv(args).concat(cmds);
+  return executeAndWait(ARANGOSH_BIN, argv, options, 'arangoshcmd', instanceInfo.rootDir, coreCheck);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief runs arangoimport
+// //////////////////////////////////////////////////////////////////////////////
+
+function runArangoImportCfg (config, options, rootDir, coreCheck = false) {
+  if (options.extremeVerbosity === true) {
+    config.print();
+  }
+  return executeAndWait(config.getExe(), config.toArgv(), options, 'arangoimport', rootDir, coreCheck);
+}
+
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief runs arangodump or arangorestore based on config object
+// //////////////////////////////////////////////////////////////////////////////
+
+function runArangoDumpRestoreCfg (config, options, rootDir, coreCheck) {
+  if (options.extremeVerbosity === true) {
+    config.print();
+  }
+  return executeAndWait(config.getExe(), config.toArgv(), options, 'arangorestore', rootDir, coreCheck);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief runs arangodump or arangorestore
+// //////////////////////////////////////////////////////////////////////////////
+
+function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, dumpDir = 'dump', includeSystem = true, coreCheck = false) {
+  const cfg = createBaseConfigBuilder(which, options, instanceInfo, database);
+  cfg.setIncludeSystem(includeSystem);
+  if (rootDir) { cfg.setRootDir(rootDir); }
+
+  if (which === 'dump') {
+    cfg.setOutputDirectory(dumpDir);
+  } else {
+    cfg.setInputDirectory(dumpDir, true);
+  }
+
+  if (options.encrypted) {
+    cfg.activateEncryption();
+  }
+  if (options.allDatabases) {
+    cfg.setAllDatabases();
+  }
+  return runArangoDumpRestoreCfg(cfg, options, rootDir, coreCheck);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief runs arangobench
+// //////////////////////////////////////////////////////////////////////////////
+
+function runArangoBackup (options, instanceInfo, which, cmds, rootDir, coreCheck = false) {
+  let args = {
+    'configuration': fs.join(CONFIG_DIR, 'arangobackup.conf'),
+    'log.foreground-tty': 'true',
+    'server.endpoint': instanceInfo.endpoint,
+    'server.connection-timeout': 10 // 5s default
+  };
+  if (options.username) {
+    args['server.username'] = options.username;
+    args['server.password'] = "";
+  }
+  if (options.password) {
+    args['server.password'] = options.password;
+  }
+
+  args = Object.assign(args, cmds);
+
+  args['log.level'] = 'info';
+  if (!args.hasOwnProperty('verbose')) {
+    args['log.level'] = 'warning';
+  }
+  if (options.extremeVerbosity) {
+    args['log.level'] = 'trace';
+  }
+
+  args['flatCommands'] = [which];
+
+  return executeAndWait(ARANGOBACKUP_BIN, toArgv(args), options, 'arangobackup', instanceInfo.rootDir, coreCheck);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief runs arangobench
+// //////////////////////////////////////////////////////////////////////////////
+
+function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = false) {
+  let args = {
+    'configuration': fs.join(CONFIG_DIR, 'arangobench.conf'),
+    'log.foreground-tty': 'true',
+    'server.username': options.username,
+    'server.password': options.password,
+    'server.endpoint': instanceInfo.endpoint,
+    // 'server.request-timeout': 1200 // default now.
+    'server.connection-timeout': 10 // 5s default
+  };
+
+  args = Object.assign(args, cmds);
+
+  if (!args.hasOwnProperty('verbose')) {
+    args['log.level'] = 'warning';
+    args['flatCommands'] = ['--quiet'];
+  }
+
+  return executeAndWait(ARANGOBENCH_BIN, toArgv(args), options, 'arangobench', instanceInfo.rootDir, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1006,208 +1210,6 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       duration: deltaTime
     };
   }
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// //////////////////////////////////////////////////////////////////////////////
-// / operate the arango commandline utilities
-// //////////////////////////////////////////////////////////////////////////////
-// //////////////////////////////////////////////////////////////////////////////
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief arguments for testing (client)
-// //////////////////////////////////////////////////////////////////////////////
-
-function makeArgsArangosh (options) {
-  return {
-    'configuration': fs.join(CONFIG_DIR, 'arangosh.conf'),
-    'javascript.startup-directory': JS_DIR,
-    'javascript.module-directory': JS_ENTERPRISE_DIR,
-    'server.username': options.username,
-    'server.password': options.password,
-    'flatCommands': ['--console.colors', 'false', '--quiet']
-  };
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs arangosh
-// //////////////////////////////////////////////////////////////////////////////
-
-function runArangoshCmd (options, instanceInfo, addArgs, cmds, coreCheck = false) {
-  let args = makeArgsArangosh(options);
-  args['server.endpoint'] = instanceInfo.endpoint;
-
-  if (addArgs !== undefined) {
-    args = Object.assign(args, addArgs);
-  }
-
-  internal.env.INSTANCEINFO = JSON.stringify(instanceInfo);
-  const argv = toArgv(args).concat(cmds);
-  return executeAndWait(ARANGOSH_BIN, argv, options, 'arangoshcmd', instanceInfo.rootDir, coreCheck);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs arangoimport
-// //////////////////////////////////////////////////////////////////////////////
-
-function runArangoImport (options, instanceInfo, what, coreCheck = false) {
-  let args = {
-    'log.foreground-tty': 'true',
-    'server.username': options.username,
-    'server.password': options.password,
-    'server.endpoint': instanceInfo.endpoint,
-    'file': fs.join(TOP_DIR, what.data),
-    'collection': what.coll,
-    'type': what.type,
-    'on-duplicate': what.onDuplicate || 'error',
-    'ignore-missing': what.ignoreMissing || false
-  };
-
-  if (what.headers !== undefined) {
-    args['headers-file'] = fs.join(TOP_DIR, what.headers);
-  }
-
-  if (what.skipLines !== undefined) {
-    args['skip-lines'] = what.skipLines;
-  }
-
-  if (what.create !== undefined) {
-    args['create-collection'] = what.create;
-  }
-
-  if (what.createDatabase !== undefined) {
-    args['create-database'] = what.createDatabase;
-  }
-
-  if (what.database !== undefined) {
-    args['server.database'] = what.database;
-  }
-
-  if (what.backslash !== undefined) {
-    args['backslash-escape'] = what.backslash;
-  }
-
-  if (what.separator !== undefined) {
-    args['separator'] = what.separator;
-  }
-
-  if (what.convert !== undefined) {
-    args['convert'] = what.convert ? 'true' : 'false';
-  }
-
-  if (what.removeAttribute !== undefined) {
-    args['remove-attribute'] = what.removeAttribute;
-  }
-
-  if (what.datatype !== undefined) {
-    args['datatype'] = what.datatype;
-  }
-
-  if (what.mergeAttributes !== undefined) {
-    args['merge-attributes'] = what.mergeAttributes;
-  }
-
-  if (what.batchSize !== undefined) {
-    args['batch-size'] = what.batchSize;
-  }
-
-
-  return executeAndWait(ARANGOIMPORT_BIN, toArgv(args), options, 'arangoimport', instanceInfo.rootDir, coreCheck);
-}
-
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs arangodump or arangorestore based on config object
-// //////////////////////////////////////////////////////////////////////////////
-
-function runArangoDumpRestoreCfg (config, options, rootDir, coreCheck) {
-  if (options.extremeVerbosity === true) {
-    config.print();
-  }
-  return executeAndWait(config.getExe(), config.toArgv(), options, 'arangorestore', rootDir, coreCheck);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs arangodump or arangorestore
-// //////////////////////////////////////////////////////////////////////////////
-
-function runArangoDumpRestore (options, instanceInfo, which, database, rootDir, dumpDir = 'dump', includeSystem = true, coreCheck = false) {
-  const cfg = createBaseConfigBuilder(which, options, instanceInfo, database);
-  cfg.setIncludeSystem(includeSystem);
-  if (rootDir) { cfg.setRootDir(rootDir); }
-
-  if (which === 'dump') {
-    cfg.setOutputDirectory(dumpDir);
-  } else {
-    cfg.setInputDirectory(dumpDir, true);
-  }
-
-  if (options.encrypted) {
-    cfg.activateEncryption();
-  }
-  if (options.allDatabases) {
-    cfg.setAllDatabases();
-  }
-  return runArangoDumpRestoreCfg(cfg, options, rootDir, coreCheck);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs arangobench
-// //////////////////////////////////////////////////////////////////////////////
-
-function runArangoBackup (options, instanceInfo, which, cmds, rootDir, coreCheck = false) {
-  let args = {
-    'configuration': fs.join(CONFIG_DIR, 'arangobackup.conf'),
-    'log.foreground-tty': 'true',
-    'server.endpoint': instanceInfo.endpoint,
-    'server.connection-timeout': 10 // 5s default
-  };
-  if (options.username) {
-    args['server.username'] = options.username;
-    args['server.password'] = "";
-  }
-  if (options.password) {
-    args['server.password'] = options.password;
-  }
-
-  args = Object.assign(args, cmds);
-
-  args['log.level'] = 'info';
-  if (!args.hasOwnProperty('verbose')) {
-    args['log.level'] = 'warning';
-  }
-  if (options.extremeVerbosity) {
-    args['log.level'] = 'trace';
-  }
-
-  args['flatCommands'] = [which];
-
-  return executeAndWait(ARANGOBACKUP_BIN, toArgv(args), options, 'arangobackup', instanceInfo.rootDir, coreCheck);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief runs arangobench
-// //////////////////////////////////////////////////////////////////////////////
-
-function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = false) {
-  let args = {
-    'configuration': fs.join(CONFIG_DIR, 'arangobench.conf'),
-    'log.foreground-tty': 'true',
-    'server.username': options.username,
-    'server.password': options.password,
-    'server.endpoint': instanceInfo.endpoint,
-    // 'server.request-timeout': 1200 // default now.
-    'server.connection-timeout': 10 // 5s default
-  };
-
-  args = Object.assign(args, cmds);
-
-  if (!args.hasOwnProperty('verbose')) {
-    args['log.level'] = 'warning';
-    args['flatCommands'] = ['--quiet'];
-  }
-
-  return executeAndWait(ARANGOBENCH_BIN, toArgv(args), options, 'arangobench', instanceInfo.rootDir, coreCheck);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -2674,7 +2676,7 @@ exports.killRemainingProcesses = killRemainingProcesses;
 exports.createBaseConfig = createBaseConfigBuilder;
 exports.run = {
   arangoshCmd: runArangoshCmd,
-  arangoImport: runArangoImport,
+  arangoImport: runArangoImportCfg,
   arangoDumpRestore: runArangoDumpRestore,
   arangoDumpRestoreWithConfig: runArangoDumpRestoreCfg,
   arangoBenchmark: runArangoBenchmark,

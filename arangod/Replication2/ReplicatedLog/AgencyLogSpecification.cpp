@@ -30,6 +30,8 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+
 #include <velocypack/Iterator.h>
 
 #include <type_traits>
@@ -48,19 +50,9 @@ auto LogPlanTermSpecification::toVelocyPack(VPackBuilder& builder) const
   serialize(builder, *this);
 }
 
-LogPlanTermSpecification::LogPlanTermSpecification(from_velocypack_t,
-                                                   VPackSlice slice) {
-  *this = deserialize<LogPlanTermSpecification>(slice);
-}
-
 LogPlanSpecification::LogPlanSpecification() = default;
 auto LogPlanSpecification::toVelocyPack(VPackBuilder& builder) const -> void {
   serialize(builder, *this);
-}
-
-LogPlanSpecification::LogPlanSpecification(from_velocypack_t,
-                                           VPackSlice slice) {
-  *this = deserialize<LogPlanSpecification>(slice);
 }
 
 LogPlanTermSpecification::LogPlanTermSpecification(LogTerm term,
@@ -81,12 +73,7 @@ LogPlanSpecification::LogPlanSpecification(
 
 auto LogPlanSpecification::fromVelocyPack(velocypack::Slice slice)
     -> LogPlanSpecification {
-  return LogPlanSpecification(from_velocypack, slice);
-}
-
-LogCurrentLocalState::LogCurrentLocalState(from_velocypack_t,
-                                           VPackSlice slice) {
-  *this = deserialize<LogCurrentLocalState>(slice);
+  return deserialize<LogPlanSpecification>(slice);
 }
 
 LogCurrentLocalState::LogCurrentLocalState(LogTerm term,
@@ -97,22 +84,13 @@ auto LogCurrentLocalState::toVelocyPack(VPackBuilder& builder) const -> void {
   serialize(builder, *this);
 }
 
-LogCurrent::LogCurrent(from_velocypack_t, VPackSlice slice) {
-  *this = deserialize<LogCurrent>(slice);
-}
-
-LogCurrentSupervision::LogCurrentSupervision(from_velocypack_t,
-                                             VPackSlice slice) {
-  *this = deserialize<LogCurrentSupervision>(slice);
+auto LogCurrentSupervision::fromVelocyPack(VPackSlice s)
+    -> LogCurrentSupervision {
+  return deserialize<LogCurrentSupervision>(s);
 }
 
 auto LogCurrentSupervision::toVelocyPack(VPackBuilder& builder) const -> void {
   serialize(builder, *this);
-}
-
-LogCurrentSupervisionElection::LogCurrentSupervisionElection(from_velocypack_t,
-                                                             VPackSlice slice) {
-  *this = deserialize<LogCurrentSupervisionElection>(slice);
 }
 
 auto LogCurrent::toVelocyPack(VPackBuilder& builder) const -> void {
@@ -120,7 +98,7 @@ auto LogCurrent::toVelocyPack(VPackBuilder& builder) const -> void {
 }
 
 auto LogCurrent::fromVelocyPack(VPackSlice s) -> LogCurrent {
-  return LogCurrent(from_velocypack, s);
+  return deserialize<LogCurrent>(s);
 }
 
 auto LogCurrentSupervisionElection::toVelocyPack(VPackBuilder& builder) const
@@ -182,15 +160,11 @@ auto LogCurrent::Leader::fromVelocyPack(VPackSlice s) -> Leader {
 }
 
 auto LogTarget::fromVelocyPack(velocypack::Slice s) -> LogTarget {
-  return LogTarget(from_velocypack_t{}, s);
+  return deserialize<LogTarget>(s);
 }
 
 void LogTarget::toVelocyPack(velocypack::Builder& builder) const {
   serialize(builder, *this);
-}
-
-LogTarget::LogTarget(from_velocypack_t, VPackSlice slice) {
-  *this = deserialize<LogTarget>(slice);
 }
 
 LogTarget::LogTarget(LogId id, ParticipantsFlagsMap const& participants,

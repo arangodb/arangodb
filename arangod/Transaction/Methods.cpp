@@ -1139,9 +1139,11 @@ Future<OperationResult> transaction::Methods::insertLocal(
       if (options.overwriteMode == OperationOptions::OverwriteMode::Ignore) {
         // in case of unique constraint violation: ignore and do nothing (no
         // write!)
-        buildDocumentIdentity(collection.get(), resultBuilder, cid,
-                              key.stringView(), oldRevisionId,
-                              RevisionId::none(), nullptr, nullptr);
+        if (replicationType != ReplicationType::FOLLOWER) {
+          buildDocumentIdentity(collection.get(), resultBuilder, cid,
+                                key.stringView(), oldRevisionId,
+                                RevisionId::none(), nullptr, nullptr);
+        }
         // we have not written anything, so exclude this document from
         // replication!
         excludeFromReplication = true;
@@ -1187,10 +1189,12 @@ Future<OperationResult> transaction::Methods::insertLocal(
           prevDocResult.revisionId().isSet()) {
         TRI_ASSERT(didReplace);
 
-        buildDocumentIdentity(collection.get(), resultBuilder, cid,
-                              value.get(StaticStrings::KeyString).stringView(),
-                              prevDocResult.revisionId(), RevisionId::none(),
-                              nullptr, nullptr);
+        if (replicationType != ReplicationType::FOLLOWER) {
+          buildDocumentIdentity(
+              collection.get(), resultBuilder, cid,
+              value.get(StaticStrings::KeyString).stringView(),
+              prevDocResult.revisionId(), RevisionId::none(), nullptr, nullptr);
+        }
       }
       return res;
     }
@@ -1213,10 +1217,13 @@ Future<OperationResult> transaction::Methods::insertLocal(
                         .stringView();
       }
 
-      buildDocumentIdentity(collection.get(), resultBuilder, cid, keyString,
-                            docResult.revisionId(), prevDocResult.revisionId(),
-                            showReplaced ? &prevDocResult : nullptr,
-                            options.returnNew ? &docResult : nullptr);
+      if (replicationType != ReplicationType::FOLLOWER) {
+        buildDocumentIdentity(collection.get(), resultBuilder, cid, keyString,
+                              docResult.revisionId(),
+                              prevDocResult.revisionId(),
+                              showReplaced ? &prevDocResult : nullptr,
+                              options.returnNew ? &docResult : nullptr);
+      }
     }
     return res;
   };

@@ -4,6 +4,7 @@ unlz4
 lz4cat
 lz4c
 lz4c32
+lz4-wlib
 datagen
 frametest
 frametest32
