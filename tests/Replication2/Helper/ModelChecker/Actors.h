@@ -160,6 +160,12 @@ struct KillAnyServerActor {
       -> std::vector<std::tuple<AgencyTransition, AgencyState, InternalState>>;
 };
 
+struct AddServerActor : OnceActorBase<AddServerActor> {
+  explicit AddServerActor(replication2::ParticipantId newServer);
+  auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;
+
+  replication2::ParticipantId newServer;
+};
 struct ReplaceAnyServerActor : OnceActorBase<ReplaceAnyServerActor> {
   explicit ReplaceAnyServerActor(replication2::ParticipantId newServer);
   auto step(AgencyState const& agency) const -> std::vector<AgencyTransition>;

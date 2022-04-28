@@ -48,6 +48,84 @@ struct ReplicatedLogSupervisionSimulationTest : ::testing::Test {
   ParticipantFlags const defaultFlags{};
 };
 
+TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_created) {
+  AgencyLogBuilder log;
+  log.setId(logId)
+      .setTargetParticipant("A", defaultFlags)
+      .setTargetParticipant("B", defaultFlags)
+      .setTargetParticipant("C", defaultFlags);
+
+  replicated_log::ParticipantsHealth health;
+  health._health.emplace(
+      "A", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "B", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+
+  auto initState =
+      AgencyState{.replicatedLog = log.get(), .health = std::move(health)};
+
+  auto driver = model_checker::ActorDriver{
+      SupervisionActor{},  // KillLeaderActor{},  KillAnyServerActor{},
+      DBServerActor{"A"},
+      DBServerActor{"B"},
+      DBServerActor{"C"},
+  };
+
+  auto allTests = model_checker::combined{
+      MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
+  };
+  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+
+  auto result = Engine::run(driver, allTests, initState);
+  EXPECT_FALSE(result.failed) << *result.failed;
+  std::cout << result.stats << std::endl;
+}
+
+TEST_F(ReplicatedLogSupervisionSimulationTest,
+       check_participant_added_created) {
+  AgencyLogBuilder log;
+  log.setId(logId)
+      .setTargetParticipant("A", defaultFlags)
+      .setTargetParticipant("B", defaultFlags)
+      .setTargetParticipant("C", defaultFlags);
+
+  replicated_log::ParticipantsHealth health;
+  health._health.emplace(
+      "A", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "B", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+
+  auto initState =
+      AgencyState{.replicatedLog = log.get(), .health = std::move(health)};
+
+  // TODO once actor that adds a participant
+  auto driver = model_checker::ActorDriver{
+      SupervisionActor{},  // KillLeaderActor{},  KillAnyServerActor{},
+      AddServerActor{"D"}, DBServerActor{"A"}, DBServerActor{"B"},
+      DBServerActor{"C"},  DBServerActor{"D"}};
+
+  // TODO predicate that checks participant is there
+  auto allTests = model_checker::combined{
+      MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
+      MC_EVENTUALLY_ALWAYS(mcpreds::isParticipantPlanned("D")),
+      MC_EVENTUALLY_ALWAYS(mcpreds::isParticipantCurrent("D"))};
+  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+
+  auto result = Engine::run(driver, allTests, initState);
+  EXPECT_FALSE(result.failed) << *result.failed;
+  std::cout << result.stats << std::endl;
+}
+
 TEST_F(ReplicatedLogSupervisionSimulationTest, check_log) {
   AgencyLogBuilder log;
   log.setId(logId)

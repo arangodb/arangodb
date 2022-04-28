@@ -22,21 +22,21 @@
 
 #include <fmt/core.h>
 
-#include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
-#include "Replication2/ReplicatedState/Supervision.h"
-#include "Replication2/Helper/AgencyStateBuilder.h"
 #include "Replication2/Helper/AgencyLogBuilder.h"
+#include "Replication2/Helper/AgencyStateBuilder.h"
+#include "Replication2/ModelChecker/ActorModel.h"
+#include "Replication2/ModelChecker/ModelChecker.h"
+#include "Replication2/ModelChecker/Predicates.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
-#include "Replication2/ModelChecker/ModelChecker.h"
-#include "Replication2/ModelChecker/ActorModel.h"
-#include "Replication2/ModelChecker/Predicates.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "Replication2/ReplicatedState/Supervision.h"
 
 #include "Replication2/Helper/ModelChecker/AgencyState.h"
+#include "Replication2/Helper/ModelChecker/AgencyTransitions.h"
 #include "Replication2/Helper/ModelChecker/HashValues.h"
 #include "Replication2/Helper/ModelChecker/Predicates.h"
-#include "Replication2/Helper/ModelChecker/AgencyTransitions.h"
 
 using namespace arangodb;
 using namespace arangodb::test;
@@ -186,6 +186,21 @@ void ReplaceServerTargetState::apply(AgencyState& agency) const {
   target.participants.erase(oldServer);
   target.participants[newServer];
   target.version.emplace(target.version.value_or(0) + 1);
+}
+
+AddLogParticipantAction::AddLogParticipantAction(
+    replication2::ParticipantId server)
+    : server(std::move(server)) {}
+
+void AddLogParticipantAction::apply(AgencyState& agency) const {
+  TRI_ASSERT(agency.replicatedLog.has_value());
+  auto& target = agency.replicatedLog->target;
+  target.participants[server];
+  target.version.emplace(target.version.value_or(0) + 1);
+}
+
+auto AddLogParticipantAction::toString() const -> std::string {
+  return fmt::format("adding participant {}", server);
 }
 
 }  // namespace arangodb::test

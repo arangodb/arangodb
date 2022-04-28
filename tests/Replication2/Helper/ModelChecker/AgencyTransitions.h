@@ -104,11 +104,18 @@ struct ReplaceServerTargetState {
   replication2::ParticipantId newServer;
 };
 
+struct AddLogParticipantAction {
+  AddLogParticipantAction(replication2::ParticipantId server);
+  void apply(AgencyState& agency) const;
+  auto toString() const -> std::string;
+  replication2::ParticipantId server;
+};
+
 using AgencyTransition =
     std::variant<SupervisionStateAction, SupervisionLogAction,
                  DBServerSnapshotCompleteAction, DBServerReportTermAction,
                  DBServerCommitConfigAction, KillServerAction,
-                 ReplaceServerTargetState>;
+                 ReplaceServerTargetState, AddLogParticipantAction>;
 
 auto operator<<(std::ostream& os, AgencyTransition const& a) -> std::ostream&;
 }  // namespace arangodb::test
