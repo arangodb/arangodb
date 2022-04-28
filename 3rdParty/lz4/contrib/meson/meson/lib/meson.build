@@ -7,7 +7,7 @@
 # in the COPYING file in the root directory of this source tree).
 # #############################################################################
 
-lz4_root_dir = '../../..'
+lz4_root_dir = '../../../..'
 
 liblz4_includes = [include_directories(join_paths(lz4_root_dir, 'lib'))]
 liblz4_sources = [join_paths(lz4_root_dir, 'lib/lz4.c'),
