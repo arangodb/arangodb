@@ -27,12 +27,6 @@ type BackButtonProps = {
   disabled?: boolean;
 };
 
-type JsonButtonProps = {
-  buttonClick: MouseEventHandler<HTMLElement>;
-  buttonName: string;
-  icon: string;
-};
-
 export const BackButton = ({ buttonClick, disabled }: BackButtonProps) => {
   return (
     <IconButton
@@ -46,22 +40,10 @@ export const BackButton = ({ buttonClick, disabled }: BackButtonProps) => {
   );
 };
 
-export const JsonButton = ({
-  buttonClick,
-  buttonName,
-  icon
-}: JsonButtonProps) => {
-  return (
-    <IconButton icon={icon} onClick={buttonClick} type={"success"}>
-      {buttonName}
-    </IconButton>
-  );
-};
-
 export const SaveButton = ({
   view,
   oldName,
-  menu = "settings"
+  menu
 }: SaveButtonProps) => {
   const handleSave = async () => {
     const route = getApiRouteForCurrentDB();
@@ -102,8 +84,13 @@ export const SaveButton = ({
           );
         } else {
           if (view.name !== oldName) {
-            window.App.navigate(`#view/${view.name}/${menu}`, {
-              trigger: true
+            let newRoute = `#view/${view.name}`;
+            if (menu) {
+              newRoute += `/${menu}`;
+            }
+            window.App.navigate(newRoute, {
+              trigger: true,
+              replace: true
             });
           }
           await mutate(path);

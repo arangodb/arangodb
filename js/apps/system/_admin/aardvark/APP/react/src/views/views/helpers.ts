@@ -38,10 +38,18 @@ export function useLinkState(formState: { [key: string]: any }, formField: strin
 
 export function useView(name: string) {
   const [view, setView] = useState<object>({ name });
-  const { data } = useSWR(`/view/${name}/properties`,
+  const { data, error } = useSWR(`/view/${name}/properties`,
     path => getApiRouteForCurrentDB().get(path), {
     revalidateOnFocus: false
   });
+
+  if (error) {
+    window.App.navigate('#views', {trigger: true});
+    arangoHelper.arangoError(
+      "Failure",
+      `Got unexpected server response: ${error.errorNum}: ${error.message} - ${name}`
+    );
+  }
 
   useEffect(() => {
     if (data) {

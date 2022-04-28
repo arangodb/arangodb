@@ -2671,8 +2671,6 @@ ansi-escapes@^4.2.1:
   dependencies:
     type-fest "^0.21.3"
 
-ansi-html-community@0.0.8, ansi-html@0.0.7, "ansi-html@https://registry.yarnpkg.com/ansi-html-community/-/ansi-html-community-0.0.8.tgz#69fbc4d6ccbe383f9736934ae34c3f8290f1bf41":
-  name ansi-html
 ansi-html-community@0.0.8:
   version "0.0.8"
   resolved "https://registry.npmjs.org/ansi-html-community/-/ansi-html-community-0.0.8.tgz"
@@ -11940,11 +11938,6 @@ svgo@^1.0.0, svgo@^1.0.5:
     stable "^0.1.8"
     unquote "~1.1.1"
     util.promisify "~1.0.0"
-
-sweetalert2@^11.4.5:
-  version "11.4.5"
-  resolved "https://registry.npmjs.org/sweetalert2/-/sweetalert2-11.4.5.tgz"
-  integrity sha512-m7Zh8iGJyo8dPzynnPGbCllzxMSQtFwHWoH6rZxDN9iq4wSmv0soYFI2O6XWWaXBgHfAm4YmASA3dJRq1Mpk7g==
 
 swr@^0.5.6:
   version "0.5.6"
