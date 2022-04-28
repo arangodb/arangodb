@@ -247,24 +247,24 @@ struct FileLineType {
 };
 
 #define MC_HERE                              \
-  decltype([] {                              \
+  ([] {                                      \
     static constexpr char data[] = __FILE__; \
     return ::FileLineType<data, __LINE__>{}; \
   }())
 
-#define MC_GTEST_PRED(name, pred)             \
-  model_checker::gtest_predicate {            \
-    MC_HERE{}, [=](auto const& name) { pred } \
+#define MC_GTEST_PRED(name, pred)           \
+  model_checker::gtest_predicate {          \
+    MC_HERE, [=](auto const& name) { pred } \
   }
-#define MC_BOOL_PRED(name, pred)              \
-  model_checker::bool_predicate {             \
-    MC_HERE{}, [=](auto const& name) { pred } \
+#define MC_BOOL_PRED(name, pred)            \
+  model_checker::bool_predicate {           \
+    MC_HERE, [=](auto const& name) { pred } \
   }
 #define MC_BOOL_PRED2(lambda) \
-  model_checker::bool_predicate { MC_HERE{}, (lambda) }
+  model_checker::bool_predicate { MC_HERE, (lambda) }
 #define MC_EVENTUALLY(pred) \
-  model_checker::eventually { MC_HERE{}, pred }
+  model_checker::eventually { MC_HERE, pred }
 #define MC_ALWAYS(pred) \
-  model_checker::always { MC_HERE{}, pred }
+  model_checker::always { MC_HERE, pred }
 #define MC_EVENTUALLY_ALWAYS(pred) \
-  model_checker::eventually_always { MC_HERE{}, pred }
+  model_checker::eventually_always { MC_HERE, pred }
