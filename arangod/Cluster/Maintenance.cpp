@@ -89,7 +89,8 @@ static std::shared_ptr<VPackBuilder> compareRelevantProps(
     VPackSlice const& first, VPackSlice const& second) {
   static std::vector<std::string> const compareProperties{
       WAIT_FOR_SYNC, SCHEMA, CACHE_ENABLED,
-      StaticStrings::InternalValidatorTypes};
+      StaticStrings::InternalValidatorTypes,
+      StaticStrings::GraphSmartGraphAttribute};
   auto result = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder b(result.get());
