@@ -1449,7 +1449,8 @@ void ClusterInfo::loadPlan() {
              VPackObjectIterator(logsSlice)) {
           auto spec =
               std::make_shared<replication2::agency::LogPlanSpecification>(
-                  replication2::agency::from_velocypack, logSlice);
+                  replication2::agency::LogPlanSpecification::fromVelocyPack(
+                      logSlice));
           newLogs.emplace(spec->id, spec);
         }
         stuff->replicatedLogs = std::move(newLogs);
