@@ -329,7 +329,6 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Mocks/PersistedLog.h
   Replication2/Mocks/PersistedLog.h
   Replication2/Mocks/ReplicatedLogMetricsMock.cpp
-  Replication2/ModelChecker/ActorModel.cpp
   Replication2/ModelChecker/ModelChecker.cpp
   Replication2/ModelChecker/Tests/ModelCheckerTest.cpp
   Replication2/ReplicatedLog/AppendEntriesBatchTest.cpp
