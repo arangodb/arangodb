@@ -202,6 +202,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
   Basics/ThreadTestHelper.cpp Basics/ThreadTestHelper.h
+  Basics/UnshackledConditionVariableTest.cpp
   Basics/UnshackledMutexTest.cpp
   Basics/VelocyPackHelperTest.cpp
   Cache/BucketState.cpp
@@ -425,6 +426,7 @@ target_link_libraries(arangodbtests
   snappy
   gtest
   boost_boost
+  fmt
 )
 
 if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
