@@ -29,6 +29,7 @@
 #include "Basics/EncodingUtils.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
@@ -711,8 +712,8 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
     if (result == Flow::Abort) {
       std::string const& username = req.user();
 
-      if (path == "/" || StringUtils::isPrefix(path, Open) ||
-          StringUtils::isPrefix(path, AdminAardvark) ||
+      if (path == "/" || path.starts_with(Open) ||
+          path.starts_with(AdminAardvark) ||
           path == "/_admin/server/availability") {
         // mop: these paths are always callable...they will be able to check
         // req.user when it could be validated
@@ -723,7 +724,7 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
         result = Flow::Continue;
         // vc->forceReadOnly();
       } else if (req.requestType() == RequestType::POST && !username.empty() &&
-                 StringUtils::isPrefix(path, ApiUser + username + '/')) {
+                 path.starts_with(ApiUser + username + '/')) {
         // simon: unauthorized users should be able to call
         // `/_api/users/<name>` to check their passwords
         result = Flow::Continue;
