@@ -220,7 +220,8 @@ export class GraphView extends React.Component {
         size: 40,
         style: {
           //fill: '#f00',
-          fill: '#dee072', // The filling color of nodes
+          //fill: '#dee072', // The filling color of Nodes
+          fill: '#' + this.props.nodeColor,
           stroke: '#576e3e', // The stroke color of nodes
           lineWidth: 1, // The line width of the stroke of nodes
           cursor: 'pointer',
@@ -282,6 +283,7 @@ export class GraphView extends React.Component {
     });
 
     this.graph.on('node:mouseenter', (evt) => {
+      console.log("this.props.nodeColor: ", this.props.nodeColor);
       const node = evt.item;
       this.graph.setItemState(node, 'hover', true);
     });

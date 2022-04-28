@@ -1021,6 +1021,7 @@ const G6JsGraph = () => {
               onLoadFullGraph={() => setShowFetchFullGraphModal(true)}
               onGraphDataLoaded={(newGraphData) => setGraphData(newGraphData)}
               vertexCollectionsColors={vertexCollectionsColors}
+              nodeColor={urlParameters.nodeColor}
         />    
         <AttributesInfo attributes={lookedUpData} /> 
       </UrlParametersContext.Provider>

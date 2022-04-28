@@ -1,10 +1,10 @@
 const URLPARAMETERS = {
-  depth: 1,
-  limit: 2,
+  depth: 2,
+  limit: 250,
   fruchtermann: "fruchtermann",
   nodeColorByCollection: false,
   edgeColorByCollection: false,
-  nodeColor: "2ecc71",
+  nodeColor: "dee072",
   nodeColorAttribute: "",
   edgeColor: "cccccc",
   edgeColorAttribute: "",

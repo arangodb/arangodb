@@ -8,6 +8,10 @@ const ParameterNodeColor = () => {
   const [nodeColor, setNodeColor] = useState(urlParameters.nodeColor);
 
   const NEWURLPARAMETERS = { ...urlParameters };
+  let calculatedNodeColor = nodeColor;
+  if (!nodeColor.startsWith('#')) {
+    calculatedNodeColor = '#' + nodeColor;
+  }
 
   return (
     <>
@@ -16,7 +20,7 @@ const ParameterNodeColor = () => {
           Color:
           <input
             type="color"
-            value={nodeColor}
+            value={calculatedNodeColor}
             onChange={(e) => {
               setNodeColor(e.target.value);
               NEWURLPARAMETERS.nodeColor = e.target.value.replace("#", "");
