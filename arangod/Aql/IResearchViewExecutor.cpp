@@ -451,9 +451,10 @@ void IndexReadBuffer<ValueType, copySorted>::pushSortedValue(
     for (; i < count; ++i) {
       _scoreBuffer.emplace_back(scores[i]);
     }
-    TRI_ASSERT(i <= _numScoreRegisters);
-    _scoreBuffer.resize(_scoreBuffer.size() + _numScoreRegisters - i,
-                        std::numeric_limits<float_t>::quiet_NaN());
+    while (i < _numScoreRegisters) {
+      _scoreBuffer.emplace_back(std::numeric_limits<float_t>::quiet_NaN());
+      ++i;
+    }
     _rows.push_back(_rows.size());
     if ((--_heapSizeLeft) == 0) {
       _storedValuesBuffer.resize(_keyBuffer.size() * _storedValuesCount);
