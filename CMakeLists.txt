@@ -1254,6 +1254,7 @@ link_libraries(
   absl::node_hash_set
   absl::node_hash_map
   absl::inlined_vector
+  absl::synchronization
 )
 
 
