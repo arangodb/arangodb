@@ -125,3 +125,8 @@ callgrind*
 
 cmake-build*/
 .cache/
+
+js/node/**/*.map
+js/node/**/*.map.gz
+js/apps/**/*.map
+js/apps/**/*.map.gz
