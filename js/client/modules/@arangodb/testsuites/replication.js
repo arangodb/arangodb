@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print */
+/* global print, arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -37,7 +37,8 @@ const functionsDocumentation = {
   'replication_ongoing_frompresent_32': 'replication ongoing "frompresent-32" tests',
   'replication_static': 'replication static tests',
   'replication_sync': 'replication sync tests',
-  'shell_replication': 'shell replication tests'
+  'shell_replication': 'shell replication tests',
+  'http_replication': 'client replication API tests'
 };
 const optionsDocumentation = [
 ];
@@ -58,7 +59,8 @@ const testPaths = {
   'replication_ongoing_frompresent': [tu.pathForTesting('server/replication/ongoing/frompresent')],
   'replication_ongoing_frompresent_32': [tu.pathForTesting('server/replication/ongoing/frompresent/32')],
   'replication_static': [tu.pathForTesting('server/replication/static')],
-  'replication_sync': [tu.pathForTesting('server/replication/sync')]
+  'replication_sync': [tu.pathForTesting('server/replication/sync')],
+  'http_replication': [tu.pathForTesting('common/replication_api')]
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -74,6 +76,27 @@ function shellReplication (options) {
   _.defaults(opts, options);
 
   return tu.performTests(opts, testCases, 'shell_replication', tu.runThere);
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: shell_replication
+// //////////////////////////////////////////////////////////////////////////////
+
+function shellClientReplicationApi (options) {
+  let testCases = tu.scanTestPaths(testPaths.http_replication, options);
+
+  var opts = {
+    'replication': true,
+  };
+  
+  arango.forceJson(true);
+  _.defaults(opts, options);
+
+  let ret = tu.performTests(opts, testCases, 'shell_replication_api', tu.runInLocalArangosh);
+  if (!options.forceJson) {
+    arango.forceJson(false);
+  }
+  return ret;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -624,6 +647,7 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   testFns['replication_ongoing_frompresent_32'] = replicationOngoingFrompresent32;
   testFns['replication_static'] = replicationStatic;
   testFns['replication_sync'] = replicationSync;
+  testFns['http_replication'] = shellClientReplicationApi;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
 };
