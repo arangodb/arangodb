@@ -12,4 +12,3 @@ dump_with_crashes
 replication2_client
 replication2_server
 shell_fuzzer
-http_replication
