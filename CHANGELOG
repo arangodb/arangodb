@@ -1,6 +1,10 @@
 devel
 -----
 
+* Added new optimisation rule "arangosearch-constrained-sort" to perform
+  sorting&limiting inside ArangoSearch View enumeration node in case of
+  using just scoring for sort. 
+
 * Added startup option `--cluster.shard-synchronization-attempt-timeout` to
   limit the amount of time to spend in shard synchronization attempts. The
   default timeout value is 20 minutes.
