@@ -21,18 +21,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Replication2/Helper/ModelChecker/Actors.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
-#include "Replication2/ReplicatedState/Supervision.h"
-#include "Replication2/ReplicatedLog/Supervision.h"
-#include "Replication2/ReplicatedLog/SupervisionAction.h"
 #include "Replication2/ModelChecker/ModelChecker.h"
 #include "Replication2/ModelChecker/Predicates.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/Supervision.h"
+#include "Replication2/ReplicatedLog/SupervisionAction.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "Replication2/ReplicatedState/Supervision.h"
 
 #include "Replication2/Helper/ModelChecker/AgencyState.h"
+#include "Replication2/Helper/ModelChecker/AgencyTransitions.h"
 #include "Replication2/Helper/ModelChecker/HashValues.h"
 #include "Replication2/Helper/ModelChecker/Predicates.h"
-#include "Replication2/Helper/ModelChecker/AgencyTransitions.h"
 
 using namespace arangodb;
 using namespace arangodb::test;
@@ -75,6 +75,9 @@ auto SupervisionActor::stepReplicatedLog(AgencyState const& agency)
 
 auto SupervisionActor::stepReplicatedState(AgencyState const& agency)
     -> std::optional<AgencyTransition> {
+  if (!agency.replicatedState.has_value()) {
+    return std::nullopt;
+  }
   replicated_state::SupervisionContext ctx;
   ctx.enableErrorReporting();
   replicated_state::checkReplicatedState(ctx, agency.replicatedLog,
