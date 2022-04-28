@@ -298,6 +298,8 @@ class MockGraphProvider {
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();
 
+  [[nodiscard]] bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
+
   [[nodiscard]] transaction::Methods* trx();
 
   aql::TraversalStats stealStats();
