@@ -14,6 +14,10 @@ devel
   ready. No distinction is made between authenticated and non-authenticated
   requests here.
 
+* Added new optimization rule "arangosearch-constrained-sort" to perform
+  sorting & limiting inside ArangoSearch View enumeration node in case of
+  using just scoring for sort. 
+
 * Improve log output for WAL recovery, by providing more information and
   making the wording more clear.
 
@@ -33,6 +37,9 @@ devel
   that counts the number of timed-out shard synchronization attempts.
 
 * Updated arangosync to v2.9.1-preview-1.
+
+* Make sure that newly created TTL indexes do not use index estimates, which
+  wouldn't be used for TTL indexes anyway.
 
 * Fix: for the Windows build, the new Snappy version, which was introduced in
   3.9, generated code that contained BMI2 instructions which where introduced

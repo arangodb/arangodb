@@ -208,7 +208,7 @@ function iResearchAqlTestSuite () {
       c.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
       c.save({ name: "half", text: "quick fox over lazy" });
       c.save({ name: "other half", text: "the brown jumps the dog" });
-      c.save({ name: "quarter", text: "quick over" });
+      c.save({ name: "quarter", text: "quick quick over" });
 
       c.save({ name: "numeric", anotherNumericField: 0 });
       c.save({ name: "null", anotherNullField: null });
@@ -614,7 +614,6 @@ function iResearchAqlTestSuite () {
 
     testInTokensFilterSortTFIDF : function () {
       var result = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(doc.text IN TOKENS('the quick brown', 'text_en'), 'text_en') OPTIONS { waitForSync : true } SORT TFIDF(doc) LIMIT 4 RETURN doc").toArray();
-
       assertEqual(result.length, 4);
       assertEqual(result[0].name, 'half');
       assertEqual(result[1].name, 'quarter');
