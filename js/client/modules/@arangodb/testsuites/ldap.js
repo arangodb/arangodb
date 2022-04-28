@@ -203,10 +203,7 @@ function parseOptions(options, ldap2) {
   let toReturn = tests;
 
   _.each(toReturn, function(opt) {
-    Object.entries(verbose).forEach(entry => {
-      const [key, value] = entry;
-      opt.conf[key] = value;
-    });
+    Object.assign(opt.conf, verbose);
     if (options.ldapHost) {
       opt.conf['ldap.server'] = options.ldapHost;
     }
