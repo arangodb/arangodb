@@ -14,6 +14,11 @@ devel
   ready. No distinction is made between authenticated and non-authenticated
   requests here.
 
+* Improve log output for WAL recovery, by providing more information and
+  making the wording more clear.
+
+* Updated lz4 to version 1.9.3
+
 * Added option `--custom-query-file` to arangoexport, so that a custom query
   string can also be read from an input file.
 

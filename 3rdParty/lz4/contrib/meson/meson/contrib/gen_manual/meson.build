@@ -7,7 +7,7 @@
 # in the COPYING file in the root directory of this source tree).
 # #############################################################################
 
-lz4_root_dir = '../../../..'
+lz4_root_dir = '../../../../..'
 
 add_languages('cpp')
 cxx = meson.get_compiler('cpp')

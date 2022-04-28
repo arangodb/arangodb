@@ -49,7 +49,7 @@ const buildTestFunction = function(value) {
     return function() {
       try {
         arango.reconnect(arango.getEndpoint(), dbname, user, pw);
-        fail();
+        fail('It didn\'t fail! User: ' + user + ' PW: ' + pw + ' DBName: ' + dbname);
       } catch (e) {
         assertEqual(10, e.errorNum);
       }
@@ -59,12 +59,12 @@ const buildTestFunction = function(value) {
       try {
         arango.reconnect(arango.getEndpoint(), dbname, user, pw);
       } catch (e) {
-        fail();
+        fail('its not OK: ' + e  + ' User: ' + user + ' PW: ' + pw + ' DBName: ' + dbname);
       }
     };
   } else {
     return function() {
-      fail();
+      fail('Illegal test dataset User: ' + user + ' PW: ' + pw + ' DBName: ' + dbname);
     };
   }
 };
