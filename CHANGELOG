@@ -1,6 +1,12 @@
 v3.9.2 (XXXX-XX-XX)
 -------------------
 
+* Upgrade-Preparation: Shards of SmartVertexCollections will now locally
+  persist their smart graph attribue. This will be needed in 3.10, but
+  not yet in this version. We include this here to simplify upgrading
+  at a later stage. It is not required to upgrade to this version (or later)
+  before upgrading to 3.10.
+
 * Fix: for the Windows build, the new Snappy version, which was introduced in
   3.9, generated code that contained BMI2 instructions which where introduced
   with the Intel Haswell architecture. However, our target architecture for 3.9
