@@ -41,6 +41,7 @@ auto constexpr ElectibleLeaderSet = std::string_view{"electibleLeaderSet"};
 auto constexpr Election = std::string_view{"election"};
 auto constexpr Error = std::string_view{"error"};
 auto constexpr StatusMessage = std::string_view{"StatusMessage"};
+auto constexpr StatusReport = std::string_view{"StatusReport"};
 auto constexpr LeadershipEstablished =
     std::string_view{"leadershipEstablished"};
 auto constexpr CommitStatus = std::string_view{"commitStatus"};
@@ -53,6 +54,8 @@ auto constexpr MaxActionsTraceLength =
     std::string_view{"maxActionsTraceLength"};
 auto constexpr Code = std::string_view{"code"};
 auto constexpr Message = std::string_view{"message"};
+auto constexpr LastTimeModified = std::string_view{"lastTimeModified"};
+auto constexpr Participant = std::string_view{"participant"};
 }  // namespace static_strings
 
 template<class Inspector>
@@ -144,13 +147,37 @@ auto inspect(Inspector& f, LogCurrentSupervisionElection& x) {
       f.field(static_strings::ElectibleLeaderSet, x.electibleLeaderSet));
 }
 
+using StatusCode = LogCurrentSupervision::StatusCode;
+
+auto to_string(StatusCode) -> std::string_view;
+
+struct StatusCodeStringTransformer {
+  using SerializedType = std::string;
+  auto toSerialized(StatusCode source, std::string& target) const
+      -> inspection::Status;
+  auto fromSerialized(std::string const& source, StatusCode& target) const
+      -> inspection::Status;
+};
+
 template<class Inspector>
 auto inspect(Inspector& f, LogCurrentSupervision& x) {
   return f.object(x).fields(
       f.field(static_strings::Election, x.election),
       f.field(static_strings::Error, x.error),
       f.field(static_strings::TargetVersion, x.targetVersion),
-      f.field(static_strings::StatusMessage, x.statusMessage));
+      f.field(static_strings::StatusMessage, x.statusMessage),
+      f.field(static_strings::StatusReport, x.statusReport),
+      f.field(static_strings::LastTimeModified, x.lastTimeModified)
+          .transformWith(inspection::TimeStampTransformer{}));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, LogCurrentSupervision::StatusMessage& x) {
+  return f.object(x).fields(
+      f.field(static_strings::Message, x.message),
+      f.field(static_strings::Code, x.code)
+          .transformWith(StatusCodeStringTransformer{}),
+      f.field(static_strings::Participant, x.participant));
 }
 
 template<class Inspector>

@@ -23,6 +23,54 @@
 
 #pragma once
 
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/SupervisionAction.h"
+
 namespace arangodb::replication2::replicated_log {
-struct SupervisionContext {};
-} // namespace arangodb::replication2::replicated_log
+
+struct SupervisionContext {
+  SupervisionContext() = default;
+  SupervisionContext(SupervisionContext const&) = delete;
+  SupervisionContext(SupervisionContext&&) noexcept = delete;
+  SupervisionContext& operator=(SupervisionContext const&) = delete;
+  SupervisionContext& operator=(SupervisionContext&&) noexcept = delete;
+
+  template<typename ActionType, typename... Args>
+  void createAction(Args&&... args) {
+    if (std::holds_alternative<EmptyAction>(_action)) {
+      _action.emplace<ActionType>(ActionType{std::forward<Args>(args)...});
+    }
+  }
+
+  void reportStatus(LogCurrentSupervision::StatusCode code,
+                    std::optional<ParticipantId> participant) {
+    if (_isErrorReportingEnabled) {
+      _reports.emplace_back(code, std::move(participant));
+    }
+  }
+
+  void enableErrorReporting() noexcept { _isErrorReportingEnabled = true; }
+
+  auto getAction() noexcept -> Action& { return _action; }
+  auto getReport() noexcept -> LogCurrentSupervision::StatusReport& {
+    return _reports;
+  }
+
+  auto hasUpdates() noexcept -> bool {
+    return !std::holds_alternative<EmptyAction>(_action) || !_reports.empty();
+  }
+
+  auto isErrorReportingEnabled() const noexcept {
+    return _isErrorReportingEnabled;
+  }
+
+  std::size_t numberServersInTarget;
+  std::size_t numberServersOk;
+
+ private:
+  bool _isErrorReportingEnabled{false};
+  Action _action;
+  LogCurrentSupervision::StatusReport _reports;
+};
+
+}  // namespace arangodb::replication2::replicated_log
