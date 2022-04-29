@@ -26,8 +26,9 @@
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
-#include "Basics/application-exit.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
@@ -40,6 +41,7 @@ using namespace arangodb::consensus;
 
 namespace {
 void handleGossipResponse(arangodb::network::Response const& r,
+                          std::string const& endpoint,
                           arangodb::consensus::Agent* agent, size_t version) {
   using namespace arangodb;
   std::string newLocation;
@@ -57,7 +59,8 @@ void handleGossipResponse(arangodb::network::Response const& r,
 
       case 307:  // Add new endpoint to gossip peers
         bool found;
-        newLocation = r.response().header.metaByKey("location", found);
+        newLocation =
+            r.response().header.metaByKey(StaticStrings::Location, found);
 
         if (found) {
           if (newLocation.compare(0, 5, "https") == 0) {
@@ -66,13 +69,14 @@ void handleGossipResponse(arangodb::network::Response const& r,
             newLocation = newLocation.replace(0, 4, "tcp");
           } else {
             LOG_TOPIC("60be0", FATAL, Logger::AGENCY)
-                << "Invalid URL specified as gossip endpoint";
+                << "Invalid URL specified as gossip endpoint by " << endpoint
+                << ": " << newLocation;
             FATAL_ERROR_EXIT();
           }
 
           LOG_TOPIC("4c822", DEBUG, Logger::AGENCY)
-              << "Got redirect to " << newLocation
-              << ". Adding peer to gossip peers";
+              << "Got redirect to " << newLocation << ". Adding peer "
+              << newLocation << " to gossip peers";
           bool added = agent->addGossipPeer(newLocation);
           if (added) {
             LOG_TOPIC("d41c8", DEBUG, Logger::AGENCY)
@@ -87,17 +91,28 @@ void handleGossipResponse(arangodb::network::Response const& r,
         }
         break;
 
+      case 503:
+        // service unavailable
+        LOG_TOPIC("f9c3f", INFO, Logger::AGENCY)
+            << "Gossip endpoint " << endpoint << " is still unavailable";
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+        break;
+
       default:
+        // unexpected error
         LOG_TOPIC("bed89", ERR, Logger::AGENCY)
-            << "Got error " << r.statusCode() << " from gossip endpoint";
+            << "Got error " << r.statusCode() << " from gossip endpoint "
+            << endpoint;
         std::this_thread::sleep_for(std::chrono::seconds(40));
         break;
     }
   }
 
   LOG_TOPIC("e2ef9", DEBUG, Logger::AGENCY)
-      << "Got error from gossip message, status:" << fuerte::to_string(r.error);
+      << "Got error from gossip message to " << endpoint
+      << ", status: " << fuerte::to_string(r.error);
 }
+
 }  // namespace
 
 Inception::Inception(Agent& agent)
@@ -166,7 +181,7 @@ void Inception::gossip() {
         network::sendRequest(cp, p, fuerte::RestVerb::Post, path, buffer,
                              reqOpts)
             .thenValue([=](network::Response r) {
-              ::handleGossipResponse(r, &_agent, version);
+              ::handleGossipResponse(r, p, &_agent, version);
             });
       }
     }
@@ -197,7 +212,7 @@ void Inception::gossip() {
         network::sendRequest(cp, pair.second, fuerte::RestVerb::Post, path,
                              buffer, reqOpts)
             .thenValue([=](network::Response r) {
-              ::handleGossipResponse(r, &_agent, version);
+              ::handleGossipResponse(r, pair.second, &_agent, version);
             });
       }
     }
@@ -333,7 +348,7 @@ bool Inception::restartingActiveAgent() {
                                            path, greetBuffer, reqOpts)
                           .get();
 
-        if (comres.ok()) {
+        if (comres.combinedResult().ok()) {
           try {
             VPackSlice theirConfig = comres.slice();
 
