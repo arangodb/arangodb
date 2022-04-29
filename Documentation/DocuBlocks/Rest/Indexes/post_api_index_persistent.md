@@ -38,8 +38,8 @@ but the attributes in **storedValues** are not checked for their uniqueness.
 if *true*, then create a sparse index. Defaults to *false*.
 
 @RESTBODYPARAM{deduplicate,boolean,optional,}
-The attribute **deduplicate** is supported by array indexes of type *persistent*,
-*hash* or *skiplist*. It controls whether inserting duplicate index values
+The **deduplicate** attribute is supported by array indexes of type *persistent*.
+It controls whether inserting duplicate index values
 from the same document into a unique array index will lead to a unique constraint
 error or not. The default value is *true*, so only a single instance of each
 non-unique index value will be inserted into the index per document. Trying to
@@ -56,8 +56,7 @@ the query optimizer will not be able to determine the usefulness of different
 competing indexes in AQL queries when there are multiple candidate indexes to
 choose from.
 The *estimates* attribute is optional and defaults to *true* if not set. It will
-have no effect on indexes other than *persistent* (with *hash* and *skiplist*
-being mere aliases for *persistent* nowadays).
+have no effect on indexes other than *persistent*.
 
 @RESTBODYPARAM{cacheEnabled,boolean,optional,}
 **cacheEnabled** can be *true* or *false* and is supported by indexes of type
