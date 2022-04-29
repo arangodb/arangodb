@@ -7,6 +7,12 @@ v3.9.2 (XXXX-XX-XX)
   at a later stage. It is not required to upgrade to this version (or later)
   before upgrading to 3.10.
 
+* Fix agency inception when one of the gossip peers responds with HTTP 503 or
+  another unexpected error.
+
+* Make sure that newly created TTL indexes do not use index estimates, which
+  wouldn't be used for TTL indexes anyway.
+
 * Improve log output for WAL recovery, by providing more information and making
   the wording more clear.
 
