@@ -572,73 +572,6 @@ function dealing_with_the_loggerSuite () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////;
-// batches && logger state requests;
-////////////////////////////////////////////////////////////////////////////////;
-function dealing_with_batches_and_logger_stateSuite () {
-  let batchId=0;
-  return {
-    tearDown: function() {
-      arango.DELETE_RAW(api + `/batch/${batchId}`, "");
-    },
-
-    test_creates_a_batch__without_state_request: function() {
-      let doc = arango.POST_RAW(api + "/batch", "{}");
-      assertEqual(doc.code, 200);
-      batchId = doc.parsedBody['id'];
-      assertMatch(/^[0-9]+$/, batchId);
-
-      assertEqual(doc.code, 200);
-      let all = doc.parsedBody;
-      assertTrue(all.hasOwnProperty('id'));
-      assertMatch(/^[0-9]+$/, all['id']);
-      assertTrue(all.hasOwnProperty('lastTick'));
-      assertMatch(/^[0-9]+$/, all['lastTick']);
-
-      assertFalse(all.hasOwnProperty('state'));
-    },
-
-    test_creates_a_batch__with_state_request: function() {
-      let doc = arango.POST_RAW(api + "/batch?state=true", "{}");
-      assertEqual(doc.code, 200);
-      batchId = doc.parsedBody['id'];
-      assertMatch(/^[0-9]+$/, batchId);
-
-      assertEqual(doc.code, 200);
-      let all = doc.parsedBody;
-      assertTrue(all.hasOwnProperty('id'));
-      assertTrue(all.hasOwnProperty('lastTick'));
-      assertMatch(/^[0-9]+$/, all['id']);
-      assertMatch(/^[0-9]+$/, all['lastTick']);
-
-      assertTrue(all.hasOwnProperty('state'));
-      let state = all['state'];
-      assertTrue(state.hasOwnProperty('state'));
-      assertTrue(state['state'].hasOwnProperty('running'));
-      assertTrue(state['state']['running']);
-      assertTrue(state['state'].hasOwnProperty('lastLogTick'));
-      assertMatch(/^[0-9]+$/, state['state']['lastLogTick']);
-      assertTrue(state['state'].hasOwnProperty('lastUncommittedLogTick'));
-      assertMatch(/^[0-9]+$/, state['state']['lastUncommittedLogTick']);
-      assertEqual(state['state']['lastLogTick'], state['state']['lastUncommittedLogTick']);
-      assertTrue(state['state'].hasOwnProperty('totalEvents'));
-      assertTrue(state['state'].hasOwnProperty('time'));
-
-      // make sure that all tick values in the response are equal;
-      assertEqual(all['lastTick'], state['state']['lastLogTick']);
-
-      assertTrue(state.hasOwnProperty('server'));
-      assertTrue(state['server'].hasOwnProperty('version'));
-      assertTrue(state['server'].hasOwnProperty('engine'));
-      assertEqual(state['server']['engine'], 'rocksdb');
-      assertTrue(state['server'].hasOwnProperty('serverId'));
-
-      assertTrue(state.hasOwnProperty('clients'));
-      assertEqual(state['clients'].length, 0);
-    }
-  };
-}
-
-////////////////////////////////////////////////////////////////////////////////;
 // inventory / dump;
 ////////////////////////////////////////////////////////////////////////////////;
 function dealing_with_the_initial_dump_interfaceSuite () {
@@ -897,13 +830,13 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       assertEqual(doc.code, 200);
 
       let cmd = api + `/dump?collection=UnitTestsReplication&batchId=${batchId}`;
-      doc = arango.GET_RAW(cmd);
+      doc = arango.GET_RAW(cmd, {'accept': 'application/x-arango-dump'});
 
       assertEqual(doc.code, 204);
       assertEqual(doc.headers["x-arango-replication-checkmore"], "false");
       assertEqual(doc.headers["x-arango-replication-lastincluded"], "0", doc);
       assertEqual(doc.headers["content-type"], "application/x-arango-dump");
-      assertEqual(doc.body, undefined);
+      assertFalse(doc.hasOwnProperty('body'));
     },
 
     test_checks_the_dump_for_a_non_empty_collection_1: function() {
@@ -921,10 +854,10 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       assertMatch(/^[0-9]+$/, batchId);
 
       let cmd = api + `/dump?collection=UnitTestsReplication&batchId=${batchId}`;
-      let doc = arango.GET_RAW(cmd);
+
+      let doc = arango.GET_RAW(cmd, {'accept': 'application/x-arango-dump'});
 
       assertEqual(doc.code, 200);
-
       assertEqual(doc.headers["x-arango-replication-checkmore"], "false");
       assertMatch(/^[0-9]+$/, doc.headers["x-arango-replication-lastincluded"]);
       assertNotEqual(doc.headers["x-arango-replication-lastincluded"], "0", doc);
@@ -940,7 +873,6 @@ function dealing_with_the_initial_dump_interfaceSuite () {
         }
 
         let part = body.slice(0, position);
-
         let doc = JSON.parse(part);
         assertTrue(doc.hasOwnProperty("type"));
         assertTrue(doc.hasOwnProperty("data"));
@@ -949,56 +881,6 @@ function dealing_with_the_initial_dump_interfaceSuite () {
         assertMatch(/^test[0-9]+$/, doc['data']['_key']);
         assertMatch(/^[a-zA-Z0-9_\-]+$/, doc["data"]["_rev"]);
         assertTrue(doc['data'].hasOwnProperty("test"));
-
-        body = body.slice(position + 1, body.length);
-        i = i + 1;
-      }
-
-      assertEqual(i, 100);
-    },
-
-    test_checks_the_dump_for_a_non_empty_collection__no_envelopes: function() {
-      let cid = db._create("UnitTestsReplication");
-
-      for (let i = 0; i < 100; i++) {
-        let body = { "_key" : `test${i}`, "test" : `${i}` };
-        let doc = arango.POST_RAW("/_api/document?collection=UnitTestsReplication", body);
-        assertEqual(doc.code, 202);
-      }
-
-      arango.DELETE_RAW(api + `/batch/${batchId}`, "");
-      let doc0 = arango.POST_RAW(api + "/batch", "{}");
-      batchId = doc0.parsedBody["id"];
-      assertMatch(/^[0-9]+$/, batchId);
-
-      let cmd = api + `/dump?collection=UnitTestsReplication&batchId=${batchId}&useEnvelope=false`;
-      let doc = arango.GET_RAW(cmd);
-
-      assertEqual(doc.code, 200);
-
-      assertEqual(doc.headers["x-arango-replication-checkmore"], "false");
-      assertMatch(/^[0-9]+$/, doc.headers["x-arango-replication-lastincluded"]);
-      assertNotEqual(doc.headers["x-arango-replication-lastincluded"], "0");
-      assertEqual(doc.headers["content-type"], "application/x-arango-dump");
-
-      let body = doc.body.toString();
-      let i = 0;
-      while (body.length > 1) {
-        let position = body.search("\n");
-
-        if (position === undefined) {
-          break;
-        }
-
-        let part = body.slice(0, position);
-
-        let doc = JSON.parse(part);
-        assertFalse(doc.hasOwnProperty("type"));
-        assertFalse(doc.hasOwnProperty("data"));
-        assertTrue(doc.hasOwnProperty("_key"));
-        assertMatch(/^test[0-9]+$/, doc['_key']);
-        assertMatch(/^[a-zA-Z0-9_\-]+$/, doc["_rev"]);
-        assertTrue(doc.hasOwnProperty("test"));
 
         body = body.slice(position + 1, body.length);
         i = i + 1;
@@ -1025,7 +907,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       assertMatch(/^[0-9]+$/, batchId);
 
       let cmd = api + `/dump?collection=UnitTestsReplication&chunkSize=1024&batchId=${batchId}`;
-      doc = arango.GET_RAW(cmd);
+      doc = arango.GET_RAW(cmd, {'accept': 'application/x-arango-dump'});
 
       assertEqual(doc.code, 200);
 
@@ -1077,7 +959,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       assertMatch(/^[0-9]+$/, batchId);
 
       let cmd = api + `/dump?collection=UnitTestsReplication2&chunkSize=65536&batchId=${batchId}`;
-      doc = arango.GET_RAW(cmd);
+      doc = arango.GET_RAW(cmd, {'accept': 'application/x-arango-dump'});
 
       assertEqual(doc.code, 200);
 
@@ -1133,7 +1015,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       assertMatch(/^[0-9]+$/, batchId);
 
       let cmd = api + `/dump?collection=UnitTestsReplication2&chunkSize=1024&batchId=${batchId}`;
-      doc = arango.GET_RAW(cmd);
+      doc = arango.GET_RAW(cmd, {'accept': 'application/x-arango-dump'});
 
       assertEqual(doc.code, 200);
 
@@ -1194,7 +1076,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       assertMatch(/^[0-9]+$/, batchId);
 
       let cmd = api + `/dump?collection=UnitTestsReplication&batchId=${batchId}`;
-      doc = arango.GET_RAW(cmd);
+      doc = arango.GET_RAW(cmd, {'accept': 'application/x-arango-dump'});
       assertEqual(doc.code, 204);
 
       assertEqual(doc.headers["x-arango-replication-checkmore"], "false");
@@ -1225,7 +1107,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       assertMatch(/^[0-9]+$/, batchId);
 
       cmd = api + `/dump?collection=UnitTestsReplication&batchId=${batchId}`;
-      doc = arango.GET_RAW(cmd);
+      doc = arango.GET_RAW(cmd, {'accept': 'application/x-arango-dump'});
       assertEqual(doc.code, 204);
 
       assertEqual(doc.headers["x-arango-replication-checkmore"], "false");
@@ -1248,7 +1130,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
       assertMatch(/^[0-9]+$/, batchId);
 
       let cmd = api + `/dump?collection=UnitTestsReplication&batchId=${batchId}`;
-      let doc = arango.GET_RAW(cmd);
+      let doc = arango.GET_RAW(cmd, {'accept': 'application/x-arango-dump'});
 
       assertEqual(doc.code, 200);
 
@@ -1297,7 +1179,7 @@ function dealing_with_the_initial_dump_interfaceSuite () {
 
       for (let i = 0; i < 10; i++) {
         let cmd = api + `/dump?collection=UnitTestsReplication&from=${fromTick}&chunkSize=1&batchId=${batchId}`;
-        doc = arango.GET_RAW(cmd);
+        doc = arango.GET_RAW(cmd, {'accept': 'application/x-arango-dump'});
         assertEqual(doc.code, 200);
 
         if (i === 9) {
@@ -1619,7 +1501,7 @@ function dealing_with_the_logger_Suite () {
         let fromTick = doc.parsedBody["state"]["lastLogTick"];
 
         cmd = api + "/logger-follow?from=" + fromTick;
-        doc = arango.GET_RAW(cmd);
+        doc = arango.GET_RAW(cmd, {'accept': 'application/x-arango-dump'});
 
         if (doc.code !== 204) {
           // someone else did something else;
@@ -1660,7 +1542,7 @@ function dealing_with_the_logger_Suite () {
       sleep(5);
 
       cmd = api + "/logger-follow?from=" + fromTick;
-      doc = arango.GET_RAW(cmd);
+      doc = arango.GET_RAW(cmd, {'accept': 'application/x-arango-dump'});
       assertEqual(doc.code, 200);
 
       assertMatch(/^[0-9]+$/, doc.headers["x-arango-replication-lastincluded"]);
@@ -1744,7 +1626,7 @@ function dealing_with_the_logger_Suite () {
       sleep(5);
 
       cmd = api + "/logger-follow?from=" + fromTick;
-      doc = arango.GET_RAW(cmd);
+      doc = arango.GET_RAW(cmd, {'accept': 'application/x-arango-dump'});
       assertEqual(doc.code, 200);
 
       assertMatch(/^[0-9]+$/, doc.headers["x-arango-replication-lastincluded"]);
@@ -2127,7 +2009,7 @@ function dealing_with_the_initial_dumSuite () {
       assertEqual(doc.code, 200);
 
       let cmd = api + `/dump?collection=UnitTestsReplication&batchId=${batchId}`;
-      doc = arango.GET_RAW(cmd);
+      doc = arango.GET_RAW(cmd, {'accept': 'application/x-arango-dump'});
 
       assertEqual(doc.code, 204);
 
@@ -2153,7 +2035,7 @@ function dealing_with_the_initial_dumSuite () {
       assertMatch(/^[0-9]+$/, batchId);
 
       let cmd = api + `/dump?collection=UnitTestsReplication&batchId=${batchId}`;
-      let doc = arango.GET_RAW(cmd);
+      let doc = arango.GET_RAW(cmd, {'accept': 'application/x-arango-dump'});
 
       assertEqual(doc.code, 200, doc);
 
@@ -2204,7 +2086,7 @@ function dealing_with_the_initial_dumSuite () {
       assertMatch(/^[0-9]+$/, batchId);
 
       let cmd = api + `/dump?collection=UnitTestsReplication&chunkSize=1024&batchId=${batchId}`;
-      doc = arango.GET_RAW(cmd);
+      doc = arango.GET_RAW(cmd, {'accept': 'application/x-arango-dump'});
 
       assertEqual(doc.code, 200);
 
@@ -2257,7 +2139,7 @@ function dealing_with_the_initial_dumSuite () {
       assertMatch(/^[0-9]+$/, batchId);
 
       let cmd = api + `/dump?collection=UnitTestsReplication2&chunkSize=65536&batchId=${batchId}`;
-      doc = arango.GET_RAW(cmd);
+      doc = arango.GET_RAW(cmd, {'accept': 'application/x-arango-dump'});
 
       assertEqual(doc.code, 200);
 
@@ -2314,7 +2196,7 @@ function dealing_with_the_initial_dumSuite () {
       assertMatch(/^[0-9]+$/, batchId);
 
       let cmd = api + `/dump?collection=UnitTestsReplication2&chunkSize=1024&batchId=${batchId}`;
-      doc = arango.GET_RAW(cmd);
+      doc = arango.GET_RAW(cmd, {'accept': 'application/x-arango-dump'});
 
       assertEqual(doc.code, 200, doc);
 
@@ -2376,7 +2258,7 @@ function dealing_with_the_initial_dumSuite () {
       assertMatch(/^[0-9]+$/, batchId);
 
       let cmd = api + `/dump?collection=UnitTestsReplication&batchId=${batchId}`;
-      doc = arango.GET_RAW(cmd);
+      doc = arango.GET_RAW(cmd, {'accept': 'application/x-arango-dump'});
       assertEqual(doc.code, 204, doc);
 
       assertEqual(doc.headers["x-arango-replication-checkmore"], "false");
@@ -2408,7 +2290,7 @@ function dealing_with_the_initial_dumSuite () {
       assertMatch(/^[0-9]+$/, batchId);
 
       cmd = api + `/dump?collection=UnitTestsReplication&batchId=${batchId}`;
-      doc = arango.GET_RAW(cmd);
+      doc = arango.GET_RAW(cmd, {'accept': 'application/x-arango-dump'});
       assertEqual(doc.code, 204);
 
       assertEqual(doc.headers["x-arango-replication-checkmore"], "false");
@@ -2432,7 +2314,7 @@ function dealing_with_the_initial_dumSuite () {
       assertMatch(/^[0-9]+$/, batchId);
 
       let cmd = api + `/dump?collection=UnitTestsReplication&batchId=${batchId}`;
-      let doc = arango.GET_RAW(cmd);
+      let doc = arango.GET_RAW(cmd, {'accept': 'application/x-arango-dump'});
 
       assertEqual(doc.code, 200, doc);
 
@@ -2483,7 +2365,7 @@ function dealing_with_the_initial_dumSuite () {
 
       for (let i = 0; i < 10; i++ ) {
         let cmd = api + `/dump?collection=UnitTestsReplication&from=${fromTick}&chunkSize=1&batchId=${batchId}`;
-        let doc = arango.GET_RAW(cmd);
+        let doc = arango.GET_RAW(cmd, {'accept': 'application/x-arango-dump'});
         assertEqual(doc.code, 200, doc);
 
         if (i === 9) {
@@ -2513,7 +2395,6 @@ function dealing_with_the_initial_dumSuite () {
 jsunity.run(dealing_with_general_function_interfaceSuite);
 jsunity.run(dealing_with_the_applier_interfaceSuite);
 jsunity.run(dealing_with_the_loggerSuite);
-jsunity.run(dealing_with_batches_and_logger_stateSuite);
 jsunity.run(dealing_with_the_initial_dump_interfaceSuite);
 
 jsunity.run(dealing_with_general_functionSuite);

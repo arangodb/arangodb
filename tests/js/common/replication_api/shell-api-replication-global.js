@@ -251,14 +251,15 @@ function dealing_with_the_applierSuite () {
 ////////////////////////////////////////////////////////////////////////////////;
 function dealing_with_wal_access_apiSuite () {
   let api = "/_api/wal";
+  let cn = "UnitTestsReplication";
   return {
 
     setUp: function() {
-      db._drop("UnitTestsReplication");
+      db._drop(cn);
     },
 
     tearDown: function() {
-      db._drop("UnitTestsReplication");
+      db._drop(cn);
     },
 
     ////////////////////////////////////////////////////////////////////////////////;
@@ -386,7 +387,7 @@ function dealing_with_wal_access_apiSuite () {
       let fromTick;
 
       while (true) {
-        db._drop("UnitTestsReplication");
+        db._drop(cn);
 
         sleep(5);
 
@@ -395,8 +396,9 @@ function dealing_with_wal_access_apiSuite () {
         assertEqual(doc.code, 200);
         fromTick = doc.parsedBody["tick"];
 
-        cid = db._create("UnitTestsReplication", { waitForSync: true } );
-        cuid = cid.properties()["globallyUniqueId"];
+        cid = db._create(cn, { waitForSync: true } );
+        let props = arango.GET_RAW(`/_api/collection/${cn}/properties`);
+        cuid = props.parsedBody["globallyUniqueId"];
 
         sleep(1);
 
@@ -441,7 +443,7 @@ function dealing_with_wal_access_apiSuite () {
           assertEqual(typeof c["cid"],'string');
           assertEqual(c["globallyUniqueId"], cuid);
           assertFalse(c["deleted"]);
-          assertEqual(c["name"], "UnitTestsReplication");
+          assertEqual(c["name"], cn);
           assertTrue(c["waitForSync"]);
         }
 
@@ -458,7 +460,7 @@ function dealing_with_wal_access_apiSuite () {
       let rev2;
       let fromTick;
       while (true) {
-        db._drop("UnitTestsReplication");
+        db._drop(cn);
 
         sleep(5);
 
@@ -468,25 +470,27 @@ function dealing_with_wal_access_apiSuite () {
         fromTick = doc.parsedBody["tick"];
 
         // create collection;
-        cid = db._create("UnitTestsReplication", { waitForSync: true, globallyUniqueId: true });
-        cuid = cid.properties()["globallyUniqueId"];
-
+        cid = db._create(cn, { waitForSync: true, globallyUniqueId: true });
+        
+        let props = arango.GET_RAW(`/_api/collection/${cn}/properties`);
+        cuid = props.parsedBody["globallyUniqueId"];
+        
         // create document;
-        cmd = "/_api/document?collection=UnitTestsReplication";
+        cmd = `/_api/document?collection=${cn}`;
         body = { "_key" : "test", "test" : false };
         doc = arango.POST_RAW(cmd, body);
         assertEqual(doc.code, 201, doc);
         rev = doc.parsedBody["_rev"];
 
         // update document;
-        cmd = "/_api/document/UnitTestsReplication/test";
+        cmd = `/_api/document/${cn}/test`;
         body = { "updated" : true };
         doc = arango.PATCH_RAW(cmd, body);
         assertEqual(doc.code, 201);
         rev2 = doc.parsedBody["_rev"];
 
         // delete document;
-        cmd = "/_api/document/UnitTestsReplication/test";
+        cmd = `/_api/document/${cn}/test`;
         doc = arango.DELETE_RAW(cmd);
         assertEqual(doc.code, 200);
 
@@ -538,7 +542,7 @@ function dealing_with_wal_access_apiSuite () {
             assertEqual(typeof c["cid"],'string');
             assertEqual(c["globallyUniqueId"], cuid);
             assertFalse(c["deleted"]);
-            assertEqual(c["name"], "UnitTestsReplication");
+            assertEqual(c["name"], cn);
             assertTrue(c["waitForSync"]);
 
             i = i + 1;
@@ -594,7 +598,6 @@ function dealing_with_wal_access_apiSuite () {
 
         body = body.slice(position + 1, body.length);
       }
-
       assertEqual(i, 4);
 
       // tail you later;
@@ -604,7 +607,7 @@ function dealing_with_wal_access_apiSuite () {
       fromTick = doc.parsedBody["tick"];
 
       // drop collection;
-      cmd = "/_api/collection/UnitTestsReplication";
+      cmd = `/_api/collection/${cn}`;
       doc = arango.DELETE_RAW(cmd);
       assertEqual(doc.code, 200);
 
@@ -652,7 +655,7 @@ function dealing_with_wal_access_apiSuite () {
     },
 
     test_fetches_some_more_single_document_operations_from_the_log: function() {
-      db._drop("UnitTestsReplication");
+      db._drop(cn);
 
       sleep(5);
 
@@ -662,25 +665,26 @@ function dealing_with_wal_access_apiSuite () {
       let fromTick = doc.parsedBody["tick"];
 
       // create collection;
-      let cid = db._create("UnitTestsReplication", {waitForSync: true});
-      let cuid = cid.properties()["globallyUniqueId"];
+      let cid = db._create(cn, {waitForSync: true});
+      let props = arango.GET_RAW(`/_api/collection/${cn}/properties`);
+      let cuid = props.parsedBody["globallyUniqueId"];
 
       // create document;
-      cmd = "/_api/document?collection=UnitTestsReplication";
+      cmd = `/_api/document?collection=${cn}`;
       let body = { "_key" : "test", "test" : false };
       doc = arango.POST_RAW(cmd, body);
       assertEqual(doc.code, 201, doc);
       let rev = doc.parsedBody["_rev"];
 
       // update document;
-      cmd = "/_api/document/UnitTestsReplication/test";
+      cmd = `/_api/document/${cn}/test`;
       body = { "updated" : true };
       doc = arango.PATCH_RAW(cmd, body);
       assertEqual(doc.code, 201);
       let rev2 = doc.parsedBody["_rev"];
 
       // delete document;
-      cmd = "/_api/document/UnitTestsReplication/test";
+      cmd = `/_api/document/${cn}/test`;
       doc = arango.DELETE_RAW(cmd);
       assertEqual(doc.code, 200);
 
@@ -734,14 +738,12 @@ function dealing_with_wal_access_apiSuite () {
       assertEqual(tickTypes[2302], 1); // document drop
 
       // drop collection;
-      cmd = "/_api/collection/UnitTestsReplication";
+      cmd = `/_api/collection/${cn}`;
       doc = arango.DELETE_RAW(cmd);
       assertEqual(doc.code, 200);
     },
 
     test_validates_chunkSize_restrictions: function() {
-      db._drop("UnitTestsReplication");
-
       sleep(1);
 
       let cmd = api + "/lastTick";
@@ -752,12 +754,13 @@ function dealing_with_wal_access_apiSuite () {
       let lastScanned = fromTick;
 
       // create collection;
-      let cid = db._create("UnitTestsReplication", { waitForSync: true });
-      let cuid = cid.properties()["globallyUniqueId"];
+      let cid = db._create(cn, { waitForSync: true });
+      let props = arango.GET_RAW(`/_api/collection/${cn}/properties`);
+      let cuid = props.parsedBody["globallyUniqueId"];
 
       // create documents;
       for (let value = 0; value < 250; value ++) {
-        cmd = "/_api/document?collection=UnitTestsReplication";
+        cmd = `/_api/document?collection=${cn}`;
         let body = { "value" : "thisIsALongerStringBecauseWeWantToTestTheChunkSizeLimitsLaterOnAndItGetsEvenLongerWithTimeForRealNow" };
         doc = arango.POST_RAW(cmd, body);
         assertEqual(doc.code, 201);
@@ -769,13 +772,13 @@ function dealing_with_wal_access_apiSuite () {
         docsBody.push({ "value" : value });
       }
       docsBody.push({ "value" : "500" });
-      cmd = "/_api/document?collection=UnitTestsReplication";
+      cmd = `/_api/document?collection=${cn}`;
       doc = arango.POST_RAW(cmd, docsBody);
       assertEqual(doc.code, 201);
 
       // create more documents;
       for(let value = 0; value < 500; value ++) {
-        cmd = "/_api/document?collection=UnitTestsReplication";
+        cmd = `/_api/document?collection=${cn}`;
         let body = { "value" : "thisIsALongerStringBecauseWeWantToTestTheChunkSizeLimitsLaterOnAndItGetsEvenLongerWithTimeForRealNow" };
         doc = arango.POST_RAW(cmd, body);
         assertEqual(doc.code, 201);
@@ -922,7 +925,7 @@ function dealing_with_wal_access_apiSuite () {
       assertEqual(tickTypes[2300], 1500); //document inserts
 
       // drop collection;
-      cmd = "/_api/collection/UnitTestsReplication";
+      cmd = `/_api/collection/${cn}`;
       doc = arango.DELETE_RAW(cmd);
       assertEqual(doc.code, 200);
     }
@@ -935,10 +938,12 @@ function dealing_with_wal_access_apiSuite () {
 function dealing_with_the_initial_dumpSuite () {
   let api = "/_api/replication";
   let batchId;
+  let cn1 = "UnitTestsReplication";
+  let cn2 = "UnitTestsReplication2";
   return {
     setUp: function() {
-      db._drop("UnitTestsReplication");
-      db._drop("UnitTestsReplication2");
+      db._drop(cn1);
+      db._drop(cn2);
       let doc = arango.POST_RAW(api + "/batch", "{}");
       assertEqual(doc.code, 200);
       batchId = doc.parsedBody['id'];
@@ -947,8 +952,8 @@ function dealing_with_the_initial_dumpSuite () {
 
     tearDown: function() {
       arango.DELETE_RAW(api + `/batch/${batchId}`, "");
-      db._drop("UnitTestsReplication");
-      db._drop("UnitTestsReplication2");
+      db._drop(cn1);
+      db._drop(cn2);
     },
 
   ////////////////////////////////////////////////////////////////////////////////;
@@ -976,7 +981,7 @@ function dealing_with_the_initial_dumpSuite () {
       let filtered = [ ];
       
       collections.forEach(collection => {
-        if ([ "UnitTestsReplication", "UnitTestsReplication2" ].includes(collection["parameters"]["name"])) {
+        if ([ cn1, cn2 ].includes(collection["parameters"]["name"])) {
           filtered.push(collection);
         }
         assertTrue(collection["parameters"].hasOwnProperty('globallyUniqueId'));
@@ -986,10 +991,13 @@ function dealing_with_the_initial_dumpSuite () {
   },
 
     test_checks_the_inventory_after_creating_collections: function() {
-      let cid = db._create("UnitTestsReplication");
-      let cuid = cid.properties()["globallyUniqueId"];
-      let cid2 = db._createEdgeCollection("UnitTestsReplication2", { waitForSync: true });
-      let cuid2 = cid2.properties()["globallyUniqueId"];
+      let cid = db._create(cn1);
+      let props = arango.GET_RAW(`/_api/collection/${cn1}/properties`);
+      let cuid = props.parsedBody["globallyUniqueId"];
+
+      let cid2 = db._createEdgeCollection(cn2, { waitForSync: true });
+      let props2 = arango.GET_RAW(`/_api/collection/${cn2}/properties`);
+      let cuid2 = props2.parsedBody["globallyUniqueId"];
 
       let cmd = api + `/inventory?includeSystem=true&global=true&batchId=${batchId}`;
       let doc = arango.GET_RAW(cmd);
@@ -1012,7 +1020,7 @@ function dealing_with_the_initial_dumpSuite () {
         let collections = database["collections"];
         filtered = [ ];
         collections.forEach(collection => {
-          if ([ "UnitTestsReplication", "UnitTestsReplication2" ].includes(collection["parameters"]["name"])) {
+          if ([ cn1, cn2 ].includes(collection["parameters"]["name"])) {
             filtered.push(collection);
           }
           assertTrue(collection["parameters"].hasOwnProperty('globallyUniqueId'));
@@ -1033,7 +1041,7 @@ function dealing_with_the_initial_dumpSuite () {
       assertEqual(parameters["cid"], cid._id);
       assertEqual(typeof parameters["cid"],'string');
       assertFalse(parameters["deleted"]);
-      assertEqual(parameters["name"], "UnitTestsReplication");
+      assertEqual(parameters["name"], cn1);
       assertFalse(parameters["waitForSync"]);
       assertTrue(parameters.hasOwnProperty("globallyUniqueId"));
       assertEqual(parameters["globallyUniqueId"], cuid);
@@ -1053,7 +1061,7 @@ function dealing_with_the_initial_dumpSuite () {
       assertEqual(parameters["cid"], cid2._id);
       assertEqual(typeof parameters["cid"],'string');
       assertFalse(parameters["deleted"]);
-      assertEqual(parameters["name"], "UnitTestsReplication2");
+      assertEqual(parameters["name"], cn2);
       assertTrue(parameters["waitForSync"]);
       assertTrue(parameters.hasOwnProperty("globallyUniqueId"));
       assertEqual(parameters["globallyUniqueId"], cuid2);
@@ -1062,22 +1070,25 @@ function dealing_with_the_initial_dumpSuite () {
     },
 
     test_checks_the_inventory_with_indexes: function() {
-      let cid = db._create("UnitTestsReplication");
-      let cuid = cid.properties()["globallyUniqueId"];
-      let cid2 = db._create("UnitTestsReplication2");
-      let cuid2 = cid2.properties()["globallyUniqueId"];
+      let cid = db._create(cn1);
+      let props = arango.GET_RAW(`/_api/collection/${cn1}/properties`);
+      let cuid = props.parsedBody["globallyUniqueId"];
+
+      let cid2 = db._create(cn2);
+      let props2 = arango.GET_RAW(`/_api/collection/${cn2}/properties`);
+      let cuid2 = props2.parsedBody["globallyUniqueId"];
 
       let body = { "type" : "hash", "unique" : false, "fields" : [ "a", "b" ] };
-      let doc = arango.POST_RAW("/_api/index?collection=UnitTestsReplication", body);
+      let doc = arango.POST_RAW(`/_api/index?collection=${cn1}`, body);
       assertEqual(doc.code, 201);
 
       body = { "type" : "skiplist", "unique" : false, "fields" : [ "c" ] };
-      doc = arango.POST_RAW("/_api/index?collection=UnitTestsReplication", body);
+      doc = arango.POST_RAW(`/_api/index?collection=${cn1}`, body);
       assertEqual(doc.code, 201);
 
       // create indexes for second collection;
       body = { "type" : "skiplist", "unique" : true, "fields" : [ "d" ] };
-      doc = arango.POST_RAW("/_api/index?collection=UnitTestsReplication2", body);
+      doc = arango.POST_RAW(`/_api/index?collection=${cn2}`, body);
       assertEqual(doc.code, 201);
 
       let cmd = api + `/inventory?batchId=${batchId}&global=true`;
@@ -1099,7 +1110,7 @@ function dealing_with_the_initial_dumpSuite () {
         assertTrue(database.hasOwnProperty('collections'));
         let collections = database['collections'];
         collections.forEach(collection => {
-          if ([ "UnitTestsReplication", "UnitTestsReplication2" ].includes(collection["parameters"]["name"])) {
+          if ([ cn1, cn2 ].includes(collection["parameters"]["name"])) {
             filtered.push(collection);
           }
         });
@@ -1113,6 +1124,7 @@ function dealing_with_the_initial_dumpSuite () {
       assertTrue(c.hasOwnProperty("indexes"));
 
       let parameters = c['parameters'];
+      assertEqual(parameters["name"], cn1);
       assertTrue(parameters.hasOwnProperty("version"));
       assertEqual(typeof parameters["version"], 'number');
       assertEqual(typeof parameters["type"], 'number');
@@ -1120,7 +1132,6 @@ function dealing_with_the_initial_dumpSuite () {
       assertEqual(parameters["cid"], cid._id);
       assertEqual(typeof parameters["cid"],'string');
       assertFalse(parameters["deleted"]);
-      assertEqual(parameters["name"], "UnitTestsReplication");
       assertFalse(parameters["waitForSync"]);
       assertTrue(parameters.hasOwnProperty("globallyUniqueId"));
       assertEqual(parameters["globallyUniqueId"], cuid);
@@ -1146,6 +1157,7 @@ function dealing_with_the_initial_dumpSuite () {
       assertTrue(c.hasOwnProperty("indexes"));
 
       parameters = c['parameters'];
+      assertEqual(parameters["name"], cn2);
       assertTrue(parameters.hasOwnProperty("version"));
       assertEqual(typeof parameters["version"], 'number');
       assertEqual(typeof parameters["type"], 'number');
@@ -1153,7 +1165,6 @@ function dealing_with_the_initial_dumpSuite () {
       assertEqual(parameters["cid"], cid2._id);
       assertEqual(typeof parameters["cid"],'string');
       assertFalse(parameters["deleted"]);
-      assertEqual(parameters["name"], "UnitTestsReplication2");
       assertFalse(parameters["waitForSync"]);
       assertTrue(parameters.hasOwnProperty("globallyUniqueId"));
       assertEqual(parameters["globallyUniqueId"], cuid2);
