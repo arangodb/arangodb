@@ -360,13 +360,13 @@ void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob,
 
   switch (type) {
     case RocksDBLogType::IndexCreate: {
-      TRI_ASSERT(_dbFeature);
-      TRI_ASSERT(_engine);
-      TRI_voc_tick_t const dbId = RocksDBLogValue::databaseId(blob);
-      DataSourceId const collectionId = RocksDBLogValue::collectionId(blob);
-      auto const indexSlice = RocksDBLogValue::indexSlice(blob);
-      ensureLink(*_dbFeature, _recoveredIndexes, dbId, collectionId,
-                 indexSlice);
+    //  TRI_ASSERT(_dbFeature);
+    //  TRI_ASSERT(_engine);
+    //  TRI_voc_tick_t const dbId = RocksDBLogValue::databaseId(blob);
+    //  DataSourceId const collectionId = RocksDBLogValue::collectionId(blob);
+    //  auto const indexSlice = RocksDBLogValue::indexSlice(blob);
+    //  ensureLink(*_dbFeature, _recoveredIndexes, dbId, collectionId,
+    //             indexSlice);
     } break;
     case RocksDBLogType::CollectionTruncate: {
       TRI_ASSERT(_dbFeature);
