@@ -28,7 +28,7 @@ const ViewJSONReactView = ({ name }) => {
 
     dispatch({
       type: 'setFormState',
-      formState: omit(view, 'id', 'globallyUniqueId')
+      formState: omit(view, 'globallyUniqueId')
     });
     dispatch({
       type: 'regenRenderKey'

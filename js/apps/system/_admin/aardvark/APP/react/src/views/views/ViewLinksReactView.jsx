@@ -28,14 +28,6 @@ export const ViewContext = createContext({
   setParentLink: noop
 });
 
-export const usePreviouse = value => {
-  const ref = useRef();
-  useEffect(() => {
-    ref.current = value;
-  }, [value]);
-  return ref.value;
-};
-
 const ViewLinksReactView = ({ name }) => {
   const initialState = useRef({
     formState: { name },
