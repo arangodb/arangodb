@@ -132,6 +132,7 @@ struct DFSEnumerator {
   struct StateVertex : SimulationState {
     std::size_t uniqueId{0};
     std::size_t searchIndex{0};
+    std::size_t depth{0};
 
     StateVertex(StateType state, Observer observer)
         : SimulationState{std::move(state), std::move(observer)} {}
@@ -201,28 +202,6 @@ struct DFSEnumerator {
       return {inserted, *iter};
     };
 
-    auto const getNextVertex = [&]() -> std::shared_ptr<StateVertex> {
-      if (path.empty()) {
-        return startVertex;
-      }
-      while (true) {
-        if (!path.empty()) {
-          auto& v = path.back();
-          if (v->isNewVertex()) {
-            return v;
-          } else if (v->searchIndex == v->outgoing.size()) {
-            ++v->searchIndex;
-            path.pop_back();
-          } else {
-            return std::static_pointer_cast<StateVertex>(
-                v->outgoing[v->searchIndex++].second);
-          }
-        } else {
-          return nullptr;
-        }
-      }
-    };
-
     {
       auto [inserted, step] = registerFingerprint(std::move(initialState),
                                                   std::move(initialObserver));
@@ -233,7 +212,7 @@ struct DFSEnumerator {
         result.failed.emplace(checkResult.asError(), step, PathVectorType{});
         return result;
       }
-      startVertex = step;
+      path.push_back(step);
     }
 
     auto const buildPathVector = [&] {
@@ -244,13 +223,46 @@ struct DFSEnumerator {
       return result;
     };
 
-    while (auto v = getNextVertex()) {
-      if (v->isNewVertex()) {
+    while (not path.empty()) {
+      auto v = path.back();
+      if (v->isCompleted()) {
+        path.pop_back();
+      } else if (v->isNewVertex()) {
         // expand the vertex
         v->uniqueId = ++nextUniqueId;
-        auto newStates = driver.expand(v->state);
-        if (newStates.empty()) {
-          v->searchIndex = 1;
+        auto exploredStates = driver.expand(v->state);
+        v->outgoing.reserve(exploredStates.size());
+        for (auto& [transition, state] : driver.expand(v->state)) {
+          auto [inserted, step] =
+              registerFingerprint(std::move(state), v->observer);
+          result.stats.discoveredStates += 1;
+          if (inserted) {
+            result.stats.uniqueStates += 1;
+            step->depth = v->depth + 1;
+          } else {
+            result.stats.eliminatedStates += 1;
+          }
+          auto checkResult = step->observer.check(step->state);
+          if (isPrune(checkResult)) {
+            continue;
+          } else if (isError(checkResult)) {
+            auto p = buildPathVector();
+            result.failed.emplace(checkResult.asError(), step, p);
+            return result;
+          }
+          v->outgoing.emplace_back(std::move(transition), step);
+          if (!step->isNewVertex() && !step->isCompleted()) {
+            v->searchIndex = v->outgoing.size();
+            path.erase(path.begin(), std::find(path.begin(), path.end(), step));
+            result.cycle.emplace(buildPathVector());
+            result.failed.emplace(CheckError("cycle detected"), step,
+                                  buildPathVector());
+          }
+        }
+      } else if (v->outgoing.size() == v->searchIndex) {
+        v->searchIndex += 1;  // make this vertex complete
+        path.pop_back();
+        if (v->outgoing.empty()) {
           result.stats.finalStates += 1;
           result.finalStates.emplace_back(v);
           if (auto checkResult = v->observer.finalStep(v->state);
@@ -259,35 +271,10 @@ struct DFSEnumerator {
             result.failed.emplace(checkResult.asError(), v, p);
             return result;
           }
-        } else {
-          for (auto& [transition, state] : newStates) {
-            auto [inserted, step] =
-                registerFingerprint(std::move(state), v->observer);
-            result.stats.discoveredStates += 1;
-            if (inserted) {
-              result.stats.uniqueStates += 1;
-            } else {
-              result.stats.eliminatedStates += 1;
-            }
-            auto checkResult = step->observer.check(step->state);
-            if (isPrune(checkResult)) {
-              continue;
-            } else if (isError(checkResult)) {
-              auto p = buildPathVector();
-              result.failed.emplace(checkResult.asError(), step, p);
-              return result;
-            }
-            v->outgoing.emplace_back(std::move(transition), step);
-          }
-          path.emplace_back(v);
         }
-      } else if (!v->isCompleted()) {
-        path.erase(path.begin(), std::find(path.begin(), path.end(), v));
-        result.cycle.emplace(buildPathVector());
-        result.failed.emplace(CheckError("cycle detected"), v,
-                              buildPathVector());
-        return result;
       } else {
+        path.push_back(std::static_pointer_cast<StateVertex>(
+            v->outgoing[v->searchIndex++].second));
       }
     }
 
