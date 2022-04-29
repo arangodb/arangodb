@@ -50,17 +50,18 @@ class RocksDBRecoveryManager final : public ArangodFeature {
     return _recoveryState.load(std::memory_order_acquire);
   }
 
-  /// @brief current recovery tick
-  rocksdb::SequenceNumber recoveryTick() const noexcept { return _tick; }
+  /// @brief current recovery sequence number
+  rocksdb::SequenceNumber recoverySequenceNumber() const noexcept {
+    return _currentSequenceNumber;
+  }
 
  private:
   Result parseRocksWAL();
 
- protected:
   /// @brief rocksdb instance
   rocksdb::TransactionDB* _db;
 
-  rocksdb::SequenceNumber _tick;
+  rocksdb::SequenceNumber _currentSequenceNumber;
   std::atomic<RecoveryState> _recoveryState;
 };
 
