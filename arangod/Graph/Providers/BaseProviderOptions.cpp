@@ -234,6 +234,11 @@ double ClusterBaseProviderOptions::weightEdge(
   return _weightCallback.value()(prefixWeight, edge);
 }
 
+bool ClusterBaseProviderOptions::hasDepthSpecificLookup(
+    uint64_t depth) const noexcept {
+  return _availableDepthsSpecificConditions.contains(depth);
+}
+
 #ifdef USE_ENTERPRISE
 void ClusterBaseProviderOptions::setRPCCommunicator(
     std::unique_ptr<enterprise::SmartGraphRPCCommunicator> communicator) {
@@ -244,9 +249,5 @@ enterprise::SmartGraphRPCCommunicator&
 ClusterBaseProviderOptions::getRPCCommunicator() {
   TRI_ASSERT(_communicator != nullptr);
   return *_communicator;
-}
-bool ClusterBaseProviderOptions::hasDepthSpecificLookup(
-    uint64_t depth) const noexcept {
-  return _availableDepthsSpecificConditions.contains(depth);
 }
 #endif
