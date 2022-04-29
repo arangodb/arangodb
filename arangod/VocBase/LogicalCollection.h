@@ -173,6 +173,9 @@ class LogicalCollection : public LogicalDataSource {
   /// if no SmartJoin attribute is present)
   std::string const& smartJoinAttribute() const { return _smartJoinAttribute; }
 
+  std::string smartGraphAttribute() const;
+  void setSmartGraphAttribute(std::string const& value);
+
   // SECTION: sharding
   ShardingInfo* shardingInfo() const;
 
@@ -378,6 +381,8 @@ class LogicalCollection : public LogicalDataSource {
   std::string createSmartToSatKey(arangodb::velocypack::Slice input);
 
  private:
+  void initializeSmartAttributes(velocypack::Slice info);
+
   void prepareIndexes(velocypack::Slice indexesSlice);
 
   void increaseV8Version();
@@ -432,6 +437,12 @@ class LogicalCollection : public LogicalDataSource {
   std::atomic<bool> _usesRevisionsAsDocumentIds;
 
   std::atomic<bool> _syncByRevision;
+
+#ifdef USE_ENTERPRISE
+  mutable Mutex
+      _smartGraphAttributeLock;  // lock protecting the smartGraphAttribute
+  std::string _smartGraphAttribute;
+#endif
 
   std::string _smartJoinAttribute;
 

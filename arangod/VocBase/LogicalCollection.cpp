@@ -234,6 +234,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 
   _sharding = std::make_unique<ShardingInfo>(info, this);
 
+  initializeSmartAttributes(info);
+
 #ifdef USE_ENTERPRISE
   if (ServerState::instance()->isCoordinator() ||
       ServerState::instance()->isDBServer()) {
@@ -306,6 +308,12 @@ LogicalCollection::category() noexcept {
 
   return category;
 }
+
+#ifndef USE_ENTERPRISE
+void LogicalCollection::initializeSmartAttributes(velocypack::Slice info) {
+  // nothing to do in community edition
+}
+#endif
 
 Result LogicalCollection::updateSchema(VPackSlice schema) {
   using namespace std::literals::string_literals;
@@ -519,6 +527,16 @@ RevisionId LogicalCollection::revision(transaction::Methods* trx) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   return _physical->revision(trx);
 }
+
+#ifndef USE_ENTERPRISE
+std::string LogicalCollection::smartGraphAttribute() const {
+  return StaticStrings::Empty;
+}
+
+void setSmartGraphAttribute(std::string const& value) {
+  // Nothing to do here.
+}
+#endif
 
 bool LogicalCollection::usesRevisionsAsDocumentIds() const {
   return _usesRevisionsAsDocumentIds.load();
