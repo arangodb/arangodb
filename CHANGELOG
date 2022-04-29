@@ -1,14 +1,21 @@
 devel
 -----
 
-* Added new optimisation rule "arangosearch-constrained-sort" to perform
-  sorting&limiting inside ArangoSearch View enumeration node in case of
+* Fix: Highly unlikely race in cluster maintenance. For every shard only
+  one operation (change attribute, change leadership) should be performed
+  at the same time. However if two changes are detected in the same hearbeat
+  it could lead to both operations to be executed in parallel. In most cases
+  this is also fine, but could lead to races on the same attribute, however
+  the race will be sorted out in the next heartbeat interval.
+
+* Added new optimization rule "arangosearch-constrained-sort" to perform
+  sorting & limiting inside ArangoSearch View enumeration node in case of
   using just scoring for sort. 
 
 * Improve log output for WAL recovery, by providing more information and
   making the wording more clear.
 
-* Updated lz4 to version 1.9.3
+* Updated lz4 to version 1.9.3.
 
 * Added option `--custom-query-file` to arangoexport, so that a custom query
   string can also be read from an input file.
