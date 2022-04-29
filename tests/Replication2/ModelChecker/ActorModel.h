@@ -104,7 +104,7 @@ struct ActorEngine {
   static auto run(ActorDriver<Actors...>& driver, Observer&& observer,
                   State initState) {
     using GlobalState = GlobalActorState<State, Transition, Actors...>;
-    using BaseEngine = SimulationEngine<GlobalState, Transition>;
+    using BaseEngine = BFSEnumerator<GlobalState, Transition>;
 
     return BaseEngine::run(
         driver, std::forward<Observer>(observer),

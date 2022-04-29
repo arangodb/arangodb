@@ -60,7 +60,7 @@ struct MyTransition {
 }  // namespace
 
 TEST_F(ModelCheckerTest, simple_model_test) {
-  using Engine = model_checker::SimulationEngine<MyState, MyTransition>;
+  using Engine = model_checker::BFSEnumerator<MyState, MyTransition>;
 
   auto driver = model_checker::lambda_driver{[&](MyState const& state) {
     auto result = std::vector<std::pair<MyTransition, MyState>>{};
@@ -86,7 +86,7 @@ TEST_F(ModelCheckerTest, simple_model_test) {
 }
 
 TEST_F(ModelCheckerTest, simple_model_test_eventually) {
-  using Engine = model_checker::SimulationEngine<MyState, MyTransition>;
+  using Engine = model_checker::BFSEnumerator<MyState, MyTransition>;
   auto driver = model_checker::lambda_driver{[&](MyState const& state) {
     auto result = std::vector<std::pair<MyTransition, MyState>>{};
     if (state.x < 10) {
@@ -108,7 +108,7 @@ TEST_F(ModelCheckerTest, simple_model_test_eventually) {
 }
 
 TEST_F(ModelCheckerTest, simple_model_test_eventually_always) {
-  using Engine = model_checker::SimulationEngine<MyState, MyTransition>;
+  using Engine = model_checker::BFSEnumerator<MyState, MyTransition>;
   auto driver = model_checker::lambda_driver{[&](MyState const& state) {
     auto result = std::vector<std::pair<MyTransition, MyState>>{};
     if (state.x < 10) {
@@ -131,7 +131,7 @@ TEST_F(ModelCheckerTest, simple_model_test_eventually_always) {
 }
 
 TEST_F(ModelCheckerTest, simple_model_test_eventually_always_fail) {
-  using Engine = model_checker::SimulationEngine<MyState, MyTransition>;
+  using Engine = model_checker::BFSEnumerator<MyState, MyTransition>;
   auto driver = model_checker::lambda_driver{[&](MyState const& state) {
     auto result = std::vector<std::pair<MyTransition, MyState>>{};
     if (state.x < 10) {
@@ -144,6 +144,26 @@ TEST_F(ModelCheckerTest, simple_model_test_eventually_always_fail) {
       MC_EVENTUALLY_ALWAYS(MC_BOOL_PRED(state, { return state.x > 11; }));
 
   auto result = Engine::run(driver, test, {.x = 0});
+  EXPECT_TRUE(result.failed);
+}
+
+TEST_F(ModelCheckerTest, simple_model_test_cycle_detector) {
+  using Engine = model_checker::BFSEnumerator<MyState, MyTransition>;
+  auto driver = model_checker::lambda_driver{[&](MyState const& state) {
+    auto result = std::vector<std::pair<MyTransition, MyState>>{};
+    if (state.x < 10) {
+      result.emplace_back(MyTransition{.deltaX = 1},
+                          MyState{.x = (state.x % 5) + 1});
+    }
+    return result;
+  }};
+
+  auto test =
+      MC_EVENTUALLY_ALWAYS(MC_BOOL_PRED(state, { return state.x > 11; }));
+
+  auto result = Engine::run(driver, test, {.x = 0});
+  EXPECT_TRUE(result.cycle);
+  std::cout << *result.cycle << std::endl;
   EXPECT_TRUE(result.failed);
 }
 
