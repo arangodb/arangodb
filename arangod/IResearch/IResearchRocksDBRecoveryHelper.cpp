@@ -107,7 +107,7 @@ std::shared_ptr<arangodb::iresearch::IResearchLink> lookupLink(
   return arangodb::iresearch::IResearchLinkHelper::find(*col, iid);
 }
 
-void ensureLink(
+[[maybe_unused]] void ensureLink(
     arangodb::DatabaseFeature& db,
     std::set<arangodb::iresearch::IResearchRocksDBRecoveryHelper::IndexId>&
         recoveredIndexes,
