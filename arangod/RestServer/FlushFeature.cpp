@@ -46,10 +46,7 @@ using namespace arangodb::options;
 namespace arangodb {
 
 FlushFeature::FlushFeature(Server& server)
-    : ArangodFeature{server, *this},
-      _flushInterval(1000000),
-      _flushIterations(0),
-      _stopped(false) {
+    : ArangodFeature{server, *this}, _flushInterval(1000000), _stopped(false) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
   startsAfter<StorageEngineFeature>();
@@ -81,9 +78,6 @@ void FlushFeature::registerFlushSubscription(
 }
 
 std::pair<size_t, TRI_voc_tick_t> FlushFeature::releaseUnusedTicks() {
-  // increase counter for number of flush iterations
-  _flushIterations.fetch_add(1, std::memory_order_relaxed);
-
   auto& engine = server().getFeature<EngineSelectorFeature>().engine();
   TRI_voc_tick_t const initialTick = engine.currentTick();
 
@@ -129,26 +123,12 @@ std::pair<size_t, TRI_voc_tick_t> FlushFeature::releaseUnusedTicks() {
     TRI_TerminateDebugging("crashing after releasing min tick");
   }
 
-  LOG_TOPIC_IF("2b2e1", DEBUG, arangodb::Logger::FLUSH, count)
-      << "Flush subscription(s) released: " << count;
-
   LOG_TOPIC("2b2e2", DEBUG, arangodb::Logger::FLUSH)
-      << "Tick released: '" << minTick << "'";
+      << "Flush tick released: '" << minTick << "'"
+      << ", flush subscription(s) released: " << count
+      << ", initial engine tick: " << initialTick;
 
   return std::make_pair(count, minTick);
-}
-
-// test if _flushIterations is >= maxValue, and reset it to 0 if so.
-// returns true in this case.
-// in all other cases returns false
-bool FlushFeature::testAndResetFlushIterations(uint64_t maxValue) noexcept {
-  uint64_t value = _flushIterations.load(std::memory_order_relaxed);
-  while (value >= maxValue) {
-    if (_flushIterations.compare_exchange_strong(value, 0)) {
-      return true;
-    }
-  }
-  return false;
 }
 
 void FlushFeature::validateOptions(

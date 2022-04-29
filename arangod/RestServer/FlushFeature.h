@@ -88,14 +88,8 @@ class FlushFeature final : public ArangodFeature {
   void beginShutdown() override;
   void stop() override;
 
-  // test if _flushIterations is >= maxValue, and reset it to 0 if so.
-  // returns true in this case.
-  // in all other cases returns false
-  bool testAndResetFlushIterations(uint64_t maxValue) noexcept;
-
  private:
   uint64_t _flushInterval;
-  std::atomic<uint64_t> _flushIterations;
 
   basics::ReadWriteLock _threadLock;
   std::unique_ptr<FlushThread> _flushThread;

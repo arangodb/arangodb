@@ -54,8 +54,8 @@ void RocksDBBackgroundThread::beginShutdown() {
 
 void RocksDBBackgroundThread::run() {
   double const startTime = TRI_microtime();
-
-  auto& flushFeature = _engine.server().getFeature<FlushFeature>();
+  uint64_t runsWithoutForce = 0;
+  bool hasRunOnce = false;
 
   while (!isStopping()) {
     {
@@ -72,11 +72,15 @@ void RocksDBBackgroundThread::run() {
     try {
       if (!isStopping()) {
         try {
-          // force a sync every 60 invocations of the FlushThread
-          constexpr uint64_t forceSyncEvery = 60;
+          // forceSync will be set to true for the initial run, that
+          // will happen when the recovery has finished. that way we
+          // can quickly push forward the WAL lower bound value after
+          // the recovery
+          bool forceSync = hasRunOnce ? false : true;
 
-          bool forceSync = false;
-          if (flushFeature.testAndResetFlushIterations(forceSyncEvery)) {
+          // force a sync after at most x iterations
+          constexpr uint64_t maxRunsBeforeForce = 15;
+          if (++runsWithoutForce >= maxRunsBeforeForce) {
             forceSync = true;
           }
 
@@ -93,6 +97,9 @@ void RocksDBBackgroundThread::run() {
           if (res.fail()) {
             LOG_TOPIC("a3d0c", WARN, Logger::ENGINES)
                 << "background settings sync failed: " << res.errorMessage();
+          } else if (forceSync) {
+            runsWithoutForce = 0;
+            hasRunOnce = true;
           }
 
           double end = TRI_microtime();
