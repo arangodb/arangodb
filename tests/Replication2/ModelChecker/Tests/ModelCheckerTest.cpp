@@ -60,7 +60,7 @@ struct MyTransition {
 }  // namespace
 
 TEST_F(ModelCheckerTest, simple_model_test) {
-  using Engine = model_checker::BFSEnumerator<MyState, MyTransition>;
+  using Engine = model_checker::DFSEngine<MyState, MyTransition>;
 
   auto driver = model_checker::lambda_driver{[&](MyState const& state) {
     auto result = std::vector<std::pair<MyTransition, MyState>>{};
@@ -86,7 +86,7 @@ TEST_F(ModelCheckerTest, simple_model_test) {
 }
 
 TEST_F(ModelCheckerTest, simple_model_test_eventually) {
-  using Engine = model_checker::BFSEnumerator<MyState, MyTransition>;
+  using Engine = model_checker::DFSEngine<MyState, MyTransition>;
   auto driver = model_checker::lambda_driver{[&](MyState const& state) {
     auto result = std::vector<std::pair<MyTransition, MyState>>{};
     if (state.x < 10) {
@@ -108,7 +108,7 @@ TEST_F(ModelCheckerTest, simple_model_test_eventually) {
 }
 
 TEST_F(ModelCheckerTest, simple_model_test_eventually_always) {
-  using Engine = model_checker::BFSEnumerator<MyState, MyTransition>;
+  using Engine = model_checker::DFSEngine<MyState, MyTransition>;
   auto driver = model_checker::lambda_driver{[&](MyState const& state) {
     auto result = std::vector<std::pair<MyTransition, MyState>>{};
     if (state.x < 10) {
@@ -131,7 +131,7 @@ TEST_F(ModelCheckerTest, simple_model_test_eventually_always) {
 }
 
 TEST_F(ModelCheckerTest, simple_model_test_eventually_always_fail) {
-  using Engine = model_checker::BFSEnumerator<MyState, MyTransition>;
+  using Engine = model_checker::DFSEngine<MyState, MyTransition>;
   auto driver = model_checker::lambda_driver{[&](MyState const& state) {
     auto result = std::vector<std::pair<MyTransition, MyState>>{};
     if (state.x < 10) {
@@ -148,7 +148,7 @@ TEST_F(ModelCheckerTest, simple_model_test_eventually_always_fail) {
 }
 
 TEST_F(ModelCheckerTest, simple_model_test_cycle_detector) {
-  using Engine = model_checker::BFSEnumerator<MyState, MyTransition>;
+  using Engine = model_checker::DFSEngine<MyState, MyTransition>;
   auto driver = model_checker::lambda_driver{[&](MyState const& state) {
     auto result = std::vector<std::pair<MyTransition, MyState>>{};
     if (state.x < 10) {

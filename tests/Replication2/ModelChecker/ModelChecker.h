@@ -282,6 +282,16 @@ struct DFSEnumerator {
   }
 };
 
+template<typename StateType, typename TransitionType>
+struct DFSEngine {
+  template<typename Driver, typename Observer>
+  static auto run(Driver& driver, Observer initialObserver,
+                  StateType initialState) {
+    return DFSEnumerator<StateType, TransitionType, Observer>::run(
+        driver, std::move(initialObserver), std::move(initialState));
+  }
+};
+
 template<typename StateType, typename TransitionType,
          typename StateHash = boost::hash<StateType>,
          typename StateCompare = std::equal_to<>>
@@ -399,9 +409,6 @@ struct BFSEnumerator {
   template<typename Driver, typename Observer>
   static auto run(Driver& driver, Observer initialObserver,
                   State initialState) {
-    return DFSEnumerator<StateType, TransitionType, Observer>::run(
-        driver, std::move(initialObserver), std::move(initialState));
-#if 0
     Result<Observer> result;
 
     std::size_t nextUniqueId{0};
@@ -480,7 +487,6 @@ struct BFSEnumerator {
       }
     }
     return result;
-#endif
   }
 };
 
