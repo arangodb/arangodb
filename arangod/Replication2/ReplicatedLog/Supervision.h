@@ -33,6 +33,7 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
+#include "Replication2/ReplicatedLog/SupervisionContext.h"
 
 using namespace arangodb::replication2::agency;
 
@@ -82,9 +83,7 @@ auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
 
 // Actions capture entries in log, so they have to stay
 // valid until the returned action has been executed (or discarded)
-auto checkReplicatedLog(LogTarget const& target,
-                        std::optional<LogPlanSpecification> const& plan,
-                        std::optional<LogCurrent> const& current,
+auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
                         ParticipantsHealth const& health) -> Action;
 
 auto executeCheckReplicatedLog(DatabaseID const& database,

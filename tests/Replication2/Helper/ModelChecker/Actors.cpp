@@ -60,9 +60,9 @@ auto SupervisionActor::stepReplicatedLog(AgencyState const& agency)
   if (!agency.replicatedLog.has_value()) {
     return std::nullopt;
   }
-  auto action = replicated_log::checkReplicatedLog(
-      agency.replicatedLog->target, agency.replicatedLog->plan,
-      agency.replicatedLog->current, agency.health);
+  replicated_log::SupervisionContext ctx;
+  auto action = replicated_log::checkReplicatedLog(ctx, *agency.replicatedLog,
+                                                   agency.health);
   if (std::holds_alternative<replicated_log::EmptyAction>(action)) {
     return std::nullopt;
   }

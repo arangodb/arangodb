@@ -285,14 +285,19 @@ TEST_F(LeaderStateMachineTest, test_leader_intact) {
 struct SupervisionLogTest : ::testing::Test {};
 
 TEST_F(SupervisionLogTest, test_log_created) {
+  SupervisionContext ctx;
+
   auto const config = LogConfig(3, 2, 3, true);
   auto const participants = ParticipantsFlagsMap{
       {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
-  auto r = checkReplicatedLog(LogTarget(LogId{44}, participants, config),
-                              std::nullopt, std::nullopt, ParticipantsHealth{});
+  auto const log = Log{.target = LogTarget(LogId{44}, participants, config),
+                       .plan = std::nullopt,
+                       .current = std::nullopt};
+
+  auto r = checkReplicatedLog(ctx, log, ParticipantsHealth{});
 
   EXPECT_TRUE(std::holds_alternative<AddLogToPlanAction>(r));
 
@@ -301,12 +306,17 @@ TEST_F(SupervisionLogTest, test_log_created) {
 }
 
 TEST_F(SupervisionLogTest, test_log_not_created) {
+  SupervisionContext ctx;
+
   auto const config = LogConfig(3, 2, 3, true);
   auto const participants = ParticipantsFlagsMap{
       {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
-  auto r = checkReplicatedLog(LogTarget(LogId{44}, participants, config),
-                              std::nullopt, std::nullopt, ParticipantsHealth{});
+  auto const log = Log{.target = LogTarget(LogId{44}, participants, config),
+                       .plan = std::nullopt,
+                       .current = std::nullopt};
+
+  auto r = checkReplicatedLog(ctx, log, ParticipantsHealth{});
 
   EXPECT_TRUE(std::holds_alternative<ErrorAction>(r));
 
@@ -316,15 +326,19 @@ TEST_F(SupervisionLogTest, test_log_not_created) {
 }
 
 TEST_F(SupervisionLogTest, test_log_present) {
+  SupervisionContext ctx;
+
   auto const config = LogConfig(3, 2, 3, true);
   auto const participants = ParticipantsFlagsMap{
       {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
-  auto r = checkReplicatedLog(LogTarget(LogId(44), participants, config),
-                              LogPlanSpecification(), std::nullopt,
-                              ParticipantsHealth());
+  auto const log = Log{.target = LogTarget(LogId{44}, participants, config),
+                       .plan = LogPlanSpecification(),
+                       .current = std::nullopt};
+
+  auto r = checkReplicatedLog(ctx, log, ParticipantsHealth());
 
   EXPECT_TRUE(std::holds_alternative<CreateInitialTermAction>(r))
       << to_string(r);
@@ -619,6 +633,8 @@ TEST_F(LogSupervisionTest, test_dictate_leader_success) {
 }
 
 TEST_F(LogSupervisionTest, test_remove_participant_action) {
+  SupervisionContext ctx;
+
   auto const& logId = LogId{44};
   auto const& config = LogConfig(3, 3, 3, true);
 
@@ -652,6 +668,8 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
                          .leadershipEstablished = true,
                          .commitStatus = std::nullopt};
 
+  auto const& log = Log{.target = target, .plan = plan, .current = current};
+
   auto const& health = ParticipantsHealth{
       ._health = {
           {"A",
@@ -663,9 +681,9 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
           {"D",
            ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
 
-  auto r = checkReplicatedLog(target, plan, current, health);
-  // We expect a UpdateParticipantsFlagsAction to unset the allowedInQuorum flag
-  // for d
+  auto r = checkReplicatedLog(ctx, log, health);
+  // We expect a UpdateParticipantsFlagsAction to unset the allowedInQuorum
+  // flag for d
   ASSERT_TRUE(std::holds_alternative<UpdateParticipantFlagsAction>(r))
       << to_string(r);
 
@@ -677,11 +695,13 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
 }
 
 TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
+  SupervisionContext ctx;
+
   auto const& logId = LogId{44};
   auto const& config = LogConfig(3, 3, 3, true);
 
-  // Server D is missing in target and has set the allowedInQuorum flag to false
-  // but the config is not yet committed
+  // Server D is missing in target and has set the allowedInQuorum flag to
+  // false but the config is not yet committed
   auto const& target =
       LogTarget(logId,
                 ParticipantsFlagsMap{{"A", ParticipantFlags{}},
@@ -719,6 +739,8 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
                          .leadershipEstablished = true,
                          .commitStatus = std::nullopt};
 
+  auto const& log = Log{.target = target, .plan = plan, .current = current};
+
   auto const& health = ParticipantsHealth{
       ._health = {
           {"A",
@@ -730,17 +752,19 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
           {"D",
            ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
 
-  auto r = checkReplicatedLog(target, plan, current, health);
+  auto r = checkReplicatedLog(ctx, log, health);
   // We expect an EmptyAction
   ASSERT_TRUE(std::holds_alternative<EmptyAction>(r)) << to_string(r);
 }
 
 TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
+  SupervisionContext ctx;
+
   auto const& logId = LogId{44};
   auto const& config = LogConfig(3, 3, 3, true);
 
-  // Server D is missing in target and has set the allowedInQuorum flag to false
-  // but the config is not yet committed
+  // Server D is missing in target and has set the allowedInQuorum flag to
+  // false but the config is not yet committed
   auto const& target =
       LogTarget(logId,
                 ParticipantsFlagsMap{{"A", ParticipantFlags{}},
@@ -771,6 +795,8 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
                          .leadershipEstablished = true,
                          .commitStatus = std::nullopt};
 
+  auto const& log = Log{.target = target, .plan = plan, .current = current};
+
   auto const& health = ParticipantsHealth{
       ._health = {
           {"A",
@@ -782,7 +808,8 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
           {"D",
            ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
 
-  auto r = checkReplicatedLog(target, plan, current, health);
+  auto r = checkReplicatedLog(ctx, log, health);
+
   // We expect an RemoveParticipantFromPlanAction to finally remove D
   ASSERT_TRUE(std::holds_alternative<RemoveParticipantFromPlanAction>(r))
       << to_string(r);
@@ -792,6 +819,8 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
 }
 
 TEST_F(LogSupervisionTest, test_write_empty_term) {
+  SupervisionContext ctx;
+
   auto const& logId = LogId{44};
   auto const& config = LogConfig(3, 3, 3, true);
 
@@ -842,6 +871,8 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
       {"D", LogCurrentLocalState(LogTerm(2),
                                  TermIndexPair(LogTerm(1), LogIndex(44)))}};
 
+  auto const& log = Log{.target = target, .plan = plan, .current = current};
+
   auto const& health = ParticipantsHealth{
       ._health = {
           {"A",
@@ -853,7 +884,7 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
           {"D",
            ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
 
-  auto r = checkReplicatedLog(target, plan, current, health);
+  auto r = checkReplicatedLog(ctx, log, health);
 
   // Since the leader is `A` and the rebootId in health is higher than the one
   // in plan, we need to write an empty term

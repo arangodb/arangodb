@@ -33,6 +33,7 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
+#include "Replication2/ReplicatedLog/SupervisionContext.h"
 
 #include "Logger/LogMacros.h"
 
@@ -436,6 +437,24 @@ auto pickLeader(std::optional<ParticipantId> targetLeader,
   return std::nullopt;
 }
 
+auto checkLogExists(LogTarget const& target,
+                    std::optional<LogPlanTermSpecification> const& maybePlan,
+                    ParticipantsHealth const& health) -> std::optional<Action> {
+  if (!maybePlan) {
+    // The log is not planned right now, so we create it
+    // provided we have enough participants
+    if (target.participants.size() + 1 < target.config.writeConcern) {
+      return ErrorAction(
+          LogCurrentSupervisionError::TARGET_NOT_ENOUGH_PARTICIPANTS);
+    } else {
+      auto leader = pickLeader(target.leader, target.participants, health);
+      return AddLogToPlanAction(target.id, target.participants, target.config,
+                                leader);
+    }
+  }
+  return std::nullopt;
+}
+
 //
 // This function is called from Agency/Supervision.cpp every k seconds for every
 // replicated log in every database.
@@ -453,11 +472,21 @@ auto pickLeader(std::optional<ParticipantId> targetLeader,
 //
 // These actions are executes by using std::visit via an Executor struct that
 // contains the necessary context.
-
-auto checkReplicatedLog(LogTarget const& target,
-                        std::optional<LogPlanSpecification> const& maybePlan,
-                        std::optional<LogCurrent> const& maybeCurrent,
+auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
                         ParticipantsHealth const& health) -> Action {
+  auto const& target = log.target;
+  auto const& maybePlan = log.plan;
+  auto const& maybeCurrent = log.current;
+  /*
+  checkLogExists();
+  checkCurrentExists();
+  checkLeader();
+  checkParticipantToAdd();
+  checkParticipantToRemove();
+  checkParticipantFlagsUpdated();
+  checkConfigUpdated();
+  checkConverged(); */
+
   if (!maybePlan) {
     // The log is not planned right now, so we create it
     // provided we have enough participants
@@ -611,14 +640,13 @@ auto executeCheckReplicatedLog(DatabaseID const& dbName,
                                ParticipantsHealth const& health,
                                arangodb::agency::envelope envelope) noexcept
     -> arangodb::agency::envelope {
-  auto const& target = log.target;
-  auto const& plan = log.plan;
-  auto const& current = log.current;
+  SupervisionContext ctx;
 
-  auto action = checkReplicatedLog(log.target, log.plan, log.current, health);
+  auto action = checkReplicatedLog(ctx, log, health);
 
   envelope = arangodb::replication2::replicated_log::execute(
-      action, dbName, target.id, plan, current, std::move(envelope));
+      action, dbName, log.target.id, log.plan, log.current,
+      std::move(envelope));
   return envelope;
 }
 
