@@ -83,17 +83,14 @@
 using namespace std::chrono_literals;
 
 namespace arangodb {
-
 namespace aql {
+
 class Query;
+
 }  // namespace aql
-
 }  // namespace arangodb
-
+namespace arangodb::iresearch {
 namespace {
-
-using namespace arangodb;
-using namespace arangodb::iresearch;
 
 aql::AqlValue dummyFilterFunc(aql::ExpressionContext*, aql::AstNode const&,
                               containers::SmallVector<aql::AqlValue> const&) {
@@ -462,7 +459,7 @@ bool upgradeSingleServerArangoSearchView0_1(
     dataPath /= "databases";
     dataPath /= "database-";
     dataPath += std::to_string(vocbase.id());
-    dataPath /= arangodb::iresearch::StaticStrings::DataSourceType;
+    dataPath /= arangodb::iresearch::StaticStrings::ViewType;
     dataPath += "-";
     dataPath += std::to_string(view->id().id());
 
@@ -582,8 +579,7 @@ void registerSingleFactory(
     auto& engine = server.getFeature<T>();
     auto& engineFactory = const_cast<IndexFactory&>(engine.indexFactory());
     Result res = engineFactory.emplace(
-        std::string{arangodb::iresearch::StaticStrings::DataSourceType},
-        factory);
+        std::string{arangodb::iresearch::StaticStrings::ViewType}, factory);
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           res.errorNumber(),
@@ -782,9 +778,6 @@ void IResearchLogTopic::log_appender(void* /*context*/, const char* function,
 }
 
 }  // namespace
-
-namespace arangodb {
-namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class IResearchAsync
@@ -1133,5 +1126,4 @@ IndexTypeFactory& IResearchFeature::factory() {
 template IndexTypeFactory& IResearchFeature::factory<ClusterEngine>();
 template IndexTypeFactory& IResearchFeature::factory<RocksDBEngine>();
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch

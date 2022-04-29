@@ -251,7 +251,7 @@ class IResearchViewCountApproximateTest : public IResearchQueryTest {
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE(slice.get("type").copyString() ==
-                arangodb::iresearch::StaticStrings::DataSourceType);
+                arangodb::iresearch::StaticStrings::ViewType);
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
@@ -545,12 +545,12 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY, EMPTY,
       EMPTY, arangodb::transaction::Options());
-  auto* snapshot = _view->snapshot(
-      trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-  auto reader =
-      std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const>(
-          std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const>(),
-          snapshot);
+  ASSERT_TRUE(trx.state());
+  auto snapshot =
+      makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+                       _view->getLinks(), _view.get(), _view->name());
+  auto reader = arangodb::iresearch::ViewSnapshotPtr{
+      arangodb::iresearch::ViewSnapshotPtr{}, snapshot};
   arangodb::iresearch::IResearchViewSort sort;
   sort.emplace_back({{std::string_view("value"), false}}, true);
   std::vector<arangodb::iresearch::Scorer> emptyScorers;
@@ -626,12 +626,11 @@ TEST_F(IResearchViewCountApproximateTest,
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY, EMPTY,
       EMPTY, arangodb::transaction::Options());
-  auto* snapshot = _view->snapshot(
-      trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-  auto reader =
-      std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const>(
-          std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const>(),
-          snapshot);
+  auto snapshot =
+      makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+                       _view->getLinks(), _view.get(), _view->name());
+  auto reader = arangodb::iresearch::ViewSnapshotPtr{
+      arangodb::iresearch::ViewSnapshotPtr{}, snapshot};
   arangodb::iresearch::IResearchViewSort sort;
   sort.emplace_back({{std::string_view("value"), false}}, true);
   std::vector<arangodb::iresearch::Scorer> emptyScorers;
@@ -709,12 +708,11 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   arangodb::transaction::Methods trx(
       arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY, EMPTY,
       EMPTY, arangodb::transaction::Options());
-  auto* snapshot = _view->snapshot(
-      trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-  auto reader =
-      std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const>(
-          std::shared_ptr<arangodb::iresearch::IResearchView::Snapshot const>(),
-          snapshot);
+  auto snapshot =
+      makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+                       _view->getLinks(), _view.get(), _view->name());
+  auto reader = arangodb::iresearch::ViewSnapshotPtr{
+      arangodb::iresearch::ViewSnapshotPtr{}, snapshot};
   arangodb::iresearch::IResearchViewSort sort;
   sort.emplace_back({{std::string_view("value"), false}}, true);
   std::vector<arangodb::iresearch::Scorer> emptyScorers;

@@ -3581,34 +3581,28 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     ASSERT_TRUE(trx.state());
 
     // start transaction (put snapshot into)
-    EXPECT_TRUE(
-        nullptr ==
-        arangodb::basics::downCast<arangodb::iresearch::IResearchView>(
-            *logicalView)
-            .snapshot(trx,
-                      arangodb::iresearch::IResearchView::SnapshotMode::Find));
+    auto& view = arangodb::basics::downCast<arangodb::iresearch::IResearchView>(
+        *logicalView);
     auto* snapshot =
-        arangodb::basics::downCast<arangodb::iresearch::IResearchView>(
-            *logicalView)
-            .snapshot(
-                trx,
-                arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-    EXPECT_TRUE(
-        snapshot ==
-        arangodb::basics::downCast<arangodb::iresearch::IResearchView>(
-            *logicalView)
-            .snapshot(trx,
-                      arangodb::iresearch::IResearchView::SnapshotMode::Find));
-    EXPECT_TRUE(snapshot ==
-                arangodb::basics::downCast<arangodb::iresearch::IResearchView>(
-                    *logicalView)
-                    .snapshot(trx, arangodb::iresearch::IResearchView::
-                                       SnapshotMode::FindOrCreate));
-    EXPECT_TRUE(snapshot ==
-                arangodb::basics::downCast<arangodb::iresearch::IResearchView>(
-                    *logicalView)
-                    .snapshot(trx, arangodb::iresearch::IResearchView::
-                                       SnapshotMode::SyncAndReplace));
+        makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
+                         view.getLinks(), &view, view.name());
+    EXPECT_TRUE(snapshot == nullptr);
+    snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        view.getLinks(), &view, view.name());
+    ASSERT_TRUE(snapshot != nullptr);
+    auto* snapshotFind =
+        makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
+                         view.getLinks(), &view, view.name());
+    EXPECT_TRUE(snapshotFind == snapshot);
+    auto* snapshotCreate = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        view.getLinks(), &view, view.name());
+    EXPECT_TRUE(snapshotCreate == snapshot);
+    auto* snapshotSync = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
+        view.getLinks(), &view, view.name());
+    EXPECT_TRUE(snapshotSync == snapshot);
 
     // after transaction has started
     {
