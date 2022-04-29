@@ -77,7 +77,7 @@ void RocksDBBackgroundThread::run() {
 
           bool forceSync = false;
           if (flushFeature.testAndResetFlushIterations(forceSyncEvery)) {
-            forceSync = false;
+            forceSync = true;
           }
 
           LOG_TOPIC("34a21", TRACE, Logger::ENGINES)

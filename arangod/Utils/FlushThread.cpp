@@ -30,8 +30,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/FlushFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb;
 
@@ -57,9 +55,6 @@ void FlushThread::wakeup() {
 
 /// @brief main loop
 void FlushThread::run() {
-  size_t count = 0;
-  TRI_voc_tick_t tick = 0;
-
   while (!isStopping()) {
     try {
       TRI_IF_FAILURE("FlushThreadDisableAll") {
@@ -69,13 +64,7 @@ void FlushThread::run() {
         continue;
       }
 
-      _feature.releaseUnusedTicks(count, tick);
-
-      LOG_TOPIC_IF("2b2e1", DEBUG, arangodb::Logger::FLUSH, count)
-          << "Flush subscription(s) released: '" << count;
-
-      LOG_TOPIC("2b2e2", DEBUG, arangodb::Logger::FLUSH)
-          << "Tick released: '" << tick << "'";
+      _feature.releaseUnusedTicks();
 
       // sleep if nothing to do
       CONDITION_LOCKER(guard, _condition);

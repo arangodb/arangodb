@@ -261,7 +261,7 @@ Result RocksDBSettingsManager::sync(bool force) {
     return Result();  // do not move backwards in time
   }
   TRI_ASSERT(lastSync <= minSeqNr);
-  if (!didWork) {
+  if (!didWork && !force) {
     LOG_TOPIC("1039e", TRACE, Logger::ENGINES)
         << "no collection data to serialize, updating lastSync to " << minSeqNr;
     _lastSync.store(minSeqNr);
