@@ -89,6 +89,8 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
       if (VPackSlice s = info.get(StaticStrings::IndexEstimates); s.isBoolean()) {
         _estimates = s.getBoolean();
       }
+    } else if (_indexType == TRI_IDX_TYPE_TTL_INDEX) {
+      _estimates = false;
     }
   }
 }
@@ -114,6 +116,9 @@ void ClusterIndex::toVelocyPack(VPackBuilder& builder,
       _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
       _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX) {
     builder.add(StaticStrings::IndexEstimates, VPackValue(_estimates));
+  } else if (_indexType == Index::TRI_IDX_TYPE_TTL_INDEX) {
+    // no estimates for the ttl index
+    builder.add(StaticStrings::IndexEstimates, VPackValue(false));
   }
 
   for (auto pair : VPackObjectIterator(_info.slice())) {
