@@ -7,6 +7,16 @@ v3.9.2 (XXXX-XX-XX)
   at a later stage. It is not required to upgrade to this version (or later)
   before upgrading to 3.10.
 
+* Improve log output for WAL recovery, by providing more information and making
+  the wording more clear.
+
+* Fix: Highly unlikely race in cluster maintenance. For every shard only one
+  operation (change attribute, change leadership) should be performed at the
+  same time. However if two changes are detected in the same hearbeat  it could
+  lead to both operations to be executed in parallel. In most cases this is also
+  fine, but could lead to races on the same attribute, however the race will be
+  sorted out in the next heartbeat interval.
+
 * Fix: for the Windows build, the new Snappy version, which was introduced in
   3.9, generated code that contained BMI2 instructions which where introduced
   with the Intel Haswell architecture. However, our target architecture for 3.9
