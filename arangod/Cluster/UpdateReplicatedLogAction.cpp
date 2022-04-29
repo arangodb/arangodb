@@ -26,8 +26,8 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
-#include "Cluster/MaintenanceFeature.h"
 #include "Cluster/FailureOracleFeature.h"
+#include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ServerState.h"
 #include "Network/NetworkFeature.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
@@ -73,7 +73,7 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
         StringUtils::decodeBase64(_description.get(REPLICATED_LOG_SPEC));
     auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(buffer.c_str()));
     if (!slice.isNone()) {
-      return agency::LogPlanSpecification(agency::from_velocypack, slice);
+      return agency::LogPlanSpecification::fromVelocyPack(slice);
     }
 
     return std::nullopt;

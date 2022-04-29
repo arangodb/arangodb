@@ -487,12 +487,12 @@ void transaction::Methods::buildDocumentIdentity(
   if (_state->isRunningInCluster()) {
     std::string resolved = resolver()->getCollectionNameCluster(cid);
 #ifdef USE_ENTERPRISE
-    if (resolved.compare(0, 7, "_local_") == 0) {
-      resolved.erase(0, 7);
-    } else if (resolved.compare(0, 6, "_from_") == 0) {
-      resolved.erase(0, 6);
-    } else if (resolved.compare(0, 4, "_to_") == 0) {
-      resolved.erase(0, 4);
+    if (resolved.starts_with(StaticStrings::FullLocalPrefix)) {
+      resolved.erase(0, StaticStrings::FullLocalPrefix.size());
+    } else if (resolved.starts_with(StaticStrings::FullFromPrefix)) {
+      resolved.erase(0, StaticStrings::FullFromPrefix.size());
+    } else if (resolved.starts_with(StaticStrings::FullToPrefix)) {
+      resolved.erase(0, StaticStrings::FullToPrefix.size());
     }
 #endif
     // build collection name
