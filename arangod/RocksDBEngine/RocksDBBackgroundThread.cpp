@@ -27,6 +27,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Replication/ReplicationClients.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
@@ -54,6 +55,8 @@ void RocksDBBackgroundThread::beginShutdown() {
 void RocksDBBackgroundThread::run() {
   double const startTime = TRI_microtime();
 
+  auto& flushFeature = _engine.server().getFeature<FlushFeature>();
+
   while (!isStopping()) {
     {
       CONDITION_LOCKER(guard, _condition);
@@ -69,12 +72,24 @@ void RocksDBBackgroundThread::run() {
     try {
       if (!isStopping()) {
         try {
+          // force a sync every 60 invocations of the FlushThread
+          constexpr uint64_t forceSyncEvery = 60;
+
+          bool forceSync = false;
+          if (flushFeature.testAndResetFlushIterations(forceSyncEvery)) {
+            forceSync = false;
+          }
+
+          LOG_TOPIC("34a21", TRACE, Logger::ENGINES)
+              << "running " << (forceSync ? "forced " : "")
+              << "background settings sync";
+
           // it is important that we wrap the sync operation inside a
           // try..catch of its own, because we still want the following
           // garbage collection operations to be carried out even if
           // the sync fails.
           double start = TRI_microtime();
-          Result res = _engine.settingsManager()->sync(false);
+          Result res = _engine.settingsManager()->sync(forceSync);
           if (res.fail()) {
             LOG_TOPIC("a3d0c", WARN, Logger::ENGINES)
                 << "background settings sync failed: " << res.errorMessage();
@@ -83,7 +98,7 @@ void RocksDBBackgroundThread::run() {
           double end = TRI_microtime();
           if (end - start > 5.0) {
             LOG_TOPIC("3ad54", WARN, Logger::ENGINES)
-                << "slow background settings sync: "
+                << "slow background settings sync took: "
                 << Logger::FIXED(end - start, 6) << " s";
           } else if (end - start > 0.75) {
             LOG_TOPIC("dd9ea", DEBUG, Logger::ENGINES)

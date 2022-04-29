@@ -25,7 +25,6 @@
 #include "FlushFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/QueryCache.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
@@ -46,15 +45,17 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-std::atomic<bool> FlushFeature::_isRunning(false);
-
 FlushFeature::FlushFeature(Server& server)
-    : ArangodFeature{server, *this}, _flushInterval(1000000), _stopped(false) {
+    : ArangodFeature{server, *this},
+      _flushInterval(1000000),
+      _flushIterations(0),
+      _stopped(false) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
-
   startsAfter<StorageEngineFeature>();
 }
+
+FlushFeature::~FlushFeature() = default;
 
 void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption(
@@ -64,7 +65,7 @@ void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void FlushFeature::registerFlushSubscription(
-    const std::shared_ptr<FlushSubscription>& subscription) {
+    std::shared_ptr<FlushSubscription> const& subscription) {
   if (!subscription) {
     return;
   }
@@ -73,19 +74,21 @@ void FlushFeature::registerFlushSubscription(
 
   if (_stopped) {
     LOG_TOPIC("798c4", ERR, Logger::FLUSH) << "FlushFeature not running";
-
     return;
   }
 
   _flushSubscriptions.emplace_back(subscription);
 }
 
-arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count,
-                                                  TRI_voc_tick_t& minTick) {
-  count = 0;
-  auto& engine = server().getFeature<EngineSelectorFeature>().engine();
+std::pair<size_t, TRI_voc_tick_t> FlushFeature::releaseUnusedTicks() {
+  // increase counter for number of flush iterations
+  _flushIterations.fetch_add(1, std::memory_order_relaxed);
 
-  minTick = engine.currentTick();
+  auto& engine = server().getFeature<EngineSelectorFeature>().engine();
+  TRI_voc_tick_t const initialTick = engine.currentTick();
+
+  size_t count = 0;
+  TRI_voc_tick_t minTick = initialTick;
 
   {
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
@@ -126,7 +129,26 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count,
     TRI_TerminateDebugging("crashing after releasing min tick");
   }
 
-  return {};
+  LOG_TOPIC_IF("2b2e1", DEBUG, arangodb::Logger::FLUSH, count)
+      << "Flush subscription(s) released: " << count;
+
+  LOG_TOPIC("2b2e2", DEBUG, arangodb::Logger::FLUSH)
+      << "Tick released: '" << minTick << "'";
+
+  return std::make_pair(count, minTick);
+}
+
+// test if _flushIterations is >= maxValue, and reset it to 0 if so.
+// returns true in this case.
+// in all other cases returns false
+bool FlushFeature::testAndResetFlushIterations(uint64_t maxValue) noexcept {
+  uint64_t value = _flushIterations.load(std::memory_order_relaxed);
+  while (value >= maxValue) {
+    if (_flushIterations.compare_exchange_strong(value, 0)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void FlushFeature::validateOptions(
@@ -152,7 +174,7 @@ void FlushFeature::prepare() {
 void FlushFeature::start() {
   {
     WRITE_LOCKER(lock, _threadLock);
-    _flushThread.reset(new FlushThread(*this, _flushInterval));
+    _flushThread = std::make_unique<FlushThread>(*this, _flushInterval);
   }
   DatabaseFeature& dbFeature = server().getFeature<DatabaseFeature>();
   dbFeature.registerPostRecoveryCallback([this]() -> Result {
@@ -164,9 +186,7 @@ void FlushFeature::start() {
       LOG_TOPIC("ed9cd", DEBUG, Logger::FLUSH) << "started FlushThread";
     }
 
-    this->_isRunning.store(true);
-
-    return {TRI_ERROR_NO_ERROR};
+    return {};
   });
 }
 
@@ -194,7 +214,6 @@ void FlushFeature::stop() {
 
     {
       WRITE_LOCKER(wlock, _threadLock);
-      _isRunning.store(false);
       _flushThread.reset();
     }
 

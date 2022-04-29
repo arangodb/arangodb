@@ -26,13 +26,21 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/Result.h"
 #include "RestServer/arangod.h"
-#include "Utils/FlushThread.h"
 #include "VocBase/voc-types.h"
+
+#include <atomic>
+#include <cstdint>
+#include <list>
+#include <memory>
+#include <mutex>
+#include <utility>
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class FlushThread;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct FlushSubscription
@@ -57,6 +65,8 @@ class FlushFeature final : public ArangodFeature {
 
   explicit FlushFeature(Server& server);
 
+  ~FlushFeature();
+
   void collectOptions(
       std::shared_ptr<options::ProgramOptions> options) override;
 
@@ -68,27 +78,30 @@ class FlushFeature final : public ArangodFeature {
       const std::shared_ptr<FlushSubscription>& subscription);
 
   /// @brief release all ticks not used by the flush subscriptions
-  /// @param 'count' a number of released subscriptions
-  /// @param 'tick' released tick
-  arangodb::Result releaseUnusedTicks(size_t& count, TRI_voc_tick_t& tick);
+  /// returns number of stale flush subscriptions removed and the tick value
+  /// up to which the storage engine could release ticks
+  std::pair<size_t, TRI_voc_tick_t> releaseUnusedTicks();
 
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override;
   void start() override;
   void beginShutdown() override;
   void stop() override;
-  void unprepare() override {}
 
-  static bool isRunning() { return _isRunning.load(); }
+  // test if _flushIterations is >= maxValue, and reset it to 0 if so.
+  // returns true in this case.
+  // in all other cases returns false
+  bool testAndResetFlushIterations(uint64_t maxValue) noexcept;
 
  private:
-  static std::atomic<bool> _isRunning;
-
   uint64_t _flushInterval;
-  std::unique_ptr<FlushThread> _flushThread;
+  std::atomic<uint64_t> _flushIterations;
+
   basics::ReadWriteLock _threadLock;
-  std::list<std::weak_ptr<FlushSubscription>> _flushSubscriptions;
+  std::unique_ptr<FlushThread> _flushThread;
+
   std::mutex _flushSubscriptionsMutex;
+  std::list<std::weak_ptr<FlushSubscription>> _flushSubscriptions;
   bool _stopped;
 };
 
