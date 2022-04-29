@@ -195,6 +195,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"HASH", ".", flags, &Functions::Hash});
   add({"TO_BASE64", ".", flags, &Functions::ToBase64});
   add({"TO_HEX", ".", flags, &Functions::ToHex});
+  add({"TO_FIXED", ".,.", flags, &Functions::ToFixed});
   add({"ENCODE_URI_COMPONENT", ".", flags, &Functions::EncodeURIComponent});
   add({"SOUNDEX", ".", flags, &Functions::Soundex});
   add({"LEVENSHTEIN_DISTANCE", ".,.", flags, &Functions::LevenshteinDistance});
