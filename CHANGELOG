@@ -1,6 +1,12 @@
 devel
 -----
 
+* APM-135: Added multithreading to assigning non-unique indexes to documents,
+  in foreground or background mode. The number of threads is hardcoded to 10 
+  and the threshold amount of documents a thread will process before enqueuing
+  the rest of the documents in the range of document ids is hardcoded to 1000.
+  The number of threads will be added as a startup option. 
+
 * Fix: Highly unlikely race in cluster maintenance. For every shard only
   one operation (change attribute, change leadership) should be performed
   at the same time. However if two changes are detected in the same hearbeat

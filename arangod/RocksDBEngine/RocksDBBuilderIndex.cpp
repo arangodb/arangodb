@@ -175,12 +175,17 @@ void IndexCreatorThread::run() {
         do {
           numDocsWritten = 0;
           auto bounds = RocksDBKeyBounds::CollectionDocuments(
-              _rcoll->objectId(), workItem.first, workItem.second + 1);
+              _rcoll->objectId(), workItem.first,
+              workItem.second == UINT64_MAX
+                  ? UINT64_MAX
+                  : workItem.second +
+                        1);  // + 1 to include the last doc id in the range
           rocksdb::Slice upperBound(bounds.end());
           ro.iterate_upper_bound = &upperBound;
           std::unique_ptr<rocksdb::Iterator> it(
               _rootDB->NewIterator(ro, docCF));
-          for (it->Seek(bounds.start()); it->Valid() && numDocsWritten < 10;
+
+          for (it->Seek(bounds.start()); it->Valid() && numDocsWritten < 1000;
                it->Next()) {
             TRI_ASSERT(it->key().compare(upperBound) < 0);
             res = _ridx.insert(
@@ -193,11 +198,7 @@ void IndexCreatorThread::run() {
             }
             numDocsWritten++;
           }
-          /*
-          LOG_DEVEL << "numDocsWritten " << numDocsWritten << " in range "
-                    << workItem.first << " "
-                    << RocksDBKey::documentId(it->key()).id();
-          */
+
           if (!it->status().ok() && res.ok()) {
             res = rocksutils::convertStatus(it->status(),
                                             rocksutils::StatusHint::index);
@@ -217,25 +218,40 @@ void IndexCreatorThread::run() {
             break;
           }
           nextDocIdToProcess = RocksDBKey::documentId(it->key()).id();
-          if ((it->key().compare(upperBound) < 0) && numDocsWritten >= 10) {
+          if ((it->key().compare(upperBound) < 0) && numDocsWritten >= 1000 &&
+              it->Valid()) {
             hasLeftoverWork = true;
             workItem.first = nextDocIdToProcess;
 
             // the partition's first item in range will now be the first
-            // document that has not been processed yet
+            // id that has not been processed yet
             // maybe push more work onto the queue and, as we will split
             // in half the remaining work, the upper half goes to the
             // queue and the lower half will be consumed by this thread as
             // part of current work
-            if (workItem.first < workItem.second) {
+            TRI_ASSERT(workItem.first <= workItem.second);
+            // will not split range for a small amount of ids
+            if (workItem.second - workItem.first >= 20) {
               auto [leftoverWork, workToEnqueue] = splitInHalf(workItem);
               _sharedWorkEnv->enqueueWorkItem(std::move(workToEnqueue));
               workItem = std::move(leftoverWork);
-            }
-            if (workItem.first > workItem.second) {
+            } else if (workItem.first == workItem.second) {
               hasLeftoverWork = false;
+              if (it->Valid()) {
+                res = _ridx.insert(
+                    _trx, _methods.get(), RocksDBKey::documentId(it->key()),
+                    VPackSlice(
+                        reinterpret_cast<uint8_t const*>(it->value().data())),
+                    options, /*performChecks*/ true);
+                if (res.fail()) {
+                  _sharedWorkEnv->registerError(res);
+                }
+                numDocsWritten++;
+              }
             }
           } else {
+            // as this thread will not consume the lower half and enqueue more
+            // work, will fetch for another partition in the queue
             hasLeftoverWork = false;
           }
         } while (hasLeftoverWork);
@@ -376,6 +392,7 @@ Result static processPartitions(
     }
   }
   sharedWorkEnv->waitUntilAllThreadsTerminate();
+
   return sharedWorkEnv->getResponse();
 }
 
@@ -394,7 +411,6 @@ static arangodb::Result fillIndex(
   auto bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
   rocksdb::Slice upper(bounds.end());
 
-  rocksdb::Status s;
   rocksdb::WriteOptions wo;
   wo.disableWAL = false;  // TODO set to true eventually
 
@@ -422,16 +438,8 @@ static arangodb::Result fillIndex(
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  /*
-   * TODO: each thread has a local transaction
-   * set WRITE mode for them and add the hints
-   * while loop conditions an ptrs in run
-   * get rid of _done and add lambda
-   *
-   */
-
   TRI_IF_FAILURE("RocksDBBuilderIndex::fillIndex") { FATAL_ERROR_EXIT(); }
-  if (isUnique || !foreground) {
+  if (isUnique) {
     uint64_t numDocsWritten = 0;
     RocksDBTransactionCollection* trxColl = trx.resolveTrxCollection();
 
@@ -527,15 +535,16 @@ arangodb::Result RocksDBBuilderIndex::fillIndexForeground() {
   rocksdb::DB* db = engine.db()->GetRootDB();
   if (this->unique()) {
     const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
-    // unique index. we need to keep track of all our changes because we need to
-    // avoid duplicate index keys. must therefore use a WriteBatchWithIndex
+    // unique index. we need to keep track of all our changes because we need
+    // to avoid duplicate index keys. must therefore use a WriteBatchWithIndex
     rocksdb::WriteBatchWithIndex batch(cmp, batchSize);
     RocksDBBatchedWithIndexMethods methods(engine.db(), &batch);
     res = ::fillIndex<true>(db, *internal, methods, batch, snap, reportProgress,
                             std::ref(_docsProcessed), true);
   } else {
     // non-unique index. all index keys will be unique anyway because they
-    // contain the document id we can therefore get away with a cheap WriteBatch
+    // contain the document id we can therefore get away with a cheap
+    // WriteBatch
     rocksdb::WriteBatch batch(batchSize);
     RocksDBBatchedMethods methods(&batch);
     res = ::fillIndex<true>(db, *internal, methods, batch, snap, reportProgress,
@@ -876,15 +885,16 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
   rocksdb::DB* db = engine.db()->GetRootDB();
   if (internal->unique()) {
     const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
-    // unique index. we need to keep track of all our changes because we need to
-    // avoid duplicate index keys. must therefore use a WriteBatchWithIndex
+    // unique index. we need to keep track of all our changes because we need
+    // to avoid duplicate index keys. must therefore use a WriteBatchWithIndex
     rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
     RocksDBBatchedWithIndexMethods methods(engine.db(), &batch);
     res = ::fillIndex<false>(db, *internal, methods, batch, snap,
                              reportProgress, std::ref(_docsProcessed), true);
   } else {
     // non-unique index. all index keys will be unique anyway because they
-    // contain the document id we can therefore get away with a cheap WriteBatch
+    // contain the document id we can therefore get away with a cheap
+    // WriteBatch
     rocksdb::WriteBatch batch(32 * 1024 * 1024);
     RocksDBBatchedMethods methods(&batch);
     res = ::fillIndex<false>(db, *internal, methods, batch, snap,
@@ -907,8 +917,9 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     if (internal->unique()) {
       const rocksdb::Comparator* cmp =
           internal->columnFamily()->GetComparator();
-      // unique index. we need to keep track of all our changes because we need
-      // to avoid duplicate index keys. must therefore use a WriteBatchWithIndex
+      // unique index. we need to keep track of all our changes because we
+      // need to avoid duplicate index keys. must therefore use a
+      // WriteBatchWithIndex
       rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
       RocksDBBatchedWithIndexMethods methods(engine.db(), &batch);
       res = ::catchup(db, *internal, methods, batch, AccessMode::Type::WRITE,
@@ -939,15 +950,16 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
   scanFrom = lastScanned;
   if (internal->unique()) {
     const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
-    // unique index. we need to keep track of all our changes because we need to
-    // avoid duplicate index keys. must therefore use a WriteBatchWithIndex
+    // unique index. we need to keep track of all our changes because we need
+    // to avoid duplicate index keys. must therefore use a WriteBatchWithIndex
     rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
     RocksDBBatchedWithIndexMethods methods(engine.db(), &batch);
     res = ::catchup(db, *internal, methods, batch, AccessMode::Type::EXCLUSIVE,
                     scanFrom, lastScanned, numScanned, true, reportProgress);
   } else {
     // non-unique index. all index keys will be unique anyway because they
-    // contain the document id we can therefore get away with a cheap WriteBatch
+    // contain the document id we can therefore get away with a cheap
+    // WriteBatch
     rocksdb::WriteBatch batch(32 * 1024 * 1024);
     RocksDBBatchedMethods methods(&batch);
     res = ::catchup(db, *internal, methods, batch, AccessMode::Type::EXCLUSIVE,

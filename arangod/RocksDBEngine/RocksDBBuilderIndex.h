@@ -197,7 +197,6 @@ class SharedWorkEnv {
  public:
   SharedWorkEnv(size_t numThreads, std::deque<WorkItem>& workItems)
       : _numThreads(numThreads), _ranges(std::move(workItems)) {}
-  void markAsDone() { std::unique_lock<std::mutex> lock(_mtx); }
 
   Result result() {
     std::unique_lock<std::mutex> lock(_mtx);
@@ -261,8 +260,10 @@ class SharedWorkEnv {
     }
   }
 
-  size_t getNumTerminatedThreads() { return _numTerminatedThreads; }
-  Result getResponse() { return _res; }
+  Result getResponse() {
+    std::unique_lock<std::mutex> lock(_mtx);
+    return _res;
+  }
 
   void waitUntilAllThreadsTerminate() {
     std::unique_lock<std::mutex> extLock(_mtx);
