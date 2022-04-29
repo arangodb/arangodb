@@ -344,6 +344,9 @@ class Index {
 
   virtual size_t memory() const = 0;
 
+  // Waits all outstanding indexing operations to complete
+  virtual void waitForSync() {};
+
   /// @brief serialization flags for indexes.
   /// note that these must be mutually exclusive when bit-ORed
   enum class Serialize : uint8_t {

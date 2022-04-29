@@ -572,6 +572,9 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     arangodb::aql::PlanCache::instance()->invalidate(vocbase);
 #endif
 
+    // force index creation commit
+    newIdx->waitForSync();
+
     // inBackground index might not recover selectivity estimate w/o sync
     if (inBackground && !newIdx->unique() && newIdx->hasSelectivityEstimate()) {
       engine.settingsManager()->sync(false);
