@@ -34,16 +34,17 @@
 #include "Replication2/AgencyMethods.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "VocBase/vocbase.h"
 
-#include "Methods.h"
-#include "Agency/AsyncAgencyComm.h"
-#include "Random/RandomGenerator.h"
 #include "Agency/AgencyPaths.h"
+#include "Agency/AsyncAgencyComm.h"
+#include "Methods.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -766,8 +767,9 @@ struct ReplicatedLogMethodsCoordinator final
       auto& read = result.get();
       auto status = statusFromResult(read.asResult());
       if (read.ok() && !read.value().isNone()) {
-        status.response.emplace(arangodb::replication2::agency::from_velocypack,
-                                read.value());
+        status.response.emplace(
+            arangodb::replication2::agency::LogCurrentSupervision::
+                fromVelocyPack(read.value()));
       }
 
       return status;

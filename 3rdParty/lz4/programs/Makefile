@@ -22,7 +22,7 @@
 #
 # You can contact the author at :
 #  - LZ4 homepage : http://www.lz4.org
-#  - LZ4 source repository : https://github.com/Cyan4973/lz4
+#  - LZ4 source repository : https://github.com/lz4/lz4
 # ##########################################################################
 # lz4 : Command Line Utility, supporting gzip-like arguments
 # lz4c  : CLU, supporting also legacy lz4demo arguments
@@ -41,12 +41,13 @@ LIBVER_MINOR := $(shell echo $(LIBVER_MINOR_SCRIPT))
 LIBVER_PATCH := $(shell echo $(LIBVER_PATCH_SCRIPT))
 LIBVER   := $(shell echo $(LIBVER_SCRIPT))
 
-SRCFILES := $(sort $(wildcard $(LZ4DIR)/*.c) $(wildcard *.c))
-OBJFILES := $(SRCFILES:.c=.o)
+LIBFILES  = $(wildcard $(LZ4DIR)/*.c)
+SRCFILES  = $(sort $(LIBFILES) $(wildcard *.c))
+OBJFILES  = $(SRCFILES:.c=.o)
 
 CPPFLAGS += -I$(LZ4DIR) -DXXH_NAMESPACE=LZ4_
 CFLAGS   ?= -O3
-DEBUGFLAGS:=-Wall -Wextra -Wundef -Wcast-qual -Wcast-align -Wshadow \
+DEBUGFLAGS= -Wall -Wextra -Wundef -Wcast-qual -Wcast-align -Wshadow \
             -Wswitch-enum -Wdeclaration-after-statement -Wstrict-prototypes \
             -Wpointer-arith -Wstrict-aliasing=1
 CFLAGS   += $(DEBUGFLAGS) $(MOREFLAGS)
@@ -82,12 +83,24 @@ lz4: $(OBJFILES) lz4-exe.o
 	$(CC) $(FLAGS) $^ -o $@$(EXT)
 else
 lz4: $(OBJFILES)
-	$(CC) $(FLAGS) $^ -o $@$(EXT)
+	$(CC) $(FLAGS) $(OBJFILES) -o $@$(EXT) $(LDLIBS)
 endif
 
-
+.PHONY: lz4-release
 lz4-release: DEBUGFLAGS=
 lz4-release: lz4
+
+lz4-wlib: LIBFILES =
+lz4-wlib: SRCFILES+= $(LZ4DIR)/xxhash.c  # benchmark unit needs XXH64()
+lz4-wlib: LDFLAGS += -L $(LZ4DIR)
+lz4-wlib: LDLIBS   = -llz4
+lz4-wlib: liblz4 $(OBJFILES)
+	@echo WARNING: $@ must link to an extended variant of the dynamic library which also exposes unstable symbols
+	$(CC) $(FLAGS) $(OBJFILES) -o $@$(EXT) $(LDLIBS)
+
+.PHONY:liblz4
+liblz4:
+	CPPFLAGS="-DLZ4F_PUBLISH_STATIC_FUNCTIONS -DLZ4_PUBLISH_STATIC_FUNCTIONS" $(MAKE) -C $(LZ4DIR) liblz4
 
 lz4c: lz4
 	$(LN_SF) lz4$(EXT) lz4c$(EXT)
@@ -113,7 +126,8 @@ ifeq ($(WINBASED),yes)
 endif
 	@$(MAKE) -C $(LZ4DIR) $@ > $(VOID)
 	@$(RM) core *.o *.test tmp* \
-           lz4$(EXT) lz4c$(EXT) lz4c32$(EXT) unlz4$(EXT) lz4cat$(EXT)
+           lz4$(EXT) lz4c$(EXT) lz4c32$(EXT) lz4-wlib$(EXT) \
+           unlz4$(EXT) lz4cat$(EXT)
 	@echo Cleaning completed
 
 

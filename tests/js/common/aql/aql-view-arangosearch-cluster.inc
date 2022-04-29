@@ -142,7 +142,7 @@
         c.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
         c.save({ name: "half", text: "quick fox over lazy" });
         c.save({ name: "other half", text: "the brown jumps the dog" });
-        c.save({ name: "quarter", text: "quick over" });
+        c.save({ name: "quarter", text: "quick quick over" });
 
         c.save({ name: "numeric", anotherNumericField: 0 });
         c.save({ name: "null", anotherNullField: null });
