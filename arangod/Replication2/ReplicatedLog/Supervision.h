@@ -55,9 +55,7 @@ auto getRemovedParticipant(ParticipantsFlagsMap const& target,
 
 auto getParticipantWithUpdatedFlags(
     ParticipantsFlagsMap const& targetParticipants,
-    ParticipantsFlagsMap const& planParticipants,
-    std::optional<ParticipantId> const& targetLeader,
-    ParticipantId const& currentTermLeader)
+    ParticipantsFlagsMap const& planParticipants)
     -> std::optional<std::pair<ParticipantId, ParticipantFlags>>;
 
 auto computeReason(std::optional<LogCurrentLocalState> const& maybeStatus,

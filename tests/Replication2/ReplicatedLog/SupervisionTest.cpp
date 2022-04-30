@@ -167,11 +167,7 @@ TEST_F(SupervisionLogTest, test_log_not_created) {
   EXPECT_TRUE(ctx.hasAction());
   auto const& r = ctx.getAction();
 
-  EXPECT_TRUE(std::holds_alternative<ErrorAction>(r));
-
-  auto& action = std::get<ErrorAction>(r);
-  EXPECT_EQ(action._error,
-            LogCurrentSupervisionError::TARGET_NOT_ENOUGH_PARTICIPANTS);
+  EXPECT_TRUE(std::holds_alternative<NoActionPossibleAction>(r));
 }
 
 TEST_F(SupervisionLogTest, test_log_present) {
@@ -185,7 +181,7 @@ TEST_F(SupervisionLogTest, test_log_present) {
 
   auto const log = Log{.target = LogTarget(LogId{44}, participants, config),
                        .plan = LogPlanSpecification(),
-                       .current = std::nullopt};
+                       .current = LogCurrent()};
 
   checkReplicatedLog(ctx, log, ParticipantsHealth());
 
@@ -293,8 +289,7 @@ TEST_F(LogSupervisionTest, test_no_flags_changed) {
   auto const planParticipants = ParticipantsFlagsMap{
       {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
-  auto r = getParticipantWithUpdatedFlags(targetParticipants, planParticipants,
-                                          std::nullopt, "A");
+  auto r = getParticipantWithUpdatedFlags(targetParticipants, planParticipants);
   EXPECT_FALSE(r);
 }
 
@@ -305,8 +300,7 @@ TEST_F(LogSupervisionTest, test_flags_changed) {
   auto const planParticipants = ParticipantsFlagsMap{
       {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
-  auto r = getParticipantWithUpdatedFlags(targetParticipants, planParticipants,
-                                          std::nullopt, "A");
+  auto r = getParticipantWithUpdatedFlags(targetParticipants, planParticipants);
   EXPECT_TRUE(r);
   EXPECT_EQ(r->first, "A");
   EXPECT_EQ(r->second,
@@ -322,14 +316,8 @@ TEST_F(LogSupervisionTest, test_leader_changed) {
       {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
-  auto r = getParticipantWithUpdatedFlags(targetParticipants, planParticipants,
-                                          "B", "A");
-  EXPECT_TRUE(r);
-
-  // IF the leader is changed via target, expect it to be forced first
-  EXPECT_EQ(r->first, "B");
-  EXPECT_EQ(r->second,
-            (ParticipantFlags{.forced = true, .allowedAsLeader = true}));
+  auto r = getParticipantWithUpdatedFlags(targetParticipants, planParticipants);
+  EXPECT_FALSE(r);
 }
 
 TEST_F(LogSupervisionTest, test_acceptable_leader_set) {
@@ -480,7 +468,8 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
   EXPECT_TRUE(ctx.hasAction());
   auto const& r = ctx.getAction();
 
-  ASSERT_TRUE(std::holds_alternative<EmptyAction>(r)) << to_string(r);
+  ASSERT_TRUE(std::holds_alternative<NoActionPossibleAction>(r))
+      << to_string(r);
 }
 
 TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {

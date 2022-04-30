@@ -74,7 +74,7 @@ auto isLeaderFailed(LogPlanTermSpecification::Leader const& leader,
                     ParticipantsHealth const& health) -> bool {
   // TODO: less obscure with fewer negations
   // TODO: write test first
-  if (health.notIsFailed(leader.serverId) &&
+  if (health.notIsFailed(leader.serverId) and
       health.validRebootId(leader.serverId, leader.rebootId)) {
     return false;
   } else {
@@ -182,12 +182,21 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
 //
 auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
                         ParticipantsHealth const& health) -> void {
+  if (!log.plan.has_value()) {
+    return;
+  }
   TRI_ASSERT(log.plan.has_value());
   auto const& plan = *log.plan;
 
+  if (!plan.currentTerm.has_value()) {
+    return;
+  }
   TRI_ASSERT(plan.currentTerm.has_value());
   auto const& currentTerm = *plan.currentTerm;
 
+  if (!log.current.has_value()) {
+    return;
+  }
   TRI_ASSERT(log.current.has_value());
   auto const& current = *log.current;
 
@@ -228,10 +237,8 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
   if (election.participantsAvailable >= requiredNumberOfOKParticipants) {
     // We randomly elect on of the electible leaders
     auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
-    LOG_DEVEL << "newleader";
     auto const& newLeader =
         election.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
-    LOG_DEVEL << "newleader done";
     auto const& newLeaderRebootId = health.getRebootId(newLeader);
 
     if (newLeaderRebootId.has_value()) {
@@ -276,14 +283,12 @@ auto checkLeaderHealthy(SupervisionContext& ctx, Log const& log,
   if (!currentTerm.leader.has_value()) {
     return;
   }
-  TRI_ASSERT(currentTerm.leader.has_value());
-  auto const& leader = *currentTerm.leader;
 
   // If the leader is unhealthy, write a new term that
   // does not have a leader.
   // In the next round this will lead to a leadership election.
-  if (isLeaderFailed(leader, health)) {
-    auto minTerm = plan.currentTerm->term;
+  if (isLeaderFailed(*currentTerm.leader, health)) {
+    auto minTerm = currentTerm.term;
     for (auto [participant, state] : current.localState) {
       if (state.spearhead.term > minTerm) {
         minTerm = state.spearhead.term;
@@ -342,9 +347,7 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
     //
     //  if so, make them leader
     for (auto const& participant : acceptableLeaderSet) {
-      LOG_DEVEL << "committed partizipants";
       auto const& flags = committedParticipants.at(participant);
-      LOG_DEVEL << "committed partizipants done";
 
       if (participant != current.leader->serverId and flags.forced) {
         auto const& rebootId = health.getRebootId(participant);
@@ -365,14 +368,10 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
     auto const numElectible = acceptableLeaderSet.size();
     if (numElectible > 0) {
       auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
-      LOG_DEVEL << "chosenLeader";
       auto const& chosenOne =
           acceptableLeaderSet.at(RandomGenerator::interval(maxIdx));
-      LOG_DEVEL << "chosenLeader done";
 
-      LOG_DEVEL << "chosenLeader flegs";
       auto flags = committedParticipants.at(chosenOne);
-      LOG_DEVEL << "chosenLeader flegs done";
 
       flags.forced = true;
 
@@ -389,6 +388,9 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
                             ParticipantsHealth const& health) -> void {
   auto const& target = log.target;
 
+  if (!log.plan.has_value()) {
+    return;
+  }
   TRI_ASSERT(log.plan.has_value());
   auto const& plan = *log.plan;
 
@@ -414,10 +416,8 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
 
     if (hasCurrentTermWithLeader(log) and
         target.leader != plan.currentTerm->leader->serverId) {
-      LOG_DEVEL << "plc";
       auto const& planLeaderConfig =
           plan.participantsConfig.participants.at(*target.leader);
-      LOG_DEVEL << "done";
 
       if (planLeaderConfig.forced != true ||
           !planLeaderConfig.allowedAsLeader) {
@@ -444,9 +444,7 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
 // flags.
 auto getParticipantWithUpdatedFlags(
     ParticipantsFlagsMap const& targetParticipants,
-    ParticipantsFlagsMap const& planParticipants,
-    std::optional<ParticipantId> const& targetLeader,
-    ParticipantId const& currentTermLeader)
+    ParticipantsFlagsMap const& planParticipants)
     -> std::optional<std::pair<ParticipantId, ParticipantFlags>> {
   for (auto const& [targetParticipant, targetFlags] : targetParticipants) {
     if (auto const& planParticipant = planParticipants.find(targetParticipant);
@@ -546,6 +544,7 @@ auto checkLogExists(SupervisionContext& ctx, Log const& log,
       ctx.reportStatus(
           LogCurrentSupervision::StatusCode::kTargetNotEnoughParticipants,
           std::nullopt);
+      ctx.createAction<NoActionPossibleAction>();
     } else {
       auto leader = pickLeader(target.leader, target.participants, health);
       ctx.createAction<AddLogToPlanAction>(target.id, target.participants,
@@ -639,16 +638,8 @@ auto checkParticipantWithFlagsToUpdate(SupervisionContext& ctx, Log const& log,
   TRI_ASSERT(log.plan.has_value());
   auto const& plan = *log.plan;
 
-  if (!log.current.has_value() || !log.current->leader.has_value()) {
-    return;
-  }
-  TRI_ASSERT(log.current.has_value());
-  TRI_ASSERT(log.current->leader.has_value());
-  auto const& leader = *log.current->leader;
-
   if (auto participantFlags = getParticipantWithUpdatedFlags(
-          target.participants, plan.participantsConfig.participants,
-          target.leader, leader.serverId)) {
+          target.participants, plan.participantsConfig.participants)) {
     ctx.createAction<UpdateParticipantFlagsAction>(participantFlags->first,
                                                    participantFlags->second);
   }
