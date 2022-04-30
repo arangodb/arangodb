@@ -251,10 +251,10 @@ auto inspect(Inspector& f, CurrentNotAvailableAction& x) {
   return f.object(x).fields(f.field("type", hack));
 }
 
-struct DictateLeaderAction {
-  static constexpr std::string_view name = "DictateLeaderAction";
+struct SwitchLeaderAction {
+  static constexpr std::string_view name = "SwitchLeaderAction";
 
-  DictateLeaderAction(LogPlanTermSpecification::Leader const& leader)
+  SwitchLeaderAction(LogPlanTermSpecification::Leader const& leader)
       : _leader{leader} {};
 
   LogPlanTermSpecification::Leader _leader;
@@ -267,7 +267,7 @@ struct DictateLeaderAction {
   }
 };
 template<typename Inspector>
-auto inspect(Inspector& f, DictateLeaderAction& x) {
+auto inspect(Inspector& f, SwitchLeaderAction& x) {
   auto hack = std::string{x.name};
   return f.object(x).fields(f.field("type", hack),
                             f.field("leader", x._leader));
@@ -531,15 +531,15 @@ auto inspect(Inspector& f, ConvergedToTargetAction& x) {
   return f.object(x).fields(f.field("type", hack),
                             f.field("version", x.version));
 }
- 
-using Action = std::variant<NoActionPossibleAction,
-    EmptyAction, ErrorAction, AddLogToPlanAction, CreateInitialTermAction,
-    CurrentNotAvailableAction, DictateLeaderAction, DictateLeaderFailedAction,
-    WriteEmptyTermAction, LeaderElectionAction, LeaderElectionImpossibleAction,
-    LeaderElectionOutOfBoundsAction, LeaderElectionQuorumNotReachedAction,
-    UpdateParticipantFlagsAction, AddParticipantToPlanAction,
-    RemoveParticipantFromPlanAction, UpdateLogConfigAction,
-    ConvergedToTargetAction>;
+
+using Action = std::variant<
+    NoActionPossibleAction, EmptyAction, ErrorAction, AddLogToPlanAction,
+    CreateInitialTermAction, CurrentNotAvailableAction, SwitchLeaderAction,
+    DictateLeaderFailedAction, WriteEmptyTermAction, LeaderElectionAction,
+    LeaderElectionImpossibleAction, LeaderElectionOutOfBoundsAction,
+    LeaderElectionQuorumNotReachedAction, UpdateParticipantFlagsAction,
+    AddParticipantToPlanAction, RemoveParticipantFromPlanAction,
+    UpdateLogConfigAction, ConvergedToTargetAction>;
 
 auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
              std::optional<LogPlanSpecification> plan,

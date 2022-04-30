@@ -342,7 +342,7 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
       if (participant != current.leader->serverId and flags.forced) {
         auto const& rebootId = health.getRebootId(participant);
         if (rebootId.has_value()) {
-          ctx.createAction<DictateLeaderAction>(
+          ctx.createAction<SwitchLeaderAction>(
               LogPlanTermSpecification::Leader{participant, *rebootId});
           return;
         } else {
@@ -415,7 +415,7 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
 
       auto const& rebootId = health.getRebootId(*target.leader);
       if (rebootId.has_value()) {
-        ctx.createAction<DictateLeaderAction>(
+        ctx.createAction<SwitchLeaderAction>(
             LogPlanTermSpecification::Leader{*target.leader, *rebootId});
       } else {
         ctx.reportStatus(
