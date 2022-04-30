@@ -161,7 +161,9 @@ struct LogCurrentSupervision {
     kLeaderElectionImpossible,
     kLeaderElectionOutOfBounds,
     kTargetLeaderFailed,
-    kDictateLeaderFailed
+    kDictateLeaderFailed,
+    kPlanNotAvailable,
+    kCurrentNotAvailable
   };
   struct StatusMessage {
     std::optional<std::string> message;

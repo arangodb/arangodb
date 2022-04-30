@@ -43,6 +43,10 @@ auto to_string(StatusCode code) -> std::string_view {
       return "TargetLeaderFailed";
     case StatusCode::kDictateLeaderFailed:
       return "DictateLeaderFailed";
+    case StatusCode::kPlanNotAvailable:
+      return "PlanNotAvailable";
+    case StatusCode::kCurrentNotAvailable:
+      return "CurrentNotAvailable";
     default:
       return "(unknown status code)";
   }
@@ -70,10 +74,14 @@ auto StatusCodeStringTransformer::fromSerialized(std::string const& source,
     target = StatusCode::kConfigChangeNotImplemented;
   } else if (source == "LeaderElectionImpossible") {
     target = StatusCode::kLeaderElectionImpossible;
-  } else  if (source == "TargetLeaderFailed") {
+  } else if (source == "TargetLeaderFailed") {
     target = StatusCode::kTargetLeaderFailed;
   } else if (source == "DictateLeaderFailed") {
     target = StatusCode::kDictateLeaderFailed;
+  } else if (source == "PlanNotAvailable") {
+    target = StatusCode::kPlanNotAvailable;
+  } else if (source == "CurrentNotAvailable") {
+    target = StatusCode::kCurrentNotAvailable;
   } else {
     inspection::Status{"Invalid status code name " + std::string{source}};
   }

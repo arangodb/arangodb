@@ -35,6 +35,8 @@
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
 #include "Replication2/ReplicatedLog/SupervisionContext.h"
 
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+
 #include "Logger/LogMacros.h"
 
 using namespace arangodb::replication2::agency;
@@ -226,8 +228,10 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
   if (election.participantsAvailable >= requiredNumberOfOKParticipants) {
     // We randomly elect on of the electible leaders
     auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
+    LOG_DEVEL << "newleader";
     auto const& newLeader =
         election.electibleLeaderSet.at(RandomGenerator::interval(maxIdx));
+    LOG_DEVEL << "newleader done";
     auto const& newLeaderRebootId = health.getRebootId(newLeader);
 
     if (newLeaderRebootId.has_value()) {
@@ -238,12 +242,13 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
     } else {
       // TODO: better error
       //       return LeaderElectionImpossibleAction();
+      //      ctx.reportStatus
       return;
     }
   } else {
     // Not enough participants were available to form a quorum, so
     // we can't elect a leader
-    // return LeaderElectionQuorumNotReachedAction{election};
+    ctx.createAction<LeaderElectionQuorumNotReachedAction>(election);
     return;
   }
 }
@@ -337,7 +342,9 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
     //
     //  if so, make them leader
     for (auto const& participant : acceptableLeaderSet) {
+      LOG_DEVEL << "committed partizipants";
       auto const& flags = committedParticipants.at(participant);
+      LOG_DEVEL << "committed partizipants done";
 
       if (participant != current.leader->serverId and flags.forced) {
         auto const& rebootId = health.getRebootId(participant);
@@ -358,10 +365,14 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
     auto const numElectible = acceptableLeaderSet.size();
     if (numElectible > 0) {
       auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
+      LOG_DEVEL << "chosenLeader";
       auto const& chosenOne =
           acceptableLeaderSet.at(RandomGenerator::interval(maxIdx));
+      LOG_DEVEL << "chosenLeader done";
 
+      LOG_DEVEL << "chosenLeader flegs";
       auto flags = committedParticipants.at(chosenOne);
+      LOG_DEVEL << "chosenLeader flegs done";
 
       flags.forced = true;
 
@@ -403,8 +414,10 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
 
     if (hasCurrentTermWithLeader(log) and
         target.leader != plan.currentTerm->leader->serverId) {
+      LOG_DEVEL << "plc";
       auto const& planLeaderConfig =
           plan.participantsConfig.participants.at(*target.leader);
+      LOG_DEVEL << "done";
 
       if (planLeaderConfig.forced != true ||
           !planLeaderConfig.allowedAsLeader) {
@@ -426,28 +439,9 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
   }
 }
 
-auto desiredParticipantFlags(std::optional<ParticipantId> const& targetLeader,
-                             ParticipantId const& currentTermLeader,
-                             ParticipantId const& targetParticipant,
-                             ParticipantFlags const& targetFlags)
-    -> ParticipantFlags {
-  if (targetParticipant == targetLeader and
-      targetParticipant != currentTermLeader) {
-    auto flags = targetFlags;
-    if (flags.allowedAsLeader) {
-      flags.forced = true;
-    }
-    return flags;
-  }
-  return targetFlags;
-}
-
 // If there is a participant such that the flags between Target and Plan
 // differ, returns at a pair consisting of the ParticipantId and the desired
 // flags.
-//
-// Note that the desired flags currently forces the flags for a configured,
-// desired, leader to contain a forced flag.
 auto getParticipantWithUpdatedFlags(
     ParticipantsFlagsMap const& targetParticipants,
     ParticipantsFlagsMap const& planParticipants,
@@ -458,11 +452,9 @@ auto getParticipantWithUpdatedFlags(
     if (auto const& planParticipant = planParticipants.find(targetParticipant);
         planParticipant != std::end(planParticipants)) {
       // participant is in plan, check whether flags are the same
-      auto const desiredFlags = desiredParticipantFlags(
-          targetLeader, currentTermLeader, targetParticipant, targetFlags);
-      if (desiredFlags != planParticipant->second) {
+      if (targetFlags != planParticipant->second) {
         // Flags changed, so we need to commit new flags for this participant
-        return std::make_pair(targetParticipant, desiredFlags);
+        return std::make_pair(targetParticipant, targetFlags);
       }
     }
   }
@@ -570,45 +562,6 @@ auto checkCurrentExists(SupervisionContext& ctx, Log const& log) -> void {
   }
 }
 
-auto checkLeader(SupervisionContext& ctx, Log const& log,
-                 ParticipantsHealth const& health) -> void {
-  if (!log.plan.has_value() or !log.current.has_value()) {
-    return;
-  }
-  TRI_ASSERT(log.plan.has_value());
-  TRI_ASSERT(log.current.has_value());
-
-  // If currentTerm's leader entry does not have a value,
-  // run a leadership election. The doLeadershipElection can
-  // return different Actions, dependking on whether a leadership
-  // election is possible, and if so, whether there is enough
-  // eligible participants for leadership.
-  checkLeaderPresent(ctx, log, health);
-
-  // If the leader is unhealthy, write a new term that
-  // does not have a leader.
-  // In the next round this will lead to a leadership election.
-  checkLeaderHealthy(ctx, log, health);
-
-  // If the participant who is leader has been removed from target,
-  // gracefully remove it by selecting a different eligible participant
-  // as leader
-  //
-  // At this point there should only ever be precisely one participant to
-  // remove (the current leader); Once it is not the leader anymore it will be
-  // disallowed from any quorum above.
-  checkLeaderRemovedFromTargetParticipants(ctx, log, health);
-
-  // Check whether a specific participant is configured in Target to become
-  // the leader. This requires that participant to be flagged to always be
-  // part of a quorum; once that change is committed, the leader can be
-  // switched if the target.leader participant is healty.
-  //
-  // This operation can fail and
-  // TODO: Report if leaderInTarget fails.
-  checkLeaderSetInTarget(ctx, log, health);
-}
-
 auto checkParticipantToAdd(SupervisionContext& ctx, Log const& log,
                            ParticipantsHealth const& health) -> void {
   auto const& target = log.target;
@@ -675,8 +628,9 @@ auto checkParticipantToRemove(SupervisionContext& ctx, Log const& log,
   }
 }
 
-auto checkParticipantFlagsUpdated(SupervisionContext& ctx, Log const& log,
-                                  ParticipantsHealth const& health) -> void {
+auto checkParticipantWithFlagsToUpdate(SupervisionContext& ctx, Log const& log,
+                                       ParticipantsHealth const& health)
+    -> void {
   auto const& target = log.target;
 
   if (!log.plan.has_value()) {
@@ -692,10 +646,6 @@ auto checkParticipantFlagsUpdated(SupervisionContext& ctx, Log const& log,
   TRI_ASSERT(log.current->leader.has_value());
   auto const& leader = *log.current->leader;
 
-  //       This function currently forces a participant if it is set
-  //       as desired leader in Target, and this isn't obvious at all.
-  //       This should be moved to a separate action that overrides that
-  //       particular field for the desired leader.
   if (auto participantFlags = getParticipantWithUpdatedFlags(
           target.participants, plan.participantsConfig.participants,
           target.leader, leader.serverId)) {
@@ -769,8 +719,35 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
 
   checkCurrentExists(ctx, log);
 
-  // Check whether the leader is healthy and all
-  checkLeader(ctx, log, health);
+  // If currentTerm's leader entry does not have a value,
+  // run a leadership election. The doLeadershipElection can
+  // return different Actions, dependking on whether a leadership
+  // election is possible, and if so, whether there is enough
+  // eligible participants for leadership.
+  checkLeaderPresent(ctx, log, health);
+
+  // If the leader is unhealthy, write a new term that
+  // does not have a leader.
+  // In the next round this will lead to a leadership election.
+  checkLeaderHealthy(ctx, log, health);
+
+  // If the participant who is leader has been removed from target,
+  // gracefully remove it by selecting a different eligible participant
+  // as leader
+  //
+  // At this point there should only ever be precisely one participant to
+  // remove (the current leader); Once it is not the leader anymore it will be
+  // disallowed from any quorum above.
+  checkLeaderRemovedFromTargetParticipants(ctx, log, health);
+
+  // Check whether a specific participant is configured in Target to become
+  // the leader. This requires that participant to be flagged to always be
+  // part of a quorum; once that change is committed, the leader can be
+  // switched if the target.leader participant is healty.
+  //
+  // This operation can fail and
+  // TODO: Report if leaderInTarget fails.
+  checkLeaderSetInTarget(ctx, log, health);
 
   // Check whether a participant was added in Target that is not in Plan.
   // If so, add it to Plan.
@@ -784,7 +761,7 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
   // comparing Target to Plan, write that change to Plan.
   // If the configuration differs between Target and Plan,
   // apply the new configuration.
-  checkParticipantFlagsUpdated(ctx, log, health);
+  checkParticipantWithFlagsToUpdate(ctx, log, health);
 
   // TODO: This has not been implemented yet!
   checkConfigUpdated(ctx, log, health);
@@ -810,6 +787,12 @@ auto executeCheckReplicatedLog(DatabaseID const& dbName,
         ctx.getAction(), dbName, log.target.id, log.plan, log.current,
         std::move(envelope));
   }
+
+  auto rep = ctx.getReport();
+  for (auto&& v : rep) {
+    LOG_DEVEL << to_string(v.code);
+  }
+
   return envelope;
 }
 
