@@ -33,6 +33,16 @@ auto to_string(StatusCode code) -> std::string_view {
       return "TargetLeaderInvalid";
     case StatusCode::kTargetNotEnoughParticipants:
       return "NotEnoughParticipants";
+    case StatusCode::kWaitingForConfigCommitted:
+      return "WaitingForConfigCommitted";
+    case StatusCode::kConfigChangeNotImplemented:
+      return "ConfigChangeNotImplemented";
+    case StatusCode::kLeaderElectionImpossible:
+      return "LeaderElectionImpossible";
+    case StatusCode::kTargetLeaderFailed:
+      return "TargetLeaderFailed";
+    case StatusCode::kDictateLeaderFailed:
+      return "DictateLeaderFailed";
     default:
       return "(unknown status code)";
   }
@@ -54,6 +64,16 @@ auto StatusCodeStringTransformer::fromSerialized(std::string const& source,
     target = StatusCode::kTargetLeaderInvalid;
   } else if (source == "NotEnoughParticipants") {
     target = StatusCode::kTargetNotEnoughParticipants;
+  } else if (source == "WaitingForConfigSubmitted") {
+    target = StatusCode::kWaitingForConfigCommitted;
+  } else if (source == "ConfigChangeNotImplemented") {
+    target = StatusCode::kConfigChangeNotImplemented;
+  } else if (source == "LeaderElectionImpossible") {
+    target = StatusCode::kLeaderElectionImpossible;
+  } else  if (source == "TargetLeaderFailed") {
+    target = StatusCode::kTargetLeaderFailed;
+  } else if (source == "DictateLeaderFailed") {
+    target = StatusCode::kDictateLeaderFailed;
   } else {
     inspection::Status{"Invalid status code name " + std::string{source}};
   }

@@ -69,10 +69,6 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
                          ParticipantsHealth const& health, LogTerm term)
     -> LogCurrentSupervisionElection;
 
-auto doLeadershipElection(LogPlanSpecification const& plan,
-                          LogCurrent const& current,
-                          ParticipantsHealth const& health) -> Action;
-
 auto getParticipantsAcceptableAsLeaders(
     ParticipantId const& currentLeader,
     ParticipantsFlagsMap const& participants) -> std::vector<ParticipantId>;
@@ -84,7 +80,7 @@ auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
 // Actions capture entries in log, so they have to stay
 // valid until the returned action has been executed (or discarded)
 auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
-                        ParticipantsHealth const& health) -> Action;
+                        ParticipantsHealth const& health) -> void;
 
 auto executeCheckReplicatedLog(DatabaseID const& database,
                                std::string const& idString, Log log,

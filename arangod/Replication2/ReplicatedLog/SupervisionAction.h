@@ -127,12 +127,34 @@ struct EmptyAction {
     });
   }
 };
-
 template<typename Inspector>
 auto inspect(Inspector& f, EmptyAction& x) {
   auto hack = std::string{x.name};
   return f.object(x).fields(f.field("type", hack),
                             f.field("message", x.message));
+}
+
+/*
+ * This action is placed into the supervision action to prevent
+ * any other action from taking place.
+ *
+ * This is *different* from no action having been put into
+ * the context as sometimes we will report a problem through
+ * the reporting but do not want to continue;
+ *
+ * This action does not modify the agency state.
+ */
+struct NoActionPossibleAction {
+  static constexpr std::string_view name = "NoActionPossibleAction";
+
+  explicit NoActionPossibleAction(){};
+
+  auto execute(ActionContext& ctx) const -> void {}
+};
+template<typename Inspector>
+auto inspect(Inspector& f, NoActionPossibleAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack));
 }
 
 struct ErrorAction {
@@ -509,8 +531,8 @@ auto inspect(Inspector& f, ConvergedToTargetAction& x) {
   return f.object(x).fields(f.field("type", hack),
                             f.field("version", x.version));
 }
-
-using Action = std::variant<
+ 
+using Action = std::variant<NoActionPossibleAction,
     EmptyAction, ErrorAction, AddLogToPlanAction, CreateInitialTermAction,
     CurrentNotAvailableAction, DictateLeaderAction, DictateLeaderFailedAction,
     WriteEmptyTermAction, LeaderElectionAction, LeaderElectionImpossibleAction,

@@ -61,16 +61,11 @@ auto SupervisionActor::stepReplicatedLog(AgencyState const& agency)
     return std::nullopt;
   }
   replicated_log::SupervisionContext ctx;
-  auto action = replicated_log::checkReplicatedLog(ctx, *agency.replicatedLog,
-                                                   agency.health);
-  if (std::holds_alternative<replicated_log::EmptyAction>(action)) {
-    return std::nullopt;
+  replicated_log::checkReplicatedLog(ctx, *agency.replicatedLog, agency.health);
+  if (ctx.hasAction()) {
+    return SupervisionLogAction{std::move(ctx.getAction())};
   }
-  if (std::holds_alternative<replicated_log::LeaderElectionOutOfBoundsAction>(
-          action)) {
-    return std::nullopt;
-  }
-  return SupervisionLogAction{std::move(action)};
+  return std::nullopt;
 }
 
 auto SupervisionActor::stepReplicatedState(AgencyState const& agency)

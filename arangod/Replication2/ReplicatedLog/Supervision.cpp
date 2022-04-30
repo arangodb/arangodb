@@ -25,10 +25,10 @@
 
 #include <memory>
 
+#include "Agency/AgencyPaths.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimeString.h"
-#include "Agency/AgencyPaths.h"
 #include "Random/RandomGenerator.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -40,6 +40,31 @@
 using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2::replicated_log {
+
+auto isConfigurationCommitted(Log const& log) -> bool {
+  if (!log.plan) {
+    return false;
+  }
+  auto const& plan = *log.plan;
+
+  if (!log.current) {
+    return false;
+  }
+  auto const& current = *log.current;
+
+  return current.leader && current.leader->committedParticipantsConfig &&
+         current.leader->committedParticipantsConfig->generation ==
+             plan.participantsConfig.generation;
+}
+
+auto hasCurrentTermWithLeader(Log const& log) -> bool {
+  if (!log.plan) {
+    return false;
+  }
+  auto const& plan = *log.plan;
+
+  return plan.currentTerm and plan.currentTerm->leader;
+}
 
 // Leader has failed if it is marked as failed or it's rebootId is
 // different from what is expected
@@ -269,13 +294,28 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
 //  * not marked as failed
 //  * amongst the participant with the most recent TermIndex.
 //
-auto doLeadershipElection(LogPlanSpecification const& plan,
-                          LogCurrent const& current,
-                          ParticipantsHealth const& health) -> Action {
+auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
+                        ParticipantsHealth const& health) -> void {
+  TRI_ASSERT(log.plan.has_value());
+  auto const& plan = *log.plan;
+
+  TRI_ASSERT(plan.currentTerm.has_value());
+  auto const& currentTerm = *plan.currentTerm;
+
+  TRI_ASSERT(log.current.has_value());
+  auto const& current = *log.current;
+
+  if (currentTerm.leader) {
+    return;
+  }
+
   // Check whether there are enough participants to reach a quorum
   if (plan.participantsConfig.participants.size() + 1 <=
       plan.currentTerm->config.writeConcern) {
-    return LeaderElectionImpossibleAction();
+    ctx.reportStatus(
+        LogCurrentSupervision::StatusCode::kLeaderElectionImpossible,
+        std::nullopt);
+    return;
   }
 
   TRI_ASSERT(plan.participantsConfig.participants.size() + 1 >
@@ -286,16 +326,17 @@ auto doLeadershipElection(LogPlanSpecification const& plan,
       plan.currentTerm->config.writeConcern;
 
   // Find the participants that are healthy and that have the best LogTerm
-  auto election =
-      runElectionCampaign(current.localState, plan.participantsConfig, health,
-                          plan.currentTerm->term);
+  auto election = runElectionCampaign(
+      current.localState, plan.participantsConfig, health, currentTerm.term);
   election.participantsRequired = requiredNumberOfOKParticipants;
 
   auto const numElectible = election.electibleLeaderSet.size();
 
   if (numElectible == 0 ||
       numElectible > std::numeric_limits<uint16_t>::max()) {
-    return LeaderElectionOutOfBoundsAction{._election = election};
+    // TODO: should this be a report?
+    ctx.createAction<LeaderElectionOutOfBoundsAction>(election);
+    return;
   }
 
   if (election.participantsAvailable >= requiredNumberOfOKParticipants) {
@@ -306,17 +347,198 @@ auto doLeadershipElection(LogPlanSpecification const& plan,
     auto const& newLeaderRebootId = health.getRebootId(newLeader);
 
     if (newLeaderRebootId.has_value()) {
-      return LeaderElectionAction(
+      ctx.createAction<LeaderElectionAction>(
           LogPlanTermSpecification::Leader(newLeader, *newLeaderRebootId),
           election);
+      return;
     } else {
       // TODO: better error
-      return LeaderElectionImpossibleAction();
+      //       return LeaderElectionImpossibleAction();
+      return;
     }
   } else {
     // Not enough participants were available to form a quorum, so
     // we can't elect a leader
-    return LeaderElectionQuorumNotReachedAction{election};
+    // return LeaderElectionQuorumNotReachedAction{election};
+    return;
+  }
+}
+
+auto checkLeaderHealthy(SupervisionContext& ctx, Log const& log,
+                        ParticipantsHealth const& health) -> void {
+  if (!log.plan.has_value()) {
+    return;
+  }
+  TRI_ASSERT(log.plan.has_value());
+  auto const plan = *log.plan;
+
+  if (!log.current.has_value()) {
+    return;
+  }
+  TRI_ASSERT(log.current.has_value());
+  auto const current = *log.current;
+
+  if (!plan.currentTerm.has_value()) {
+    return;
+  }
+  TRI_ASSERT(plan.currentTerm.has_value());
+  auto const& currentTerm = *plan.currentTerm;
+
+  if (!currentTerm.leader.has_value()) {
+    return;
+  }
+  TRI_ASSERT(currentTerm.leader.has_value());
+  auto const& leader = *currentTerm.leader;
+
+  // If the leader is unhealthy, write a new term that
+  // does not have a leader.
+  // In the next round this will lead to a leadership election.
+  if (isLeaderFailed(leader, health)) {
+    auto minTerm = plan.currentTerm->term;
+    for (auto [participant, state] : current.localState) {
+      if (state.spearhead.term > minTerm) {
+        minTerm = state.spearhead.term;
+      }
+    }
+    ctx.createAction<WriteEmptyTermAction>(minTerm);
+  }
+}
+
+auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
+                                              Log const& log,
+                                              ParticipantsHealth const& health)
+    -> void {
+  auto const& target = log.target;
+
+  if (!log.plan.has_value()) {
+    return;
+  }
+  TRI_ASSERT(log.plan.has_value());
+  auto const& plan = *log.plan;
+
+  if (!plan.currentTerm.has_value()) {
+    return;
+  }
+  TRI_ASSERT(plan.currentTerm.has_value());
+  auto const& currentTerm = *plan.currentTerm;
+
+  if (!currentTerm.leader.has_value()) {
+    return;
+  }
+  TRI_ASSERT(currentTerm.leader.has_value());
+  auto const& leader = *currentTerm.leader;
+
+  if (!log.current.has_value()) {
+    return;
+  }
+  TRI_ASSERT(log.current.has_value());
+  auto const& current = *log.current;
+
+  if (!isConfigurationCommitted(log)) {
+    ctx.reportStatus(
+        LogCurrentSupervision::StatusCode::kWaitingForConfigCommitted,
+        std::nullopt);
+    ctx.createAction<NoActionPossibleAction>();
+  }
+  auto const& committedParticipants =
+      current.leader->committedParticipantsConfig->participants;
+
+  if (!target.participants.contains(leader.serverId)) {
+    auto const acceptableLeaderSet = getParticipantsAcceptableAsLeaders(
+        current.leader->serverId,
+        current.leader->committedParticipantsConfig->participants);
+
+    //  Check whether we already have a participant that is
+    //  acceptable and forced
+    //
+    //  if so, make them leader
+    for (auto const& participant : acceptableLeaderSet) {
+      auto const& flags = committedParticipants.at(participant);
+
+      if (participant != current.leader->serverId and flags.forced) {
+        auto const& rebootId = health.getRebootId(participant);
+        if (rebootId.has_value()) {
+          ctx.createAction<DictateLeaderAction>(
+              LogPlanTermSpecification::Leader{participant, *rebootId});
+          return;
+        } else {
+          ctx.reportStatus(
+              LogCurrentSupervision::StatusCode::kDictateLeaderFailed,
+              participant);
+        }
+      }
+    }
+
+    // Did not find a participant above, so pick one at random
+    // and force it.
+    auto const numElectible = acceptableLeaderSet.size();
+    if (numElectible > 0) {
+      auto const maxIdx = static_cast<uint16_t>(numElectible - 1);
+      auto const& chosenOne =
+          acceptableLeaderSet.at(RandomGenerator::interval(maxIdx));
+
+      auto flags = committedParticipants.at(chosenOne);
+
+      flags.forced = true;
+
+      ctx.createAction<UpdateParticipantFlagsAction>(chosenOne, flags);
+    } else {
+      // We did not have a selectable leader
+      ctx.reportStatus(LogCurrentSupervision::StatusCode::kDictateLeaderFailed,
+                       std::nullopt);
+    }
+  }
+}
+
+auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
+                            ParticipantsHealth const& health) -> void {
+  auto const& target = log.target;
+
+  TRI_ASSERT(log.plan.has_value());
+  auto const& plan = *log.plan;
+
+  if (target.leader.has_value()) {
+    // The leader set in target is not valid
+    if (!plan.participantsConfig.participants.contains(*target.leader)) {
+      ctx.reportStatus(LogCurrentSupervision::StatusCode::kTargetLeaderInvalid,
+                       *target.leader);
+    }
+
+    if (!health.notIsFailed(*target.leader)) {
+      ctx.reportStatus(LogCurrentSupervision::StatusCode::kTargetLeaderFailed,
+                       *target.leader);
+    };
+
+    if (!isConfigurationCommitted(log)) {
+      ctx.createAction<NoActionPossibleAction>();
+      ctx.reportStatus(
+          LogCurrentSupervision::StatusCode::kWaitingForConfigCommitted,
+          std::nullopt);
+      return;
+    }
+
+    if (hasCurrentTermWithLeader(log) and
+        target.leader != plan.currentTerm->leader->serverId) {
+      auto const& planLeaderConfig =
+          plan.participantsConfig.participants.at(*target.leader);
+
+      if (planLeaderConfig.forced != true ||
+          !planLeaderConfig.allowedAsLeader) {
+        ctx.reportStatus(
+            LogCurrentSupervision::StatusCode::kTargetLeaderExcluded,
+            *target.leader);
+      }
+
+      auto const& rebootId = health.getRebootId(*target.leader);
+      if (rebootId.has_value()) {
+        ctx.createAction<DictateLeaderAction>(
+            LogPlanTermSpecification::Leader{*target.leader, *rebootId});
+      } else {
+        ctx.reportStatus(
+            LogCurrentSupervision::StatusCode::kTargetLeaderInvalid,
+            *target.leader);
+      }
+    }
   }
 }
 
@@ -336,8 +558,9 @@ auto desiredParticipantFlags(std::optional<ParticipantId> const& targetLeader,
   return targetFlags;
 }
 
-// If there is a participant such that the flags between Target and Plan differ,
-// returns at a pair consisting of the ParticipantId and the desired flags.
+// If there is a participant such that the flags between Target and Plan
+// differ, returns at a pair consisting of the ParticipantId and the desired
+// flags.
 //
 // Note that the desired flags currently forces the flags for a configured,
 // desired, leader to contain a forced flag.
@@ -437,27 +660,207 @@ auto pickLeader(std::optional<ParticipantId> targetLeader,
   return std::nullopt;
 }
 
-auto checkLogExists(LogTarget const& target,
-                    std::optional<LogPlanTermSpecification> const& maybePlan,
-                    ParticipantsHealth const& health) -> std::optional<Action> {
-  if (!maybePlan) {
+auto checkLogExists(SupervisionContext& ctx, Log const& log,
+                    ParticipantsHealth const& health) -> void {
+  auto const& target = log.target;
+  if (!log.plan) {
     // The log is not planned right now, so we create it
     // provided we have enough participants
     if (target.participants.size() + 1 < target.config.writeConcern) {
-      return ErrorAction(
-          LogCurrentSupervisionError::TARGET_NOT_ENOUGH_PARTICIPANTS);
+      ctx.reportStatus(
+          LogCurrentSupervision::StatusCode::kTargetNotEnoughParticipants,
+          std::nullopt);
     } else {
       auto leader = pickLeader(target.leader, target.participants, health);
-      return AddLogToPlanAction(target.id, target.participants, target.config,
-                                leader);
+      ctx.createAction<AddLogToPlanAction>(target.id, target.participants,
+                                           target.config, leader);
     }
   }
-  return std::nullopt;
 }
 
+auto checkCurrentExists(SupervisionContext& ctx, Log const& log) -> void {
+  // If the Current subtree does not exist yet, create it by writing
+  // a message into it.
+  if (!log.current) {
+    ctx.createAction<CurrentNotAvailableAction>();
+  }
+}
+
+auto checkLeader(SupervisionContext& ctx, Log const& log,
+                 ParticipantsHealth const& health) -> void {
+  if (!log.plan.has_value() or !log.current.has_value()) {
+    return;
+  }
+  TRI_ASSERT(log.plan.has_value());
+  TRI_ASSERT(log.current.has_value());
+
+  // If currentTerm's leader entry does not have a value,
+  // run a leadership election. The doLeadershipElection can
+  // return different Actions, dependking on whether a leadership
+  // election is possible, and if so, whether there is enough
+  // eligible participants for leadership.
+  checkLeaderPresent(ctx, log, health);
+
+  // If the leader is unhealthy, write a new term that
+  // does not have a leader.
+  // In the next round this will lead to a leadership election.
+  checkLeaderHealthy(ctx, log, health);
+
+  // If the participant who is leader has been removed from target,
+  // gracefully remove it by selecting a different eligible participant
+  // as leader
+  //
+  // At this point there should only ever be precisely one participant to
+  // remove (the current leader); Once it is not the leader anymore it will be
+  // disallowed from any quorum above.
+  checkLeaderRemovedFromTargetParticipants(ctx, log, health);
+
+  // Check whether a specific participant is configured in Target to become
+  // the leader. This requires that participant to be flagged to always be
+  // part of a quorum; once that change is committed, the leader can be
+  // switched if the target.leader participant is healty.
+  //
+  // This operation can fail and
+  // TODO: Report if leaderInTarget fails.
+  checkLeaderSetInTarget(ctx, log, health);
+}
+
+auto checkParticipantToAdd(SupervisionContext& ctx, Log const& log,
+                           ParticipantsHealth const& health) -> void {
+  auto const& target = log.target;
+
+  if (!log.plan.has_value()) {
+    return;
+  }
+  TRI_ASSERT(log.plan.has_value());
+  auto const& plan = *log.plan;
+  if (auto participant = getAddedParticipant(
+          target.participants, plan.participantsConfig.participants)) {
+    ctx.createAction<AddParticipantToPlanAction>(participant->first,
+                                                 participant->second);
+  }
+}
+
+auto checkParticipantToRemove(SupervisionContext& ctx, Log const& log,
+                              ParticipantsHealth const& health) -> void {
+  auto const& target = log.target;
+
+  if (!log.plan.has_value()) {
+    return;
+  }
+  TRI_ASSERT(log.plan.has_value());
+  auto const& plan = *log.plan;
+
+  if (!log.current.has_value() || !log.current->leader.has_value()) {
+    return;
+  };
+  TRI_ASSERT(log.current.has_value());
+  TRI_ASSERT(log.current->leader.has_value());
+  auto const& leader = *log.current->leader;
+
+  if (!leader.committedParticipantsConfig.has_value()) {
+    return;
+  }
+  TRI_ASSERT(leader.committedParticipantsConfig.has_value());
+  auto const& committedParticipantsConfig = *leader.committedParticipantsConfig;
+
+  if (auto maybeParticipant = getRemovedParticipant(
+          target.participants, plan.participantsConfig.participants)) {
+    auto const& [participantId, planFlags] = *maybeParticipant;
+
+    // We do not ever remove a leader
+    if (participantId != leader.serverId) {
+      // If the participant is not allowed in Quorum it is safe to remove it
+      if (not planFlags.allowedInQuorum and
+          committedParticipantsConfig.generation ==
+              plan.participantsConfig.generation) {
+        ctx.createAction<RemoveParticipantFromPlanAction>(participantId);
+      } else if (planFlags.allowedInQuorum) {
+        // A participant can only be removed without risk,
+        // if it is not member of any quorum
+        auto newFlags = planFlags;
+        newFlags.allowedInQuorum = false;
+        ctx.createAction<UpdateParticipantFlagsAction>(participantId, newFlags);
+      } else {
+        // still waiting
+        ctx.reportStatus(
+            LogCurrentSupervision::StatusCode::kWaitingForConfigCommitted,
+            participantId);
+      }
+    }
+  }
+}
+
+auto checkParticipantFlagsUpdated(SupervisionContext& ctx, Log const& log,
+                                  ParticipantsHealth const& health) -> void {
+  auto const& target = log.target;
+
+  if (!log.plan.has_value()) {
+    return;
+  }
+  TRI_ASSERT(log.plan.has_value());
+  auto const& plan = *log.plan;
+
+  if (!log.current.has_value() || !log.current->leader.has_value()) {
+    return;
+  }
+  TRI_ASSERT(log.current.has_value());
+  TRI_ASSERT(log.current->leader.has_value());
+  auto const& leader = *log.current->leader;
+
+  //       This function currently forces a participant if it is set
+  //       as desired leader in Target, and this isn't obvious at all.
+  //       This should be moved to a separate action that overrides that
+  //       particular field for the desired leader.
+  if (auto participantFlags = getParticipantWithUpdatedFlags(
+          target.participants, plan.participantsConfig.participants,
+          target.leader, leader.serverId)) {
+    ctx.createAction<UpdateParticipantFlagsAction>(participantFlags->first,
+                                                   participantFlags->second);
+  }
+}
+
+auto checkConfigUpdated(SupervisionContext& ctx, Log const& log,
+                        ParticipantsHealth const& health) -> void {
+  auto const& target = log.target;
+
+  if (!log.plan.has_value()) {
+    return;
+  }
+  TRI_ASSERT(log.plan.has_value());
+  auto const& plan = *log.plan;
+
+  if (!plan.currentTerm.has_value()) {
+    return;
+  }
+  TRI_ASSERT(plan.currentTerm.has_value());
+  auto const& currentTerm = *plan.currentTerm;
+
+  if (target.config != currentTerm.config) {
+    ctx.reportStatus(
+        LogCurrentSupervision::StatusCode::kConfigChangeNotImplemented,
+        std::nullopt);
+  }
+}
+
+auto checkConverged(SupervisionContext& ctx, Log const& log) {
+  auto const& target = log.target;
+
+  if (!log.current.has_value()) {
+    return;
+  }
+  TRI_ASSERT(log.current.has_value());
+  auto const& current = *log.current;
+
+  if (target.version.has_value() &&
+      (!current.supervision.has_value() ||
+       target.version != current.supervision->targetVersion)) {
+    ctx.createAction<ConvergedToTargetAction>(target.version);
+  }
+}
 //
-// This function is called from Agency/Supervision.cpp every k seconds for every
-// replicated log in every database.
+// This function is called from Agency/Supervision.cpp every k seconds for
+// every replicated log in every database.
 //
 // This means that this function is always going to deal with exactly *one*
 // replicated log.
@@ -473,164 +876,38 @@ auto checkLogExists(LogTarget const& target,
 // These actions are executes by using std::visit via an Executor struct that
 // contains the necessary context.
 auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
-                        ParticipantsHealth const& health) -> Action {
-  auto const& target = log.target;
-  auto const& maybePlan = log.plan;
-  auto const& maybeCurrent = log.current;
-  /*
-  checkLogExists();
-  checkCurrentExists();
-  checkLeader();
-  checkParticipantToAdd();
-  checkParticipantToRemove();
-  checkParticipantFlagsUpdated();
-  checkConfigUpdated();
-  checkConverged(); */
+                        ParticipantsHealth const& health) -> void {
+  // Check whether the log (that exists in target by virtue of
+  // checkReplicatedLog being called here) is planned. If not, then create it,
+  // provided we have enough participants If there are not enough participants
+  // we can only report back that this log cannot be created.
+  checkLogExists(ctx, log, health);
 
-  if (!maybePlan) {
-    // The log is not planned right now, so we create it
-    // provided we have enough participants
-    if (target.participants.size() + 1 < target.config.writeConcern) {
-      return ErrorAction(
-          LogCurrentSupervisionError::TARGET_NOT_ENOUGH_PARTICIPANTS);
-    } else {
-      auto leader = pickLeader(target.leader, target.participants, health);
-      return AddLogToPlanAction(target.id, target.participants, target.config,
-                                leader);
-    }
-  }
+  checkCurrentExists(ctx, log);
 
-  // plan now exists
-  auto const& plan = *maybePlan;
-
-  // If the ReplicatedLog does not have a LogTerm yet, we create
-  // the initial (empty) Term, which will kick off a leader election.
-  if (!plan.currentTerm) {
-    return CreateInitialTermAction{._config = target.config};
-  }
-  // currentTerm has a value now.
-  auto const& currentTerm = *plan.currentTerm;
-
-  // If the Current subtree does not exist yet, create it by writing
-  // a message into it.
-  if (!maybeCurrent) {
-    return CurrentNotAvailableAction{};
-  }
-  auto const& current = *maybeCurrent;
-
-  // If currentTerm's leader entry does not have a value,
-  // run a leadership election. The doLeadershipElection can
-  // return different Actions, depending on whether a leadership
-  // election is possible, and if so, whether there is enough
-  // eligible participants for leadership.
-  if (!plan.currentTerm->leader) {
-    return doLeadershipElection(plan, current, health);
-  }
-  auto const& leader = *plan.currentTerm->leader;
-
-  // If the leader is unhealthy, write a new term that
-  // does not have a leader.
-  // In the next round this will lead to a leadership election.
-  if (isLeaderFailed(leader, health)) {
-    auto minTerm = plan.currentTerm->term;
-    for (auto [participant, state] : current.localState) {
-      if (state.spearhead.term > minTerm) {
-        minTerm = state.spearhead.term;
-      }
-    }
-    return WriteEmptyTermAction(minTerm);
-  }
+  // Check whether the leader is healthy and all
+  checkLeader(ctx, log, health);
 
   // Check whether a participant was added in Target that is not in Plan.
   // If so, add it to Plan.
-  if (auto participant = getAddedParticipant(
-          target.participants, plan.participantsConfig.participants)) {
-    return AddParticipantToPlanAction(participant->first, participant->second);
-  }
+  checkParticipantToAdd(ctx, log, health);
 
   // If a participant is in Plan but not in Target, gracefully
   // remove it
-  if (auto maybeParticipant = getRemovedParticipant(
-          target.participants, plan.participantsConfig.participants)) {
-    auto const& [participantId, planFlags] = *maybeParticipant;
-
-    // We do not ever remove a leader
-    if (participantId != leader.serverId) {
-      // If the participant is not allowed in Quorum it is safe to remove it
-      if (not planFlags.allowedInQuorum and
-          current.leader->committedParticipantsConfig->generation ==
-              plan.participantsConfig.generation) {
-        return RemoveParticipantFromPlanAction(participantId);
-      } else if (planFlags.allowedInQuorum) {
-        // A participant can only be removed without risk,
-        // if it is not member of any quorum
-        auto newFlags = planFlags;
-        newFlags.allowedInQuorum = false;
-        return UpdateParticipantFlagsAction(participantId, newFlags);
-      } else {
-        // still waiting
-        return EmptyAction("Waiting for participants config to be committed");
-      }
-    }
-  }
-
-  // If the participant who is leader has been removed from target,
-  // gracefully remove it by selecting a different eligible participant
-  // as leader
-  //
-  // At this point there should only ever be precisely one participant to
-  // remove (the current leader); Once it is not the leader anymore it will be
-  // disallowed from any quorum above.
-  if (!target.participants.contains(leader.serverId)) {
-    return dictateLeader(target, plan, current, health);
-  }
+  checkParticipantToRemove(ctx, log, health);
 
   // If the user has updated flags for a participant, which is detected by
   // comparing Target to Plan, write that change to Plan.
-  // TODO: This function currently forces a participant if it is set
-  //       as desired leader in Target, and this isn't obvious at all.
-  //       This should be moved to a separate action that overrides that
-  //       particular field for the desired leader.
-  if (auto participantFlags = getParticipantWithUpdatedFlags(
-          target.participants, plan.participantsConfig.participants,
-          target.leader, leader.serverId)) {
-    return UpdateParticipantFlagsAction(participantFlags->first,
-                                        participantFlags->second);
-  }
-
-  // Check whether a specific participant is configured in Target to become
-  // the leader. This requires that participant to be flagged to always be
-  // part of a quorum; once that change is committed, the leader can be
-  // switched if the target.leader participant is healty.
-  //
-  // This operation can fail and
-  // TODO: Report if leaderInTarget fails.
-  if (target.leader) {
-    if (auto action = leaderInTarget(*target.leader, plan, current, health)) {
-      return *action;
-    } else {
-      // TODO!
-    }
-  }
-
   // If the configuration differs between Target and Plan,
   // apply the new configuration.
-  //
-  // TODO: This has not been implemented yet!
-  if (target.config != currentTerm.config) {
-    return UpdateLogConfigAction(target.config);
-  }
+  checkParticipantFlagsUpdated(ctx, log, health);
 
-  if (target.version.has_value() &&
-      (!current.supervision.has_value() ||
-       target.version != current.supervision->targetVersion)) {
-    return ConvergedToTargetAction{target.version};
-  } else {
-    // Note that if we converged and the version is the same this ends up
-    // doing nothing. Maybe we should have a debug mode where this is still
-    // reported?
-    return EmptyAction("There was nothing to do.");
-  }
+  // TODO: This has not been implemented yet!
+  checkConfigUpdated(ctx, log, health);
+
+  // Check whether we have converged, and if so, report and set version
+  // to target version
+  checkConverged(ctx, log);
 }
 
 // TODO: remove once refactored
@@ -642,11 +919,13 @@ auto executeCheckReplicatedLog(DatabaseID const& dbName,
     -> arangodb::agency::envelope {
   SupervisionContext ctx;
 
-  auto action = checkReplicatedLog(ctx, log, health);
+  checkReplicatedLog(ctx, log, health);
 
-  envelope = arangodb::replication2::replicated_log::execute(
-      action, dbName, log.target.id, log.plan, log.current,
-      std::move(envelope));
+  if (ctx.hasAction()) {
+    envelope = arangodb::replication2::replicated_log::execute(
+        ctx.getAction(), dbName, log.target.id, log.plan, log.current,
+        std::move(envelope));
+  }
   return envelope;
 }
 

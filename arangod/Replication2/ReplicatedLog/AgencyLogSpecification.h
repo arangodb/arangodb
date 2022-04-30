@@ -155,7 +155,13 @@ struct LogCurrentSupervision {
   enum class StatusCode {
     kTargetLeaderInvalid,
     kTargetLeaderExcluded,
-    kTargetNotEnoughParticipants
+    kTargetNotEnoughParticipants,
+    kWaitingForConfigCommitted,
+    kConfigChangeNotImplemented,
+    kLeaderElectionImpossible,
+    kLeaderElectionOutOfBounds,
+    kTargetLeaderFailed,
+    kDictateLeaderFailed
   };
   struct StatusMessage {
     std::optional<std::string> message;
