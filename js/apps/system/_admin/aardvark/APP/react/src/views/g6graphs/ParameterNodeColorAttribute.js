@@ -36,7 +36,8 @@ const ParameterNodeColorAttribute = () => {
             setNodeColorAttribute(e.target.value);
             NEWURLPARAMETERS.nodeColorAttribute = e.target.value;
             setUrlParameters(NEWURLPARAMETERS);
-          }}>
+          }}
+          disabled={urlParameters.nodeColorByCollection}>
         </Textinput>
       </form>
     </>
