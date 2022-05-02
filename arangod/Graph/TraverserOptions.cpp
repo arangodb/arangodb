@@ -828,13 +828,6 @@ bool TraverserOptions::evaluateVertexExpression(
   return evaluateExpression(expression, vertex);
 }
 
-#ifndef USE_ENTERPRISE
-bool TraverserOptions::checkSmartDestination(
-    VPackSlice edge, std::string_view sourceVertex) const {
-  return false;
-}
-#endif
-
 std::unique_ptr<EdgeCursor> arangodb::traverser::TraverserOptions::buildCursor(
     uint64_t depth) {
   ensureCache();

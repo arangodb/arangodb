@@ -166,9 +166,6 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool evaluateVertexExpression(arangodb::velocypack::Slice, uint64_t);
 
-  bool checkSmartDestination(VPackSlice edge,
-                             std::string_view sourceVertex) const;
-
   void linkTraverser(arangodb::traverser::ClusterTraverser*);
 
   std::unique_ptr<arangodb::graph::EdgeCursor> buildCursor(uint64_t depth);
