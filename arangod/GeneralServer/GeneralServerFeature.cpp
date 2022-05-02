@@ -145,6 +145,10 @@ DECLARE_COUNTER(arangodb_vst_connections_total,
 
 GeneralServerFeature::GeneralServerFeature(Server& server)
     : ArangodFeature{server, *this},
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _startedListening(false),
+#endif
+      _allowEarlyConnections(false),
       _allowMethodOverride(false),
       _proxyCheck(true),
       _returnQueueTimeHeader(true),
@@ -241,11 +245,18 @@ void GeneralServerFeature::collectOptions(
       .setIntroducedIn(30712);
 
   options
-      ->addOption(
-          "--http.return-queue-time-header",
-          "if true, return the 'x-arango-queue-time-seconds' response header",
-          new BooleanParameter(&_returnQueueTimeHeader))
+      ->addOption("--http.return-queue-time-header",
+                  "if true, return the 'x-arango-queue-time-seconds' header in "
+                  "responses",
+                  new BooleanParameter(&_returnQueueTimeHeader))
       .setIntroducedIn(30900);
+
+  options
+      ->addOption("--server.allow-early-connections",
+                  "allow incoming connections to limited APIs early during "
+                  "server startup",
+                  new BooleanParameter(&_allowEarlyConnections))
+      .setIntroducedIn(31000);
 
   options->addOption("--frontend.proxy-request-check",
                      "enable proxy request checking",
@@ -278,7 +289,7 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
         // "none" means no origins are allowed
         _accessControlAllowOrigins.clear();
         break;
-      } else if (it[it.size() - 1] == '/') {
+      } else if (!it.empty() && it.back() == '/') {
         // strip trailing slash
         it = it.substr(0, it.size() - 1);
       }
@@ -324,18 +335,20 @@ void GeneralServerFeature::prepare() {
 
   buildServers();
 
-  EndpointFeature& endpoint =
-      server().getFeature<HttpEndpointProvider, EndpointFeature>();
-  auto& endpointList = endpoint.endpointList();
-
-  for (auto& server : _servers) {
-    server->startListening(endpointList);
+  if (_allowEarlyConnections) {
+    // open HTTP interface early
+    startListening();
   }
 }
 
 void GeneralServerFeature::start() {
   ServerState::instance()->setServerMode(ServerState::Mode::MAINTENANCE);
-  defineHandlers();
+  defineRemainingHandlers();
+
+  if (!_allowEarlyConnections) {
+    // if HTTP interface is not open yet, open it now
+    startListening();
+  }
 }
 
 void GeneralServerFeature::initiateSoftShutdown() {
@@ -439,6 +452,24 @@ void GeneralServerFeature::buildServers() {
   _servers.emplace_back(std::make_unique<GeneralServer>(*this, _numIoThreads));
 }
 
+void GeneralServerFeature::startListening() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(!_startedListening);
+#endif
+
+  EndpointFeature& endpoint =
+      server().getFeature<HttpEndpointProvider, EndpointFeature>();
+  auto& endpointList = endpoint.endpointList();
+
+  for (auto& server : _servers) {
+    server->startListening(endpointList);
+  }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _startedListening = true;
+#endif
+}
+
 void GeneralServerFeature::defineInitialHandlers() {
   _handlerFactory->addHandler(
       "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
@@ -446,7 +477,7 @@ void GeneralServerFeature::defineInitialHandlers() {
       "/_admin/version", RestHandlerCreator<RestVersionHandler>::createNoData);
 }
 
-void GeneralServerFeature::defineHandlers() {
+void GeneralServerFeature::defineRemainingHandlers() {
   TRI_ASSERT(_jobManager != nullptr);
 
   AgencyFeature& agency = server().getFeature<AgencyFeature>();

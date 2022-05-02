@@ -40,7 +40,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/MaxMapCountFeature.h"
 
 #ifdef __linux__
@@ -80,9 +79,6 @@ EnvironmentFeature::EnvironmentFeature(Server& server)
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
 
-  if constexpr (Server::contains<FileDescriptorsFeature>()) {
-    startsAfter<FileDescriptorsFeature>();
-  }
   startsAfter<LogBufferFeature>();
   startsAfter<MaxMapCountFeature>();
   startsAfter<SharedPRNGFeature>();
