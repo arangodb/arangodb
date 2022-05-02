@@ -32,10 +32,10 @@
 
 #include <atomic>
 #include <cstdint>
-#include <list>
 #include <memory>
 #include <mutex>
 #include <utility>
+#include <vector>
 
 struct TRI_vocbase_t;
 
@@ -95,7 +95,7 @@ class FlushFeature final : public ArangodFeature {
   std::unique_ptr<FlushThread> _flushThread;
 
   std::mutex _flushSubscriptionsMutex;
-  std::list<std::weak_ptr<FlushSubscription>> _flushSubscriptions;
+  std::vector<std::weak_ptr<FlushSubscription>> _flushSubscriptions;
   bool _stopped;
 };
 

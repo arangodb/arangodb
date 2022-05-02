@@ -76,7 +76,7 @@ void RocksDBBackgroundThread::run() {
           // will happen when the recovery has finished. that way we
           // can quickly push forward the WAL lower bound value after
           // the recovery
-          bool forceSync = hasRunOnce ? false : true;
+          bool forceSync = !hasRunOnce;
 
           // force a sync after at most x iterations
           constexpr uint64_t maxRunsBeforeForce = 15;
