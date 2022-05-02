@@ -1329,6 +1329,7 @@ authRouter.get('/g6graph/:name', function (req, res) {
             var coll = edge._id.split('/')[0];
             if (tmpObjEdges.hasOwnProperty(coll)) {
               edgeObj.color = tmpObjEdges[coll];
+              edgeObj.style.stroke = tmpObjEdges[coll] || '#555555';
             } else {
               tmpObjEdges[coll] = colors.jans[Object.keys(tmpObjEdges).length];
               edgeObj.color = tmpObjEdges[coll];
