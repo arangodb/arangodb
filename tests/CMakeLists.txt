@@ -366,7 +366,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedState/ReplicatedStateFeatureTest.cpp
   Replication2/ReplicatedState/ReplicatedStateTest.cpp
   Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
-  Replication2/ReplicatedState/SupervisionSimulationTest2.cpp
+  Replication2/ReplicatedState/SupervisionModelChecker.cpp
   Replication2/ReplicatedState/SupervisionTest.cpp
   Replication2/Serialization/AgencyLogSpecificationTest.cpp
   Replication2/Serialization/LogCommonTest.cpp
