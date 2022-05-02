@@ -25,11 +25,9 @@
 
 #include <utility>
 
-#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutorExpressionContext.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
-#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/system-compiler.h"
 #include "Graph/Providers/SingleServerProvider.h"
@@ -41,8 +39,6 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
-#include "Enterprise/Graph/Steps/SmartGraphStep.h"
-#include "Enterprise/Graph/Steps/SmartGraphCoordinatorStep.h"
 #endif
 
 #include "Graph/algorithm-aliases.h"
@@ -57,13 +53,6 @@ namespace {
 auto toHashedStringRef(std::string const& id)
     -> arangodb::velocypack::HashedStringRef {
   return {id.data(), static_cast<uint32_t>(id.length())};
-}
-
-template<typename Derived, typename Base, typename Del>
-std::unique_ptr<Derived, Del> static_unique_ptr_cast(
-    std::unique_ptr<Base, Del>&& p) {
-  auto d = static_cast<Derived*>(p.release());
-  return std::unique_ptr<Derived, Del>(d, std::move(p.get_deleter()));
 }
 }  // namespace
 
@@ -80,7 +69,6 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     arangodb::aql::QueryContext& query,
     arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
     arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
-    TraverserOptions* opts,
     ClusterBaseProviderOptions&& clusterBaseProviderOptions, bool isSmart)
     : _registerMapping(std::move(registerMapping)),
       _fixedSource(std::move(fixedSource)),
@@ -100,7 +88,7 @@ TraversalExecutorInfos::TraversalExecutorInfos(
   TRI_ASSERT(_fixedSource.empty() ||
              (!_fixedSource.empty() &&
               _inputRegister.value() == RegisterId::maxRegisterId));
-  // All Nodes are located in the AST it cannot be non existing.
+  // All Nodes are located in the AST it cannot be non-existing.
   TRI_ASSERT(_ast != nullptr);
 
   /*
@@ -130,7 +118,6 @@ TraversalExecutorInfos::TraversalExecutorInfos(
     arangodb::aql::QueryContext& query,
     arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
     arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
-    TraverserOptions* opts,
     graph::SingleServerBaseProviderOptions&& singleServerBaseProviderOptions,
     bool isSmart)
     : _registerMapping(std::move(registerMapping)),
@@ -149,7 +136,7 @@ TraversalExecutorInfos::TraversalExecutorInfos(
   TRI_ASSERT(_fixedSource.empty() ||
              (!_fixedSource.empty() &&
               _inputRegister.value() == RegisterId::maxRegisterId));
-  // All Nodes are located in the AST it cannot be non existing.
+  // All Nodes are located in the AST it cannot be non-existing.
   TRI_ASSERT(_ast != nullptr);
 
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -270,30 +257,6 @@ arangodb::aql::QueryWarnings& TraversalExecutorInfos::getWarnings() {
   return _query.warnings();
 }
 
-std::pair<arangodb::graph::VertexUniquenessLevel,
-          arangodb::graph::EdgeUniquenessLevel>
-TraversalExecutorInfos::convertUniquenessLevels() const {
-  // TODO [GraphRefactor]: This should be a temporary function as we remove
-  // TraverserOptions in total after the graph refactor is done.
-  auto vertexUniquenessLevel = graph::VertexUniquenessLevel::NONE;
-  auto edgeUniquenessLevel = graph::EdgeUniquenessLevel::NONE;
-
-  if (getUniqueVertices() == traverser::TraverserOptions::PATH) {
-    vertexUniquenessLevel = graph::VertexUniquenessLevel::PATH;
-    edgeUniquenessLevel = graph::EdgeUniquenessLevel::PATH;
-  } else if (getUniqueVertices() == traverser::TraverserOptions::GLOBAL) {
-    vertexUniquenessLevel = graph::VertexUniquenessLevel::GLOBAL;
-    edgeUniquenessLevel = graph::EdgeUniquenessLevel::PATH;
-  }
-
-  if (getUniqueEdges() == traverser::TraverserOptions::PATH ||
-      getUniqueEdges() == traverser::TraverserOptions::GLOBAL) {
-    edgeUniquenessLevel = graph::EdgeUniquenessLevel::PATH;
-  }
-
-  return std::make_pair(vertexUniquenessLevel, edgeUniquenessLevel);
-}
-
 // TODO [GraphRefactor]: Add a parameter to toggle tracing variants of
 // enumerators.
 auto TraversalExecutorInfos::parseTraversalEnumeratorSingleServer(
@@ -326,8 +289,8 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorSingleServer(
           });
     }
   }
-  // This Assert is not necessary, we could be smart here, for disjoints.
-  // However current implementation does not hand in isSmart==true
+  // This assertion is not necessary, we could be smart here, for disjoints.
+  // However, the current implementation does not hand in isSmart==true
   // in the valid combination.
   TRI_ASSERT(!isSmart);
   bool useTracing = false;
@@ -468,20 +431,6 @@ auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
 
     output.advanceRow();
   }
-}
-
-auto TraversalExecutor::doSkip(AqlCall& call) -> size_t {
-  auto skip = size_t{0};
-
-  while (call.shouldSkip()) {
-    if (traversalEnumerator()->skipPath()) {
-      TRI_ASSERT(_inputRow.isInitialized());
-      skip++;
-      call.didSkip(1);
-    }
-  }
-
-  return skip;
 }
 
 auto TraversalExecutor::produceRows(AqlItemBlockInputRange& input,

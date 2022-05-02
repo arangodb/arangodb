@@ -73,7 +73,6 @@ class TraversalExecutorInfos {
       arangodb::aql::QueryContext& query,
       arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
       arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
-      traverser::TraverserOptions* opts,
       graph::ClusterBaseProviderOptions&& clusterBaseProviderOptions,
       bool isSmart = false);
   // TODO [GraphRefactor]: Tidy-up input parameter "mess" after refactor is
@@ -94,7 +93,6 @@ class TraversalExecutorInfos {
       arangodb::aql::QueryContext& query,
       arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
       arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
-      traverser::TraverserOptions* opts,
       graph::SingleServerBaseProviderOptions&& singleServerBaseProviderOptions,
       bool isSmart = false);
 
@@ -131,10 +129,6 @@ class TraversalExecutorInfos {
   RegisterId getInputRegister() const;
 
   Ast* getAst() const;
-
-  std::pair<arangodb::graph::VertexUniquenessLevel,
-            arangodb::graph::EdgeUniquenessLevel>
-  convertUniquenessLevels() const;
 
   auto parseTraversalEnumeratorSingleServer(
       traverser::TraverserOptions::Order order,
@@ -219,7 +213,6 @@ class TraversalExecutor {
 
  private:
   auto doOutput(OutputAqlItemRow& output) -> void;
-  [[nodiscard]] auto doSkip(AqlCall& call) -> size_t;
 
   [[nodiscard]] bool initTraverser(AqlItemBlockInputRange& input);
 

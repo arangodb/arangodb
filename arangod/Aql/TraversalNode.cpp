@@ -334,19 +334,6 @@ void TraversalNode::setInVariable(Variable const* inVariable) {
   _vertexId = "";
 }
 
-int TraversalNode::checkIsOutVariable(size_t variableId) const {
-  if (_vertexOutVariable != nullptr && _vertexOutVariable->id == variableId) {
-    return 0;
-  }
-  if (_edgeOutVariable != nullptr && _edgeOutVariable->id == variableId) {
-    return 1;
-  }
-  if (_pathOutVariable != nullptr && _pathOutVariable->id == variableId) {
-    return 2;
-  }
-  return -1;
-}
-
 void TraversalNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   // this is an important assertion: if options are already built,
@@ -415,23 +402,6 @@ bool TraversalNode::isInRange(uint64_t depth, bool isEdge) const {
     return (depth < opts->maxDepth);
   }
   return (depth <= opts->maxDepth);
-}
-
-/// @brief check if all directions are equal
-bool TraversalNode::allDirectionsEqual() const {
-  if (_directions.empty()) {
-    // no directions!
-    return false;
-  }
-  size_t const n = _directions.size();
-  TRI_edge_direction_e const expected = _directions[0];
-
-  for (size_t i = 1; i < n; ++i) {
-    if (_directions[i] != expected) {
-      return false;
-    }
-  }
-  return true;
 }
 
 void TraversalNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
@@ -749,7 +719,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createRefactoredBlock(
         outputRegisterMapping, getStartVertex(), inputRegister,
         plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges, opts->mode,
         opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
-        std::move(validatorOptions), std::move(options), opts,
+        std::move(validatorOptions), std::move(options),
         std::move(clusterBaseProviderOptions), isSmart);
 
     return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
@@ -763,7 +733,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createRefactoredBlock(
         outputRegisterMapping, getStartVertex(), inputRegister,
         plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges, opts->mode,
         opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
-        std::move(validatorOptions), std::move(options), opts,
+        std::move(validatorOptions), std::move(options),
         std::move(singleServerBaseProviderOptions), isSmart);
 
     return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
@@ -1172,7 +1142,7 @@ void TraversalNode::prepareOptions() {
   TraverserOptions* opts = this->TraversalNode::options();
   TRI_ASSERT(opts != nullptr);
   /*
-   * HACK: DO NOT use other indexes for smart BFS. Otherwise this will produce
+   * HACK: DO NOT use other indexes for smart BFS. Otherwise, this will produce
    * wrong results.
    */
   bool onlyEdgeIndexes = this->isSmart() && opts->isUseBreadthFirst();
