@@ -126,9 +126,8 @@ struct LogStatistics {
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice slice)
       -> LogStatistics;
 
-  [[nodiscard]] friend auto operator==(LogStatistics const& left,
-                                       LogStatistics const& right) noexcept
-      -> bool = default;
+  friend auto operator==(LogStatistics const& left,
+                         LogStatistics const& right) noexcept -> bool = default;
 };
 
 template<class Inspector>
