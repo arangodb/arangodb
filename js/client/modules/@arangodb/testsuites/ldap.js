@@ -22,6 +22,10 @@
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
 //
+// assumes that
+//    docker run -d --name ldap -p 389:389 arangodb/ldap-test | arangodb/ldap-test-x86_64:1
+// is running.
+//
 // @author Heiko Kernbach
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -191,9 +195,15 @@ const tests = {
 };
 
 function parseOptions(options, ldap2) {
+  let verbose = {};
+  if (options.extremeVerbosity) {
+    verbose['log.level'] = 'ldap=trace';
+  }
+
   let toReturn = tests;
 
   _.each(toReturn, function(opt) {
+    Object.assign(opt.conf, verbose);
     if (options.ldapHost) {
       opt.conf['ldap.server'] = options.ldapHost;
     }
@@ -221,13 +231,13 @@ class ldapTestRunner extends tu.runInArangoshRunner {
       return e.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
     };
 
-    const jwt = crypto.jwtEncode(this.options.server['server.jwt-secret'], {
+    const jwt = crypto.jwtEncode(this.serverOptions['server.jwt-secret'], {
       "preferred_username": "root",
       "iss": "arangodb",
       "exp": Math.floor(Date.now() / 1000) + 3600
     }, 'HS256');
 
-    const endpoints = this.instance.endpoints;
+    const endpoints = this.instanceInfo.endpoints;
     for (const endpoint of endpoints) {
       let result = request({
         method: "PUT",
@@ -267,7 +277,9 @@ function authenticationLdapSearchModePrefixSuffix(options) {
   print('Performing #1 Test: Search Mode - Simple Login Mode');
   print(opts.ldapModeSearchPrefixSuffix.conf);
   return new ldapTestRunner(options, 'ldap',
-    opts.ldapModeSearchPrefixSuffix.conf).run(testCases);
+                            opts.ldapModeSearchPrefixSuffix.conf,
+                            false
+                           ).run(testCases);
 }
 
 function authenticationLdapSearchMode(options) {
@@ -292,7 +304,9 @@ function authenticationLdapSearchMode(options) {
   print('Performing #2 Test: Search Mode');
   print(opts.ldapModeSearch.conf);
   return new ldapTestRunner(options, 'ldap',
-    opts.ldapModeSearch.conf).run(testCases);
+                            opts.ldapModeSearch.conf,
+                            false
+                           ).run(testCases);
 }
 
 function authenticationLdapSearchModePlaceholder(options) {
@@ -317,7 +331,9 @@ function authenticationLdapSearchModePlaceholder(options) {
   print('Performing #3 Test: Search Mode');
   print(opts.ldapModeSearch.conf);
   return new ldapTestRunner(options, 'ldap',
-    opts.ldapModeSearchPlaceholder.conf).run(testCases);
+                            opts.ldapModeSearchPlaceholder.conf,
+                            false
+                           ).run(testCases);
 }
 
 function authenticationLdapRolesModePrefixSuffix(options) {
@@ -342,7 +358,9 @@ function authenticationLdapRolesModePrefixSuffix(options) {
   print('Performing #4 Test: Role Mode - Simple Login Mode');
   print(opts.ldapModeRolesPrefixSuffix.conf);
   return new ldapTestRunner(options, 'ldap',
-    opts.ldapModeRolesPrefixSuffix.conf).run(testCases);
+                            opts.ldapModeRolesPrefixSuffix.conf,
+                            false
+                           ).run(testCases);
 }
 
 function authenticationLdapRolesMode(options) {
@@ -366,7 +384,10 @@ function authenticationLdapRolesMode(options) {
 
   print('Performing #5 Test: Role Mode');
   print(opts.ldapModeRoles.conf);
-  return new ldapTestRunner(options, 'ldap', opts.ldapModeRoles.conf).run(testCases);
+  return new ldapTestRunner(options, 'ldap',
+                            opts.ldapModeRoles.conf,
+                            false
+                           ).run(testCases);
 }
 
 function authenticationLdapTwoLdap(options) {
@@ -392,7 +413,10 @@ function authenticationLdapTwoLdap(options) {
 
   print('Performing #6 Test: Failover - Scenario 1: two active LDAP servers');
   print(opts.dualldap.conf);
-  return new ldapTestRunner(options, 'ldap', opts.dualldap.conf).run(testCases);
+  return new ldapTestRunner(options, 'ldap',
+                            opts.dualldap.conf,
+                            false
+                           ).run(testCases);
 }
 
 function authenticationLdapFirstLdap(options) {

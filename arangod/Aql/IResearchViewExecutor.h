@@ -93,7 +93,9 @@ class IResearchViewExecutorInfos {
       VarInfoMap const& varInfoMap, int depth,
       iresearch::IResearchViewNode::ViewValuesRegisters&&
           outNonMaterializedViewRegs,
-      iresearch::CountApproximate, iresearch::FilterOptimization);
+      iresearch::CountApproximate, iresearch::FilterOptimization,
+      std::vector<std::pair<size_t, bool>> scorersSort,
+      size_t scorersSortLimit);
 
   auto getDocumentRegister() const noexcept -> RegisterId;
   auto getCollectionRegister() const noexcept -> RegisterId;
@@ -130,6 +132,10 @@ class IResearchViewExecutorInfos {
 
   iresearch::IResearchViewStoredValues const& storedValues() const noexcept;
 
+  size_t scoresSortLimit() const noexcept { return _scorersSortLimit; }
+
+  auto scoresSort() const noexcept { return std::span{_scorersSort}; }
+
  private:
   aql::RegisterId _documentOutReg;
   aql::RegisterId _collectionPointerReg;
@@ -150,6 +156,8 @@ class IResearchViewExecutorInfos {
   iresearch::CountApproximate _countApproximate;
   bool _filterConditionIsEmpty;
   iresearch::FilterOptimization _filterOptimization;
+  std::vector<std::pair<size_t, bool>> _scorersSort;
+  size_t _scorersSortLimit;
 };  // IResearchViewExecutorInfos
 
 class IResearchViewStats {
@@ -211,15 +219,14 @@ class IndexReadBufferEntry {
 
 class ScoreIterator {
  public:
-  ScoreIterator(std::vector<AqlValueHintDouble>& scoreBuffer, size_t keyIdx,
+  ScoreIterator(std::span<float_t> scoreBuffer, size_t keyIdx,
                 size_t numScores) noexcept;
 
-  std::vector<AqlValueHintDouble>::iterator begin() noexcept;
-
-  std::vector<AqlValueHintDouble>::iterator end() noexcept;
+  auto begin() noexcept;
+  auto end() noexcept;
 
  private:
-  std::vector<AqlValueHintDouble>& _scoreBuffer;
+  std::span<float_t> _scoreBuffer;
   size_t _scoreBaseIdx;
   size_t _numScores;
 };
@@ -228,15 +235,29 @@ class ScoreIterator {
 template<typename ValueType, bool copyStored>
 class IndexReadBuffer {
  public:
-  explicit IndexReadBuffer(size_t numScoreRegisters);
+  using KeyValueType = ValueType;
+
+  explicit IndexReadBuffer(size_t numScoreRegisters, ResourceMonitor& monitor);
 
   ValueType const& getValue(IndexReadBufferEntry bufferEntry) const noexcept;
 
+  ValueType& getValue(size_t idx) noexcept {
+    TRI_ASSERT(_keyBuffer.size() > idx);
+    return _keyBuffer[idx];
+  }
+
   ScoreIterator getScores(IndexReadBufferEntry bufferEntry) noexcept;
+
+  void setScoresSort(std::span<std::pair<size_t, bool> const> s) noexcept {
+    _scoresSort = s;
+  }
 
   template<typename... Args>
   void pushValue(Args&&... args);
 
+  void pushSortedValue(ValueType&& value, float_t const* scores, size_t count);
+
+  void finalizeHeapSort();
   // A note on the scores: instead of saving an array of AqlValues, we could
   // save an array of floats plus a bitfield noting which entries should be
   // None.
@@ -245,7 +266,13 @@ class IndexReadBuffer {
 
   void pushScoreNone();
 
-  void reset() noexcept;
+  void reset() noexcept {
+    // Should only be called after everything was consumed
+    TRI_ASSERT(empty());
+    clear();
+  }
+
+  void clear() noexcept;
 
   size_t size() const noexcept;
 
@@ -257,14 +284,50 @@ class IndexReadBuffer {
   // before and after.
   void assertSizeCoherence() const noexcept;
 
+  size_t memoryUsage(size_t maxSize) const noexcept {
+    auto res =
+        maxSize * sizeof(typename decltype(_keyBuffer)::value_type) +
+        maxSize * sizeof(typename decltype(_scoreBuffer)::value_type) +
+        maxSize * sizeof(typename decltype(_storedValuesBuffer)::value_type);
+    if (!_scoresSort.empty()) {
+      res += maxSize * sizeof(typename decltype(_rows)::value_type);
+    }
+    return res;
+  }
+
   void preAllocateStoredValuesBuffer(size_t atMost, size_t scores,
                                      size_t stored) {
     TRI_ASSERT(_storedValuesBuffer.empty());
     if (_keyBuffer.capacity() < atMost) {
+      auto newMemoryUsage = memoryUsage(atMost);
+      auto tracked = _memoryTracker.tracked();
+      if (newMemoryUsage != tracked) {
+        if (newMemoryUsage > tracked) {
+          _memoryTracker.increase(newMemoryUsage - tracked);
+        } else {
+          _memoryTracker.decrease(tracked - newMemoryUsage);
+        }
+      }
       _keyBuffer.reserve(atMost);
       _scoreBuffer.reserve(atMost * scores);
       _storedValuesBuffer.reserve(atMost * stored);
+      if (!_scoresSort.empty()) {
+        _rows.reserve(atMost);
+      }
     }
+    _maxSize = atMost;
+    _heapSizeLeft = _maxSize;
+    _storedValuesCount = stored;
+  }
+
+  auto getMaterializeRange(size_t skip) const {
+    auto start = _rows.size() > skip ? skip : _rows.size();
+    return std::vector<size_t>{_rows.begin() + start, _rows.end()};
+  }
+
+  void setStoredValue(size_t idx, irs::bytes_ref value) {
+    TRI_ASSERT(idx < _storedValuesBuffer.size());
+    _storedValuesBuffer[idx] = value;
   }
 
   void pushStoredValue(irs::bytes_ref value) {
@@ -290,10 +353,18 @@ class IndexReadBuffer {
   // .
 
   std::vector<ValueType> _keyBuffer;
-  std::vector<AqlValueHintDouble> _scoreBuffer;
+  std::vector<float_t> _scoreBuffer;
   StoredValuesContainer _storedValuesBuffer;
+
   size_t _numScoreRegisters;
   size_t _keyBaseIdx;
+
+  std::span<std::pair<size_t, bool> const> _scoresSort;
+  std::vector<size_t> _rows;
+  size_t _maxSize;
+  size_t _heapSizeLeft;
+  size_t _storedValuesCount;
+  ResourceUsageScope _memoryTracker;
 };  // IndexReadBuffer
 
 template<typename Impl>
@@ -434,7 +505,7 @@ class IResearchViewExecutorBase {
                               size_t storedValuesIndex = 0);
 
  private:
-  bool next(ReadContext& ctx);
+  bool next(ReadContext& ctx, IResearchViewStats& stats);
 
  protected:
   transaction::Methods _trx;
@@ -471,8 +542,8 @@ class IResearchViewExecutor
 
   using ReadContext = typename Base::ReadContext;
 
-  size_t skip(size_t toSkip);
-  size_t skipAll();
+  size_t skip(size_t toSkip, IResearchViewStats&);
+  size_t skipAll(IResearchViewStats&);
 
   void saveCollection();
 
@@ -513,6 +584,7 @@ struct IResearchViewExecutorTraits<
   static constexpr bool Ordered = ordered;
   static constexpr iresearch::MaterializeType MaterializeType = materializeType;
   static constexpr bool CopyStored = copyStored;
+  static constexpr bool ExplicitScanned = false;
 };
 
 template<bool copyStored, bool ordered,
@@ -589,8 +661,8 @@ class IResearchViewMergeExecutor
   bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
 
   void reset();
-  size_t skip(size_t toSkip);
-  size_t skipAll();
+  size_t skip(size_t toSkip, IResearchViewStats&);
+  size_t skipAll(IResearchViewStats&);
 
  private:
   std::vector<Segment> _segments;
@@ -606,6 +678,120 @@ struct IResearchViewExecutorTraits<
   static constexpr bool Ordered = ordered;
   static constexpr iresearch::MaterializeType MaterializeType = materializeType;
   static constexpr bool CopyStored = copyStored;
+  static constexpr bool ExplicitScanned = false;
+};
+
+template<bool copyStored, bool ordered,
+         iresearch::MaterializeType materializeType>
+class IResearchViewHeapSortExecutor
+    : public IResearchViewExecutorBase<
+          IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>> {
+ public:
+  using Base = IResearchViewExecutorBase<
+      IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>>;
+  using Fetcher = typename Base::Fetcher;
+  using Infos = typename Base::Infos;
+
+  IResearchViewHeapSortExecutor(IResearchViewHeapSortExecutor&&) = default;
+  IResearchViewHeapSortExecutor(Fetcher& fetcher, Infos&);
+
+ private:
+  friend Base;
+  using ReadContext = typename Base::ReadContext;
+
+  size_t skip(size_t toSkip, IResearchViewStats& stats);
+  size_t skipAll(IResearchViewStats& stats);
+  size_t getScanned() const noexcept { return _totalCount; }
+  bool canSkipAll() const noexcept { return _bufferFilled && _totalCount; }
+
+  void reset();
+  void fillBuffer(ReadContext& ctx);
+  bool fillBufferInternal(size_t skip);
+
+  bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry);
+
+  size_t _totalCount{};
+  size_t _scannedCount{0};
+  size_t _bufferedCount{};
+  bool _bufferFilled{false};
+};  // ResearchViewHeapSortExecutor
+
+union UnitedDocumentId {
+  irs::doc_id_t irsId;
+  typename LocalDocumentId::BaseType adbId;
+};
+
+union UnitedSourceId {
+  size_t readerOffset;
+  LogicalCollection const* collection;
+};
+
+struct HeapSortExecutorValue {
+  HeapSortExecutorValue(irs::doc_id_t doc, size_t readerOffset) {
+    documentKey.irsId = doc;
+    collection.readerOffset = readerOffset;
+  }
+
+  void decode(LocalDocumentId docId, LogicalCollection const* col) noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(!decoded);
+    decoded = true;
+#endif
+
+    documentKey.adbId = docId.id();
+    collection.collection = col;
+  }
+
+  [[nodiscard]] irs::doc_id_t irsDocId() const noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(!decoded);
+#endif
+    return documentKey.irsId;
+  }
+
+  [[nodiscard]] size_t readerOffset() const noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(!decoded);
+#endif
+    return collection.readerOffset;
+  }
+
+  [[nodiscard]] LocalDocumentId documentId() const noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(decoded);
+#endif
+    return LocalDocumentId(documentKey.adbId);
+  }
+
+  [[nodiscard]] LogicalCollection const* collectionPtr() const noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(decoded);
+#endif
+    return collection.collection;
+  }
+
+ private:
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool decoded{false};
+#endif
+  UnitedDocumentId documentKey;
+  UnitedSourceId collection;
+};
+
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+static_assert(sizeof(HeapSortExecutorValue) <= 16,
+              "HeapSortExecutorValue size is not optimal");
+#endif
+
+template<bool copyStored, bool ordered,
+         iresearch::MaterializeType materializeType>
+struct IResearchViewExecutorTraits<
+    IResearchViewHeapSortExecutor<copyStored, ordered, materializeType>> {
+  using IndexBufferValueType = HeapSortExecutorValue;
+  static constexpr bool Ordered = ordered;
+  static constexpr iresearch::MaterializeType MaterializeType = materializeType;
+  static constexpr bool CopyStored = copyStored;
+  static constexpr bool ExplicitScanned = true;
 };
 
 }  // namespace aql
