@@ -36,9 +36,6 @@
 
 namespace arangodb::replication2::agency {
 
-using ParticipantsFlagsMap =
-    std::unordered_map<ParticipantId, ParticipantFlags>;
-
 struct LogPlanTermSpecification {
   LogTerm term;
   LogConfig config;
@@ -93,6 +90,9 @@ struct LogCurrentLocalState {
   auto toVelocyPack(VPackBuilder&) const -> void;
   LogCurrentLocalState() = default;
   LogCurrentLocalState(LogTerm, TermIndexPair) noexcept;
+  friend auto operator==(LogCurrentLocalState const& s,
+                         LogCurrentLocalState const& s2) noexcept
+      -> bool = default;
 };
 
 struct LogCurrentSupervisionElection {
@@ -157,6 +157,9 @@ struct LogCurrentSupervision {
       -> LogCurrentSupervision;
 
   LogCurrentSupervision() = default;
+  friend auto operator==(LogCurrentSupervision const& s,
+                         LogCurrentSupervision const& s2) noexcept
+      -> bool = default;
 };
 
 struct LogCurrent {
@@ -174,6 +177,8 @@ struct LogCurrent {
 
     auto toVelocyPack(VPackBuilder&) const -> void;
     [[nodiscard]] static auto fromVelocyPack(VPackSlice) -> Leader;
+    friend auto operator==(Leader const& s, Leader const& s2) noexcept
+        -> bool = default;
   };
 
   // Will be nullopt until a leader has been assumed leadership
@@ -183,12 +188,16 @@ struct LogCurrent {
   // Temporary hack until Actions are de-serializable.
   struct ActionDummy {
     std::string timestamp;
+    friend auto operator==(ActionDummy const& s, ActionDummy const& s2) noexcept
+        -> bool = default;
   };
   std::vector<ActionDummy> actions;
 
   auto toVelocyPack(VPackBuilder&) const -> void;
   [[nodiscard]] static auto fromVelocyPack(VPackSlice) -> LogCurrent;
   LogCurrent() = default;
+  friend auto operator==(LogCurrent const& s, LogCurrent const& s2) noexcept
+      -> bool = default;
 };
 
 struct LogTarget {
@@ -228,6 +237,8 @@ struct Log {
   // exist
   std::optional<LogPlanSpecification> plan;
   std::optional<LogCurrent> current;
+  friend auto operator==(Log const& s, Log const& s2) noexcept
+      -> bool = default;
 };
 
 }  // namespace arangodb::replication2::agency
