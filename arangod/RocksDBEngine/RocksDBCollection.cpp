@@ -572,21 +572,10 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     arangodb::aql::PlanCache::instance()->invalidate(vocbase);
 #endif
 
-    bool alreadySynced{false};
-    // FIXME: Better a virtual method. As Inverted index should have the same.
-    if (newIdx->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
-      // force index creation commit
-      newIdx->waitForSync();
-      // force tick release, so we will not double the inserts on recovery!
-      res = engine.settingsManager()->sync(true);
-      if (res.fail()) {
-        return res;
-      }
-      alreadySynced = true;
-    }
+    newIdx->waitForSync();
 
     // inBackground index might not recover selectivity estimate w/o sync
-    if (!alreadySynced && inBackground && !newIdx->unique() &&
+    if (inBackground && !newIdx->unique() &&
         newIdx->hasSelectivityEstimate()) {
       engine.settingsManager()->sync(false);
     }

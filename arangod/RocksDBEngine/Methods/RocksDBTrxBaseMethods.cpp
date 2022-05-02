@@ -312,6 +312,9 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
     // }
     // don't write anything if the transaction is empty
 #endif
+    _lastWrittenOperationTick = _readOptions.snapshot
+                                    ? _readOptions.snapshot->GetSequenceNumber()
+                                    : _db->GetLatestSequenceNumber();
     return Result();
   }
 
