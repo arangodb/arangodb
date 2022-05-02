@@ -739,24 +739,6 @@ auto TraverserOptions::isSatelliteLeader() const -> bool {
 }
 #endif
 
-auto TraverserOptions::getEdgeDestination(arangodb::velocypack::Slice edge,
-                                          std::string_view origin) const
-    -> std::string_view {
-  if (edge.isString()) {
-    return edge.stringView();
-  }
-
-  TRI_ASSERT(edge.isObject());
-  auto from = edge.get(arangodb::StaticStrings::FromString);
-  TRI_ASSERT(from.isString());
-  if (from.stringView() == origin) {
-    auto to = edge.get(arangodb::StaticStrings::ToString);
-    TRI_ASSERT(to.isString());
-    return to.stringView();
-  }
-  return from.stringView();
-}
-
 void TraverserOptions::initializeIndexConditions(
     aql::Ast* ast,
     std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
@@ -848,31 +830,11 @@ TraverserOptions::createPostFilterEvaluator(
       std::numeric_limits<std::size_t>::max(), expr);
 }
 
-void TraverserOptions::activatePrune(std::vector<aql::Variable const*> vars,
-                                     std::vector<aql::RegisterId> regs,
-                                     size_t vertexVarIdx, size_t edgeVarIdx,
-                                     size_t pathVarIdx, aql::Expression* expr) {
-  _pruneExpression = createPruneEvaluator(vars, regs, vertexVarIdx, edgeVarIdx,
-                                          pathVarIdx, expr);
-}
-
 void TraverserOptions::activatePostFilter(
     std::vector<aql::Variable const*> vars, std::vector<aql::RegisterId> regs,
     size_t vertexVarIdx, size_t edgeVarIdx, aql::Expression* expr) {
   _postFilterExpression =
       createPostFilterEvaluator(vars, regs, vertexVarIdx, edgeVarIdx, expr);
-}
-
-double TraverserOptions::weightEdge(VPackSlice edge) const {
-  TRI_ASSERT(mode == Order::WEIGHTED);
-  const auto weight =
-      arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-          edge, weightAttribute, defaultWeight);
-  if (weight < 0.) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
-  }
-
-  return weight;
 }
 
 auto TraverserOptions::estimateDepth() const noexcept -> uint64_t {

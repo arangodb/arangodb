@@ -165,11 +165,6 @@ struct TraverserOptions : public graph::BaseOptions {
       std::vector<aql::Variable const*> vars, std::vector<aql::RegisterId> regs,
       size_t vertexVarIdx, size_t edgeVarIdx, aql::Expression* expr);
 
-  void activatePrune(std::vector<aql::Variable const*> vars,
-                     std::vector<aql::RegisterId> regs, size_t vertexVarIdx,
-                     size_t edgeVarIdx, size_t pathVarIdx,
-                     aql::Expression* expr);
-
   void activatePostFilter(std::vector<aql::Variable const*> vars,
                           std::vector<aql::RegisterId> regs,
                           size_t vertexVarIdx, size_t edgeVarIdx,
@@ -182,18 +177,6 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool isUniqueGlobalVerticesAllowed() const {
     return mode == Order::BFS || mode == Order::WEIGHTED;
-  }
-
-  double weightEdge(VPackSlice edge) const;
-
-  aql::PruneExpressionEvaluator* getPruneEvaluator() {
-    TRI_ASSERT(usesPrune());
-    return _pruneExpression.get();
-  }
-
-  aql::PruneExpressionEvaluator* getPostFilterEvaluator() {
-    TRI_ASSERT(usesPostFilter());
-    return _postFilterExpression.get();
   }
 
   auto estimateDepth() const noexcept -> uint64_t override;
@@ -219,9 +202,6 @@ struct TraverserOptions : public graph::BaseOptions {
   auto isDisjoint() const -> bool;
 
   auto isSatelliteLeader() const -> bool;
-
-  auto getEdgeDestination(arangodb::velocypack::Slice edge,
-                          std::string_view origin) const -> std::string_view;
 
   void initializeIndexConditions(
       aql::Ast* ast,
