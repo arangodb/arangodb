@@ -293,10 +293,6 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
 
   this->_generalServerFeature.countVstRequest(buffer.size());
 
-  if (!this->checkServerAvailability(messageId, ContentType::UNSET)) {
-    return;
-  }
-
   try {
     // handle request types
     if (mt == fu::MessageType::Authentication) {  // auth

@@ -121,6 +121,8 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
   auto serverState = ServerState::instance();
 
   if (serverState != nullptr) {
+    bool const isStartup = (serverState->mode() == ServerState::Mode::STARTUP);
+
     result.add("serverInfo", VPackValue(VPackValueType::Object));
 
     result.add("maintenance",
@@ -132,7 +134,7 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
         VPackValue(!serverState->readOnly()));  // to be deprecated - 3.3 compat
     result.add("readOnly", VPackValue(serverState->readOnly()));
 
-    if (!serverState->isSingleServer()) {
+    if (!isStartup && !serverState->isSingleServer()) {
       result.add("persistedId", VPackValue(serverState->getPersistedId()));
       if (auto rid = serverState->getRebootId(); rid.initialized()) {
         result.add("rebootId", VPackValue(rid.value()));
@@ -150,47 +152,49 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
 
     result.close();
 
-    auto* agent = server().getFeature<AgencyFeature>().agent();
+    if (!isStartup) {
+      auto* agent = server().getFeature<AgencyFeature>().agent();
 
-    if (agent != nullptr) {
-      result.add("agent", VPackValue(VPackValueType::Object));
+      if (agent != nullptr) {
+        result.add("agent", VPackValue(VPackValueType::Object));
 
-      result.add("term", VPackValue(agent->term()));
-      result.add("id", VPackValue(agent->id()));
-      result.add("endpoint", VPackValue(agent->endpoint()));
-      result.add("leaderId", VPackValue(agent->leaderID()));
-      result.add("leading", VPackValue(agent->leading()));
+        result.add("term", VPackValue(agent->term()));
+        result.add("id", VPackValue(agent->id()));
+        result.add("endpoint", VPackValue(agent->endpoint()));
+        result.add("leaderId", VPackValue(agent->leaderID()));
+        result.add("leading", VPackValue(agent->leading()));
 
-      result.close();
-    }
-
-    if (serverState->isCoordinator()) {
-      result.add("coordinator", VPackValue(VPackValueType::Object));
-
-      result.add("foxxmaster", VPackValue(serverState->getFoxxmaster()));
-      result.add("isFoxxmaster", VPackValue(serverState->isFoxxmaster()));
-
-      result.close();
-    }
-
-    auto manager = AsyncAgencyCommManager::INSTANCE.get();
-
-    if (manager != nullptr) {
-      result.add("agency", VPackValue(VPackValueType::Object));
-
-      {
-        result.add("agencyComm", VPackValue(VPackValueType::Object));
-        result.add("endpoints", VPackValue(VPackValueType::Array));
-
-        for (auto const& ep : manager->endpoints()) {
-          result.add(VPackValue(ep));
-        }
-
-        result.close();
         result.close();
       }
 
-      result.close();
+      if (serverState->isCoordinator()) {
+        result.add("coordinator", VPackValue(VPackValueType::Object));
+
+        result.add("foxxmaster", VPackValue(serverState->getFoxxmaster()));
+        result.add("isFoxxmaster", VPackValue(serverState->isFoxxmaster()));
+
+        result.close();
+      }
+
+      auto manager = AsyncAgencyCommManager::INSTANCE.get();
+
+      if (manager != nullptr) {
+        result.add("agency", VPackValue(VPackValueType::Object));
+
+        {
+          result.add("agencyComm", VPackValue(VPackValueType::Object));
+          result.add("endpoints", VPackValue(VPackValueType::Array));
+
+          for (auto const& ep : manager->endpoints()) {
+            result.add(VPackValue(ep));
+          }
+
+          result.close();
+          result.close();
+        }
+
+        result.close();
+      }
     }
   }
 
@@ -222,28 +226,36 @@ RestStatus RestStatusHandler::executeOverview() {
   auto serverState = ServerState::instance();
 
   if (serverState != nullptr) {
+    bool const isStartup = (serverState->mode() == ServerState::Mode::STARTUP);
+
     auto role = serverState->getRole();
     result.add("role", VPackValue(ServerState::roleToString(role)));
 
     if (role == ServerState::ROLE_COORDINATOR) {
-      AgencyCache& agencyCache =
-          server().getFeature<ClusterFeature>().agencyCache();
-      auto [b, i] = agencyCache.get("arango/Plan");
+      if (!isStartup) {
+        AgencyCache& agencyCache =
+            server().getFeature<ClusterFeature>().agencyCache();
+        auto [b, i] = agencyCache.get("arango/Plan");
 
-      VPackSlice planSlice = b->slice().get(
-          std::vector<std::string>{AgencyCommHelper::path(), "Plan"});
+        VPackSlice planSlice = b->slice().get(
+            std::vector<std::string>{AgencyCommHelper::path(), "Plan"});
 
-      if (planSlice.isObject()) {
-        if (planSlice.hasKey("Coordinators")) {
-          auto coordinators = planSlice.get("Coordinators");
-          buffer.appendHex(
-              static_cast<uint32_t>(VPackObjectIterator(coordinators).size()));
+        if (planSlice.isObject()) {
+          if (planSlice.hasKey("Coordinators")) {
+            auto coordinators = planSlice.get("Coordinators");
+            buffer.appendHex(static_cast<uint32_t>(
+                VPackObjectIterator(coordinators).size()));
+            buffer.appendText("-");
+          }
+          if (planSlice.hasKey("DBServers")) {
+            auto dbservers = planSlice.get("DBServers");
+            buffer.appendHex(
+                static_cast<uint32_t>(VPackObjectIterator(dbservers).size()));
+          }
+        } else {
+          buffer.appendHex(static_cast<uint32_t>(0xFFFF));
           buffer.appendText("-");
-        }
-        if (planSlice.hasKey("DBServers")) {
-          auto dbservers = planSlice.get("DBServers");
-          buffer.appendHex(
-              static_cast<uint32_t>(VPackObjectIterator(dbservers).size()));
+          buffer.appendHex(static_cast<uint32_t>(1));
         }
       } else {
         buffer.appendHex(static_cast<uint32_t>(0xFFFF));

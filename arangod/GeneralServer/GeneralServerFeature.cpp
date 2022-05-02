@@ -475,6 +475,8 @@ void GeneralServerFeature::defineInitialHandlers() {
       "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
   _handlerFactory->addHandler(
       "/_admin/version", RestHandlerCreator<RestVersionHandler>::createNoData);
+  _handlerFactory->addHandler(
+      "/_admin/status", RestHandlerCreator<RestStatusHandler>::createNoData);
 }
 
 void GeneralServerFeature::defineRemainingHandlers() {
@@ -713,9 +715,6 @@ void GeneralServerFeature::defineRemainingHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_admin/cluster",
       RestHandlerCreator<arangodb::RestAdminClusterHandler>::createNoData);
-
-  _handlerFactory->addHandler(
-      "/_admin/status", RestHandlerCreator<RestStatusHandler>::createNoData);
 
   if (_supportInfoApiPolicy != "disabled") {
     _handlerFactory->addHandler(

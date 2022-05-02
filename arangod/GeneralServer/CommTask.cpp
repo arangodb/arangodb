@@ -146,26 +146,6 @@ CommTask::CommTask(GeneralServer& server, ConnectionInfo info)
 
 CommTask::~CommTask() { _connectionStatistics.SET_END(); }
 
-bool CommTask::checkServerAvailability(uint64_t messageId,
-                                       ContentType contentTypeResponse) {
-  if (ServerState::mode() == ServerState::Mode::STARTUP) {
-    this->sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE,
-                            contentTypeResponse, messageId,
-                            TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
-                            "service unavailable due to startup");
-    return false;
-  }
-
-  if (_server.server().isStopping()) {
-    this->sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE,
-                            contentTypeResponse, messageId,
-                            TRI_ERROR_SHUTTING_DOWN);
-    return false;
-  }
-
-  return true;
-}
-
 /// Must be called before calling executeRequest, will send an error
 /// response if execution is supposed to be aborted
 CommTask::Flow CommTask::prepareExecution(
@@ -173,6 +153,13 @@ CommTask::Flow CommTask::prepareExecution(
   DTRACE_PROBE1(arangod, CommTaskPrepareExecution, this);
 
   // Step 1: In the shutdown phase we simply return 503:
+  if (_server.server().isStopping()) {
+    this->sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE,
+                            req.contentTypeResponse(), req.messageId(),
+                            TRI_ERROR_SHUTTING_DOWN);
+    return Flow::Abort;
+  }
+
   if (Logger::isEnabled(arangodb::LogLevel::DEBUG, Logger::REQUESTS)) {
     bool found;
     std::string const& source =
@@ -190,13 +177,16 @@ CommTask::Flow CommTask::prepareExecution(
   ServerState::Mode mode = ServerState::mode();
   switch (mode) {
     case ServerState::Mode::STARTUP: {
-      // should not happen, because it is checked before the call to
-      // prepareExecution, but doesn't do any harm here to handle it correctly.
-      sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE,
-                        req.contentTypeResponse(), req.messageId(),
-                        TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
-                        "service unavailable due to startup");
-      return Flow::Abort;
+      if (path != "/_admin/status" && path != "/_api/version" &&
+          path != "/_admin/version") {
+        // most routes are disallowed during startup, except the ones above.
+        sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE,
+                          req.contentTypeResponse(), req.messageId(),
+                          TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                          "service unavailable due to startup");
+        return Flow::Abort;
+      }
+      break;
     }
 
     case ServerState::Mode::MAINTENANCE: {
@@ -848,7 +838,16 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req) {
   if (authStr.size() >= 6) {
     if (strncasecmp(authStr.c_str(), "basic ", 6) == 0) {
       authMethod = AuthenticationMethod::BASIC;
+      if (ServerState::mode() == ServerState::Mode::STARTUP) {
+        // during startup, the normal authentication is not available
+        // yet. so we have to refuse all requests that do not use
+        // a JWT.
+        // do not audit-log anything in this case, because there is
+        // nothing we can do to verify the credentials.
+        return auth::TokenCache::Entry::Unauthenticated();
+      }
     } else if (strncasecmp(authStr.c_str(), "bearer ", 7) == 0) {
+      // JWT authentication is allowed during startup as well.
       authMethod = AuthenticationMethod::JWT;
     }
   }

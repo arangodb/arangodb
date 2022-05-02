@@ -493,12 +493,6 @@ void HttpCommTask<T>::doProcessRequest() {
     }
   }
 
-  if (!this->checkServerAvailability(_request->messageId(),
-                                     _request->contentTypeResponse())) {
-    // error message already sent here.
-    return;
-  }
-
   // store origin header for later use
   _origin = _request->header(StaticStrings::Origin);
 
