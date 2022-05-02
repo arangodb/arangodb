@@ -1,6 +1,8 @@
 v3.9.2 (XXXX-XX-XX)
 -------------------
 
+* Updated arangosync to v2.9.1.
+
 * Fix agency inception when one of the gossip peers responds with HTTP 503 or
   another unexpected error.
 
@@ -30,8 +32,6 @@ v3.9.2 (XXXX-XX-XX)
   write operations time out while waiting to acquire this global mutex. The lock
   timeout on followers is now significantly increased to make this very
   unlikely.
-
-* Updated arangosync to v2.9.0.
 
 * Improve validation for variables used in the `KEEP` part of AQL COLLECT
   operations. Previously referring to a variable that was introduced by the
