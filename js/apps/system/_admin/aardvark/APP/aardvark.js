@@ -1421,9 +1421,11 @@ authRouter.get('/g6graph/:name', function (req, res) {
             if (attr) {
               if (tmpObjNodes.hasOwnProperty(attr)) {
                 nodeObj.color = tmpObjNodes[attr];
+                nodeObj.style.fill = tmpObjNodes[attr] || '#ff0'; 
               } else {
                 tmpObjNodes[attr] = colors.jans[Object.keys(tmpObjNodes).length];
                 nodeObj.color = tmpObjNodes[attr];
+                nodeObj.style.fill = tmpObjNodes[attr] || '#ff0'; 
               }
             }
           }
