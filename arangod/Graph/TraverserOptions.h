@@ -53,8 +53,6 @@ class EdgeCursor;
 
 namespace traverser {
 
-class ClusterTraverser;
-
 struct TraverserOptions : public graph::BaseOptions {
   friend class arangodb::aql::TraversalNode;
 
@@ -69,8 +67,6 @@ struct TraverserOptions : public graph::BaseOptions {
       _vertexExpressions;
 
   std::unique_ptr<aql::Expression> _baseVertexExpression;
-
-  arangodb::traverser::ClusterTraverser* _traverser;
 
   /// @brief The condition given in PRUNE (might be empty)
   ///        The Node keeps responsibility
@@ -155,10 +151,6 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool evaluateEdgeExpression(arangodb::velocypack::Slice,
                               std::string_view vertexId, uint64_t, size_t);
-
-  bool evaluateVertexExpression(arangodb::velocypack::Slice, uint64_t);
-
-  void linkTraverser(arangodb::traverser::ClusterTraverser*);
 
   std::unique_ptr<arangodb::graph::EdgeCursor> buildCursor(uint64_t depth);
 

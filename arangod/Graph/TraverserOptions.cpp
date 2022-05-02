@@ -45,7 +45,6 @@ using VPackHelper = arangodb::basics::VelocyPackHelper;
 TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query)
     : BaseOptions(query),
       _baseVertexExpression(nullptr),
-      _traverser(nullptr),
       minDepth(1),
       maxDepth(1),
       useNeighbors(false),
@@ -177,7 +176,6 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
                                    VPackSlice info, VPackSlice collections)
     : BaseOptions(query, info, collections),
       _baseVertexExpression(nullptr),
-      _traverser(nullptr),
       minDepth(1),
       maxDepth(1),
       useNeighbors(false),
@@ -400,7 +398,6 @@ TraverserOptions::TraverserOptions(TraverserOptions const& other,
     : BaseOptions(static_cast<BaseOptions const&>(other),
                   allowAlreadyBuiltCopy),
       _baseVertexExpression(nullptr),
-      _traverser(nullptr),
       _producePathsVertices(other._producePathsVertices),
       _producePathsEdges(other._producePathsEdges),
       _producePathsWeights(other._producePathsWeights),
@@ -781,22 +778,6 @@ void TraverserOptions::calculateIndexExpressions(aql::Ast* ast) {
   }
 }
 
-bool TraverserOptions::evaluateVertexExpression(
-    arangodb::velocypack::Slice vertex, uint64_t depth) {
-  arangodb::aql::Expression* expression = nullptr;
-
-  auto specific = _vertexExpressions.find(depth);
-
-  if (specific != _vertexExpressions.end()) {
-    expression = specific->second.get();
-  } else {
-    expression = _baseVertexExpression.get();
-  }
-
-  vertex = vertex.resolveExternal();
-  return evaluateExpression(expression, vertex);
-}
-
 std::unique_ptr<EdgeCursor> arangodb::traverser::TraverserOptions::buildCursor(
     uint64_t depth) {
   ensureCache();
@@ -815,10 +796,6 @@ std::unique_ptr<EdgeCursor> arangodb::traverser::TraverserOptions::buildCursor(
   // otherwise, retain / reuse the general (global) cursor
   return std::make_unique<graph::SingleServerEdgeCursor>(this, _tmpVar, nullptr,
                                                          _baseLookupInfos);
-}
-
-void TraverserOptions::linkTraverser(ClusterTraverser* trav) {
-  _traverser = trav;
 }
 
 double TraverserOptions::estimateCost(size_t& nrItems) const {
