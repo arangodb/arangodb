@@ -556,6 +556,11 @@ struct Functions {
   static AqlValue MakeDistributeGraphInput(arangodb::aql::ExpressionContext*,
                                            AstNode const&,
                                            VPackFunctionParameters const&);
+#ifdef USE_ENTERPRISE
+  static AqlValue SelectSmartDistributeGraphInput(
+      arangodb::aql::ExpressionContext*, AstNode const&,
+      VPackFunctionParameters const&);
+#endif
 
   static AqlValue DecayGauss(arangodb::aql::ExpressionContext*, AstNode const&,
                              VPackFunctionParameters const&);
