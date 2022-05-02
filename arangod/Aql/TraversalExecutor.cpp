@@ -306,7 +306,6 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorSingleServer(
     OneSidedEnumeratorOptions&& enumeratorOptions, bool isSmart) -> void {
   if (order == TraverserOptions::Order::WEIGHTED) {
     // It is valid to not have set a weightAttribute.
-    // TRI_ASSERT(_opts->hasWeightAttribute());
     if (weightAttribute.empty()) {
       baseProviderOptions.setWeightEdgeCallback(
           [defaultWeight](double previousWeight, VPackSlice edge) -> double {
@@ -355,7 +354,6 @@ auto TraversalExecutorInfos::parseTraversalEnumeratorCluster(
     bool isSmart) -> void {
   if (order == TraverserOptions::Order::WEIGHTED) {
     // It is valid to not have set a weightAttribute.
-    // TRI_ASSERT(_opts->hasWeightAttribute());
     if (weightAttribute.empty()) {
       baseProviderOptions.setWeightEdgeCallback(
           [defaultWeight](double previousWeight, VPackSlice edge) -> double {

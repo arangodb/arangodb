@@ -677,37 +677,6 @@ bool TraverserOptions::hasSpecificCursorForDepth(uint64_t depth) const {
   return _depthLookupInfo.contains(depth);
 }
 
-bool TraverserOptions::vertexHasFilter(uint64_t depth) const {
-  if (_baseVertexExpression != nullptr) {
-    return true;
-  }
-  return _vertexExpressions.find(depth) != _vertexExpressions.end();
-}
-
-bool TraverserOptions::hasEdgeFilter(int64_t depth, size_t cursorId) const {
-  if (_isCoordinator) {
-    // The Coordinator never checks conditions. The DBServer is responsible!
-    return false;
-  }
-  arangodb::aql::Expression* expression = nullptr;
-
-  auto specific = _depthLookupInfo.find(depth);
-
-  if (specific != _depthLookupInfo.end()) {
-    TRI_ASSERT(!specific->second.empty());
-    TRI_ASSERT(specific->second.size() > cursorId);
-    expression = specific->second[cursorId].expression.get();
-  } else {
-    bool unused;
-    expression = getEdgeExpression(cursorId, unused);
-  }
-  return expression != nullptr;
-}
-
-bool TraverserOptions::hasVertexCollectionRestrictions() const {
-  return !vertexCollections.empty();
-}
-
 bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
                                               std::string_view vertexId,
                                               uint64_t depth, size_t cursorId) {
@@ -927,10 +896,6 @@ double TraverserOptions::weightEdge(VPackSlice edge) const {
   }
 
   return weight;
-}
-
-bool TraverserOptions::hasWeightAttribute() const {
-  return !weightAttribute.empty();
 }
 
 auto TraverserOptions::estimateDepth() const noexcept -> uint64_t {

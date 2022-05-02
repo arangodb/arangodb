@@ -153,14 +153,6 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool hasSpecificCursorForDepth(uint64_t depth) const;
 
-  bool vertexHasFilter(uint64_t) const;
-
-  bool hasEdgeFilter(int64_t, size_t) const;
-
-  bool hasWeightAttribute() const;
-
-  bool hasVertexCollectionRestrictions() const;
-
   bool evaluateEdgeExpression(arangodb::velocypack::Slice,
                               std::string_view vertexId, uint64_t, size_t);
 
