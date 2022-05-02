@@ -194,12 +194,10 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Aql/PruneExpressionEvaluator.cpp
   Cluster/CallbackGuard.cpp
   Cluster/ClusterEdgeCursor.cpp
-  Cluster/ClusterTraverser.cpp
   Cluster/ServerDefaults.cpp
   Cluster/TraverserEngine.cpp
   Graph/AttributeWeightShortestPathFinder.cpp
   Graph/BaseOptions.cpp
-  Graph/BreadthFirstEnumerator.cpp
   Graph/ClusterGraphDatalake.cpp
   Graph/ClusterTraverserCache.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
@@ -207,20 +205,15 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/GraphManager.cpp
   Graph/GraphOperations.cpp
   Graph/KShortestPathsFinder.cpp
-  Graph/NeighborsEnumerator.cpp
-  Graph/PathEnumerator.cpp
   Graph/ShortestPathFinder.cpp
   Graph/ShortestPathOptions.cpp
   Graph/ShortestPathResult.cpp
   Graph/ShortestPathType.cpp
   Graph/SingleServerEdgeCursor.cpp
-  Graph/SingleServerTraverser.cpp
-  Graph/Traverser.cpp
-  Graph/TraverserCache.cpp
+  Graph/TraverserCache.cpp # maybe remove
   Graph/TraverserCacheFactory.cpp
   Graph/TraverserDocumentCache.cpp
   Graph/TraverserOptions.cpp
-  Graph/WeightedEnumerator.cpp
   Graph/Cursors/RefactoredSingleServerEdgeCursor.cpp
   Graph/Cache/RefactoredTraverserCache.cpp
   Graph/Cache/RefactoredClusterTraverserCache.cpp

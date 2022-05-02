@@ -32,7 +32,6 @@
 #include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Graph/SingleServerEdgeCursor.h"
-#include "Graph/SingleServerTraverser.h"
 #include "Indexes/Index.h"
 
 #include <velocypack/Iterator.h>
@@ -835,28 +834,6 @@ bool TraverserOptions::checkSmartDestination(
   return false;
 }
 #endif
-
-bool TraverserOptions::destinationCollectionAllowed(
-    VPackSlice edge, std::string_view sourceVertex) const {
-  if (hasVertexCollectionRestrictions()) {
-    auto destination = getEdgeDestination(edge, sourceVertex);
-    auto collection =
-        transaction::helpers::extractCollectionFromId(destination);
-    if (std::find(vertexCollections.begin(), vertexCollections.end(),
-                  std::string_view(collection.data(), collection.size())) ==
-        vertexCollections.end()) {
-      // collection not found
-      return false;
-    }
-  }
-#ifdef USE_ENTERPRISE
-  if (!checkSmartDestination(edge, sourceVertex)) {
-    return false;
-  }
-#endif
-
-  return true;
-}
 
 std::unique_ptr<EdgeCursor> arangodb::traverser::TraverserOptions::buildCursor(
     uint64_t depth) {
