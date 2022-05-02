@@ -36,6 +36,7 @@
 #include <Basics/Guarded.h>
 #include <Futures/Future.h>
 
+#include <condition_variable>
 #include <map>
 #include <memory>
 #include <mutex>
