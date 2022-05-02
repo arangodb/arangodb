@@ -127,9 +127,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
   application_features::ApplicationServer& _server;
 
-  // used to track used IDs for key-generators
-  std::map<uint64_t, uint64_t> _generators;
-
+  rocksdb::SequenceNumber const _recoveryStartSequence;
   // max tick found
   uint64_t _maxTick;
   uint64_t _maxHLC;
@@ -145,8 +143,10 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
  public:
   /// @param seqs sequence number from which to count operations
   explicit WBReader(application_features::ApplicationServer& server,
+                    rocksdb::SequenceNumber recoveryStartSequence,
                     rocksdb::SequenceNumber& currentSequence)
       : _server(server),
+        _recoveryStartSequence(recoveryStartSequence),
         _maxTick(TRI_NewTickServer()),
         _maxHLC(0),
         _entriesScanned(0),
@@ -172,8 +172,11 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         LOG_TOPIC("a4ec8", INFO, Logger::ENGINES)
             << "RocksDB recovery finished, "
             << "WAL entries scanned: " << _entriesScanned
-            << ", max tick found in WAL: " << _maxTick
-            << ", last HLC value: " << _maxHLC;
+            << ", recovery start sequence number: " << _recoveryStartSequence
+            << ", latest WAL sequence number: "
+            << _engine.db()->GetLatestSequenceNumber()
+            << ", max tick value found in WAL: " << _maxTick
+            << ", last HLC value found in WAL: " << _maxHLC;
       }
 
       // update ticks after parsing wal
@@ -578,9 +581,6 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
       helper->prepare();
     }
 
-    TRI_ASSERT(_tick == 0);
-    // Tell the WriteBatch reader the transaction markers to look for
-    WBReader handler(server, _tick);
     rocksdb::SequenceNumber earliest =
         engine.settingsManager()->earliestSeqNeeded();
     auto minTick = std::min(earliest, engine.releasedTick());
@@ -589,8 +589,13 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
       LOG_TOPIC("fe333", INFO, Logger::ENGINES)
           << "RocksDB recovery starting, scanning WAL starting from sequence "
              "number "
-          << minTick;
+          << minTick
+          << ", latest sequence number: " << _db->GetLatestSequenceNumber();
     }
+
+    TRI_ASSERT(_tick == 0);
+    // Tell the WriteBatch reader the transaction markers to look for
+    WBReader handler(server, minTick, _tick);
 
     // prevent purging of WAL files while we are in here
     RocksDBFilePurgePreventer purgePreventer(engine.disallowPurging());

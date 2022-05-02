@@ -96,7 +96,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// otherwise the non-negative number is the index of the expanding one.
   std::vector<int> const& expanding() const { return _expanding; }
 
-  static constexpr size_t minimalPrefixSize() { return sizeof(TRI_voc_tick_t); }
+  /// @brief whether or not the index has estimates
+  bool hasEstimates() const noexcept { return _estimates; }
 
   /// @brief attempts to locate an entry in the index
   std::unique_ptr<IndexIterator> lookup(transaction::Methods*,
