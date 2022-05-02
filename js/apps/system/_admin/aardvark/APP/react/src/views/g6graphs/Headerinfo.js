@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Dropdown, Switch, Input, Space, Menu, Tag, Card, Select, PageHeader, Tabs, Button, Statistic, Descriptions, Tooltip } from 'antd';
 import GraphDataInfo from './GraphDataInfo';
-import { InfoCircleOutlined, SaveOutlined, NodeIndexOutlined, NodeExpandOutlined, DownloadOutlined, FullscreenOutlined, ShareAltOutlined, CameraOutlined, SearchOutlined } from '@ant-design/icons';
+import { RollbackOutlined, InfoCircleOutlined, SaveOutlined, NodeIndexOutlined, NodeExpandOutlined, DownloadOutlined, FullscreenOutlined, ShareAltOutlined, CameraOutlined, SearchOutlined } from '@ant-design/icons';
 import LayoutSelector from './LayoutSelector.js';
 import { ResponseInfo } from './ResponseInfo';
 import { data2 } from './data2';
@@ -108,15 +108,15 @@ const screenshotMenu = (
       extra={[
         <>
           <Tooltip placement="bottom" title={"Fetch full graph - use with caution"}>
-            <Button key="4" onClick={onLoadFullGraph()}><DownloadOutlined /></Button>
+            <Button key="1" onClick={onLoadFullGraph()}><DownloadOutlined /></Button>
           </Tooltip>
           
-            <Dropdown overlay={screenshotMenu} placement="bottomRight">
-              <Button><CameraOutlined /></Button>
-            </Dropdown>
-          
+          <Dropdown overlay={screenshotMenu} placement="bottomRight">
+            <Button key="2"><CameraOutlined /></Button>
+          </Dropdown>
+
           <Tooltip placement="bottom" title={"Switch to fullscreen mode"}>
-            <Button key="2"
+            <Button key="3"
               onClick={() => {
                 const elem = document.getElementById("graph-card");
                 if (elem.requestFullscreen) {
@@ -124,9 +124,14 @@ const screenshotMenu = (
                 }}}><FullscreenOutlined />
             </Button>
           </Tooltip>
-          <Button key="1">
-            Primary
-          </Button>
+
+          <Tooltip placement="bottom" title={"Use old graph viewer"}>
+            <Button key="4"
+              onClick={() => {
+                window.location.href = `/_db/_system/_admin/aardvark/index.html#graph/${graphName}`;
+              }}><RollbackOutlined />
+            </Button>
+          </Tooltip>
         </>
       ]}
       ghost={false}
