@@ -98,7 +98,8 @@ static std::shared_ptr<VPackBuilder> compareRelevantProps(
     VPackSlice const& first, VPackSlice const& second) {
   static std::vector<std::string> const compareProperties{
       WAIT_FOR_SYNC, SCHEMA, CACHE_ENABLED,
-      StaticStrings::InternalValidatorTypes};
+      StaticStrings::InternalValidatorTypes,
+      StaticStrings::GraphSmartGraphAttribute};
   auto result = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder b(result.get());
@@ -1157,20 +1158,29 @@ arangodb::Result arangodb::maintenance::executePlan(
       feature.addAction(std::move(action), false);
     } else {
       TRI_ASSERT(action->has(SHARD));
+      TRI_ASSERT(action->has(DATABASE));
 
       std::string shardName = action->get(SHARD);
       bool ok = feature.lockShard(shardName, action);
-      TRI_ASSERT(ok);
-      try {
-        Result res = feature.addAction(std::move(action), false);
-        if (res.fail()) {
+      if (ok) {
+        try {
+          Result res = feature.addAction(std::move(action), false);
+          if (res.fail()) {
+            feature.unlockShard(shardName);
+          }
+        } catch (std::exception const& exc) {
           feature.unlockShard(shardName);
+          LOG_TOPIC("86762", INFO, Logger::MAINTENANCE)
+              << "Exception caught when adding action, unlocking shard "
+              << shardName << " again: " << exc.what();
         }
-      } catch (std::exception const& exc) {
-        feature.unlockShard(shardName);
-        LOG_TOPIC("86762", INFO, Logger::MAINTENANCE)
-            << "Exception caught when adding action, unlocking shard "
-            << shardName << " again: " << exc.what();
+      } else {
+        TRI_ASSERT(action->has(DATABASE));
+        std::string dbName = action->get(DATABASE);
+        // For security measure let us flag this database as dirty.
+        // This ensures we are going to recheck it next turn when the shard
+        // is hopefully unlocked
+        feature.addDirty(dbName);
       }
     }
   }

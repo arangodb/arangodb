@@ -108,6 +108,7 @@ class RestoreFeature final : public ArangoRestoreFeature {
     bool includeSystemCollections{false};
     bool overwrite{true};
     bool useEnvelope{true};
+    bool enableRevisionTrees{true};
     bool continueRestore{false};
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
     bool failOnUpdateContinueFile{false};
