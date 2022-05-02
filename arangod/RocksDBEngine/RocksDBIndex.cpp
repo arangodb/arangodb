@@ -63,8 +63,9 @@ RocksDBIndex::RocksDBIndex(
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
     bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
     uint64_t objectId, bool useCache, cache::Manager* cacheManager,
-    RocksDBEngine& engine)
-    : Index(id, collection, name, attributes, unique, sparse),
+    RocksDBEngine& engine, size_t numThreads, uint64_t threadBatchSize)
+    : Index(id, collection, name, attributes, unique, sparse, numThreads,
+            threadBatchSize),
       _cf(cf),
       _cacheManager(cacheManager != nullptr && !collection.system() &&
                             !collection.isAStub() &&

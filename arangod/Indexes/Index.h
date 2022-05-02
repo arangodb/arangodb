@@ -81,7 +81,8 @@ class Index {
 
   Index(IndexId iid, LogicalCollection& collection, std::string const& name,
         std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
-        bool unique, bool sparse);
+        bool unique, bool sparse, size_t numThreads = 2,
+        uint64_t threadBatchSize = 500);
 
   Index(IndexId iid, LogicalCollection& collection,
         arangodb::velocypack::Slice slice);
@@ -253,6 +254,12 @@ class Index {
 
   /// @brief whether or not the index is unique
   inline bool unique() const { return _unique; }
+
+  /// @brief number of threads for associating index to documents
+  inline size_t numThreads() const { return _numThreads; }
+
+  /// @brief number of documents each thread will process for associating index
+  inline uint64_t threadBatchSize() const { return _threadBatchSize; }
 
   /// @brief validate fields from slice
   static void validateFields(velocypack::Slice slice);
@@ -490,6 +497,8 @@ class Index {
 
   mutable bool _unique;
   mutable bool _sparse;
+  size_t _numThreads;
+  uint64_t _threadBatchSize;
 };
 
 /// @brief simple struct that takes an AstNode of type comparison and

@@ -535,6 +535,31 @@ void IndexFactory::processIndexInBackground(VPackSlice definition,
   builder.add(StaticStrings::IndexInBackground, VPackValue(bck));
 }
 
+Result IndexFactory::processIndexNumThreads(VPackSlice definition,
+                                            VPackBuilder& builder) {
+  size_t numThreads = basics::VelocyPackHelper::getNumericValue<size_t>(
+      definition, StaticStrings::IndexNumThreads, 2);
+  if (numThreads == 0 || numThreads > 16) {
+    return Result(TRI_ERROR_BAD_PARAMETER,
+                  "numThreads attribute must be a number (0 < n < 16)");
+  }
+  builder.add(StaticStrings::IndexNumThreads, VPackValue(numThreads));
+  return Result();
+}
+
+Result IndexFactory::processIndexThreadBatchSize(VPackSlice definition,
+                                                 VPackBuilder& builder) {
+  uint64_t batchSize = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      definition, StaticStrings::IndexThreadBatchSize, 500);
+  if (batchSize < 100) {
+    return Result(
+        TRI_ERROR_BAD_PARAMETER,
+        "threadBatchSize attribute must be a number greater than 100");
+  }
+  builder.add(StaticStrings::IndexThreadBatchSize, VPackValue(batchSize));
+  return Result();
+}
+
 /// @brief process the unique flag and add it to the json
 void IndexFactory::processIndexUniqueFlag(VPackSlice definition,
                                           VPackBuilder& builder) {
@@ -618,6 +643,14 @@ Result IndexFactory::enhanceJsonIndexGeneric(VPackSlice definition,
     // "cacheEnabled"
     processIndexCacheEnabled(definition, builder);
   }
+  if (res.ok()) {
+    // "numThreads"
+    res = processIndexNumThreads(definition, builder);
+  }
+  if (res.ok()) {
+    // "threadBatchSize"
+    res = processIndexThreadBatchSize(definition, builder);
+  }
 
   return res;
 }
@@ -652,6 +685,14 @@ Result IndexFactory::enhanceJsonIndexTtl(VPackSlice definition,
     builder.add(StaticStrings::IndexExpireAfter, v);
     processIndexInBackground(definition, builder);
   }
+  if (res.ok()) {
+    // "numThreads"
+    res = processIndexNumThreads(definition, builder);
+  }
+  if (res.ok()) {
+    // "threadBatchSize"
+    res = processIndexThreadBatchSize(definition, builder);
+  }
 
   return res;
 }
@@ -671,6 +712,14 @@ Result IndexFactory::enhanceJsonIndexGeo(VPackSlice definition,
     IndexFactory::processIndexLegacyPolygonsFlag(definition, builder);
 
     processIndexInBackground(definition, builder);
+  }
+  if (res.ok()) {
+    // "numThreads"
+    res = processIndexNumThreads(definition, builder);
+  }
+  if (res.ok()) {
+    // "threadBatchSize"
+    res = processIndexThreadBatchSize(definition, builder);
   }
 
   return res;
@@ -706,6 +755,14 @@ Result IndexFactory::enhanceJsonIndexFulltext(VPackSlice definition,
     builder.add("minLength", VPackValue(minWordLength));
     processIndexInBackground(definition, builder);
   }
+  if (res.ok()) {
+    // "numThreads"
+    res = processIndexNumThreads(definition, builder);
+  }
+  if (res.ok()) {
+    // "threadBatchSize"
+    res = processIndexThreadBatchSize(definition, builder);
+  }
 
   return res;
 }
@@ -735,6 +792,14 @@ Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
 
     processIndexUniqueFlag(definition, builder);
     processIndexInBackground(definition, builder);
+  }
+  if (res.ok()) {
+    // "numThreads"
+    res = processIndexNumThreads(definition, builder);
+  }
+  if (res.ok()) {
+    // "threadBatchSize"
+    res = processIndexThreadBatchSize(definition, builder);
   }
 
   return res;

@@ -63,7 +63,7 @@ class RocksDBCollection;
 
 class IndexCreatorThread final : public Thread {
  public:
-  IndexCreatorThread(bool isUniqueIndex, bool isForeground,
+  IndexCreatorThread(bool isUniqueIndex, bool isForeground, uint64_t batchSize,
                      std::atomic<uint64_t>& docsProcessed,
                      std::shared_ptr<SharedWorkEnv> sharedWorkEnv,
                      RocksDBCollection* rcoll, rocksdb::DB* rootDB,
@@ -81,6 +81,7 @@ class IndexCreatorThread final : public Thread {
  private:
   bool _isUniqueIndex = false;
   bool _isForeground = false;
+  uint64_t _batchSize;
   std::atomic<uint64_t>& _docsProcessed;
   std::shared_ptr<SharedWorkEnv> _sharedWorkEnv;
   RocksDBCollection* _rcoll;

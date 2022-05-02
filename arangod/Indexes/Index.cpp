@@ -204,14 +204,16 @@ Index::Index(
     IndexId iid, arangodb::LogicalCollection& collection,
     std::string const& name,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
-    bool unique, bool sparse)
+    bool unique, bool sparse, size_t numThreads, uint64_t threadBatchSize)
     : _iid(iid),
       _collection(collection),
       _name(name),
       _fields(fields),
       _useExpansion(::hasExpansion(_fields)),
       _unique(unique),
-      _sparse(sparse) {
+      _sparse(sparse),
+      _numThreads(numThreads),
+      _threadBatchSize(threadBatchSize) {
   // note: _collection can be a nullptr in the cluster coordinator case!!
 }
 
@@ -230,7 +232,11 @@ Index::Index(IndexId iid, arangodb::LogicalCollection& collection,
       _unique(arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, arangodb::StaticStrings::IndexUnique, false)),
       _sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(
-          slice, arangodb::StaticStrings::IndexSparse, false)) {}
+          slice, arangodb::StaticStrings::IndexSparse, false)),
+      _numThreads(basics::VelocyPackHelper::getNumericValue<size_t>(
+          slice, StaticStrings::IndexNumThreads, 2)),
+      _threadBatchSize(basics::VelocyPackHelper::getNumericValue<uint64_t>(
+          slice, StaticStrings::IndexThreadBatchSize, 500)) {}
 
 Index::~Index() = default;
 
