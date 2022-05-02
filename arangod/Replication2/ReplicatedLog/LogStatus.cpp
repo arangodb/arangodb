@@ -240,6 +240,9 @@ auto LogStatus::toVelocyPack(velocypack::Builder& builder) const -> void {
 auto LogStatus::asLeaderStatus() const noexcept -> LeaderStatus const* {
   return std::get_if<LeaderStatus>(&_variant);
 }
+auto LogStatus::asFollowerStatus() const noexcept -> FollowerStatus const* {
+  return std::get_if<FollowerStatus>(&_variant);
+}
 
 namespace {
 inline constexpr std::string_view kSupervision = "supervision";

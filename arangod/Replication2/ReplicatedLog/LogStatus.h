@@ -168,6 +168,7 @@ struct LogStatus {
       -> std::optional<LogStatistics>;
 
   [[nodiscard]] auto asLeaderStatus() const noexcept -> LeaderStatus const*;
+  [[nodiscard]] auto asFollowerStatus() const noexcept -> FollowerStatus const*;
 
   static auto fromVelocyPack(velocypack::Slice slice) -> LogStatus;
   void toVelocyPack(velocypack::Builder& builder) const;

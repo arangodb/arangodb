@@ -121,7 +121,6 @@ struct LogStatistics {
   LogIndex commitIndex{};
   LogIndex firstIndex{};
   LogIndex releaseIndex{};
-  LogIndex lowestIndexToKeep{};
 
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice slice)
@@ -139,8 +138,7 @@ auto inspect(Inspector& f, LogStatistics& x) {
       f.field(StaticStrings::Spearhead, x.spearHead),
       f.field(StaticStrings::CommitIndex, x.commitIndex),
       f.field(StaticStrings::FirstIndex, x.firstIndex),
-      f.field(StaticStrings::ReleaseIndex, x.releaseIndex),
-      f.field(StaticStrings::LowestIndexToKeep, x.lowestIndexToKeep));
+      f.field(StaticStrings::ReleaseIndex, x.releaseIndex));
 }
 
 struct AbstractFollower {

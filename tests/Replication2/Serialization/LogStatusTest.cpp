@@ -42,7 +42,6 @@ TEST(LogStatusTest, log_statistics) {
   statistics.commitIndex = LogIndex{1};
   statistics.firstIndex = LogIndex{1};
   statistics.releaseIndex = LogIndex{0};
-  statistics.lowestIndexToKeep = LogIndex{0};
   VPackBuilder builder;
   statistics.toVelocyPack(builder);
   auto slice = builder.slice();
@@ -53,7 +52,6 @@ TEST(LogStatusTest, log_statistics) {
     "commitIndex": 1,
     "firstIndex": 1,
     "releaseIndex": 0,
-    "lowestIndexToKeep": 0,
     "spearhead": {
       "term": 2,
       "index": 1
@@ -138,6 +136,7 @@ TEST(LogStatusTest, follower_statistics_exceptions) {
   EXPECT_ANY_THROW({
     FollowerStatistics::fromVelocyPack(velocypack::Slice(R"({
       "missing_commitIndex": 4,
+      "releaseIndex": 0,
       "spearhead": {
         "term": 2,
         "index": 4
@@ -154,6 +153,7 @@ TEST(LogStatusTest, follower_statistics_exceptions) {
   EXPECT_ANY_THROW({
     FollowerStatistics::fromVelocyPack(velocypack::Slice(R"({
       "commitIndex": "4",
+      "releaseIndex": 0,
       "spearhead": {
         "term": 2,
         "index": 4
@@ -174,7 +174,6 @@ TEST(LogStatusTest, leader_status) {
   statistics.commitIndex = LogIndex{1};
   statistics.firstIndex = LogIndex{1};
   statistics.releaseIndex = LogIndex{0};
-  statistics.lowestIndexToKeep = LogIndex{0};
   leaderStatus.local = statistics;
   leaderStatus.term = LogTerm{2};
   leaderStatus.lowestIndexToKeep = LogIndex{1};
@@ -186,7 +185,6 @@ TEST(LogStatusTest, leader_status) {
         FollowerStatistics::fromVelocyPack(velocypack::Slice(R"({
         "commitIndex": 4,
         "releaseIndex": 0,
-        "lowestIndexToKeep": 0,
         "spearhead": {"term": 2, "index": 4},
         "lastErrorReason": {"error": "None"},
         "lastRequestLatencyMS": 0.012983,
@@ -198,7 +196,6 @@ TEST(LogStatusTest, leader_status) {
         FollowerStatistics::fromVelocyPack(velocypack::Slice(R"({
           "commitIndex": 3,
           "releaseIndex": 0,
-          "lowestIndexToKeep": 0,
           "spearhead": {"term": 2, "index": 3},
           "lastErrorReason": {"error": "CommunicationError", "details": "foo"},
           "lastRequestLatencyMS": 11159.799272,
@@ -226,6 +223,7 @@ TEST(LogStatusTest, follower_status) {
     "local": {
       "commitIndex": 4,
       "firstIndex": 1,
+      "releaseIndex": 0,
       "spearhead": {
         "term": 2,
         "index": 4
@@ -254,6 +252,7 @@ TEST(LogStatusTest, follower_status) {
     "local": {
       "commitIndex": 4,
       "firstIndex": 1,
+      "releaseIndex": 0,
       "spearhead": {
         "term": 2,
         "index": 4

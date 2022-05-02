@@ -133,10 +133,8 @@ TEST_F(LogFollowerCompactionTest, run_compaction_during_append_entries) {
       secondToLastIdx,
       follower->getQuickStatus().getLocalStatistics().value().commitIndex);
   // Check that we can actually release indexes now
-  EXPECT_EQ(secondToLastIdx, follower->getQuickStatus()
-                                 .getLocalStatistics()
-                                 .value()
-                                 .lowestIndexToKeep);
+  EXPECT_EQ(secondToLastIdx,
+            follower->getStatus().asFollowerStatus()->lowestIndexToKeep);
 
   // add another one to trigger another appendEntries request
   auto const latestIdx = leader->insert(
