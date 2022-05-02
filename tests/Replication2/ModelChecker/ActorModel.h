@@ -101,13 +101,11 @@ struct ActorDriver {
 template<typename State, typename Transition>
 struct ActorEngine {
   template<typename... Actors, typename Observer>
-  static auto run(ActorDriver<Actors...>& driver, Observer&& observer,
+  static auto run(ActorDriver<Actors...>& driver, Observer observer,
                   State initState) {
     using GlobalState = GlobalActorState<State, Transition, Actors...>;
-    using BaseEngine = SimulationEngine<GlobalState, Transition>;
-
-    return BaseEngine::run(
-        driver, std::forward<Observer>(observer),
+    return DFSEnumerator<GlobalState, Transition, Observer>::run(
+        driver, std::move(observer),
         driver.template initialState<Transition>(std::move(initState)));
   }
 };

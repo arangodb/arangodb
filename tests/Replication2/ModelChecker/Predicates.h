@@ -106,7 +106,6 @@ struct eventually : private F {
 
   template<typename S>
   auto finalStep(S const& state) {
-    std::cout << "wasTrueOnce: " << wasTrueOnce << std::endl;
     if (wasTrueOnce) {
       return CheckResult::withOk();
     } else {
