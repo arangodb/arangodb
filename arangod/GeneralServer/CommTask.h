@@ -142,7 +142,8 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   bool handleContentEncoding(GeneralRequest&);
 
  private:
-  bool handleRequestSync(std::shared_ptr<RestHandler>);
+  void handleRequestStartup(std::shared_ptr<RestHandler>);
+  void handleRequestSync(std::shared_ptr<RestHandler>);
   bool handleRequestAsync(std::shared_ptr<RestHandler>,
                           uint64_t* jobId = nullptr);
 

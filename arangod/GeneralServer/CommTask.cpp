@@ -107,6 +107,7 @@ bool queueTimeViolated(GeneralRequest const& req) {
     // no queuing time restriction
     double requestedQueueTime = StringUtils::doubleDecimal(queueTimeValue);
     if (requestedQueueTime > 0.0) {
+      TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       // value is > 0.0, so now check the last dequeue time that the scheduler
       // reported
       double lastDequeueTime =
@@ -177,16 +178,26 @@ CommTask::Flow CommTask::prepareExecution(
   ServerState::Mode mode = ServerState::mode();
   switch (mode) {
     case ServerState::Mode::STARTUP: {
-      if (path != "/_admin/status" && path != "/_api/version" &&
-          path != "/_admin/version") {
-        // most routes are disallowed during startup, except the ones above.
-        sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE,
+      if (_auth->isActive() && !req.authenticated()) {
+        sendErrorResponse(rest::ResponseCode::UNAUTHORIZED,
                           req.contentTypeResponse(), req.messageId(),
-                          TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
-                          "service unavailable due to startup");
+                          TRI_ERROR_FORBIDDEN);
         return Flow::Abort;
       }
-      break;
+
+      if (path == "/_api/version" || path == "/_admin/version" ||
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+          path.starts_with("/_admin/debug/") ||
+#endif
+          path == "/_admin/status") {
+        return Flow::Continue;
+      }
+      // most routes are disallowed during startup, except the ones above.
+      sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE,
+                        req.contentTypeResponse(), req.messageId(),
+                        TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                        "service unavailable due to startup");
+      return Flow::Abort;
     }
 
     case ServerState::Mode::MAINTENANCE: {
@@ -356,6 +367,7 @@ void CommTask::finishExecution(GeneralResponse& res,
   if (_server.server()
           .getFeature<GeneralServerFeature>()
           .returnQueueTimeHeader()) {
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     res.setHeaderNC(
         StaticStrings::XArangoQueueTimeSeconds,
         std::to_string(
@@ -368,16 +380,13 @@ void CommTask::finishExecution(GeneralResponse& res,
 /// Push this request into the execution pipeline
 void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
                               std::unique_ptr<GeneralResponse> response) {
-  TRI_ASSERT(ServerState::mode() != ServerState::Mode::STARTUP);
+  TRI_ASSERT(request != nullptr);
+  TRI_ASSERT(response != nullptr);
 
   DTRACE_PROBE1(arangod, CommTaskExecuteRequest, this);
 
   response->setContentTypeRequested(request->contentTypeResponse());
   response->setGenerateBody(request->requestType() != RequestType::HEAD);
-
-  bool found;
-  // check for an async request (before the handler steals the request)
-  std::string const& asyncExec = request->header(StaticStrings::Async, found);
 
   // store the message id for error handling
   uint64_t messageId = 0UL;
@@ -400,11 +409,15 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     return;
   }
 
+  bool found;
+  // check for an async request (before the handler steals the request)
+  std::string const& asyncExec = request->header(StaticStrings::Async, found);
+
   // create a handler, this takes ownership of request and response
   auto& server = _server.server();
-  auto& factory = server.getFeature<GeneralServerFeature>().handlerFactory();
+  auto factory = server.getFeature<GeneralServerFeature>().handlerFactory();
   auto handler =
-      factory.createHandler(server, std::move(request), std::move(response));
+      factory->createHandler(server, std::move(request), std::move(response));
 
   // give up, if we cannot find a handler
   if (handler == nullptr) {
@@ -414,6 +427,14 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
                        VPackBuffer<uint8_t>());
     return;
   }
+
+  if (ServerState::mode() == ServerState::Mode::STARTUP) {
+    // request during startup phase
+    handler->setStatistics(stealStatistics(messageId));
+    handleRequestStartup(std::move(handler));
+    return;
+  }
+
   // forward to correct server if necessary
   bool forwarded;
   auto res = handler->forwardRequest(forwarded);
@@ -428,6 +449,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     return;
   }
 
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   SchedulerFeature::SCHEDULER->trackCreateHandlerTask();
 
   // asynchronous request
@@ -546,14 +568,53 @@ void CommTask::sendErrorResponse(rest::ResponseCode code,
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
+// Handle a request during the server startup
+void CommTask::handleRequestStartup(std::shared_ptr<RestHandler> handler) {
+  // We just injected the request pointer before calling this method
+  TRI_ASSERT(handler->request() != nullptr);
+
+  RequestLane lane = handler->determineRequestLane();
+  ContentType respType = handler->request()->contentTypeResponse();
+  uint64_t mid = handler->messageId();
+
+  // only fast lane handlers are allowed during startup
+  TRI_ASSERT(lane == RequestLane::CLIENT_FAST);
+  if (lane != RequestLane::CLIENT_FAST) {
+    sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE, respType, mid,
+                      TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                      "service unavailable due to startup");
+    return;
+  }
+
+  handler->trackQueueStart();
+  LOG_TOPIC("96766", DEBUG, Logger::REQUESTS)
+      << "Handling startup request " << (void*)this << " on path "
+      << handler->request()->requestPath() << " on lane " << lane;
+
+  handler->trackQueueEnd();
+  handler->trackTaskStart();
+
+  handler->runHandler([self = shared_from_this()](rest::RestHandler* handler) {
+    handler->trackTaskEnd();
+    try {
+      // Pass the response to the io context
+      self->sendResponse(handler->stealResponse(), handler->stealStatistics());
+    } catch (...) {
+      LOG_TOPIC("e1322", WARN, Logger::REQUESTS)
+          << "got an exception while sending response, closing connection";
+      self->stop();
+    }
+  });
+}
+
 // Execute a request by queueing it in the scheduler and having it executed via
 // a scheduler worker thread eventually.
-bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
+void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   DTRACE_PROBE2(arangod, CommTaskHandleRequestSync, this, handler.get());
 
   RequestLane lane = handler->determineRequestLane();
   handler->trackQueueStart();
-  // We just injected the request pointer a before calling this method
+  // We just injected the request pointer before calling this method
   TRI_ASSERT(handler->request() != nullptr);
   LOG_TOPIC("ecd0a", DEBUG, Logger::REQUESTS)
       << "Handling request " << (void*)this << " on path "
@@ -581,14 +642,14 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
       }
     });
   };
+
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   bool ok = SchedulerFeature::SCHEDULER->tryBoundedQueue(lane, std::move(cb));
 
   if (!ok) {
     sendErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE, respType, mid,
                       TRI_ERROR_QUEUE_FULL);
   }
-
-  return ok;
 }
 
 // handle a request which came in with the x-arango-async header
@@ -600,6 +661,8 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 
   RequestLane lane = handler->determineRequestLane();
   handler->trackQueueStart();
+
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
 
   if (jobId != nullptr) {
     auto& jobManager =
@@ -719,7 +782,7 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
         // `/_api/users/<name>` to check their passwords
         result = Flow::Continue;
         vc->forceReadOnly();
-      } else if (userAuthenticated && StringUtils::isPrefix(path, ApiUser)) {
+      } else if (userAuthenticated && path.starts_with(ApiUser)) {
         result = Flow::Continue;
       }
     }

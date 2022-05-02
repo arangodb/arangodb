@@ -2137,7 +2137,8 @@ function launchFinalize(options, instanceInfo, startTime) {
                              '_system',
                              options.username,
                              options.password,
-                             count > 50
+                             count > 50,
+                             getJwtSecret(options)
                             );
             break;
           } catch (e) {
@@ -2532,7 +2533,8 @@ function restartOneInstance(options, oneInstance, instanceInfo, moreArgs) {
                      '_system',
                      options.username,
                      options.password,
-                     false
+                     false,
+                     getJwtSecret(options)
                     );
   }
   launchFinalize(options, instanceInfo, startTime);
@@ -2604,7 +2606,8 @@ function reStartInstance(options, instanceInfo, moreArgs) {
                      '_system',
                      options.username,
                      options.password,
-                     false
+                     false,
+                     getJwtSecret(options)
                     );
   }
   launchFinalize(options, instanceInfo, startTime);
