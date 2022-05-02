@@ -5864,6 +5864,18 @@ auto ClusterInfo::getReplicatedLogsParticipants(std::string_view database) const
     for (auto const& pInfo : planParticipants) {
       participants.push_back(pInfo.first);
     }
+
+    // Move the leader at the top of the list.
+    if (logPlanSpecification->currentTerm.has_value() &&
+        logPlanSpecification->currentTerm->leader.has_value()) {
+      for (auto& p : participants) {
+        if (p == logPlanSpecification->currentTerm->leader->serverId) {
+          std::swap(p, participants[0]);
+          break;
+        }
+      }
+    }
+
     replicatedLogs.emplace(logId, std::move(participants));
   }
 

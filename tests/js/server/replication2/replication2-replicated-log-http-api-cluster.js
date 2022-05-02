@@ -205,8 +205,10 @@ const getLogInfo = function () {
 
       const coord = lh.coordinators[0];
       const coordRes = logFunctions.listLogs(coord, database);
-      assertTrue(_.isEqual(coordRes.result[log1.logId].sort(), log1.servers.sort()));
-      assertTrue(_.isEqual(coordRes.result[log2.logId].sort(), log2.servers.sort()));
+      assertTrue(_.isEqual(_.sortBy(coordRes.result[log1.logId]), _.sortBy(log1.servers)));
+      assertTrue(_.isEqual(_.sortBy(coordRes.result[log2.logId]), _.sortBy(log2.servers)));
+      assertEqual(log1.leader, coordRes.result[log1.logId][0]);
+      assertEqual(log2.leader, coordRes.result[log2.logId][0]);
     },
   };
 };
