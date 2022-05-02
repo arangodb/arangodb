@@ -8,6 +8,10 @@ const ParameterEdgeColor = () => {
   const [edgeColor, setEdgeColor] = useState(urlParameters.edgeColor);
 
   const NEWURLPARAMETERS = { ...urlParameters };
+  let calculatedEdgeColor = edgeColor;
+  if (!edgeColor.startsWith('#')) {
+    calculatedEdgeColor = '#' + edgeColor;
+  }
 
   return (
     <>
@@ -16,7 +20,7 @@ const ParameterEdgeColor = () => {
           Color:
           <input
             type="color"
-            value={edgeColor}
+            value={calculatedEdgeColor}
             onChange={(e) => {
               setEdgeColor(e.target.value);
               NEWURLPARAMETERS.edgeColor = e.target.value.replace("#", "");

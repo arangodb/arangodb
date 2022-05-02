@@ -6,7 +6,7 @@ const URLPARAMETERS = {
   edgeColorByCollection: false,
   nodeColor: "dee072",
   nodeColorAttribute: "",
-  edgeColor: "cccccc",
+  edgeColor: "555555",
   edgeColorAttribute: "",
   nodeLabel: "",
   edgeLabel: "",

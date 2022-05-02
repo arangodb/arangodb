@@ -256,7 +256,7 @@ export class GraphView extends React.Component {
           autoRotate: true,
         },
         style: {
-          stroke: '#e2e2e2',
+          stroke: '#' + this.props.edgeColor,
           cursor: 'pointer',
         },
       },

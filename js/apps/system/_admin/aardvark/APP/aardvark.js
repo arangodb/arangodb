@@ -1304,12 +1304,19 @@ authRouter.get('/g6graph/:name', function (req, res) {
             target: edge._to
           };
           */
+          var calculatedEdgeColor = '#555555';
+          if (config.edgeColor !== undefined) {
+            calculatedEdgeColor = '#' + config.edgeColor;
+          }
           edgeObj = {
             id: edge._id,
             source: edge._from,
             label: edgeLabel,
-            color: config.edgeColor || '#cccccc',
-            target: edge._to
+            //color: config.edgeColor || '#cccccc',
+            target: edge._to,
+            style: {
+              stroke: calculatedEdgeColor,
+            }
           };
 
           if (config.edgeEditable === 'true') {
