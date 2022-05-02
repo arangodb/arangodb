@@ -123,8 +123,6 @@ class MutexGuard {
        std::is_same_v<L, std::unique_lock<basics::UnshackledMutex>>)>
   wait(ConditionVariable& cv, Predicate stop_waiting);
 
-
-
  private:
   struct nop {
     void operator()(T*) {}
