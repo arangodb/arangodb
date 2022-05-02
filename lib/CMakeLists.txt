@@ -67,8 +67,8 @@ add_library(arango STATIC
   ApplicationFeatures/ApplicationFeature.cpp
   ApplicationFeatures/ApplicationFeaturePhase.cpp
   ApplicationFeatures/ApplicationServer.cpp
-  ApplicationFeatures/CommunicationFeaturePhase.cpp
   ApplicationFeatures/ConfigFeature.cpp
+  ApplicationFeatures/CommunicationFeaturePhase.cpp
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/LanguageFeature.cpp
   ApplicationFeatures/ShellColorsFeature.cpp
@@ -78,7 +78,6 @@ add_library(arango STATIC
   ApplicationFeatures/VersionFeature.cpp
   Basics/ArangoGlobalContext.cpp
   Basics/AttributeNameParser.cpp
-  Basics/CleanupFunctions.cpp
   Basics/ConditionLocker.cpp
   Basics/ConditionVariable.cpp
   Basics/CpuUsageSnapshot.cpp
@@ -87,16 +86,13 @@ add_library(arango STATIC
   Basics/DebugRaceController.cpp
   Basics/EncodingUtils.cpp
   Basics/ErrorCode.cpp
-  Basics/Exceptions.cpp
   Basics/FeatureFlags.cpp
-  Basics/FileResult.cpp
+  Basics/ResultError.cpp
+  Basics/Exceptions.cpp
   Basics/FileUtils.cpp
   Basics/FunctionUtils.cpp
   Basics/GlobalResourceMonitor.cpp
-  Basics/Guarded.h
   Basics/HybridLogicalClock.cpp
-  Basics/Identifier.cpp
-  Basics/IndexIter.h
   Basics/LdapUrlParser.cpp
   Basics/LocalTaskQueue.cpp
   Basics/Mutex.cpp
@@ -107,9 +103,11 @@ add_library(arango STATIC
   Basics/PhysicalMemory.cpp
   Basics/ReadWriteLock.cpp
   Basics/ReadWriteSpinLock.cpp
-  Basics/ResourceUsage.cpp
   Basics/Result.cpp
-  Basics/ResultError.cpp
+  Basics/FileResult.cpp
+  Basics/Identifier.cpp
+  Basics/IndexIter.h
+  Basics/ResourceUsage.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
   Basics/SourceLocation.cpp
@@ -118,11 +116,11 @@ add_library(arango STATIC
   Basics/StringHeap.cpp
   Basics/StringUtils.cpp
   Basics/Thread.cpp
-  Basics/UnshackledConditionVariable.cpp Basics/UnshackledConditionVariable.h
-  Basics/UnshackledMutex.cpp Basics/UnshackledMutex.h
+  Basics/UnshackledMutex.cpp
   Basics/Utf8Helper.cpp
   Basics/VelocyPackHelper.cpp
   Basics/application-exit.cpp
+  Basics/CleanupFunctions.cpp
   Basics/conversions.cpp
   Basics/csv.cpp
   Basics/datetime.cpp
@@ -141,9 +139,9 @@ add_library(arango STATIC
   Basics/terminal-utils.cpp
   Basics/tri-strings.cpp
   Basics/tri-zip.cpp
-  Containers/ImmerMemoryPolicy.h
   Containers/MerkleTree.cpp
   Containers/MerkleTreeHelpers.cpp
+  Containers/ImmerMemoryPolicy.h
   Endpoint/Endpoint.cpp
   Endpoint/EndpointIp.cpp
   Endpoint/EndpointIpV4.cpp
@@ -157,23 +155,23 @@ add_library(arango STATIC
   Logger/LogContext.cpp
   Logger/LogLevel.cpp
   Logger/LogThread.cpp
-  Logger/LogTimeFormat.cpp
   Logger/LogTopic.cpp
   Logger/Logger.cpp
   Logger/LoggerFeature.cpp
   Logger/LoggerStream.cpp
+  Logger/LogTimeFormat.cpp
   Maskings/AttributeMasking.cpp
   Maskings/Collection.cpp
   Maskings/Maskings.cpp
   Maskings/Path.cpp
   Maskings/RandomMask.cpp
   Maskings/RandomStringMask.cpp
-  ProgramOptions/IniFileParser.cpp
   ProgramOptions/Option.cpp
   ProgramOptions/Parameters.cpp
   ProgramOptions/ProgramOptions.cpp
   ProgramOptions/Section.cpp
   ProgramOptions/Translator.cpp
+  ProgramOptions/IniFileParser.cpp
   Random/RandomFeature.cpp
   Random/RandomGenerator.cpp
   Random/UniformCharacter.cpp
@@ -196,9 +194,9 @@ add_library(arango STATIC
   Ssl/SslFeature.cpp
   Ssl/SslInterface.cpp
   Ssl/ssl-helper.cpp
+  Utilities/ScriptLoader.cpp
   Utilities/IsArangoExecutable.cpp
   Utilities/NameValidator.cpp
-  Utilities/ScriptLoader.cpp
   Zip/ioapi.cpp
   Zip/unzip.cpp
   Zip/zip.cpp
