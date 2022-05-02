@@ -110,6 +110,13 @@ class SingleServerProvider {
 
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();
+  /**
+ * Return true if the vertex whose id is stored in the class (in _vertex) has
+ * its data on this DB-server.
+ * @param trx
+ * @return
+   */
+  bool isResponsible(Step const& step) const;
 
  private:
   void activateCache(bool enableDocumentCache);

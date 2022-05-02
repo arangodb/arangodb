@@ -224,6 +224,17 @@ void SingleServerProvider<Step>::unPrepareContext() {
   _opts.unPrepareContext();
 }
 
+#ifndef USE_ENTERPRISE
+template<class Step>
+bool SingleServerProvider<Step>::isResponsible(Step const& step) const {
+  return true;
+}
+#else
+// Include Enterprise part of the template implementation
+#include "Enterprise/Graph/Providers/SingleServerProviderEE.tpp"
+#endif
+
+
 template<class Step>
 std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>>
 SingleServerProvider<Step>::buildCursor(

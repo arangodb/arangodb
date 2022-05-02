@@ -566,4 +566,9 @@ void ClusterProvider<StepImpl>::unPrepareContext() {
   _opts.unPrepareContext();
 }
 
+template<class StepImpl>
+bool ClusterProvider<StepImpl>::isResponsible(StepImpl const& step) const {
+  return true;
+}
+
 template class graph::ClusterProvider<ClusterProviderStep>;

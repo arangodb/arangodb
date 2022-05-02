@@ -259,6 +259,8 @@ void MockGraphProvider::unPrepareContext() {
   // Nothing to do here. We do not have any special index conditions
 }
 
+bool MockGraphProvider::isResponsible(Step const& step) const { return true; }
+
 [[nodiscard]] transaction::Methods* MockGraphProvider::trx() { return &_trx; }
 
 aql::TraversalStats MockGraphProvider::stealStats() {

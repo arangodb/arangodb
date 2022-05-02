@@ -94,6 +94,7 @@ class ProviderTracer {
 
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();
+  bool isResponsible(Step const& step) const;
 
  private:
   ProviderImpl _impl;

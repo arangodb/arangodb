@@ -35,7 +35,8 @@ namespace arangodb::graph {
 template<class StepImpl>
 class ClusterProvider;
 
-class ClusterProviderStep
+class
+    ClusterProviderStep
     : public arangodb::graph::BaseStep<ClusterProviderStep> {
  public:
   using EdgeType = ::arangodb::graph::EdgeType;
@@ -130,8 +131,6 @@ class ClusterProviderStep
     }
     return collectionNameResult.get().first;
   };
-
-  static bool isResponsible(transaction::Methods* trx);
 
   friend auto operator<<(std::ostream& out, ClusterProviderStep const& step)
       -> std::ostream&;
