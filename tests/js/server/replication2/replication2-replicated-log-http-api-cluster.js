@@ -63,6 +63,12 @@ const logFunctions = {
     let url = `${lh.getServerUrl(server)}/_db/${database}/_api/log/${logId}/entry/${index}`;
     return request.get(url).json;
   },
+
+  listLogs: function (server, database) {
+    let url = `${lh.getServerUrl(server)}/_db/${database}/_api/log`;
+    require('internal').print(url);
+    return request.get(url).json;
+  }
 };
 
 const {setUpAll, tearDownAll} = (function () {
@@ -172,5 +178,39 @@ const readFollowerLogs = function () {
   };
 };
 
+const getLogInfo = function () {
+  const targetConfig = {
+    writeConcern: 3,
+    softWriteConcern: 3,
+    replicationFactor: 3,
+    waitForSync: false,
+  };
+
+  return {
+    setUpAll, tearDownAll,
+    setUp: lh.registerAgencyTestBegin,
+    tearDown: lh.registerAgencyTestEnd,
+
+    testApiLog: function () {
+      const log1 = lh.createReplicatedLog(database, targetConfig);
+      const log2 = lh.createReplicatedLog(database, targetConfig);
+
+      const leaderRes = logFunctions.listLogs(log1.leader, database);
+      assertTrue(log1.logId in leaderRes.result);
+      assertEqual(leaderRes.result[log1.logId].role, "leader");
+
+      const follower = log1.followers[0];
+      const followerRes = logFunctions.listLogs(follower, database);
+      assertEqual(followerRes.result[log1.logId].role, "follower");
+
+      const coord = lh.coordinators[0];
+      const coordRes = logFunctions.listLogs(coord, database);
+      assertTrue(_.isEqual(coordRes.result[log1.logId].sort(), log1.servers.sort()));
+      assertTrue(_.isEqual(coordRes.result[log2.logId].sort(), log2.servers.sort()));
+    },
+  };
+};
+
 jsunity.run(readFollowerLogs);
+jsunity.run(getLogInfo);
 return jsunity.done();
