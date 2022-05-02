@@ -24,7 +24,7 @@ import ParameterNodeSize from './ParameterNodeSize';
 import ParameterNodeSizeByEdges from "./ParameterNodeSizeByEdges";
 import ButtonSave from "./ButtonSave";
 
-export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onDownloadFullScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onGraphDataLoaded }) => {
+export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onDownloadFullScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onNodeSearched, onEdgeSearched, onGraphDataLoaded }) => {
   
   const [layout, setLayout] = useState('gForce');
   const { Option } = Select;
@@ -266,12 +266,12 @@ const screenshotMenu = (
               nodes={graphData.nodes}
               graphData={graphData}
               onNodeInfo={() => console.log('onNodeInfo() in MenuGraph')}
-              onNodeSelect={(node) => onDocumentSelect(node)}
+              onNodeSelect={(node) => onNodeSearched(node)}
             />
             <EdgeList
               edges={graphData.edges}
               graphData={graphData}
-              onEdgeSelect={(edge) => onDocumentSelect(edge)}
+              onEdgeSelect={(edge) => onEdgeSearched(edge)}
               />
           </TabPane>
         </Tabs>

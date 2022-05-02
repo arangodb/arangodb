@@ -249,6 +249,14 @@ export class GraphView extends React.Component {
           shadowBlur: 10,
           cursor: 'pointer',
         },
+        searched: {
+          fill: '#9fb53a',
+          stroke: '#82962d',
+          lineWidth: 2,
+          shadowColor: '#82962d',
+          //shadowBlur: 10,
+          cursor: 'pointer',
+        }
       },
       defaultEdge: {
         type: 'quadratic', // assign the edges to be quadratic bezier curves
@@ -266,6 +274,11 @@ export class GraphView extends React.Component {
           lineWidth: 2,
           cursor: 'pointer',
         },
+        searched: {
+          lineWidth: 4,
+          stroke: '#9fb53a',
+          cursor: 'pointer',
+        }
       },
     });
 
@@ -596,7 +609,25 @@ export class GraphView extends React.Component {
 
   highlightDocument = (document) => {
     if(document) {
+      console.log("document: ", document);
+      this.graph.setItemState(document, 'searched', true);
       this.graph.focusItem(document, true);
+    }
+  }
+
+  highlightNode = (node) => {
+    if(node) {
+      console.log("searched node: ", node);
+      this.graph.setItemState(node, 'searched', true);
+      this.graph.focusItem(node, true);
+    }
+  }
+
+  highlightEdge = (edge) => {
+    if(edge) {
+      console.log("searched edge: ", edge);
+      this.graph.setItemState(edge, 'searched', true);
+      this.graph.focusItem(edge, true);
     }
   }
 
@@ -704,6 +735,8 @@ export class GraphView extends React.Component {
         }}
         onLoadFullGraph={() => this.props.onLoadFullGraph}
         onDocumentSelect={(document) => this.highlightDocument(document)}
+        onNodeSearched={(node) => this.highlightNode(node)}
+        onEdgeSearched={(edge) => this.highlightEdge(edge)}
         onGraphDataLoaded={(newGraphData) => this.props.onGraphDataLoaded(newGraphData)}
       />
       <Card
