@@ -18,6 +18,41 @@ devel
   queries the results are not well-defined. If you have a use-case where
   this restriction hits you, please contact us.
 
+* Updated arangosync to v2.9.1.
+
+* Added option `--enable-revision-trees` to arangorestore, which will add the
+  attributes `syncByRevision` and `usesRevisionsAsDocumentIds` to the collection
+  structure if they are missing. As a consequence, these collections created by
+  arangorestore will be able to use revision trees and a faster getting-in-sync
+  procedure after a restart. The option defaults to `true`, meaning the
+  attributes will be added if they are missing. If the option is set to `false`,
+  the attributes will not be added to the collection structure.
+  If the attributes are already present in the dump data, they will not be
+  modified by arangorestore irrespective of the setting of this option.
+
+* Set "useRevisionsAsDocumentIds" to true when restoring collection data
+  via arangorestore in case it is not set in the collection structure input
+  data. This allows using revision trees for restored collections.
+
+* Fix: Highly unlikely race in cluster maintenance. For every shard only
+  one operation (change attribute, change leadership) should be performed
+  at the same time. However if two changes are detected in the same hearbeat
+  it could lead to both operations to be executed in parallel. In most cases
+  this is also fine, but could lead to races on the same attribute, however
+  the race will be sorted out in the next heartbeat interval.
+
+* Added new optimization rule "arangosearch-constrained-sort" to perform
+  sorting & limiting inside ArangoSearch View enumeration node in case of
+  using just scoring for sort. 
+
+* Improve log output for WAL recovery, by providing more information and
+  making the wording more clear.
+
+* Updated lz4 to version 1.9.3.
+
+* Added option `--custom-query-file` to arangoexport, so that a custom query
+  string can also be read from an input file.
+
 * Added startup option `--cluster.shard-synchronization-attempt-timeout` to
   limit the amount of time to spend in shard synchronization attempts. The
   default timeout value is 20 minutes.
@@ -29,6 +64,9 @@ devel
   that counts the number of timed-out shard synchronization attempts.
 
 * Updated arangosync to v2.9.1-preview-1.
+
+* Make sure that newly created TTL indexes do not use index estimates, which
+  wouldn't be used for TTL indexes anyway.
 
 * Fix: for the Windows build, the new Snappy version, which was introduced in
   3.9, generated code that contained BMI2 instructions which where introduced

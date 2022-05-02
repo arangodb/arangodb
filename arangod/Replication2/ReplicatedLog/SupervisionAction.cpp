@@ -29,6 +29,7 @@
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
 using namespace arangodb::replication2::agency;
 namespace paths = arangodb::cluster::paths::aliases;
