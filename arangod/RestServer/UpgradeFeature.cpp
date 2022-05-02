@@ -125,7 +125,7 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // if we run the upgrade, we need to disable a few features that may get
   // in the way...
   if (ServerState::instance()->isCoordinator()) {
-    auto disableDeamonAndSupervisor = [&]() {
+    auto disableDaemonAndSupervisor = [&]() {
       if constexpr (Server::contains<DaemonFeature>()) {
         server().forceDisableFeatures(std::array{Server::id<DaemonFeature>()});
       }
@@ -137,7 +137,7 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
     server().forceDisableFeatures(std::array{
         Server::id<GreetingsFeature>(), Server::id<pregel::PregelFeature>()});
-    disableDeamonAndSupervisor();
+    disableDaemonAndSupervisor();
   } else {
     server().forceDisableFeatures(_nonServerFeatures);
     server().forceDisableFeatures(std::array{
