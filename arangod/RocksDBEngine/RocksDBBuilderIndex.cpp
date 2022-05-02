@@ -198,8 +198,6 @@ void IndexCreatorThread::run() {
             if (res.fail()) {
               break;
             }
-            //    LOG_DEVEL << "assigned index to doc id " <<
-            //    RocksDBKey::documentId(it->key()).id();
             numDocsWritten++;
           }
 
