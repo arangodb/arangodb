@@ -188,10 +188,12 @@ template<typename, typename...>
 struct combined_base;
 template<std::size_t... Idx, typename... Os>
 struct combined_base<std::index_sequence<Idx...>, Os...> : Tagged<Idx, Os>... {
-  auto finalStep(auto const& step) {
+  template<typename S>
+  auto finalStep(S const& step) {
     return invokeAll<0>([&](auto& x) { return x.finalStep(step); });
   }
-  auto check(auto const& step) -> model_checker::CheckResult {
+  template<typename S>
+  auto check(S const& step) -> model_checker::CheckResult {
     return invokeAll<0>([&](auto& x) { return x.check(step); });
   }
 
@@ -247,24 +249,24 @@ struct FileLineType {
 };
 
 #define MC_HERE                              \
-  decltype([] {                              \
+  ([] {                                      \
     static constexpr char data[] = __FILE__; \
     return ::FileLineType<data, __LINE__>{}; \
   }())
 
-#define MC_GTEST_PRED(name, pred)             \
-  model_checker::gtest_predicate {            \
-    MC_HERE{}, [=](auto const& name) { pred } \
+#define MC_GTEST_PRED(name, pred)           \
+  model_checker::gtest_predicate {          \
+    MC_HERE, [=](auto const& name) { pred } \
   }
-#define MC_BOOL_PRED(name, pred)              \
-  model_checker::bool_predicate {             \
-    MC_HERE{}, [=](auto const& name) { pred } \
+#define MC_BOOL_PRED(name, pred)            \
+  model_checker::bool_predicate {           \
+    MC_HERE, [=](auto const& name) { pred } \
   }
 #define MC_BOOL_PRED2(lambda) \
-  model_checker::bool_predicate { MC_HERE{}, (lambda) }
+  model_checker::bool_predicate { MC_HERE, (lambda) }
 #define MC_EVENTUALLY(pred) \
-  model_checker::eventually { MC_HERE{}, pred }
+  model_checker::eventually { MC_HERE, pred }
 #define MC_ALWAYS(pred) \
-  model_checker::always { MC_HERE{}, pred }
+  model_checker::always { MC_HERE, pred }
 #define MC_EVENTUALLY_ALWAYS(pred) \
-  model_checker::eventually_always { MC_HERE{}, pred }
+  model_checker::eventually_always { MC_HERE, pred }

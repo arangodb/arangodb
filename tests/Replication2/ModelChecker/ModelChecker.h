@@ -185,7 +185,6 @@ struct SimulationEngine {
     std::optional<Error<Observer>> failed;
 
     void printAllStates(std::ostream& os) {
-      std::size_t idx = 0;
       os << "digraph foobar {" << std::endl;
       for (auto const& s : fingerprints) {
         os << "v" << s->_uniqueId;

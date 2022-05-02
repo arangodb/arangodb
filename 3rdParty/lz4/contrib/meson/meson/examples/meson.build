@@ -7,7 +7,7 @@
 # in the COPYING file in the root directory of this source tree).
 # #############################################################################
 
-lz4_root_dir = '../../..'
+lz4_root_dir = '../../../..'
 
 #examples_c_args = ['-Wextra', '-Wundef', '-Wshadow', '-Wcast-align', '-Wstrict-prototypes']
 
