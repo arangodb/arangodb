@@ -41,6 +41,7 @@ TEST(LogStatusTest, log_statistics) {
   statistics.spearHead = TermIndexPair{LogTerm{2}, LogIndex{1}};
   statistics.commitIndex = LogIndex{1};
   statistics.firstIndex = LogIndex{1};
+  statistics.releaseIndex = LogIndex{0};
   VPackBuilder builder;
   statistics.toVelocyPack(builder);
   auto slice = builder.slice();
@@ -50,6 +51,7 @@ TEST(LogStatusTest, log_statistics) {
   auto jsonBuffer = R"({
     "commitIndex": 1,
     "firstIndex": 1,
+    "releaseIndex": 0,
     "spearhead": {
       "term": 2,
       "index": 1
@@ -169,6 +171,7 @@ TEST(LogStatusTest, leader_status) {
   statistics.spearHead = TermIndexPair{LogTerm{2}, LogIndex{1}};
   statistics.commitIndex = LogIndex{1};
   statistics.firstIndex = LogIndex{1};
+  statistics.releaseIndex = LogIndex{0};
   leaderStatus.local = statistics;
   leaderStatus.term = LogTerm{2};
   leaderStatus.lowestIndexToKeep = LogIndex{1};
@@ -179,6 +182,7 @@ TEST(LogStatusTest, leader_status) {
       {{"PRMR-45c56239-6a83-4ab0-961e-9adea5078286",
         FollowerStatistics::fromVelocyPack(velocypack::Slice(R"({
         "commitIndex": 4,
+        "releaseIndex": 0,
         "spearhead": {"term": 2, "index": 4},
         "lastErrorReason": {"error": "None"},
         "lastRequestLatencyMS": 0.012983,
@@ -189,6 +193,7 @@ TEST(LogStatusTest, leader_status) {
        {"PRMR-13608015-4a2c-46aa-985f-73b6b8a73568",
         FollowerStatistics::fromVelocyPack(velocypack::Slice(R"({
           "commitIndex": 3,
+          "releaseIndex": 0,
           "spearhead": {"term": 2, "index": 3},
           "lastErrorReason": {"error": "CommunicationError", "details": "foo"},
           "lastRequestLatencyMS": 11159.799272,

@@ -127,7 +127,7 @@ class LogFollower : public ILogFollower,
   Guarded<GuardedFollowerData, arangodb::basics::UnshackledMutex>
       _guardedFollowerData;
   std::atomic<bool> _appendEntriesInFlight{false};
-  arangodb::basics::UnshackledConditionVariable _appendEntriesInFlightCondVar{};
+  std::condition_variable_any _appendEntriesInFlightCondVar{};
 
   [[nodiscard]] auto appendEntriesPreFlightChecks(
       GuardedFollowerData const&, AppendEntriesRequest const&) const noexcept

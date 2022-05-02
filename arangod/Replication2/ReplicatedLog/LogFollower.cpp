@@ -212,6 +212,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     auto result = AppendEntriesResult::withOk(dataGuard->_follower._currentTerm,
                                               req.messageId);
     dataGuard.unlock();  // unlock here, action must be executed after
+    inFlightScopeGuard.fire();
     action.fire();
     static_assert(std::is_nothrow_move_constructible_v<AppendEntriesResult>);
     return {std::move(result)};
