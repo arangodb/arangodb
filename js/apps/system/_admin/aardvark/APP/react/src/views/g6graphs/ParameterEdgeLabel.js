@@ -2,6 +2,7 @@ import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
 import { Input, Tooltip } from 'antd';
 import { InfoCircleOutlined } from '@ant-design/icons';
+import Textinput from "../../components/pure-css/form/Textinput";
 
 const ParameterEdgeLabel = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
@@ -11,12 +12,7 @@ const ParameterEdgeLabel = () => {
 
   /*
   <h5>urlParameters (in ParameterEdgeLabel): {JSON.stringify(urlParameters)}</h5>
-  */
-  
-  return (
-    <>
-      <form>
-        <label>
+  <label>
           edgeLabel:
           <input
             type="text"
@@ -28,6 +24,20 @@ const ParameterEdgeLabel = () => {
             }}
           />
         </label>
+  */
+  
+  return (
+    <>
+      <form>
+        <Textinput
+          label={'Edge label'}
+          value={edgeLabel}
+          onChange={(e) => {
+            setEdgeLabel(e.target.value);
+            NEWURLPARAMETERS.edgeLabel = e.target.value;
+            setUrlParameters(NEWURLPARAMETERS);
+          }}>
+        </Textinput>
       </form>
     </>
   );
