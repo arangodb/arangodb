@@ -225,16 +225,6 @@ const screenshotMenu = (
             <ParameterEdgeColor />
             <br />
             <ParameterEdgeColorAttribute />
-            <Input
-              addonBefore="Color attribute"
-              placeholder="Attribute"
-              suffix={
-                <Tooltip title="If an attribute is given, edges will then be colorized by the attribute. This setting ignores default edge color if set.">
-                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                </Tooltip>
-              }
-              style={{ width: 240, marginTop: '24px' }}
-            />
             <br />
             <Select
               defaultValue="lucy"
