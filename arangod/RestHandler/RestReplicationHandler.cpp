@@ -111,9 +111,9 @@ static bool ignoreHiddenEnterpriseCollection(std::string const& name,
                                              bool force) {
 #ifdef USE_ENTERPRISE
   if (!force && name[0] == '_') {
-    if (strncmp(name.c_str(), "_local_", 7) == 0 ||
-        strncmp(name.c_str(), "_from_", 6) == 0 ||
-        strncmp(name.c_str(), "_to_", 4) == 0) {
+    if (name.starts_with(StaticStrings::FullLocalPrefix) ||
+        name.starts_with(StaticStrings::FullFromPrefix) ||
+        name.starts_with(StaticStrings::FullToPrefix)) {
       LOG_TOPIC("944c4", WARN, arangodb::Logger::REPLICATION)
           << "Restore ignoring collection " << name
           << ". Will be created via SmartGraphs of a full dump. If you want to "
@@ -1328,6 +1328,15 @@ Result RestReplicationHandler::processRestoreCollection(
           << basics::StringUtils::join(changes, ". ");
     }
 #endif
+
+    if (parameters.get(StaticStrings::UsesRevisionsAsDocumentIds).isNone() &&
+        (parameters.get(StaticStrings::SyncByRevision).isNone() ||
+         parameters.get(StaticStrings::SyncByRevision).isTrue())) {
+      // for restored collections that do not have "syncByRevision" nor
+      // "usesRevisionsAsDocumentIds" set, set "usesRevisionsAsDocumentIds"
+      // to true. This allows the usage of revision trees for the collection.
+      toMerge.add(StaticStrings::UsesRevisionsAsDocumentIds, VPackValue(true));
+    }
 
     // Always ignore `shadowCollections` they were accidentially dumped in
     // arangodb versions earlier than 3.3.6
@@ -3020,14 +3029,6 @@ void RestReplicationHandler::handleCommandLoggerTickRanges() {
 
 bool RestReplicationHandler::prepareRevisionOperation(
     RevisionOperationContext& ctx) {
-  auto& selector = server().getFeature<EngineSelectorFeature>();
-  if (!selector.isRocksDB()) {
-    generateError(
-        rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
-        "this storage engine does not support revision-based replication");
-    return false;
-  }
-
   LOG_TOPIC("253e2", TRACE, arangodb::Logger::REPLICATION)
       << "enter prepareRevisionOperation";
 
@@ -3408,6 +3409,14 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
     // needed in case we restore cluster related data into single server
     // instance
     patch.add(StaticStrings::DataSourcePlanId, VPackSlice::nullSlice());
+    if (slice.get(StaticStrings::UsesRevisionsAsDocumentIds).isNone() &&
+        (slice.get(StaticStrings::SyncByRevision).isNone() ||
+         slice.get(StaticStrings::SyncByRevision).isTrue())) {
+      // for restored collections that do not have the attribute
+      // "usesRevisionsAsDocumentIds" set, set "usesRevisionsAsDocumentIds"
+      // to true. This allows the usage of revision trees for the collection.
+      patch.add(StaticStrings::UsesRevisionsAsDocumentIds, VPackValue(true));
+    }
   }
   patch.close();
 

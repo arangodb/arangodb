@@ -407,6 +407,22 @@ arangodb::Result sendRestoreCollection(
   }
   newOptions.add(arangodb::StaticStrings::NumberOfShards,
                  VPackValue(getNumberOfShards(options, parameters)));
+
+  // enable revision trees for the collection if the parameters are not set
+  // (likely a collection from the pre-3.8 era)
+  if (options.enableRevisionTrees) {
+    if ((parameters.get(arangodb::StaticStrings::SyncByRevision).isNone() ||
+         parameters.get(arangodb::StaticStrings::SyncByRevision).isTrue()) &&
+        (parameters.get(arangodb::StaticStrings::UsesRevisionsAsDocumentIds)
+             .isNone() ||
+         parameters.get(arangodb::StaticStrings::UsesRevisionsAsDocumentIds)
+             .isTrue())) {
+      newOptions.add(arangodb::StaticStrings::SyncByRevision, VPackValue(true));
+      newOptions.add(arangodb::StaticStrings::UsesRevisionsAsDocumentIds,
+                     VPackValue(true));
+    }
+  }
+
   newOptions.close();
 
   VPackBuilder b;
@@ -1734,6 +1750,14 @@ void RestoreFeature::collectOptions(
                   "(this is required from compatibility with v3.7 and before)",
                   new BooleanParameter(&_options.useEnvelope))
       .setIntroducedIn(30800);
+
+  options
+      ->addOption("--enable-revision-trees",
+                  "enable revision trees for new collections if the collection "
+                  "attributes 'syncByRevision' and "
+                  "'usesRevisionsAsDocumentIds' are missing",
+                  new BooleanParameter(&_options.enableRevisionTrees))
+      .setIntroducedIn(30807);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   options->addOption(
