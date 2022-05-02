@@ -234,7 +234,7 @@ auto methods::getCurrentSupervision(TRI_vocbase_t& vocbase, LogId id)
   agencyCache.get(builder, basics::StringUtils::concatT(
                                "Current/ReplicatedLogs/", vocbase.name(), "/",
                                id, "/supervision"));
-  return LogCurrentSupervision{from_velocypack, builder.slice()};
+  return LogCurrentSupervision::fromVelocyPack(builder.slice());
 }
 
 namespace {

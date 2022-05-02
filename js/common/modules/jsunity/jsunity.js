@@ -229,7 +229,7 @@ var jsUnity = exports.jsUnity = (function () {
     },
 
     fail: function (message) {
-      throw message || "fail";
+      throw new Error(message || "fail(): invoked without message");
     }
   };
 

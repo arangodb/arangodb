@@ -62,8 +62,9 @@ class ChecksumHelper {
 
  private:
   std::string _rootPath;
-  std::unordered_map<std::string, std::string> _fileNamesToHashes;
+
   Mutex _calculatedHashesMutex;
+  std::unordered_map<std::string, std::string> _fileNamesToHashes;
 };
 
 class ChecksumWritableFile : public rocksdb::WritableFileWrapper {
