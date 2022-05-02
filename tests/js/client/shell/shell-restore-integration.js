@@ -911,7 +911,35 @@ function restoreIntegrationSuite () {
         db._useDatabase("_system");
       }
     },
+    
+    testRestoreEnableRevisionTreesDefault: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
 
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            name: cn,
+            type: 2
+          }
+        }));
+
+        let args = ['--collection', cn, '--import-data', 'false'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        let props = c.properties();
+        assertTrue(props.hasOwnProperty("syncByRevision"));
+        assertTrue(props.syncByRevision);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },    
+    
     testRestoreEnableRevisionTreesTrue: function () {
       let path = fs.getTempFile();
       try {
