@@ -30,6 +30,9 @@ namespace arangodb::replication2::replicated_log {
 struct ParticipantHealth {
   RebootId rebootId;
   bool notIsFailed;
+  friend auto operator==(ParticipantHealth const& s,
+                         ParticipantHealth const& s2) noexcept
+      -> bool = default;
 };
 
 struct ParticipantsHealth {
@@ -57,6 +60,9 @@ struct ParticipantsHealth {
     return _health.contains(participant);
   }
 
+  friend auto operator==(ParticipantsHealth const& s,
+                         ParticipantsHealth const& s2) noexcept
+      -> bool = default;
   std::unordered_map<ParticipantId, ParticipantHealth> _health;
 };
 
