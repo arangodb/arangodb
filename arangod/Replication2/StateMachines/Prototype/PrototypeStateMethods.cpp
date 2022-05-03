@@ -95,6 +95,32 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
         TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
   }
 
+  virtual auto waitForApplied(LogId id, LogIndex waitForIndex) const
+      -> futures::Future<Result> override {
+    auto stateMachine =
+        std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
+            _vocbase.getReplicatedStateById(id));
+    if (stateMachine == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, basics::StringUtils::concatT(
+                                  "Failed to get ProtoypeState with id ", id));
+    }
+    auto leader = stateMachine->getLeader();
+    if (leader != nullptr) {
+      return leader->waitForApplied(waitForIndex).thenValue([](auto&&) {
+        return Result{};
+      });
+    }
+    auto follower = stateMachine->getFollower();
+    if (follower != nullptr) {
+      return follower->waitForApplied(waitForIndex).thenValue([](auto&&) {
+        return Result{};
+      });
+    }
+    THROW_ARANGO_EXCEPTION(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
+  }
+
   [[nodiscard]] auto getSnapshot(LogId id, LogIndex waitForIndex) const
       -> futures::Future<
           ResultT<std::unordered_map<std::string, std::string>>> override {
@@ -316,6 +342,20 @@ struct PrototypeStateMethodsCoordinator final
                                 builder.bufferRef(), opts)
         .thenValue([](network::Response&& resp) -> LogIndex {
           return processLogIndexResponse(std::move(resp));
+        });
+  }
+
+  auto waitForApplied(LogId id, LogIndex waitForIndex) const
+      -> futures::Future<Result> override {
+    auto path = basics::StringUtils::joinT("/", "_api/prototype-state", id,
+                                           "wait-for-applied", waitForIndex);
+    network::RequestOptions opts;
+    opts.database = _vocbase.name();
+
+    return network::sendRequest(_pool, "server:" + getLogLeader(id),
+                                fuerte::RestVerb::Get, path, {}, opts)
+        .thenValue([](network::Response&& resp) -> Result {
+          return resp.combinedResult();
         });
   }
 

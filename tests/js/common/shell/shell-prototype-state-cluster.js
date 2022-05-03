@@ -147,6 +147,17 @@ function PrototypeStateTestSuite() {
       }
     },
 
+    testStandAloneWaitFor: function () {
+      const state = db._createPrototypeState({config});
+      let idx = state.write({"A": "1", "B": "2", "C": "3", "D": "4"}, {waitForCommit: false});
+
+      state.waitForApplied(idx);
+      const {A: valueA, B: valueB, C: valueC} = state.read(["A", "B", "C"]);
+      assertEqual(valueA, "1");
+      assertEqual(valueB, "2");
+      assertEqual(valueC, "3");
+    },
+
     testSnapshotWaitFor: function () {
       const state = db._createPrototypeState({config});
       let lastIndex;

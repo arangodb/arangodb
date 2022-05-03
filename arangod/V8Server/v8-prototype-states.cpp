@@ -255,6 +255,39 @@ static void JS_GetSnapshot(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_WaitFor(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  auto& vocbase = GetContextVocBase(isolate);
+  auto id = UnwrapPrototypeState(isolate, args.Holder());
+  if (!arangodb::ExecContext::current().isAdminUser()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("No access to prototype state '") + to_string(id) + "'");
+  }
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("waitForApplied(<waitForIndex>)");
+  }
+
+  auto arg = args[0]->ToUint32(TRI_IGETC);
+  if (arg.IsEmpty()) {
+    TRI_V8_THROW_EXCEPTION_USAGE(
+        "waitForApplied(<idx>) expects numerical identifier");
+  }
+  auto waitForIndex = LogIndex{arg.ToLocalChecked()->Value()};
+
+  auto const result = PrototypeStateMethods::createInstance(vocbase)
+                          ->waitForApplied(id, waitForIndex)
+                          .get();
+  if (result.fail()) {
+    TRI_V8_THROW_EXCEPTION(result);
+  }
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
 static void JS_ReadInternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -339,6 +372,8 @@ void TRI_InitV8PrototypeStates(TRI_v8_global_t* v8g, v8::Isolate* isolate) {
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "_readInternal"),
                        JS_ReadInternal);
+  TRI_AddMethodVocbase(
+      isolate, rt, TRI_V8_ASCII_STRING(isolate, "waitForApplied"), JS_WaitFor);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getSnapshot"),
                        JS_GetSnapshot);
 

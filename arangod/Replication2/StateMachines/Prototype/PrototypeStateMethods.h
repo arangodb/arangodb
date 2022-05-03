@@ -111,6 +111,9 @@ struct PrototypeStateMethods {
                                     PrototypeWriteOptions) const
       -> futures::Future<LogIndex> = 0;
 
+  virtual auto waitForApplied(LogId id, LogIndex waitForIndex) const
+      -> futures::Future<Result> = 0;
+
   struct PrototypeStatus {
     // TODO
     LogId id;
