@@ -971,6 +971,10 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 #endif
   }
 
+  if (isDisjoint()) {
+    // TODO [GraphRefactor]: maybe remove
+    opts->setDisjoint();
+  }
   /*
    * Default SingleServer Traverser
    */
