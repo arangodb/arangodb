@@ -32,7 +32,7 @@ const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 
 const database = "replication2_supervision_test_db";
 
-const replicatedStateSuite = function () {
+const replicatedStateSuite = function (stateType) {
   const targetConfig = {
     writeConcern: 2,
     softWriteConcern: 2,
@@ -43,10 +43,10 @@ const replicatedStateSuite = function () {
   const {setUpAll, tearDownAll, stopServer, continueServer, setUp, tearDown} = lh.testHelperFunctions(database);
 
   const createReplicatedStateWithServers = function (servers) {
-    return sh.createReplicatedStateTargetWithServers(database, targetConfig, "black-hole", servers);
+    return sh.createReplicatedStateTargetWithServers(database, targetConfig, stateType, servers);
   };
   const createReplicatedState = function () {
-    return sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+    return sh.createReplicatedStateTarget(database, targetConfig, stateType);
   };
 
   return {
@@ -78,7 +78,7 @@ const replicatedStateSuite = function () {
               },
               properties: {
                 implementation: {
-                  type: "black-hole"
+                  type: stateType
                 }
               }
             };
@@ -227,5 +227,12 @@ const replicatedStateSuite = function () {
   };
 };
 
-jsunity.run(replicatedStateSuite);
+const suiteWithState = function (stateType) {
+  return function () {
+    return replicatedStateSuite(stateType);
+  };
+};
+
+jsunity.run(suiteWithState("black-hole"));
+jsunity.run(suiteWithState("prototype"));
 return jsunity.done();
