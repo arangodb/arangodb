@@ -170,8 +170,6 @@ include(${ORIGINAL_SOURCE_DIR}/cmake/debugInformation.cmake)
 include(${ORIGINAL_SOURCE_DIR}/cmake/InstallArangoDBJSClient.cmake)
 include(${ORIGINAL_SOURCE_DIR}/client-tools/install.cmake)
 
-install_readme(README.windows README.windows.txt)
-
 install(FILES ${ICU_DT}
   DESTINATION "${INSTALL_ICU_DT_DEST}"
   RENAME ${ICU_DT_DEST})
