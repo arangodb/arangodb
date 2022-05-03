@@ -320,12 +320,14 @@ void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> map) noexcept {
 ErrorCode LogicalCollection::getResponsibleShard(velocypack::Slice slice,
                                                  bool docComplete,
                                                  std::string& shardID) {
+  TRI_ASSERT(_sharding != nullptr);
   bool usesDefaultShardKeys;
   return getResponsibleShard(slice, docComplete, shardID, usesDefaultShardKeys);
 }
 
 ErrorCode LogicalCollection::getResponsibleShard(std::string_view key,
                                                  std::string& shardID) {
+  TRI_ASSERT(_sharding != nullptr);
   bool usesDefaultShardKeys;
   return getResponsibleShard(VPackSlice::emptyObjectSlice(), false, shardID,
                              usesDefaultShardKeys,
@@ -344,6 +346,7 @@ ErrorCode LogicalCollection::getResponsibleShard(velocypack::Slice slice,
 
 void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
   TRI_ASSERT(_physical != nullptr);
+  TRI_ASSERT(_sharding != nullptr);
 
   if (!indexesSlice.isArray()) {
     // always point to an array
@@ -355,16 +358,19 @@ void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
 
 std::unique_ptr<IndexIterator> LogicalCollection::getAllIterator(
     transaction::Methods* trx, ReadOwnWrites readOwnWrites) {
+  TRI_ASSERT(_sharding != nullptr);
   return _physical->getAllIterator(trx, readOwnWrites);
 }
 
 std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(
     transaction::Methods* trx) {
+  TRI_ASSERT(_sharding != nullptr);
   return _physical->getAnyIterator(trx);
 }
 // @brief Return the number of documents in this collection
 uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx,
                                             transaction::CountType type) {
+  TRI_ASSERT(_sharding != nullptr);
   // detailed results should have been handled in the levels above us
   TRI_ASSERT(type != transaction::CountType::Detailed);
 
@@ -386,34 +392,47 @@ uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx,
 }
 
 bool LogicalCollection::hasClusterWideUniqueRevs() const noexcept {
+  TRI_ASSERT(_sharding != nullptr);
   return usesRevisionsAsDocumentIds() && isSmartChild();
 }
 
 bool LogicalCollection::mustCreateKeyOnCoordinator() const noexcept {
+  TRI_ASSERT(_sharding != nullptr);
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
   // when there is more than 1 shard, or if we do have a satellite
   // collection, we need to create the key on the coordinator.
   return numberOfShards() != 1;
 }
 
-uint32_t LogicalCollection::v8CacheVersion() const { return _v8CacheVersion; }
+uint32_t LogicalCollection::v8CacheVersion() const {
+  TRI_ASSERT(_sharding != nullptr);
+  return _v8CacheVersion;
+}
 
-TRI_col_type_e LogicalCollection::type() const { return _type; }
+TRI_col_type_e LogicalCollection::type() const {
+  return _type;
+}
 
-TRI_vocbase_col_status_e LogicalCollection::status() const { return _status; }
+TRI_vocbase_col_status_e LogicalCollection::status() const {
+  TRI_ASSERT(_sharding != nullptr);
+  return _status;
+}
 
 TRI_vocbase_col_status_e LogicalCollection::getStatusLocked() {
+  TRI_ASSERT(_sharding != nullptr);
   READ_LOCKER(readLocker, _statusLock);
   return _status;
 }
 
 void LogicalCollection::executeWhileStatusWriteLocked(
     std::function<void()> const& callback) {
+  TRI_ASSERT(_sharding != nullptr);
   WRITE_LOCKER_EVENTUAL(locker, _statusLock);
   callback();
 }
 
 TRI_vocbase_col_status_e LogicalCollection::tryFetchStatus(bool& didFetch) {
+  TRI_ASSERT(_sharding != nullptr);
   TRY_READ_LOCKER(locker, _statusLock);
   if (locker.isLocked()) {
     didFetch = true;
@@ -426,6 +445,7 @@ TRI_vocbase_col_status_e LogicalCollection::tryFetchStatus(bool& didFetch) {
 // SECTION: Properties
 RevisionId LogicalCollection::revision(transaction::Methods* trx) const {
   // TODO CoordinatorCase
+  TRI_ASSERT(_sharding != nullptr);
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   return _physical->revision(trx);
 }
@@ -443,18 +463,22 @@ std::string const& LogicalCollection::smartGraphAttribute() const noexcept {
 #endif
 
 bool LogicalCollection::usesRevisionsAsDocumentIds() const noexcept {
+  TRI_ASSERT(_sharding != nullptr);
   return _usesRevisionsAsDocumentIds.load(std::memory_order_relaxed);
 }
 
 std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
+  TRI_ASSERT(_sharding != nullptr);
   return _followers;
 }
 
 bool LogicalCollection::syncByRevision() const noexcept {
+  TRI_ASSERT(_sharding != nullptr);
   return _syncByRevision.load();
 }
 
 bool LogicalCollection::useSyncByRevision() const noexcept {
+  TRI_ASSERT(_sharding != nullptr);
   return !_isAStub && _syncByRevision.load();
 }
 
@@ -474,14 +498,17 @@ bool LogicalCollection::determineSyncByRevision() const {
 
 IndexEstMap LogicalCollection::clusterIndexEstimates(bool allowUpdating,
                                                      TransactionId tid) {
+  TRI_ASSERT(_sharding != nullptr);
   return getPhysical()->clusterIndexEstimates(allowUpdating, tid);
 }
 
 void LogicalCollection::flushClusterIndexEstimates() {
+  TRI_ASSERT(_sharding != nullptr);
   getPhysical()->flushClusterIndexEstimates();
 }
 
 std::vector<std::shared_ptr<Index>> LogicalCollection::getIndexes() const {
+  TRI_ASSERT(_sharding != nullptr);
   return getPhysical()->getIndexes();
 }
 
@@ -490,10 +517,12 @@ void LogicalCollection::getIndexesVPack(
     std::function<bool(Index const*,
                        std::underlying_type<Index::Serialize>::type&)> const&
         filter) const {
+  TRI_ASSERT(_sharding != nullptr);
   getPhysical()->getIndexesVPack(result, filter);
 }
 
 bool LogicalCollection::allowUserKeys() const noexcept {
+  TRI_ASSERT(_sharding != nullptr);
   return _allowUserKeys;
 }
 
@@ -511,6 +540,7 @@ bool LogicalCollection::allowUserKeys() const noexcept {
 // to "renameCollection" returns
 
 Result LogicalCollection::rename(std::string&& newName) {
+  TRI_ASSERT(_sharding != nullptr);
   // Should only be called from inside vocbase.
   // Otherwise caching is destroyed.
   TRI_ASSERT(!ServerState::instance()->isCoordinator());  // NOT YET IMPLEMENTED
@@ -560,9 +590,13 @@ Result LogicalCollection::rename(std::string&& newName) {
   return {};
 }
 
-ErrorCode LogicalCollection::close() { return getPhysical()->close(); }
+ErrorCode LogicalCollection::close() {
+  TRI_ASSERT(_sharding != nullptr);
+  return getPhysical()->close();
+}
 
 Result LogicalCollection::drop() {
+  TRI_ASSERT(_sharding != nullptr);
   // make sure collection has been closed
   this->close();
 
@@ -574,6 +608,7 @@ Result LogicalCollection::drop() {
 }
 
 void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
+  TRI_ASSERT(_sharding != nullptr);
   _status = status;
 
   if (status == TRI_VOC_COL_STATUS_LOADED) {
@@ -582,6 +617,7 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
 }
 
 void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
+  TRI_ASSERT(_sharding != nullptr);
   result.openObject();
   result.add(VPackValue(StaticStrings::Indexes));
   getIndexesVPack(result, [](arangodb::Index const* idx,
@@ -609,6 +645,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
                                                         bool useSystem,
                                                         bool isReady,
                                                         bool allInSync) const {
+  TRI_ASSERT(_sharding != nullptr);
   if (system() && !useSystem) {
     return;
   }
@@ -666,6 +703,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 
 Result LogicalCollection::appendVPack(velocypack::Builder& build,
                                       Serialization ctx, bool) const {
+  TRI_ASSERT(_sharding != nullptr);
   bool const forPersistence = (ctx == Serialization::Persistence ||
                                ctx == Serialization::PersistenceWithInProgress);
   bool const showInProgress = (ctx == Serialization::PersistenceWithInProgress);
@@ -744,6 +782,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
 void LogicalCollection::toVelocyPackIgnore(
     VPackBuilder& result, std::unordered_set<std::string> const& ignoreKeys,
     Serialization context) const {
+  TRI_ASSERT(_sharding != nullptr);
   TRI_ASSERT(result.isOpenObject());
   VPackBuilder b = toVelocyPackIgnore(ignoreKeys, context);
   result.add(VPackObjectIterator(b.slice()));
@@ -752,6 +791,7 @@ void LogicalCollection::toVelocyPackIgnore(
 VPackBuilder LogicalCollection::toVelocyPackIgnore(
     std::unordered_set<std::string> const& ignoreKeys,
     Serialization context) const {
+  TRI_ASSERT(_sharding != nullptr);
   VPackBuilder full;
   full.openObject();
   properties(full, context);
@@ -769,9 +809,13 @@ void LogicalCollection::includeVelocyPackEnterprise(
 }
 #endif
 
-void LogicalCollection::increaseV8Version() { ++_v8CacheVersion; }
+void LogicalCollection::increaseV8Version() {
+  TRI_ASSERT(_sharding != nullptr);
+  ++_v8CacheVersion;
+}
 
 Result LogicalCollection::properties(velocypack::Slice slice, bool) {
+  TRI_ASSERT(_sharding != nullptr);
   // the following collection properties are intentionally not updated,
   // as updating them would be very complicated:
   // - _cid
@@ -965,21 +1009,25 @@ Result LogicalCollection::properties(velocypack::Slice slice, bool) {
 /// @brief return the figures for a collection
 futures::Future<OperationResult> LogicalCollection::figures(
     bool details, OperationOptions const& options) const {
+  TRI_ASSERT(_sharding != nullptr);
   return getPhysical()->figures(details, options);
 }
 
 /// SECTION Indexes
 
 std::shared_ptr<Index> LogicalCollection::lookupIndex(IndexId idxId) const {
+  TRI_ASSERT(_sharding != nullptr);
   return getPhysical()->lookupIndex(idxId);
 }
 
 std::shared_ptr<Index> LogicalCollection::lookupIndex(
     std::string const& idxName) const {
+  TRI_ASSERT(_sharding != nullptr);
   return getPhysical()->lookupIndex(idxName);
 }
 
 std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice info) const {
+  TRI_ASSERT(_sharding != nullptr);
   if (!info.isObject()) {
     // Compatibility with old v8-vocindex.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -989,6 +1037,7 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice info) const {
 
 std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice info,
                                                       bool& created) {
+  TRI_ASSERT(_sharding != nullptr);
   auto idx = _physical->createIndex(info, /*restore*/ false, created);
   if (idx) {
     auto& df = vocbase().server().getFeature<DatabaseFeature>();
@@ -1001,6 +1050,7 @@ std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice info,
 
 /// @brief drops an index, including index file removal and replication
 bool LogicalCollection::dropIndex(IndexId iid) {
+  TRI_ASSERT(_sharding != nullptr);
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 #if USE_PLAN_CACHE
   aql::PlanCache::instance()->invalidate(_vocbase);
@@ -1024,6 +1074,7 @@ bool LogicalCollection::dropIndex(IndexId iid) {
 ///        This should be called AFTER the collection is successfully
 ///        created and only on Single/DBServer
 void LogicalCollection::persistPhysicalCollection() {
+  TRI_ASSERT(_sharding != nullptr);
   // Coordinators are not allowed to have local collections!
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
@@ -1033,6 +1084,7 @@ void LogicalCollection::persistPhysicalCollection() {
 }
 
 basics::ReadWriteLock& LogicalCollection::statusLock() noexcept {
+  TRI_ASSERT(_sharding != nullptr);
   return _statusLock;
 }
 
@@ -1042,6 +1094,7 @@ basics::ReadWriteLock& LogicalCollection::statusLock() noexcept {
 ///        it at that moment.
 void LogicalCollection::deferDropCollection(
     std::function<bool(LogicalCollection&)> const& callback) {
+  TRI_ASSERT(_sharding != nullptr);
   _syncByRevision = false;  // safety to make sure we can do physical cleanup
   _physical->deferDropCollection(callback);
 }
@@ -1053,6 +1106,7 @@ void LogicalCollection::deferDropCollection(
 
 Result LogicalCollection::truncate(transaction::Methods& trx,
                                    OperationOptions& options) {
+  TRI_ASSERT(_sharding != nullptr);
   TRI_IF_FAILURE("LogicalCollection::truncate") {
     return Result(TRI_ERROR_DEBUG);
   }
@@ -1061,7 +1115,10 @@ Result LogicalCollection::truncate(transaction::Methods& trx,
 }
 
 /// @brief compact-data operation
-void LogicalCollection::compact() { getPhysical()->compact(); }
+void LogicalCollection::compact() {
+  TRI_ASSERT(_sharding != nullptr);
+  getPhysical()->compact();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a document or edge into the collection
@@ -1071,6 +1128,7 @@ Result LogicalCollection::insert(transaction::Methods* trx,
                                  VPackSlice const slice,
                                  ManagedDocumentResult& result,
                                  OperationOptions& options) {
+  TRI_ASSERT(_sharding != nullptr);
   TRI_IF_FAILURE("LogicalCollection::insert") {
     return Result(TRI_ERROR_DEBUG);
   }
@@ -1082,6 +1140,7 @@ Result LogicalCollection::update(transaction::Methods* trx, VPackSlice newSlice,
                                  ManagedDocumentResult& result,
                                  OperationOptions& options,
                                  ManagedDocumentResult& previous) {
+  TRI_ASSERT(_sharding != nullptr);
   TRI_IF_FAILURE("LogicalCollection::update") {
     return Result(TRI_ERROR_DEBUG);
   }
@@ -1099,6 +1158,7 @@ Result LogicalCollection::replace(transaction::Methods* trx,
                                   ManagedDocumentResult& result,
                                   OperationOptions& options,
                                   ManagedDocumentResult& previous) {
+  TRI_ASSERT(_sharding != nullptr);
   TRI_IF_FAILURE("LogicalCollection::replace") {
     return Result(TRI_ERROR_DEBUG);
   }
@@ -1114,6 +1174,7 @@ Result LogicalCollection::remove(transaction::Methods& trx,
                                  velocypack::Slice const slice,
                                  OperationOptions& options,
                                  ManagedDocumentResult& previous) {
+  TRI_ASSERT(_sharding != nullptr);
   TRI_IF_FAILURE("LogicalCollection::remove") {
     return Result(TRI_ERROR_DEBUG);
   }
@@ -1130,6 +1191,7 @@ bool LogicalCollection::skipForAqlWrite(velocypack::Slice document,
 #endif
 
 void LogicalCollection::schemaToVelocyPack(VPackBuilder& b) const {
+  TRI_ASSERT(_sharding != nullptr);
   auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
   if (schema != nullptr) {
     schema->toVelocyPack(b);
@@ -1140,6 +1202,7 @@ void LogicalCollection::schemaToVelocyPack(VPackBuilder& b) const {
 
 Result LogicalCollection::validate(VPackSlice s,
                                    VPackOptions const* options) const {
+  TRI_ASSERT(_sharding != nullptr);
   auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
   if (schema != nullptr) {
     auto res = schema->validate(s, VPackSlice::noneSlice(), true, options);
@@ -1158,6 +1221,7 @@ Result LogicalCollection::validate(VPackSlice s,
 
 Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc,
                                    VPackOptions const* options) const {
+  TRI_ASSERT(_sharding != nullptr);
   auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
   if (schema != nullptr) {
     auto res = schema->validate(modifiedDoc, oldDoc, false, options);
@@ -1175,15 +1239,18 @@ Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc,
 }
 
 void LogicalCollection::setInternalValidatorTypes(uint64_t type) {
+  TRI_ASSERT(_sharding != nullptr);
   _internalValidatorTypes = type;
 }
 
 uint64_t LogicalCollection::getInternalValidatorTypes() const noexcept {
+  TRI_ASSERT(_sharding != nullptr);
   return _internalValidatorTypes;
 }
 
 void LogicalCollection::addInternalValidator(
     std::unique_ptr<ValidatorBase> validator) {
+  TRI_ASSERT(_sharding != nullptr);
   // For the time beeing we only allow ONE internal validator.
   // This however is a non-necessary restriction and can be leveraged at any
   // time. The code is prepared to handle any number of validators, and this
@@ -1194,6 +1261,7 @@ void LogicalCollection::addInternalValidator(
 }
 
 void LogicalCollection::decorateWithInternalValidators() {
+  TRI_ASSERT(_sharding != nullptr);
   // Community validators go in here.
   decorateWithInternalEEValidators();
 }
