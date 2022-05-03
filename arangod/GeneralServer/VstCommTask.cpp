@@ -50,6 +50,9 @@
 #include <velocypack/Options.h>
 #include <velocypack/Validator.h>
 
+#include <string>
+#include <string_view>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -298,7 +301,7 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
   try {
     // handle request types
     if (mt == fu::MessageType::Authentication) {  // auth
-      handleVstAuthRequest(VPackSlice(buffer.data()), messageId);
+      handleVstAuthRequest(VPackSlice(buffer.data()), messageId, mode);
     } else if (mt == fu::MessageType::Request) {  // request
       // the handler will take ownership of this pointer
       auto req = std::make_unique<VstRequest>(
@@ -513,12 +516,13 @@ void VstCommTask<T>::doWrite() {
 }
 
 template<SocketType T>
-void VstCommTask<T>::handleVstAuthRequest(VPackSlice header, uint64_t mId) {
+void VstCommTask<T>::handleVstAuthRequest(VPackSlice header, uint64_t mId,
+                                          ServerState::Mode mode) {
   std::string authString;
   std::string user;
   _authMethod = AuthenticationMethod::NONE;
 
-  std::string encryption = header.at(2).copyString();
+  std::string_view encryption = header.at(2).stringView();
   if (encryption == "jwt") {  // doing JWT
     authString = header.at(3).copyString();
     _authMethod = AuthenticationMethod::JWT;
@@ -531,8 +535,8 @@ void VstCommTask<T>::handleVstAuthRequest(VPackSlice header, uint64_t mId) {
     LOG_TOPIC("01f44", WARN, Logger::REQUESTS) << "Unknown VST encryption type";
   }
 
-  _authToken =
-      this->_auth->tokenCache().checkAuthentication(_authMethod, authString);
+  _authToken = this->_auth->tokenCache().checkAuthentication(_authMethod, mode,
+                                                             authString);
 
   // Separate superuser traffic:
   // Note that currently, velocystream traffic will never come from
@@ -543,7 +547,9 @@ void VstCommTask<T>::handleVstAuthRequest(VPackSlice header, uint64_t mId) {
   }
 
   if (_authToken.authenticated() || !this->_auth->isActive()) {
-    // simon: drivers expect a response for their auth request
+    // simon: drivers expect a response for their auth request.
+    // although we are calling sendErrorResponse here, this is actually not
+    // an error.
     this->sendErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, mId,
                             TRI_ERROR_NO_ERROR, "auth successful");
   } else {

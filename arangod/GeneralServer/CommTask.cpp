@@ -939,7 +939,7 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
   }
 
   auto authToken =
-      this->_auth->tokenCache().checkAuthentication(authMethod, auth);
+      this->_auth->tokenCache().checkAuthentication(authMethod, mode, auth);
   req.setAuthenticated(authToken.authenticated());
   req.setTokenExpiry(authToken.expiry());
   req.setUser(authToken.username());  // do copy here, so that we do not

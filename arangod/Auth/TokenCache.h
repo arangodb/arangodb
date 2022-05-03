@@ -30,10 +30,16 @@
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 #include "Basics/system-functions.h"
+#include "Cluster/ServerState.h"
 #include "Rest/CommonDefines.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+
+#include <atomic>
+#include <mutex>
+#include <string>
+#include <unordered_map>
 
 namespace arangodb {
 namespace auth {
@@ -83,8 +89,9 @@ class TokenCache {
   };
 
  public:
-  TokenCache::Entry checkAuthentication(
-      arangodb::rest::AuthenticationMethod authType, std::string const& secret);
+  TokenCache::Entry checkAuthentication(rest::AuthenticationMethod authType,
+                                        ServerState::Mode mode,
+                                        std::string const& secret);
 
   /// Clear the cache of username / password auth
   void invalidateBasicCache();
