@@ -2327,8 +2327,8 @@ function startArango (protocol, options, addArgs, rootDir, role) {
       } else {
         logs.push(args['log.level']);
       }
-      args['log.level'] = logs;
     }
+    args['log.level'] = logs;
   }
 
   instanceInfo.url = endpointToURL(instanceInfo.endpoint);
