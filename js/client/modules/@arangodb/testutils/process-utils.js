@@ -2319,7 +2319,16 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   if (options.verbose) {
     args['log.level'] = 'debug';
   } else if (options.noStartStopLogs) {
-    args['log.level'] = 'all=error';
+    // rewrite log levels
+    let logs = ['all=error'];
+    if (args['log.level'] !== undefined) {
+      if (Array.isArray(args['log.level'])) {
+        logs = logs.concat(args['log.level']);
+      } else {
+        logs.push(args['log.level']);
+      }
+      args['log.level'] = logs;
+    }
   }
 
   instanceInfo.url = endpointToURL(instanceInfo.endpoint);

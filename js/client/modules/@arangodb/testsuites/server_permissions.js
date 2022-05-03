@@ -73,7 +73,6 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
         let shutdownStatus;
         let clonedOpts = _.clone(obj.options);
         let paramsFirstRun = {};
-        let serverOptions = {};
 
         let fileContent = fs.read(testFile);
         let content = `(function(){ const runSetup = false; const getOptions = true; ${fileContent} 
@@ -90,6 +89,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
           clonedOpts['password'] = paramsSecondRun['database.password'];
           paramsFirstRun['server.password'] = paramsSecondRun['database.password'];
         }
+
         if (runSetup) {
           delete paramsSecondRun.runSetup;
           if (obj.options.extremeVerbosity !== 'silent') {
