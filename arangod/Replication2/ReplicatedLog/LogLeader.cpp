@@ -962,6 +962,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::getLocalStatistics() const
   result.commitIndex = _commitIndex;
   result.firstIndex = _inMemoryLog.getFirstIndex();
   result.spearHead = _inMemoryLog.getLastTermIndexPair();
+  result.releaseIndex = _releaseIndex;
   return result;
 }
 

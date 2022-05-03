@@ -47,12 +47,6 @@ struct FollowerAppendEntriesTest : ReplicatedLogTest {
     return log;
   }
 
-  auto makeDelayedPersistedLog(LogId id) -> std::shared_ptr<DelayedMockLog> {
-    auto persisted = std::make_shared<DelayedMockLog>(id);
-    _persistedLogs[id] = persisted;
-    return persisted;
-  }
-
   auto makeDelayedFollower(ParticipantId id, LogTerm term,
                            ParticipantId leaderId)
       -> std::shared_ptr<ReplicatedLog> {
