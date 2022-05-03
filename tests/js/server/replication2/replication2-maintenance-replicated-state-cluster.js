@@ -56,7 +56,7 @@ const {setUpAll, tearDownAll} = (function () {
   };
 }());
 
-const replicatedStateSuite = function () {
+const replicatedStateSuite = function (stateType) {
 
   const createReplicatedState = function (database, logId, servers, leader) {
     SH.updateReplicatedStatePlan(database, logId, function () {
@@ -86,7 +86,7 @@ const replicatedStateSuite = function () {
         participants: {},
         properties: {
           implementation: {
-            type: "black-hole",
+            type: stateType,
           }
         }
       };
@@ -210,5 +210,12 @@ const replicatedStateSuite = function () {
   };
 };
 
-jsunity.run(replicatedStateSuite);
+const suiteWithState = function (stateType) {
+  return function () {
+    return replicatedStateSuite(stateType);
+  };
+};
+
+jsunity.run(suiteWithState("black-hole"));
+jsunity.run(suiteWithState("prototype"));
 return jsunity.done();
