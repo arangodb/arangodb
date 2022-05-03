@@ -25,16 +25,13 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/ReadWriteLock.h"
-#include "Basics/Result.h"
 #include "RestServer/arangod.h"
 #include "VocBase/voc-types.h"
 
-#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <mutex>
-#include <utility>
+#include <tuple>
 #include <vector>
 
 struct TRI_vocbase_t;
@@ -54,13 +51,6 @@ struct FlushSubscription {
 
 class FlushFeature final : public ArangodFeature {
  public:
-  /// @brief handle a 'Flush' marker during recovery
-  /// @param vocbase the vocbase the marker applies to
-  /// @param slice the originally stored marker body
-  /// @return success
-  using FlushRecoveryCallback = std::function<Result(
-      TRI_vocbase_t const& vocbase, velocypack::Slice const& slice)>;
-
   static constexpr std::string_view name() noexcept { return "Flush"; }
 
   explicit FlushFeature(Server& server);
@@ -78,22 +68,15 @@ class FlushFeature final : public ArangodFeature {
       const std::shared_ptr<FlushSubscription>& subscription);
 
   /// @brief release all ticks not used by the flush subscriptions
-  /// returns number of stale flush subscriptions removed and the tick value
-  /// up to which the storage engine could release ticks
-  std::pair<size_t, TRI_voc_tick_t> releaseUnusedTicks();
+  /// returns number of active flush subscriptions removed, the number of stale
+  /// flush scriptions removed, and the tick value up to which the storage
+  /// engine could release ticks. if no active or stale flush subscriptions were
+  /// found, the returned tick value is 0.
+  std::tuple<size_t, size_t, TRI_voc_tick_t> releaseUnusedTicks();
 
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void prepare() override;
-  void start() override;
-  void beginShutdown() override;
   void stop() override;
 
  private:
-  uint64_t _flushInterval;
-
-  basics::ReadWriteLock _threadLock;
-  std::unique_ptr<FlushThread> _flushThread;
-
   std::mutex _flushSubscriptionsMutex;
   std::vector<std::weak_ptr<FlushSubscription>> _flushSubscriptions;
   bool _stopped;

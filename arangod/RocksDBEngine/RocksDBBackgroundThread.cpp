@@ -53,9 +53,11 @@ void RocksDBBackgroundThread::beginShutdown() {
 }
 
 void RocksDBBackgroundThread::run() {
+  FlushFeature& flushFeature = _engine.server().getFeature<FlushFeature>();
+
   double const startTime = TRI_microtime();
-  uint64_t runsWithoutForce = 0;
-  bool hasRunOnce = false;
+  uint64_t runsUntilSyncForced = 1;
+  TRI_voc_tick_t lastMinReleasedTick = 0;
 
   while (!isStopping()) {
     {
@@ -71,16 +73,28 @@ void RocksDBBackgroundThread::run() {
 
     try {
       if (!isStopping()) {
+        auto [active, stale, minReleasedTick] =
+            flushFeature.releaseUnusedTicks();
+        if (minReleasedTick > lastMinReleasedTick && active > 0) {
+          lastMinReleasedTick = minReleasedTick;
+
+          // if we get a different tick value back, we start a countdown
+          // of 4 runs until we will do a forced sync
+          if (runsUntilSyncForced == 0) {
+            runsUntilSyncForced = 4;
+          }
+        }
+
         try {
           // forceSync will be set to true for the initial run, that
           // will happen when the recovery has finished. that way we
           // can quickly push forward the WAL lower bound value after
           // the recovery
-          bool forceSync = !hasRunOnce;
+          bool forceSync = false;
 
           // force a sync after at most x iterations
-          constexpr uint64_t maxRunsBeforeForce = 15;
-          if (++runsWithoutForce >= maxRunsBeforeForce) {
+          if (runsUntilSyncForced > 0 && --runsUntilSyncForced == 0) {
+            TRI_ASSERT(runsUntilSyncForced == 0);
             forceSync = true;
           }
 
@@ -97,9 +111,6 @@ void RocksDBBackgroundThread::run() {
           if (res.fail()) {
             LOG_TOPIC("a3d0c", WARN, Logger::ENGINES)
                 << "background settings sync failed: " << res.errorMessage();
-          } else if (forceSync) {
-            runsWithoutForce = 0;
-            hasRunOnce = true;
           }
 
           double end = TRI_microtime();
