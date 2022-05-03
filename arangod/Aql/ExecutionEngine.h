@@ -30,7 +30,7 @@
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Cluster/CallbackGuard.h"
-#include "Containers/SmallVector.h"
+#include <absl/container/inlined_vector.h>
 
 #include <memory>
 #include <string>

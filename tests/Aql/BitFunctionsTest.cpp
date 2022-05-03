@@ -29,7 +29,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
-#include "Containers/SmallVector.h"
+#include <absl/container/inlined_vector.h>
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -46,8 +46,7 @@ namespace {
 
 AqlValue callFn(AstNode const& node, char const* input1,
                 char const* input2 = nullptr, char const* input3 = nullptr) {
-  SmallVector<AqlValue>::allocator_type::arena_type arena;
-  SmallVector<AqlValue> params{arena};
+  absl::InlinedVector<AqlValue, 3> params;
 
   auto add = [&](char const* input) {
     if (input != nullptr) {

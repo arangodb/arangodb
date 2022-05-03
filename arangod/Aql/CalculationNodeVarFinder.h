@@ -25,7 +25,7 @@
 
 #include "Aql/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
-#include "Containers/SmallVector.h"
+#include <absl/container/inlined_vector.h>
 
 namespace arangodb {
 namespace aql {
@@ -34,14 +34,14 @@ class CalculationNodeVarFinder final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   Variable const* _lookingFor;
 
-  ::arangodb::containers::SmallVector<ExecutionNode*>& _out;
+  absl::InlinedVector<ExecutionNode*, 8>& _out;
 
   VarSet _currentUsedVars;
 
  public:
   CalculationNodeVarFinder(
       Variable const* var,
-      ::arangodb::containers::SmallVector<ExecutionNode*>& out) noexcept;
+      absl::InlinedVector<ExecutionNode*, 8>& out) noexcept;
 
   bool before(ExecutionNode*) override final;
 };

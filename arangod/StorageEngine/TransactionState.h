@@ -29,7 +29,7 @@
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
-#include "Containers/SmallVector.h"
+#include <absl/container/inlined_vector.h>
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
@@ -316,8 +316,7 @@ class TransactionState {
   /// @brief current status
   transaction::Status _status = transaction::Status::CREATED;
 
-  arangodb::containers::SmallVectorWithArena<TransactionCollection*>
-      _collections;
+  absl::InlinedVector<TransactionCollection*, 8> _collections;
 
   transaction::Hints _hints{};  // hints; set on _nestingLevel == 0
 

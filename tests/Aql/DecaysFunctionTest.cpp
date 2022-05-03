@@ -31,7 +31,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
-#include "Containers/SmallVector.h"
+#include <absl/container/inlined_vector.h>
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "IResearch/IResearchQueryCommon.h"
@@ -47,9 +47,8 @@ using namespace arangodb::containers;
 namespace {
 
 // helper functions
-SmallVector<AqlValue> createArgVec(const VPackSlice slice) {
-  SmallVector<AqlValue>::allocator_type::arena_type arena;
-  SmallVector<AqlValue> params{arena};
+absl::InlinedVector<AqlValue, 4> createArgVec(const VPackSlice slice) {
+  absl::InlinedVector<AqlValue, 4> params;
 
   for (const auto arg : VPackArrayIterator(slice)) {
     if (arg.isObject()) {
@@ -86,12 +85,10 @@ void expectEqSlices(const VPackSlice actualSlice,
     double expected = expectedSlice.getNumber<double>();
     EXPECT_DOUBLE_EQ(expected, actual) << "args: " << args;
   }
-
-  return;
 }
 
-AqlValue evaluateDecayFunction(const SmallVector<AqlValue>& params,
-                               const arangodb::aql::AstNode& node) {
+AqlValue evaluateDecayFunction(std::span<AqlValue const> params,
+                               arangodb::aql::AstNode const& node) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
   fakeit::When(Method(expressionContextMock, registerWarning))
@@ -128,7 +125,7 @@ void assertDecayFunction(char const* expected, char const* args,
   ASSERT_TRUE(argsSlice.isArray());
 
   // create params vector from args slice
-  SmallVector<AqlValue> params = createArgVec(argsSlice);
+  auto params = createArgVec(argsSlice);
 
   // evaluate
   auto actual_value = evaluateDecayFunction(params, node);
@@ -152,7 +149,7 @@ void assertDecayFunctionFail(char const* args,
   ASSERT_TRUE(argsSlice.isArray());
 
   // create params vector from args slice
-  SmallVector<AqlValue> params = createArgVec(argsSlice);
+  auto params = createArgVec(argsSlice);
 
   ASSERT_TRUE(evaluateDecayFunction(params, node).isNull(false));
 

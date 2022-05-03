@@ -47,7 +47,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Containers/FlatHashSet.h"
-#include "Containers/SmallVector.h"
+#include <absl/container/inlined_vector.h>
 #include "Graph/Graph.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/Helpers.h"
@@ -3005,7 +3005,7 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
   }
 
   AstNode* result = nullptr;
-  ::arangodb::containers::SmallVectorWithArena<std::string_view> attributeParts;
+  absl::InlinedVector<std::string_view, 4> attributeParts;
 
   std::function<void(AstNode const*)> createCondition =
       [&](AstNode const* object) -> void {
@@ -3914,7 +3914,7 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node,
   TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
   AstNode const* original = node;
 
-  ::arangodb::containers::SmallVectorWithArena<std::string_view> attributeNames;
+  absl::InlinedVector<std::string_view, 4> attributeNames;
 
   while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     attributeNames.push_back(node->getStringView());

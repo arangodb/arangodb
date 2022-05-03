@@ -32,7 +32,7 @@
 
 #include "Aql/AstNode.h"
 #include "Basics/Common.h"
-#include "Containers/SmallVector.h"
+#include <absl/container/inlined_vector.h>
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBFormat.h"
@@ -43,6 +43,8 @@
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
+
+#include <span>
 
 namespace arangodb {
 namespace aql {
@@ -197,32 +199,31 @@ class RocksDBVPackIndex : public RocksDBIndex {
       std::vector<int>* expanding);
 
   /// @brief helper function to insert a document into any index type
-  ErrorCode fillElement(
-      velocypack::Builder& leased, LocalDocumentId const& documentId,
-      VPackSlice doc, ::arangodb::containers::SmallVector<RocksDBKey>& elements,
-      ::arangodb::containers::SmallVector<uint64_t>& hashes);
+  ErrorCode fillElement(velocypack::Builder& leased,
+                        LocalDocumentId const& documentId, VPackSlice doc,
+                        absl::InlinedVector<RocksDBKey, 4>& elements,
+                        absl::InlinedVector<uint64_t, 4>& hashes);
 
   /// @brief helper function to build the key and value for rocksdb from the
   /// vector of slices
   /// @param hashes list of VPackSlice hashes for the estimator.
-  void addIndexValue(
-      velocypack::Builder& leased, LocalDocumentId const& documentId,
-      VPackSlice document,
-      ::arangodb::containers::SmallVector<RocksDBKey>& elements,
-      ::arangodb::containers::SmallVector<uint64_t>& hashes,
-      ::arangodb::containers::SmallVector<VPackSlice>& sliceStack);
+  void addIndexValue(velocypack::Builder& leased,
+                     LocalDocumentId const& documentId, VPackSlice document,
+                     absl::InlinedVector<RocksDBKey, 4>& elements,
+                     absl::InlinedVector<uint64_t, 4>& hashes,
+                     std::span<VPackSlice const> sliceStack);
 
   /// @brief helper function to create a set of value combinations to insert
   /// into the rocksdb index.
   /// @param elements vector of resulting index entries
   /// @param sliceStack working list of values to insert into the index
   /// @param hashes list of VPackSlice hashes for the estimator.
-  void buildIndexValues(
-      velocypack::Builder& leased, LocalDocumentId const& documentId,
-      VPackSlice const document, size_t level,
-      ::arangodb::containers::SmallVector<RocksDBKey>& elements,
-      ::arangodb::containers::SmallVector<uint64_t>& hashes,
-      ::arangodb::containers::SmallVector<VPackSlice>& sliceStack);
+  void buildIndexValues(velocypack::Builder& leased,
+                        LocalDocumentId const& documentId,
+                        VPackSlice const document, size_t level,
+                        absl::InlinedVector<RocksDBKey, 4>& elements,
+                        absl::InlinedVector<uint64_t, 4>& hashes,
+                        absl::InlinedVector<VPackSlice, 4>& sliceStack);
 
   /// @brief the attribute paths (for regular fields)
   std::vector<std::vector<std::string>> _paths;

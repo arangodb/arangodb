@@ -105,7 +105,7 @@ class IResearchViewSortedTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParameters const& params) {
+           arangodb::aql::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -121,7 +121,7 @@ class IResearchViewSortedTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParameters const& params) {
+           arangodb::aql::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -276,9 +276,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
         vocbase, query,
         {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
     ASSERT_TRUE(plan);
@@ -330,9 +328,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
         vocbase, query,
         {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
     ASSERT_TRUE(plan);
@@ -392,9 +388,7 @@ TEST_P(IResearchViewSortedTest, SingleField) {
         vocbase, query,
         {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
     ASSERT_TRUE(plan);
@@ -583,9 +577,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
         vocbase, query,
         {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
     ASSERT_TRUE(plan);
@@ -636,9 +628,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
         vocbase, query,
         {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
     ASSERT_TRUE(plan);
@@ -690,9 +680,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
         vocbase, query,
         {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
     ASSERT_TRUE(plan);
@@ -752,9 +740,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
         vocbase, query,
         {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
     ASSERT_TRUE(plan);
@@ -812,9 +798,7 @@ TEST_P(IResearchViewSortedTest, MultipleFields) {
         vocbase, query,
         {arangodb::aql::OptimizerRule::handleArangoSearchViewsRule}));
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
     auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
     auto plan = preparedQuery->plan();
     ASSERT_TRUE(plan);

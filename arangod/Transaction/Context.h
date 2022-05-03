@@ -26,7 +26,7 @@
 #include <memory>
 
 #include "Basics/Common.h"
-#include "Containers/SmallVector.h"
+#include <absl/container/inlined_vector.h>
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
@@ -134,10 +134,8 @@ class Context {
   TRI_vocbase_t& _vocbase;
   std::unique_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
 
-  ::arangodb::containers::SmallVectorWithArena<arangodb::velocypack::Builder*,
-                                               32>
-      _builders;
-  ::arangodb::containers::SmallVectorWithArena<std::string*, 32> _strings;
+  absl::InlinedVector<arangodb::velocypack::Builder*, 4> _builders;
+  absl::InlinedVector<std::string*, 4> _strings;
 
   arangodb::velocypack::Options _options;
 

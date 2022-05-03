@@ -30,7 +30,7 @@
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SortCondition.h"
-#include "Containers/SmallVector.h"
+#include <absl/container/inlined_vector.h>
 #include "Indexes/Index.h"
 
 namespace arangodb {
@@ -63,9 +63,7 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
 
   typedef std::pair<arangodb::aql::AstNode*, std::shared_ptr<arangodb::Index>>
       ConditionData;
-  ::arangodb::containers::SmallVector<
-      ConditionData*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ConditionData*> conditionData{a};
+  absl::InlinedVector<ConditionData*, 8> conditionData;
 
   auto sg = arangodb::scopeGuard([&conditionData]() noexcept -> void {
     for (auto& it : conditionData) {

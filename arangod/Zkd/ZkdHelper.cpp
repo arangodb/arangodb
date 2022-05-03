@@ -25,7 +25,7 @@
 
 #include "Basics/ScopeGuard.h"
 #include "Basics/debugging.h"
-#include "Containers/SmallVector.h"
+#include <absl/container/inlined_vector.h>
 
 #include <algorithm>
 #include <cassert>
@@ -356,10 +356,7 @@ auto zkd::testInBox(byte_string_view cur, byte_string_view min,
   BitReader min_reader(min);
   BitReader max_reader(max);
 
-  ::arangodb::containers::SmallVector<
-      std::pair<bool, bool>>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<std::pair<bool, bool>>
-      isLargerLowerThanMinMax{a};
+  absl::InlinedVector<std::pair<bool, bool>, 32> isLargerLowerThanMinMax;
   isLargerLowerThanMinMax.resize(dimensions);
 
   unsigned dim = 0;

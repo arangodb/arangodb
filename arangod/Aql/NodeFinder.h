@@ -26,21 +26,21 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/Common.h"
-#include "Containers/SmallVector.h"
+#include <absl/container/inlined_vector.h>
 
 namespace arangodb {
 namespace aql {
 
 template<typename T, WalkerUniqueness U>
 class NodeFinder final : public WalkerWorker<ExecutionNode, U> {
-  ::arangodb::containers::SmallVector<ExecutionNode*>& _out;
+  absl::InlinedVector<ExecutionNode*, 8>& _out;
 
   T _lookingFor;
 
   bool _enterSubqueries;
 
  public:
-  NodeFinder(T const&, ::arangodb::containers::SmallVector<ExecutionNode*>&,
+  NodeFinder(T const&, absl::InlinedVector<ExecutionNode*, 8>&,
              bool enterSubqueries);
 
   bool before(ExecutionNode*) override final;
@@ -52,15 +52,14 @@ class NodeFinder final : public WalkerWorker<ExecutionNode, U> {
 
 class EndNodeFinder final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
-  ::arangodb::containers::SmallVector<ExecutionNode*>& _out;
+  absl::InlinedVector<ExecutionNode*, 8>& _out;
 
   std::vector<bool> _found;
 
   bool _enterSubqueries;
 
  public:
-  EndNodeFinder(::arangodb::containers::SmallVector<ExecutionNode*>&,
-                bool enterSubqueries);
+  EndNodeFinder(absl::InlinedVector<ExecutionNode*, 8>&, bool enterSubqueries);
 
   bool before(ExecutionNode*) override final;
 

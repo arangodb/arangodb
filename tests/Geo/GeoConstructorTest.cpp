@@ -32,7 +32,7 @@
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Aql/Query.h"
-#include "Containers/SmallVector.h"
+#include <absl/container/inlined_vector.h>
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -59,14 +59,12 @@ class GeoConstructorTest : public ::testing::Test {
   fakeit::Mock<transaction::Context> contextMock;
   transaction::Context& context;
 
-  SmallVector<AqlValue>::allocator_type::arena_type arena;
-  SmallVector<AqlValue> params;
+  absl::InlinedVector<AqlValue, 4> params;
 
   GeoConstructorTest()
       : expressionContext(expressionContextMock.get()),
         trx(trxMock.get()),
-        context(contextMock.get()),
-        params{arena} {
+        context(contextMock.get()) {
     static VPackOptions options = velocypack::Options::Defaults;
     fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysReturn(&context);
     fakeit::When(Method(trxMock, vpackOptions)).AlwaysReturn(options);

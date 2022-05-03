@@ -69,9 +69,7 @@ bool findEmptyNodes(
 
   query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
 
-  arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
   // try to find `EnumerateViewNode`s and process corresponding filters and
   // sorts

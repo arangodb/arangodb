@@ -29,7 +29,7 @@
 #include <limits>
 
 #include "Basics/Common.h"
-#include "Containers/SmallVector.h"
+#include <absl/container/inlined_vector.h>
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "StorageEngine/TransactionState.h"

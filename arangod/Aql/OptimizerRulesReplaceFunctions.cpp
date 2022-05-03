@@ -39,7 +39,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Containers/SmallVector.h"
+#include <absl/container/inlined_vector.h>
 #include "Indexes/Index.h"
 #include "VocBase/Methods/Collections.h"
 
@@ -573,9 +573,7 @@ void arangodb::aql::replaceNearWithinFulltextRule(
     OptimizerRule const& rule) {
   bool modified = false;
 
-  ::arangodb::containers::SmallVector<
-      ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  absl::InlinedVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, ExecutionNode::CALCULATION, true);
 
   for (auto const& node : nodes) {

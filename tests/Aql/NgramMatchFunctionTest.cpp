@@ -29,7 +29,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
-#include "Containers/SmallVector.h"
+#include <absl/container/inlined_vector.h>
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "IResearch/common.h"
@@ -92,8 +92,7 @@ class NgramMatchFunctionTest : public ::testing::Test {
     fakeit::When(Method(expressionContextMock, trx)).AlwaysReturn(*trx);
     fakeit::When(Method(expressionContextMock, vocbase))
         .AlwaysReturn(trx->vocbase());
-    SmallVector<AqlValue>::allocator_type::arena_type arena;
-    SmallVector<AqlValue> params{arena};
+    absl::InlinedVector<AqlValue, 5> params;
     if (Attribute) {
       params.emplace_back(*Attribute);
     }

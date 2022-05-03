@@ -3866,9 +3866,7 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterSubqueryWithVar) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(2, nodes.size());
@@ -3900,9 +3898,7 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterSubquery) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(2, nodes.size());
@@ -3934,9 +3930,7 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterNonDetVar) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(2, nodes.size());
@@ -3968,9 +3962,7 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterListWithVar) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(1, nodes.size());
@@ -3999,9 +3991,7 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterList) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(1, nodes.size());
@@ -4030,9 +4020,7 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterListNonVolatile) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(1, nodes.size());
@@ -4061,9 +4049,7 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterQueryNonVolatile) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(2, nodes.size());
@@ -4096,9 +4082,7 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterListSubquery) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(2, nodes.size());
@@ -4131,9 +4115,7 @@ TEST_F(IResearchViewVolatitlityTest, volatilitySortFilterListSubquery) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(2, nodes.size());
@@ -4166,9 +4148,7 @@ TEST_F(IResearchViewVolatitlityTest, volatilitySortNonVolatileFilter) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(2, nodes.size());
