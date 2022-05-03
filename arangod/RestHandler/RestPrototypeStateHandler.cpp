@@ -200,12 +200,14 @@ RestStatus RestPrototypeStateHandler::handlePostRetrieveMulti(
     keys.push_back(entry.copyString());
   }
 
-  auto waitForApplied = LogIndex{
+  PrototypeStateMethods::ReadOptions readOptions;
+  readOptions.waitForApplied = LogIndex{
       _request->parsedValue<decltype(LogIndex::value)>("waitForApplied")
           .value_or(0)};
+  readOptions.readFrom = _request->parsedValue<ParticipantId>("readFrom");
 
   return waitForFuture(
-      methods.get(logId, std::move(keys), waitForApplied)
+      methods.get(logId, std::move(keys), readOptions)
           .thenValue([this](
                          ResultT<std::unordered_map<std::string, std::string>>&&
                              waitForResult) {
@@ -271,12 +273,14 @@ RestStatus RestPrototypeStateHandler::handleGetEntry(
     return RestStatus::DONE;
   }
 
-  auto waitForApplied = LogIndex{
+  PrototypeStateMethods::ReadOptions readOptions;
+  readOptions.waitForApplied = LogIndex{
       _request->parsedValue<decltype(LogIndex::value)>("waitForApplied")
           .value_or(0)};
+  readOptions.readFrom = _request->parsedValue<ParticipantId>("readFrom");
 
   return waitForFuture(
-      methods.get(logId, suffixes[2], waitForApplied)
+      methods.get(logId, suffixes[2], readOptions)
           .thenValue([this, key = suffixes[2]](auto&& waitForResult) {
             if (waitForResult.fail()) {
               generateError(waitForResult.result());

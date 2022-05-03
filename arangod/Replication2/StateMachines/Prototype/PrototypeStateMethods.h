@@ -81,9 +81,22 @@ struct PrototypeStateMethods {
 
   [[nodiscard]] virtual auto get(LogId id, std::string key,
                                  LogIndex waitForApplied) const
-      -> futures::Future<ResultT<std::optional<std::string>>> = 0;
+      -> futures::Future<ResultT<std::optional<std::string>>>;
   [[nodiscard]] virtual auto get(LogId id, std::vector<std::string> keys,
                                  LogIndex waitForApplied) const
+      -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>>;
+
+  struct ReadOptions {
+    LogIndex waitForApplied{0};
+    std::optional<ParticipantId> readFrom;
+  };
+
+  [[nodiscard]] virtual auto get(LogId id, std::string key,
+                                 ReadOptions const&) const
+      -> futures::Future<ResultT<std::optional<std::string>>>;
+
+  [[nodiscard]] virtual auto get(LogId id, std::vector<std::string> keys,
+                                 ReadOptions const&) const
       -> futures::Future<
           ResultT<std::unordered_map<std::string, std::string>>> = 0;
 

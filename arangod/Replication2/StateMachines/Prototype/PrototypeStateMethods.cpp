@@ -63,33 +63,8 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
     return leader->set(entries, options);
   };
 
-  [[nodiscard]] auto get(LogId id, std::string key,
-                         LogIndex waitForApplied) const
-      -> futures::Future<ResultT<std::optional<std::string>>> override {
-    auto stateMachine =
-        std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
-            _vocbase.getReplicatedStateById(id));
-    if (stateMachine == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, basics::StringUtils::concatT(
-                                  "Failed to get ProtoypeState with id ", id));
-    }
-
-    auto leader = stateMachine->getLeader();
-    if (leader != nullptr) {
-      return leader->get(std::move(key), waitForApplied);
-    }
-    auto follower = stateMachine->getFollower();
-    if (follower != nullptr) {
-      return follower->get(std::move(key), waitForApplied);
-    }
-
-    THROW_ARANGO_EXCEPTION(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
-  }
-
-  [[nodiscard]] auto get(LogId id, std::vector<std::string> keys,
-                         LogIndex waitForApplied) const
+  auto get(LogId id, std::vector<std::string> keys,
+           ReadOptions const& readOptions) const
       -> futures::Future<
           ResultT<std::unordered_map<std::string, std::string>>> override {
     auto stateMachine =
@@ -101,13 +76,19 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
                                   "Failed to get ProtoypeState with id ", id));
     }
 
+    if (readOptions.readFrom.has_value()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_NOT_IMPLEMENTED,
+          "reading on followers is not implemented on dbservers");
+    }
+
     auto leader = stateMachine->getLeader();
     if (leader != nullptr) {
-      return leader->get(std::move(keys), waitForApplied);
+      return leader->get(std::move(keys), readOptions.waitForApplied);
     }
     auto follower = stateMachine->getFollower();
     if (follower != nullptr) {
-      return follower->get(std::move(keys), waitForApplied);
+      return follower->get(std::move(keys), readOptions.waitForApplied);
     }
 
     THROW_ARANGO_EXCEPTION(
@@ -202,53 +183,16 @@ struct PrototypeStateMethodsCoordinator final
         });
   }
 
-  [[nodiscard]] auto get(LogId id, std::string key, LogIndex waitForIndex) const
-      -> futures::Future<ResultT<std::optional<std::string>>> override {
-    auto path = basics::StringUtils::joinT("/", "_api/prototype-state", id,
-                                           "entry", key);
-    network::RequestOptions opts;
-    opts.database = _vocbase.name();
-    opts.param("waitForIndex", std::to_string(waitForIndex.value));
-
-    return network::sendRequest(_pool, "server:" + getLogLeader(id),
-                                fuerte::RestVerb::Get, path, {}, opts)
-        .thenValue([](network::Response&& resp)
-                       -> ResultT<std::optional<std::string>> {
-          if (resp.statusCode() == fuerte::StatusNotFound) {
-            return {std::nullopt};
-          } else if (resp.fail() ||
-                     !fuerte::statusIsSuccess(resp.statusCode())) {
-            auto r = resp.combinedResult();
-            r = r.mapError([&](result::Error error) {
-              error.appendErrorMessage(" while contacting server " +
-                                       resp.serverId());
-              return error;
-            });
-            THROW_ARANGO_EXCEPTION(r);
-          } else {
-            auto slice = resp.slice();
-            if (auto result = slice.get("result");
-                result.isObject() && result.length() == 1) {
-              return {result.valueAt(0).copyString()};
-            }
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_INTERNAL, basics::StringUtils::concatT(
-                                        "expected result containing key-value "
-                                        "pair in leader response: ",
-                                        slice.toJson()));
-          }
-        });
-  }
-
-  [[nodiscard]] auto get(LogId id, std::vector<std::string> keys,
-                         LogIndex waitForIndex) const
+  auto get(LogId id, std::vector<std::string> keys,
+           ReadOptions const& readOptions) const
       -> futures::Future<
           ResultT<std::unordered_map<std::string, std::string>>> override {
     auto path = basics::StringUtils::joinT("/", "_api/prototype-state", id,
                                            "multi-get");
     network::RequestOptions opts;
     opts.database = _vocbase.name();
-    opts.param("waitForIndex", std::to_string(waitForIndex.value));
+    opts.param("waitForApplied",
+               std::to_string(readOptions.waitForApplied.value));
 
     VPackBuilder builder{};
     {
@@ -258,7 +202,14 @@ struct PrototypeStateMethodsCoordinator final
       }
     }
 
-    return network::sendRequest(_pool, "server:" + getLogLeader(id),
+    auto server = std::invoke([&]() -> ParticipantId {
+      if (readOptions.readFrom) {
+        return *readOptions.readFrom;
+      }
+      return getLogLeader(id);
+    });
+
+    return network::sendRequest(_pool, "server:" + server,
                                 fuerte::RestVerb::Post, path,
                                 builder.bufferRef(), opts)
         .thenValue(
@@ -271,7 +222,7 @@ struct PrototypeStateMethodsCoordinator final
                                            resp.serverId());
                   return error;
                 });
-                THROW_ARANGO_EXCEPTION(r);
+                return r;
               } else {
                 auto slice = resp.slice();
                 if (auto result = slice.get("result"); result.isObject()) {
@@ -540,4 +491,36 @@ auto PrototypeStateMethods::createInstance(TRI_vocbase_t& vocbase)
           TRI_ERROR_NOT_IMPLEMENTED,
           "api only on available coordinators or dbservers");
   }
+}
+
+[[nodiscard]] auto PrototypeStateMethods::get(LogId id, std::string key,
+                                              LogIndex waitForApplied) const
+    -> futures::Future<ResultT<std::optional<std::string>>> {
+  return get(id, std::move(key), {.waitForApplied = waitForApplied});
+}
+
+[[nodiscard]] auto PrototypeStateMethods::get(LogId id,
+                                              std::vector<std::string> keys,
+                                              LogIndex waitForApplied) const
+    -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>> {
+  return get(id, std::move(keys), {.waitForApplied = waitForApplied});
+}
+
+[[nodiscard]] auto PrototypeStateMethods::get(
+    LogId id, std::string key, ReadOptions const& readOptions) const
+    -> futures::Future<ResultT<std::optional<std::string>>> {
+  return get(id, std::vector{key}, readOptions)
+      .thenValue(
+          [key](ResultT<std::unordered_map<std::string, std::string>>&& result)
+              -> ResultT<std::optional<std::string>> {
+            if (result.ok()) {
+              auto& map = result.get();
+              if (auto iter = map.find(key); iter != std::end(map)) {
+                return {std::move(iter->second)};
+              } else {
+                return {std::nullopt};
+              }
+            }
+            return result.result();
+          });
 }

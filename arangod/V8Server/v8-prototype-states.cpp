@@ -104,7 +104,7 @@ static void JS_GetPrototypeState(
   if (!arangodb::ExecContext::current().isAdminUser()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
-        std::string("No access to replicated log '") + to_string(id) + "'");
+        std::string("No access to prototype state '") + to_string(id) + "'");
   }
 
   auto res = PrototypeStateMethods::createInstance(vocbase)->status(id).get();
@@ -124,12 +124,12 @@ static void JS_CreatePrototypeState(
 
   if (!arangodb::ExecContext::current().isAdminUser()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN, std::string("Creating replicated log forbidden"));
+        TRI_ERROR_FORBIDDEN, std::string("Creating prototype state forbidden"));
   }
 
   auto& vocbase = GetContextVocBase(isolate);
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("_createReplicatedLog(<spec>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("_createPrototypeState(<spec>)");
   }
 
   auto params = std::invoke([&] {
@@ -282,18 +282,21 @@ static void JS_ReadInternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("get([waitForApplied])");
   }
 
-  auto waitForApplied = LogIndex{0};
+  PrototypeStateMethods::ReadOptions readOptions;
   if (args.Length() > 1) {
     builder.clear();
     TRI_V8ToVPack(isolate, builder, args[1], false, false);
     auto const options = builder.slice();
     if (auto slice = options.get("waitForApplied"); !slice.isNone()) {
-      waitForApplied = slice.extract<LogIndex>();
+      readOptions.waitForApplied = slice.extract<LogIndex>();
+    }
+    if (auto slice = options.get("readFrom"); !slice.isNone()) {
+      readOptions.readFrom = slice.extract<ParticipantId>();
     }
   }
 
   auto const result = PrototypeStateMethods::createInstance(vocbase)
-                          ->get(id, keys, waitForApplied)
+                          ->get(id, keys, readOptions)
                           .get();
   if (result.fail()) {
     TRI_V8_THROW_EXCEPTION(result.result());
