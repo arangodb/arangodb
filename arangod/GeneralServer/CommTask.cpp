@@ -150,7 +150,8 @@ CommTask::~CommTask() { _connectionStatistics.SET_END(); }
 /// Must be called before calling executeRequest, will send an error
 /// response if execution is supposed to be aborted
 CommTask::Flow CommTask::prepareExecution(
-    auth::TokenCache::Entry const& authToken, GeneralRequest& req) {
+    auth::TokenCache::Entry const& authToken, GeneralRequest& req,
+    ServerState::Mode mode) {
   DTRACE_PROBE1(arangod, CommTaskPrepareExecution, this);
 
   // Step 1: In the shutdown phase we simply return 503:
@@ -175,15 +176,28 @@ CommTask::Flow CommTask::prepareExecution(
   // Step 2: Handle server-modes, i.e. bootstrap/ Active-Failover / DC2DC stunts
   std::string const& path = req.requestPath();
 
-  ServerState::Mode mode = ServerState::mode();
   switch (mode) {
     case ServerState::Mode::STARTUP: {
       if (_auth->isActive() && !req.authenticated()) {
-        sendErrorResponse(rest::ResponseCode::UNAUTHORIZED,
-                          req.contentTypeResponse(), req.messageId(),
-                          TRI_ERROR_FORBIDDEN);
+        if (req.authenticationMethod() == rest::AuthenticationMethod::BASIC) {
+          // HTTP basic authentication is not supported during the startup
+          // phase, as we do not have any access to the database data. However,
+          // we must return HTTP 503 because we cannot even verify the
+          // credentials, and let the caller can try again later when the
+          // authentication may be available.
+          sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE,
+                            req.contentTypeResponse(), req.messageId(),
+                            TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                            "service unavailable due to startup");
+        } else {
+          sendErrorResponse(rest::ResponseCode::UNAUTHORIZED,
+                            req.contentTypeResponse(), req.messageId(),
+                            TRI_ERROR_FORBIDDEN);
+        }
         return Flow::Abort;
       }
+
+      // passed authentication!
 
       if (path == "/_api/version" || path == "/_admin/version" ||
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -379,7 +393,8 @@ void CommTask::finishExecution(GeneralResponse& res,
 
 /// Push this request into the execution pipeline
 void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
-                              std::unique_ptr<GeneralResponse> response) {
+                              std::unique_ptr<GeneralResponse> response,
+                              ServerState::Mode mode) {
   TRI_ASSERT(request != nullptr);
   TRI_ASSERT(response != nullptr);
 
@@ -428,7 +443,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     return;
   }
 
-  if (ServerState::mode() == ServerState::Mode::STARTUP) {
+  if (mode == ServerState::Mode::STARTUP) {
     // request during startup phase
     handler->setStatistics(stealStatistics(messageId));
     handleRequestStartup(std::move(handler));
@@ -868,7 +883,8 @@ void CommTask::processCorsOptions(std::unique_ptr<GeneralRequest> req,
   sendResponse(std::move(resp), stealStatistics(req->messageId()));
 }
 
-auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req) {
+auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
+                                                  ServerState::Mode mode) {
   bool found;
   std::string const& authStr = req.header(StaticStrings::Authorization, found);
   if (!found) {
@@ -901,16 +917,7 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req) {
   if (authStr.size() >= 6) {
     if (strncasecmp(authStr.c_str(), "basic ", 6) == 0) {
       authMethod = AuthenticationMethod::BASIC;
-      if (ServerState::mode() == ServerState::Mode::STARTUP) {
-        // during startup, the normal authentication is not available
-        // yet. so we have to refuse all requests that do not use
-        // a JWT.
-        // do not audit-log anything in this case, because there is
-        // nothing we can do to verify the credentials.
-        return auth::TokenCache::Entry::Unauthenticated();
-      }
     } else if (strncasecmp(authStr.c_str(), "bearer ", 7) == 0) {
-      // JWT authentication is allowed during startup as well.
       authMethod = AuthenticationMethod::JWT;
     }
   }
@@ -918,6 +925,16 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req) {
   req.setAuthenticationMethod(authMethod);
   if (authMethod == AuthenticationMethod::NONE) {
     events::UnknownAuthenticationMethod(req);
+    return auth::TokenCache::Entry::Unauthenticated();
+  }
+
+  if (authMethod != AuthenticationMethod::JWT &&
+      mode == ServerState::Mode::STARTUP) {
+    // during startup, the normal authentication is not available
+    // yet. so we have to refuse all requests that do not use
+    // a JWT.
+    // do not audit-log anything in this case, because there is
+    // nothing we can do to verify the credentials.
     return auth::TokenCache::Entry::Unauthenticated();
   }
 

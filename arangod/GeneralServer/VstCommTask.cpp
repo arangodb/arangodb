@@ -293,6 +293,8 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
 
   this->_generalServerFeature.countVstRequest(buffer.size());
 
+  ServerState::Mode mode = ServerState::mode();
+
   try {
     // handle request types
     if (mt == fu::MessageType::Authentication) {  // auth
@@ -326,11 +328,11 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
           << url(req.get()) << "\"";
 
       // TODO use different token if authentication header is present
-      CommTask::Flow cont = this->prepareExecution(_authToken, *req);
+      CommTask::Flow cont = this->prepareExecution(_authToken, *req, mode);
       if (cont == CommTask::Flow::Continue) {
         auto resp = std::make_unique<VstResponse>(
             rest::ResponseCode::SERVER_ERROR, messageId);
-        this->executeRequest(std::move(req), std::move(resp));
+        this->executeRequest(std::move(req), std::move(resp), mode);
       }       // abort is handled in prepareExecution
     } else {  // not supported on server
       LOG_TOPIC("b5073", ERR, Logger::REQUESTS)
