@@ -1387,7 +1387,7 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
   if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
     auto lock = _asyncSelf->lock();
     auto ctx = _dataStore._writer->documents();
-
+    ctx.tick(state.lastOperationTick());
     TRI_IF_FAILURE("ArangoSearch::MisreportCreationInsertAsFailed") {
       auto res = insertImpl(ctx);  // we need insert to succeed, so  we have
                                    // things to cleanup in storage

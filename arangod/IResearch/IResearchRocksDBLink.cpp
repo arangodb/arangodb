@@ -62,8 +62,6 @@ IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid,
   _sparse = true;   // always sparse
 }
 
-void IResearchRocksDBLink::waitForSync() { commit(true); }
-
 void IResearchRocksDBLink::toVelocyPack(
     VPackBuilder& builder,
     std::underlying_type<Index::Serialize>::type flags) const {

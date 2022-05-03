@@ -71,7 +71,11 @@ Result RocksDBTrxBaseMethods::beginTransaction() {
   createTransaction();
   TRI_ASSERT(_rocksTransaction != nullptr);
   _readOptions.snapshot = _rocksTransaction->GetSnapshot();
-
+  // we at least are at this point
+  TRI_ASSERT(_db || _readOptions.snapshot);
+  _lastWrittenOperationTick = _readOptions.snapshot
+                                  ? _readOptions.snapshot->GetSequenceNumber()
+                                  : _db->GetLatestSequenceNumber();
   return {};
 }
 
@@ -312,9 +316,6 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
     // }
     // don't write anything if the transaction is empty
 #endif
-    _lastWrittenOperationTick = _readOptions.snapshot
-                                    ? _readOptions.snapshot->GetSequenceNumber()
-                                    : _db->GetLatestSequenceNumber();
     return Result();
   }
 

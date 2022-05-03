@@ -70,8 +70,6 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
 
   void load() override { IResearchLink::load(); }
 
-  void waitForSync() override;
-
   bool matchesDefinition(VPackSlice const& slice) const override {
     return IResearchLink::matchesDefinition(slice);
   }
