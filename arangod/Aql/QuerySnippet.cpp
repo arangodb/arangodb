@@ -414,7 +414,7 @@ void QuerySnippet::serializeIntoBuilder(
     // Reserve the amount of localExpansions,
     distIds.reserve(numberOfShardsToPermutate);
     // Create an internal GatherNode, that will connect to all execution
-    // steams of the query
+    // streams of the query
     auto plan = _nodes.front()->plan();
 
     TRI_ASSERT(plan == _sinkNode->plan());
@@ -426,7 +426,7 @@ void QuerySnippet::serializeIntoBuilder(
     internalGather->elements(_sinkNode->elements());
     // We need to modify the registerPlanning.
     // The internalGather is NOT allowed to reduce the number of registers,
-    // it needs to expose it's input register by all means
+    // it needs to expose its input register by all means
     internalGather->setVarsUsedLater(_nodes.front()->getVarsUsedLaterStack());
     internalGather->setRegsToClear({});
     auto const reservedId = ExecutionNodeId::InternalNode;
