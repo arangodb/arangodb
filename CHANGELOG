@@ -1,6 +1,14 @@
 devel
 -----
 
+* Removed separate FlushThread (for views syncing) and merged it with the
+  RocksDBBackgroundThread.
+
+* Fix some issues with WAL recovery for views. Previously it was possible that
+  changes to a view/link were already recovered and persisted, but that the
+  lower bound WAL tick was not moved forward. This could lead to already fully
+  recovered views/links being recovered again on the next restart.
+
 * Updated arangosync to v2.9.1.
 
 * Added option `--enable-revision-trees` to arangorestore, which will add the
