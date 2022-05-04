@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled from "styled-components";
 import { JsonEditor as Editor } from 'jsoneditor-react';
 import { Modal, Button, notification, Space } from 'antd';
+import { omit } from "lodash";
 
 
 const ModalBackground = styled.div`
@@ -23,12 +24,15 @@ const ModalBody = styled.div`
   width: 50%;
 `;
 
-  export const EditModal = ({ shouldShow, onUpdateNode, onRequestClose, node, nodeData, editorContent, children, nodeKey, nodeCollection }) => {
+  export const EditModal = ({ shouldShow, onUpdateNode, onRequestClose, node, nodeData, basicNodeData, editorContent, children, nodeKey, nodeCollection }) => {
 
     const [visible, setVisibility] = useState(shouldShow);
     const [loading, setLoading] = useState(false);
     const jsonEditorRef = useRef();
     const jsonEditorRef2 = useRef();
+    /*
+    const [json, setJson] = useState(omit(nodeData, '_id', '_key', '_rev'));
+    */
     const [json, setJson] = useState(nodeData);
     const [isModalVisible, setIsModalVisible] = useState(shouldShow);
 
@@ -41,11 +45,19 @@ const ModalBody = styled.div`
     };
 
     const updateNode = (graphData, updateNodeId) => {
+          console.log("basicNodeData: ", basicNodeData);
+          console.log("json: ", json);
+          const newNodeData = {
+              ...basicNodeData,
+              ...json
+          };
+          console.log("newNodeData: ", newNodeData);
           $.ajax({
             cache: false,
             type: 'PUT',
             url: arangoHelper.databaseUrl('/_api/document/' + nodeCollection + '?returnNew=true'),
-            data: JSON.stringify([json]),
+            //data: JSON.stringify([json]),
+            data: JSON.stringify([newNodeData]),
             contentType: 'application/json',
             processData: false,
             success: function (data) {

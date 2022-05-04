@@ -11,7 +11,7 @@ import { Card  } from 'antd';
 import NodeStyleSelector from './NodeStyleSelector.js';
 import { NodeList } from './components/node-list/node-list.component';
 import { EdgeList } from './components/edge-list/edge-list.component';
-import EdgeStyleSelector from './EdgeStyleSelector.js';
+import EdgeStyleSelector from './EdgeStyleSelectorOld';
 import NodeLabelContentSelector from './NodeLabelContentSelector.js';
 import { EditNodeModal } from './EditNodeModal';
 import { Headerinfo } from './Headerinfo';
@@ -23,8 +23,7 @@ import { AddEdgeModal } from './AddEdgeModal';
 import { FetchFullGraphModal } from './FetchFullGraphModal';
 import AqlEditor from './AqlEditor';
 import { SlideInMenu } from './SlideInMenu';
-//import omit from "lodash";
-import { omit } from "lodash";
+import { omit, pick } from "lodash";
 import { JsonEditor as Editor } from 'jsoneditor-react';
 import { UrlParametersContext } from "./url-parameters-context";
 import URLPARAMETERS from "./UrlParameters";
@@ -132,6 +131,7 @@ const G6JsGraph = () => {
       "collection": "germanCity"
     });
   const [nodeDataToEdit, setNodeDataToEdit] = useState();
+  const [basicCodeDataToEdit, setBasicCodeDataToEdit] = useState();
   const [edgeDataToEdit, setEdgeDataToEdit] = useState();
   const [nodeKey, setNodeKey] = useState('Hamburg');
   const [edgeKey, setEdgeKey] = useState('Hamburg');
@@ -576,10 +576,13 @@ const G6JsGraph = () => {
         console.log("Document info loaded before opening EditModal component (data): ", data);
         console.log("Document info loaded before opening EditModal component (data.documents): ", data.documents);
         console.log("Document info loaded before opening EditModal component (data.documents[0]): ", data.documents[0]);
-        const allowedDocuments = omit(data.documents[0], '_id', '_key');
+        const allowedDocuments = omit(data.documents[0], '_id', '_key', '_rev');
         console.log("allowedDocuments: ", allowedDocuments);
-        setNodeDataToEdit(data.documents[0]);
-        //setNodeDataToEdit(data);
+        console.log("data.documents[0]: ", data.documents[0]);
+        setNodeDataToEdit(allowedDocuments);
+        //setNodeDataToEdit(data.documents[0]);
+        setBasicCodeDataToEdit(pick(data.documents[0], ['_id', '_key', '_rev']));
+        console.log("pick: ", pick(data.documents[0], ['_id', '_key', '_rev']));
       })
       .catch((err) => {
         console.log(err);
@@ -887,6 +890,7 @@ const G6JsGraph = () => {
           }}
           node={nodeToEdit}
           nodeData={nodeDataToEdit}
+          basicNodeData={basicCodeDataToEdit}
           editorContent={nodeToEdit}
           onUpdateNode={() => {
             //setGraphData(newGraphData);
@@ -993,7 +997,7 @@ const G6JsGraph = () => {
         <button onClick={() => testApiParams()}>Test API Params</button>
         <button onClick={() => changeGraphDataTest()}>Change graph data test</button>
         <button onClick={() => updateGraphDataWithEdge(edgeModelToAdd)}>Add edge to graph drawing</button>
-        
+
         <GraphView
               data={graphData}
               vertexCollections={vertexCollections}
@@ -1022,8 +1026,8 @@ const G6JsGraph = () => {
               onGraphDataLoaded={(newGraphData) => setGraphData(newGraphData)}
               vertexCollectionsColors={vertexCollectionsColors}
               nodeColor={urlParameters.nodeColor}
-        />    
-        <AttributesInfo attributes={lookedUpData} /> 
+        />
+        <AttributesInfo attributes={lookedUpData} />
       </UrlParametersContext.Provider>
     </div>
   );
