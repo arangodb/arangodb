@@ -577,8 +577,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     syncIndexOnCreate(newIdx.get());
 
     // inBackground index might not recover selectivity estimate w/o sync
-    if (inBackground && !newIdx->unique() &&
-        newIdx->hasSelectivityEstimate()) {
+    if (inBackground && !newIdx->unique() && newIdx->hasSelectivityEstimate()) {
       engine.settingsManager()->sync(false);
     }
 

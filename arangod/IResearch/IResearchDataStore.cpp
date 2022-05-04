@@ -157,7 +157,8 @@ template<typename FieldIteratorType, typename MetaType>
 Result insertDocument(irs::index_writer::documents_context& ctx,
                       transaction::Methods const& trx, FieldIteratorType& body,
                       velocypack::Slice document, LocalDocumentId documentId,
-                      MetaType const& meta, IndexId id, arangodb::StorageEngine* engine) {
+                      MetaType const& meta, IndexId id,
+                      arangodb::StorageEngine* engine) {
   body.reset(document, meta);  // reset reusable container to doc
 
   if (!body.valid()) {
@@ -759,7 +760,7 @@ Result IResearchDataStore::commitUnsafeImpl(bool wait, CommitResult* code) {
       LOG_TOPIC("7e319", TRACE, iresearch::TOPIC)
           << "no changes registered for arangosearch link '" << id()
           << "' got last operation tick '" << _lastCommittedTick << "'";
-      
+
       // no changes, can release the latest tick before commit
       impl.tick(lastTickBeforeCommit);
       _lastCommittedTick = lastTickBeforeCommit;
@@ -1354,8 +1355,9 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
     return {};
   }
 
-  auto insertImpl = [&meta, &trx, &doc, &documentId, id = id(), engine = _engine](
-                        irs::index_writer::documents_context& ctx) -> Result {
+  auto insertImpl =
+      [&meta, &trx, &doc, &documentId, id = id(),
+       engine = _engine](irs::index_writer::documents_context& ctx) -> Result {
     try {
       FieldIteratorType body(trx, meta._collectionName, id);
 
