@@ -170,28 +170,6 @@ TEST_F(SupervisionLogTest, test_log_not_created) {
   EXPECT_TRUE(std::holds_alternative<NoActionPossibleAction>(r));
 }
 
-TEST_F(SupervisionLogTest, test_log_present) {
-  SupervisionContext ctx;
-
-  auto const config = LogConfig(3, 2, 3, true);
-  auto const participants = ParticipantsFlagsMap{
-      {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
-      {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
-      {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
-
-  auto const log = Log{.target = LogTarget(LogId{44}, participants, config),
-                       .plan = LogPlanSpecification(),
-                       .current = LogCurrent()};
-
-  checkReplicatedLog(ctx, log, ParticipantsHealth());
-
-  EXPECT_TRUE(ctx.hasAction());
-  auto const& r = ctx.getAction();
-
-  EXPECT_TRUE(std::holds_alternative<CreateInitialTermAction>(r))
-      << to_string(r);
-}
-
 struct LogSupervisionTest : ::testing::Test {};
 
 TEST_F(LogSupervisionTest, test_leader_not_failed) {

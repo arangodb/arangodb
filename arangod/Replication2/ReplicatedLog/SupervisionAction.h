@@ -213,26 +213,6 @@ auto inspect(Inspector& f, AddLogToPlanAction& x) {
                             f.field("config", x._config));
 }
 
-struct CreateInitialTermAction {
-  static constexpr std::string_view name = "CreateIntialTermAction";
-
-  LogConfig _config;
-
-  auto execute(ActionContext& ctx) const -> void {
-    ctx.modifyPlan([&](LogPlanSpecification& plan) {
-      // Precondition: currentTerm is std::nullopt
-      plan.currentTerm =
-          LogPlanTermSpecification(LogTerm{1}, _config, std::nullopt);
-    });
-  }
-};
-template<typename Inspector>
-auto inspect(Inspector& f, CreateInitialTermAction& x) {
-  auto hack = std::string{x.name};
-  return f.object(x).fields(f.field("type", hack),
-                            f.field("config", x._config));
-}
-
 struct CurrentNotAvailableAction {
   static constexpr std::string_view name = "CurrentNotAvailableAction";
 
@@ -534,12 +514,12 @@ auto inspect(Inspector& f, ConvergedToTargetAction& x) {
 
 using Action = std::variant<
     NoActionPossibleAction, EmptyAction, ErrorAction, AddLogToPlanAction,
-    CreateInitialTermAction, CurrentNotAvailableAction, SwitchLeaderAction,
-    DictateLeaderFailedAction, WriteEmptyTermAction, LeaderElectionAction,
-    LeaderElectionImpossibleAction, LeaderElectionOutOfBoundsAction,
-    LeaderElectionQuorumNotReachedAction, UpdateParticipantFlagsAction,
-    AddParticipantToPlanAction, RemoveParticipantFromPlanAction,
-    UpdateLogConfigAction, ConvergedToTargetAction>;
+    CurrentNotAvailableAction, SwitchLeaderAction, DictateLeaderFailedAction,
+    WriteEmptyTermAction, LeaderElectionAction, LeaderElectionImpossibleAction,
+    LeaderElectionOutOfBoundsAction, LeaderElectionQuorumNotReachedAction,
+    UpdateParticipantFlagsAction, AddParticipantToPlanAction,
+    RemoveParticipantFromPlanAction, UpdateLogConfigAction,
+    ConvergedToTargetAction>;
 
 auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
              std::optional<LogPlanSpecification> plan,
