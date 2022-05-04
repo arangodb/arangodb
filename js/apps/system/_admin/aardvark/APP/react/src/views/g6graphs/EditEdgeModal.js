@@ -23,7 +23,7 @@ const ModalBody = styled.div`
   width: 50%;
 `;
 
-  export const EditEdgeModal = ({ shouldShow, onUpdateEdge, onRequestClose, edge, edgeData, editorContent, children, edgeKey, edgeCollection }) => {
+  export const EditEdgeModal = ({ shouldShow, onUpdateEdge, onRequestClose, edge, edgeData, basicEdgeData, editorContent, children, edgeKey, edgeCollection }) => {
 
     const [visible, setVisibility] = useState(shouldShow);
     const [loading, setLoading] = useState(false);
@@ -40,11 +40,20 @@ const ModalBody = styled.div`
     };
 
     const updateEdge = (graphData, updateEdgeId) => {
+      console.log("basicEdgeData: ", basicEdgeData);
+      console.log("json: ", json);
+      const newEdgeData = {
+        ...basicEdgeData,
+        ...json
+      };
+      console.log("newEdgeData: ", newEdgeData);
+      
       $.ajax({
         cache: false,
         type: 'PUT',
         url: arangoHelper.databaseUrl('/_api/document/' + edgeCollection + '?returnNew=true'),
-        data: JSON.stringify([json]),
+        //data: JSON.stringify([json]),
+        data: JSON.stringify([newEdgeData]),
         contentType: 'application/json',
         processData: false,
         success: function (data) {

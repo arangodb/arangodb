@@ -131,8 +131,9 @@ const G6JsGraph = () => {
       "collection": "germanCity"
     });
   const [nodeDataToEdit, setNodeDataToEdit] = useState();
-  const [basicCodeDataToEdit, setBasicCodeDataToEdit] = useState();
+  const [basicNodeDataToEdit, setBasicNodeDataToEdit] = useState();
   const [edgeDataToEdit, setEdgeDataToEdit] = useState();
+  const [basicEdgeDataToEdit, setBasicEdgeDataToEdit] = useState();
   const [nodeKey, setNodeKey] = useState('Hamburg');
   const [edgeKey, setEdgeKey] = useState('Hamburg');
   const [nodeCollection, setNodeCollection] = useState('germanCity');
@@ -581,7 +582,7 @@ const G6JsGraph = () => {
         console.log("data.documents[0]: ", data.documents[0]);
         setNodeDataToEdit(allowedDocuments);
         //setNodeDataToEdit(data.documents[0]);
-        setBasicCodeDataToEdit(pick(data.documents[0], ['_id', '_key', '_rev']));
+        setBasicNodeDataToEdit(pick(data.documents[0], ['_id', '_key', '_rev']));
         console.log("pick: ", pick(data.documents[0], ['_id', '_key', '_rev']));
       })
       .catch((err) => {
@@ -617,9 +618,11 @@ const G6JsGraph = () => {
         console.log("Document info loaded before opening EditEdgeModal component (data): ", data);
         console.log("Document info loaded before opening EditEdgeModal component (data.documents): ", data.documents);
         console.log("Document info loaded before opening EditEdgeModal component (data.documents[0]): ", data.documents[0]);
-        const allowedDocuments = omit(data.documents[0], '_id', '_key');
+        const allowedDocuments = omit(data.documents[0], '_id', '_key', '_rev', '_from', '_to');
         console.log("allowedDocuments: ", allowedDocuments);
-        setEdgeDataToEdit(data.documents[0]);
+        setBasicEdgeDataToEdit(pick(data.documents[0], ['_id', '_key', '_rev', '_from', '_to']));
+        //setEdgeDataToEdit(data.documents[0]);
+        setEdgeDataToEdit(allowedDocuments);
       })
       .catch((err) => {
         console.log(err);
@@ -890,7 +893,7 @@ const G6JsGraph = () => {
           }}
           node={nodeToEdit}
           nodeData={nodeDataToEdit}
-          basicNodeData={basicCodeDataToEdit}
+          basicNodeData={basicNodeDataToEdit}
           editorContent={nodeToEdit}
           onUpdateNode={() => {
             //setGraphData(newGraphData);
@@ -909,6 +912,7 @@ const G6JsGraph = () => {
           }}
           edge={edgeToEdit}
           edgeData={edgeDataToEdit}
+          basicEdgeData={basicEdgeDataToEdit}
           editorContent={edgeToEdit}
           onUpdateEdge={() => {
             //setGraphData(newGraphData);
