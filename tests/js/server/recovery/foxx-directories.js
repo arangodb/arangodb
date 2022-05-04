@@ -27,11 +27,12 @@
 // / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var db = require('@arangodb').db;
-var internal = require('internal');
-var FoxxService = require('@arangodb/foxx/service');
-var jsunity = require('jsunity');
-var fs = require('fs');
+const db = require('@arangodb').db;
+const internal = require('internal');
+const console = require('console');
+const FoxxService = require('@arangodb/foxx/service');
+const jsunity = require('jsunity');
+const fs = require('fs');
 
 function runSetup () {
   'use strict';
@@ -62,14 +63,10 @@ function runSetup () {
   // we need to wait long enough for the DatabaseManagerThread to 
   // physically carry out the deletion
   let path = fs.join(appPath, 'UnitTestsRecovery2');
-  let tries = 0;
-  while (++tries < 30) {
-    if (!fs.isDirectory(path)) {
-      require("console").log("database directory for UnitTestsRecovery2 is gone");
-      break;
-    }
+  while (fs.isDirectory(path)) {
     internal.wait(1, false);
   }
+  console.log("database directory for UnitTestsRecovery2 is gone");
   internal.debugTerminate('crashing server');
 }
 
