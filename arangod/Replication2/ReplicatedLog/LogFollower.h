@@ -106,6 +106,9 @@ class LogFollower : public ILogFollower,
         -> DeferredAction;
     [[nodiscard]] auto didResign() const noexcept -> bool;
 
+    [[nodiscard]] auto waitForResign()
+        -> std::pair<futures::Future<futures::Unit>, DeferredAction>;
+
     LogFollower const& _follower;
     InMemoryLog _inMemoryLog;
     std::unique_ptr<LogCore> _logCore;
