@@ -105,7 +105,7 @@ const replicatedStateSuite = function (stateType) {
     setUp: LH.registerAgencyTestBegin,
     tearDown: LH.registerAgencyTestEnd,
 
-    testCreateReplicatedState: function () {
+    ["testCreateReplicatedState_" + stateType]: function () {
       const logId = LH.nextUniqueLogId();
       const servers = _.sampleSize(LH.dbservers, 3);
       const leader = servers[0];
@@ -113,7 +113,7 @@ const replicatedStateSuite = function (stateType) {
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
     },
 
-    testCheckTimestampSnapshotStatus: function () {
+    ["testCheckTimestampSnapshotStatus_" + stateType]: function () {
       const logId = LH.nextUniqueLogId();
       const servers = _.sampleSize(LH.dbservers, 3);
       const leader = servers[0];
@@ -127,7 +127,7 @@ const replicatedStateSuite = function (stateType) {
       }
     },
 
-    testReplicatedStateUpdateParticipantGeneration: function () {
+    ["testReplicatedStateUpdateParticipantGeneration_" + stateType]: function () {
       const logId = LH.nextUniqueLogId();
       const servers = _.sampleSize(LH.dbservers, 3);
       const leader = servers[0];
@@ -146,7 +146,7 @@ const replicatedStateSuite = function (stateType) {
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
     },
 
-    testReplicatedStateChangeLeader: function () {
+    ["testReplicatedStateChangeLeader_" + stateType]: function () {
       const logId = LH.nextUniqueLogId();
       const servers = _.sampleSize(LH.dbservers, 3);
       const leader = servers[0];
@@ -163,7 +163,7 @@ const replicatedStateSuite = function (stateType) {
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
     },
 
-    testReplicatedStateIncreaseSnapshotGen: function () {
+    ["testReplicatedStateIncreaseSnapshotGen_" + stateType]: function () {
       const logId = LH.nextUniqueLogId();
       const servers = _.sampleSize(LH.dbservers, 3);
       const leader = servers[0];
@@ -182,7 +182,7 @@ const replicatedStateSuite = function (stateType) {
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
     },
 
-    testReplicatedStateDropFollower: function () {
+    ["testReplicatedStateDropFollower_" + stateType]: function () {
       const logId = LH.nextUniqueLogId();
       const servers = _.sampleSize(LH.dbservers, 3);
       const leader = servers[0];

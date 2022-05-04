@@ -56,7 +56,7 @@ const replicatedStateSuite = function (stateType) {
     // writing a configuration to Target
     //
     // Await availability of the requested state
-    testCreateReplicatedState: function () {
+    ["testCreateReplicatedState" + stateType]: function () {
       const stateId = lh.nextUniqueLogId();
 
       const servers = _.sampleSize(lh.dbservers, 3);
@@ -87,7 +87,7 @@ const replicatedStateSuite = function (stateType) {
       lh.waitFor(spreds.replicatedStateIsReady(database, stateId, servers));
     },
 
-    testAddParticipant: function () {
+    ["testAddParticipant_" + stateType]: function () {
       const {stateId, servers, others} = createReplicatedState();
       const newParticipant = _.sample(others);
 
@@ -105,7 +105,7 @@ const replicatedStateSuite = function (stateType) {
       }));
     },
 
-    testUpdateVersionTest: function () {
+    ["testUpdateVersionTest_" + stateType]: function () {
       const {stateId} = createReplicatedState();
 
       const version = 4;
@@ -127,7 +127,7 @@ const replicatedStateSuite = function (stateType) {
       lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, newVersion));
     },
 
-    testSetLeader: function () {
+    ["testSetLeader_" + stateType]: function () {
       const {stateId, followers} = createReplicatedState();
       const newLeader = _.sample(followers);
       sh.updateReplicatedStateTarget(database, stateId,
@@ -139,7 +139,7 @@ const replicatedStateSuite = function (stateType) {
       lh.waitFor(lpreds.replicatedLogLeaderPlanIs(database, stateId, newLeader));
     },
 
-    testUnsetLeader: function () {
+    ["testUnsetLeader_" + stateType]: function () {
       const {stateId} = createReplicatedState();
       sh.updateReplicatedStateTarget(database, stateId,
           (target) => {
@@ -156,7 +156,7 @@ const replicatedStateSuite = function (stateType) {
       });
     },
 
-    testRemoveLeader: function () {
+    ["testRemoveLeader_" + stateType]: function () {
       const servers = _.sampleSize(lh.dbservers, 4);
       const {stateId, leader} = createReplicatedStateWithServers(servers);
 
@@ -175,7 +175,7 @@ const replicatedStateSuite = function (stateType) {
       lh.waitFor(spreds.replicatedStateIsReady(database, stateId, newServers));
     },
 
-    testReplaceAllServers: function () {
+    ["testReplaceAllServers_" + stateType]: function () {
       const {stateId, others} = createReplicatedState();
       const otherServers = _.sampleSize(others, targetConfig.replicationFactor);
 
@@ -188,7 +188,7 @@ const replicatedStateSuite = function (stateType) {
       lh.waitFor(spreds.replicatedStateIsReady(database, stateId, otherServers));
     },
 
-    testReplaceWithBadParticipant: function () {
+    ["testReplaceWithBadParticipant_" + stateType]: function () {
       const {stateId, servers, others, followers} = createReplicatedState();
       const toBeReplaced = _.sample(followers);
       const newParticipant = _.sample(others);
