@@ -1394,7 +1394,11 @@ authRouter.get('/g6graph/:name', function (req, res) {
           */
         var calculatedNodeColor = '#dee072';
         if (config.nodeColor !== undefined) {
-          calculatedNodeColor = '#' + config.nodeColor;
+          if(!config.nodeColor.startsWith('#')) {
+            calculatedNodeColor = '#' + config.nodeColor;
+          } else {
+            calculatedNodeColor = config.nodeColor;
+          }
         }
          nodeObj = {
             id: node._id,
