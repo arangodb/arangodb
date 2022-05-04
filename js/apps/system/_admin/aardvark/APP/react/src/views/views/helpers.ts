@@ -22,7 +22,7 @@ ajvErrors(ajv);
 
 export const validateAndFix = ajv.addSchema(linksSchema).compile(formSchema);
 
-export function useLinkState(formState: { [key: string]: any }, formField: string) {
+export function useLinkState (formState: { [key: string]: any }, formField: string) {
   const [innerField, setInnerField] = useState('');
   const [addDisabled, setAddDisabled] = useState(true);
   const innerFields = useMemo(() => (formState[formField] || {}), [formField, formState]);
@@ -36,15 +36,15 @@ export function useLinkState(formState: { [key: string]: any }, formField: strin
   return [innerField, setInnerField, addDisabled, innerFields];
 }
 
-export function useView(name: string) {
+export function useView (name: string) {
   const [view, setView] = useState<object>({ name });
   const { data, error } = useSWR(`/view/${name}/properties`,
     path => getApiRouteForCurrentDB().get(path), {
-    revalidateOnFocus: false
-  });
+      revalidateOnFocus: false
+    });
 
   if (error) {
-    window.App.navigate('#views', {trigger: true});
+    window.App.navigate('#views', { trigger: true });
     arangoHelper.arangoError(
       "Failure",
       `Got unexpected server response: ${error.errorNum}: ${error.message} - ${name}`

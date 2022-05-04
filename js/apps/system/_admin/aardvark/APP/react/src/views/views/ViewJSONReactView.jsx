@@ -33,7 +33,7 @@ const ViewJSONReactView = ({ name }) => {
     dispatch({
       type: 'regenRenderKey'
     });
-  }, [view, name]);
+  }, [view]);
 
   useEffect(() => {
     const observer = buildSubNav(isAdminUser, name, 'JSON');
