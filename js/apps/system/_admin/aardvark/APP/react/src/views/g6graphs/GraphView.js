@@ -4,7 +4,7 @@ import ReactDOM from 'react-dom';
 import { Card } from 'antd';
 import { data2 } from './data2';
 import NodeStyleSelector from './NodeStyleSelector.js';
-import EdgeStyleSelector from './EdgeStyleSelector.js';
+import EdgeStyleSelector from './EdgeStyleSelectorOld';
 import AddCollectionNameToNodesSelector from './AddCollectionNameToNodesSelector';
 import AddCollectionNameToEdgesSelector from './AddCollectionNameToEdgesSelector'
 import { Headerinfo } from './Headerinfo';
@@ -171,6 +171,7 @@ export class GraphView extends React.Component {
       enabledStack: true,
       layout: {
         type: 'gForce',
+
         //minMovement: 0.01,
         //maxIteration: 100,
         preventOverlap: true,
@@ -259,6 +260,18 @@ export class GraphView extends React.Component {
         }
       },
       defaultEdge: {
+        /*
+        style: {
+          endArrow: {
+            path: G6.Arrow.triangle(10, 15, 0),
+            d: 0,
+            fill: '#' + this.props.edgeColor,
+            stroke: '#' + this.props.edgeColor
+          },
+          lineWidth: 2,
+          cursor: 'pointer'
+        },
+        */
         type: 'quadratic', // assign the edges to be quadratic bezier curves
         labelCfg: {
           autoRotate: true,
@@ -270,15 +283,47 @@ export class GraphView extends React.Component {
       },
       edgeStateStyles: {
         hover: {
-          fillOpacity: 0.1,
-          lineWidth: 2,
-          cursor: 'pointer',
+          style: {
+            fillOpacity: 0.1,
+            lineWidth: 2,
+            cursor: 'pointer'
+          }
         },
-        searched: {
-          lineWidth: 4,
-          stroke: '#9fb53a',
-          cursor: 'pointer',
-        }
+        line: {
+          type: 'polyline',
+          endArrow: false,
+          lineWidth: 2,
+          cursor: 'pointer'
+        },
+        arrow: {
+          endArrow: true,
+          lineWidth: 2,
+          cursor: 'pointer'
+        },
+        curve: {
+          type: 'arc',
+          endArrow: false,
+          lineWidth: 2,
+          cursor: 'pointer'
+        },
+        dotted: {
+          endArrow: false,
+          lineWidth: 2,
+          lineDash: [2, 2, 2, 2, 2, 2],
+          cursor: 'pointer'
+        },
+        dashed: {
+          endArrow: false,
+          lineWidth: 2,
+          lineDash: [7, 7, 7, 7, 7, 7],
+          cursor: 'pointer'
+        },
+        tapered: {
+          endArrow: false,
+          lineWidth: 2,
+          stroke: `l(0) 0:#ffffff 0.5:#9fb53a 1:#82962d`,
+          cursor: 'pointer'
+        },
       },
     });
 
@@ -631,6 +676,36 @@ export class GraphView extends React.Component {
     }
   }
 
+  changeEdgeStyleFromUi = (edgeStyle) => {
+    if(edgeStyle) {
+      console.log("new edge type: ", edgeStyle.type);
+
+      const edges = this.graph.getEdges();
+      console.log("edges in changeEdgeStyle: ", edges);
+      
+      edges.forEach((edge) => {
+        this.graph.clearItemStates(edge);
+        this.graph.setItemState(edge, edgeStyle.type, true);
+        /*
+        if (!edge.style) {
+          edge.style = {};
+        }
+        edge.style.lineWidth = edge.weight;
+        edge.style.opacity = 0.6;
+        edge.style.stroke = '#0f0';
+        */
+      });
+      //this.graph.setItemState(edge, 'searched', true);
+      //this.graph.focusItem(edge, true);
+    }
+  }
+
+  changeGraphLayoutFromUi = (layout) => {
+    this.graph.updateLayout({
+      type: layout
+    });
+  }
+
   /*
   <button onClick={this.changeLayout}>Change layout</button>
   <button onClick={this.addCollectionNameToNodes}>Add collection name (nodes)</button>
@@ -737,6 +812,8 @@ export class GraphView extends React.Component {
         onDocumentSelect={(document) => this.highlightDocument(document)}
         onNodeSearched={(node) => this.highlightNode(node)}
         onEdgeSearched={(edge) => this.highlightEdge(edge)}
+        onEdgeStyleChanged={(edgeStyle) => this.changeEdgeStyleFromUi(edgeStyle)}
+        onGraphLayoutChange={(layout) => this.changeGraphLayoutFromUi(layout)}
         onGraphDataLoaded={(newGraphData) => this.props.onGraphDataLoaded(newGraphData)}
       />
       <Card

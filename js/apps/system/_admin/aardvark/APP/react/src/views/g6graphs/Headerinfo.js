@@ -23,8 +23,10 @@ import ParameterEdgeColor from "./ParameterEdgeColor";
 import ParameterNodeSize from './ParameterNodeSize';
 import ParameterNodeSizeByEdges from "./ParameterNodeSizeByEdges";
 import ButtonSave from "./ButtonSave";
+import EdgeStyleSelector from "./EdgeStyleSelector";
+import GraphLayoutSelector from "./GraphLayoutSelector";
 
-export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onDownloadFullScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onNodeSearched, onEdgeSearched, onGraphDataLoaded }) => {
+export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onDownloadFullScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onNodeSearched, onEdgeSearched, onEdgeStyleChanged, onGraphLayoutChange, onGraphDataLoaded }) => {
   
   const [layout, setLayout] = useState('gForce');
   const { Option } = Select;
@@ -94,11 +96,6 @@ const screenshotMenu = (
   </Menu>
 );
 
-/*
-<Tooltip placement="bottom" title={"Download visible graph as screenshot"}>
-</Tooltip>
-*/
-
   return (
     <PageHeader
       className="site-page-header-responsive"
@@ -151,29 +148,12 @@ const screenshotMenu = (
               onNodeSelect={(node) => onDocumentSelect(node)}
             />
             <br />
-            <LayoutSelector
-              value={layout}
-              onChange={(value) => changeLayout}
-              onLayoutChange={(layoutvalue) => {
-                console.log("New layout value in Headerinfo: ", layoutvalue);
-                onChangeLayout(layoutvalue);
-              }} />
-            <Select
-              defaultValue="lucy"
-              style={{ width: 240, marginTop: '24px' }}
-              onChange={handleChange}
-              suffix={
-                <Tooltip title="Different graph algorithms. No overlap is very fast (more than 5000 nodes), force is slower (less than 5000 nodes) and fruchtermann is the slowest (less than 500 nodes).">
-                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                </Tooltip>
-              }>
-              <Option value="jack">Jack</Option>
-              <Option value="lucy">Lucy</Option>
-              <Option value="disabled" disabled>
-                Disabled
-              </Option>
-              <Option value="Yiminghe">yiminghe</Option>
-            </Select>
+            <GraphLayoutSelector
+              onGraphLayoutChange={(layout) => {
+                console.log("onGraphLayoutChange (layout): ", layout);
+                onGraphLayoutChange(layout);
+              }}
+            />
             <br />
             <ParameterDepth />
             <br />
@@ -226,22 +206,12 @@ const screenshotMenu = (
             <br />
             <ParameterEdgeColorAttribute />
             <br />
-            <Select
-              defaultValue="lucy"
-              style={{ width: 240, marginBottom: '24px' , marginTop: '24px' }}
-              onChange={handleChange}
-              suffix={
-                <Tooltip title="The type of the edge">
-                  <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
-                </Tooltip>
-              }>
-              <Option value="jack">Jack</Option>
-              <Option value="lucy">Lucy</Option>
-              <Option value="disabled" disabled>
-                Disabled
-              </Option>
-              <Option value="Yiminghe">yiminghe</Option>
-            </Select>
+            <EdgeStyleSelector
+              onEdgeStyleChange={(typeModel) => {
+                console.log("onEdgeStyleChange (typeModel): ", typeModel);
+                onEdgeStyleChanged(typeModel);
+              }}
+            />
           </TabPane>
           <TabPane
             tab={

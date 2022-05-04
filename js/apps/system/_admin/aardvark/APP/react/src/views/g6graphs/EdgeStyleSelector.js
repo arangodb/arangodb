@@ -24,55 +24,32 @@ const EdgeStyleSelector = ({ onEdgeStyleChange} ) => {
       type: 'line'
     },
     {
-      type: 'polyline',
+      type: 'arrow'
     },
     {
-      type: 'arc',
+      type: 'curve'
     },
     {
-      type: 'quadratic',
+      type: 'dotted'
     },
     {
-      type: 'cubic',
+      type: 'dashed'
     },
     {
-      type: 'cubic-vertical',
-    },
-    {
-      type: 'cubic-horizontal',
-    },
-    {
-      type: 'loop',
+      type: 'tapered'
     }
   ];
 
   const handleChange = type => {
     const typeModelMerged = {
-      type: type,
-      style: {
-        ...labelModel,
-        stroke: strokeColorInput.current.value,
-        lineWidth: (lineWidthInput.current.value ? lineWidthInput.current.value : 2),
-        endArrow: true,
-      },
+      type: type
     };
     setType(type);
     onEdgeStyleChange(typeModelMerged);
   };
 
   return <>
-          <div style={{ clear: 'both' }}>
-            <h5>Edge style</h5>
-          </div>
-          <div style={{ float: 'left' }}>
-            <label for="strokecolor">Stroke color</label>
-            <input name="strokecolor" type="color" style={{ width: '200px', height: '20px' }} ref={strokeColorInput} />
-          </div>
-          <div style={{ float: 'left' }}>
-            <label for="linewidth">Line width</label>
-            <input name="linewidth" type="input" style={{ width: '200px' }} placeholder="5" ref={lineWidthInput} />
-          </div>
-          <div style={{ float: 'left' }}>
+          <div>
             <label for="edgetype">Type</label>
             <Select name="edgeType" style={{ width: '200px' }} value={type} onChange={handleChange}>
               {styles.map(style => {
