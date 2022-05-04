@@ -227,6 +227,7 @@ set(ARANGODB_TESTS_SOURCES
   Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
+  Containers/SmallVectorTest.cpp
   Futures/FutureTest.cpp
   Futures/PromiseTest.cpp
   Futures/TryTest.cpp
