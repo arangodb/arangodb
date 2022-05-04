@@ -61,6 +61,12 @@ class SharedWorkEnv;
 
 class RocksDBCollection;
 
+struct ThreadStatistics {
+  uint64_t numSeeks = 0;
+  uint64_t numNexts = 0;
+  uint64_t numWaits = 0;
+};
+
 class IndexCreatorThread final : public Thread {
  public:
   IndexCreatorThread(bool isUniqueIndex, bool isForeground, uint64_t batchSize,
@@ -69,7 +75,8 @@ class IndexCreatorThread final : public Thread {
                      RocksDBCollection* rcoll, rocksdb::DB* rootDB,
                      RocksDBIndex& ridx, rocksdb::Snapshot const* snap);
 
-  ~IndexCreatorThread() { Thread::shutdown(); }
+  ~IndexCreatorThread();
+
   void beginShutdown() override;
 
  protected:
@@ -81,6 +88,7 @@ class IndexCreatorThread final : public Thread {
  private:
   bool _isUniqueIndex = false;
   bool _isForeground = false;
+  size_t _keyToUpdate;
   uint64_t _batchSize;
   std::atomic<uint64_t>& _docsProcessed;
   std::shared_ptr<SharedWorkEnv> _sharedWorkEnv;
@@ -96,6 +104,7 @@ class IndexCreatorThread final : public Thread {
   std::unique_ptr<RocksDBMethods> _methods;
   rocksdb::ReadOptions _readOptions;
   arangodb::AccessMode::Type _mode;
+  ThreadStatistics _statistics;
 };
 
 /// Dummy index class that contains the logic to build indexes
@@ -196,8 +205,16 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 using WorkItem = std::pair<uint64_t, uint64_t>;
 class SharedWorkEnv {
  public:
-  SharedWorkEnv(size_t numThreads, std::deque<WorkItem>& workItems)
-      : _numThreads(numThreads), _ranges(std::move(workItems)) {}
+  SharedWorkEnv(size_t numThreads, std::deque<WorkItem>& workItems,
+                uint64_t objectId)
+      : _numThreads(numThreads),
+        _ranges(std::move(workItems)),
+        _upperBoundId(_ranges.front().second),
+        _bounds(RocksDBKeyBounds::CollectionDocuments(
+            objectId, _ranges.front().first,
+            _ranges.front().second == UINT64_MAX
+                ? UINT64_MAX
+                : _ranges.front().second + 1)) {}
 
   Result result() {
     std::unique_lock<std::mutex> lock(_mtx);
@@ -232,7 +249,7 @@ class SharedWorkEnv {
       std::unique_lock<std::mutex> lock(_mtx);
       _ranges.emplace_back(std::move(item));
     }
-    _condition.notify_all();
+    _condition.notify_one();
   }
 
   void waitForWork() {
@@ -272,6 +289,23 @@ class SharedWorkEnv {
                     [&]() { return _numTerminatedThreads == _numThreads; });
   }
 
+  void postStatistics(ThreadStatistics stats) {
+    std::unique_lock<std::mutex> extLock(_mtx);
+    _threadStatistics.emplace_back(stats);
+  }
+
+  std::vector<ThreadStatistics> const& getThreadStatistics() const {
+    return _threadStatistics;
+  }
+
+  RocksDBKeyBounds const& getBounds() const { return _bounds; }
+
+  rocksdb::Slice const getUpperBound() const {
+    return rocksdb::Slice(_bounds.end());
+  }
+
+  uint64_t getUpperBoundId() const { return _upperBoundId; }
+
  private:
   bool _done = false;
   size_t _numWaitingThreads = 0;
@@ -279,7 +313,10 @@ class SharedWorkEnv {
   size_t _numTerminatedThreads = 0;
   std::condition_variable _condition;
   std::deque<WorkItem> _ranges;
+  uint64_t const _upperBoundId;
   Result _res;
   std::mutex _mtx;
+  std::vector<ThreadStatistics> _threadStatistics;
+  RocksDBKeyBounds _bounds;
 };
 }  // namespace arangodb

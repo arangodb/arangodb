@@ -144,6 +144,8 @@ IndexCreatorThread::IndexCreatorThread(
   }
 }
 
+IndexCreatorThread::~IndexCreatorThread() { Thread::shutdown(); }
+
 void IndexCreatorThread::beginShutdown() { Thread::beginShutdown(); }
 
 void IndexCreatorThread::run() {
@@ -162,6 +164,11 @@ void IndexCreatorThread::run() {
   ro.prefix_same_as_start = true;
   rocksdb::ColumnFamilyHandle* docCF = RocksDBColumnFamilyManager::get(
       RocksDBColumnFamilyManager::Family::Documents);
+  // + 1 to include the last doc id in the range
+  uint64_t const upperBoundId = _sharedWorkEnv->getUpperBoundId();
+  rocksdb::Slice const upperBound = _sharedWorkEnv->getUpperBound();
+  ro.iterate_upper_bound = &upperBound;
+  std::unique_ptr<rocksdb::Iterator> it(_rootDB->NewIterator(ro, docCF));
   try {
     while (true) {
       if (_sharedWorkEnv->shouldStop()) {
@@ -169,27 +176,25 @@ void IndexCreatorThread::run() {
       }
       WorkItem workItem = {};
       if (_sharedWorkEnv->fetchWorkItem(workItem)) {
+        RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(
+            _rcoll->objectId(), workItem.first,
+            workItem.second == UINT64_MAX ? UINT64_MAX : workItem.second + 1);
         Result res;
-
-        uint64_t nextDocIdToProcess;
         uint64_t numDocsWritten;
         bool hasLeftoverWork = false;
         do {
           numDocsWritten = 0;
-          auto bounds = RocksDBKeyBounds::CollectionDocuments(
-              _rcoll->objectId(), workItem.first,
-              workItem.second == UINT64_MAX
-                  ? UINT64_MAX
-                  : workItem.second +
-                        1);  // + 1 to include the last doc id in the range
-          rocksdb::Slice upperBound(bounds.end());
-          ro.iterate_upper_bound = &upperBound;
-          std::unique_ptr<rocksdb::Iterator> it(
-              _rootDB->NewIterator(ro, docCF));
 
-          for (it->Seek(bounds.start());
-               it->Valid() && numDocsWritten < _batchSize; it->Next()) {
-            TRI_ASSERT(it->key().compare(upperBound) < 0);
+          if (!hasLeftoverWork) {
+            it->Seek(bounds.start());
+            _statistics.numSeeks++;
+          }
+          for (; it->Valid() && (numDocsWritten < _batchSize ||
+                                 workItem.second == upperBoundId);
+               it->Next()) {
+            if (RocksDBKey::documentId(it->key()).id() > workItem.second) {
+              break;
+            }
             res = _ridx.insert(
                 _trx, _methods.get(), RocksDBKey::documentId(it->key()),
                 VPackSlice(
@@ -199,6 +204,7 @@ void IndexCreatorThread::run() {
               break;
             }
             numDocsWritten++;
+            _statistics.numNexts++;
           }
 
           if (!it->status().ok() && res.ok()) {
@@ -219,11 +225,11 @@ void IndexCreatorThread::run() {
             _sharedWorkEnv->registerError(res);
             break;
           }
-          nextDocIdToProcess = RocksDBKey::documentId(it->key()).id();
           if ((it->key().compare(upperBound) < 0) &&
-              numDocsWritten >= _batchSize && it->Valid()) {
+              numDocsWritten >= _batchSize && it->Valid() &&
+              (workItem.first <= workItem.second)) {
             hasLeftoverWork = true;
-            workItem.first = nextDocIdToProcess;
+            workItem.first = RocksDBKey::documentId(it->key()).id();
 
             // the partition's first item in range will now be the first
             // id that has not been processed yet
@@ -231,25 +237,11 @@ void IndexCreatorThread::run() {
             // in half the remaining work, the upper half goes to the
             // queue and the lower half will be consumed by this thread as
             // part of current work
-            TRI_ASSERT(workItem.first <= workItem.second);
             // will not split range for a small amount of ids
-            if (workItem.second - workItem.first >= 20) {
+            if (workItem.second - workItem.first >= _batchSize) {
               auto [leftoverWork, workToEnqueue] = splitInHalf(workItem);
               _sharedWorkEnv->enqueueWorkItem(std::move(workToEnqueue));
               workItem = std::move(leftoverWork);
-            } else if (workItem.first == workItem.second) {
-              hasLeftoverWork = false;
-              if (it->Valid()) {
-                res = _ridx.insert(
-                    _trx, _methods.get(), RocksDBKey::documentId(it->key()),
-                    VPackSlice(
-                        reinterpret_cast<uint8_t const*>(it->value().data())),
-                    options, true);
-                if (res.fail()) {
-                  _sharedWorkEnv->registerError(res);
-                }
-                numDocsWritten++;
-              }
             }
           } else {
             // as this thread will not consume the lower half and enqueue more
@@ -263,6 +255,7 @@ void IndexCreatorThread::run() {
           break;
         }
       }
+      _statistics.numWaits++;
       _sharedWorkEnv->waitForWork();
     }
   } catch (std::exception const& ex) {
@@ -278,6 +271,7 @@ void IndexCreatorThread::run() {
       _sharedWorkEnv->registerError(res);
     }
   }
+  _sharedWorkEnv->postStatistics(_statistics);
   _sharedWorkEnv->incTerminatedThreads();
 }
 
@@ -376,7 +370,8 @@ Result static processPartitions(
     RocksDBCollection* rcoll, rocksdb::DB* rootDB, RocksDBIndex& ridx,
     std::atomic<uint64_t>& docsProcessed, size_t numThreads,
     uint64_t threadBatchSize) {
-  auto sharedWorkEnv = std::make_shared<SharedWorkEnv>(numThreads, partitions);
+  auto sharedWorkEnv = std::make_shared<SharedWorkEnv>(numThreads, partitions,
+                                                       rcoll->objectId());
 
   std::vector<std::unique_ptr<IndexCreatorThread>> idxCreatorThreads;
   for (size_t i = 0; i < numThreads; ++i) {
@@ -394,6 +389,17 @@ Result static processPartitions(
     }
   }
   sharedWorkEnv->waitUntilAllThreadsTerminate();
+
+  uint64_t seekCounter = 2;
+  uint64_t nextCounter = 0;
+  uint64_t waitCounter = 0;
+  for (auto const& threadStats : sharedWorkEnv->getThreadStatistics()) {
+    seekCounter += threadStats.numSeeks;
+    nextCounter += threadStats.numNexts;
+    waitCounter += threadStats.numWaits;
+  }
+  LOG_DEVEL << "Total seeks: " << seekCounter << ", next: " << nextCounter
+            << ", wait: " << waitCounter;
 
   return sharedWorkEnv->getResponse();
 }
