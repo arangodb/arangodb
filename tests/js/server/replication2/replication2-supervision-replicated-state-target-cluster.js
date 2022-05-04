@@ -32,7 +32,7 @@ const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 
 const database = "replication2_supervision_test_db";
 
-const replicatedStateSuite = function () {
+const replicatedStateSuite = function (stateType) {
   const targetConfig = {
     writeConcern: 2,
     softWriteConcern: 2,
@@ -43,10 +43,10 @@ const replicatedStateSuite = function () {
   const {setUpAll, tearDownAll, stopServer, continueServer, setUp, tearDown} = lh.testHelperFunctions(database);
 
   const createReplicatedStateWithServers = function (servers) {
-    return sh.createReplicatedStateTargetWithServers(database, targetConfig, "black-hole", servers);
+    return sh.createReplicatedStateTargetWithServers(database, targetConfig, stateType, servers);
   };
   const createReplicatedState = function () {
-    return sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+    return sh.createReplicatedStateTarget(database, targetConfig, stateType);
   };
 
   return {
@@ -56,7 +56,7 @@ const replicatedStateSuite = function () {
     // writing a configuration to Target
     //
     // Await availability of the requested state
-    testCreateReplicatedState: function () {
+    ["testCreateReplicatedState" + stateType]: function () {
       const stateId = lh.nextUniqueLogId();
 
       const servers = _.sampleSize(lh.dbservers, 3);
@@ -78,7 +78,7 @@ const replicatedStateSuite = function () {
               },
               properties: {
                 implementation: {
-                  type: "black-hole"
+                  type: stateType
                 }
               }
             };
@@ -87,7 +87,7 @@ const replicatedStateSuite = function () {
       lh.waitFor(spreds.replicatedStateIsReady(database, stateId, servers));
     },
 
-    testAddParticipant: function () {
+    ["testAddParticipant_" + stateType]: function () {
       const {stateId, servers, others} = createReplicatedState();
       const newParticipant = _.sample(others);
 
@@ -105,7 +105,7 @@ const replicatedStateSuite = function () {
       }));
     },
 
-    testUpdateVersionTest: function () {
+    ["testUpdateVersionTest_" + stateType]: function () {
       const {stateId} = createReplicatedState();
 
       const version = 4;
@@ -127,7 +127,7 @@ const replicatedStateSuite = function () {
       lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, newVersion));
     },
 
-    testSetLeader: function () {
+    ["testSetLeader_" + stateType]: function () {
       const {stateId, followers} = createReplicatedState();
       const newLeader = _.sample(followers);
       sh.updateReplicatedStateTarget(database, stateId,
@@ -139,7 +139,7 @@ const replicatedStateSuite = function () {
       lh.waitFor(lpreds.replicatedLogLeaderPlanIs(database, stateId, newLeader));
     },
 
-    testUnsetLeader: function () {
+    ["testUnsetLeader_" + stateType]: function () {
       const {stateId} = createReplicatedState();
       sh.updateReplicatedStateTarget(database, stateId,
           (target) => {
@@ -156,7 +156,7 @@ const replicatedStateSuite = function () {
       });
     },
 
-    testRemoveLeader: function () {
+    ["testRemoveLeader_" + stateType]: function () {
       const servers = _.sampleSize(lh.dbservers, 4);
       const {stateId, leader} = createReplicatedStateWithServers(servers);
 
@@ -175,7 +175,7 @@ const replicatedStateSuite = function () {
       lh.waitFor(spreds.replicatedStateIsReady(database, stateId, newServers));
     },
 
-    testReplaceAllServers: function () {
+    ["testReplaceAllServers_" + stateType]: function () {
       const {stateId, others} = createReplicatedState();
       const otherServers = _.sampleSize(others, targetConfig.replicationFactor);
 
@@ -188,7 +188,7 @@ const replicatedStateSuite = function () {
       lh.waitFor(spreds.replicatedStateIsReady(database, stateId, otherServers));
     },
 
-    testReplaceWithBadParticipant: function () {
+    ["testReplaceWithBadParticipant_" + stateType]: function () {
       const {stateId, servers, others, followers} = createReplicatedState();
       const toBeReplaced = _.sample(followers);
       const newParticipant = _.sample(others);
@@ -227,5 +227,12 @@ const replicatedStateSuite = function () {
   };
 };
 
-jsunity.run(replicatedStateSuite);
+const suiteWithState = function (stateType) {
+  return function () {
+    return replicatedStateSuite(stateType);
+  };
+};
+
+jsunity.run(suiteWithState("black-hole"));
+jsunity.run(suiteWithState("prototype"));
 return jsunity.done();
