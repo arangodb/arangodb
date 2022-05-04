@@ -431,6 +431,14 @@ class RocksDBEngine final : public StorageEngine {
   static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const&
   recoveryHelpers();
 
+  uint64_t recoveryStartSequence() const noexcept {
+    return _recoveryStartSequence;
+  }
+  void recoveryStartSequence(uint64_t value) noexcept {
+    TRI_ASSERT(_recoveryStartSequence == 0);
+    _recoveryStartSequence = value;
+  }
+
  private:
   void shutdownRocksDBInstance() noexcept;
   void waitForCompactionJobsToFinish();
@@ -634,6 +642,10 @@ class RocksDBEngine final : public StorageEngine {
   uint64_t _throttleSlowdownWritesTrigger = 8;
   // Lower bound for computed write bandwidth of throttle:
   uint64_t _throttleLowerBoundBps = 10 * 1024 * 1024;
+
+  // sequence number from which WAL recovery was started. used only
+  // for testing
+  uint64_t _recoveryStartSequence = 0;
 
   metrics::Gauge<uint64_t>& _metricsWalSequenceLowerBound;
   metrics::Gauge<uint64_t>& _metricsArchivedWalFiles;

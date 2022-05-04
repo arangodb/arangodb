@@ -27,14 +27,16 @@
 #include <rocksdb/types.h>
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
-#include "Basics/Result.h"
+#include "Basics/ResultT.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+
 #include <atomic>
+#include <cstdint>
 
 namespace rocksdb {
 class DB;
@@ -52,8 +54,11 @@ class RocksDBSettingsManager {
   /// Retrieve initial settings values from database on engine startup
   void retrieveInitialValues();
 
-  /// Thread-Safe force sync
-  Result sync(bool force);
+  /// Thread-Safe force sync. The returned boolean value will contain
+  /// true iff the latest tick values were written out successfully. If
+  /// force is false and nothing needs to be done, then it is possible that
+  /// a value of false is returned.
+  ResultT<bool> sync(bool force);
 
   // Earliest sequence number needed for recovery (don't throw out newer WALs)
   rocksdb::SequenceNumber earliestSeqNeeded() const;

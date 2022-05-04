@@ -57,7 +57,7 @@ void RocksDBBackgroundThread::run() {
 
   double const startTime = TRI_microtime();
   uint64_t runsUntilSyncForced = 1;
-  TRI_voc_tick_t lastMinReleasedTick = 0;
+  constexpr uint64_t maxRunsUntilSyncForced = 5;
 
   while (!isStopping()) {
     {
@@ -73,26 +73,20 @@ void RocksDBBackgroundThread::run() {
 
     try {
       if (!isStopping()) {
-        auto [active, stale, minReleasedTick] =
-            flushFeature.releaseUnusedTicks();
-        if (minReleasedTick > lastMinReleasedTick && active > 0) {
-          lastMinReleasedTick = minReleasedTick;
+        flushFeature.releaseUnusedTicks();
 
-          // if we get a different tick value back, we start a countdown
-          // of 4 runs until we will do a forced sync
-          if (runsUntilSyncForced == 0) {
-            runsUntilSyncForced = 4;
-          }
-        }
-
+        // it is important that we wrap the sync operation inside a
+        // try..catch of its own, because we still want the following
+        // garbage collection operations to be carried out even if
+        // the sync fails.
         try {
-          // forceSync will be set to true for the initial run, that
+          // forceSync will effectively be true for the initial run that
           // will happen when the recovery has finished. that way we
           // can quickly push forward the WAL lower bound value after
           // the recovery
           bool forceSync = false;
 
-          // force a sync after at most x iterations
+          // force a sync after at most x iterations (or initial run)
           if (runsUntilSyncForced > 0 && --runsUntilSyncForced == 0) {
             TRI_ASSERT(runsUntilSyncForced == 0);
             forceSync = true;
@@ -102,18 +96,19 @@ void RocksDBBackgroundThread::run() {
               << "running " << (forceSync ? "forced " : "")
               << "background settings sync";
 
-          // it is important that we wrap the sync operation inside a
-          // try..catch of its own, because we still want the following
-          // garbage collection operations to be carried out even if
-          // the sync fails.
           double start = TRI_microtime();
-          Result res = _engine.settingsManager()->sync(forceSync);
-          if (res.fail()) {
+          auto syncRes = _engine.settingsManager()->sync(forceSync);
+          double end = TRI_microtime();
+
+          if (syncRes.fail()) {
             LOG_TOPIC("a3d0c", WARN, Logger::ENGINES)
-                << "background settings sync failed: " << res.errorMessage();
+                << "background settings sync failed: "
+                << syncRes.errorMessage();
+          } else if (syncRes.get()) {
+            // reset our counter
+            runsUntilSyncForced = maxRunsUntilSyncForced;
           }
 
-          double end = TRI_microtime();
           if (end - start > 5.0) {
             LOG_TOPIC("3ad54", WARN, Logger::ENGINES)
                 << "slow background settings sync took: "
@@ -191,11 +186,11 @@ void RocksDBBackgroundThread::run() {
     }
   }
 
-  try {
-    _engine.settingsManager()->sync(true);  // final write on shutdown
-  } catch (std::exception const& ex) {
+  // final write on shutdown
+  auto syncRes = _engine.settingsManager()->sync(/*force*/ true);
+  if (syncRes.fail()) {
     LOG_TOPIC("f3aa6", WARN, Logger::ENGINES)
         << "caught exception during final RocksDB sync operation: "
-        << ex.what();
+        << syncRes.errorMessage();
   }
 }
