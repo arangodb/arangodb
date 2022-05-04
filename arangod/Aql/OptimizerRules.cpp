@@ -8233,9 +8233,6 @@ void findSubqueriesSuitableForSplicing(
     containers::SmallVector<SubqueryNode*, 8>& result) {
   TRI_ASSERT(result.empty());
   using ResultVector = decltype(result);
-  using BoolVec =
-      std::vector<bool,  // TODO(MBkkt) vector<bool>? Really?
-                  containers::detail::short_alloc<bool, 64, alignof(size_t)>>;
 
   using SuitableNodeSet =
       std::set<SubqueryNode*, std::less<>,
@@ -8266,50 +8263,26 @@ void findSubqueriesSuitableForSplicing(
       : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
    public:
     explicit Finder(ResultVector& result, SuitableNodeSet& suitableNodes)
-        : _result{result},
-          _suitableNodes{suitableNodes},
-          _isSuitableArena{},
-          _isSuitableLevel{BoolVec{_isSuitableArena}} {
-      // push the top-level query
-      _isSuitableLevel.emplace(true);
-    }
+        : _result{result}, _suitableNodes{suitableNodes} {}
 
-    bool before(ExecutionNode* node) override final {
+    bool before(ExecutionNode* node) final {
       TRI_ASSERT(node->getType() != EN::MUTEX);  // should never appear here
-
       if (node->getType() == ExecutionNode::SUBQUERY) {
         _result.emplace_back(ExecutionNode::castTo<SubqueryNode*>(node));
       }
-
-      // We could set
-      //   _isSuitable.top() = true;
-      // here when we encounter nodes that never pass skipping through, like
-      // SORT, enabling a few more possibilities where to enable this rule.
-
-      constexpr bool abort = false;
-      return abort;
+      return false;
     }
 
-    bool enterSubquery(ExecutionNode* subq,
-                       ExecutionNode* root) override final {
-      _isSuitableLevel.emplace(true);
-
-      constexpr bool enterSubqueries = true;
-      return enterSubqueries;
+    bool enterSubquery(ExecutionNode*, ExecutionNode*) final {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      ++_isSuitableLevel;
+#endif
+      return true;
     }
 
-    void leaveSubquery(ExecutionNode* subqueryNode,
-                       ExecutionNode*) override final {
-      TRI_ASSERT(!_isSuitableLevel.empty());
-
-      const bool subqueryDoesNotSkipInside = _isSuitableLevel.top();
-      _isSuitableLevel.pop();
-      const bool containingSubqueryDoesNotSkip = _isSuitableLevel.top();
-
-      if (subqueryDoesNotSkipInside && containingSubqueryDoesNotSkip) {
-        _suitableNodes.emplace(
-            ExecutionNode::castTo<SubqueryNode*>(subqueryNode));
-      }
+    void leaveSubquery(ExecutionNode* subQuery, ExecutionNode*) final {
+      TRI_ASSERT(_isSuitableLevel-- != 0);
+      _suitableNodes.emplace(ExecutionNode::castTo<SubqueryNode*>(subQuery));
     }
 
    private:
@@ -8317,14 +8290,9 @@ void findSubqueriesSuitableForSplicing(
     ResultVector& _result;
     // only suitable subquery nodes will be added to this set
     SuitableNodeSet& _suitableNodes;
-
-    using BoolArena = BoolVec::allocator_type::arena_type;
-    using BoolStack = std::stack<bool, BoolVec>;
-
-    BoolArena _isSuitableArena;
-    // _isSuitable.top() says whether there is a node that skips in the
-    // current (sub)query level.
-    BoolStack _isSuitableLevel;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    size_t _isSuitableLevel{1};  // push the top-level query
+#endif
   };
 
   using SuitableNodeArena = SuitableNodeSet::allocator_type::arena_type;
