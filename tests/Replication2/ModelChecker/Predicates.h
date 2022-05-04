@@ -173,6 +173,7 @@ struct always : F {
 
 template<std::size_t Idx, typename O>
 struct Tagged : O {
+  explicit Tagged(O o) : O(std::move(o)) {}
   friend auto hash_value(Tagged const& c) noexcept -> std::size_t {
     return hash_value(static_cast<O const&>(c));
   }
@@ -187,6 +188,7 @@ template<typename, typename...>
 struct combined_base;
 template<std::size_t... Idx, typename... Os>
 struct combined_base<std::index_sequence<Idx...>, Os...> : Tagged<Idx, Os>... {
+  explicit combined_base(Os... os) : Tagged<Idx, Os>(std::move(os))... {}
   template<typename S>
   auto finalStep(S const& step) {
     return invokeAll<0>([&](auto& x) { return x.finalStep(step); });
@@ -231,7 +233,9 @@ struct combined_base<std::index_sequence<Idx...>, Os...> : Tagged<Idx, Os>... {
 };
 
 template<typename... Os>
-struct combined : combined_base<std::index_sequence_for<Os...>, Os...> {};
+struct combined : combined_base<std::index_sequence_for<Os...>, Os...> {
+  using combined_base<std::index_sequence_for<Os...>, Os...>::combined_base;
+};
 template<typename... Os>
 combined(Os...) -> combined<Os...>;
 
