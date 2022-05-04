@@ -43,7 +43,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
-#include <absl/container/inlined_vector.h>
+#include "Containers/SmallVector.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -601,7 +601,7 @@ void SimpleHttpClient::setRequest(
 
   // basic authorization
   using ExclusionType = std::pair<size_t, size_t>;
-  absl::InlinedVector<ExclusionType, 4> exclusions;
+  containers::SmallVector<ExclusionType, 4> exclusions;
   size_t pos = 0;
   if (!_params._jwt.empty()) {
     _writeBuffer.appendText(std::string_view("Authorization: bearer "));

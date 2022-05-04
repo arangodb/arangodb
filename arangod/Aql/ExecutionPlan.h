@@ -33,7 +33,7 @@
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Containers/HashSet.h"
-#include <absl/container/inlined_vector.h>
+#include "Containers/SmallVector.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -196,22 +196,22 @@ class ExecutionPlan {
   }
 
   /// @brief find nodes of a certain type
-  void findNodesOfType(absl::InlinedVector<ExecutionNode*, 8>& result,
+  void findNodesOfType(containers::SmallVector<ExecutionNode*, 8>& result,
                        ExecutionNode::NodeType, bool enterSubqueries);
 
   /// @brief find nodes of certain types
-  void findNodesOfType(absl::InlinedVector<ExecutionNode*, 8>& result,
+  void findNodesOfType(containers::SmallVector<ExecutionNode*, 8>& result,
                        std::initializer_list<ExecutionNode::NodeType> const&,
                        bool enterSubqueries);
 
   /// @brief find unique nodes of certain types
   void findUniqueNodesOfType(
-      absl::InlinedVector<ExecutionNode*, 8>& result,
+      containers::SmallVector<ExecutionNode*, 8>& result,
       std::initializer_list<ExecutionNode::NodeType> const&,
       bool enterSubqueries);
 
   /// @brief find all end nodes in a plan
-  void findEndNodes(absl::InlinedVector<ExecutionNode*, 8>& result,
+  void findEndNodes(containers::SmallVector<ExecutionNode*, 8>& result,
                     bool enterSubqueries) const;
 
   /// @brief determine and set _varsUsedLater and _varSetBy
@@ -317,7 +317,7 @@ class ExecutionPlan {
  private:
   template<WalkerUniqueness U>
   /// @brief find nodes of certain types
-  void findNodesOfType(absl::InlinedVector<ExecutionNode*, 8>& result,
+  void findNodesOfType(containers::SmallVector<ExecutionNode*, 8>& result,
                        std::initializer_list<ExecutionNode::NodeType> const&,
                        bool enterSubqueries);
 

@@ -29,7 +29,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
-#include <absl/container/inlined_vector.h>
+#include "Containers/SmallVector.h"
 
 namespace arangodb {
 

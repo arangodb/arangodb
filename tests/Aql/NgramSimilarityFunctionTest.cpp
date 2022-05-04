@@ -29,7 +29,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
-#include <absl/container/inlined_vector.h>
+#include "Containers/SmallVector.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "IResearch/common.h"
@@ -66,7 +66,7 @@ class NgramSimilarityFunctionTest : public ::testing::Test {
     auto trx = server.createFakeTransaction();
     fakeit::When(Method(expressionContextMock, trx))
         .AlwaysDo([&]() -> transaction::Methods& { return *trx; });
-    absl::InlinedVector<AqlValue, 3> params;
+    containers::SmallVector<AqlValue, 3> params;
     if (attribute) {
       params.emplace_back(*attribute);
     }

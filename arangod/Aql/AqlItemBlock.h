@@ -27,7 +27,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Containers/FlatHashMap.h"
 
-#include <absl/container/inlined_vector.h>
+#include "Containers/SmallVector.h"
 
 #include <limits>
 #include <span>

@@ -32,7 +32,7 @@
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Aql/Query.h"
-#include <absl/container/inlined_vector.h>
+#include "Containers/SmallVector.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -59,7 +59,7 @@ class GeoConstructorTest : public ::testing::Test {
   fakeit::Mock<transaction::Context> contextMock;
   transaction::Context& context;
 
-  absl::InlinedVector<AqlValue, 4> params;
+  containers::SmallVector<AqlValue, 4> params;
 
   GeoConstructorTest()
       : expressionContext(expressionContextMock.get()),

@@ -1593,7 +1593,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
 }
 
 void Query::injectVertexCollectionIntoGraphNodes(ExecutionPlan& plan) {
-  absl::InlinedVector<ExecutionNode*, 8> graphNodes;
+  containers::SmallVector<ExecutionNode*, 8> graphNodes;
 
   plan.findNodesOfType(graphNodes,
                        {ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH,

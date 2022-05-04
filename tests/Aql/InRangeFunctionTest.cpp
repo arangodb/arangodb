@@ -29,7 +29,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
-#include <absl/container/inlined_vector.h>
+#include "Containers/SmallVector.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "IResearch/common.h"
@@ -68,7 +68,7 @@ class InRangeFunctionTest : public ::testing::Test {
     fakeit::When(Method(expressionContextMock, trx))
         .AlwaysDo([&trx]() -> transaction::Methods& { return *trx; });
 
-    absl::InlinedVector<AqlValue, 5> params;
+    containers::SmallVector<AqlValue, 5> params;
     if (attribute) {
       params.emplace_back(*attribute);
     }

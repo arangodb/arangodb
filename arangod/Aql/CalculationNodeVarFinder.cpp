@@ -28,7 +28,7 @@ namespace aql {
 
 CalculationNodeVarFinder::CalculationNodeVarFinder(
     Variable const* lookingFor,
-    absl::InlinedVector<ExecutionNode*, 8>& out) noexcept
+    containers::SmallVector<ExecutionNode*, 8>& out) noexcept
     : _lookingFor(lookingFor), _out(out) {}
 
 bool CalculationNodeVarFinder::before(ExecutionNode* en) {

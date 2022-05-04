@@ -35,7 +35,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/QueryContext.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
-#include <absl/container/inlined_vector.h>
+#include "Containers/SmallVector.h"
 #include "StorageEngine/TransactionState.h"
 #include "IResearchAnalyzerValueTypeAttribute.h"
 #include "IResearchVPackTermAttribute.h"

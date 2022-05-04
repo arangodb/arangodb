@@ -25,7 +25,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
-#include <absl/container/inlined_vector.h>
+#include "Containers/SmallVector.h"
 #include "Network/types.h"
 #include "Metrics/Fwd.h"
 #include "VocBase/voc-types.h"
@@ -121,7 +121,7 @@ class ConnectionPool final {
     //    uint64_t bytesSend;
     //    uint64_t bytesReceived;
     //    uint64_t numRequests;
-    absl::InlinedVector<std::shared_ptr<Context>, 4> list;
+    containers::SmallVector<std::shared_ptr<Context>, 4> list;
   };
 
   TEST_VIRTUAL std::shared_ptr<fuerte::Connection> createConnection(

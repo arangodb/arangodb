@@ -825,10 +825,10 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(ExpressionContext& ctx,
     // use stack-based allocation for the first few function call
     // parameters. this saves a few heap allocations per function
     // call invocation
-    absl::InlinedVector<AqlValue, 8> parameters;
+    containers::SmallVector<AqlValue, 8> parameters;
 
     // same here
-    absl::InlinedVector<uint64_t, 8> destroyParameters;
+    containers::SmallVector<uint64_t, 8> destroyParameters;
 
     explicit FunctionParameters(size_t n) {
       parameters.reserve(n);

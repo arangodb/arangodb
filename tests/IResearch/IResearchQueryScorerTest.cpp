@@ -576,7 +576,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -682,7 +682,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -793,7 +793,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -903,7 +903,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -1014,7 +1014,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -1125,7 +1125,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -1245,7 +1245,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -1356,7 +1356,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -1443,7 +1443,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -1531,7 +1531,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -1650,7 +1650,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -1737,7 +1737,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -1819,7 +1819,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    absl::InlinedVector<arangodb::aql::ExecutionNode*, 8> nodes;
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // 2 scorers scorer
     plan->findNodesOfType(

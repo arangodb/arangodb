@@ -32,7 +32,7 @@
 
 #include "Aql/AstNode.h"
 #include "Basics/Common.h"
-#include <absl/container/inlined_vector.h>
+#include "Containers/SmallVector.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBFormat.h"
@@ -201,16 +201,16 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// @brief helper function to insert a document into any index type
   ErrorCode fillElement(velocypack::Builder& leased,
                         LocalDocumentId const& documentId, VPackSlice doc,
-                        absl::InlinedVector<RocksDBKey, 4>& elements,
-                        absl::InlinedVector<uint64_t, 4>& hashes);
+                        containers::SmallVector<RocksDBKey, 4>& elements,
+                        containers::SmallVector<uint64_t, 4>& hashes);
 
   /// @brief helper function to build the key and value for rocksdb from the
   /// vector of slices
   /// @param hashes list of VPackSlice hashes for the estimator.
   void addIndexValue(velocypack::Builder& leased,
                      LocalDocumentId const& documentId, VPackSlice document,
-                     absl::InlinedVector<RocksDBKey, 4>& elements,
-                     absl::InlinedVector<uint64_t, 4>& hashes,
+                     containers::SmallVector<RocksDBKey, 4>& elements,
+                     containers::SmallVector<uint64_t, 4>& hashes,
                      std::span<VPackSlice const> sliceStack);
 
   /// @brief helper function to create a set of value combinations to insert
@@ -221,9 +221,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
   void buildIndexValues(velocypack::Builder& leased,
                         LocalDocumentId const& documentId,
                         VPackSlice const document, size_t level,
-                        absl::InlinedVector<RocksDBKey, 4>& elements,
-                        absl::InlinedVector<uint64_t, 4>& hashes,
-                        absl::InlinedVector<VPackSlice, 4>& sliceStack);
+                        containers::SmallVector<RocksDBKey, 4>& elements,
+                        containers::SmallVector<uint64_t, 4>& hashes,
+                        containers::SmallVector<VPackSlice, 4>& sliceStack);
 
   /// @brief the attribute paths (for regular fields)
   std::vector<std::vector<std::string>> _paths;

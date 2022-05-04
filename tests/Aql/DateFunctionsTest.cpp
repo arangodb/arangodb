@@ -31,7 +31,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
-#include <absl/container/inlined_vector.h>
+#include "Containers/SmallVector.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
@@ -140,7 +140,7 @@ TEST(DateFunctionsTest, IS_DATESTRING) {
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&fun));
 
-  absl::InlinedVector<AqlValue, 4> params;
+  containers::SmallVector<AqlValue, 4> params;
   for (auto const& testee : testees) {
     testee.buildParams(params);
     AqlValue res = Functions::IsDatestring(&expressionContext, node, params);
@@ -200,7 +200,7 @@ TEST(DateFunctionsTest, DATE_COMPARE) {
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&fun));
 
-  absl::InlinedVector<AqlValue, 4> params;
+  containers::SmallVector<AqlValue, 4> params;
   for (auto const& testee : testees) {
     testee.buildParams(params);
     AqlValue res = Functions::DateCompare(&expressionContext, node, params);
@@ -238,7 +238,7 @@ class DateFunctionsTestDateDiff : public ::testing::Test {
   double dateDiffMillis;
   // Average number of days per month in the given dates
   double avgDaysPerMonth;
-  absl::InlinedVector<AqlValue, 4> params;
+  containers::SmallVector<AqlValue, 4> params;
   VPackBuilder dateBuilder;
   VPackBuilder flagBuilder;
   VPackBuilder switchBuilder;
@@ -460,7 +460,7 @@ TEST(DateFunctionsTest, DATE_SUBTRACT) {
   node.setData(static_cast<void const*>(&fun));
 
   for (auto const& testee : testees) {
-    absl::InlinedVector<AqlValue, 4> params;
+    containers::SmallVector<AqlValue, 4> params;
     testee.buildParams(params);
     AqlValue res = Functions::DateSubtract(&expressionContext, node, params);
     testee.validateResult(res);

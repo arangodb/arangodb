@@ -1096,8 +1096,8 @@ void RocksDBVPackIndex::toVelocyPack(
 /// uses the _unique field to determine the kind of key structure
 ErrorCode RocksDBVPackIndex::fillElement(
     VPackBuilder& leased, LocalDocumentId const& documentId, VPackSlice doc,
-    absl::InlinedVector<RocksDBKey, 4>& elements,
-    absl::InlinedVector<uint64_t, 4>& hashes) {
+    containers::SmallVector<RocksDBKey, 4>& elements,
+    containers::SmallVector<uint64_t, 4>& hashes) {
   if (doc.isNone()) {
     LOG_TOPIC("51c6c", ERR, arangodb::Logger::ENGINES)
         << "encountered invalid marker with slice of type None";
@@ -1155,7 +1155,7 @@ ErrorCode RocksDBVPackIndex::fillElement(
   } else {
     // other path for handling array elements, too
 
-    absl::InlinedVector<VPackSlice, 4> sliceStack;
+    containers::SmallVector<VPackSlice, 4> sliceStack;
 
     try {
       buildIndexValues(leased, documentId, doc, 0, elements, hashes,
@@ -1175,8 +1175,8 @@ ErrorCode RocksDBVPackIndex::fillElement(
 
 void RocksDBVPackIndex::addIndexValue(
     VPackBuilder& leased, LocalDocumentId const& documentId,
-    VPackSlice document, absl::InlinedVector<RocksDBKey, 4>& elements,
-    absl::InlinedVector<uint64_t, 4>& hashes,
+    VPackSlice document, containers::SmallVector<RocksDBKey, 4>& elements,
+    containers::SmallVector<uint64_t, 4>& hashes,
     std::span<VPackSlice const> sliceStack) {
   leased.clear();
   leased.openArray(true);  // unindexed
@@ -1208,9 +1208,9 @@ void RocksDBVPackIndex::addIndexValue(
 void RocksDBVPackIndex::buildIndexValues(
     VPackBuilder& leased, LocalDocumentId const& documentId,
     VPackSlice const doc, size_t level,
-    absl::InlinedVector<RocksDBKey, 4>& elements,
-    absl::InlinedVector<uint64_t, 4>& hashes,
-    absl::InlinedVector<VPackSlice, 4>& sliceStack) {
+    containers::SmallVector<RocksDBKey, 4>& elements,
+    containers::SmallVector<uint64_t, 4>& hashes,
+    containers::SmallVector<VPackSlice, 4>& sliceStack) {
   // Invariant: level == sliceStack.size()
 
   // Stop the recursion:
@@ -1381,8 +1381,8 @@ Result RocksDBVPackIndex::checkOperation(transaction::Methods& trx,
 
     IndexOperationMode mode = options.indexOperationMode;
     rocksdb::Status s;
-    absl::InlinedVector<RocksDBKey, 4> elements;
-    absl::InlinedVector<uint64_t, 4> hashes;
+    containers::SmallVector<RocksDBKey, 4> elements;
+    containers::SmallVector<uint64_t, 4> hashes;
 
     {
       // rethrow all types of exceptions from here...
@@ -1459,8 +1459,8 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
                                  OperationOptions const& options,
                                  bool performChecks) {
   Result res;
-  absl::InlinedVector<RocksDBKey, 4> elements;
-  absl::InlinedVector<uint64_t, 4> hashes;
+  containers::SmallVector<RocksDBKey, 4> elements;
+  containers::SmallVector<uint64_t, 4> hashes;
 
   {
     // rethrow all types of exceptions from here...
@@ -1688,8 +1688,8 @@ Result RocksDBVPackIndex::update(
   // update-in-place following...
 
   Result res;
-  absl::InlinedVector<RocksDBKey, 4> elements;
-  absl::InlinedVector<uint64_t, 4> hashes;
+  containers::SmallVector<RocksDBKey, 4> elements;
+  containers::SmallVector<uint64_t, 4> hashes;
   {
     // rethrow all types of exceptions from here...
     transaction::BuilderLeaser leased(&trx);
@@ -1731,8 +1731,8 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx,
   }
   Result res;
   rocksdb::Status s;
-  absl::InlinedVector<RocksDBKey, 4> elements;
-  absl::InlinedVector<uint64_t, 4> hashes;
+  containers::SmallVector<RocksDBKey, 4> elements;
+  containers::SmallVector<uint64_t, 4> hashes;
 
   {
     // rethrow all types of exceptions from here...

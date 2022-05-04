@@ -600,7 +600,7 @@ void lateDocumentMaterializationArangoSearchRule(
     return;
   }
 
-  absl::InlinedVector<ExecutionNode*, 8> nodes;
+  containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, ExecutionNode::LIMIT, true);
   for (auto* limitNode : nodes) {
     auto* loop = const_cast<ExecutionNode*>(limitNode->getLoop());
@@ -678,7 +678,7 @@ void lateDocumentMaterializationArangoSearchRule(
                     *ExecutionNode::castTo<SubqueryNode*>(current);
                 auto* subquery = subqueryNode.getSubquery();
                 TRI_ASSERT(subquery);
-                absl::InlinedVector<ExecutionNode*, 8> subqueryCalcNodes;
+                containers::SmallVector<ExecutionNode*, 8> subqueryCalcNodes;
                 // find calculation nodes in the plan of a subquery
                 CalculationNodeVarFinder finder(&var, subqueryCalcNodes);
                 valid = !subquery->walk(finder);
@@ -790,7 +790,7 @@ void handleConstrainedSortInView(Optimizer* opt,
     return;
   }
 
-  absl::InlinedVector<ExecutionNode*, 8> viewNodes;
+  containers::SmallVector<ExecutionNode*, 8> viewNodes;
   plan->findNodesOfType(viewNodes, ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
                         true);
   for (auto* node : viewNodes) {
@@ -829,7 +829,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     return;
   }
 
-  absl::InlinedVector<ExecutionNode*, 8> calcNodes;
+  containers::SmallVector<ExecutionNode*, 8> calcNodes;
 
   // replace scorers in all calculation nodes with references
   plan->findNodesOfType(calcNodes, ExecutionNode::CALCULATION, true);
@@ -843,7 +843,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
   }
 
   // register replaced scorers to be evaluated by corresponding view nodes
-  absl::InlinedVector<ExecutionNode*, 8> viewNodes;
+  containers::SmallVector<ExecutionNode*, 8> viewNodes;
   plan->findNodesOfType(viewNodes, ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
                         true);
 
@@ -897,7 +897,7 @@ void scatterViewInClusterRule(Optimizer* opt,
                               OptimizerRule const& rule) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   bool wasModified = false;
-  absl::InlinedVector<ExecutionNode*, 8> nodes;
+  containers::SmallVector<ExecutionNode*, 8> nodes;
 
   // find subqueries
   std::unordered_map<ExecutionNode*, ExecutionNode*> subqueries;

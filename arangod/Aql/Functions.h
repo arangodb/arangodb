@@ -28,7 +28,7 @@
 
 #include <velocypack/Sink.h>
 
-#include <absl/container/inlined_vector.h>
+#include "Containers/SmallVector.h"
 
 #include <span>
 
@@ -43,7 +43,7 @@ namespace aql {
 struct AstNode;
 class ExpressionContext;
 
-using VPackFunctionParameters = absl::InlinedVector<AqlValue, 4>;
+using VPackFunctionParameters = containers::SmallVector<AqlValue, 4>;
 using VPackFunctionParametersView = std::span<AqlValue const>;
 
 typedef AqlValue (*FunctionImplementation)(arangodb::aql::ExpressionContext*,

@@ -44,7 +44,7 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
-#include <absl/container/inlined_vector.h>
+#include "Containers/SmallVector.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/RestHandler.h"
 #include "Indexes/Index.h"

@@ -718,7 +718,7 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
   // we can be quite generous with the buffer size since the implementation is
   // not recursive.
   constexpr std::size_t NumBufferedEntries = 1000;
-  absl::InlinedVector<Entry, NumBufferedEntries> nodes;
+  containers::SmallVector<Entry, NumBufferedEntries> nodes;
   nodes.emplace_back(const_cast<ExecutionNode*>(this), State::Pending);
 
   auto enqueDependencies = [&nodes](std::vector<ExecutionNode*>& deps) {
@@ -2201,7 +2201,7 @@ bool SubqueryNode::mayAccessCollections() {
       ExecutionNode::SHORTEST_PATH,
       ExecutionNode::K_SHORTEST_PATHS};
 
-  absl::InlinedVector<ExecutionNode*, 8> nodes;
+  containers::SmallVector<ExecutionNode*, 8> nodes;
 
   NodeFinder<std::initializer_list<ExecutionNode::NodeType>,
              WalkerUniqueness::Unique>

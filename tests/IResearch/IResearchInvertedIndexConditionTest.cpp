@@ -214,7 +214,7 @@ class IResearchInvertedIndexConditionTest
 
     std::vector<std::pair<Variable const*, bool>> sorts;
     {
-      absl::InlinedVector<ExecutionNode*, 8> sortNodes;
+      arangodb::containers::SmallVector<ExecutionNode*, 8> sortNodes;
       plan->findNodesOfType(sortNodes, {ExecutionNode::SORT}, false);
       for (auto s : sortNodes) {
         auto sortNode = arangodb::aql::ExecutionNode::castTo<SortNode*>(s);
@@ -227,7 +227,7 @@ class IResearchInvertedIndexConditionTest
 
     std::unordered_map<VariableId, AstNode const*> variableDefinitions;
     {
-      absl::InlinedVector<ExecutionNode*, 8> setNodes;
+      arangodb::containers::SmallVector<ExecutionNode*, 8> setNodes;
       plan->findNodesOfType(setNodes, {ExecutionNode::CALCULATION}, false);
       for (auto n : setNodes) {
         auto en = ExecutionNode::castTo<CalculationNode const*>(n);

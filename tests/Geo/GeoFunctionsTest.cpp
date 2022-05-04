@@ -32,7 +32,7 @@
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Aql/Query.h"
-#include <absl/container/inlined_vector.h>
+#include "Containers/SmallVector.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -49,7 +49,7 @@ namespace arangodb {
 namespace tests {
 namespace geo_functions_aql {
 
-auto clearVector = [](absl::InlinedVector<AqlValue, 4>& v) {
+auto clearVector = [](containers::SmallVector<AqlValue, 4>& v) {
   for (auto& it : v) {
     it.destroy();
   }
@@ -66,9 +66,9 @@ class GeoEqualsTest : public ::testing::Test {
   fakeit::Mock<transaction::Context> contextMock;
   transaction::Context& context;
 
-  absl::InlinedVector<AqlValue, 4> paramsA;
-  absl::InlinedVector<AqlValue, 4> paramsB;
-  absl::InlinedVector<AqlValue, 4> paramsC;
+  containers::SmallVector<AqlValue, 4> paramsA;
+  containers::SmallVector<AqlValue, 4> paramsB;
+  containers::SmallVector<AqlValue, 4> paramsC;
 
   arangodb::aql::Function equalsFun;
   arangodb::aql::AstNode equalsFunNode;
@@ -734,7 +734,7 @@ TEST(GeoInRangeTest, test) {
           ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
         });
 
-    absl::InlinedVector<AqlValue, 4> params;
+    containers::SmallVector<AqlValue, 4> params;
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -752,7 +752,7 @@ TEST(GeoInRangeTest, test) {
         .Do([&](ErrorCode code, char const*) -> void {
           ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
         });
-    absl::InlinedVector<AqlValue, 4> params = {
+    containers::SmallVector<AqlValue, 4> params = {
         AqlValue{lhs->slice()},
     };
 
@@ -773,7 +773,7 @@ TEST(GeoInRangeTest, test) {
           ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
         });
 
-    absl::InlinedVector<AqlValue, 4> params{
+    containers::SmallVector<AqlValue, 4> params{
         AqlValue{lhs->slice()},
         AqlValue{lhs->slice()},
     };
@@ -795,7 +795,7 @@ TEST(GeoInRangeTest, test) {
           ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
         });
 
-    absl::InlinedVector<AqlValue, 4> params{
+    containers::SmallVector<AqlValue, 4> params{
         AqlValue{lhs->slice()},
         AqlValue{lhs->slice()},
         AqlValue{AqlValueHintDouble{0}},
@@ -813,7 +813,7 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    absl::InlinedVector<AqlValue, 4> params{
+    containers::SmallVector<AqlValue, 4> params{
         AqlValue{lhs->slice()},
         AqlValue{lhs->slice()},
         AqlValue{AqlValueHintDouble{0}},
@@ -833,7 +833,7 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    absl::InlinedVector<AqlValue, 4> params{
+    containers::SmallVector<AqlValue, 4> params{
         AqlValue{lhs->slice()},
         AqlValue{lhs->slice()},
         AqlValue{AqlValueHintDouble{0}},
@@ -855,7 +855,7 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    absl::InlinedVector<AqlValue, 6> params{
+    containers::SmallVector<AqlValue, 6> params{
         AqlValue{lhs->slice()},           AqlValue{lhs->slice()},
         AqlValue{AqlValueHintDouble{0}},  AqlValue{AqlValueHintDouble{0}},
         AqlValue{AqlValueHintBool{true}}, AqlValue{AqlValueHintBool{false}},
@@ -874,7 +874,7 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    absl::InlinedVector<AqlValue, 6> params{
+    containers::SmallVector<AqlValue, 6> params{
         AqlValue{lhs->slice()},
         AqlValue{lhs->slice()},
         AqlValue{AqlValueHintDouble{0}},
@@ -896,7 +896,7 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    absl::InlinedVector<AqlValue, 6> params{
+    containers::SmallVector<AqlValue, 6> params{
         AqlValue{lhs->slice()},
         AqlValue{rhs->slice()},
         AqlValue{AqlValueHintDouble{0}},
@@ -918,7 +918,7 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    absl::InlinedVector<AqlValue, 4> params{
+    containers::SmallVector<AqlValue, 4> params{
         AqlValue{lhs->slice()},
         AqlValue{rhs->slice()},
         AqlValue{AqlValueHintDouble{0}},
@@ -938,7 +938,7 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    absl::InlinedVector<AqlValue, 7> params{
+    containers::SmallVector<AqlValue, 7> params{
         AqlValue{lhs->slice()},
         AqlValue{rhs->slice()},
         AqlValue{AqlValueHintDouble{0}},
@@ -961,7 +961,7 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    absl::InlinedVector<AqlValue, 7> params{
+    containers::SmallVector<AqlValue, 7> params{
         AqlValue{rhs->slice()},
         AqlValue{lhs->slice()},
         AqlValue{AqlValueHintDouble{0}},
@@ -984,7 +984,7 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    absl::InlinedVector<AqlValue, 7> params{
+    containers::SmallVector<AqlValue, 7> params{
         AqlValue{lhs->slice()},
         AqlValue{rhs->slice()},
         AqlValue{AqlValueHintDouble{0}},
@@ -1007,7 +1007,7 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    absl::InlinedVector<AqlValue, 7> params{
+    containers::SmallVector<AqlValue, 7> params{
         AqlValue{lhs->slice()},
         AqlValue{rhs->slice()},
         AqlValue{AqlValueHintDouble{0}},
@@ -1030,7 +1030,7 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    absl::InlinedVector<AqlValue, 7> params{
+    containers::SmallVector<AqlValue, 7> params{
         AqlValue{lhs->slice()},
         AqlValue{rhs->slice()},
         AqlValue{AqlValueHintDouble{1}},
@@ -1052,7 +1052,7 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    absl::InlinedVector<AqlValue, 7> params{
+    containers::SmallVector<AqlValue, 7> params{
         AqlValue{lhs->slice()},
         AqlValue{rhs->slice()},
         AqlValue{AqlValueHintDouble{1}},
@@ -1072,7 +1072,7 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    absl::InlinedVector<AqlValue, 7> params{
+    containers::SmallVector<AqlValue, 7> params{
         AqlValue{lhs->slice()},
         AqlValue{rhs->slice()},
         AqlValue{AqlValueHintDouble{1}},
@@ -1108,7 +1108,7 @@ TEST(GeoInRangeTest, test) {
       ]
     })");
 
-    absl::InlinedVector<AqlValue, 7> params{
+    containers::SmallVector<AqlValue, 7> params{
         AqlValue{shapeJson->slice()},      AqlValue{rhs->slice()},
         AqlValue{AqlValueHintDouble{240}}, AqlValue{AqlValueHintDouble{242}},
         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}},
@@ -1132,7 +1132,7 @@ TEST(GeoInRangeTest, test) {
           ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
         });
 
-    absl::InlinedVector<AqlValue, 8> params{
+    containers::SmallVector<AqlValue, 8> params{
         AqlValue{lhs->slice()},
         AqlValue{rhs->slice()},
         AqlValue{AqlValueHintDouble{1}},
@@ -1164,7 +1164,7 @@ TEST(GeoInRangeTest, test) {
       "type": "PPint",
       "coordinates": [37.610235, 55.709754] })");
 
-    absl::InlinedVector<AqlValue, 7> params{
+    containers::SmallVector<AqlValue, 7> params{
         AqlValue{invalidJson->slice()},
         AqlValue{rhs->slice()},
         AqlValue{AqlValueHintDouble{1}},
@@ -1191,7 +1191,7 @@ TEST(GeoInRangeTest, test) {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
-    absl::InlinedVector<AqlValue, 7> params{
+    containers::SmallVector<AqlValue, 7> params{
         AqlValue{AqlValueHintBool{false}},
         AqlValue{rhs->slice()},
         AqlValue{AqlValueHintDouble{1}},
@@ -1222,7 +1222,7 @@ TEST(GeoInRangeTest, test) {
       "type": "PPint",
       "coordinates": [37.610235, 55.709754] })");
 
-    absl::InlinedVector<AqlValue, 7> params{
+    containers::SmallVector<AqlValue, 7> params{
         AqlValue{rhs->slice()},
         AqlValue{invalidJson->slice()},
         AqlValue{AqlValueHintDouble{1}},
@@ -1249,7 +1249,7 @@ TEST(GeoInRangeTest, test) {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
-    absl::InlinedVector<AqlValue, 7> params{
+    containers::SmallVector<AqlValue, 7> params{
         AqlValue{rhs->slice()},
         AqlValue{AqlValueHintBool{false}},
         AqlValue{AqlValueHintDouble{1}},
@@ -1276,7 +1276,7 @@ TEST(GeoInRangeTest, test) {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
-    absl::InlinedVector<AqlValue, 7> params{
+    containers::SmallVector<AqlValue, 7> params{
         AqlValue{lhs->slice()},
         AqlValue{rhs->slice()},
         AqlValue{AqlValueHintBool{false}},
@@ -1303,7 +1303,7 @@ TEST(GeoInRangeTest, test) {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
-    absl::InlinedVector<AqlValue, 7> params{
+    containers::SmallVector<AqlValue, 7> params{
         AqlValue{lhs->slice()},
         AqlValue{rhs->slice()},
         AqlValue{AqlValueHintDouble{400}},
@@ -1330,7 +1330,7 @@ TEST(GeoInRangeTest, test) {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
-    absl::InlinedVector<AqlValue, 7> params{
+    containers::SmallVector<AqlValue, 7> params{
         AqlValue{lhs->slice()},
         AqlValue{rhs->slice()},
         AqlValue{AqlValueHintDouble{100}},
@@ -1357,7 +1357,7 @@ TEST(GeoInRangeTest, test) {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
-    absl::InlinedVector<AqlValue, 7> params{
+    containers::SmallVector<AqlValue, 7> params{
         AqlValue{lhs->slice()},
         AqlValue{rhs->slice()},
         AqlValue{AqlValueHintDouble{100}},

@@ -561,7 +561,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(size_t from, size_t to) const {
   TRI_ASSERT(from < to);
   TRI_ASSERT(to <= _numRows);
 
-  absl::InlinedVector<std::pair<size_t, size_t>, 4> ranges;
+  containers::SmallVector<std::pair<size_t, size_t>, 4> ranges;
   ranges.emplace_back(from, to);
   return slice(ranges);
 }

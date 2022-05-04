@@ -108,7 +108,7 @@ void arangodb::aql::lateDocumentMaterializationRule(
     return;
   }
 
-  absl::InlinedVector<ExecutionNode*, 8> nodes;
+  containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, ExecutionNode::LIMIT, true);
   for (auto* limitNode : nodes) {
     auto* loop = const_cast<ExecutionNode*>(limitNode->getLoop());
@@ -207,7 +207,7 @@ void arangodb::aql::lateDocumentMaterializationRule(
                   *ExecutionNode::castTo<SubqueryNode*>(current);
               auto* subquery = subqueryNode.getSubquery();
               TRI_ASSERT(subquery);
-              absl::InlinedVector<ExecutionNode*, 8> subqueryCalcNodes;
+              containers::SmallVector<ExecutionNode*, 8> subqueryCalcNodes;
               // find calculation nodes in the plan of a subquery
               CalculationNodeVarFinder finder(var, subqueryCalcNodes);
               valid = !subquery->walk(finder);

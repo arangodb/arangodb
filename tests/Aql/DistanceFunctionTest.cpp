@@ -31,7 +31,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
-#include <absl/container/inlined_vector.h>
+#include "Containers/SmallVector.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "IResearch/IResearchQueryCommon.h"
@@ -132,7 +132,7 @@ void assertDistanceFunction(char const* expected, char const* x, char const* y,
   // create params vector from y slice
   AqlValue arrayY = createArray(sliceY);
 
-  absl::InlinedVector<AqlValue, 4> params;
+  containers::SmallVector<AqlValue, 4> params;
   params.push_back(arrayX);
   params.push_back(arrayY);
 
@@ -166,7 +166,7 @@ void assertDistanceFunctionFail(char const* x, char const* y,
   // create params vector from y slice
   AqlValue arrayY = createArray(sliceY);
 
-  absl::InlinedVector<AqlValue, 4> params;
+  containers::SmallVector<AqlValue, 4> params;
   params.push_back(arrayX);
   params.push_back(arrayY);
 

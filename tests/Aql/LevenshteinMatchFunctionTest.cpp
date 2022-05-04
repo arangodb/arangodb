@@ -29,7 +29,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
-#include <absl/container/inlined_vector.h>
+#include "Containers/SmallVector.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -72,7 +72,7 @@ AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs,
   fakeit::When(Method(expressionContextMock, trx))
       .AlwaysDo([&]() -> transaction::Methods& { return trxMock.get(); });
 
-  absl::InlinedVector<AqlValue, 4> params;
+  containers::SmallVector<AqlValue, 4> params;
   params.reserve(3 + (transpositions ? 2 : 0));
   params.emplace_back(lhs);
   params.emplace_back(rhs);

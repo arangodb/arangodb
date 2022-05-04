@@ -55,7 +55,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
-#include <absl/container/inlined_vector.h>
+#include "Containers/SmallVector.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathType.h"
 #include "Graph/TraverserOptions.h"
@@ -2336,7 +2336,7 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
 template<WalkerUniqueness U>
 /// @brief find nodes of certain types
 void ExecutionPlan::findNodesOfType(
-    absl::InlinedVector<ExecutionNode*, 8>& result,
+    containers::SmallVector<ExecutionNode*, 8>& result,
     std::initializer_list<ExecutionNode::NodeType> const& types,
     bool enterSubqueries) {
   // check if any of the node types is actually present in the plan
@@ -2353,14 +2353,14 @@ void ExecutionPlan::findNodesOfType(
 
 /// @brief find nodes of a certain type
 void ExecutionPlan::findNodesOfType(
-    absl::InlinedVector<ExecutionNode*, 8>& result,
+    containers::SmallVector<ExecutionNode*, 8>& result,
     ExecutionNode::NodeType type, bool enterSubqueries) {
   findNodesOfType<WalkerUniqueness::NonUnique>(result, {type}, enterSubqueries);
 }
 
 /// @brief find nodes of certain types
 void ExecutionPlan::findNodesOfType(
-    absl::InlinedVector<ExecutionNode*, 8>& result,
+    containers::SmallVector<ExecutionNode*, 8>& result,
     std::initializer_list<ExecutionNode::NodeType> const& types,
     bool enterSubqueries) {
   findNodesOfType<WalkerUniqueness::NonUnique>(result, types, enterSubqueries);
@@ -2368,15 +2368,16 @@ void ExecutionPlan::findNodesOfType(
 
 /// @brief find nodes of certain types
 void ExecutionPlan::findUniqueNodesOfType(
-    absl::InlinedVector<ExecutionNode*, 8>& result,
+    containers::SmallVector<ExecutionNode*, 8>& result,
     std::initializer_list<ExecutionNode::NodeType> const& types,
     bool enterSubqueries) {
   findNodesOfType<WalkerUniqueness::Unique>(result, types, enterSubqueries);
 }
 
 /// @brief find all end nodes in a plan
-void ExecutionPlan::findEndNodes(absl::InlinedVector<ExecutionNode*, 8>& result,
-                                 bool enterSubqueries) const {
+void ExecutionPlan::findEndNodes(
+    containers::SmallVector<ExecutionNode*, 8>& result,
+    bool enterSubqueries) const {
   EndNodeFinder finder(result, enterSubqueries);
   root()->walk(finder);
 }
@@ -2677,7 +2678,7 @@ void ExecutionPlan::findCollectionAccessVariables() {
 }
 
 void ExecutionPlan::prepareTraversalOptions() {
-  absl::InlinedVector<ExecutionNode*, 8> nodes;
+  containers::SmallVector<ExecutionNode*, 8> nodes;
   findNodesOfType(nodes,
                   {arangodb::aql::ExecutionNode::TRAVERSAL,
                    arangodb::aql::ExecutionNode::SHORTEST_PATH,

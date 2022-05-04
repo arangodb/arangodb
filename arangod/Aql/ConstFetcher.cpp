@@ -54,7 +54,7 @@ auto ConstFetcher::execute(AqlCallStack& stack)
             AqlItemBlockInputRange{MainQueryState::DONE}};
   }
 
-  absl::InlinedVector<std::pair<size_t, size_t>, 4> sliceIndexes;
+  containers::SmallVector<std::pair<size_t, size_t>, 4> sliceIndexes;
 
   sliceIndexes.emplace_back(_rowIndex, _blockForPassThrough->numRows());
 
