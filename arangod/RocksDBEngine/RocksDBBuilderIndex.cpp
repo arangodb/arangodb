@@ -89,12 +89,8 @@ Result partiallyCommitInsertions(rocksdb::WriteBatchBase& batch,
     auto* estimator = ridx.estimator();
     if (estimator != nullptr) {
       if (isForeground) {
-        for (uint64_t hash : it->second.inserts) {
-          estimator->insert(hash);
-        }
-        for (uint64_t hash : it->second.removals) {
-          estimator->remove(hash);
-        }
+        estimator->insert(it->second.inserts);
+        estimator->remove(it->second.removals);
       } else {
         uint64_t seq = rootDB->GetLatestSequenceNumber();
         // since cuckoo estimator uses a map with seq as key we need to
@@ -165,6 +161,7 @@ void IndexCreatorThread::run() {
   rocksdb::ColumnFamilyHandle* docCF = RocksDBColumnFamilyManager::get(
       RocksDBColumnFamilyManager::Family::Documents);
   // + 1 to include the last doc id in the range
+  uint64_t const lowerBoundId = _sharedWorkEnv->getLowerBoundId();
   uint64_t const upperBoundId = _sharedWorkEnv->getUpperBoundId();
   rocksdb::Slice const upperBound = _sharedWorkEnv->getUpperBound();
   ro.iterate_upper_bound = &upperBound;
@@ -190,7 +187,8 @@ void IndexCreatorThread::run() {
             _statistics.numSeeks++;
           }
           for (; it->Valid() && (numDocsWritten < _batchSize ||
-                                 workItem.second == upperBoundId);
+                                 (workItem.first != lowerBoundId &&
+                                  workItem.second == upperBoundId));
                it->Next()) {
             if (RocksDBKey::documentId(it->key()).id() > workItem.second) {
               break;
@@ -448,7 +446,7 @@ static arangodb::Result fillIndex(
   }
 
   TRI_IF_FAILURE("RocksDBBuilderIndex::fillIndex") { FATAL_ERROR_EXIT(); }
-  if (isUnique || numThreads == 1) {
+  if (isUnique) {
     uint64_t numDocsWritten = 0;
     RocksDBTransactionCollection* trxColl = trx.resolveTrxCollection();
 

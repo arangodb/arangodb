@@ -88,7 +88,6 @@ class IndexCreatorThread final : public Thread {
  private:
   bool _isUniqueIndex = false;
   bool _isForeground = false;
-  size_t _keyToUpdate;
   uint64_t _batchSize;
   std::atomic<uint64_t>& _docsProcessed;
   std::shared_ptr<SharedWorkEnv> _sharedWorkEnv;
@@ -209,6 +208,7 @@ class SharedWorkEnv {
                 uint64_t objectId)
       : _numThreads(numThreads),
         _ranges(std::move(workItems)),
+        _lowerBoundId(_ranges.front().first),
         _upperBoundId(_ranges.front().second),
         _bounds(RocksDBKeyBounds::CollectionDocuments(
             objectId, _ranges.front().first,
@@ -304,6 +304,8 @@ class SharedWorkEnv {
     return rocksdb::Slice(_bounds.end());
   }
 
+  uint64_t getLowerBoundId() const { return _lowerBoundId; }
+
   uint64_t getUpperBoundId() const { return _upperBoundId; }
 
  private:
@@ -313,6 +315,7 @@ class SharedWorkEnv {
   size_t _numTerminatedThreads = 0;
   std::condition_variable _condition;
   std::deque<WorkItem> _ranges;
+  uint64_t const _lowerBoundId;
   uint64_t const _upperBoundId;
   Result _res;
   std::mutex _mtx;
