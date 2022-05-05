@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
+#include "Basics/system-functions.h"
 #include "Containers/HashSet.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedWithIndexMethods.h"
@@ -145,6 +146,7 @@ IndexCreatorThread::~IndexCreatorThread() { Thread::shutdown(); }
 void IndexCreatorThread::beginShutdown() { Thread::beginShutdown(); }
 
 void IndexCreatorThread::run() {
+  LOG_DEVEL << "INDEXING THREAD STARTED";
   auto splitInHalf =
       [](WorkItem const& workItem) -> std::pair<std::pair<uint64_t, uint64_t>,
                                                 std::pair<uint64_t, uint64_t>> {
@@ -168,41 +170,62 @@ void IndexCreatorThread::run() {
   std::unique_ptr<rocksdb::Iterator> it(_rootDB->NewIterator(ro, docCF));
   try {
     while (true) {
-      if (_sharedWorkEnv->shouldStop()) {
-        break;
-      }
       WorkItem workItem = {};
-      if (_sharedWorkEnv->fetchWorkItem(workItem)) {
+      double t0 = TRI_microtime();
+      bool hasWork = _sharedWorkEnv->fetchWorkItem(workItem);
+      double waitTime = TRI_microtime() - t0;
+      _statistics.waitTime += waitTime;
+
+      if (waitTime > 0.5) {
+        LOG_DEVEL << "WAITED FOR " << waitTime;
+      }
+
+      if (hasWork) {
         RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(
             _rcoll->objectId(), workItem.first,
             workItem.second == UINT64_MAX ? UINT64_MAX : workItem.second + 1);
         Result res;
-        uint64_t numDocsWritten;
         bool hasLeftoverWork = false;
         do {
-          numDocsWritten = 0;
+          uint64_t numDocsWritten = 0;
 
           if (!hasLeftoverWork) {
+            double t0 = TRI_microtime();
             it->Seek(bounds.start());
+            _statistics.seekTime += TRI_microtime() - t0;
             _statistics.numSeeks++;
           }
+
+          bool timeExceeded = false;
+          auto start = std::chrono::steady_clock::now();
+          int count = 0;
           for (; it->Valid() && (numDocsWritten < _batchSize ||
                                  (workItem.first != lowerBoundId &&
                                   workItem.second == upperBoundId));
                it->Next()) {
-            if (RocksDBKey::documentId(it->key()).id() > workItem.second) {
+            auto docId = RocksDBKey::documentId(it->key());
+            if (docId.id() > workItem.second) {
               break;
             }
-            res = _ridx.insert(
-                _trx, _methods.get(), RocksDBKey::documentId(it->key()),
-                VPackSlice(
-                    reinterpret_cast<uint8_t const*>(it->value().data())),
-                options, true);
+            double t0 = TRI_microtime();
+            res = _ridx.insert(_trx, _methods.get(), docId,
+                               VPackSlice(reinterpret_cast<uint8_t const*>(
+                                   it->value().data())),
+                               options, true);
+            _statistics.insertTime += TRI_microtime() - t0;
             if (res.fail()) {
               break;
             }
             numDocsWritten++;
             _statistics.numNexts++;
+
+            if (++count > 100) {
+              count = 0;
+              auto now = std::chrono::steady_clock::now();
+              if ((now - start).count() > 100000000) {
+                timeExceeded = true;
+              }
+            }
           }
 
           if (!it->status().ok() && res.ok()) {
@@ -210,9 +233,11 @@ void IndexCreatorThread::run() {
                                             rocksutils::StatusHint::index);
           }
           if (res.ok() && numDocsWritten > 0) {  // commit buffered writes
+            double t0 = TRI_microtime();
             res = ::partiallyCommitInsertions(*(_batch.get()), _rootDB,
                                               _trxColl, _docsProcessed, _ridx,
                                               _isForeground);
+            _statistics.commitTime += TRI_microtime() - t0;
           }
 
           if (res.ok() && _ridx.collection().vocbase().server().isStopping()) {
@@ -223,10 +248,11 @@ void IndexCreatorThread::run() {
             _sharedWorkEnv->registerError(res);
             break;
           }
-          if ((it->key().compare(upperBound) < 0) &&
-              numDocsWritten >= _batchSize && it->Valid() &&
+
+          hasLeftoverWork = false;
+          if (it->Valid() && it->key().compare(upperBound) < 0 &&
+              (numDocsWritten >= _batchSize || timeExceeded) &&
               (workItem.first <= workItem.second)) {
-            hasLeftoverWork = true;
             workItem.first = RocksDBKey::documentId(it->key()).id();
 
             // the partition's first item in range will now be the first
@@ -236,10 +262,27 @@ void IndexCreatorThread::run() {
             // queue and the lower half will be consumed by this thread as
             // part of current work
             // will not split range for a small amount of ids
-            if (workItem.second - workItem.first >= _batchSize) {
+            if (timeExceeded ||
+                (workItem.second > workItem.first &&
+                 workItem.second - workItem.first >= _batchSize)) {
+              hasLeftoverWork = true;
+
               auto [leftoverWork, workToEnqueue] = splitInHalf(workItem);
-              _sharedWorkEnv->enqueueWorkItem(std::move(workToEnqueue));
+              TRI_ASSERT(leftoverWork.second >= leftoverWork.first);
+              TRI_ASSERT(workToEnqueue.second >= workToEnqueue.first);
               workItem = std::move(leftoverWork);
+
+              if (workToEnqueue.second - workToEnqueue.first > _batchSize) {
+                auto [left, right] = splitInHalf(workToEnqueue);
+                _sharedWorkEnv->enqueueWorkItem(left);
+                _sharedWorkEnv->enqueueWorkItem(right);
+              } else {
+                _sharedWorkEnv->enqueueWorkItem(std::move(workToEnqueue));
+              }
+              //              LOG_DEVEL << "TIME EXCEEDED: " << timeExceeded <<
+              //              ", PUSHING RANGE OF " << (workToEnqueue.second -
+              //              workToEnqueue.first);
+              //              _sharedWorkEnv->enqueueWorkItem(std::move(workToEnqueue));
             }
           } else {
             // as this thread will not consume the lower half and enqueue more
@@ -252,9 +295,9 @@ void IndexCreatorThread::run() {
           _sharedWorkEnv->registerError(res);
           break;
         }
+      } else {
+        break;
       }
-      _statistics.numWaits++;
-      _sharedWorkEnv->waitForWork();
     }
   } catch (std::exception const& ex) {
     _sharedWorkEnv->registerError(Result(TRI_ERROR_INTERNAL, ex.what()));
@@ -269,6 +312,8 @@ void IndexCreatorThread::run() {
       _sharedWorkEnv->registerError(res);
     }
   }
+
+  LOG_DEVEL << "INDEXING THREAD DONE. INDEXED: " << _statistics.numNexts;
   _sharedWorkEnv->postStatistics(_statistics);
   _sharedWorkEnv->incTerminatedThreads();
 }
@@ -391,13 +436,23 @@ Result static processPartitions(
   uint64_t seekCounter = 2;
   uint64_t nextCounter = 0;
   uint64_t waitCounter = 0;
+  double seekTime = 0.0;
+  double insertTime = 0.0;
+  double waitTime = 0.0;
+  double commitTime = 0.0;
   for (auto const& threadStats : sharedWorkEnv->getThreadStatistics()) {
     seekCounter += threadStats.numSeeks;
     nextCounter += threadStats.numNexts;
     waitCounter += threadStats.numWaits;
+    seekTime += threadStats.seekTime;
+    insertTime += threadStats.insertTime;
+    waitTime += threadStats.waitTime;
+    commitTime += threadStats.commitTime;
   }
   LOG_DEVEL << "Total seeks: " << seekCounter << ", next: " << nextCounter
-            << ", wait: " << waitCounter;
+            << ", wait: " << waitCounter << ", insertTime: " << insertTime
+            << ", seekTime: " << seekTime << ", waitTime: " << waitTime
+            << ", commitTime: " << commitTime;
 
   return sharedWorkEnv->getResponse();
 }

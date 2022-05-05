@@ -65,6 +65,10 @@ struct ThreadStatistics {
   uint64_t numSeeks = 0;
   uint64_t numNexts = 0;
   uint64_t numWaits = 0;
+  double seekTime = 0.0;
+  double insertTime = 0.0;
+  double waitTime = 0.0;
+  double commitTime = 0.0;
 };
 
 class IndexCreatorThread final : public Thread {
@@ -235,13 +239,25 @@ class SharedWorkEnv {
 
   bool fetchWorkItem(WorkItem& data) {
     std::unique_lock<std::mutex> lock(_mtx);
-    if (_ranges.empty()) {
-      return false;
+    while (!_done) {
+      if (!_ranges.empty()) {
+        auto const it = _ranges.begin();
+        data = *it;
+        _ranges.pop_front();
+        return true;
+      }
+      _numWaitingThreads++;
+      if (_numWaitingThreads == _numThreads) {
+        _done = true;
+        _numWaitingThreads--;
+        _condition.notify_all();
+        break;
+      }
+      _condition.wait(lock, [&]() { return !_ranges.empty() || _done; });
+      _numWaitingThreads--;
     }
-    auto const it = _ranges.begin();
-    data = *it;
-    _ranges.pop_front();
-    return true;
+    TRI_ASSERT(_done);
+    return false;
   }
 
   void enqueueWorkItem(WorkItem item) {
@@ -250,24 +266,6 @@ class SharedWorkEnv {
       _ranges.emplace_back(std::move(item));
     }
     _condition.notify_one();
-  }
-
-  void waitForWork() {
-    std::unique_lock<std::mutex> lock(_mtx);
-    _numWaitingThreads++;
-    if (_numWaitingThreads == _numThreads && _ranges.empty()) {
-      _done = true;
-      _numWaitingThreads--;
-      _condition.notify_all();
-      return;
-    }
-    _condition.wait(lock, [&]() { return !_ranges.empty() || _done; });
-    _numWaitingThreads--;
-  }
-
-  bool shouldStop() {
-    std::unique_lock<std::mutex> lock(_mtx);
-    return _done;
   }
 
   void incTerminatedThreads() {
