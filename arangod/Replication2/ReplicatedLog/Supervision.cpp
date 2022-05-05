@@ -177,6 +177,16 @@ auto leaderInTarget(ParticipantId const& targetLeader,
         plan.participantsConfig.participants.at(targetLeader);
 
     if (planLeaderConfig.forced != true || !planLeaderConfig.allowedAsLeader) {
+      if (!health.notIsFailed(targetLeader)) {
+        // The target leader has failed and hence is not forced.
+        if (current.supervision && current.supervision->error &&
+            current.supervision->error ==
+                LogCurrentSupervisionError::TARGET_LEADER_FAILED) {
+          // Error has already been reported; don't re-report
+          return std::nullopt;
+        }
+        return ErrorAction(LogCurrentSupervisionError::TARGET_LEADER_FAILED);
+      }
       return ErrorAction(LogCurrentSupervisionError::TARGET_LEADER_EXCLUDED);
     }
 
@@ -320,12 +330,13 @@ auto doLeadershipElection(LogPlanSpecification const& plan,
 auto desiredParticipantFlags(std::optional<ParticipantId> const& targetLeader,
                              ParticipantId const& currentTermLeader,
                              ParticipantId const& targetParticipant,
-                             ParticipantFlags const& targetFlags)
+                             ParticipantFlags const& targetFlags,
+                             ParticipantsHealth const& health)
     -> ParticipantFlags {
   if (targetParticipant == targetLeader and
       targetParticipant != currentTermLeader) {
     auto flags = targetFlags;
-    if (flags.allowedAsLeader) {
+    if (flags.allowedAsLeader and health.notIsFailed(targetParticipant)) {
       flags.forced = true;
     }
     return flags;
@@ -337,19 +348,20 @@ auto desiredParticipantFlags(std::optional<ParticipantId> const& targetLeader,
 // returns at a pair consisting of the ParticipantId and the desired flags.
 //
 // Note that the desired flags currently forces the flags for a configured,
-// desired, leader to contain a forced flag.
+// desired, non-failed, leader to contain a forced flag.
 auto getParticipantWithUpdatedFlags(
     ParticipantsFlagsMap const& targetParticipants,
     ParticipantsFlagsMap const& planParticipants,
     std::optional<ParticipantId> const& targetLeader,
-    ParticipantId const& currentTermLeader)
+    ParticipantId const& currentTermLeader, ParticipantsHealth const& health)
     -> std::optional<std::pair<ParticipantId, ParticipantFlags>> {
   for (auto const& [targetParticipant, targetFlags] : targetParticipants) {
     if (auto const& planParticipant = planParticipants.find(targetParticipant);
         planParticipant != std::end(planParticipants)) {
       // participant is in plan, check whether flags are the same
-      auto const desiredFlags = desiredParticipantFlags(
-          targetLeader, currentTermLeader, targetParticipant, targetFlags);
+      auto const desiredFlags =
+          desiredParticipantFlags(targetLeader, currentTermLeader,
+                                  targetParticipant, targetFlags, health);
       if (desiredFlags != planParticipant->second) {
         // Flags changed, so we need to commit new flags for this participant
         return std::make_pair(targetParticipant, desiredFlags);
@@ -562,7 +574,7 @@ auto checkReplicatedLog(LogTarget const& target,
   //       particular field for the desired leader.
   if (auto participantFlags = getParticipantWithUpdatedFlags(
           target.participants, plan.participantsConfig.participants,
-          target.leader, leader.serverId)) {
+          target.leader, leader.serverId, health)) {
     return UpdateParticipantFlagsAction(participantFlags->first,
                                         participantFlags->second);
   }

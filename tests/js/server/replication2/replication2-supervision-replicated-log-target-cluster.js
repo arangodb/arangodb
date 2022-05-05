@@ -378,6 +378,37 @@ const replicatedLogSuite = function () {
       replicatedLogDeleteTarget(database, logId);
     },
 
+    // This test first sets a new leader and waits for the leader exchange to take place.
+    // Then the new leader is stopped, thus an election is triggered.
+    // Although the now failed ex-leader remains in target, the election is expected to succeed.
+    testChangeLeaderWithFailed: function () {
+      const {logId, servers, term, followers} = createReplicatedLogAndWaitForLeader(database);
+
+      const setLeader = followers[0];
+      setReplicatedLogLeaderTarget(database, logId, setLeader);
+      waitFor(replicatedLogIsReady(database, logId, term, servers, setLeader));
+      waitFor(replicatedLogParticipantsFlag(database, logId, {
+        [setLeader]: {allowedAsLeader: true, allowedInQuorum: true, forced: false},
+      }));
+
+      // Stop current leader and wait for the leader to be changed
+      stopServer(setLeader);
+
+      // Supervision should notice that the target leader is failed and should not try to set it.
+      const errorCode = 3; // TARGET_LEADER_FAILED
+      waitFor(replicatedLogSupervisionError(database, logId, errorCode));
+
+      waitFor(lpreds.replicatedLogLeaderPlanChanged(database, logId, setLeader));
+      let {newLeader} = helper.getReplicatedLogLeaderPlan(database, logId);
+      waitFor(replicatedLogIsReady(database, logId, term, servers, newLeader));
+
+      replicatedLogUpdateTargetParticipants(database, logId, {
+        [setLeader]: {allowedInQuorum: true, allowedAsLeader: true},
+      });
+
+      replicatedLogDeleteTarget(database, logId);
+    },
+
     // This test first makes a follower excluded and then asks for this follower
     // to become the leader. It then removed the excluded flag and expects the
     // leadership to be transferred.

@@ -139,7 +139,8 @@ enum class LogCurrentSupervisionError {
   TARGET_LEADER_INVALID,
   TARGET_LEADER_EXCLUDED,
   TARGET_NOT_ENOUGH_PARTICIPANTS,
-  GENERAL_ERROR  // TODO: Using this whilw refactoring
+  TARGET_LEADER_FAILED,
+  GENERAL_ERROR  // TODO: Using this while refactoring
                  // other code; needs to be improved
 };
 

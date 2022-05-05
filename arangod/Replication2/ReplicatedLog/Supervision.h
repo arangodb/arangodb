@@ -56,7 +56,7 @@ auto getParticipantWithUpdatedFlags(
     ParticipantsFlagsMap const& targetParticipants,
     ParticipantsFlagsMap const& planParticipants,
     std::optional<ParticipantId> const& targetLeader,
-    ParticipantId const& currentTermLeader)
+    ParticipantId const& currentTermLeader, ParticipantsHealth const& health)
     -> std::optional<std::pair<ParticipantId, ParticipantFlags>>;
 
 auto computeReason(std::optional<LogCurrentLocalState> const& maybeStatus,

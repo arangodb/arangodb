@@ -427,8 +427,9 @@ TEST_F(LogSupervisionTest, test_no_flags_changed) {
   auto const planParticipants = ParticipantsFlagsMap{
       {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
+  auto const health = ParticipantsHealth{{{"A", ParticipantHealth{RebootId{1}, true}}, {"B", ParticipantHealth{RebootId{1}, true}}}};
   auto r = getParticipantWithUpdatedFlags(targetParticipants, planParticipants,
-                                          std::nullopt, "A");
+                                          std::nullopt, "A", health);
   EXPECT_FALSE(r);
 }
 
@@ -439,8 +440,10 @@ TEST_F(LogSupervisionTest, test_flags_changed) {
   auto const planParticipants = ParticipantsFlagsMap{
       {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
+  auto const health = ParticipantsHealth{{{"A", ParticipantHealth{RebootId{1}, true}}, {"B", ParticipantHealth{RebootId{1}, true}}}};
+
   auto r = getParticipantWithUpdatedFlags(targetParticipants, planParticipants,
-                                          std::nullopt, "A");
+                                          std::nullopt, "A", health);
   EXPECT_TRUE(r);
   EXPECT_EQ(r->first, "A");
   EXPECT_EQ(r->second,
@@ -456,14 +459,33 @@ TEST_F(LogSupervisionTest, test_leader_changed) {
       {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
+  auto const health = ParticipantsHealth{{{"A", ParticipantHealth{RebootId{1}, true}}, {"B", ParticipantHealth{RebootId{1}, true}}}};
+
   auto r = getParticipantWithUpdatedFlags(targetParticipants, planParticipants,
-                                          "B", "A");
+                                          "B", "A", health);
   EXPECT_TRUE(r);
 
   // IF the leader is changed via target, expect it to be forced first
   EXPECT_EQ(r->first, "B");
   EXPECT_EQ(r->second,
             (ParticipantFlags{.forced = true, .allowedAsLeader = true}));
+}
+
+TEST_F(LogSupervisionTest, test_failed_target_leader) {
+  auto const targetParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+      {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
+
+  auto const planParticipants = ParticipantsFlagsMap{
+      {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+      {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
+
+  auto const health = ParticipantsHealth{{{"A", ParticipantHealth{RebootId{1}, true}}, {"B", ParticipantHealth{RebootId{1}, false}}}};
+
+  auto r = getParticipantWithUpdatedFlags(targetParticipants, planParticipants,
+                                          "B", "A", health);
+  // Nothing should happen
+  EXPECT_FALSE(r);
 }
 
 TEST_F(LogSupervisionTest, test_acceptable_leader_set) {
