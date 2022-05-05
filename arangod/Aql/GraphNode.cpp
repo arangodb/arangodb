@@ -67,95 +67,64 @@ struct DisjointSmartToSatelliteTester {
   Result isCollectionAllowed(
       std::shared_ptr<LogicalCollection> const& collection,
       TRI_edge_direction_e dir) {
-    if (collection->isSmartToSatEdgeCollection()) {
-      switch (dir) {
-        case TRI_EDGE_ANY:
-          // ANY is always forbidden
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION,
-              "Using direction 'ANY' on collection: '" + collection->name() +
-                  "' could switch from Smart to Satellite and back. This "
-                  "violates the isDisjoint feature and is forbidden.");
-          break;
-        case TRI_EDGE_OUT:
-          // We are switching from Smart -> Sat
-          if (_disjointSmartToSatDirection == TRI_EDGE_IN) {
-            // Another collection is using Sat -> Smart with it's selected
-            // direction. This is disallowed
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION,
-                "Using direction 'OUTBOUND' on collection: '" +
-                    collection->name() +
-                    "' would switch from Smart to Satellite. Another "
-                    "used edge collection is switching from Satellite to "
-                    "Smart."
-                    "This violates the isDisjoint feature and is "
-                    "forbidden.");
-          }
-          _disjointSmartToSatDirection = TRI_EDGE_OUT;
-          break;
-        case TRI_EDGE_IN:
-          // We are switching from Sat <- Smart
-          if (_disjointSmartToSatDirection == TRI_EDGE_OUT) {
-            // Another collection is using Sat -> Smart with it's selected
-            // direction. This is disallowed
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION,
-                "Using direction 'INBOUND' on collection: '" +
-                    collection->name() +
-                    "' would switch from Satellite to Smart. Another "
-                    "used edge collection is switching from Smart to "
-                    "Satellite."
-                    "This violates the isDisjoint feature and is "
-                    "forbidden.");
-          }
-          _disjointSmartToSatDirection = TRI_EDGE_IN;
-          break;
+    // We only need to check Sat -> Smart or Smart -> Sat collection, nothing
+    // else
+    if (collection->isSmartToSatEdgeCollection() ||
+        collection->isSatToSmartEdgeCollection()) {
+      if (dir == TRI_EDGE_ANY) {
+        // ANY is always forbidden
+        return {
+            TRI_ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION,
+            "Using direction 'ANY' on collection: '" + collection->name() +
+                "' could switch from Smart to Satellite and back. This "
+                "violates the isDisjoint feature and is forbidden."};
       }
-    } else if (collection->isSatToSmartEdgeCollection()) {
-      switch (dir) {
-        case TRI_EDGE_ANY:
-          // ANY is always forbidden
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION,
-              "Using direction 'ANY' on collection: '" + collection->name() +
-                  "' could switch from Smart to Satellite and back. This "
-                  "violates the isDisjoint feature and is forbidden.");
-          break;
-        case TRI_EDGE_OUT:
-          // We are switching from Sat -> Smart
-          if (_disjointSmartToSatDirection == TRI_EDGE_OUT) {
-            // Another collection is using Smart -> Sat with it's selected
-            // direction. This is disallowed
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION,
-                "Using direction 'OUTBOUND' on collection: '" +
-                    collection->name() +
-                    "' would switch from Satellite to Smart. Another "
-                    "used edge collection is switching from Smart to "
-                    "Satellite."
-                    "This violates the isDisjoint feature and is "
-                    "forbidden.");
+      // Unify Edge storage, and edge read direction.
+      // The smartToSatDir defines the direction in which we attempt to
+      // walk from Smart to Satellite collections. (OUT: Smart -> Sat, IN: Sat
+      // -> Smart)
+      bool isOut = dir == TRI_EDGE_OUT;
+      auto smartToSatDir = isOut == collection->isSmartToSatEdgeCollection()
+                               ? TRI_EDGE_OUT
+                               : TRI_EDGE_IN;
+      if (_disjointSmartToSatDirection == TRI_EDGE_ANY) {
+        // We have not defined the direction yet, store it, this now defines the
+        // only allowed switch
+        _disjointSmartToSatDirection = smartToSatDir;
+        TRI_ASSERT(_conflictingCollection == nullptr);
+        _conflictingCollection = collection;
+        _conflictingIsOut = isOut;
+      } else if (_disjointSmartToSatDirection != smartToSatDir) {
+        // We try to switch again! This is disallowed. Let us report.
+        std::stringstream errorMessage;
+        errorMessage << "Using direction ";
+        if (isOut) {
+          errorMessage << "OUTBOUND";
+        } else {
+          errorMessage << "INBOUND";
+        }
+        auto printCollection = [&errorMessage](LogicalCollection const& col,
+                                               bool isOut) {
+          errorMessage << "'" << col.name() << "' switching from ";
+          if (isOut == col.isSmartToSatEdgeCollection()) {
+            // Hits OUTBOUND on SmartToSat and INBOUND on SatToSmart
+            errorMessage << "Smart to Satellite";
+          } else {
+            // Hits INBOUND on SmartToSat and OUTBOUND on SatToSmart
+            errorMessage << "Satellite to Smart";
           }
-          _disjointSmartToSatDirection = TRI_EDGE_IN;
-          break;
-        case TRI_EDGE_IN:
-          // We are switching from Smart <- Sat
-          if (_disjointSmartToSatDirection == TRI_EDGE_IN) {
-            // Another collection is using Sat -> Smart with it's selected
-            // direction. This is disallowed
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION,
-                "Using direction 'INBOUND' on collection: '" +
-                    collection->name() +
-                    "' would switch from Smart to Satellite. Another "
-                    "used edge collection is switching from Satellite to "
-                    "Smart."
-                    "This violates the isDisjoint feature and is "
-                    "forbidden.");
-          }
-          _disjointSmartToSatDirection = TRI_EDGE_OUT;
-          break;
+        };
+        errorMessage << " on collection: ";
+        printCollection(*collection, isOut);
+
+        errorMessage << ". Conflicting with: ";
+        TRI_ASSERT(_conflictingCollection != nullptr);
+        printCollection(*_conflictingCollection, _conflictingIsOut);
+        errorMessage
+            << ". This violates the isDisjoint feature and is forbidden.";
+        return {
+            TRI_ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION,
+            errorMessage.str()};
       }
     }
     return TRI_ERROR_NO_ERROR;
@@ -163,6 +132,8 @@ struct DisjointSmartToSatelliteTester {
 
  private:
   TRI_edge_direction_e _disjointSmartToSatDirection{TRI_EDGE_ANY};
+  std::shared_ptr<LogicalCollection> _conflictingCollection{nullptr};
+  bool _conflictingIsOut{true};
 };
 
 TRI_edge_direction_e uint64ToDirection(uint64_t dirNum) {
