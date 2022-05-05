@@ -194,17 +194,15 @@ const replicatedLogLeaderPlanIs = function (database, stateId, expectedLeader) {
 
 const replicatedLogLeaderPlanChanged = function (database, stateId, oldLeader) {
   return function () {
-    try {
-      const {leader: currentLeader} = LH.getReplicatedLogLeaderPlan(database, stateId);
-      if (currentLeader !== oldLeader) {
+      const leaderPlan = LH.getReplicatedLogLeaderPlan(database, stateId);
+      if (leaderPlan instanceof Error) {
+        return leaderPlan;
+      }
+      if (leaderPlan.leader !== oldLeader) {
         return true;
       } else {
         return new Error(`Expected log leader to switch from ${oldLeader}, but is still the same`);
       }
-    } catch (error) {
-      // There might be no current term or no leader in plan
-      return error;
-    }
   };
 };
 

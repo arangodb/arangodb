@@ -330,13 +330,21 @@ const getLocalStatus = function (database, logId, serverId) {
 };
 
 
-const getReplicatedLogLeaderPlan = function (database, logId) {
+const getReplicatedLogLeaderPlan = function (database, logId, nothrow = false) {
   let {plan} = readReplicatedLogAgency(database, logId);
   if (!plan.currentTerm) {
-    throw Error("no current term in plan");
+    let error = Error("no current term in plan");
+    if (nothrow) {
+      return error;
+    }
+    throw error;
   }
   if (!plan.currentTerm.leader) {
-    throw Error("current term has no leader");
+    let error = Error("current term has no leader");
+    if (nothrow) {
+      return error;
+    }
+    throw error;
   }
   const leader = plan.currentTerm.leader.serverId;
   const term = plan.currentTerm.term;
