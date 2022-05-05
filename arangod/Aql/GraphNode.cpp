@@ -93,12 +93,12 @@ struct DisjointSmartToSatelliteTester {
         _disjointSmartToSatDirection = smartToSatDir;
         TRI_ASSERT(_conflictingCollection == nullptr);
         _conflictingCollection = collection;
-        _conflictingIsOut = isOut;
+        _conflictingDirection = dir;
       } else if (_disjointSmartToSatDirection != smartToSatDir) {
         // We try to switch again! This is disallowed. Let us report.
         std::stringstream errorMessage;
         errorMessage << "Using direction ";
-        if (isOut) {
+        if (dir == TRI_EDGE_OUT) {
           errorMessage << "OUTBOUND";
         } else {
           errorMessage << "INBOUND";
@@ -118,8 +118,15 @@ struct DisjointSmartToSatelliteTester {
         printCollection(*collection, isOut);
 
         errorMessage << ". Conflicting with: ";
+        if (_conflictingDirection == TRI_EDGE_OUT) {
+          errorMessage << "OUTBOUND";
+        } else {
+          errorMessage << "INBOUND";
+        }
+        errorMessage << " ";
+        bool conflictingIsOut = _conflictingDirection == TRI_EDGE_OUT;
         TRI_ASSERT(_conflictingCollection != nullptr);
-        printCollection(*_conflictingCollection, _conflictingIsOut);
+        printCollection(*_conflictingCollection, conflictingIsOut);
         errorMessage
             << ". This violates the isDisjoint feature and is forbidden.";
         return {
@@ -133,7 +140,7 @@ struct DisjointSmartToSatelliteTester {
  private:
   TRI_edge_direction_e _disjointSmartToSatDirection{TRI_EDGE_ANY};
   std::shared_ptr<LogicalCollection> _conflictingCollection{nullptr};
-  bool _conflictingIsOut{true};
+  TRI_edge_direction_e _conflictingDirection{TRI_EDGE_ANY};
 };
 
 TRI_edge_direction_e uint64ToDirection(uint64_t dirNum) {
