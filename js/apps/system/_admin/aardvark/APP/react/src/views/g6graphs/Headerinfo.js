@@ -136,7 +136,7 @@ const screenshotMenu = (
         <Tabs defaultActiveKey="1" type="card" size="small" tabBarExtraContent={menuActionButtons}>
           <TabPane
             tab={
-              <span>
+              <span style={{ 'color': '#2ecc71' }}>
                 <ShareAltOutlined />
                 Graph
               </span>
@@ -154,11 +154,8 @@ const screenshotMenu = (
                 onGraphLayoutChange(layout);
               }}
             />
-            <br />
             <ParameterDepth />
-            <br />
             <ParameterLimit />
-            <br />
           </TabPane>
           <TabPane
             tab={

@@ -1,8 +1,8 @@
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
-import { Input, Tooltip } from 'antd';
-import { InfoCircleOutlined } from '@ant-design/icons';
-import Textinput from "../../components/pure-css/form/Textinput";
+import { Tooltip } from 'antd';
+import { InfoCircleFilled } from '@ant-design/icons';
+import Textinput from "./components/pure-css/form/Textinput.tsx";
 
 const ParameterDepth = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
@@ -10,34 +10,22 @@ const ParameterDepth = () => {
 
   const NEWURLPARAMETERS = { ...urlParameters };
 
-  /*
-  <h5>urlParameters (context value): {JSON.stringify(urlParameters)}</h5>
-  <label>
-          Depth:
-          <input
-            type="text"
-            value={depth}
-            onChange={(e) => {
-              setDepth(+e.target.value);
-              NEWURLPARAMETERS.depth = +e.target.value;
-              setUrlParameters(NEWURLPARAMETERS);
-            }}
-          />
-        </label>
-  */
-  
   return (
     <>
       <form>
         <Textinput
-          label={'Depth'}
-          value={depth}
-          onChange={(e) => {
-            setDepth(+e.target.value);
-            NEWURLPARAMETERS.depth = +e.target.value;
-            setUrlParameters(NEWURLPARAMETERS);
-          }}>
+            label={'Depth'}
+            value={depth}
+            width={'60px'}
+            onChange={(e) => {
+              setDepth(+e.target.value);
+              NEWURLPARAMETERS.depth = +e.target.value;
+              setUrlParameters(NEWURLPARAMETERS);
+            }}>
         </Textinput>
+        <Tooltip placement="bottom" title={"Search depth, starting from your start node."}>
+          <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
+        </Tooltip>
       </form>
     </>
   );

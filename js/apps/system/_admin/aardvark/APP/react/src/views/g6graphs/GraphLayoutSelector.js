@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Select } from 'antd';
+import { Select, Tooltip } from 'antd';
+import PlainLabel from "./components/pure-css/form/PlainLabel";
+import { InfoCircleFilled } from '@ant-design/icons';
 
 const GraphLayoutSelector = ({ onGraphLayoutChange} ) => {
   const [layout, setLayout] = useState('gForce');
@@ -49,8 +51,25 @@ const GraphLayoutSelector = ({ onGraphLayoutChange} ) => {
   return <>
           <form>
             <div>
-              <label for="graphlayout">Layout</label>
-              <Select name="graphlayout" style={{ width: '200px' }} value={layout} onChange={handleChange}>
+              <PlainLabel htmlFor={'graphlayout'}>Layout</PlainLabel>
+              <Select
+                name="graphlayout"
+                value={layout}
+                onChange={handleChange}
+                style={{
+                  'width': '200px',
+                  'height': 'auto',
+                  'margin-right': '8px',
+                  'color': '#555555',
+                  'border': '2px solid rgba(140, 138, 137, 0.25)',
+                  'border-radius': '4px',
+                  'background-color': '#fff !important',
+                  'box-shadow': 'none',
+                  'outline': 'none',
+                  'outline-color': 'transparent',
+                  'outline-style': 'none'
+                }}
+              >
                 {layouts.map(style => {
                   const { layout } = style;
                   return (
@@ -60,6 +79,9 @@ const GraphLayoutSelector = ({ onGraphLayoutChange} ) => {
                   );
                 })}
               </Select>
+              <Tooltip placement="bottom" title={"Different graph algorithms. No overlap is very fast (more than 5000 nodes), force is slower (less than 5000 nodes) and fruchtermann is the slowest (less than 500 nodes)."}>
+                <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
+              </Tooltip>
             </div>
           </form>
   </>;

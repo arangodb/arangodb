@@ -1,8 +1,9 @@
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
 import { Node } from './components/node/node.component';
-import { Input, Tooltip } from 'antd';
-import { InfoCircleOutlined } from '@ant-design/icons';
+import { Tooltip } from 'antd';
+import { InfoCircleFilled } from '@ant-design/icons';
+import PlainLabel from "./components/pure-css/form/PlainLabel";
 
 const ParameterNodeStart = ({ nodes, onNodeSelect }) => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
@@ -10,25 +11,15 @@ const ParameterNodeStart = ({ nodes, onNodeSelect }) => {
 
   const NEWURLPARAMETERS = { ...urlParameters };
 
-  /*
-  <h5>urlParameters (in ParameterNodeStart): {JSON.stringify(urlParameters)}</h5>
-      <p>nodeStart: {JSON.stringify(urlParameters.nodeStart)}</p>
-      <p>depth: {JSON.stringify(urlParameters.depth)}</p>
-      <p>limit: {JSON.stringify(urlParameters.limit)}</p>
-      <p>nodeLabelByCollection: {JSON.stringify(urlParameters.nodeLabelByCollection)}</p>
-      <p>edgeLabelByCollection: {JSON.stringify(urlParameters.edgeLabelByCollection)}</p>
-      */
-
   return (
-    <>
-      <div>
-      <label>
+    <div style={{'marginTop': '24px'}}>
+      <PlainLabel htmlFor={'graphnodes'}>Start node</PlainLabel>
       <div className="node-list">
         <input
           list="nodelist"
           id="graphnodes"
           name="graphnodes"
-          placeholder="Set start node"
+          autocomplete="off"
           onChange={
             (e) => {
               setNodeStart(e.target.value);
@@ -36,7 +27,20 @@ const ParameterNodeStart = ({ nodes, onNodeSelect }) => {
               setUrlParameters(NEWURLPARAMETERS);
             }
           }
-          style={{ 'width': '100%' }} />
+          style={{
+            'width': '500px',
+            'height': 'auto',
+            'margin-right': '8px',
+            'color': '#555555',
+            'border': '2px solid rgba(140, 138, 137, 0.25)',
+            'border-radius': '4px',
+            'background-color': '#fff !important',
+            'box-shadow': 'none',
+            'outline': 'none',
+            'outline-color': 'transparent',
+            'outline-style': 'none'
+          }}
+        />
         <datalist id="nodelist">
           {nodes.map(node => (
             <Node
@@ -44,11 +48,11 @@ const ParameterNodeStart = ({ nodes, onNodeSelect }) => {
               node={node} />
           ))}
         </datalist>
+        <Tooltip placement="bottom" title={"A valid node id or space seperated list of id's. If empty, a random node will be chosen."}>
+          <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
+        </Tooltip>
       </div>
-        Start node
-      </label>
     </div>
-    </>
   );
 };
 
