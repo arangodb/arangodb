@@ -774,6 +774,30 @@ auto executeCheckReplicatedLog(DatabaseID const& dbName,
   checkReplicatedLog(ctx, log, health);
 
   if (ctx.hasAction()) {
+    if (log.target.supervision.has_value() &&
+        log.target.supervision->maxActionsTraceLength > 0) {
+      envelope =
+          envelope.write()
+              .push_queue_emplace(
+                  arangodb::cluster::paths::aliases::current()
+                      ->replicatedLogs()
+                      ->database(dbName)
+                      ->log(idString)
+                      ->actions()
+                      ->str(),
+                  // TODO: struct + inspect + transformWith
+                  [&](velocypack::Builder& b) {
+                    VPackObjectBuilder ob(&b);
+                    b.add("time", VPackValue(timepointToString(
+                                      std::chrono::system_clock::now())));
+                    b.add(VPackValue("desc"));
+                    arangodb::replication2::replicated_log::toVelocyPack(
+                        ctx.getAction(), b);
+                  },
+                  log.target.supervision->maxActionsTraceLength)
+              .end();
+    }
+
     envelope = arangodb::replication2::replicated_log::execute(
         ctx.getAction(), dbName, log.target.id, log.plan, log.current,
         std::move(envelope));
