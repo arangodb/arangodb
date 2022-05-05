@@ -20,6 +20,10 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
+
+#include "Basics/debugging.h"
+#include "Random/RandomGenerator.h"
+
 #include <memory>
 #include <chrono>
 #include <utility>
@@ -273,6 +277,7 @@ struct DFSEnumerator {
           }
         }
       } else {
+        TRI_ASSERT(!v->outgoing.empty());
         path.push_back(std::static_pointer_cast<StateVertex>(
             v->outgoing[v->searchIndex++].second));
       }
@@ -286,8 +291,214 @@ template<typename StateType, typename TransitionType>
 struct DFSEngine {
   template<typename Driver, typename Observer>
   static auto run(Driver& driver, Observer initialObserver,
-                  StateType initialState) {
+                  StateType initialState, std::uint64_t = 0) {
     return DFSEnumerator<StateType, TransitionType, Observer>::run(
+        driver, std::move(initialObserver), std::move(initialState));
+  }
+};
+
+template<typename StateType, typename TransitionType, typename Observer>
+struct RandomEnumerator {
+  struct SimulationState;
+
+  using OutgoingVectorType =
+      std::vector<std::pair<TransitionType, std::shared_ptr<SimulationState>>>;
+
+  struct SimulationState {
+    StateType state;
+    Observer observer;
+    OutgoingVectorType outgoing{};
+
+    friend auto operator==(SimulationState const& lhs,
+                           SimulationState const& rhs) noexcept -> bool {
+      return std::tie(lhs.state, lhs.observer) ==
+             std::tie(rhs.state, rhs.observer);
+    }
+
+    friend auto hash_value(SimulationState const& v) noexcept -> std::size_t {
+      std::size_t seed = 0;
+      boost::hash_combine(seed, v.state);
+      boost::hash_combine(seed, v.observer);
+      return seed;
+    }
+  };
+
+  using PathVectorType =
+      std::vector<std::pair<std::shared_ptr<SimulationState>, TransitionType>>;
+
+  friend auto operator<<(std::ostream& os, PathVectorType const& path)
+      -> std::ostream& {
+    for (auto const& [v, t] : path) {
+      os << "{" << v->state << "}"
+         << " -[" << t << "]-> ";
+    }
+    return os;
+  }
+
+  struct StateVertex : SimulationState {
+    std::size_t uniqueId{0};
+    std::size_t depth{0};
+    std::optional<std::size_t> searchIndex{};
+
+    StateVertex(StateType state, Observer observer)
+        : SimulationState{std::move(state), std::move(observer)} {}
+
+    auto isCompleted() const noexcept {
+      return !isNewVertex() && searchIndex > this->outgoing.size();
+    }
+    auto isNewVertex() const noexcept { return uniqueId == 0; }
+  };
+
+  struct ObserverError {
+    CheckError error;
+    std::shared_ptr<StateVertex> badState;
+    PathVectorType path;
+
+    ObserverError(CheckError error, std::shared_ptr<StateVertex> badState,
+                  PathVectorType path)
+        : error(std::move(error)),
+          badState(std::move(badState)),
+          path(std::move(path)) {}
+
+    friend auto operator<<(std::ostream& os, ObserverError const& oe)
+        -> std::ostream& {
+      return os << oe.error << ": " << oe.path << oe.badState->state;
+    }
+  };
+
+  struct FingerprintHash {
+    auto operator()(std::shared_ptr<StateVertex> const& s) const
+        -> std::size_t {
+      return hash_value(*s);
+    }
+  };
+
+  struct FingerprintCompare {
+    auto operator()(std::shared_ptr<StateVertex> const& lhs,
+                    std::shared_ptr<StateVertex> const& rhs) const -> bool {
+      return *lhs == *rhs;
+    }
+  };
+
+  using FingerprintSet =
+      std::unordered_set<std::shared_ptr<StateVertex>, FingerprintHash,
+                         FingerprintCompare>;
+
+  struct Result {
+    FingerprintSet fingerprints;
+    std::vector<std::shared_ptr<StateVertex const>> finalStates;
+    std::optional<ObserverError> failed;
+    std::optional<PathVectorType> cycle;
+    Stats stats{};
+  };
+
+  template<typename Driver>
+  static auto run(Driver& driver, Observer initialObserver,
+                  StateType initialState) {
+    std::size_t nextUniqueId{0};
+    Result result;
+    std::vector<std::shared_ptr<StateVertex>> path;
+    std::shared_ptr<StateVertex> startVertex;
+
+    auto const registerFingerprint = [&](StateType state, Observer observer)
+        -> std::pair<bool, std::shared_ptr<StateVertex>> {
+      auto step =
+          std::make_shared<StateVertex>(std::move(state), std::move(observer));
+      auto [iter, inserted] = result.fingerprints.emplace(step);
+      return {inserted, *iter};
+    };
+
+    {
+      auto [inserted, step] = registerFingerprint(std::move(initialState),
+                                                  std::move(initialObserver));
+      auto checkResult = step->observer.check(step->state);
+      if (isPrune(checkResult)) {
+        return result;
+      } else if (isError(checkResult)) {
+        result.failed.emplace(checkResult.asError(), step, PathVectorType{});
+        return result;
+      }
+      path.push_back(step);
+    }
+
+    auto const buildPathVector = [&] {
+      PathVectorType result;
+      for (auto const& p : path) {
+        result.emplace_back(p, p->outgoing[p->searchIndex.value() - 1].first);
+      }
+      return result;
+    };
+
+    while (not path.empty()) {
+      auto v = path.back();
+      if (v->isCompleted()) {
+        path.pop_back();
+      } else if (v->isNewVertex()) {
+        // expand the vertex
+        v->uniqueId = ++nextUniqueId;
+        auto exploredStates = driver.expand(v->state);
+        v->outgoing.reserve(exploredStates.size());
+        for (auto& [transition, state] : driver.expand(v->state)) {
+          auto [inserted, step] =
+              registerFingerprint(std::move(state), v->observer);
+          result.stats.discoveredStates += 1;
+          if (inserted) {
+            result.stats.uniqueStates += 1;
+            step->depth = v->depth + 1;
+          } else {
+            result.stats.eliminatedStates += 1;
+          }
+          auto checkResult = step->observer.check(step->state);
+          if (isPrune(checkResult)) {
+            continue;
+          } else if (isError(checkResult)) {
+            auto p = buildPathVector();
+            result.failed.emplace(checkResult.asError(), step, p);
+            return result;
+          }
+          v->outgoing.emplace_back(std::move(transition), step);
+          if (!step->isNewVertex() && !step->isCompleted()) {
+            v->searchIndex = v->outgoing.size();
+            path.erase(path.begin(), std::find(path.begin(), path.end(), step));
+            result.cycle.emplace(buildPathVector());
+            result.failed.emplace(CheckError("cycle detected"), step,
+                                  buildPathVector());
+          }
+        }
+      } else if (v->outgoing.empty() || v->searchIndex.has_value()) {
+        path.pop_back();
+        if (v->outgoing.empty()) {
+          result.stats.finalStates += 1;
+          result.finalStates.emplace_back(v);
+          if (auto checkResult = v->observer.finalStep(v->state);
+              isError(checkResult)) {
+            auto p = buildPathVector();
+            result.failed.emplace(checkResult.asError(), v, p);
+            return result;
+          }
+        }
+      } else {
+        TRI_ASSERT(!v->outgoing.empty());
+        TRI_ASSERT(v->outgoing.size() < std::numeric_limits<int32_t>::max());
+        v->searchIndex = RandomGenerator::interval(
+            std::int32_t{0}, static_cast<std::int32_t>(v->outgoing.size() - 1));
+        path.push_back(std::static_pointer_cast<StateVertex>(
+            v->outgoing[*v->searchIndex].second));
+      }
+    }
+
+    return result;
+  }
+};
+
+// TODO The RandomEngine is mostly a c&p of the DFSEngine. The common code
+//      should be consolidated.
+template<typename StateType, typename TransitionType>
+struct RandomEngine {
+  template<typename Driver, typename Observer>
+  static auto run(Driver& driver, Observer initialObserver,
+                  StateType initialState, std::uint64_t iterations) {
+    return RandomEnumerator<StateType, TransitionType, Observer>::run(
         driver, std::move(initialObserver), std::move(initialState));
   }
 };
