@@ -6,7 +6,6 @@ import {
 } from "../../../components/arango/table";
 import { IconButton } from "../../../components/arango/buttons";
 import Link from "./Link";
-import { map } from "lodash";
 import { ViewContext } from "../ViewLinksReactView";
 
 type CollProps = {
@@ -21,7 +20,10 @@ const LinkList = ({ links, addClick, icon, viewLink }: CollProps) => {
     let linksArr = [];
     if (links) {
       for (const l in links) {
-        linksArr.push({ name: l, link: links[l] });
+        linksArr.push({
+          name: l,
+          link: links[l]
+        });
       }
     }
     return linksArr;
@@ -58,8 +60,8 @@ const LinkList = ({ links, addClick, icon, viewLink }: CollProps) => {
         </thead>
 
         <tbody>
-          {links &&
-            map(linksArr, (p, key) => (
+          {links && linksArr.filter(p => p.link !== null)
+            .map((p, key) => (
               <Link
                 name={p.name}
                 analyzers={p.link.analyzers}
@@ -69,7 +71,7 @@ const LinkList = ({ links, addClick, icon, viewLink }: CollProps) => {
                     <IconButton
                       icon={"trash-o"}
                       type={"danger"}
-                      onClick={getLinkRemover}
+                      onClick={getLinkRemover(p.name)}
                     />
                     <IconButton
                       icon={"eye"}

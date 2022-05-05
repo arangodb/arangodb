@@ -20,7 +20,10 @@ export const ViewContext = createContext({
   setShow: noop,
   formState: {},
   dispatch: noop,
-  field: { field: "", basePath: "" },
+  field: {
+    field: '',
+    basePath: ''
+  },
   setField: noop,
   link: "",
   setNewLink: noop,
@@ -38,7 +41,6 @@ const ViewLinksReactView = ({ name }) => {
     initialState.current
   );
   const view = useView(name);
-  const links = view.links;
   const permissions = usePermissions();
   const [isAdminUser, setIsAdminUser] = useState(false);
   const [show, setShow] = useState("LinkList");
@@ -96,7 +98,7 @@ const ViewLinksReactView = ({ name }) => {
       <div className={"centralContent"} id={"content"}>
         {show === "LinkList" ? (
           <LinkList
-            links={links}
+            links={formState.links}
             addClick={() => setShow("AddNew")}
             viewLink={handleView}
             icon={"fa-plus-circle"}
