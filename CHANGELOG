@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgraded bundled version of RocksDB to 7.2.
+
 * Updated arangosync to v2.9.1.
 
 * Added option `--enable-revision-trees` to arangorestore, which will add the
