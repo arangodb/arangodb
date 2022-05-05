@@ -126,7 +126,7 @@ https://github.com/lz4/lz4
 
 ## rocksdb
 
-v6.29.5
+v7.2.0
 RocksDB is pulled in as a submodule - the exact commit can be found there.
 
 The submodule repository is located at https://github.com/arangodb/rocksdb

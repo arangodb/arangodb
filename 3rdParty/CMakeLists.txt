@@ -207,7 +207,7 @@ unset(BUILD_SHARED_LIBS CACHE) # otherwise ZLib (below) does not build on win32
 ## ROCKSDB
 ################################################################################
 
-#UpdateModule(${GIT_EXECUTABLE} "rocksdb" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
+UpdateModule(${GIT_EXECUTABLE} "rocksdb" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb)
 set(ARANGO_ROCKSDB_VERSION "${rocksdb_VERSION}" PARENT_SCOPE)
