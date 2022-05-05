@@ -64,10 +64,6 @@ class RocksDBCollection;
 struct ThreadStatistics {
   uint64_t numSeeks = 0;
   uint64_t numNexts = 0;
-  uint64_t numWaits = 0;
-  double seekTime = 0.0;
-  double insertTime = 0.0;
-  double waitTime = 0.0;
   double commitTime = 0.0;
 };
 
@@ -208,12 +204,10 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 using WorkItem = std::pair<uint64_t, uint64_t>;
 class SharedWorkEnv {
  public:
-  SharedWorkEnv(size_t numThreads, std::deque<WorkItem>& workItems,
+  SharedWorkEnv(size_t numThreads, std::deque<WorkItem> workItems,
                 uint64_t objectId)
       : _numThreads(numThreads),
         _ranges(std::move(workItems)),
-        _lowerBoundId(_ranges.front().first),
-        _upperBoundId(_ranges.front().second),
         _bounds(RocksDBKeyBounds::CollectionDocuments(
             objectId, _ranges.front().first,
             _ranges.front().second == UINT64_MAX
@@ -302,10 +296,6 @@ class SharedWorkEnv {
     return rocksdb::Slice(_bounds.end());
   }
 
-  uint64_t getLowerBoundId() const { return _lowerBoundId; }
-
-  uint64_t getUpperBoundId() const { return _upperBoundId; }
-
  private:
   bool _done = false;
   size_t _numWaitingThreads = 0;
@@ -313,8 +303,6 @@ class SharedWorkEnv {
   size_t _numTerminatedThreads = 0;
   std::condition_variable _condition;
   std::deque<WorkItem> _ranges;
-  uint64_t const _lowerBoundId;
-  uint64_t const _upperBoundId;
   Result _res;
   std::mutex _mtx;
   std::vector<ThreadStatistics> _threadStatistics;
