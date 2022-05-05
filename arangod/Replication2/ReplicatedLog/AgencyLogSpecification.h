@@ -118,11 +118,6 @@ struct LogCurrentSupervisionElection {
 
   friend auto operator==(LogCurrentSupervisionElection const&,
                          LogCurrentSupervisionElection const&) noexcept -> bool;
-  friend auto operator!=(LogCurrentSupervisionElection const& left,
-                         LogCurrentSupervisionElection const& right) noexcept
-      -> bool {
-    return !(left == right);
-  }
 
   LogCurrentSupervisionElection() = default;
 };
@@ -157,8 +152,8 @@ struct LogCurrentSupervision {
       -> LogCurrentSupervision;
 
   LogCurrentSupervision() = default;
-  friend auto operator==(LogCurrentSupervision const& s,
-                         LogCurrentSupervision const& s2) noexcept
+  friend auto operator==(LogCurrentSupervision const&,
+                         LogCurrentSupervision const&) noexcept
       -> bool = default;
 };
 
@@ -188,7 +183,7 @@ struct LogCurrent {
   // Temporary hack until Actions are de-serializable.
   struct ActionDummy {
     std::string timestamp;
-    friend auto operator==(ActionDummy const& s, ActionDummy const& s2) noexcept
+    friend auto operator==(ActionDummy const&, ActionDummy const&) noexcept
         -> bool = default;
   };
   std::vector<ActionDummy> actions;
@@ -196,7 +191,7 @@ struct LogCurrent {
   auto toVelocyPack(VPackBuilder&) const -> void;
   [[nodiscard]] static auto fromVelocyPack(VPackSlice) -> LogCurrent;
   LogCurrent() = default;
-  friend auto operator==(LogCurrent const& s, LogCurrent const& s2) noexcept
+  friend auto operator==(LogCurrent const&, LogCurrent const&) noexcept
       -> bool = default;
 };
 

@@ -70,11 +70,18 @@ auto SupervisionActor::stepReplicatedLog(AgencyState const& agency)
           action)) {
     return std::nullopt;
   }
+  if (std::holds_alternative<
+          replicated_log::LeaderElectionQuorumNotReachedAction>(action)) {
+    return std::nullopt;
+  }
   return SupervisionLogAction{std::move(action)};
 }
 
 auto SupervisionActor::stepReplicatedState(AgencyState const& agency)
     -> std::optional<AgencyTransition> {
+  if (!agency.replicatedState.has_value()) {
+    return std::nullopt;
+  }
   replicated_state::SupervisionContext ctx;
   ctx.enableErrorReporting();
   replicated_state::checkReplicatedState(ctx, agency.replicatedLog,

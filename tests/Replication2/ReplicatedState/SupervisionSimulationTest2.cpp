@@ -222,6 +222,7 @@ TEST_F(ReplicatedStateSupervisionSimulationTest2, everything_ok_kill_server) {
   state.setId(logId)
       .setTargetParticipants("A", "B", "C")
       .setTargetVersion(20)
+      .setTargetLeader("A")
       .setTargetConfig(defaultConfig);
   state.setPlanParticipants("A", "B", "C");
   state.setAllSnapshotsComplete();

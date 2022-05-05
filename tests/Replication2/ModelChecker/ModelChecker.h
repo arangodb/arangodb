@@ -30,6 +30,7 @@
 #include <deque>
 #include <iostream>
 #include <variant>
+#include <stack>
 #include <random>
 
 #include <boost/container_hash/hash_fwd.hpp>
@@ -113,7 +114,7 @@ struct SimulationEngine {
     State state;
     Observer observer;
     std::vector<std::pair<Transition, std::shared_ptr<Step const>>> parents;
-    std::optional<std::size_t> hash;
+    mutable std::optional<std::size_t> hash;
 
     void registerPreviousStep(std::shared_ptr<Step const> step,
                               Transition transition) {
@@ -128,6 +129,26 @@ struct SimulationEngine {
       os << state << std::endl;
     }
 
+    auto detectLoop(Step const* needle, int recdepth = 0) const
+        -> std::shared_ptr<Step const> {
+      for (auto const& [transition, previous] : parents) {
+        if (previous->depth >= this->depth) {
+          continue;
+        }
+        if (*previous == *needle) {
+          return previous;
+        }
+
+        if (auto ptr = previous->detectLoop(needle, recdepth + 1);
+            ptr != nullptr) {
+          std::cout << *this << std::endl;
+          std::cout << transition << std::endl;
+          return ptr;
+        }
+      }
+      return nullptr;
+    }
+
     explicit Step(State state, std::size_t uniqueId, Observer observer)
         : uniqueId(uniqueId),
           state(std::move(state)),
@@ -138,19 +159,31 @@ struct SimulationEngine {
       os << " (final state reached)" << std::endl;
       return os;
     }
+
+    auto getHashValue() const -> std::size_t {
+      if (!hash) {
+        std::size_t seed = 0;
+        boost::hash_combine(seed, observer);
+        boost::hash_combine(seed, StateHash{}(state));
+        hash.emplace(seed);
+      }
+      return *hash;
+    }
+
+    friend auto operator==(Step const& lhs, Step const& rhs) noexcept -> bool {
+      if (lhs.getHashValue() != rhs.getHashValue()) {
+        return false;
+      }
+      return StateCompare{}(lhs.state, rhs.state) &&
+             lhs.observer == rhs.observer;
+    }
   };
 
   struct StepFingerprintHash {
     template<typename Observer>
     auto operator()(std::shared_ptr<Step<Observer>> const& s) const
         -> std::size_t {
-      if (!s->hash) {
-        std::size_t seed = 0;
-        boost::hash_combine(seed, s->observer);
-        boost::hash_combine(seed, StateHash{}(s->state));
-        s->hash.emplace(seed);
-      }
-      return *s->hash;
+      return s->getHashValue();
     }
   };
 
@@ -159,8 +192,11 @@ struct SimulationEngine {
     auto operator()(std::shared_ptr<Step<Observer> const> const& lhs,
                     std::shared_ptr<Step<Observer> const> const& rhs) const
         -> bool {
-      return StateCompare{}(lhs->state, rhs->state) &&
-             lhs->observer == rhs->observer;
+      if (lhs == rhs) {
+        return true;
+      }
+
+      return *lhs == *rhs;
     }
   };
 
@@ -283,6 +319,94 @@ struct SimulationEngine {
 
         // put step into active steps
         activeSteps.push_back(step);
+      }
+
+      auto now = clock::now();
+      if ((now - last) > std::chrono::seconds{5}) {
+        std::cout << result.stats << " current depth = " << nextStep->depth
+                  << std::endl;
+        last = now;
+      }
+    }
+    return result;
+  }
+
+
+  template<typename Driver, typename Observer>
+  static auto runDFS(Driver& driver, Observer initialObserver,
+                  State initialState) {
+    Result<Observer> result;
+
+    std::size_t nextUniqueId{0};
+    std::stack<std::shared_ptr<Step<Observer>>> activeSteps;
+
+    auto const registerFingerprint = [&](State state, Observer observer)
+        -> std::pair<bool, std::shared_ptr<Step<Observer>>> {
+      auto step = std::make_shared<Step<Observer>>(
+          std::move(state), ++nextUniqueId, std::move(observer));
+      auto [iter, inserted] = result.fingerprints.emplace(step);
+      return {inserted, *iter};
+    };
+
+    using clock = std::chrono::steady_clock;
+    auto last = clock::now();
+
+    {
+      auto [inserted, step] = registerFingerprint(std::move(initialState),
+                                                  std::move(initialObserver));
+      auto checkResult = step->observer.check(step->state);
+      if (isPrune(checkResult)) {
+        return result;
+      } else if (isError(checkResult)) {
+        result.failed.emplace(step, checkResult.asError());
+        return result;
+      }
+      activeSteps.push(std::move(step));
+    }
+    while (not activeSteps.empty()) {
+      auto nextStep = std::move(activeSteps.top());
+      activeSteps.pop();
+      auto newStates = driver.expand(nextStep->state);
+      if (newStates.empty()) {
+        result.stats.finalStates += 1;
+        result.finalStates.emplace_back(nextStep);
+        if (auto checkResult = nextStep->observer.finalStep(nextStep->state);
+            isError(checkResult)) {
+          result.failed.emplace(nextStep, checkResult.asError());
+          return result;
+        }
+      }
+      for (auto const& [transition, state] : newStates) {
+        result.stats.discoveredStates += 1;
+        // fingerprint this state
+        auto [wasNewState, step] =
+            registerFingerprint(std::move(state), nextStep->observer);
+        // add previous step information
+        step->registerPreviousStep(nextStep, std::move(transition));
+        // TODO loop detection?
+        if (step->depth == nextStep->depth) {
+
+        }
+
+        if (!wasNewState) {
+          result.stats.eliminatedStates += 1;
+          continue;  // ignore
+        }
+        step->depth = nextStep->depth + 1;
+
+        result.stats.uniqueStates += 1;
+
+        // run the check function for this step
+        auto checkResult = step->observer.check(step->state);
+        if (isPrune(checkResult)) {
+          continue;
+        } else if (isError(checkResult)) {
+          result.failed.emplace(step, checkResult.asError());
+          return result;
+        }
+
+        // put step into active steps
+        activeSteps.push(step);
       }
 
       auto now = clock::now();
