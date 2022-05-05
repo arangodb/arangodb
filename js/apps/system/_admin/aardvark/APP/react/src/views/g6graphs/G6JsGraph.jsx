@@ -7,7 +7,7 @@ import { AttributesInfo } from './AttributesInfo';
 import { data } from './data';
 import { data2 } from './data2';
 import G6 from '@antv/g6';
-import { Card  } from 'antd';
+import { Card, Tag } from 'antd';
 import NodeStyleSelector from './NodeStyleSelector.js';
 import { NodeList } from './components/node-list/node-list.component';
 import { EdgeList } from './components/edge-list/edge-list.component';
@@ -131,9 +131,9 @@ const G6JsGraph = () => {
       "collection": "germanCity"
     });
   const [nodeDataToEdit, setNodeDataToEdit] = useState();
-  const [basicNodeDataToEdit, setBasicNodeDataToEdit] = useState();
+  const [basicNodeDataToEdit, setBasicNodeDataToEdit] = useState([]);
   const [edgeDataToEdit, setEdgeDataToEdit] = useState();
-  const [basicEdgeDataToEdit, setBasicEdgeDataToEdit] = useState();
+  const [basicEdgeDataToEdit, setBasicEdgeDataToEdit] = useState([]);
   const [nodeKey, setNodeKey] = useState('Hamburg');
   const [edgeKey, setEdgeKey] = useState('Hamburg');
   const [nodeCollection, setNodeCollection] = useState('germanCity');
