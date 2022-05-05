@@ -4,7 +4,7 @@ import { uniqueId } from 'lodash';
 import PlainLabel from "./PlainLabel";
 
 type StyledTextinputProps = {
-  type: 'text' | 'number';
+  type: 'text' | 'number' | 'color';
   [key: string]: any;
 };
 
@@ -19,13 +19,13 @@ const StyledTextinput = styled.input.attrs(({ type, ...rest }: StyledTextinputPr
   }
 `;
 */
-const StyledTextinput = styled.input.attrs(({ type, width, ...rest }: StyledTextinputProps) => ({
+const StyledTextinput = styled.input.attrs(({ type, width, height, ...rest }: StyledTextinputProps) => ({
   type,
   ...rest
 }))`
   &&& {
     width: ${props => props.width || '50%'};
-    height: auto;
+    height: ${props => props.height || 'auto'};
     margin-right: 8px;
     color: #555555;
     border: 2px solid rgba(140, 138, 137, 0.25);
@@ -43,9 +43,10 @@ type TextinputProps = {
   label?: ReactNode;
   disabled?: boolean;
   width?: string;
+  height?: string;
 } & StyledTextinputProps;
 
-const Textinput = ({ id, label, disabled, width, ...rest }: TextinputProps) => {
+const Textinput = ({ id, label, disabled, width, height, ...rest }: TextinputProps) => {
   const [thisId, setThisId] = useState(id || uniqueId('textinput-'));
 
   useEffect(() => {
@@ -57,7 +58,7 @@ const Textinput = ({ id, label, disabled, width, ...rest }: TextinputProps) => {
 
   return <>
     {label ? <PlainLabel htmlFor={thisId}>{label}</PlainLabel> : null}
-    <StyledTextinput id={thisId} disabled={disabled} width={width} {...rest}/>
+    <StyledTextinput id={thisId} disabled={disabled} width={width} height={height} {...rest} />
   </>;
 };
 

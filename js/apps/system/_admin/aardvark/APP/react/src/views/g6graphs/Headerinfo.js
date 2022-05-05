@@ -159,7 +159,7 @@ const screenshotMenu = (
           </TabPane>
           <TabPane
             tab={
-              <span>
+              <span style={{ 'color': '#2ecc71' }}>
                 <NodeExpandOutlined />
                 Nodes
               </span>

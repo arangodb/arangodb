@@ -1,7 +1,7 @@
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
-import { Switch, Tooltip } from 'antd';
-import { InfoCircleOutlined } from '@ant-design/icons';
+import { Checkbox, Tooltip } from 'antd';
+import { InfoCircleFilled } from '@ant-design/icons';
 
 const ParameterNodeSizeByEdges = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
@@ -9,9 +9,8 @@ const ParameterNodeSizeByEdges = () => {
 
   const NEWURLPARAMETERS = { ...urlParameters };
 
-  return (
-    <>
-      <label>
+  /*
+  <label>
         <input
           type="checkbox"
           checked={nodeSizeByEdges}
@@ -24,11 +23,25 @@ const ParameterNodeSizeByEdges = () => {
         />
         Size by connections
       </label>
+      */
+
+  return (
+    <div>
+      <Checkbox
+          checked={nodeSizeByEdges}
+          onChange={() => {
+            const newNodeSizeByEdges = !nodeSizeByEdges;
+            setNodeSizeByEdges(newNodeSizeByEdges);
+            NEWURLPARAMETERS.nodeSizeByEdges = newNodeSizeByEdges;
+            setUrlParameters(NEWURLPARAMETERS);
+          }}>
+          Size by connections
+        </Checkbox>
+        <Tooltip placement="bottom" title={"Should nodes be colorized by their collection? If enabled, node color and node color attribute will be ignored."}>
+          <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
+        </Tooltip>
       <p>Do we calculate the node size via connections? {nodeSizeByEdges.toString()}</p>
-      <Tooltip title="Append collection name to the label?">
-        <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)', marginTop: '24px' }} />
-      </Tooltip>
-    </>
+    </div>
   );
 };
 
