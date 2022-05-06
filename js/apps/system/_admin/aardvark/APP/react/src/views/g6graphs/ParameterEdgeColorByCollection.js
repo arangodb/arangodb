@@ -1,7 +1,7 @@
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
-import { Tooltip } from 'antd';
-import { InfoCircleOutlined } from '@ant-design/icons';
+import { Checkbox, Tooltip } from 'antd';
+import { InfoCircleFilled } from '@ant-design/icons';
 
 const ParameterEdgeColorByCollection = () => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
@@ -10,25 +10,22 @@ const ParameterEdgeColorByCollection = () => {
   const NEWURLPARAMETERS = { ...urlParameters };
 
   return (
-    <>
-      <label>
-        <input
-          type="checkbox"
-          checked={edgeColorByCollection}
-          onChange={() => {
-            const newEdgeColorByCollection = !edgeColorByCollection;
-            setEdgeColorByCollection(newEdgeColorByCollection);
-            NEWURLPARAMETERS.edgeColorByCollection = newEdgeColorByCollection;
-            setUrlParameters(NEWURLPARAMETERS);
-          }}
-        />
+    <div>
+      <Checkbox
+        checked={edgeColorByCollection}
+        onChange={() => {
+          const newEdgeColorByCollection = !edgeColorByCollection;
+          setEdgeColorByCollection(newEdgeColorByCollection);
+          NEWURLPARAMETERS.edgeColorByCollection = newEdgeColorByCollection;
+          setUrlParameters(NEWURLPARAMETERS);
+        }}>
         Color edges by collection
-      </label>
-      <p>Do we color edges by their collection? {edgeColorByCollection.toString()}</p>
-      <Tooltip title="Should edges be colorized by their collection? If enabled, edge color and edge color attribute will be ignored.">
-        <InfoCircleOutlined style={{ color: 'rgba(0,0,0,.45)' }} />
+      </Checkbox>
+      <Tooltip placement="bottom" title={"Should edges be colorized by their collection? If enabled, edge color and edge color attribute will be ignored."}>
+        <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
       </Tooltip>
-    </>
+      <p>Do we color edges by their collection? {edgeColorByCollection.toString()}</p>
+    </div>
   );
 };
 

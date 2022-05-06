@@ -186,7 +186,7 @@ const screenshotMenu = (
           </TabPane>
           <TabPane
             tab={
-              <span>
+              <span style={{ 'color': '#2ecc71' }}>
                 <NodeIndexOutlined />
                 Edges
               </span>
