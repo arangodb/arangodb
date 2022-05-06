@@ -2203,861 +2203,464 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
   }
 }
 
-TEST_F(IResearchViewTest, test_insert) {
-  static std::vector<std::string> const EMPTY;
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection\" }");
-  auto linkJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"view\": \"testView\", \"includeAllFields\": true }");
-  auto viewJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testView\", \"type\":\"arangosearch\" }");
-  arangodb::aql::AstNode noop(arangodb::aql::AstNodeType::NODE_TYPE_FILTER);
-  arangodb::aql::AstNode noopChild(arangodb::aql::AstNodeValue(true));
+TEST_F(IResearchViewTest, test_insert_remove) {
+  constexpr auto insert = "insert";
+  constexpr auto remove = "remove";
+  for (auto variant : {insert, remove}) {
+    static std::vector<std::string> const EMPTY;
+    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"name\": \"testCollection\" }");
+    auto linkJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"view\": \"testView\", \"includeAllFields\": true }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"name\": \"testView\", \"type\":\"arangosearch\" }");
+    arangodb::aql::AstNode noop(arangodb::aql::AstNodeType::NODE_TYPE_FILTER);
+    arangodb::aql::AstNode noopChild(arangodb::aql::AstNodeValue(true));
 
-  noop.addMember(&noopChild);
+    noop.addMember(&noopChild);
 
-  // in recovery (skip operations before or at recovery tick)
-  {
-    auto before = StorageEngineMock::recoveryStateResult;
-    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                    testDBInfo(server.server()));
-    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-    ASSERT_NE(nullptr, logicalCollection);
-    auto viewImpl = vocbase.createView(viewJson->slice());
-    ASSERT_NE(nullptr, viewImpl);
-    auto* view =
-        dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    ASSERT_NE(nullptr, view);
-    StorageEngineMock::recoveryTickResult = 42;
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    StorageEngineMock::recoveryTickCallback = []() {
+    // in recovery (skip operations before or at recovery tick)
+    {
+      auto before = StorageEngineMock::recoveryStateResult;
+      Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                      testDBInfo(server.server()));
+      auto logicalCollection =
+          vocbase.createCollection(collectionJson->slice());
+      ASSERT_NE(nullptr, logicalCollection);
+      auto viewImpl = vocbase.createView(viewJson->slice());
+      ASSERT_NE(nullptr, viewImpl);
+      auto* view =
+          dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
+      ASSERT_NE(nullptr, view);
+      StorageEngineMock::recoveryTickResult = 42;
+      StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+      StorageEngineMock::recoveryTickCallback = []() {
+        StorageEngineMock::recoveryStateResult =
+            arangodb::RecoveryState::IN_PROGRESS;
+      };
+      auto index = StorageEngineMock::buildLinkMock(
+          arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
+      StorageEngineMock::recoveryTickCallback = []() {};
+      auto restore = irs::make_finally([&before]() -> void {
+        StorageEngineMock::recoveryStateResult = before;
+        StorageEngineMock::recoveryTickResult = 0;
+      });
+
+      ASSERT_NE(nullptr, index);
+      auto link =
+          std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+      ASSERT_NE(nullptr, link);
+
+      {
+        auto docJson =
+            arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
+        arangodb::iresearch::IResearchLinkMeta linkMeta;
+        arangodb::transaction::Methods trx(
+            arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
+            EMPTY, EMPTY, arangodb::transaction::Options());
+
+        linkMeta._includeAllFields = true;
+        EXPECT_TRUE((trx.begin().ok()));
+
+        if (variant == insert) {
+          // skip tick operations before recovery tick
+          StorageEngineMock::recoveryTickResult = 41;
+          EXPECT_TRUE(
+              link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
+                  .ok());
+          StorageEngineMock::recoveryTickResult = 42;
+          EXPECT_TRUE(
+              link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
+                  .ok());
+        }
+
+        // insert operations after recovery tick
+        StorageEngineMock::recoveryTickResult = 43;
+        EXPECT_TRUE(
+            link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
+                .ok());
+        EXPECT_TRUE(
+            link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
+                .ok());
+
+        if (variant == remove) {
+          EXPECT_TRUE(
+              link->insert(trx, arangodb::LocalDocumentId(3), docJson->slice())
+                  .ok());
+
+          // skip tick operations before recovery tick
+          StorageEngineMock::recoveryTickResult = 41;
+          EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(1)).ok());
+          StorageEngineMock::recoveryTickResult = 42;
+          EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2),
+                                   VPackSlice::noneSlice())
+                          .ok());
+
+          // apply remove after recovery tick
+          StorageEngineMock::recoveryTickResult = 43;
+          EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(3)).ok());
+        }
+
+        EXPECT_TRUE(trx.commit().ok());
+        EXPECT_TRUE(link->commit().ok());
+      }
+
+      arangodb::transaction::Methods trx(
+          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
+          EMPTY, EMPTY, arangodb::transaction::Options());
+      auto* snapshot = view->snapshot(
+          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+      EXPECT_EQ(2, snapshot->live_docs_count());
+    }
+
+    // in recovery batch (skip operations before or at recovery tick)
+    {
+      auto before = StorageEngineMock::recoveryStateResult;
       StorageEngineMock::recoveryStateResult =
           arangodb::RecoveryState::IN_PROGRESS;
-    };
-    auto index = StorageEngineMock::buildLinkMock(
-        arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
-    StorageEngineMock::recoveryTickCallback = []() {};
-    auto restore = irs::make_finally([&before]() -> void {
-      StorageEngineMock::recoveryStateResult = before;
-      StorageEngineMock::recoveryTickResult = 0;
-    });
+      Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                      testDBInfo(server.server()));
 
-    ASSERT_NE(nullptr, index);
-    auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    ASSERT_NE(nullptr, link);
+      auto logicalCollection =
+          vocbase.createCollection(collectionJson->slice());
+      ASSERT_TRUE((false == !logicalCollection));
+      auto viewImpl = vocbase.createView(viewJson->slice());
+      EXPECT_TRUE((false == !viewImpl));
+      auto* view =
+          dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
+      EXPECT_TRUE((nullptr != view));
 
-    {
-      auto docJson =
-          arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::iresearch::IResearchLinkMeta linkMeta;
-      arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
-
-      linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.begin().ok()));
-
-      // skip tick operations before recovery tick
-      StorageEngineMock::recoveryTickResult = 41;
-      EXPECT_TRUE(
-          link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
-              .ok());
       StorageEngineMock::recoveryTickResult = 42;
-      EXPECT_TRUE(
-          link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
-              .ok());
+      StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+      StorageEngineMock::recoveryTickCallback = []() {
+        StorageEngineMock::recoveryStateResult =
+            arangodb::RecoveryState::IN_PROGRESS;
+      };
+      auto index = StorageEngineMock::buildLinkMock(
+          arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
+      StorageEngineMock::recoveryTickCallback = []() {};
+      auto restore = irs::make_finally([&before]() -> void {
+        StorageEngineMock::recoveryStateResult = before;
+        StorageEngineMock::recoveryTickResult = 0;
+      });
 
-      // insert operations after recovery tick
-      StorageEngineMock::recoveryTickResult = 43;
-      EXPECT_TRUE(
-          link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
-              .ok());
-      EXPECT_TRUE(
-          link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
-              .ok());
+      ASSERT_NE(nullptr, index);
+      auto link =
+          std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+      ASSERT_NE(nullptr, link);
 
-      EXPECT_TRUE(trx.commit().ok());
-      EXPECT_TRUE(link->commit().ok());
-    }
+      {
+        auto docJson =
+            arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
+        arangodb::iresearch::IResearchLinkMeta linkMeta;
+        arangodb::transaction::Methods trx(
+            arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
+            EMPTY, EMPTY, arangodb::transaction::Options());
 
-    arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-    EXPECT_EQ(2, snapshot->live_docs_count());
-  }
+        std::vector<
+            std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>>
+            batch = {
+                {arangodb::LocalDocumentId(1), docJson->slice()},
+                {arangodb::LocalDocumentId(2), docJson->slice()},
+            };
 
-  // in recovery batch (skip operations before or at recovery tick)
-  {
-    auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
-    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                    testDBInfo(server.server()));
+        linkMeta._includeAllFields = true;
+        EXPECT_TRUE((trx.begin().ok()));
+        // insert operations before recovery tick
+        StorageEngineMock::recoveryTickResult = 41;
+        for (auto const& pair : batch) {
+          link->insert(trx, pair.first, pair.second);
+        }
+        StorageEngineMock::recoveryTickResult = 42;
+        for (auto const& pair : batch) {
+          link->insert(trx, pair.first, pair.second);
+        }
+        // insert operations after recovery tick
+        StorageEngineMock::recoveryTickResult = 43;
+        for (auto const& pair : batch) {
+          link->insert(trx, pair.first, pair.second);
+        }
+        EXPECT_TRUE((trx.commit().ok()));
+        EXPECT_TRUE(link->commit().ok());
+      }
 
-    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((false == !logicalCollection));
-    auto viewImpl = vocbase.createView(viewJson->slice());
-    EXPECT_TRUE((false == !viewImpl));
-    auto* view =
-        dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    EXPECT_TRUE((nullptr != view));
-
-    StorageEngineMock::recoveryTickResult = 42;
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    StorageEngineMock::recoveryTickCallback = []() {
-      StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
-    };
-    auto index = StorageEngineMock::buildLinkMock(
-        arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
-    StorageEngineMock::recoveryTickCallback = []() {};
-    auto restore = irs::make_finally([&before]() -> void {
-      StorageEngineMock::recoveryStateResult = before;
-      StorageEngineMock::recoveryTickResult = 0;
-    });
-
-    ASSERT_NE(nullptr, index);
-    auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    ASSERT_NE(nullptr, link);
-
-    {
-      auto docJson =
-          arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
 
-      std::vector<
-          std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>>
-          batch = {
-              {arangodb::LocalDocumentId(1), docJson->slice()},
-              {arangodb::LocalDocumentId(2), docJson->slice()},
-          };
-
-      linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.begin().ok()));
-      // insert operations before recovery tick
-      StorageEngineMock::recoveryTickResult = 41;
-      for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
-      }
-      StorageEngineMock::recoveryTickResult = 42;
-      for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
-      }
-      // insert operations after recovery tick
-      StorageEngineMock::recoveryTickResult = 43;
-      for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
-      }
-      EXPECT_TRUE((trx.commit().ok()));
-      EXPECT_TRUE(link->commit().ok());
+      auto* snapshot = view->snapshot(
+          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+      EXPECT_EQ(2, snapshot->live_docs_count());
     }
 
-    arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
-
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-    EXPECT_EQ(2, snapshot->live_docs_count());
-  }
-
-  // not in recovery (FindOrCreate)
-  {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                    testDBInfo(server.server()));
-    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((false == !logicalCollection));
-    auto viewImpl = vocbase.createView(viewJson->slice());
-    EXPECT_TRUE((false == !viewImpl));
-    auto* view =
-        dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    EXPECT_TRUE((nullptr != view));
-    auto index = StorageEngineMock::buildLinkMock(
-        arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
-    ASSERT_NE(nullptr, index);
-    auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    ASSERT_TRUE((false == !link));
-
+    // not in recovery (FindOrCreate)
     {
-      auto docJson =
-          arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::iresearch::IResearchLinkMeta linkMeta;
+      StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+      Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                      testDBInfo(server.server()));
+      auto logicalCollection =
+          vocbase.createCollection(collectionJson->slice());
+      ASSERT_TRUE((false == !logicalCollection));
+      auto viewImpl = vocbase.createView(viewJson->slice());
+      EXPECT_TRUE((false == !viewImpl));
+      auto* view =
+          dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
+      EXPECT_TRUE((nullptr != view));
+      auto index = StorageEngineMock::buildLinkMock(
+          arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
+      ASSERT_NE(nullptr, index);
+      auto link =
+          std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+      ASSERT_TRUE((false == !link));
+
+      {
+        auto docJson =
+            arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
+        arangodb::iresearch::IResearchLinkMeta linkMeta;
+        arangodb::transaction::Methods trx(
+            arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
+            EMPTY, EMPTY, arangodb::transaction::Options());
+
+        linkMeta._includeAllFields = true;
+        EXPECT_TRUE((trx.begin().ok()));
+        EXPECT_TRUE(
+            (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
+                 .ok()));
+        EXPECT_TRUE(
+            (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
+                 .ok()));
+        EXPECT_TRUE(
+            (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
+                 .ok()));  // 2nd time
+        EXPECT_TRUE(
+            (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
+                 .ok()));  // 2nd time
+        EXPECT_TRUE((trx.commit().ok()));
+        EXPECT_TRUE(link->commit().ok());
+      }
+
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-
-      linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
-               .ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
-               .ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
-               .ok()));  // 2nd time
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
-               .ok()));  // 2nd time
-      EXPECT_TRUE((trx.commit().ok()));
-      EXPECT_TRUE(link->commit().ok());
+      auto* snapshot = view->snapshot(
+          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+      EXPECT_TRUE((4 == snapshot->docs_count()));
     }
 
-    arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-    EXPECT_TRUE((4 == snapshot->docs_count()));
-  }
-
-  // not in recovery (SyncAndReplace)
-  {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                    testDBInfo(server.server()));
-    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((false == !logicalCollection));
-    auto viewImpl = vocbase.createView(viewJson->slice());
-    EXPECT_TRUE((false == !viewImpl));
-    auto* view =
-        dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    EXPECT_TRUE((nullptr != view));
-    EXPECT_TRUE(view->category() ==
-                arangodb::LogicalDataSource::Category::kView);
-    auto index = StorageEngineMock::buildLinkMock(
-        arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
-    ASSERT_NE(nullptr, index);
-    auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    ASSERT_TRUE((false == !link));
-
+    // not in recovery (SyncAndReplace)
     {
-      auto docJson =
-          arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::iresearch::IResearchLinkMeta linkMeta;
-      arangodb::transaction::Options options;
-      arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, options);
+      StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+      Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                      testDBInfo(server.server()));
+      auto logicalCollection =
+          vocbase.createCollection(collectionJson->slice());
+      ASSERT_TRUE((false == !logicalCollection));
+      auto viewImpl = vocbase.createView(viewJson->slice());
+      EXPECT_TRUE((false == !viewImpl));
+      auto* view =
+          dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
+      EXPECT_TRUE((nullptr != view));
+      EXPECT_TRUE(view->category() ==
+                  arangodb::LogicalDataSource::Category::kView);
+      auto index = StorageEngineMock::buildLinkMock(
+          arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
+      ASSERT_NE(nullptr, index);
+      auto link =
+          std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+      ASSERT_TRUE((false == !link));
 
-      linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
-               .ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
-               .ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
-               .ok()));  // 2nd time
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
-               .ok()));  // 2nd time
-      EXPECT_TRUE((trx.commit().ok()));
-    }
+      {
+        auto docJson =
+            arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
+        arangodb::iresearch::IResearchLinkMeta linkMeta;
+        arangodb::transaction::Options options;
+        arangodb::transaction::Methods trx(
+            arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
+            EMPTY, EMPTY, options);
 
-    arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
-    EXPECT_TRUE((4 == snapshot->docs_count()));
-  }
+        linkMeta._includeAllFields = true;
+        EXPECT_TRUE((trx.begin().ok()));
+        EXPECT_TRUE(
+            (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
+                 .ok()));
+        EXPECT_TRUE(
+            (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
+                 .ok()));
+        EXPECT_TRUE(
+            (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
+                 .ok()));  // 2nd time
+        EXPECT_TRUE(
+            (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
+                 .ok()));  // 2nd time
+        EXPECT_TRUE((trx.commit().ok()));
+      }
 
-  // not in recovery : single operation transaction
-  {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                    testDBInfo(server.server()));
-    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((false == !logicalCollection));
-    auto viewImpl = vocbase.createView(viewJson->slice());
-    EXPECT_TRUE((false == !viewImpl));
-    auto* view =
-        dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    EXPECT_TRUE((nullptr != view));
-    EXPECT_TRUE(view->category() ==
-                arangodb::LogicalDataSource::Category::kView);
-    auto index = StorageEngineMock::buildLinkMock(
-        arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
-    ASSERT_NE(nullptr, index);
-    auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    ASSERT_TRUE((false == !link));
-
-    {
-      auto docJson =
-          arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::iresearch::IResearchLinkMeta linkMeta;
-      arangodb::transaction::Options options;
-      arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, options);
-      trx.addHint(arangodb::transaction::Hints::Hint::SINGLE_OPERATION);
-
-      linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
-               .ok()));
-      EXPECT_TRUE((trx.commit().ok()));
-    }
-
-    arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
-    EXPECT_TRUE((1 == snapshot->docs_count()));
-  }
-
-  // not in recovery batch (FindOrCreate)
-  {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                    testDBInfo(server.server()));
-    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((false == !logicalCollection));
-    auto viewImpl = vocbase.createView(viewJson->slice());
-    EXPECT_TRUE((false == !viewImpl));
-    auto* view =
-        dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    EXPECT_TRUE((nullptr != view));
-    auto index = StorageEngineMock::buildLinkMock(
-        arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
-    ASSERT_NE(nullptr, index);
-    auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    ASSERT_TRUE((false == !link));
-
-    {
-      auto docJson =
-          arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      std::vector<
-          std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>>
-          batch = {
-              {arangodb::LocalDocumentId(1), docJson->slice()},
-              {arangodb::LocalDocumentId(2), docJson->slice()},
-          };
-
-      linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.begin().ok()));
-      for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
-      }
-      for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
-      }  // 2nd time
-      EXPECT_TRUE((trx.commit().ok()));
-      EXPECT_TRUE(link->commit().ok());
+      auto* snapshot = view->snapshot(
+          trx,
+          arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
+      EXPECT_TRUE((4 == snapshot->docs_count()));
     }
 
-    arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-    EXPECT_TRUE((4 == snapshot->docs_count()));
-  }
-
-  // not in recovery batch (SyncAndReplace)
-  {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                    testDBInfo(server.server()));
-    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((false == !logicalCollection));
-    auto viewImpl = vocbase.createView(viewJson->slice());
-    EXPECT_TRUE((false == !viewImpl));
-    auto* view =
-        dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    EXPECT_TRUE((nullptr != view));
-    auto index = StorageEngineMock::buildLinkMock(
-        arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
-    ASSERT_NE(nullptr, index);
-    auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    ASSERT_TRUE((false == !link));
-
+    // not in recovery : single operation transaction
     {
-      auto docJson =
-          arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::iresearch::IResearchLinkMeta linkMeta;
-      arangodb::transaction::Options options;
-      arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, options);
-      std::vector<
-          std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>>
-          batch = {
-              {arangodb::LocalDocumentId(1), docJson->slice()},
-              {arangodb::LocalDocumentId(2), docJson->slice()},
-          };
+      StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+      Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                      testDBInfo(server.server()));
+      auto logicalCollection =
+          vocbase.createCollection(collectionJson->slice());
+      ASSERT_TRUE((false == !logicalCollection));
+      auto viewImpl = vocbase.createView(viewJson->slice());
+      EXPECT_TRUE((false == !viewImpl));
+      auto* view =
+          dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
+      EXPECT_TRUE((nullptr != view));
+      EXPECT_TRUE(view->category() ==
+                  arangodb::LogicalDataSource::Category::kView);
+      auto index = StorageEngineMock::buildLinkMock(
+          arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
+      ASSERT_NE(nullptr, index);
+      auto link =
+          std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+      ASSERT_TRUE((false == !link));
 
-      linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.begin().ok()));
-      for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
+      {
+        auto docJson =
+            arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
+        arangodb::iresearch::IResearchLinkMeta linkMeta;
+        arangodb::transaction::Options options;
+        arangodb::transaction::Methods trx(
+            arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
+            EMPTY, EMPTY, options);
+        trx.addHint(arangodb::transaction::Hints::Hint::SINGLE_OPERATION);
+
+        linkMeta._includeAllFields = true;
+        EXPECT_TRUE((trx.begin().ok()));
+        EXPECT_TRUE(
+            (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
+                 .ok()));
+        EXPECT_TRUE((trx.commit().ok()));
       }
-      for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
-      }  // 2nd time
-      EXPECT_TRUE((trx.commit().ok()));
-    }
 
-    arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
-    EXPECT_TRUE((4 == snapshot->docs_count()));
-  }
-}
-
-TEST_F(IResearchViewTest, test_remove) {
-  static std::vector<std::string> const EMPTY;
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection\" }");
-  auto linkJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"view\": \"testView\", \"includeAllFields\": true }");
-  auto viewJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testView\", \"type\":\"arangosearch\" }");
-  arangodb::aql::AstNode noop(arangodb::aql::AstNodeType::NODE_TYPE_FILTER);
-  arangodb::aql::AstNode noopChild(arangodb::aql::AstNodeValue(true));
-
-  noop.addMember(&noopChild);
-
-  // in recovery (skip operations before or at recovery tick)
-  {
-    auto before = StorageEngineMock::recoveryStateResult;
-    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                    testDBInfo(server.server()));
-    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-    ASSERT_NE(nullptr, logicalCollection);
-    auto viewImpl = vocbase.createView(viewJson->slice());
-    ASSERT_NE(nullptr, viewImpl);
-    auto* view =
-        dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    ASSERT_NE(nullptr, view);
-    StorageEngineMock::recoveryTickResult = 42;
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    StorageEngineMock::recoveryTickCallback = []() {
-      StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
-    };
-    auto index = StorageEngineMock::buildLinkMock(
-        arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
-    StorageEngineMock::recoveryTickCallback = []() {};
-    auto restore = irs::make_finally([&before]() -> void {
-      StorageEngineMock::recoveryStateResult = before;
-      StorageEngineMock::recoveryTickResult = 0;
-    });
-
-    ASSERT_NE(nullptr, index);
-    auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    ASSERT_NE(nullptr, link);
-
-    {
-      auto docJson =
-          arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-
-      linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.begin().ok()));
-
-      // insert operations after recovery tick
-      StorageEngineMock::recoveryTickResult = 43;
-      EXPECT_TRUE(
-          link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
-              .ok());
-      EXPECT_TRUE(
-          link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
-              .ok());
-      EXPECT_TRUE(
-          link->insert(trx, arangodb::LocalDocumentId(3), docJson->slice())
-              .ok());
-
-      // skip tick operations before recovery tick
-      StorageEngineMock::recoveryTickResult = 41;
-      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(1)).ok());
-      StorageEngineMock::recoveryTickResult = 42;
-      EXPECT_TRUE(link->insert(trx, arangodb::LocalDocumentId(2),
-                               VPackSlice::noneSlice())
-                      .ok());
-
-      // apply remove after recovery tick
-      StorageEngineMock::recoveryTickResult = 43;
-      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(3)).ok());
-
-      EXPECT_TRUE(trx.commit().ok());
-      EXPECT_TRUE(link->commit().ok());
+      auto* snapshot = view->snapshot(
+          trx,
+          arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
+      EXPECT_TRUE((1 == snapshot->docs_count()));
     }
 
-    arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-    EXPECT_EQ(2, snapshot->live_docs_count());
-  }
-
-  // in recovery batch (skip operations before or at recovery tick)
-  {
-    auto before = StorageEngineMock::recoveryStateResult;
-    StorageEngineMock::recoveryStateResult =
-        arangodb::RecoveryState::IN_PROGRESS;
-    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                    testDBInfo(server.server()));
-    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((false == !logicalCollection));
-    auto viewImpl = vocbase.createView(viewJson->slice());
-    EXPECT_TRUE((false == !viewImpl));
-    auto* view =
-        dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    EXPECT_TRUE((nullptr != view));
-
-    StorageEngineMock::recoveryTickResult = 42;
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    StorageEngineMock::recoveryTickCallback = []() {
-      StorageEngineMock::recoveryStateResult =
-          arangodb::RecoveryState::IN_PROGRESS;
-    };
-    auto index = StorageEngineMock::buildLinkMock(
-        arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
-    StorageEngineMock::recoveryTickCallback = []() {};
-    auto restore = irs::make_finally([&before]() -> void {
-      StorageEngineMock::recoveryStateResult = before;
-      StorageEngineMock::recoveryTickResult = 0;
-    });
-
-    ASSERT_NE(nullptr, index);
-    auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    ASSERT_NE(nullptr, link);
-
+    // not in recovery batch (FindOrCreate)
     {
-      auto docJson =
-          arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::iresearch::IResearchLinkMeta linkMeta;
+      StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+      Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                      testDBInfo(server.server()));
+      auto logicalCollection =
+          vocbase.createCollection(collectionJson->slice());
+      ASSERT_TRUE((false == !logicalCollection));
+      auto viewImpl = vocbase.createView(viewJson->slice());
+      EXPECT_TRUE((false == !viewImpl));
+      auto* view =
+          dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
+      EXPECT_TRUE((nullptr != view));
+      auto index = StorageEngineMock::buildLinkMock(
+          arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
+      ASSERT_NE(nullptr, index);
+      auto link =
+          std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+      ASSERT_TRUE((false == !link));
+
+      {
+        auto docJson =
+            arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
+        arangodb::iresearch::IResearchLinkMeta linkMeta;
+        arangodb::transaction::Methods trx(
+            arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
+            EMPTY, EMPTY, arangodb::transaction::Options());
+        std::vector<
+            std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>>
+            batch = {
+                {arangodb::LocalDocumentId(1), docJson->slice()},
+                {arangodb::LocalDocumentId(2), docJson->slice()},
+            };
+
+        linkMeta._includeAllFields = true;
+        EXPECT_TRUE((trx.begin().ok()));
+        for (auto const& pair : batch) {
+          link->insert(trx, pair.first, pair.second);
+        }
+        for (auto const& pair : batch) {
+          link->insert(trx, pair.first, pair.second);
+        }  // 2nd time
+        EXPECT_TRUE((trx.commit().ok()));
+        EXPECT_TRUE(link->commit().ok());
+      }
+
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-
-      std::vector<
-          std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>>
-          batch = {
-              {arangodb::LocalDocumentId(1), docJson->slice()},
-              {arangodb::LocalDocumentId(2), docJson->slice()},
-          };
-
-      linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.begin().ok()));
-      // insert operations before recovery tick
-      StorageEngineMock::recoveryTickResult = 41;
-      for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
-      }
-      StorageEngineMock::recoveryTickResult = 42;
-      for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
-      }
-      // insert operations after recovery tick
-      StorageEngineMock::recoveryTickResult = 43;
-      for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
-      }
-      EXPECT_TRUE((trx.commit().ok()));
-      EXPECT_TRUE(link->commit().ok());
+      auto* snapshot = view->snapshot(
+          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+      EXPECT_TRUE((4 == snapshot->docs_count()));
     }
 
-    arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
-
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-    EXPECT_EQ(2, snapshot->live_docs_count());
-  }
-
-  // not in recovery (FindOrCreate)
-  {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                    testDBInfo(server.server()));
-    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((false == !logicalCollection));
-    auto viewImpl = vocbase.createView(viewJson->slice());
-    EXPECT_TRUE((false == !viewImpl));
-    auto* view =
-        dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    EXPECT_TRUE((nullptr != view));
-    auto index = StorageEngineMock::buildLinkMock(
-        arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
-    ASSERT_NE(nullptr, index);
-    auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    ASSERT_TRUE((false == !link));
-
+    // not in recovery batch (SyncAndReplace)
     {
-      auto docJson =
-          arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::iresearch::IResearchLinkMeta linkMeta;
+      StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+      Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                      testDBInfo(server.server()));
+      auto logicalCollection =
+          vocbase.createCollection(collectionJson->slice());
+      ASSERT_TRUE((false == !logicalCollection));
+      auto viewImpl = vocbase.createView(viewJson->slice());
+      EXPECT_TRUE((false == !viewImpl));
+      auto* view =
+          dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
+      EXPECT_TRUE((nullptr != view));
+      auto index = StorageEngineMock::buildLinkMock(
+          arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
+      ASSERT_NE(nullptr, index);
+      auto link =
+          std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+      ASSERT_TRUE((false == !link));
+
+      {
+        auto docJson =
+            arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
+        arangodb::iresearch::IResearchLinkMeta linkMeta;
+        arangodb::transaction::Options options;
+        arangodb::transaction::Methods trx(
+            arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
+            EMPTY, EMPTY, options);
+        std::vector<
+            std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>>
+            batch = {
+                {arangodb::LocalDocumentId(1), docJson->slice()},
+                {arangodb::LocalDocumentId(2), docJson->slice()},
+            };
+
+        linkMeta._includeAllFields = true;
+        EXPECT_TRUE((trx.begin().ok()));
+        for (auto const& pair : batch) {
+          link->insert(trx, pair.first, pair.second);
+        }
+        for (auto const& pair : batch) {
+          link->insert(trx, pair.first, pair.second);
+        }  // 2nd time
+        EXPECT_TRUE((trx.commit().ok()));
+      }
+
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-
-      linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
-               .ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
-               .ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
-               .ok()));  // 2nd time
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
-               .ok()));  // 2nd time
-      EXPECT_TRUE((trx.commit().ok()));
-      EXPECT_TRUE(link->commit().ok());
+      auto* snapshot = view->snapshot(
+          trx,
+          arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
+      EXPECT_TRUE((4 == snapshot->docs_count()));
     }
-
-    arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-    EXPECT_TRUE((4 == snapshot->docs_count()));
-  }
-
-  // not in recovery (SyncAndReplace)
-  {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                    testDBInfo(server.server()));
-    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((false == !logicalCollection));
-    auto viewImpl = vocbase.createView(viewJson->slice());
-    EXPECT_TRUE((false == !viewImpl));
-    auto* view =
-        dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    EXPECT_TRUE((nullptr != view));
-    EXPECT_TRUE(view->category() ==
-                arangodb::LogicalDataSource::Category::kView);
-    auto index = StorageEngineMock::buildLinkMock(
-        arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
-    ASSERT_NE(nullptr, index);
-    auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    ASSERT_TRUE((false == !link));
-
-    {
-      auto docJson =
-          arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::iresearch::IResearchLinkMeta linkMeta;
-      arangodb::transaction::Options options;
-      arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, options);
-
-      linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
-               .ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
-               .ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
-               .ok()));  // 2nd time
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(2), docJson->slice())
-               .ok()));  // 2nd time
-      EXPECT_TRUE((trx.commit().ok()));
-    }
-
-    arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
-    EXPECT_TRUE((4 == snapshot->docs_count()));
-  }
-
-  // not in recovery : single operation transaction
-  {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                    testDBInfo(server.server()));
-    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((false == !logicalCollection));
-    auto viewImpl = vocbase.createView(viewJson->slice());
-    EXPECT_TRUE((false == !viewImpl));
-    auto* view =
-        dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    EXPECT_TRUE((nullptr != view));
-    EXPECT_TRUE(view->category() ==
-                arangodb::LogicalDataSource::Category::kView);
-    auto index = StorageEngineMock::buildLinkMock(
-        arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
-    ASSERT_NE(nullptr, index);
-    auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    ASSERT_TRUE((false == !link));
-
-    {
-      auto docJson =
-          arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::iresearch::IResearchLinkMeta linkMeta;
-      arangodb::transaction::Options options;
-      arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, options);
-      trx.addHint(arangodb::transaction::Hints::Hint::SINGLE_OPERATION);
-
-      linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.begin().ok()));
-      EXPECT_TRUE(
-          (link->insert(trx, arangodb::LocalDocumentId(1), docJson->slice())
-               .ok()));
-      EXPECT_TRUE((trx.commit().ok()));
-    }
-
-    arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
-    EXPECT_TRUE((1 == snapshot->docs_count()));
-  }
-
-  // not in recovery batch (FindOrCreate)
-  {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                    testDBInfo(server.server()));
-    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((false == !logicalCollection));
-    auto viewImpl = vocbase.createView(viewJson->slice());
-    EXPECT_TRUE((false == !viewImpl));
-    auto* view =
-        dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    EXPECT_TRUE((nullptr != view));
-    auto index = StorageEngineMock::buildLinkMock(
-        arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
-    ASSERT_NE(nullptr, index);
-    auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    ASSERT_TRUE((false == !link));
-
-    {
-      auto docJson =
-          arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::iresearch::IResearchLinkMeta linkMeta;
-      arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
-      std::vector<
-          std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>>
-          batch = {
-              {arangodb::LocalDocumentId(1), docJson->slice()},
-              {arangodb::LocalDocumentId(2), docJson->slice()},
-          };
-
-      linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.begin().ok()));
-      for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
-      }
-      for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
-      }  // 2nd time
-      EXPECT_TRUE((trx.commit().ok()));
-      EXPECT_TRUE(link->commit().ok());
-    }
-
-    arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-    EXPECT_TRUE((4 == snapshot->docs_count()));
-  }
-
-  // not in recovery batch (SyncAndReplace)
-  {
-    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
-    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                    testDBInfo(server.server()));
-    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-    ASSERT_TRUE((false == !logicalCollection));
-    auto viewImpl = vocbase.createView(viewJson->slice());
-    EXPECT_TRUE((false == !viewImpl));
-    auto* view =
-        dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
-    EXPECT_TRUE((nullptr != view));
-    auto index = StorageEngineMock::buildLinkMock(
-        arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
-    ASSERT_NE(nullptr, index);
-    auto link =
-        std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-    ASSERT_TRUE((false == !link));
-
-    {
-      auto docJson =
-          arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-      arangodb::iresearch::IResearchLinkMeta linkMeta;
-      arangodb::transaction::Options options;
-      arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, options);
-      std::vector<
-          std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>>
-          batch = {
-              {arangodb::LocalDocumentId(1), docJson->slice()},
-              {arangodb::LocalDocumentId(2), docJson->slice()},
-          };
-
-      linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.begin().ok()));
-      for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
-      }
-      for (auto const& pair : batch) {
-        link->insert(trx, pair.first, pair.second);
-      }  // 2nd time
-      EXPECT_TRUE((trx.commit().ok()));
-    }
-
-    arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
-    EXPECT_TRUE((4 == snapshot->docs_count()));
   }
 }
 
