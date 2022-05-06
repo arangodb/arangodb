@@ -184,7 +184,7 @@ export class GraphView extends React.Component {
           'drag-canvas',
           'zoom-canvas',
           'drag-node',
-          'activate-relations',
+          //'activate-relations',
           {
             type: 'tooltip', // Tooltip
             formatText(model) {
@@ -250,7 +250,7 @@ export class GraphView extends React.Component {
           shadowBlur: 10,
           cursor: 'pointer',
         },
-        searched: {
+        searchedNode: {
           fill: '#9fb53a',
           stroke: '#82962d',
           lineWidth: 2,
@@ -324,6 +324,11 @@ export class GraphView extends React.Component {
           stroke: `l(0) 0:#ffffff 0.5:#9fb53a 1:#82962d`,
           cursor: 'pointer'
         },
+        searchedEdge: {
+          stroke: '#82962d',
+          lineWidth: 4,
+          cursor: 'pointer',
+        }
       },
     });
 
@@ -661,17 +666,26 @@ export class GraphView extends React.Component {
   }
 
   highlightNode = (node) => {
-    if(node) {
+    if(node !== undefined) {
       console.log("searched node: ", node);
-      this.graph.setItemState(node, 'searched', true);
+      //this.graph.clearItemStates(node);
+      this.graph.setItemState(node, 'searchedNode', true);
       this.graph.focusItem(node, true);
     }
+    /*
+    const findParis = this.graph.findById('frenchCity/Paris');
+    console.log("findParis: ", findParis);
+
+    const findX = this.graph.findById('x');
+    console.log("findX: ", findX);
+    */
   }
 
   highlightEdge = (edge) => {
     if(edge) {
       console.log("searched edge: ", edge);
-      this.graph.setItemState(edge, 'searched', true);
+      //this.graph.clearItemStates(edge);
+      this.graph.setItemState(edge, 'searchedEdge', true);
       this.graph.focusItem(edge, true);
     }
   }
@@ -786,6 +800,14 @@ export class GraphView extends React.Component {
       }}>
         Color nodes by collection
       </button>
+      <button onClick={() => {
+        const node = this.graph.findById('frenchCity/Paris');
+        console.log("Found node: ", node);
+
+        this.graph.moveTo(node.get('model').x, node.get('model').y, true, {
+          duration: 100,
+        });
+      }}>Find node Paris</button>
       <button onClick={() => {
         const node = this.graph.findById('frenchCity/Paris');
         console.log("Found node: ", node);

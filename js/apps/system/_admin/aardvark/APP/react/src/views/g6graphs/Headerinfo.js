@@ -25,6 +25,8 @@ import ParameterNodeSizeByEdges from "./ParameterNodeSizeByEdges";
 import ButtonSave from "./ButtonSave";
 import EdgeStyleSelector from "./EdgeStyleSelector";
 import GraphLayoutSelector from "./GraphLayoutSelector";
+import SearchNodes from "./SearchNodes";
+import SearchEdges from "./SearchEdges";
 
 export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadScreenshot, onDownloadFullScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onNodeSearched, onEdgeSearched, onEdgeStyleChanged, onGraphLayoutChange, onGraphDataLoaded }) => {
   
@@ -212,24 +214,25 @@ const screenshotMenu = (
           </TabPane>
           <TabPane
             tab={
-              <span>
+              <span style={{ 'color': '#2ecc71' }}>
                 <SearchOutlined />
                 Search
               </span>
             }
             key="4"
           >
-            <NodeList
+            <SearchNodes
               nodes={graphData.nodes}
               graphData={graphData}
               onNodeInfo={() => console.log('onNodeInfo() in MenuGraph')}
               onNodeSelect={(node) => onNodeSearched(node)}
             />
-            <EdgeList
+            <SearchEdges
               edges={graphData.edges}
               graphData={graphData}
+              onEdgeInfo={() => console.log('onEdgeInfo() in MenuGraph')}
               onEdgeSelect={(edge) => onEdgeSearched(edge)}
-              />
+            />
           </TabPane>
         </Tabs>
       }
