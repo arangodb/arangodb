@@ -18,13 +18,14 @@ const ParameterEdgeLabelByCollection = () => {
           setEdgeLabelByCollection(newEdgeLabelByCollection);
           NEWURLPARAMETERS.edgeLabelByCollection = newEdgeLabelByCollection;
           setUrlParameters(NEWURLPARAMETERS);
-        }}>
+        }}
+        style={{ 'color': '#736b68' }}
+      >
         Show collection name
       </Checkbox>
       <Tooltip placement="bottom" title={"Append collection name to the label?"}>
         <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
       </Tooltip>
-      <p>Do we show the collection name? {edgeLabelByCollection.toString()}</p>
     </div>
   );
 };

@@ -49,13 +49,14 @@ const ParameterNodeLabelByCollection = ({ graphData, onAddCollectionNameChange }
           NEWURLPARAMETERS.nodeLabelByCollection = newNodeLabelByCollection;
           setUrlParameters(NEWURLPARAMETERS);
           onAddCollectionNameChange(newNodeLabelByCollection);
-        }}>
+        }}
+        style={{ 'color': '#736b68' }}
+      >
         Show collection name
       </Checkbox>
       <Tooltip placement="bottom" title={"Different graph algorithms. No overlap is very fast (more than 5000 nodes), force is slower (less than 5000 nodes) and fruchtermann is the slowest (less than 500 nodes)."}>
         <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
       </Tooltip>
-      <p>Do we show the collection name? {nodeLabelByCollection.toString()}</p>
     </div>
   );
 };

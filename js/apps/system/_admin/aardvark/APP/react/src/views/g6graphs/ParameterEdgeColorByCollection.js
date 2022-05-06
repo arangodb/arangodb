@@ -18,13 +18,14 @@ const ParameterEdgeColorByCollection = () => {
           setEdgeColorByCollection(newEdgeColorByCollection);
           NEWURLPARAMETERS.edgeColorByCollection = newEdgeColorByCollection;
           setUrlParameters(NEWURLPARAMETERS);
-        }}>
+        }}
+        style={{ 'color': '#736b68' }}
+      >
         Color edges by collection
       </Checkbox>
       <Tooltip placement="bottom" title={"Should edges be colorized by their collection? If enabled, edge color and edge color attribute will be ignored."}>
         <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
       </Tooltip>
-      <p>Do we color edges by their collection? {edgeColorByCollection.toString()}</p>
     </div>
   );
 };

@@ -34,13 +34,14 @@ const ParameterNodeSizeByEdges = () => {
             setNodeSizeByEdges(newNodeSizeByEdges);
             NEWURLPARAMETERS.nodeSizeByEdges = newNodeSizeByEdges;
             setUrlParameters(NEWURLPARAMETERS);
-          }}>
+          }}
+          style={{ 'color': '#736b68' }}
+        >
           Size by connections
         </Checkbox>
         <Tooltip placement="bottom" title={"Should nodes be colorized by their collection? If enabled, node color and node color attribute will be ignored."}>
           <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
         </Tooltip>
-      <p>Do we calculate the node size via connections? {nodeSizeByEdges.toString()}</p>
     </div>
   );
 };
