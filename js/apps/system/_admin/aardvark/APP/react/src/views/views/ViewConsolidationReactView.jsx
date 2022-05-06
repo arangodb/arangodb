@@ -49,9 +49,13 @@ const ViewConsolidationReactView = ({ name }) => {
           </div>
         </div>
       </div>
-      <div className="modal-footer">
-        <SaveButton view={formState} oldName={name}/>
-      </div>
+      {
+        isAdminUser
+          ? <div className="modal-footer">
+            <SaveButton view={formState} oldName={name}/>
+          </div>
+          : null
+      }
     </div>
   </div>;
 };

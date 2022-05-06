@@ -142,11 +142,15 @@ const ViewSettingsReactView = ({ name }) => {
           </div>
         </div>
       </div>
-      <div className="modal-footer">
-        <DeleteButton view={formState}
-                      modalCid={`modal-content-delete-${formState.globallyUniqueId}`}/>
-        <SaveButton view={formState} oldName={name}/>
-      </div>
+      {
+        isAdminUser
+          ? <div className="modal-footer">
+            <DeleteButton view={formState}
+                          modalCid={`modal-content-delete-${formState.globallyUniqueId}`}/>
+            <SaveButton view={formState} oldName={name}/>
+          </div>
+          : null
+      }
     </div>
   </div>;
 };
