@@ -40,76 +40,87 @@ export const BackButton = ({ buttonClick, disabled }: BackButtonProps) => {
   );
 };
 
-export const SaveButton = ({
-  view,
-  oldName,
-  menu
-}: SaveButtonProps) => {
-  const handleSave = async () => {
-    const route = getApiRouteForCurrentDB();
-    let result;
-    let error = false;
-    const path = `/view/${view.name}/properties`;
+export const handleSave = async ({
+                                   view,
+                                   oldName,
+                                   menu
+                                 }: SaveButtonProps) => {
+  const route = getApiRouteForCurrentDB();
+  let result;
+  let error = false;
+  const path = `/view/${view.name}/properties`;
 
-    try {
-      if (view.name !== oldName) {
-        result = await route.put(`/view/${oldName}/rename`, {
-          name: view.name
-        });
+  try {
+    if (view.name !== oldName) {
+      result = await route.put(`/view/${oldName}/rename`, {
+        name: view.name
+      });
 
-        if (result.body.error) {
-          arangoHelper.arangoError(
-            "Failure",
-            `Got unexpected server response: ${result.body.errorMessage}`
-          );
-          error = true;
-        }
-      }
-
-      if (!error) {
-        const properties = pick(
-          view,
-          "consolidationIntervalMsec",
-          "commitIntervalMsec",
-          "cleanupIntervalStep",
-          "links",
-          "consolidationPolicy"
+      if (result.body.error) {
+        arangoHelper.arangoError(
+          "Failure",
+          `Got unexpected server response: ${result.body.errorMessage}`
         );
-        result = await route.patch(path, properties);
-
-        if (result.body.error) {
-          arangoHelper.arangoError(
-            "Failure",
-            `Got unexpected server response: ${result.body.errorMessage}`
-          );
-        } else {
-          if (view.name !== oldName) {
-            let newRoute = `#view/${view.name}`;
-            if (menu) {
-              newRoute += `/${menu}`;
-            }
-            window.App.navigate(newRoute, {
-              trigger: true,
-              replace: true
-            });
-          }
-          await mutate(path);
-          arangoHelper.arangoNotification(
-            "Success",
-            `Updated View: ${view.name}`
-          );
-        }
+        error = true;
       }
-    } catch (e) {
-      arangoHelper.arangoError(
-        "Failure",
-        `Got unexpected server response: ${e.message}`
-      );
     }
-  };
+
+    if (!error) {
+      const properties = pick(
+        view,
+        "consolidationIntervalMsec",
+        "commitIntervalMsec",
+        "cleanupIntervalStep",
+        "links",
+        "consolidationPolicy"
+      );
+      result = await route.patch(path, properties);
+
+      if (result.body.error) {
+        arangoHelper.arangoError(
+          "Failure",
+          `Got unexpected server response: ${result.body.errorMessage}`
+        );
+      } else {
+        if (view.name === oldName) {
+          await mutate(path);
+        } else {
+          let newRoute = `#view/${view.name}`;
+          if (menu) {
+            newRoute += `/${menu}`;
+          }
+          window.App.navigate(newRoute, {
+            trigger: true,
+            replace: true
+          });
+        }
+        arangoHelper.arangoNotification(
+          "Success",
+          `Updated View: ${view.name}`
+        );
+      }
+    }
+  } catch (e) {
+    arangoHelper.arangoError(
+      "Failure",
+      `Got unexpected server response: ${e.message}`
+    );
+  }
+};
+
+export const SaveButton = ({
+                             view,
+                             oldName,
+                             menu
+                           }: SaveButtonProps) => {
+
 
   return (
-    <IconButton icon={"save"} onClick={handleSave} type={"success"}>
+    <IconButton icon={"save"} onClick={() => handleSave({
+      view,
+      oldName,
+      menu
+    })} type={"success"}>
       Save
     </IconButton>
   );
@@ -158,7 +169,7 @@ export const DeleteButton = ({ view }: ButtonProps) => {
         setShow={setShow}
         cid={`modal-content-delete-${view.name}`}
       >
-        <ModalHeader title={`Delete View ${view.name}?`} />
+        <ModalHeader title={`Delete View ${view.name}?`}/>
         <ModalBody>
           <p>
             Are you sure? Clicking on the <b>Delete</b> button will permanently

@@ -98,7 +98,7 @@ const ViewLinksReactView = ({ name }) => {
       <div className={"centralContent"} id={"content"}>
         {show === "LinkList" ? (
           <LinkList
-            links={formState.links}
+            formState={formState}
             addClick={() => setShow("AddNew")}
             viewLink={handleView}
             icon={"fa-plus-circle"}
