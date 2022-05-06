@@ -1046,1473 +1046,405 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
 }
 
 TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
-  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+  // there are 4 variants of the test that differ in 3 parameters:
+  // 1) version: viewUpdateJson can
+  //    (1) have no 'version', (2) version '0', (3) version '1'
+  // 2) FLAG (1) true or (2) false in
+  //  ASSERT_TRUE(
+  //      logicalView->properties(viewUpdateJson->slice(), FLAG, false).ok());
+  // 3) NUMBER (1) 0 or (2) 1 in
+  //       EXPECT_EQ(NUMBER, tmpSlice2.get("version").getNumber<uint32_t>());
+  // Variant 1: no 'version' - true  - 1
+  // Variant 2:            0 - true  - 0
+  // Variant 3: no 'version' - false - 0
+  // Variant 4:            1 - false - 0
+  for (uint8_t variant : {1, 2, 3, 4}) {
+    auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
-  TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
+    TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
-  createTestDatabase(vocbase);
+    createTestDatabase(vocbase);
 
-  // create collections
-  std::shared_ptr<arangodb::LogicalCollection> logicalCollection;
-  {
-    auto const collectionId = "100";
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"id\": \"100\", \"planId\": \"100\",  \"name\": "
-        "\"testCollection\", "
-        "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
+    // create collections
+    std::shared_ptr<arangodb::LogicalCollection> logicalCollection;
+    {
+      auto const collectionId = "100";
+      auto collectionJson = arangodb::velocypack::Parser::fromJson(
+          "{ \"id\": \"100\", \"planId\": \"100\",  \"name\": "
+          "\"testCollection\", "
+          "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
 
-    EXPECT_TRUE(ci.createCollectionCoordinator(
-                      vocbase->name(), collectionId, 0, 1, 1, false,
-                      collectionJson->slice(), 0.0, false, nullptr)
+      EXPECT_TRUE(ci.createCollectionCoordinator(
+                        vocbase->name(), collectionId, 0, 1, 1, false,
+                        collectionJson->slice(), 0.0, false, nullptr)
+                      .ok());
+
+      logicalCollection = ci.getCollection(vocbase->name(), collectionId);
+      ASSERT_NE(nullptr, logicalCollection);
+    }
+
+    // new view definition with links
+    auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101 }");
+
+    std::string versionString;
+    switch (variant) {
+      case 1:
+      case 3:
+        versionString = "";
+        break;
+      case 2:
+        versionString = "      \"version\":0, ";
+        break;
+      case 4:
+        versionString = "      \"version\":1, ";
+        break;
+    }
+    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
+        "{  \"links\": { "
+        "    \"testCollection\": { "
+        "      \"id\":1, "
+        "      \"includeAllFields\":true, " +
+        versionString +
+        "      \"analyzers\": [\"inPlace\"], "
+        "      \"analyzerDefinitions\": [ { \"name\" : \"inPlace\", "
+        "\"type\":\"identity\", \"properties\":{}, \"features\":[] } ],"
+        "      \"storedValues\":[[], [\"\"], [\"\"], [\"test.t\"], "
+        "{\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] "
+        "    } "
+        "  } }");
+
+    auto viewId = std::to_string(
+        ci.uniqid() +
+        1);  // +1 because LogicalView creation will generate a new ID
+    EXPECT_TRUE(ci.createViewCoordinator(vocbase->name(), viewId,
+                                         viewCreateJson->slice())
                     .ok());
+    auto logicalView = ci.getView(vocbase->name(), viewId);
+    ASSERT_NE(nullptr, logicalView);
 
-    logicalCollection = ci.getCollection(vocbase->name(), collectionId);
-    ASSERT_NE(nullptr, logicalCollection);
-  }
-
-  // new view definition with links
-  auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101 }");
-
-  auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
-      "{  \"links\": { "
-      "    \"testCollection\": { "
-      "      \"id\":1, "
-      "      \"includeAllFields\":true, "
-      "      \"analyzers\": [\"inPlace\"], "
-      "      \"analyzerDefinitions\": [ { \"name\" : \"inPlace\", "
-      "\"type\":\"identity\", \"properties\":{}, \"features\":[] } ],"
-      "      \"storedValues\":[[], [\"\"], [\"\"], [\"test.t\"], "
-      "{\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] "
-      "    } "
-      "  } }");
-
-  auto viewId = std::to_string(
-      ci.uniqid() +
-      1);  // +1 because LogicalView creation will generate a new ID
-  EXPECT_TRUE(
-      ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice())
-          .ok());
-  auto logicalView = ci.getView(vocbase->name(), viewId);
-  ASSERT_NE(nullptr, logicalView);
-
-  // simulate heartbeat thread (create index in current)
-  {
-    auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-                      std::to_string(logicalCollection->id().id());
-    auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] "
-        "} }");
-    EXPECT_TRUE(arangodb::AgencyComm(server.server())
-                    .setValue(path, value->slice(), 0.0)
-                    .successful());
-  }
-
-  ASSERT_TRUE(
-      logicalView->properties(viewUpdateJson->slice(), true, false).ok());
-  logicalView = ci.getView(vocbase->name(), viewId);
-  ASSERT_NE(nullptr, logicalView);
-
-  // check serialization for listing
-  {
-    arangodb::velocypack::Builder builder;
-    builder.openObject();
-    logicalView->properties(builder,
-                            arangodb::LogicalDataSource::Serialization::List);
-    builder.close();
-
-    auto slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(4, slice.length());
-    EXPECT_TRUE(slice.get("name").isString() &&
-                "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() &&
-                "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
-                !slice.get("globallyUniqueId").copyString().empty());
-  }
-
-  // check serialization for properties
-  {
-    VPackSlice tmpSlice, tmpSlice2;
-
-    VPackBuilder builder;
-    builder.openObject();
-    logicalView->properties(
-        builder, arangodb::LogicalDataSource::Serialization::Properties);
-    builder.close();
-
-    auto slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(15, slice.length());
-    EXPECT_TRUE(slice.get("name").isString() &&
-                "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() &&
-                "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
-                !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
-                    slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
-                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
-                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
-    {  // consolidation policy
-      tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
-      tmpSlice2 = tmpSlice.get("type");
-      EXPECT_TRUE(tmpSlice2.isString() &&
-                  std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
+    // simulate heartbeat thread (create index in current)
+    {
+      auto const path = "/Current/Collections/" + vocbase->name() + "/" +
+                        std::to_string(logicalCollection->id().id());
+      auto const value = arangodb::velocypack::Parser::fromJson(
+          "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } "
+          "] "
+          "} }");
+      EXPECT_TRUE(arangodb::AgencyComm(server.server())
+                      .setValue(path, value->slice(), 0.0)
+                      .successful());
     }
-    tmpSlice = slice.get("writebufferActive");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                0 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferIdle");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                64 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("primarySort");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    tmpSlice = slice.get("primarySortCompression");
-    EXPECT_TRUE(tmpSlice.isString());
-    tmpSlice = slice.get("storedValues");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    {  // links
-      tmpSlice = slice.get("links");
-      EXPECT_TRUE(tmpSlice.isObject());
-      EXPECT_EQ(1, tmpSlice.length());
-      tmpSlice2 = tmpSlice.get("testCollection");
-      EXPECT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(5, tmpSlice2.length());
-      EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
-                  1 == tmpSlice2.get("analyzers").length() &&
-                  "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
-      EXPECT_TRUE(tmpSlice2.get("fields").isObject() &&
-                  0 == tmpSlice2.get("fields").length());
-      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() &&
-                  tmpSlice2.get("includeAllFields").getBool());
-      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() &&
-                  !tmpSlice2.get("trackListPositions").getBool());
-      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() &&
-                  "none" == tmpSlice2.get("storeValues").copyString());
+
+    bool variantBool = variant <= 2 ? true : false;
+
+    ASSERT_TRUE(
+        logicalView->properties(viewUpdateJson->slice(), variantBool, false)
+            .ok());
+    logicalView = ci.getView(vocbase->name(), viewId);
+    ASSERT_NE(nullptr, logicalView);
+
+    // check serialization for listing
+    {
+      arangodb::velocypack::Builder builder;
+      builder.openObject();
+      logicalView->properties(builder,
+                              arangodb::LogicalDataSource::Serialization::List);
+      builder.close();
+
+      auto slice = builder.slice();
+      EXPECT_TRUE(slice.isObject());
+      EXPECT_EQ(4, slice.length());
+      EXPECT_TRUE(slice.get("name").isString() &&
+                  "testView" == slice.get("name").copyString());
+      EXPECT_TRUE(slice.get("type").isString() &&
+                  "arangosearch" == slice.get("type").copyString());
+      EXPECT_TRUE(slice.get("id").isString() &&
+                  "101" == slice.get("id").copyString());
+      EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
+                  !slice.get("globallyUniqueId").copyString().empty());
     }
-  }
 
-  // check serialization for persistence
-  {
-    VPackSlice tmpSlice, tmpSlice2;
+    // check serialization for properties
+    {
+      VPackSlice tmpSlice, tmpSlice2;
 
-    arangodb::velocypack::Builder builder;
-    builder.openObject();
-    logicalView->properties(
-        builder, arangodb::LogicalDataSource::Serialization::Persistence);
-    builder.close();
+      VPackBuilder builder;
+      builder.openObject();
+      logicalView->properties(
+          builder, arangodb::LogicalDataSource::Serialization::Properties);
+      builder.close();
 
-    auto slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(18, slice.length());
-    EXPECT_TRUE(slice.get("name").isString() &&
-                "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() &&
-                "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("planId").isString() &&
-                "101" == slice.get("planId").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
-                !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
-                    slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
-                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
-                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("deleted").isBool() &&
-                !slice.get("deleted").getBool());
-    EXPECT_TRUE(slice.get("isSystem").isBool() &&
-                !slice.get("isSystem").getBool());
-
-    {  // consolidation policy
-      tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
-      tmpSlice2 = tmpSlice.get("type");
-      EXPECT_TRUE(tmpSlice2.isString() &&
-                  std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
+      auto slice = builder.slice();
+      EXPECT_TRUE(slice.isObject());
+      EXPECT_EQ(15, slice.length());
+      EXPECT_TRUE(slice.get("name").isString() &&
+                  "testView" == slice.get("name").copyString());
+      EXPECT_TRUE(slice.get("type").isString() &&
+                  "arangosearch" == slice.get("type").copyString());
+      EXPECT_TRUE(slice.get("id").isString() &&
+                  "101" == slice.get("id").copyString());
+      EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
+                  !slice.get("globallyUniqueId").copyString().empty());
+      EXPECT_TRUE(
+          slice.get("consolidationIntervalMsec").isNumber() &&
+          1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+      EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
+                  2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+      EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
+                  1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+      {  // consolidation policy
+        tmpSlice = slice.get("consolidationPolicy");
+        EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+        tmpSlice2 = tmpSlice.get("type");
+        EXPECT_TRUE(tmpSlice2.isString() &&
+                    std::string("tier") == tmpSlice2.copyString());
+        tmpSlice2 = tmpSlice.get("segmentsMin");
+        EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+        tmpSlice2 = tmpSlice.get("segmentsMax");
+        EXPECT_TRUE(tmpSlice2.isNumber() &&
+                    10 == tmpSlice2.getNumber<size_t>());
+        tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
+        EXPECT_TRUE(tmpSlice2.isNumber() &&
+                    (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+        tmpSlice2 = tmpSlice.get("segmentsBytesMax");
+        EXPECT_TRUE(tmpSlice2.isNumber() &&
+                    (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+        tmpSlice2 = tmpSlice.get("minScore");
+        EXPECT_TRUE(tmpSlice2.isNumber() &&
+                    (0. == tmpSlice2.getNumber<double>()));
+      }
+      tmpSlice = slice.get("writebufferActive");
+      EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                  0 == tmpSlice.getNumber<size_t>());
+      tmpSlice = slice.get("writebufferIdle");
+      EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                  64 == tmpSlice.getNumber<size_t>());
+      tmpSlice = slice.get("writebufferSizeMax");
+      EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                  32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+      tmpSlice = slice.get("primarySort");
+      EXPECT_TRUE(tmpSlice.isArray());
+      EXPECT_EQ(0, tmpSlice.length());
+      tmpSlice = slice.get("primarySortCompression");
+      EXPECT_TRUE(tmpSlice.isString());
+      tmpSlice = slice.get("storedValues");
+      EXPECT_TRUE(tmpSlice.isArray());
+      EXPECT_EQ(0, tmpSlice.length());
+      {  // links
+        tmpSlice = slice.get("links");
+        EXPECT_TRUE(tmpSlice.isObject());
+        EXPECT_EQ(1, tmpSlice.length());
+        tmpSlice2 = tmpSlice.get("testCollection");
+        EXPECT_TRUE(tmpSlice2.isObject());
+        EXPECT_EQ(5, tmpSlice2.length());
+        EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
+                    1 == tmpSlice2.get("analyzers").length() &&
+                    "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
+        EXPECT_TRUE(tmpSlice2.get("fields").isObject() &&
+                    0 == tmpSlice2.get("fields").length());
+        EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() &&
+                    tmpSlice2.get("includeAllFields").getBool());
+        EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() &&
+                    !tmpSlice2.get("trackListPositions").getBool());
+        EXPECT_TRUE(tmpSlice2.get("storeValues").isString() &&
+                    "none" == tmpSlice2.get("storeValues").copyString());
+      }
     }
-    tmpSlice = slice.get("writebufferActive");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                0 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferIdle");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                64 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("primarySort");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    tmpSlice = slice.get("primarySortCompression");
-    EXPECT_TRUE(tmpSlice.isString());
-    EXPECT_EQ(std::string("lz4"), tmpSlice.copyString());
-    tmpSlice = slice.get("storedValues");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    tmpSlice = slice.get("version");
-    EXPECT_TRUE(tmpSlice.isNumber<uint32_t>() &&
-                1 == tmpSlice.getNumber<uint32_t>());
-  }
 
-  // check serialization for inventory
-  {
-    VPackSlice tmpSlice, tmpSlice2;
+    // check serialization for persistence
+    {
+      VPackSlice tmpSlice, tmpSlice2;
 
-    arangodb::velocypack::Builder builder;
-    builder.openObject();
-    logicalView->properties(
-        builder, arangodb::LogicalDataSource::Serialization::Inventory);
-    builder.close();
+      arangodb::velocypack::Builder builder;
+      builder.openObject();
+      logicalView->properties(
+          builder, arangodb::LogicalDataSource::Serialization::Persistence);
+      builder.close();
 
-    auto slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(15, slice.length());
-    EXPECT_TRUE(slice.get("name").isString() &&
-                "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() &&
-                "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
-                !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
-                    slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
-                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
-                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
-    {  // consolidation policy
-      tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
-      tmpSlice2 = tmpSlice.get("type");
-      EXPECT_TRUE(tmpSlice2.isString() &&
-                  std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
+      auto slice = builder.slice();
+      EXPECT_TRUE(slice.isObject());
+      EXPECT_EQ(18, slice.length());
+      EXPECT_TRUE(slice.get("name").isString() &&
+                  "testView" == slice.get("name").copyString());
+      EXPECT_TRUE(slice.get("type").isString() &&
+                  "arangosearch" == slice.get("type").copyString());
+      EXPECT_TRUE(slice.get("id").isString() &&
+                  "101" == slice.get("id").copyString());
+      EXPECT_TRUE(slice.get("planId").isString() &&
+                  "101" == slice.get("planId").copyString());
+      EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
+                  !slice.get("globallyUniqueId").copyString().empty());
+      EXPECT_TRUE(
+          slice.get("consolidationIntervalMsec").isNumber() &&
+          1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+      EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
+                  2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+      EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
+                  1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+      EXPECT_TRUE(slice.get("deleted").isBool() &&
+                  !slice.get("deleted").getBool());
+      EXPECT_TRUE(slice.get("isSystem").isBool() &&
+                  !slice.get("isSystem").getBool());
+
+      {  // consolidation policy
+        tmpSlice = slice.get("consolidationPolicy");
+        EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+        tmpSlice2 = tmpSlice.get("type");
+        EXPECT_TRUE(tmpSlice2.isString() &&
+                    std::string("tier") == tmpSlice2.copyString());
+        tmpSlice2 = tmpSlice.get("segmentsMin");
+        EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+        tmpSlice2 = tmpSlice.get("segmentsMax");
+        EXPECT_TRUE(tmpSlice2.isNumber() &&
+                    10 == tmpSlice2.getNumber<size_t>());
+        tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
+        EXPECT_TRUE(tmpSlice2.isNumber() &&
+                    (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+        tmpSlice2 = tmpSlice.get("segmentsBytesMax");
+        EXPECT_TRUE(tmpSlice2.isNumber() &&
+                    (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+        tmpSlice2 = tmpSlice.get("minScore");
+        EXPECT_TRUE(tmpSlice2.isNumber() &&
+                    (0. == tmpSlice2.getNumber<double>()));
+      }
+      tmpSlice = slice.get("writebufferActive");
+      EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                  0 == tmpSlice.getNumber<size_t>());
+      tmpSlice = slice.get("writebufferIdle");
+      EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                  64 == tmpSlice.getNumber<size_t>());
+      tmpSlice = slice.get("writebufferSizeMax");
+      EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                  32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+      tmpSlice = slice.get("primarySort");
+      EXPECT_TRUE(tmpSlice.isArray());
+      EXPECT_EQ(0, tmpSlice.length());
+      tmpSlice = slice.get("primarySortCompression");
+      EXPECT_TRUE(tmpSlice.isString());
+      EXPECT_EQ(std::string("lz4"), tmpSlice.copyString());
+      tmpSlice = slice.get("storedValues");
+      EXPECT_TRUE(tmpSlice.isArray());
+      EXPECT_EQ(0, tmpSlice.length());
+      tmpSlice = slice.get("version");
+      EXPECT_TRUE(tmpSlice.isNumber<uint32_t>() &&
+                  1 == tmpSlice.getNumber<uint32_t>());
     }
-    tmpSlice = slice.get("writebufferActive");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                0 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferIdle");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                64 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("primarySort");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    tmpSlice = slice.get("primarySortCompression");
-    EXPECT_TRUE(tmpSlice.isString());
-    EXPECT_EQ(std::string("lz4"), tmpSlice.copyString());
-    tmpSlice = slice.get("storedValues");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    {  // links
-      tmpSlice = slice.get("links");
-      EXPECT_TRUE(tmpSlice.isObject());
-      EXPECT_EQ(1, tmpSlice.length());
-      tmpSlice2 = tmpSlice.get("testCollection");
-      EXPECT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(11, tmpSlice2.length());
-      EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
-                  1 == tmpSlice2.get("analyzers").length() &&
-                  "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
-      EXPECT_TRUE(tmpSlice2.get("fields").isObject() &&
-                  0 == tmpSlice2.get("fields").length());
-      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() &&
-                  tmpSlice2.get("includeAllFields").getBool());
-      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() &&
-                  !tmpSlice2.get("trackListPositions").getBool());
-      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() &&
-                  "none" == tmpSlice2.get("storeValues").copyString());
-      EXPECT_TRUE(tmpSlice2.get("version").isNumber());
-      EXPECT_EQ(1, tmpSlice2.get("version").getNumber<uint32_t>());
-      EXPECT_TRUE(tmpSlice2.get("collectionName").isString() &&
-                  "testCollection" ==
-                      tmpSlice2.get("collectionName").copyString());
-      EXPECT_TRUE(tmpSlice2.get("primarySortCompression").isString() &&
-                  "lz4" ==
-                      tmpSlice2.get("primarySortCompression").copyString());
-      EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() &&
-                  0 == tmpSlice2.get("storedValues").length());
-      EXPECT_TRUE(tmpSlice2.get("primarySort").isArray());
 
-      tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
-      ASSERT_TRUE(tmpSlice2.isArray());
-      ASSERT_EQ(1, tmpSlice2.length());
-      tmpSlice2 = tmpSlice2.at(0);
-      ASSERT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(4, tmpSlice2.length());
-      EXPECT_TRUE(tmpSlice2.get("name").isString() &&
-                  "inPlace" == tmpSlice2.get("name").copyString());
-      EXPECT_TRUE(tmpSlice2.get("type").isString() &&
-                  "identity" == tmpSlice2.get("type").copyString());
-      EXPECT_TRUE(tmpSlice2.get("properties").isObject() &&
-                  0 == tmpSlice2.get("properties").length());
-      EXPECT_TRUE(tmpSlice2.get("features").isArray() &&
-                  0 == tmpSlice2.get("features").length());
-    }
-  }
-}
-
-TEST_F(IResearchViewCoordinatorTest,
-       test_properties_user_request_explicit_version) {
-  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
-
-  TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-
-  createTestDatabase(vocbase);
-
-  // create collections
-  std::shared_ptr<arangodb::LogicalCollection> logicalCollection;
-  {
-    auto const collectionId = "100";
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"id\": \"100\", \"planId\": \"100\",  \"name\": "
-        "\"testCollection\", "
-        "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
-
-    EXPECT_TRUE(ci.createCollectionCoordinator(
-                      vocbase->name(), collectionId, 0, 1, 1, false,
-                      collectionJson->slice(), 0.0, false, nullptr)
-                    .ok());
-
-    logicalCollection = ci.getCollection(vocbase->name(), collectionId);
-    ASSERT_NE(nullptr, logicalCollection);
-  }
-
-  // new view definition with links
-  auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101 }");
-
-  auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
-      "{  \"links\": { "
-      "    \"testCollection\": { "
-      "      \"id\":1, "
-      "      \"includeAllFields\":true, "
-      "      \"version\":0, "
-      "      \"analyzers\": [\"inPlace\"], "
-      "      \"analyzerDefinitions\": [ { \"name\" : \"inPlace\", "
-      "\"type\":\"identity\", \"properties\":{}, \"features\":[] } ],"
-      "      \"storedValues\":[[], [\"\"], [\"\"], [\"test.t\"], "
-      "{\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] "
-      "    } "
-      "  } }");
-
-  auto viewId = std::to_string(
-      ci.uniqid() +
-      1);  // +1 because LogicalView creation will generate a new ID
-  EXPECT_TRUE(
-      ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice())
-          .ok());
-  auto logicalView = ci.getView(vocbase->name(), viewId);
-  ASSERT_NE(nullptr, logicalView);
-
-  // simulate heartbeat thread (create index in current)
-  {
-    auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-                      std::to_string(logicalCollection->id().id());
-    auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] "
-        "} }");
-    EXPECT_TRUE(arangodb::AgencyComm(server.server())
-                    .setValue(path, value->slice(), 0.0)
-                    .successful());
-  }
-
-  ASSERT_TRUE(
-      logicalView->properties(viewUpdateJson->slice(), true, false).ok());
-  logicalView = ci.getView(vocbase->name(), viewId);
-  ASSERT_NE(nullptr, logicalView);
-
-  // check serialization for listing
-  {
-    arangodb::velocypack::Builder builder;
-    builder.openObject();
-    logicalView->properties(builder,
-                            arangodb::LogicalDataSource::Serialization::List);
-    builder.close();
-
-    auto slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(4, slice.length());
-    EXPECT_TRUE(slice.get("name").isString() &&
-                "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() &&
-                "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
-                !slice.get("globallyUniqueId").copyString().empty());
-  }
-
-  // check serialization for properties
-  {
-    VPackSlice tmpSlice, tmpSlice2;
-
-    VPackBuilder builder;
-    builder.openObject();
-    logicalView->properties(
-        builder, arangodb::LogicalDataSource::Serialization::Properties);
-    builder.close();
-
-    auto slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(15, slice.length());
-    EXPECT_TRUE(slice.get("name").isString() &&
-                "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() &&
-                "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
-                !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
-                    slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
-                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
-                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
-    {  // consolidation policy
-      tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
-      tmpSlice2 = tmpSlice.get("type");
-      EXPECT_TRUE(tmpSlice2.isString() &&
-                  std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
-    }
-    tmpSlice = slice.get("writebufferActive");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                0 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferIdle");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                64 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("primarySort");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    tmpSlice = slice.get("primarySortCompression");
-    EXPECT_TRUE(tmpSlice.isString());
-    tmpSlice = slice.get("storedValues");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    {  // links
-      tmpSlice = slice.get("links");
-      EXPECT_TRUE(tmpSlice.isObject());
-      EXPECT_EQ(1, tmpSlice.length());
-      tmpSlice2 = tmpSlice.get("testCollection");
-      EXPECT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(5, tmpSlice2.length());
-      EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
-                  1 == tmpSlice2.get("analyzers").length() &&
-                  "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
-      EXPECT_TRUE(tmpSlice2.get("fields").isObject() &&
-                  0 == tmpSlice2.get("fields").length());
-      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() &&
-                  tmpSlice2.get("includeAllFields").getBool());
-      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() &&
-                  !tmpSlice2.get("trackListPositions").getBool());
-      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() &&
-                  "none" == tmpSlice2.get("storeValues").copyString());
-    }
-  }
-
-  // check serialization for persistence
-  {
-    VPackSlice tmpSlice, tmpSlice2;
-
-    arangodb::velocypack::Builder builder;
-    builder.openObject();
-    logicalView->properties(
-        builder, arangodb::LogicalDataSource::Serialization::Persistence);
-    builder.close();
-
-    auto slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(18, slice.length());
-    EXPECT_TRUE(slice.get("name").isString() &&
-                "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() &&
-                "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("planId").isString() &&
-                "101" == slice.get("planId").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
-                !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
-                    slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
-                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
-                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("deleted").isBool() &&
-                !slice.get("deleted").getBool());
-    EXPECT_TRUE(slice.get("isSystem").isBool() &&
-                !slice.get("isSystem").getBool());
-
-    {  // consolidation policy
-      tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
-      tmpSlice2 = tmpSlice.get("type");
-      EXPECT_TRUE(tmpSlice2.isString() &&
-                  std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
-    }
-    tmpSlice = slice.get("writebufferActive");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                0 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferIdle");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                64 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("primarySort");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    tmpSlice = slice.get("primarySortCompression");
-    EXPECT_TRUE(tmpSlice.isString());
-    EXPECT_EQ(std::string("lz4"), tmpSlice.copyString());
-    tmpSlice = slice.get("storedValues");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    tmpSlice = slice.get("version");
-    EXPECT_TRUE(tmpSlice.isNumber<uint32_t>() &&
-                1 == tmpSlice.getNumber<uint32_t>());
-  }
-
-  // check serialization for inventory
-  {
-    VPackSlice tmpSlice, tmpSlice2;
-
-    arangodb::velocypack::Builder builder;
-    builder.openObject();
-    logicalView->properties(
-        builder, arangodb::LogicalDataSource::Serialization::Inventory);
-    builder.close();
-
-    auto slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(15, slice.length());
-    EXPECT_TRUE(slice.get("name").isString() &&
-                "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() &&
-                "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
-                !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
-                    slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
-                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
-                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
-    {  // consolidation policy
-      tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
-      tmpSlice2 = tmpSlice.get("type");
-      EXPECT_TRUE(tmpSlice2.isString() &&
-                  std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
-    }
-    tmpSlice = slice.get("writebufferActive");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                0 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferIdle");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                64 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("primarySort");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    tmpSlice = slice.get("primarySortCompression");
-    EXPECT_TRUE(tmpSlice.isString());
-    EXPECT_EQ(std::string("lz4"), tmpSlice.copyString());
-    tmpSlice = slice.get("storedValues");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    {  // links
-      tmpSlice = slice.get("links");
-      EXPECT_TRUE(tmpSlice.isObject());
-      EXPECT_EQ(1, tmpSlice.length());
-      tmpSlice2 = tmpSlice.get("testCollection");
-      EXPECT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(11, tmpSlice2.length());
-      EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
-                  1 == tmpSlice2.get("analyzers").length() &&
-                  "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
-      EXPECT_TRUE(tmpSlice2.get("fields").isObject() &&
-                  0 == tmpSlice2.get("fields").length());
-      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() &&
-                  tmpSlice2.get("includeAllFields").getBool());
-      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() &&
-                  !tmpSlice2.get("trackListPositions").getBool());
-      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() &&
-                  "none" == tmpSlice2.get("storeValues").copyString());
-      EXPECT_TRUE(tmpSlice2.get("version").isNumber());
-      EXPECT_EQ(0, tmpSlice2.get("version").getNumber<uint32_t>());
-      EXPECT_TRUE(tmpSlice2.get("collectionName").isString() &&
-                  "testCollection" ==
-                      tmpSlice2.get("collectionName").copyString());
-      EXPECT_TRUE(tmpSlice2.get("primarySortCompression").isString() &&
-                  "lz4" ==
-                      tmpSlice2.get("primarySortCompression").copyString());
-      EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() &&
-                  0 == tmpSlice2.get("storedValues").length());
-      EXPECT_TRUE(tmpSlice2.get("primarySort").isArray());
-
-      tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
-      ASSERT_TRUE(tmpSlice2.isArray());
-      ASSERT_EQ(1, tmpSlice2.length());
-      tmpSlice2 = tmpSlice2.at(0);
-      ASSERT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(4, tmpSlice2.length());
-      EXPECT_TRUE(tmpSlice2.get("name").isString() &&
-                  "inPlace" == tmpSlice2.get("name").copyString());
-      EXPECT_TRUE(tmpSlice2.get("type").isString() &&
-                  "identity" == tmpSlice2.get("type").copyString());
-      EXPECT_TRUE(tmpSlice2.get("properties").isObject() &&
-                  0 == tmpSlice2.get("properties").length());
-      EXPECT_TRUE(tmpSlice2.get("features").isArray() &&
-                  0 == tmpSlice2.get("features").length());
-    }
-  }
-}
-
-TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
-  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
-
-  TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-
-  createTestDatabase(vocbase);
-
-  // create collections
-  std::shared_ptr<arangodb::LogicalCollection> logicalCollection;
-  {
-    auto const collectionId = "100";
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"id\": \"100\", \"planId\": \"100\",  \"name\": "
-        "\"testCollection\", "
-        "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
-
-    EXPECT_TRUE(ci.createCollectionCoordinator(
-                      vocbase->name(), collectionId, 0, 1, 1, false,
-                      collectionJson->slice(), 0.0, false, nullptr)
-                    .ok());
-
-    logicalCollection = ci.getCollection(vocbase->name(), collectionId);
-    ASSERT_NE(nullptr, logicalCollection);
-  }
-
-  // new view definition with links
-  auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101 }");
-
-  auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
-      "{  \"links\": { "
-      "    \"testCollection\": { "
-      "      \"id\":1, "
-      "      \"includeAllFields\":true, "
-      "      \"analyzers\": [\"inPlace\"], "
-      "      \"analyzerDefinitions\": [ { \"name\" : \"inPlace\", "
-      "\"type\":\"identity\", \"properties\":{}, \"features\":[] } ],"
-      "      \"storedValues\":[[], [\"\"], [\"\"], [\"test.t\"], "
-      "{\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] "
-      "    } "
-      "  } }");
-
-  auto viewId = std::to_string(
-      ci.uniqid() +
-      1);  // +1 because LogicalView creation will generate a new ID
-  EXPECT_TRUE(
-      ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice())
-          .ok());
-  auto logicalView = ci.getView(vocbase->name(), viewId);
-  ASSERT_NE(nullptr, logicalView);
-
-  // simulate heartbeat thread (create index in current)
-  {
-    auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-                      std::to_string(logicalCollection->id().id());
-    auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] "
-        "} }");
-    EXPECT_TRUE(arangodb::AgencyComm(server.server())
-                    .setValue(path, value->slice(), 0.0)
-                    .successful());
-  }
-
-  ASSERT_TRUE(
-      logicalView->properties(viewUpdateJson->slice(), false, false).ok());
-  logicalView = ci.getView(vocbase->name(), viewId);
-  ASSERT_NE(nullptr, logicalView);
-
-  // check serialization for listing
-  {
-    arangodb::velocypack::Builder builder;
-    builder.openObject();
-    logicalView->properties(builder,
-                            arangodb::LogicalDataSource::Serialization::List);
-    builder.close();
-
-    auto slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(4, slice.length());
-    EXPECT_TRUE(slice.get("name").isString() &&
-                "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() &&
-                "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
-                !slice.get("globallyUniqueId").copyString().empty());
-  }
-
-  // check serialization for properties
-  {
-    VPackSlice tmpSlice, tmpSlice2;
-
-    VPackBuilder builder;
-    builder.openObject();
-    logicalView->properties(
-        builder, arangodb::LogicalDataSource::Serialization::Properties);
-    builder.close();
-
-    auto slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(15, slice.length());
-    EXPECT_TRUE(slice.get("name").isString() &&
-                "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() &&
-                "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
-                !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
-                    slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
-                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
-                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
-    {  // consolidation policy
-      tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
-      tmpSlice2 = tmpSlice.get("type");
-      EXPECT_TRUE(tmpSlice2.isString() &&
-                  std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
-    }
-    tmpSlice = slice.get("writebufferActive");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                0 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferIdle");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                64 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("primarySort");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    tmpSlice = slice.get("primarySortCompression");
-    EXPECT_TRUE(tmpSlice.isString());
-    tmpSlice = slice.get("storedValues");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    {  // links
-      tmpSlice = slice.get("links");
-      EXPECT_TRUE(tmpSlice.isObject());
-      EXPECT_EQ(1, tmpSlice.length());
-      tmpSlice2 = tmpSlice.get("testCollection");
-      EXPECT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(5, tmpSlice2.length());
-      EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
-                  1 == tmpSlice2.get("analyzers").length() &&
-                  "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
-      EXPECT_TRUE(tmpSlice2.get("fields").isObject() &&
-                  0 == tmpSlice2.get("fields").length());
-      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() &&
-                  tmpSlice2.get("includeAllFields").getBool());
-      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() &&
-                  !tmpSlice2.get("trackListPositions").getBool());
-      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() &&
-                  "none" == tmpSlice2.get("storeValues").copyString());
-    }
-  }
-
-  // check serialization for persistence
-  {
-    VPackSlice tmpSlice, tmpSlice2;
-
-    arangodb::velocypack::Builder builder;
-    builder.openObject();
-    logicalView->properties(
-        builder, arangodb::LogicalDataSource::Serialization::Persistence);
-    builder.close();
-
-    auto slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(18, slice.length());
-    EXPECT_TRUE(slice.get("name").isString() &&
-                "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() &&
-                "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("planId").isString() &&
-                "101" == slice.get("planId").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
-                !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
-                    slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
-                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
-                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("deleted").isBool() &&
-                !slice.get("deleted").getBool());
-    EXPECT_TRUE(slice.get("isSystem").isBool() &&
-                !slice.get("isSystem").getBool());
-
-    {  // consolidation policy
-      tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
-      tmpSlice2 = tmpSlice.get("type");
-      EXPECT_TRUE(tmpSlice2.isString() &&
-                  std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
-    }
-    tmpSlice = slice.get("writebufferActive");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                0 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferIdle");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                64 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("primarySort");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    tmpSlice = slice.get("primarySortCompression");
-    EXPECT_TRUE(tmpSlice.isString());
-    EXPECT_EQ(std::string("lz4"), tmpSlice.copyString());
-    tmpSlice = slice.get("storedValues");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    tmpSlice = slice.get("version");
-    EXPECT_TRUE(tmpSlice.isNumber<uint32_t>() &&
-                1 == tmpSlice.getNumber<uint32_t>());
-  }
-
-  // check serialization for inventory
-  {
-    VPackSlice tmpSlice, tmpSlice2;
-
-    arangodb::velocypack::Builder builder;
-    builder.openObject();
-    logicalView->properties(
-        builder, arangodb::LogicalDataSource::Serialization::Inventory);
-    builder.close();
-
-    auto slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(15, slice.length());
-    EXPECT_TRUE(slice.get("name").isString() &&
-                "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() &&
-                "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
-                !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
-                    slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
-                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
-                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
-    {  // consolidation policy
-      tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
-      tmpSlice2 = tmpSlice.get("type");
-      EXPECT_TRUE(tmpSlice2.isString() &&
-                  std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
-    }
-    tmpSlice = slice.get("writebufferActive");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                0 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferIdle");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                64 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("primarySort");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    tmpSlice = slice.get("primarySortCompression");
-    EXPECT_TRUE(tmpSlice.isString());
-    EXPECT_EQ(std::string("lz4"), tmpSlice.copyString());
-    tmpSlice = slice.get("storedValues");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    {  // links
-      tmpSlice = slice.get("links");
-      EXPECT_TRUE(tmpSlice.isObject());
-      EXPECT_EQ(1, tmpSlice.length());
-      tmpSlice2 = tmpSlice.get("testCollection");
-      EXPECT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(11, tmpSlice2.length());
-      EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
-                  1 == tmpSlice2.get("analyzers").length() &&
-                  "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
-      EXPECT_TRUE(tmpSlice2.get("fields").isObject() &&
-                  0 == tmpSlice2.get("fields").length());
-      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() &&
-                  tmpSlice2.get("includeAllFields").getBool());
-      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() &&
-                  !tmpSlice2.get("trackListPositions").getBool());
-      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() &&
-                  "none" == tmpSlice2.get("storeValues").copyString());
-      EXPECT_TRUE(tmpSlice2.get("version").isNumber());
-      EXPECT_EQ(0, tmpSlice2.get("version").getNumber<uint32_t>());
-      EXPECT_TRUE(tmpSlice2.get("collectionName").isString() &&
-                  "testCollection" ==
-                      tmpSlice2.get("collectionName").copyString());
-      EXPECT_TRUE(tmpSlice2.get("primarySortCompression").isString() &&
-                  "lz4" ==
-                      tmpSlice2.get("primarySortCompression").copyString());
-      EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() &&
-                  0 == tmpSlice2.get("storedValues").length());
-      EXPECT_TRUE(tmpSlice2.get("primarySort").isArray());
-
-      tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
-      ASSERT_TRUE(tmpSlice2.isArray());
-      ASSERT_EQ(1, tmpSlice2.length());
-      tmpSlice2 = tmpSlice2.at(0);
-      ASSERT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(4, tmpSlice2.length());
-      EXPECT_TRUE(tmpSlice2.get("name").isString() &&
-                  "inPlace" == tmpSlice2.get("name").copyString());
-      EXPECT_TRUE(tmpSlice2.get("type").isString() &&
-                  "identity" == tmpSlice2.get("type").copyString());
-      EXPECT_TRUE(tmpSlice2.get("properties").isObject() &&
-                  0 == tmpSlice2.get("properties").length());
-      EXPECT_TRUE(tmpSlice2.get("features").isArray() &&
-                  0 == tmpSlice2.get("features").length());
-    }
-  }
-}
-
-TEST_F(IResearchViewCoordinatorTest,
-       test_properties_internal_request_explicit_version) {
-  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
-
-  TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
-
-  createTestDatabase(vocbase);
-
-  // create collections
-  std::shared_ptr<arangodb::LogicalCollection> logicalCollection;
-  {
-    auto const collectionId = "100";
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
-        "{ \"id\": \"100\", \"planId\": \"100\",  \"name\": "
-        "\"testCollection\", "
-        "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
-
-    EXPECT_TRUE(ci.createCollectionCoordinator(
-                      vocbase->name(), collectionId, 0, 1, 1, false,
-                      collectionJson->slice(), 0.0, false, nullptr)
-                    .ok());
-
-    logicalCollection = ci.getCollection(vocbase->name(), collectionId);
-    ASSERT_NE(nullptr, logicalCollection);
-  }
-
-  // new view definition with links
-  auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101 }");
-
-  auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
-      "{  \"links\": { "
-      "    \"testCollection\": { "
-      "      \"id\":1, "
-      "      \"includeAllFields\":true, "
-      "      \"version\":1, "
-      "      \"analyzers\": [\"inPlace\"], "
-      "      \"analyzerDefinitions\": [ { \"name\" : \"inPlace\", "
-      "\"type\":\"identity\", \"properties\":{}, \"features\":[] } ],"
-      "      \"storedValues\":[[], [\"\"], [\"\"], [\"test.t\"], "
-      "{\"fields\":[\"a.a\", \"b.b\"], \"compression\":\"none\"}] "
-      "    } "
-      "  } }");
-
-  auto viewId = std::to_string(
-      ci.uniqid() +
-      1);  // +1 because LogicalView creation will generate a new ID
-  EXPECT_TRUE(
-      ci.createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice())
-          .ok());
-  auto logicalView = ci.getView(vocbase->name(), viewId);
-  ASSERT_NE(nullptr, logicalView);
-
-  // simulate heartbeat thread (create index in current)
-  {
-    auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-                      std::to_string(logicalCollection->id().id());
-    auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] "
-        "} }");
-    EXPECT_TRUE(arangodb::AgencyComm(server.server())
-                    .setValue(path, value->slice(), 0.0)
-                    .successful());
-  }
-
-  ASSERT_TRUE(
-      logicalView->properties(viewUpdateJson->slice(), false, false).ok());
-  logicalView = ci.getView(vocbase->name(), viewId);
-  ASSERT_NE(nullptr, logicalView);
-
-  // check serialization for listing
-  {
-    arangodb::velocypack::Builder builder;
-    builder.openObject();
-    logicalView->properties(builder,
-                            arangodb::LogicalDataSource::Serialization::List);
-    builder.close();
-
-    auto slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(4, slice.length());
-    EXPECT_TRUE(slice.get("name").isString() &&
-                "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() &&
-                "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
-                !slice.get("globallyUniqueId").copyString().empty());
-  }
-
-  // check serialization for properties
-  {
-    VPackSlice tmpSlice, tmpSlice2;
-
-    VPackBuilder builder;
-    builder.openObject();
-    logicalView->properties(
-        builder, arangodb::LogicalDataSource::Serialization::Properties);
-    builder.close();
-
-    auto slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(15, slice.length());
-    EXPECT_TRUE(slice.get("name").isString() &&
-                "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() &&
-                "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
-                !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
-                    slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
-                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
-                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
-    {  // consolidation policy
-      tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
-      tmpSlice2 = tmpSlice.get("type");
-      EXPECT_TRUE(tmpSlice2.isString() &&
-                  std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
-    }
-    tmpSlice = slice.get("writebufferActive");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                0 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferIdle");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                64 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("primarySort");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    tmpSlice = slice.get("primarySortCompression");
-    EXPECT_TRUE(tmpSlice.isString());
-    tmpSlice = slice.get("storedValues");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    {  // links
-      tmpSlice = slice.get("links");
-      EXPECT_TRUE(tmpSlice.isObject());
-      EXPECT_EQ(1, tmpSlice.length());
-      tmpSlice2 = tmpSlice.get("testCollection");
-      EXPECT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(5, tmpSlice2.length());
-      EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
-                  1 == tmpSlice2.get("analyzers").length() &&
-                  "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
-      EXPECT_TRUE(tmpSlice2.get("fields").isObject() &&
-                  0 == tmpSlice2.get("fields").length());
-      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() &&
-                  tmpSlice2.get("includeAllFields").getBool());
-      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() &&
-                  !tmpSlice2.get("trackListPositions").getBool());
-      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() &&
-                  "none" == tmpSlice2.get("storeValues").copyString());
-    }
-  }
-
-  // check serialization for persistence
-  {
-    VPackSlice tmpSlice, tmpSlice2;
-
-    arangodb::velocypack::Builder builder;
-    builder.openObject();
-    logicalView->properties(
-        builder, arangodb::LogicalDataSource::Serialization::Persistence);
-    builder.close();
-
-    auto slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(18, slice.length());
-    EXPECT_TRUE(slice.get("name").isString() &&
-                "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() &&
-                "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("planId").isString() &&
-                "101" == slice.get("planId").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
-                !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
-                    slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
-                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
-                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("deleted").isBool() &&
-                !slice.get("deleted").getBool());
-    EXPECT_TRUE(slice.get("isSystem").isBool() &&
-                !slice.get("isSystem").getBool());
-
-    {  // consolidation policy
-      tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
-      tmpSlice2 = tmpSlice.get("type");
-      EXPECT_TRUE(tmpSlice2.isString() &&
-                  std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
-    }
-    tmpSlice = slice.get("writebufferActive");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                0 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferIdle");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                64 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("primarySort");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    tmpSlice = slice.get("primarySortCompression");
-    EXPECT_TRUE(tmpSlice.isString());
-    EXPECT_EQ(std::string("lz4"), tmpSlice.copyString());
-    tmpSlice = slice.get("storedValues");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    tmpSlice = slice.get("version");
-    EXPECT_TRUE(tmpSlice.isNumber<uint32_t>() &&
-                1 == tmpSlice.getNumber<uint32_t>());
-  }
-
-  // check serialization for inventory
-  {
-    VPackSlice tmpSlice, tmpSlice2;
-
-    arangodb::velocypack::Builder builder;
-    builder.openObject();
-    logicalView->properties(
-        builder, arangodb::LogicalDataSource::Serialization::Inventory);
-    builder.close();
-
-    auto slice = builder.slice();
-    EXPECT_TRUE(slice.isObject());
-    EXPECT_EQ(15, slice.length());
-    EXPECT_TRUE(slice.get("name").isString() &&
-                "testView" == slice.get("name").copyString());
-    EXPECT_TRUE(slice.get("type").isString() &&
-                "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
-                !slice.get("globallyUniqueId").copyString().empty());
-    EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
-                    slice.get("consolidationIntervalMsec").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
-                2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
-    EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
-                1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
-    {  // consolidation policy
-      tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
-      tmpSlice2 = tmpSlice.get("type");
-      EXPECT_TRUE(tmpSlice2.isString() &&
-                  std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
-    }
-    tmpSlice = slice.get("writebufferActive");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                0 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferIdle");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                64 == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("writebufferSizeMax");
-    EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
-                32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
-    tmpSlice = slice.get("primarySort");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    tmpSlice = slice.get("primarySortCompression");
-    EXPECT_TRUE(tmpSlice.isString());
-    EXPECT_EQ(std::string("lz4"), tmpSlice.copyString());
-    tmpSlice = slice.get("storedValues");
-    EXPECT_TRUE(tmpSlice.isArray());
-    EXPECT_EQ(0, tmpSlice.length());
-    {  // links
-      tmpSlice = slice.get("links");
-      EXPECT_TRUE(tmpSlice.isObject());
-      EXPECT_EQ(1, tmpSlice.length());
-      tmpSlice2 = tmpSlice.get("testCollection");
-      EXPECT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(11, tmpSlice2.length());
-      EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
-                  1 == tmpSlice2.get("analyzers").length() &&
-                  "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
-      EXPECT_TRUE(tmpSlice2.get("fields").isObject() &&
-                  0 == tmpSlice2.get("fields").length());
-      EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() &&
-                  tmpSlice2.get("includeAllFields").getBool());
-      EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() &&
-                  !tmpSlice2.get("trackListPositions").getBool());
-      EXPECT_TRUE(tmpSlice2.get("storeValues").isString() &&
-                  "none" == tmpSlice2.get("storeValues").copyString());
-      EXPECT_TRUE(tmpSlice2.get("version").isNumber());
-      EXPECT_EQ(1, tmpSlice2.get("version").getNumber<uint32_t>());
-      EXPECT_TRUE(tmpSlice2.get("collectionName").isString() &&
-                  "testCollection" ==
-                      tmpSlice2.get("collectionName").copyString());
-      EXPECT_TRUE(tmpSlice2.get("primarySortCompression").isString() &&
-                  "lz4" ==
-                      tmpSlice2.get("primarySortCompression").copyString());
-      EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() &&
-                  0 == tmpSlice2.get("storedValues").length());
-      EXPECT_TRUE(tmpSlice2.get("primarySort").isArray());
-
-      tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
-      ASSERT_TRUE(tmpSlice2.isArray());
-      ASSERT_EQ(1, tmpSlice2.length());
-      tmpSlice2 = tmpSlice2.at(0);
-      ASSERT_TRUE(tmpSlice2.isObject());
-      EXPECT_EQ(4, tmpSlice2.length());
-      EXPECT_TRUE(tmpSlice2.get("name").isString() &&
-                  "inPlace" == tmpSlice2.get("name").copyString());
-      EXPECT_TRUE(tmpSlice2.get("type").isString() &&
-                  "identity" == tmpSlice2.get("type").copyString());
-      EXPECT_TRUE(tmpSlice2.get("properties").isObject() &&
-                  0 == tmpSlice2.get("properties").length());
-      EXPECT_TRUE(tmpSlice2.get("features").isArray() &&
-                  0 == tmpSlice2.get("features").length());
+    // check serialization for inventory
+    {
+      VPackSlice tmpSlice, tmpSlice2;
+
+      arangodb::velocypack::Builder builder;
+      builder.openObject();
+      logicalView->properties(
+          builder, arangodb::LogicalDataSource::Serialization::Inventory);
+      builder.close();
+
+      auto slice = builder.slice();
+      EXPECT_TRUE(slice.isObject());
+      EXPECT_EQ(15, slice.length());
+      EXPECT_TRUE(slice.get("name").isString() &&
+                  "testView" == slice.get("name").copyString());
+      EXPECT_TRUE(slice.get("type").isString() &&
+                  "arangosearch" == slice.get("type").copyString());
+      EXPECT_TRUE(slice.get("id").isString() &&
+                  "101" == slice.get("id").copyString());
+      EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
+                  !slice.get("globallyUniqueId").copyString().empty());
+      EXPECT_TRUE(
+          slice.get("consolidationIntervalMsec").isNumber() &&
+          1000 == slice.get("consolidationIntervalMsec").getNumber<size_t>());
+      EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
+                  2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
+      EXPECT_TRUE(slice.get("commitIntervalMsec").isNumber() &&
+                  1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
+      {  // consolidation policy
+        tmpSlice = slice.get("consolidationPolicy");
+        EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+        tmpSlice2 = tmpSlice.get("type");
+        EXPECT_TRUE(tmpSlice2.isString() &&
+                    std::string("tier") == tmpSlice2.copyString());
+        tmpSlice2 = tmpSlice.get("segmentsMin");
+        EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+        tmpSlice2 = tmpSlice.get("segmentsMax");
+        EXPECT_TRUE(tmpSlice2.isNumber() &&
+                    10 == tmpSlice2.getNumber<size_t>());
+        tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
+        EXPECT_TRUE(tmpSlice2.isNumber() &&
+                    (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+        tmpSlice2 = tmpSlice.get("segmentsBytesMax");
+        EXPECT_TRUE(tmpSlice2.isNumber() &&
+                    (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+        tmpSlice2 = tmpSlice.get("minScore");
+        EXPECT_TRUE(tmpSlice2.isNumber() &&
+                    (0. == tmpSlice2.getNumber<double>()));
+      }
+      tmpSlice = slice.get("writebufferActive");
+      EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                  0 == tmpSlice.getNumber<size_t>());
+      tmpSlice = slice.get("writebufferIdle");
+      EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                  64 == tmpSlice.getNumber<size_t>());
+      tmpSlice = slice.get("writebufferSizeMax");
+      EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
+                  32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
+      tmpSlice = slice.get("primarySort");
+      EXPECT_TRUE(tmpSlice.isArray());
+      EXPECT_EQ(0, tmpSlice.length());
+      tmpSlice = slice.get("primarySortCompression");
+      EXPECT_TRUE(tmpSlice.isString());
+      EXPECT_EQ(std::string("lz4"), tmpSlice.copyString());
+      tmpSlice = slice.get("storedValues");
+      EXPECT_TRUE(tmpSlice.isArray());
+      EXPECT_EQ(0, tmpSlice.length());
+      {  // links
+        tmpSlice = slice.get("links");
+        EXPECT_TRUE(tmpSlice.isObject());
+        EXPECT_EQ(1, tmpSlice.length());
+        tmpSlice2 = tmpSlice.get("testCollection");
+        EXPECT_TRUE(tmpSlice2.isObject());
+        EXPECT_EQ(11, tmpSlice2.length());
+        EXPECT_TRUE(tmpSlice2.get("analyzers").isArray() &&
+                    1 == tmpSlice2.get("analyzers").length() &&
+                    "inPlace" == tmpSlice2.get("analyzers").at(0).copyString());
+        EXPECT_TRUE(tmpSlice2.get("fields").isObject() &&
+                    0 == tmpSlice2.get("fields").length());
+        EXPECT_TRUE(tmpSlice2.get("includeAllFields").isBool() &&
+                    tmpSlice2.get("includeAllFields").getBool());
+        EXPECT_TRUE(tmpSlice2.get("trackListPositions").isBool() &&
+                    !tmpSlice2.get("trackListPositions").getBool());
+        EXPECT_TRUE(tmpSlice2.get("storeValues").isString() &&
+                    "none" == tmpSlice2.get("storeValues").copyString());
+        EXPECT_TRUE(tmpSlice2.get("version").isNumber());
+        auto variantNumber = variant == 1 ? 1 : 0;
+        EXPECT_EQ(variantNumber,
+                  tmpSlice2.get("version").getNumber<uint32_t>());
+        EXPECT_TRUE(tmpSlice2.get("collectionName").isString() &&
+                    "testCollection" ==
+                        tmpSlice2.get("collectionName").copyString());
+        EXPECT_TRUE(tmpSlice2.get("primarySortCompression").isString() &&
+                    "lz4" ==
+                        tmpSlice2.get("primarySortCompression").copyString());
+        EXPECT_TRUE(tmpSlice2.get("storedValues").isArray() &&
+                    0 == tmpSlice2.get("storedValues").length());
+        EXPECT_TRUE(tmpSlice2.get("primarySort").isArray());
+
+        tmpSlice2 = tmpSlice2.get("analyzerDefinitions");
+        ASSERT_TRUE(tmpSlice2.isArray());
+        ASSERT_EQ(1, tmpSlice2.length());
+        tmpSlice2 = tmpSlice2.at(0);
+        ASSERT_TRUE(tmpSlice2.isObject());
+        EXPECT_EQ(4, tmpSlice2.length());
+        EXPECT_TRUE(tmpSlice2.get("name").isString() &&
+                    "inPlace" == tmpSlice2.get("name").copyString());
+        EXPECT_TRUE(tmpSlice2.get("type").isString() &&
+                    "identity" == tmpSlice2.get("type").copyString());
+        EXPECT_TRUE(tmpSlice2.get("properties").isObject() &&
+                    0 == tmpSlice2.get("properties").length());
+        EXPECT_TRUE(tmpSlice2.get("features").isArray() &&
+                    0 == tmpSlice2.get("features").length());
+      }
     }
   }
 }
