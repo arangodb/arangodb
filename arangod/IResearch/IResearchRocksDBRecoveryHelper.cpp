@@ -94,18 +94,6 @@ std::vector<std::shared_ptr<arangodb::Index>> lookupLinks(
 
   return indexes;
 }
-
-std::shared_ptr<arangodb::iresearch::IResearchLink> lookupLink(
-    TRI_vocbase_t& vocbase, arangodb::DataSourceId cid, arangodb::IndexId iid) {
-  auto col = vocbase.lookupCollection(cid);
-
-  if (!col) {
-    // invalid cid
-    return nullptr;
-  }
-
-  return arangodb::iresearch::IResearchLinkHelper::find(*col, iid);
-}
 }  // namespace
 
 namespace arangodb {
