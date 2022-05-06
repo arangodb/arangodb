@@ -30,6 +30,7 @@
 #include "Inspection/Types.h"
 
 #include "ExecutionThread.h"
+#include "StoppingCriterion.h"
 #include "Workload.h"
 #include "velocypack/SliceContainer.h"
 
@@ -39,6 +40,7 @@ struct InsertDocuments : Workload {
   struct ThreadOptions {
     std::string collection;
     std::shared_ptr<velocypack::Builder> object;
+    StoppingCriterion::type stop;
   };
   struct Options;
   struct Thread;
@@ -46,8 +48,9 @@ struct InsertDocuments : Workload {
 
   InsertDocuments(Options const& options) : _options(options) {}
 
-  WorkerThreadList createThreads(Execution const& exec,
-                                 Server& server) override;
+  auto createThreads(Execution& exec, Server& server)
+      -> WorkerThreadList override;
+  auto stoppingCriterion() const noexcept -> StoppingCriterion::type override;
 
  private:
   Options const& _options;
@@ -78,21 +81,24 @@ struct InsertDocuments::Options {
 
   std::optional<Thread> defaultThreadOptions;
   std::uint32_t threads{1};  // TODO - make variant fixed number/array of Thread
+  StoppingCriterion::type stop;
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, Options& o) {
     return f.object(o).fields(f.field("default", o.defaultThreadOptions),
-                              f.field("threads", o.threads));
+                              f.field("threads", o.threads),
+                              f.field("stopAfter", o.stop));
   }
 };
 
 struct InsertDocuments::Thread : ExecutionThread {
-  Thread(ThreadOptions options, Execution const& exec, Server& server);
+  Thread(ThreadOptions options, Execution& exec, Server& server);
   ~Thread();
   void run() override;
   [[nodiscard]] virtual ThreadReport report() const override {
     return {.operations = _operations};
   }
+  auto shouldStop() const noexcept -> bool override;
 
  private:
   std::uint64_t _operations{0};

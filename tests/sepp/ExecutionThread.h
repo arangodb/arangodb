@@ -39,18 +39,19 @@ enum class ThreadState { starting, running, ready, finished };
 struct Execution;
 
 struct ExecutionThread {
-  ExecutionThread(Execution const& exec, Server& server);
+  ExecutionThread(Execution& exec, Server& server);
   virtual ~ExecutionThread() = default;
   virtual void setup() {}
   virtual void run() = 0;
   virtual void initialize(std::uint32_t /*numThreads*/) {}
+  virtual bool shouldStop() const noexcept = 0;
   [[nodiscard]] virtual ThreadReport report() const { return {{}, 0}; }
 
  protected:
   Server& _server;
 
  private:
-  Execution const& _execution;
+  Execution& _execution;
   std::atomic<ThreadState> _state{ThreadState::starting};
   std::mt19937_64 _randomizer{};
   std::thread _thread{};

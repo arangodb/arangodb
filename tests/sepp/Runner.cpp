@@ -60,29 +60,20 @@ auto Runner::runBenchmark() -> Report {
   auto timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::system_clock::now().time_since_epoch());
 
-  std::vector<RoundReport> roundReports;
-  roundReports.reserve(_options.rounds);
-  for (std::uint32_t i = 0; i < _options.rounds; ++i) {
-    std::cout << "round " << i << std::flush;
-    auto report = executeRound(i);
-    std::cout << " - "
-              << static_cast<double>(report.operations()) / report.runtime
-              << " ops/ms" << std::endl;
-    roundReports.push_back(std::move(report));
-  }
-
-  return {.timestamp = timestamp.count(), .rounds = std::move(roundReports)};
-}
-
-auto Runner::executeRound(std::uint32_t round) -> RoundReport {
   startServer();
   setup();
 
   auto workload =
       std::make_shared<workloads::InsertDocuments>(_options.workload);
-  Execution exec(round, _options, workload);
+  Execution exec(_options, workload);
   exec.createThreads(*_server);
-  return exec.run();
+  auto report = exec.run();
+  std::cout << " - "
+            << static_cast<double>(report.operations()) / report.runtime
+            << " ops/ms" << std::endl;
+  report.timestamp = timestamp.count();
+
+  return report;
 }
 
 void Runner::startServer() {
@@ -92,13 +83,18 @@ void Runner::startServer() {
 }
 
 void Runner::setup() {
-  // TODO - make configurable
-
   for (auto& col : _options.setup.collections) {
     auto collection = createCollection(col.name);
     for (auto& idx : col.indexes) {
       createIndex(*collection, idx);
     }
+  }
+
+  for (auto& opts : _options.setup.prefill) {
+    auto workload = std::make_shared<workloads::InsertDocuments>(opts);
+    Execution exec(_options, workload);
+    exec.createThreads(*_server);
+    std::ignore = exec.run();  // TODO - do we need the report?
   }
 }
 

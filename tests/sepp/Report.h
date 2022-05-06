@@ -36,7 +36,11 @@ struct ThreadReport {
   std::uint64_t operations;
 };
 
-struct RoundReport {
+struct Report {
+  std::int64_t timestamp;
+  // TODO - rocksdb statistics
+  // velocypack::SliceContainer config;
+
   std::vector<ThreadReport> threads;
   double runtime;  // runtime in milliseconds
   std::uint64_t databaseSize;
@@ -52,13 +56,6 @@ struct RoundReport {
   [[nodiscard]] double throughput() const {
     return static_cast<double>(operations()) / runtime;
   }
-};
-
-struct Report {
-  std::int64_t timestamp;
-  // TODO - rocksdb statistics
-  // velocypack::SliceContainer config;
-  std::vector<RoundReport> rounds;
 };
 
 }  // namespace arangodb::sepp

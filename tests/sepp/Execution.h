@@ -43,16 +43,17 @@ enum class ExecutionState {
 };
 
 struct Execution {
-  Execution(std::uint32_t round, Options const& options,
-            std::shared_ptr<Workload> workload);
+  Execution(Options const& options, std::shared_ptr<Workload> workload);
   ~Execution();
   void createThreads(Server& server);
-  RoundReport run();
+  Report run();
   [[nodiscard]] ExecutionState state(
       std::memory_order order = std::memory_order_relaxed) const;
   [[nodiscard]] std::uint32_t numThreads() const {
     return static_cast<std::uint32_t>(_threads.size());
   }
+
+  void signalFinishedThread() noexcept;
 
  private:
   void waitUntilAllThreadsAre(ThreadState state);
@@ -62,10 +63,10 @@ struct Execution {
   static void waitUntilThreadStateIs(ExecutionThread const& thread,
                                      ThreadState expected);
 
-  RoundReport buildReport(double runtime);
+  Report buildReport(double runtime);
 
   std::atomic<ExecutionState> _state;
-  std::uint32_t _round;
+  std::atomic<std::uint32_t> _activeThreads{0};
   Options const& _options;
   std::shared_ptr<Workload> _workload;
   std::vector<std::unique_ptr<ExecutionThread>> _threads;

@@ -24,23 +24,39 @@
 #pragma once
 
 #include <cstddef>
-#include <memory>
-#include <vector>
+#include <variant>
 
-#include "StoppingCriterion.h"
+#include "Inspection/Types.h"
 
 namespace arangodb::sepp {
 
-struct Server;
-struct Execution;
-struct ExecutionThread;
+struct StoppingCriterion {
+  struct Runtime {
+    std::uint64_t ms;
 
-struct Workload {
-  virtual ~Workload() = default;
+    template<class Inspector>
+    friend inline auto inspect(Inspector& f, Runtime& o) {
+      return f.apply(o.ms);
+    }
+  };
 
-  using WorkerThreadList = std::vector<std::unique_ptr<ExecutionThread>>;
-  virtual WorkerThreadList createThreads(Execution& exec, Server& server) = 0;
+  struct NumberOfOperations {
+    std::uint64_t count;
 
-  virtual StoppingCriterion::type stoppingCriterion() const noexcept = 0;
+    template<class Inspector>
+    friend inline auto inspect(Inspector& f, NumberOfOperations& o) {
+      return f.apply(o.count);
+    }
+  };
+
+  using type = std::variant<Runtime, NumberOfOperations>;
+
+  template<class Inspector>
+  friend inline auto inspect(Inspector& f, StoppingCriterion::type& o) {
+    namespace insp = arangodb::inspection;
+    return f.variant(o).unqualified().alternatives(
+        insp::type<Runtime>("runtime"),
+        insp::type<NumberOfOperations>("operations"));
+  }
 };
 }  // namespace arangodb::sepp

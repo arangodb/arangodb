@@ -69,8 +69,6 @@ auto inspect(Inspector& f, Setup& o) {
 
 struct Options {
   std::string databaseDirectory;
-  std::uint32_t runtime;
-  std::uint32_t rounds;
 
   Setup setup;
   workloads::InsertDocuments::Options workload;
@@ -82,10 +80,9 @@ template<class Inspector>
 auto inspect(Inspector& f, Options& o) {
   return f.object(o).fields(
       f.field("databaseDirectory", o.databaseDirectory).fallback("/tmp/sepp"),
-      f.field("runtime", o.runtime).fallback(10000u),      //
       f.field("setup", o.setup),                           //
       f.field("workload", o.workload).fallback(f.keep()),  //
-      f.field("rounds", o.rounds).fallback(5u), f.field("rocksdb", o.rocksdb));
+      f.field("rocksdb", o.rocksdb));
 }
 
 }  // namespace arangodb::sepp

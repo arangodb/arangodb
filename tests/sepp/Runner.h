@@ -48,7 +48,6 @@ class Runner {
 
  private:
   auto runBenchmark() -> Report;
-  auto executeRound(std::uint32_t round) -> RoundReport;
   void startServer();
   void setup();
   auto createCollection(std::string const& name)

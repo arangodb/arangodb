@@ -38,9 +38,15 @@
 
 namespace arangodb::sepp::workloads {
 
-auto InsertDocuments::createThreads(Execution const& exec, Server& server)
+auto InsertDocuments::stoppingCriterion() const noexcept
+    -> StoppingCriterion::type {
+  return _options.stop;
+}
+
+auto InsertDocuments::createThreads(Execution& exec, Server& server)
     -> WorkerThreadList {
   ThreadOptions defaultThread;
+  defaultThread.stop = _options.stop;
 
   if (_options.defaultThreadOptions) {
     defaultThread.collection = _options.defaultThreadOptions->collection;
@@ -73,7 +79,7 @@ auto InsertDocuments::createThreads(Execution const& exec, Server& server)
   return result;
 }
 
-InsertDocuments::Thread::Thread(ThreadOptions options, Execution const& exec,
+InsertDocuments::Thread::Thread(ThreadOptions options, Execution& exec,
                                 Server& server)
     : ExecutionThread(exec, server), _options(options) {}
 
@@ -81,7 +87,8 @@ InsertDocuments::Thread::~Thread() = default;
 
 void InsertDocuments::Thread::run() {
   // TODO - make more configurable
-  for (unsigned i = 0; i < 10; ++i) {
+  const unsigned numOps = 10;
+  for (unsigned i = 0; i < numOps; ++i) {
     auto trx = std::make_unique<SingleCollectionTransaction>(
         transaction::StandaloneContext::Create(*_server.vocbase()),
         _options.collection, AccessMode::Type::WRITE);
@@ -90,7 +97,15 @@ void InsertDocuments::Thread::run() {
     trx->insert("testcol", _options.object->slice(), {});
     trx->commit();
   }
-  _operations += 10;
+  _operations += numOps;
+}
+
+auto InsertDocuments::Thread::shouldStop() const noexcept -> bool {
+  using StopAfterOps = StoppingCriterion::NumberOfOperations;
+  if (std::holds_alternative<StopAfterOps>(_options.stop)) {
+    return _operations >= std::get<StopAfterOps>(_options.stop).count;
+  }
+  return false;
 }
 
 }  // namespace arangodb::sepp::workloads

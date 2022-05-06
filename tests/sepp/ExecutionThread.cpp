@@ -31,7 +31,7 @@
 
 namespace arangodb::sepp {
 
-ExecutionThread::ExecutionThread(Execution const& exec, Server& server)
+ExecutionThread::ExecutionThread(Execution& exec, Server& server)
     : _server(server),
       _execution(exec),
       _thread(&ExecutionThread::threadFunc, this) {}
@@ -64,11 +64,12 @@ void ExecutionThread::doRun() {
 
   auto start = std::chrono::high_resolution_clock::now();
 
-  while (_execution.state() == ExecutionState::running) {
+  while (_execution.state() == ExecutionState::running && !shouldStop()) {
     run();
   }
 
   _runtime = std::chrono::high_resolution_clock::now() - start;
+  _execution.signalFinishedThread();
 }
 
 void ExecutionThread::waitUntilAllThreadsAreStarted() {

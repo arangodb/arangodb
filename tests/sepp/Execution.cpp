@@ -43,10 +43,8 @@ std::size_t getFolderSize(std::string_view path) {
 
 namespace arangodb::sepp {
 
-Execution::Execution(std::uint32_t round, Options const& options,
-                     std::shared_ptr<Workload> workload)
+Execution::Execution(Options const& options, std::shared_ptr<Workload> workload)
     : _state(ExecutionState::starting),
-      _round(round),
       _options(options),
       _workload(std::move(workload)) {}
 
@@ -67,7 +65,10 @@ ExecutionState Execution::state(std::memory_order order) const {
   return _state.load(order);
 }
 
-RoundReport Execution::run() {
+void Execution::signalFinishedThread() noexcept { _activeThreads.fetch_sub(1); }
+
+Report Execution::run() {
+  _activeThreads.store(_threads.size());
   _state.store(ExecutionState::preparing);
 
   waitUntilAllThreadsAre(ThreadState::running);
@@ -80,7 +81,24 @@ RoundReport Execution::run() {
 
   auto start = std::chrono::high_resolution_clock::now();
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(_options.runtime));
+  std::uint32_t sleeptimePerRound = 100;
+  auto rounds = [&]() -> std::uint32_t {
+    auto stoppingCriterion = _workload->stoppingCriterion();
+    if (std::holds_alternative<StoppingCriterion::Runtime>(stoppingCriterion)) {
+      return std::get<StoppingCriterion::Runtime>(stoppingCriterion).ms /
+             sleeptimePerRound;
+    } else {
+      // for stopping criteria based on number of operations we use an artifical
+      // time limit of one hour
+      return 1000 * 60 * 60 / 100;
+    }
+  }();
+
+  for (std::uint32_t r = 0;
+       r < rounds && _activeThreads.load(std::memory_order_relaxed) > 0; ++r) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(sleeptimePerRound));
+    // TODO - record samples (memory usage, rocksdb stats, ...)
+  }
 
   _state.store(ExecutionState::stopped);
 
@@ -91,7 +109,7 @@ RoundReport Execution::run() {
   return buildReport(runtime.count());
 }
 
-RoundReport Execution::buildReport(double runtime) {
+Report Execution::buildReport(double runtime) {
   for (auto& thread : _threads) {
     thread->_thread.join();
   }
