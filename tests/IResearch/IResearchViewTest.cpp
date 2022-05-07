@@ -433,10 +433,10 @@ TEST_F(IResearchViewTest, test_properties_user_internal_requests) {
         "{ \"name\": \"testCollection\", \"id\": 100 }");
     std::string variantVersion = "";
     if (variant == internal_request_expl_version) {
-      variantVersion = 1;
+      variantVersion = "      \"version\":1, ";
     }
     if (variant == user_request_expl_version) {
-      variantVersion = 0;
+      variantVersion = "      \"version\":0, ";
     }
     auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, "
