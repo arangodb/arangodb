@@ -1787,209 +1787,228 @@ TEST(GeoJSONAnalyzerTest, tokenizePoint) {
 }
 
 TEST(GeoJSONAnalyzerTest, tokenizePointGeoJSONArray) {
-  auto json = VPackParser::fromJson(R"([ 53.72314453125, 63.57789956676574 ])");
+  // Unified two tests: tokenizePoint ("point")
+  // tokenizePointGeoJSONArray ("geo").
+  constexpr auto point = "point";
+  constexpr auto geo = "geo";
+  for (auto variant : {point, geo}) {
+    auto json =
+        variant == point
+            ? VPackParser::fromJson(R"({
+                  "type": "Point",
+                  "coordinates": [
+                    53.72314453125,
+                    63.57789956676574
+                  ]
+            })")
+            : VPackParser::fromJson(R"([ 53.72314453125, 63.57789956676574 ])");
 
-  geo::ShapeContainer shape;
-  ASSERT_TRUE(parseShape(json->slice(), shape, true));
-  ASSERT_EQ(geo::ShapeContainer::Type::S2_POINT, shape.type());
-
-  // tokenize shape
-  {
-    GeoJSONAnalyzer::Options opts;
-    GeoJSONAnalyzer a(opts);
-    ASSERT_EQ(GeoJSONAnalyzer::Type::SHAPE, a.shapeType());
-    ASSERT_EQ(1, a.options().level_mod());
-    ASSERT_FALSE(a.options().optimize_for_space());
-    ASSERT_EQ("$", a.options().marker());
-    ASSERT_EQ(opts.options.minLevel, a.options().min_level());
-    ASSERT_EQ(opts.options.maxLevel, a.options().max_level());
-    ASSERT_EQ(opts.options.maxCells, a.options().max_cells());
-    ASSERT_FALSE(a.options().index_contains_points_only());
-
-    auto* inc = irs::get<irs::increment>(a);
-    ASSERT_NE(nullptr, inc);
-    auto* term = irs::get<irs::term_attribute>(a);
-    ASSERT_NE(nullptr, term);
-    ASSERT_TRUE(a.reset(arangodb::iresearch::ref<char>(json->slice())));
-
-    S2RegionTermIndexer indexer(S2Options(opts.options));
-    auto terms = indexer.GetIndexTerms(shape.centroid(), {});
-    ASSERT_FALSE(terms.empty());
-
-    auto begin = terms.begin();
-    for (; a.next(); ++begin) {
-      ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+    geo::ShapeContainer shape;
+    if (variant == point) {
+      ASSERT_TRUE(geo::geojson::parseRegion(json->slice(), shape, false).ok());
+    } else {
+      ASSERT_TRUE(parseShape(json->slice(), shape, true));
     }
-    ASSERT_EQ(begin, terms.end());
-  }
+    ASSERT_EQ(geo::ShapeContainer::Type::S2_POINT, shape.type());
 
-  // tokenize shape, custom options
-  {
-    GeoJSONAnalyzer::Options opts;
-    opts.options.maxCells = 1000;
-    opts.options.minLevel = 3;
-    opts.options.maxLevel = 22;
-    GeoJSONAnalyzer a(opts);
-    ASSERT_EQ(GeoJSONAnalyzer::Type::SHAPE, a.shapeType());
-    ASSERT_EQ(1, a.options().level_mod());
-    ASSERT_FALSE(a.options().optimize_for_space());
-    ASSERT_EQ("$", a.options().marker());
-    ASSERT_EQ(opts.options.minLevel, a.options().min_level());
-    ASSERT_EQ(opts.options.maxLevel, a.options().max_level());
-    ASSERT_EQ(opts.options.maxCells, a.options().max_cells());
-    ASSERT_FALSE(a.options().index_contains_points_only());
+    // tokenize shape
+    {
+      GeoJSONAnalyzer::Options opts;
+      GeoJSONAnalyzer a(opts);
+      ASSERT_EQ(GeoJSONAnalyzer::Type::SHAPE, a.shapeType());
+      ASSERT_EQ(1, a.options().level_mod());
+      ASSERT_FALSE(a.options().optimize_for_space());
+      ASSERT_EQ("$", a.options().marker());
+      ASSERT_EQ(opts.options.minLevel, a.options().min_level());
+      ASSERT_EQ(opts.options.maxLevel, a.options().max_level());
+      ASSERT_EQ(opts.options.maxCells, a.options().max_cells());
+      ASSERT_FALSE(a.options().index_contains_points_only());
 
-    auto* inc = irs::get<irs::increment>(a);
-    ASSERT_NE(nullptr, inc);
-    auto* term = irs::get<irs::term_attribute>(a);
-    ASSERT_NE(nullptr, term);
-    ASSERT_TRUE(a.reset(arangodb::iresearch::ref<char>(json->slice())));
+      auto* inc = irs::get<irs::increment>(a);
+      ASSERT_NE(nullptr, inc);
+      auto* term = irs::get<irs::term_attribute>(a);
+      ASSERT_NE(nullptr, term);
+      ASSERT_TRUE(a.reset(arangodb::iresearch::ref<char>(json->slice())));
 
-    S2RegionTermIndexer indexer(S2Options(opts.options));
-    auto terms = indexer.GetIndexTerms(shape.centroid(), {});
-    ASSERT_FALSE(terms.empty());
+      S2RegionTermIndexer indexer(S2Options(opts.options));
+      auto terms = indexer.GetIndexTerms(shape.centroid(), {});
+      ASSERT_FALSE(terms.empty());
 
-    auto begin = terms.begin();
-    for (; a.next(); ++begin) {
-      ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      auto begin = terms.begin();
+      for (; a.next(); ++begin) {
+        ASSERT_EQ(1, inc->value);
+        ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      }
+      ASSERT_EQ(begin, terms.end());
     }
-    ASSERT_EQ(begin, terms.end());
-  }
 
-  // tokenize centroid
-  {
-    GeoJSONAnalyzer::Options opts;
-    opts.type = GeoJSONAnalyzer::Type::CENTROID;
-    GeoJSONAnalyzer a(opts);
-    ASSERT_EQ(GeoJSONAnalyzer::Type::CENTROID, a.shapeType());
-    ASSERT_EQ(1, a.options().level_mod());
-    ASSERT_FALSE(a.options().optimize_for_space());
-    ASSERT_EQ("$", a.options().marker());
-    ASSERT_EQ(opts.options.minLevel, a.options().min_level());
-    ASSERT_EQ(opts.options.maxLevel, a.options().max_level());
-    ASSERT_EQ(opts.options.maxCells, a.options().max_cells());
-    ASSERT_FALSE(a.options().index_contains_points_only());
+    // tokenize shape, custom options
+    {
+      GeoJSONAnalyzer::Options opts;
+      opts.options.maxCells = 1000;
+      opts.options.minLevel = 3;
+      opts.options.maxLevel = 22;
+      GeoJSONAnalyzer a(opts);
+      ASSERT_EQ(GeoJSONAnalyzer::Type::SHAPE, a.shapeType());
+      ASSERT_EQ(1, a.options().level_mod());
+      ASSERT_FALSE(a.options().optimize_for_space());
+      ASSERT_EQ("$", a.options().marker());
+      ASSERT_EQ(opts.options.minLevel, a.options().min_level());
+      ASSERT_EQ(opts.options.maxLevel, a.options().max_level());
+      ASSERT_EQ(opts.options.maxCells, a.options().max_cells());
+      ASSERT_FALSE(a.options().index_contains_points_only());
 
-    auto* inc = irs::get<irs::increment>(a);
-    ASSERT_NE(nullptr, inc);
-    auto* term = irs::get<irs::term_attribute>(a);
-    ASSERT_NE(nullptr, term);
-    ASSERT_TRUE(a.reset(arangodb::iresearch::ref<char>(json->slice())));
+      auto* inc = irs::get<irs::increment>(a);
+      ASSERT_NE(nullptr, inc);
+      auto* term = irs::get<irs::term_attribute>(a);
+      ASSERT_NE(nullptr, term);
+      ASSERT_TRUE(a.reset(arangodb::iresearch::ref<char>(json->slice())));
 
-    S2RegionTermIndexer indexer(S2Options(opts.options));
-    auto terms = indexer.GetIndexTerms(shape.centroid(), {});
-    ASSERT_FALSE(terms.empty());
+      S2RegionTermIndexer indexer(S2Options(opts.options));
+      auto terms = indexer.GetIndexTerms(shape.centroid(), {});
+      ASSERT_FALSE(terms.empty());
 
-    auto begin = terms.begin();
-    for (; a.next(); ++begin) {
-      ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      auto begin = terms.begin();
+      for (; a.next(); ++begin) {
+        ASSERT_EQ(1, inc->value);
+        ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      }
+      ASSERT_EQ(begin, terms.end());
     }
-    ASSERT_EQ(begin, terms.end());
-  }
 
-  // tokenize centroid, custom options
-  {
-    GeoJSONAnalyzer::Options opts;
-    opts.options.maxCells = 1000;
-    opts.options.minLevel = 3;
-    opts.options.maxLevel = 22;
-    opts.type = GeoJSONAnalyzer::Type::CENTROID;
-    GeoJSONAnalyzer a(opts);
-    ASSERT_EQ(GeoJSONAnalyzer::Type::CENTROID, a.shapeType());
-    ASSERT_EQ(1, a.options().level_mod());
-    ASSERT_FALSE(a.options().optimize_for_space());
-    ASSERT_EQ("$", a.options().marker());
-    ASSERT_EQ(opts.options.minLevel, a.options().min_level());
-    ASSERT_EQ(opts.options.maxLevel, a.options().max_level());
-    ASSERT_EQ(opts.options.maxCells, a.options().max_cells());
-    ASSERT_FALSE(a.options().index_contains_points_only());
+    // tokenize centroid
+    {
+      GeoJSONAnalyzer::Options opts;
+      opts.type = GeoJSONAnalyzer::Type::CENTROID;
+      GeoJSONAnalyzer a(opts);
+      ASSERT_EQ(GeoJSONAnalyzer::Type::CENTROID, a.shapeType());
+      ASSERT_EQ(1, a.options().level_mod());
+      ASSERT_FALSE(a.options().optimize_for_space());
+      ASSERT_EQ("$", a.options().marker());
+      ASSERT_EQ(opts.options.minLevel, a.options().min_level());
+      ASSERT_EQ(opts.options.maxLevel, a.options().max_level());
+      ASSERT_EQ(opts.options.maxCells, a.options().max_cells());
+      ASSERT_FALSE(a.options().index_contains_points_only());
 
-    auto* inc = irs::get<irs::increment>(a);
-    ASSERT_NE(nullptr, inc);
-    auto* term = irs::get<irs::term_attribute>(a);
-    ASSERT_NE(nullptr, term);
-    ASSERT_TRUE(a.reset(arangodb::iresearch::ref<char>(json->slice())));
+      auto* inc = irs::get<irs::increment>(a);
+      ASSERT_NE(nullptr, inc);
+      auto* term = irs::get<irs::term_attribute>(a);
+      ASSERT_NE(nullptr, term);
+      ASSERT_TRUE(a.reset(arangodb::iresearch::ref<char>(json->slice())));
 
-    S2RegionTermIndexer indexer(S2Options(opts.options));
-    auto terms = indexer.GetIndexTerms(shape.centroid(), {});
-    ASSERT_FALSE(terms.empty());
+      S2RegionTermIndexer indexer(S2Options(opts.options));
+      auto terms = indexer.GetIndexTerms(shape.centroid(), {});
+      ASSERT_FALSE(terms.empty());
 
-    auto begin = terms.begin();
-    for (; a.next(); ++begin) {
-      ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      auto begin = terms.begin();
+      for (; a.next(); ++begin) {
+        ASSERT_EQ(1, inc->value);
+        ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      }
+      ASSERT_EQ(begin, terms.end());
     }
-    ASSERT_EQ(begin, terms.end());
-  }
 
-  // tokenize point
-  {
-    GeoJSONAnalyzer::Options opts;
-    opts.type = GeoJSONAnalyzer::Type::POINT;
-    GeoJSONAnalyzer a(opts);
-    ASSERT_EQ(GeoJSONAnalyzer::Type::POINT, a.shapeType());
-    ASSERT_EQ(1, a.options().level_mod());
-    ASSERT_FALSE(a.options().optimize_for_space());
-    ASSERT_EQ("$", a.options().marker());
-    ASSERT_EQ(opts.options.minLevel, a.options().min_level());
-    ASSERT_EQ(opts.options.maxLevel, a.options().max_level());
-    ASSERT_EQ(opts.options.maxCells, a.options().max_cells());
-    ASSERT_FALSE(a.options().index_contains_points_only());
+    // tokenize centroid, custom options
+    {
+      GeoJSONAnalyzer::Options opts;
+      opts.options.maxCells = 1000;
+      opts.options.minLevel = 3;
+      opts.options.maxLevel = 22;
+      opts.type = GeoJSONAnalyzer::Type::CENTROID;
+      GeoJSONAnalyzer a(opts);
+      ASSERT_EQ(GeoJSONAnalyzer::Type::CENTROID, a.shapeType());
+      ASSERT_EQ(1, a.options().level_mod());
+      ASSERT_FALSE(a.options().optimize_for_space());
+      ASSERT_EQ("$", a.options().marker());
+      ASSERT_EQ(opts.options.minLevel, a.options().min_level());
+      ASSERT_EQ(opts.options.maxLevel, a.options().max_level());
+      ASSERT_EQ(opts.options.maxCells, a.options().max_cells());
+      ASSERT_FALSE(a.options().index_contains_points_only());
 
-    auto* inc = irs::get<irs::increment>(a);
-    ASSERT_NE(nullptr, inc);
-    auto* term = irs::get<irs::term_attribute>(a);
-    ASSERT_NE(nullptr, term);
-    ASSERT_TRUE(a.reset(arangodb::iresearch::ref<char>(json->slice())));
+      auto* inc = irs::get<irs::increment>(a);
+      ASSERT_NE(nullptr, inc);
+      auto* term = irs::get<irs::term_attribute>(a);
+      ASSERT_NE(nullptr, term);
+      ASSERT_TRUE(a.reset(arangodb::iresearch::ref<char>(json->slice())));
 
-    S2RegionTermIndexer indexer(S2Options(opts.options));
-    auto terms = indexer.GetIndexTerms(shape.centroid(), {});
-    ASSERT_FALSE(terms.empty());
+      S2RegionTermIndexer indexer(S2Options(opts.options));
+      auto terms = indexer.GetIndexTerms(shape.centroid(), {});
+      ASSERT_FALSE(terms.empty());
 
-    auto begin = terms.begin();
-    for (; a.next(); ++begin) {
-      ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      auto begin = terms.begin();
+      for (; a.next(); ++begin) {
+        ASSERT_EQ(1, inc->value);
+        ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      }
+      ASSERT_EQ(begin, terms.end());
     }
-    ASSERT_EQ(begin, terms.end());
-  }
 
-  // tokenize point, custom options
-  {
-    GeoJSONAnalyzer::Options opts;
-    opts.options.maxCells = 1000;
-    opts.options.minLevel = 3;
-    opts.options.maxLevel = 22;
-    opts.type = GeoJSONAnalyzer::Type::POINT;
-    GeoJSONAnalyzer a(opts);
-    ASSERT_EQ(GeoJSONAnalyzer::Type::POINT, a.shapeType());
-    ASSERT_EQ(1, a.options().level_mod());
-    ASSERT_FALSE(a.options().optimize_for_space());
-    ASSERT_EQ("$", a.options().marker());
-    ASSERT_EQ(opts.options.minLevel, a.options().min_level());
-    ASSERT_EQ(opts.options.maxLevel, a.options().max_level());
-    ASSERT_EQ(opts.options.maxCells, a.options().max_cells());
-    ASSERT_FALSE(a.options().index_contains_points_only());
+    // tokenize point
+    {
+      GeoJSONAnalyzer::Options opts;
+      opts.type = GeoJSONAnalyzer::Type::POINT;
+      GeoJSONAnalyzer a(opts);
+      ASSERT_EQ(GeoJSONAnalyzer::Type::POINT, a.shapeType());
+      ASSERT_EQ(1, a.options().level_mod());
+      ASSERT_FALSE(a.options().optimize_for_space());
+      ASSERT_EQ("$", a.options().marker());
+      ASSERT_EQ(opts.options.minLevel, a.options().min_level());
+      ASSERT_EQ(opts.options.maxLevel, a.options().max_level());
+      ASSERT_EQ(opts.options.maxCells, a.options().max_cells());
+      ASSERT_FALSE(a.options().index_contains_points_only());
 
-    auto* inc = irs::get<irs::increment>(a);
-    ASSERT_NE(nullptr, inc);
-    auto* term = irs::get<irs::term_attribute>(a);
-    ASSERT_NE(nullptr, term);
-    ASSERT_TRUE(a.reset(arangodb::iresearch::ref<char>(json->slice())));
+      auto* inc = irs::get<irs::increment>(a);
+      ASSERT_NE(nullptr, inc);
+      auto* term = irs::get<irs::term_attribute>(a);
+      ASSERT_NE(nullptr, term);
+      ASSERT_TRUE(a.reset(arangodb::iresearch::ref<char>(json->slice())));
 
-    S2RegionTermIndexer indexer(S2Options(opts.options));
-    auto terms = indexer.GetIndexTerms(shape.centroid(), {});
-    ASSERT_FALSE(terms.empty());
+      S2RegionTermIndexer indexer(S2Options(opts.options));
+      auto terms = indexer.GetIndexTerms(shape.centroid(), {});
+      ASSERT_FALSE(terms.empty());
 
-    auto begin = terms.begin();
-    for (; a.next(); ++begin) {
-      ASSERT_EQ(1, inc->value);
-      ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      auto begin = terms.begin();
+      for (; a.next(); ++begin) {
+        ASSERT_EQ(1, inc->value);
+        ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      }
+      ASSERT_EQ(begin, terms.end());
     }
-    ASSERT_EQ(begin, terms.end());
+
+    // tokenize point, custom options
+    {
+      GeoJSONAnalyzer::Options opts;
+      opts.options.maxCells = 1000;
+      opts.options.minLevel = 3;
+      opts.options.maxLevel = 22;
+      opts.type = GeoJSONAnalyzer::Type::POINT;
+      GeoJSONAnalyzer a(opts);
+      ASSERT_EQ(GeoJSONAnalyzer::Type::POINT, a.shapeType());
+      ASSERT_EQ(1, a.options().level_mod());
+      ASSERT_FALSE(a.options().optimize_for_space());
+      ASSERT_EQ("$", a.options().marker());
+      ASSERT_EQ(opts.options.minLevel, a.options().min_level());
+      ASSERT_EQ(opts.options.maxLevel, a.options().max_level());
+      ASSERT_EQ(opts.options.maxCells, a.options().max_cells());
+      ASSERT_FALSE(a.options().index_contains_points_only());
+
+      auto* inc = irs::get<irs::increment>(a);
+      ASSERT_NE(nullptr, inc);
+      auto* term = irs::get<irs::term_attribute>(a);
+      ASSERT_NE(nullptr, term);
+      ASSERT_TRUE(a.reset(arangodb::iresearch::ref<char>(json->slice())));
+
+      S2RegionTermIndexer indexer(S2Options(opts.options));
+      auto terms = indexer.GetIndexTerms(shape.centroid(), {});
+      ASSERT_FALSE(terms.empty());
+
+      auto begin = terms.begin();
+      for (; a.next(); ++begin) {
+        ASSERT_EQ(1, inc->value);
+        ASSERT_EQ(*begin, irs::ref_cast<char>(term->value));
+      }
+      ASSERT_EQ(begin, terms.end());
+    }
   }
 }
 
