@@ -2583,7 +2583,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
                         .successful());
       }
 
-      updateJson = arangodb::velocypack::Parser::fromJson(
+      auto const updateJson = arangodb::velocypack::Parser::fromJson(
           "{ \"links\": {"
           "  \"testCollection1\" : { \"id\": \"1\", \"includeAllFields\" : "
           "true "
