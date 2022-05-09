@@ -606,6 +606,7 @@ Result auth::UserManager::accessUser(std::string const& user,
   if (it != _userCache.end()) {
     return func(it->second);
   }
+  TRI_ASSERT(user != "root");
   return TRI_ERROR_USER_NOT_FOUND;
 }
 
