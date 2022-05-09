@@ -223,7 +223,8 @@ export class GraphView extends React.Component {
           //fill: '#f00',
           //fill: '#dee072', // The filling color of Nodes
           fill: '#' + this.props.nodeColor,
-          stroke: '#576e3e', // The stroke color of nodes
+          //stroke: '#576e3e', // The stroke color of nodes
+          stroke: '#fbe08e',
           lineWidth: 1, // The line width of the stroke of nodes
           cursor: 'pointer',
         },
@@ -841,6 +842,7 @@ export class GraphView extends React.Component {
       <Card
           title={this.props.graphName}
           id="graph-card"
+          bodyStyle={{ 'height': '500px' }}
         >
           <div ref={this.ref} className={styles.graphContainer}> </div>
       </Card>
