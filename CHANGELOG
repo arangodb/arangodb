@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgrade jemalloc to version 5.3.0.
+
 * Fixed BTS-860. Changed ArangoSearch index recovery procedure to
   remove necessity to always fully recreate index if IndexCreation marker
   encountered.
