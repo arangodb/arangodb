@@ -239,40 +239,25 @@ export class GraphView extends React.Component {
           },
         },
       },
-      // Trauma Center Meidling
-      // Trauma Center Lorenz-Böhler
       nodeStateStyles: {
         hover: {
-          fill: '#edf042',
-          stroke: '#576e3e',
-          //fillOpacity: 0.1,
+          fill: '#fbe08e',
+          stroke: '#ffffff',
           lineWidth: 2,
-          shadowColor: '#576e3e',
-          shadowBlur: 10,
+          shadowColor: '#fbe08e',
+          shadowBlur: 20,
           cursor: 'pointer',
         },
         searchedNode: {
-          fill: '#9fb53a',
-          stroke: '#82962d',
-          lineWidth: 2,
-          shadowColor: '#82962d',
-          //shadowBlur: 10,
+          fill: '#fbe08e',
+          stroke: '#65bef3',
+          lineWidth: 4,
+          shadowColor: '#65bef3',
+          shadowBlur: 10,
           cursor: 'pointer',
         }
       },
       defaultEdge: {
-        /*
-        style: {
-          endArrow: {
-            path: G6.Arrow.triangle(10, 15, 0),
-            d: 0,
-            fill: '#' + this.props.edgeColor,
-            stroke: '#' + this.props.edgeColor
-          },
-          lineWidth: 2,
-          cursor: 'pointer'
-        },
-        */
         type: 'quadratic', // assign the edges to be quadratic bezier curves
         labelCfg: {
           autoRotate: true,
@@ -284,11 +269,10 @@ export class GraphView extends React.Component {
       },
       edgeStateStyles: {
         hover: {
-          style: {
-            fillOpacity: 0.1,
+            shadowColor: '#848484',
+            shadowBlur: 10,
             lineWidth: 2,
             cursor: 'pointer'
-          }
         },
         line: {
           type: 'polyline',
@@ -842,7 +826,7 @@ export class GraphView extends React.Component {
       <Card
           title={this.props.graphName}
           id="graph-card"
-          bodyStyle={{ 'height': '500px' }}
+          bodyStyle={{ 'height': '500px', 'backgroundColor': '#f2f2f2' }}
         >
           <div ref={this.ref} className={styles.graphContainer}> </div>
       </Card>
