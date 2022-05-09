@@ -5,7 +5,7 @@ import { UrlParametersContext } from "./url-parameters-context";
 import { Button, Tooltip } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
 
-const ParameterStartnode = ({ graphName, onGraphDataLoaded }) => {
+const ButtonSave = ({ graphName, onGraphDataLoaded }) => {
   const urlParameters = useContext(UrlParametersContext);
 
   const callApi = () => {
@@ -34,6 +34,7 @@ const ParameterStartnode = ({ graphName, onGraphDataLoaded }) => {
       <Tooltip placement="bottom" title={"Use current settings to receive data"}>    
         <Button
           type="primary"
+          style={{ background: "#2ecc71", borderColor: "#2ecc71" }}
           icon={<SaveOutlined />}
           onClick={() => {
             console.log("urlParameters (to make API call): ", urlParameters);
@@ -46,4 +47,4 @@ const ParameterStartnode = ({ graphName, onGraphDataLoaded }) => {
   );
 };
 
-export default ParameterStartnode;
+export default ButtonSave;
