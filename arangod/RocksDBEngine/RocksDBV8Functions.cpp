@@ -211,6 +211,7 @@ static void JS_WaitForEstimatorSync(
   TRI_V8_TRY_CATCH_END
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 static void JS_WalRecoveryStartSequence(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -226,6 +227,7 @@ static void JS_WalRecoveryStartSequence(
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
+#endif
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 static void JS_CollectionRevisionTreeCorrupt(
@@ -451,7 +453,10 @@ void RocksDBV8Functions::registerResources(RocksDBEngine& engine) {
       JS_WaitForEstimatorSync, true);
 
   // only used for testing - not publicly documented!
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "WAL_RECOVERY_START_SEQUENCE"),
       JS_WalRecoveryStartSequence, true);
+
+#endif
 }

@@ -431,6 +431,7 @@ class RocksDBEngine final : public StorageEngine {
   static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const&
   recoveryHelpers();
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   uint64_t recoveryStartSequence() const noexcept {
     return _recoveryStartSequence;
   }
@@ -438,6 +439,7 @@ class RocksDBEngine final : public StorageEngine {
     TRI_ASSERT(_recoveryStartSequence == 0);
     _recoveryStartSequence = value;
   }
+#endif
 
  private:
   void shutdownRocksDBInstance() noexcept;
@@ -645,7 +647,9 @@ class RocksDBEngine final : public StorageEngine {
 
   // sequence number from which WAL recovery was started. used only
   // for testing
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   uint64_t _recoveryStartSequence = 0;
+#endif
 
   metrics::Gauge<uint64_t>& _metricsWalSequenceLowerBound;
   metrics::Gauge<uint64_t>& _metricsArchivedWalFiles;

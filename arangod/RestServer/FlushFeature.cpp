@@ -61,7 +61,7 @@ void FlushFeature::registerFlushSubscription(
     return;
   }
 
-  std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
+  std::lock_guard lock{_flushSubscriptionsMutex};
 
   if (_stopped) {
     LOG_TOPIC("798c4", ERR, Logger::FLUSH) << "FlushFeature not running";
@@ -73,14 +73,14 @@ void FlushFeature::registerFlushSubscription(
 
 std::tuple<size_t, size_t, TRI_voc_tick_t> FlushFeature::releaseUnusedTicks() {
   auto& engine = server().getFeature<EngineSelectorFeature>().engine();
-  TRI_voc_tick_t const initialTick = engine.currentTick();
+  auto const initialTick = engine.currentTick();
 
   size_t stale = 0;
   size_t active = 0;
-  TRI_voc_tick_t minTick = initialTick;
+  auto minTick = initialTick;
 
   {
-    std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
+    std::lock_guard lock{_flushSubscriptionsMutex};
 
     // find min tick and remove stale subscriptions
     for (auto itr = _flushSubscriptions.begin();
@@ -117,11 +117,11 @@ std::tuple<size_t, size_t, TRI_voc_tick_t> FlushFeature::releaseUnusedTicks() {
       << ", active flush subscription(s) released: " << active
       << ", initial engine tick: " << initialTick;
 
-  return std::make_tuple(active, stale, minTick);
+  return std::tuple{active, stale, minTick};
 }
 
 void FlushFeature::stop() {
-  std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
+  std::lock_guard lock{_flushSubscriptionsMutex};
 
   // release any remaining flush subscriptions so that they may get
   // deallocated ASAP subscriptions could survive after

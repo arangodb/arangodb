@@ -99,7 +99,6 @@ namespace arangodb {
 RocksDBSettingsManager::RocksDBSettingsManager(RocksDBEngine& engine)
     : _engine(engine),
       _lastSync(0),
-      _syncing(false),
       _db(engine.db()->GetRootDB()),
       _initialReleasedTick(0) {}
 
@@ -109,37 +108,19 @@ void RocksDBSettingsManager::retrieveInitialValues() {
   _engine.releaseTick(_initialReleasedTick);
 }
 
-bool RocksDBSettingsManager::lockForSync(bool force) {
-  do {
-    bool expected = false;
-    bool res = _syncing.compare_exchange_strong(
-        expected, true, std::memory_order_acquire, std::memory_order_relaxed);
-    if (res) {
-      return true;
-    }
-    if (!force) {
-      return false;
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  } while (true);
-}
-
 // Thread-Safe force sync.
 ResultT<bool> RocksDBSettingsManager::sync(bool force) {
   TRI_IF_FAILURE("RocksDBSettingsManagerSync") {
     return ResultT<bool>::success(false);
   }
 
-  if (!_db || !lockForSync(force)) {
+  std::unique_lock lock{_syncingMutex, std::defer_lock};
+  if (!_db || (!lock.try_lock() && !force)) {
     return ResultT<bool>::success(false);
   }
-
-  // only one thread can enter here at a time
-  TRI_ASSERT(_syncing.load());
-
-  // make sure we give up our lock when we exit this function
-  auto guard = scopeGuard(
-      [this]() noexcept { _syncing.store(false, std::memory_order_release); });
+  if (!lock) {
+    lock.lock();
+  }
 
   try {
     // need superuser scope to ensure we can sync all collections and keep seq
@@ -169,7 +150,8 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
     // reserve a bit of scratch space to work with.
     // note: the scratch buffer is recycled, so we can start
     // small here. it will grow as needed.
-    _scratch.reserve(128 * 1024);
+    constexpr size_t scratchBufferSize = 128 * 1024;
+    _scratch.reserve(scratchBufferSize);
 
     for (auto const& pair : mappings) {
       TRI_voc_tick_t dbid = pair.first;
@@ -230,9 +212,12 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
 
     if (_scratch.capacity() >= 32 * 1024 * 1024) {
       // much data in _scratch, let's shrink it to save memory
-      _scratch.clear();
+      TRI_ASSERT(scratchBufferSize < 32 * 1024 * 1024);
+      _scratch.resize(scratchBufferSize);
       _scratch.shrink_to_fit();
+      _scratch.clear();
     }
+    TRI_ASSERT(_scratch.empty());
 
     auto const lastSync = _lastSync.load();
 

@@ -67,8 +67,8 @@ class IResearchFlushSubscription final : public FlushSubscription {
     auto value = _tick.load(std::memory_order_acquire);
     // tick value must never go backwards
     while (tick > value) {
-      if (_tick.compare_exchange_strong(value, tick,
-                                        std::memory_order_release)) {
+      if (_tick.compare_exchange_weak(value, tick, std::memory_order_release,
+                                      std::memory_order_acquire)) {
         break;
       }
     }

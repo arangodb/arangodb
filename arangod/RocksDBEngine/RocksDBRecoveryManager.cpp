@@ -591,7 +591,9 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
         engine.settingsManager()->earliestSeqNeeded();
     auto recoveryStartSequence = std::min(earliest, engine.releasedTick());
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
     engine.recoveryStartSequence(recoveryStartSequence);
+#endif
 
     if (engine.dbExisted()) {
       LOG_TOPIC("fe333", INFO, Logger::ENGINES)

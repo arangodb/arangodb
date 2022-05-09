@@ -26,7 +26,6 @@
 
 #include <rocksdb/types.h>
 #include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
 #include "Basics/ResultT.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -37,6 +36,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <mutex>
 
 namespace rocksdb {
 class DB;
@@ -66,23 +66,21 @@ class RocksDBSettingsManager {
  private:
   void loadSettings();
 
-  bool lockForSync(bool force);
-
   RocksDBEngine& _engine;
 
   /// @brief a reusable builder, used inside sync() to serialize objects.
-  /// implicitly protected by _syncing.
+  /// implicitly protected by _syncingMutex.
   arangodb::velocypack::Builder _tmpBuilder;
 
   /// @brief a reusable string object used for serialization.
-  /// implicitly protected by _syncing.
+  /// implicitly protected by _syncingMutex.
   std::string _scratch;
 
   /// @brief last sync sequence number
   std::atomic<rocksdb::SequenceNumber> _lastSync;
 
   /// @brief currently syncing
-  std::atomic<bool> _syncing;
+  std::mutex _syncingMutex;
 
   /// @brief rocksdb instance
   rocksdb::DB* _db;
