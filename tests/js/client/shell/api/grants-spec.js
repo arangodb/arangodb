@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 5000 */
-/* global describe, after, afterEach, before, beforeEach, it, db, arango */
+/* global describe, after, afterEach, before, beforeEach, it, db, arango, print */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
