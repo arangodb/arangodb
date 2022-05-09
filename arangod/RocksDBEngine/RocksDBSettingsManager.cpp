@@ -25,10 +25,9 @@
 #include "RocksDBSettingsManager.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/WriteLocker.h"
+#include "Basics/debugging.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
@@ -115,12 +114,17 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
   }
 
   std::unique_lock lock{_syncingMutex, std::defer_lock};
-  if (!_db || (!lock.try_lock() && !force)) {
+
+  if (force) {
+    lock.lock();
+  } else if (!lock.try_lock()) {
+    // if we can't get the lock, we need to exit here without getting
+    // any work done. callers can use the force flag to indicate work
+    // *must* be performed.
     return ResultT<bool>::success(false);
   }
-  if (!lock) {
-    lock.lock();
-  }
+
+  TRI_ASSERT(lock.owns_lock());
 
   try {
     // need superuser scope to ensure we can sync all collections and keep seq
