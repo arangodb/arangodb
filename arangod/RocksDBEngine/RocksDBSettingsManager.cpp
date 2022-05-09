@@ -219,8 +219,8 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
       TRI_ASSERT(scratchBufferSize < 32 * 1024 * 1024);
       _scratch.resize(scratchBufferSize);
       _scratch.shrink_to_fit();
-      _scratch.clear();
     }
+    _scratch.clear();
     TRI_ASSERT(_scratch.empty());
 
     auto const lastSync = _lastSync.load();
