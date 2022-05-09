@@ -550,7 +550,7 @@ Result IndexFactory::processIndexNumThreads(VPackSlice definition,
 Result IndexFactory::processIndexThreadBatchSize(VPackSlice definition,
                                                  VPackBuilder& builder) {
   uint64_t batchSize = basics::VelocyPackHelper::getNumericValue<uint64_t>(
-      definition, StaticStrings::IndexThreadBatchSize, 500);
+      definition, StaticStrings::IndexThreadBatchSize, 5000);
   if (batchSize < 50) {
     return Result(TRI_ERROR_BAD_PARAMETER,
                   "threadBatchSize attribute must be a number greater than 50");
