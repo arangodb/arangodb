@@ -353,6 +353,7 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
     //
     //  if so, make them leader
     for (auto const& participant : acceptableLeaderSet) {
+      TRI_ASSERT(committedParticipants.contains(participant));
       auto const& flags = committedParticipants.at(participant);
 
       if (participant != current.leader->serverId and flags.forced) {
@@ -377,6 +378,7 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
       auto const& chosenOne =
           acceptableLeaderSet.at(RandomGenerator::interval(maxIdx));
 
+      TRI_ASSERT(committedParticipants.contains(chosenOne));
       auto flags = committedParticipants.at(chosenOne);
 
       flags.forced = true;
@@ -405,23 +407,28 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
     if (!plan.participantsConfig.participants.contains(*target.leader)) {
       ctx.reportStatus(LogCurrentSupervision::StatusCode::kTargetLeaderInvalid,
                        *target.leader);
+      ctx.createAction<NoActionPossibleAction>();
+      return;
     }
 
     if (!health.notIsFailed(*target.leader)) {
       ctx.reportStatus(LogCurrentSupervision::StatusCode::kTargetLeaderFailed,
                        *target.leader);
+      ctx.createAction<NoActionPossibleAction>();
+      return;
     };
 
     if (!isConfigurationCommitted(log)) {
-      ctx.createAction<NoActionPossibleAction>();
       ctx.reportStatus(
           LogCurrentSupervision::StatusCode::kWaitingForConfigCommitted,
           std::nullopt);
+      ctx.createAction<NoActionPossibleAction>();
       return;
     }
 
     if (hasCurrentTermWithLeader(log) and
         target.leader != plan.currentTerm->leader->serverId) {
+      TRI_ASSERT(plan.participantsConfig.participants.contains(*target.leader));
       auto const& planLeaderConfig =
           plan.participantsConfig.participants.at(*target.leader);
 

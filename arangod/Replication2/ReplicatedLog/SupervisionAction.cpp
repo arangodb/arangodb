@@ -42,8 +42,16 @@ return std::visit([](auto &&arg) { return arg.name; }, action);
 }
 */
 auto executeAction(Log log, Action &action) -> ActionContext {
-  auto ctx =
-      ActionContext{std::move(log.plan), std::move(log.current->supervision)};
+  auto currentSupervision =
+      std::invoke([&]() -> std::optional<LogCurrentSupervision> {
+        if (log.current.has_value()) {
+          return log.current->supervision;
+        } else {
+          return std::nullopt;
+        }
+      });
+
+  auto ctx = ActionContext{std::move(log.plan), std::move(currentSupervision)};
   std::visit([&](auto &action) { action.execute(ctx); }, action);
   return ctx;
 }

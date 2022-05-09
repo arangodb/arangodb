@@ -39,6 +39,7 @@
 #include "Replication2/Helper/ModelChecker/HashValues.h"
 #include "Replication2/Helper/ModelChecker/Predicates.h"
 
+#include "Logger/LogMacros.h"
 using namespace arangodb;
 using namespace arangodb::test;
 using namespace arangodb::replication2;
@@ -96,11 +97,15 @@ SupervisionLogAction::SupervisionLogAction(replicated_log::Action action)
     : _action(std::move(action)) {}
 
 void SupervisionLogAction::apply(AgencyState& agency) {
-  auto ctx = replicated_log::ActionContext{
-      agency.replicatedLog.value().plan,
-      agency.replicatedLog.value().current->supervision};
-  std::visit([&](auto& action) { action.execute(ctx); }, _action);
+  if (!agency.replicatedLog.has_value()) {
+    // TODO: What now?
+    TRI_ASSERT(false);
+  }
+  auto ctx = replicated_log::executeAction(*agency.replicatedLog, _action);
   if (ctx.hasModificationFor<LogCurrentSupervision>()) {
+    if (!agency.replicatedLog->current.has_value()) {
+      agency.replicatedLog->current.emplace(LogCurrent{});
+    }
     agency.replicatedLog->current->supervision =
         ctx.getValue<LogCurrentSupervision>();
   }
