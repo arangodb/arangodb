@@ -460,9 +460,10 @@ TEST_F(IResearchViewTest, test_properties_user_internal_requests) {
     arangodb::LogicalView::ptr logicalView;
     bool variantFlag =
         variant == user_request or variant == user_request_expl_version;
-    EXPECT_TRUE(arangodb::iresearch::IResearchView::factory()
-                    .create(logicalView, vocbase, viewCreateJson->slice(),
-                            variantFlag).ok());
+    EXPECT_TRUE(
+        arangodb::iresearch::IResearchView::factory()
+            .create(logicalView, vocbase, viewCreateJson->slice(), variantFlag)
+            .ok());
     ASSERT_TRUE(logicalView);
     std::set<arangodb::DataSourceId> cids;
     logicalView->visitCollections([&cids](arangodb::DataSourceId cid) -> bool {
@@ -747,8 +748,8 @@ TEST_F(IResearchViewTest, test_properties_user_internal_requests) {
                     "none" == tmpSlice2.get("storeValues").copyString());
         EXPECT_TRUE(tmpSlice2.get("version").isNumber());
         ushort variantNum = 0;
-        if (variant == internal_request_expl_version
-            or variant == user_request) {
+        if (variant == internal_request_expl_version or
+            variant == user_request) {
           variantNum = 1;
         }
         EXPECT_EQ(variantNum, tmpSlice2.get("version").getNumber<uint32_t>());

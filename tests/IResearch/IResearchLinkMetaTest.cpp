@@ -1544,18 +1544,15 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskNone) {
 
 // missing analyzer definition inRecovery
 void missing_analyzer_definition_inRecovery(
-    arangodb::tests::mocks::MockAqlServer& server,
-    TRI_vocbase_t& vocbase) {
+    arangodb::tests::mocks::MockAqlServer& server, TRI_vocbase_t& vocbase) {
   auto json = VPackParser::fromJson(
       "{ \
       \"analyzers\": [ \"missing3\" ] \
     }");
   auto before = StorageEngineMock::recoveryStateResult;
-  StorageEngineMock::recoveryStateResult =
-      arangodb::RecoveryState::IN_PROGRESS;
-  auto restore = irs::make_finally([&before]() -> void {
-    StorageEngineMock::recoveryStateResult = before;
-  });
+  StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+  auto restore = irs::make_finally(
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
   arangodb::iresearch::IResearchLinkMeta meta;
   std::string errorField;
   EXPECT_FALSE(
@@ -1565,7 +1562,7 @@ void missing_analyzer_definition_inRecovery(
 
 // existing analyzer (name only)
 void existing_analyzer_name_only(arangodb::tests::mocks::MockAqlServer& server,
-                       TRI_vocbase_t& vocbase) {
+                                 TRI_vocbase_t& vocbase) {
   auto json = VPackParser::fromJson(
       "{ \
       \"analyzers\": [ \"empty\" ] \
@@ -1587,18 +1584,15 @@ void existing_analyzer_name_only(arangodb::tests::mocks::MockAqlServer& server,
 
 // existing analyzer (name only) inRecovery
 void existing_analyzer_name_only_inRecovery(
-    arangodb::tests::mocks::MockAqlServer& server,
-    TRI_vocbase_t& vocbase) {
+    arangodb::tests::mocks::MockAqlServer& server, TRI_vocbase_t& vocbase) {
   auto json = VPackParser::fromJson(
       "{ \
       \"analyzers\": [ \"empty\" ] \
     }");
   auto before = StorageEngineMock::recoveryStateResult;
-  StorageEngineMock::recoveryStateResult =
-      arangodb::RecoveryState::IN_PROGRESS;
-  auto restore = irs::make_finally([&before]() -> void {
-    StorageEngineMock::recoveryStateResult = before;
-  });
+  StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+  auto restore = irs::make_finally(
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
   arangodb::iresearch::IResearchLinkMeta meta;
   std::string errorField;
   EXPECT_TRUE(
@@ -1616,14 +1610,11 @@ void existing_analyzer_name_only_inRecovery(
 
 // complex definition inRecovery
 void complex_definition_inRecovery(
-    arangodb::tests::mocks::MockAqlServer& server,
-    TRI_vocbase_t& vocbase) {
+    arangodb::tests::mocks::MockAqlServer& server, TRI_vocbase_t& vocbase) {
   auto before = StorageEngineMock::recoveryStateResult;
-  StorageEngineMock::recoveryStateResult =
-      arangodb::RecoveryState::IN_PROGRESS;
-  auto restore = irs::make_finally([&before]() -> void {
-    StorageEngineMock::recoveryStateResult = before;
-  });
+  StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+  auto restore = irs::make_finally(
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
 
   auto json = VPackParser::fromJson(
       "{ \
@@ -1677,14 +1668,11 @@ void complex_definition_inRecovery(
 }
 
 void complex_definition_inRecovery02(
-    arangodb::tests::mocks::MockAqlServer& server,
-    TRI_vocbase_t& vocbase) {
+    arangodb::tests::mocks::MockAqlServer& server, TRI_vocbase_t& vocbase) {
   auto before = StorageEngineMock::recoveryStateResult;
-  StorageEngineMock::recoveryStateResult =
-      arangodb::RecoveryState::IN_PROGRESS;
-  auto restore = irs::make_finally([&before]() -> void {
-    StorageEngineMock::recoveryStateResult = before;
-  });
+  StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+  auto restore = irs::make_finally(
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
 
   auto json = VPackParser::fromJson(
       "{ \
@@ -1739,8 +1727,7 @@ void complex_definition_inRecovery02(
 
 // existing analyzer (full) analyzer creation not allowed (pass)
 void existing_analyzer_creation_not_allowed(
-    arangodb::tests::mocks::MockAqlServer& server,
-    TRI_vocbase_t& vocbase) {
+    arangodb::tests::mocks::MockAqlServer& server, TRI_vocbase_t& vocbase) {
   auto json = VPackParser::fromJson(
       "{ \
       \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": {\"args\":\"de\"}, \"features\": [ \"frequency\" ] } ], \
@@ -1763,8 +1750,7 @@ void existing_analyzer_creation_not_allowed(
 
 // existing analyzer (full) analyzer definition not allowed
 void existing_analyzer_definition_not_allowed(
-    arangodb::tests::mocks::MockAqlServer& server,
-    TRI_vocbase_t& vocbase) {
+    arangodb::tests::mocks::MockAqlServer& server, TRI_vocbase_t& vocbase) {
   auto json = VPackParser::fromJson(
       "{ \
       \"analyzers\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": {\"args\":\"de\"}, \"features\": [ \"frequency\" ] } ], \
@@ -1778,9 +1764,8 @@ void existing_analyzer_definition_not_allowed(
 }
 
 // existing analyzer (full)
-void existing_analyzer(
-    arangodb::tests::mocks::MockAqlServer& server,
-    TRI_vocbase_t& vocbase) {
+void existing_analyzer(arangodb::tests::mocks::MockAqlServer& server,
+                       TRI_vocbase_t& vocbase) {
   auto json = VPackParser::fromJson(
       "{ \
       \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": {\"args\":\"de\"}, \"features\": [ \"frequency\" ] } ], \
@@ -1802,20 +1787,17 @@ void existing_analyzer(
 }
 
 // existing analyzer (full) inRecovery
-void existing_analyzer_inRecovery(
-    arangodb::tests::mocks::MockAqlServer& server,
-    TRI_vocbase_t& vocbase) {
+void existing_analyzer_inRecovery(arangodb::tests::mocks::MockAqlServer& server,
+                                  TRI_vocbase_t& vocbase) {
   auto json = VPackParser::fromJson(
       "{ \
       \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": {\"args\":\"de\"}, \"features\": [ \"frequency\" ] } ], \
       \"analyzers\": [ \"empty\" ] \
     }");
   auto before = StorageEngineMock::recoveryStateResult;
-  StorageEngineMock::recoveryStateResult =
-      arangodb::RecoveryState::IN_PROGRESS;
-  auto restore = irs::make_finally([&before]() -> void {
-    StorageEngineMock::recoveryStateResult = before;
-  });
+  StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+  auto restore = irs::make_finally(
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
   arangodb::iresearch::IResearchLinkMeta meta;
   std::string errorField;
   EXPECT_TRUE(
@@ -1832,8 +1814,7 @@ void existing_analyzer_inRecovery(
 
 // existing analyzer (definition mismatch)
 void existing_analyzer_definition_mismatch(
-    arangodb::tests::mocks::MockAqlServer& server,
-    TRI_vocbase_t& vocbase) {
+    arangodb::tests::mocks::MockAqlServer& server, TRI_vocbase_t& vocbase) {
   auto json = VPackParser::fromJson(
       "{ \
       \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } ], \
@@ -1855,19 +1836,16 @@ void existing_analyzer_definition_mismatch(
 
 // existing analyzer (definition mismatch) inRecovery
 void existing_analyzer_definition_mismatch_inRecovery(
-    arangodb::tests::mocks::MockAqlServer& server,
-    TRI_vocbase_t& vocbase) {
+    arangodb::tests::mocks::MockAqlServer& server, TRI_vocbase_t& vocbase) {
   auto json = VPackParser::fromJson(
       "{ \
       \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } ], \
       \"analyzers\": [ \"empty\" ] \
     }");
   auto before = StorageEngineMock::recoveryStateResult;
-  StorageEngineMock::recoveryStateResult =
-      arangodb::RecoveryState::IN_PROGRESS;
-  auto restore = irs::make_finally([&before]() -> void {
-    StorageEngineMock::recoveryStateResult = before;
-  });
+  StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+  auto restore = irs::make_finally(
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
   arangodb::iresearch::IResearchLinkMeta meta;
   std::string errorField;
   EXPECT_TRUE(
@@ -1885,19 +1863,16 @@ void existing_analyzer_definition_mismatch_inRecovery(
 
 // existing analyzer (definition mismatch) inRecovery
 void existing_analyzer_definition_mismatch_inRecovery02(
-    arangodb::tests::mocks::MockAqlServer& server,
-    TRI_vocbase_t& vocbase) {
+    arangodb::tests::mocks::MockAqlServer& server, TRI_vocbase_t& vocbase) {
   auto json = VPackParser::fromJson(
       "{ \
       \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } ], \
       \"analyzers\": [ \"empty\" ] \
     }");
   auto before = StorageEngineMock::recoveryStateResult;
-  StorageEngineMock::recoveryStateResult =
-      arangodb::RecoveryState::IN_PROGRESS;
-  auto restore = irs::make_finally([&before]() -> void {
-    StorageEngineMock::recoveryStateResult = before;
-  });
+  StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+  auto restore = irs::make_finally(
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
   arangodb::iresearch::IResearchLinkMeta meta;
   std::string errorField;
   EXPECT_TRUE(
@@ -2586,7 +2561,6 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 
   // complex definition inRecovery
   complex_definition_inRecovery02(server, vocbase);
-
 
   // existing analyzer (full) analyzer creation not allowed (pass)
   existing_analyzer_creation_not_allowed(server, vocbase);
