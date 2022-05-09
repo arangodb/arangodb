@@ -3,6 +3,10 @@ devel
 
 * Upgraded bundled version of RocksDB to 7.2.
 
+* Fixed BTS-860. Changed ArangoSearch index recovery procedure to
+  remove necessity to always fully recreate index if IndexCreation marker
+  encountered.
+
 * Updated arangosync to v2.9.1.
 
 * Added option `--enable-revision-trees` to arangorestore, which will add the
