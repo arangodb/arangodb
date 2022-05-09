@@ -1,6 +1,8 @@
 v3.7.18 (XXXX-XX-XX)
 --------------------
 
+* Updated OpenSSL to 1.1.1o and OpenLDAP to 2.6.2.
+
 * Fixed BTS-621: Fixed rare case of segfault in cluster during database recovery
   if DBServer is in upgrade mode in the same time.
 
@@ -16,8 +18,6 @@ v3.7.18 (XXXX-XX-XX)
   Same with low priority authentication like internal UI requests to .html files
   for the UI. This solves a performance problem for shards getting in sync with
   audit log switched on.
-
-* Updated OpenSSL to 1.1.1n and OpenLDAP to 2.6.1.
 
 * Fixed ES-1078: The REST API endpoint for handling `/_api/user/${user}/config`
   did not work properly. The supplied data by sending a PUT request has not been
