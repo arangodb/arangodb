@@ -36,64 +36,16 @@ namespace paths = arangodb::cluster::paths::aliases;
 
 namespace arangodb::replication2::replicated_log {
 
-auto to_string(Action const& action) -> std::string_view {
-  return std::visit([](auto&& arg) { return arg.name; }, action);
+/*
+auto to_string(Action const &action) -> std::string_view {
+return std::visit([](auto &&arg) { return arg.name; }, action);
+}
+*/
+auto executeAction(Log log, Action &action) -> ActionContext {
+  auto ctx =
+      ActionContext{std::move(log.plan), std::move(log.current->supervision)};
+  std::visit([&](auto &action) { action.execute(ctx); }, action);
+  return ctx;
 }
 
-void toVelocyPack(Action const& action, VPackBuilder& builder) {
-  std::visit([&builder](auto&& arg) { serialize(builder, arg); }, action);
-}
-
-auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
-             std::optional<LogPlanSpecification> const plan,
-             std::optional<LogCurrent> const current,
-             arangodb::agency::envelope envelope)
-    -> arangodb::agency::envelope {
-  auto planPath =
-      paths::plan()->replicatedLogs()->database(dbName)->log(log)->str();
-
-  auto currentPath = paths::current()
-                         ->replicatedLogs()
-                         ->database(dbName)
-                         ->log(log)
-                         ->supervision()
-                         ->str();
-
-  if (std::holds_alternative<EmptyAction>(action)) {
-    return envelope;
-  }
-
-  auto ctx = ActionContext{std::move(plan), std::move(current)};
-
-  std::visit([&](auto& action) { action.execute(ctx); }, action);
-
-  if (std::holds_alternative<EmptyAction>(action)) {
-    return envelope;
-  }
-
-  return envelope
-      .write()
-      // this is here to trigger all waitForPlan, even if we only
-      // update current.
-      .inc(paths::plan()->version()->str())
-      .cond(ctx.hasPlanModification(),
-            [&](arangodb::agency::envelope::write_trx&& trx) {
-              return std::move(trx).emplace_object(
-                  planPath, [&](VPackBuilder& builder) {
-                    ctx.getPlan().toVelocyPack(builder);
-                  });
-            })
-      .cond(ctx.hasCurrentModification(),
-            [&](arangodb::agency::envelope::write_trx&& trx) {
-              return std::move(trx)
-                  .emplace_object(
-                      currentPath,
-                      [&](VPackBuilder& builder) {
-                        ctx.getCurrent().supervision->toVelocyPack(builder);
-                      })
-                  .inc(paths::current()->version()->str());
-            })
-      .end();
-}
-
-}  // namespace arangodb::replication2::replicated_log
+} // namespace arangodb::replication2::replicated_log

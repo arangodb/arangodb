@@ -27,85 +27,22 @@
 #include <memory>
 #include <utility>
 
+#include <fmt/core.h>
+#include <fmt/format.h>
+
 #include "Agency/TransactionBuilder.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/Supervision/ModifyContext.h"
 
 using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2::replicated_log {
 
-struct ActionContext {
-  ActionContext(std::optional<LogPlanSpecification> plan,
-                std::optional<LogCurrent> current)
-      : plan(std::move(plan)), current(std::move(current)) {}
+using ActionContext =
+    ModifyContext<LogPlanSpecification, LogCurrentSupervision>;
 
-  template<typename F>
-  auto modifyPlan(F&& fn) {
-    static_assert(std::is_invocable_r_v<void, F, LogPlanSpecification&>);
-    TRI_ASSERT(plan.has_value())
-        << "modifying action expects plan to be present";
-    modifiedPlan = true;
-    return std::invoke(std::forward<F>(fn), *plan);
-  }
-
-  template<typename F>
-  auto modifyCurrent(F&& fn) {
-    static_assert(std::is_invocable_r_v<void, F, LogCurrent&>);
-    TRI_ASSERT(current.has_value())
-        << "modifying action expects current to be present";
-    modifiedCurrent = true;
-    return std::invoke(std::forward<F>(fn), *current);
-  }
-
-  template<typename F>
-  auto modifyBoth(F&& fn) {
-    static_assert(
-        std::is_invocable_r_v<void, F, LogPlanSpecification&, LogCurrent&>);
-    TRI_ASSERT(plan.has_value())
-        << "modifying action expects log plan to be present";
-    TRI_ASSERT(current.has_value())
-        << "modifying action expects current to be present";
-    modifiedPlan = true;
-    modifiedCurrent = true;
-    return std::invoke(std::forward<F>(fn), *plan, *current);
-  }
-
-  void setPlan(LogPlanSpecification newPlan) {
-    plan.emplace(std::move(newPlan));
-    modifiedPlan = true;
-  }
-
-  void setCurrent(LogCurrent newCurrent) {
-    current.emplace(std::move(newCurrent));
-    modifiedCurrent = true;
-  }
-
-  auto hasModification() const noexcept -> bool {
-    return modifiedPlan || modifiedCurrent;
-  }
-
-  auto hasPlanModification() const noexcept -> bool { return modifiedPlan; }
-
-  auto hasCurrentModification() const noexcept -> bool {
-    return modifiedCurrent;
-  }
-
-  auto getPlan() const noexcept -> LogPlanSpecification const& {
-    return plan.value();
-  }
-
-  auto getCurrent() const noexcept -> LogCurrent const& {
-    return current.value();
-  }
-
- private:
-  std::optional<LogPlanSpecification> plan;
-  bool modifiedPlan = false;
-  std::optional<LogCurrent> current;
-  bool modifiedCurrent = false;
-};
-
+// TODO: this action is redundant needs to be removed
 struct EmptyAction {
   static constexpr std::string_view name = "EmptyAction";
 
@@ -115,16 +52,13 @@ struct EmptyAction {
   std::optional<std::string> message;
 
   auto execute(ActionContext& ctx) const -> void {
-    ctx.modifyCurrent([&](LogCurrent& current) {
-      if (!current.supervision) {
-        current.supervision = LogCurrentSupervision{};
-      }
-
-      if (!current.supervision->statusMessage or
-          current.supervision->statusMessage != message) {
-        current.supervision->statusMessage = message;
-      }
-    });
+    ctx.modifyOrCreate<LogCurrentSupervision>(
+        [&](LogCurrentSupervision& currentSupervision) {
+          if (!currentSupervision.statusMessage or
+              currentSupervision.statusMessage != message) {
+            currentSupervision.statusMessage = message;
+          }
+        });
   }
 };
 template<typename Inspector>
@@ -157,6 +91,7 @@ auto inspect(Inspector& f, NoActionPossibleAction& x) {
   return f.object(x).fields(f.field("type", hack));
 }
 
+//  TODO: this action is redundant, needs to be removed
 struct ErrorAction {
   static constexpr std::string_view name = "ErrorAction";
 
@@ -165,15 +100,12 @@ struct ErrorAction {
   LogCurrentSupervisionError _error;
 
   auto execute(ActionContext& ctx) const -> void {
-    ctx.modifyCurrent([&](LogCurrent& current) {
-      if (!current.supervision) {
-        current.supervision = LogCurrentSupervision{};
-      }
-
-      if (!current.supervision->error || current.supervision->error != _error) {
-        current.supervision->error = _error;
-      }
-    });
+    ctx.modifyOrCreate<LogCurrentSupervision>(
+        [&](LogCurrentSupervision& currentSupervision) {
+          if (!currentSupervision.error || currentSupervision.error != _error) {
+            currentSupervision.error = _error;
+          }
+        });
   }
 };
 template<typename Inspector>
@@ -199,9 +131,9 @@ struct AddLogToPlanAction {
   std::optional<LogPlanTermSpecification::Leader> _leader;
 
   auto execute(ActionContext& ctx) const -> void {
-    ctx.setPlan(LogPlanSpecification(
+    ctx.setValue<LogPlanSpecification>(
         _id, LogPlanTermSpecification(LogTerm{1}, _config, _leader),
-        ParticipantsConfig{.generation = 1, .participants = _participants}));
+        ParticipantsConfig{.generation = 1, .participants = _participants});
   }
 };
 template<typename Inspector>
@@ -217,12 +149,7 @@ struct CurrentNotAvailableAction {
   static constexpr std::string_view name = "CurrentNotAvailableAction";
 
   auto execute(ActionContext& ctx) const -> void {
-    auto current = LogCurrent{};
-    current.supervision = LogCurrentSupervision{};
-    current.supervision->statusMessage =
-        "Current was not available yet";  // It is now.
-
-    ctx.setCurrent(current);
+    ctx.setValue<LogCurrentSupervision>();
   }
 };
 template<typename Inspector>
@@ -240,7 +167,7 @@ struct SwitchLeaderAction {
   LogPlanTermSpecification::Leader _leader;
 
   auto execute(ActionContext& ctx) const -> void {
-    ctx.modifyPlan([&](LogPlanSpecification& plan) {
+    ctx.modify<LogPlanSpecification>([&](LogPlanSpecification& plan) {
       plan.currentTerm->term = LogTerm{plan.currentTerm->term.value + 1};
       plan.currentTerm->leader = _leader;
     });
@@ -253,6 +180,7 @@ auto inspect(Inspector& f, SwitchLeaderAction& x) {
                             f.field("leader", x._leader));
 }
 
+// TODO: this should really be a report + NoActionPossible
 struct DictateLeaderFailedAction {
   static constexpr std::string_view name = "DictateLeaderFailedAction";
 
@@ -261,13 +189,10 @@ struct DictateLeaderFailedAction {
   std::string _message;
 
   auto execute(ActionContext& ctx) const -> void {
-    ctx.modifyCurrent([&](LogCurrent& current) {
-      if (!current.supervision) {
-        current.supervision = LogCurrentSupervision{};
-      }
-
-      current.supervision->statusMessage = _message;
-    });
+    ctx.modifyOrCreate<LogCurrentSupervision>(
+        [&](LogCurrentSupervision& currentSupervision) {
+          currentSupervision.statusMessage = _message;
+        });
   }
 };
 template<typename Inspector>
@@ -284,7 +209,9 @@ struct WriteEmptyTermAction {
   explicit WriteEmptyTermAction(LogTerm minTerm) : minTerm{minTerm} {};
 
   auto execute(ActionContext& ctx) const -> void {
-    ctx.modifyPlan([&](LogPlanSpecification& plan) {
+    ctx.modify<LogPlanSpecification>([&](LogPlanSpecification& plan) {
+      // TODO: what to do if currentTerm does not have a value?
+      //       this shouldn't happen, but what if it does?
       plan.currentTerm->term = LogTerm{minTerm.value + 1};
       plan.currentTerm->leader.reset();
     });
@@ -297,16 +224,15 @@ auto inspect(Inspector& f, WriteEmptyTermAction& x) {
                             f.field("minTerm", x.minTerm));
 }
 
+// TODO: this should be a report and no action possible action
 struct LeaderElectionImpossibleAction {
   static constexpr std::string_view name = "LeaderElectionImpossibleAction";
 
   auto execute(ActionContext& ctx) const -> void {
-    ctx.modifyCurrent([&](LogCurrent& current) {
-      if (!current.supervision) {
-        current.supervision = LogCurrentSupervision{};
-      }
-      current.supervision->statusMessage = "Leader election impossible";
-    });
+    ctx.modifyOrCreate<LogCurrentSupervision>(
+        [&](LogCurrentSupervision& currentSupervision) {
+          currentSupervision.statusMessage = "Leader election impossible";
+        });
   }
 };
 template<typename Inspector>
@@ -321,15 +247,12 @@ struct LeaderElectionOutOfBoundsAction {
   LogCurrentSupervisionElection _election;
 
   auto execute(ActionContext& ctx) const -> void {
-    ctx.modifyCurrent([&](LogCurrent& current) {
-      if (!current.supervision) {
-        current.supervision = LogCurrentSupervision{};
-      }
-
-      current.supervision->statusMessage =
-          "Number of electible participants out of bounds";
-      current.supervision->election = _election;
-    });
+    ctx.modifyOrCreate<LogCurrentSupervision>(
+        [&](LogCurrentSupervision& currentSupervision) {
+          currentSupervision.statusMessage =
+              "Number of electible participants out of bounds";
+          currentSupervision.election = _election;
+        });
   }
 };
 template<typename Inspector>
@@ -346,14 +269,11 @@ struct LeaderElectionQuorumNotReachedAction {
   LogCurrentSupervisionElection _election;
 
   auto execute(ActionContext& ctx) const -> void {
-    ctx.modifyCurrent([&](LogCurrent& current) {
-      if (!current.supervision) {
-        current.supervision = LogCurrentSupervision{};
-      }
-
-      current.supervision->statusMessage = "Quorum not reached";
-      current.supervision->election = _election;
-    });
+    ctx.modifyOrCreate<LogCurrentSupervision>(
+        [&](LogCurrentSupervision& currentSupervision) {
+          currentSupervision.statusMessage = "Quorum not reached";
+          currentSupervision.election = _election;
+        });
   }
 };
 template<typename Inspector>
@@ -374,16 +294,14 @@ struct LeaderElectionAction {
   LogCurrentSupervisionElection _electionReport;
 
   auto execute(ActionContext& ctx) const -> void {
-    ctx.modifyPlan([&](LogPlanSpecification& plan) {
+    ctx.modify<LogPlanSpecification>([&](LogPlanSpecification& plan) {
       plan.currentTerm->term = LogTerm{plan.currentTerm->term.value + 1};
       plan.currentTerm->leader = _electedLeader;
     });
-    ctx.modifyCurrent([&](LogCurrent& current) {
-      if (!current.supervision) {
-        current.supervision = LogCurrentSupervision{};
-      }
-      current.supervision->election = _electionReport;
-    });
+    ctx.modifyOrCreate<LogCurrentSupervision>(
+        [&](LogCurrentSupervision& currentSupervision) {
+          currentSupervision.election = _electionReport;
+        });
   }
 };
 template<typename Inspector>
@@ -405,7 +323,7 @@ struct UpdateParticipantFlagsAction {
   ParticipantFlags _flags;
 
   auto execute(ActionContext& ctx) const -> void {
-    ctx.modifyPlan([&](LogPlanSpecification& plan) {
+    ctx.modify<LogPlanSpecification>([&](LogPlanSpecification& plan) {
       plan.participantsConfig.participants.at(_participant) = _flags;
       plan.participantsConfig.generation += 1;
     });
@@ -430,7 +348,7 @@ struct AddParticipantToPlanAction {
   ParticipantFlags _flags;
 
   auto execute(ActionContext& ctx) const -> void {
-    ctx.modifyPlan([&](LogPlanSpecification& plan) {
+    ctx.modify<LogPlanSpecification>([&](LogPlanSpecification& plan) {
       plan.participantsConfig.generation += 1;
       plan.participantsConfig.participants.emplace(_participant, _flags);
     });
@@ -453,7 +371,7 @@ struct RemoveParticipantFromPlanAction {
   ParticipantId _participant;
 
   auto execute(ActionContext& ctx) const -> void {
-    ctx.modifyPlan([&](LogPlanSpecification& plan) {
+    ctx.modify<LogPlanSpecification>([&](LogPlanSpecification& plan) {
       plan.participantsConfig.participants.erase(_participant);
       plan.participantsConfig.generation += 1;
     });
@@ -474,14 +392,11 @@ struct UpdateLogConfigAction {
   LogConfig _config;
 
   auto execute(ActionContext& ctx) const -> void {
-    ctx.modifyCurrent([&](LogCurrent& current) {
-      if (!current.supervision) {
-        current.supervision = LogCurrentSupervision{};
-      }
-
-      current.supervision->statusMessage =
-          "UpdatingLogConfig is not implemented yet";
-    });
+    ctx.modifyOrCreate<LogCurrentSupervision>(
+        [&](LogCurrentSupervision& currentSupervision) {
+          currentSupervision.statusMessage =
+              "UpdatingLogConfig is not implemented yet";
+        });
   }
 };
 template<typename Inspector>
@@ -495,13 +410,10 @@ struct ConvergedToTargetAction {
   std::optional<std::uint64_t> version{std::nullopt};
 
   auto execute(ActionContext& ctx) const -> void {
-    ctx.modifyCurrent([&](LogCurrent& current) {
-      if (!current.supervision) {
-        current.supervision = LogCurrentSupervision{};
-      }
-
-      if (current.supervision) current.supervision->targetVersion = version;
-    });
+    ctx.modifyOrCreate<LogCurrentSupervision>(
+        [&](LogCurrentSupervision& currentSupervision) {
+          currentSupervision.targetVersion = version;
+        });
   }
 };
 
@@ -521,12 +433,18 @@ using Action = std::variant<
     RemoveParticipantFromPlanAction, UpdateLogConfigAction,
     ConvergedToTargetAction>;
 
-auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
-             std::optional<LogPlanSpecification> plan,
-             std::optional<LogCurrent> current,
-             arangodb::agency::envelope envelope) -> arangodb::agency::envelope;
-
-auto to_string(Action const& action) -> std::string_view;
-void toVelocyPack(Action const& action, VPackBuilder& builder);
+auto executeAction(Log log, Action& action) -> ActionContext;
 
 }  // namespace arangodb::replication2::replicated_log
+
+template<>
+struct fmt::formatter<arangodb::replication2::replicated_log::Action>
+    : formatter<string_view> {
+  // parse is inherited from formatter<string_view>.
+  template<typename FormatContext>
+  auto format(arangodb::replication2::replicated_log::Action a,
+              FormatContext& ctx) const {
+    auto const sv = std::visit([](auto&& arg) { return arg.name; }, a);
+    return formatter<string_view>::format(sv, ctx);
+  }
+};

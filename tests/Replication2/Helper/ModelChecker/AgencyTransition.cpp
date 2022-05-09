@@ -22,21 +22,22 @@
 
 #include <fmt/core.h>
 
-#include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
-#include "Replication2/ReplicatedState/Supervision.h"
-#include "Replication2/Helper/AgencyStateBuilder.h"
 #include "Replication2/Helper/AgencyLogBuilder.h"
+#include "Replication2/Helper/AgencyStateBuilder.h"
+#include "Replication2/ModelChecker/ActorModel.h"
+#include "Replication2/ModelChecker/ModelChecker.h"
+#include "Replication2/ModelChecker/Predicates.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
-#include "Replication2/ModelChecker/ModelChecker.h"
-#include "Replication2/ModelChecker/ActorModel.h"
-#include "Replication2/ModelChecker/Predicates.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "Replication2/ReplicatedState/Supervision.h"
 
 #include "Replication2/Helper/ModelChecker/AgencyState.h"
+#include "Replication2/Helper/ModelChecker/AgencyTransitions.h"
 #include "Replication2/Helper/ModelChecker/HashValues.h"
 #include "Replication2/Helper/ModelChecker/Predicates.h"
-#include "Replication2/Helper/ModelChecker/AgencyTransitions.h"
 
 using namespace arangodb;
 using namespace arangodb::test;
@@ -96,13 +97,15 @@ SupervisionLogAction::SupervisionLogAction(replicated_log::Action action)
 
 void SupervisionLogAction::apply(AgencyState& agency) {
   auto ctx = replicated_log::ActionContext{
-      agency.replicatedLog.value().plan, agency.replicatedLog.value().current};
+      agency.replicatedLog.value().plan,
+      agency.replicatedLog.value().current->supervision};
   std::visit([&](auto& action) { action.execute(ctx); }, _action);
-  if (ctx.hasCurrentModification()) {
-    agency.replicatedLog->current = ctx.getCurrent();
+  if (ctx.hasModificationFor<LogCurrentSupervision>()) {
+    agency.replicatedLog->current->supervision =
+        ctx.getValue<LogCurrentSupervision>();
   }
-  if (ctx.hasPlanModification()) {
-    agency.replicatedLog->plan = ctx.getPlan();
+  if (ctx.hasModificationFor<LogPlanSpecification>()) {
+    agency.replicatedLog->plan = ctx.getValue<LogPlanSpecification>();
   }
 }
 

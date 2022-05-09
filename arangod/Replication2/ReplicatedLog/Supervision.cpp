@@ -29,6 +29,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimeString.h"
+#include "Cluster/ClusterTypes.h"
+#include "Inspection/VPack.h"
 #include "Random/RandomGenerator.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -39,6 +41,7 @@
 
 #include "Logger/LogMacros.h"
 
+namespace paths = arangodb::cluster::paths::aliases;
 using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2::replicated_log {
@@ -68,7 +71,7 @@ auto hasCurrentTermWithLeader(Log const& log) -> bool {
   return plan.currentTerm and plan.currentTerm->leader;
 }
 
-// Leader has failed if it is marked as failed or it's rebootId is
+// Leader has failed if it is marked as failed or its rebootId is
 // different from what is expected
 auto isLeaderFailed(LogPlanTermSpecification::Leader const& leader,
                     ParticipantsHealth const& health) -> bool {
@@ -210,6 +213,8 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
     ctx.reportStatus(
         LogCurrentSupervision::StatusCode::kLeaderElectionImpossible,
         std::nullopt);
+    // FIXME: this is a fatal condition and there is no point in the supervision
+    //        continuing from here
     return;
   }
 
@@ -286,8 +291,9 @@ auto checkLeaderHealthy(SupervisionContext& ctx, Log const& log,
 
   // If the leader is unhealthy, write a new term that
   // does not have a leader.
-  // In the next round this will lead to a leadership election.
   if (isLeaderFailed(*currentTerm.leader, health)) {
+    // Make sure the new term is bigger than any
+    // term seen by participants in current
     auto minTerm = currentTerm.term;
     for (auto [participant, state] : current.localState) {
       if (state.spearhead.term > minTerm) {
@@ -419,11 +425,20 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
       auto const& planLeaderConfig =
           plan.participantsConfig.participants.at(*target.leader);
 
-      if (planLeaderConfig.forced != true ||
-          !planLeaderConfig.allowedAsLeader) {
+      if (planLeaderConfig.forced != true) {
+        auto desiredFlags = planLeaderConfig;
+        desiredFlags.forced = true;
+        ctx.createAction<UpdateParticipantFlagsAction>(*target.leader,
+                                                       desiredFlags);
+        return;
+      }
+
+      if (!planLeaderConfig.allowedAsLeader) {
         ctx.reportStatus(
             LogCurrentSupervision::StatusCode::kTargetLeaderExcluded,
             *target.leader);
+        ctx.createAction<NoActionPossibleAction>();
+        return;
       }
 
       auto const& rebootId = health.getRebootId(*target.leader);
@@ -627,6 +642,7 @@ auto checkParticipantToRemove(SupervisionContext& ctx, Log const& log,
   }
 }
 
+// FIXME: Probably pull the `getParticipantWithUpdatedFlags` in here
 auto checkParticipantWithFlagsToUpdate(SupervisionContext& ctx, Log const& log,
                                        ParticipantsHealth const& health)
     -> void {
@@ -708,13 +724,13 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
   // we can only report back that this log cannot be created.
   checkLogExists(ctx, log, health);
 
+  // FIXME: This is probably not necessary, as all other check functions should
+  //        check whether current is available (and not do anything if it is
+  //        not)
   checkCurrentExists(ctx, log);
 
   // If currentTerm's leader entry does not have a value,
-  // run a leadership election. The doLeadershipElection can
-  // return different Actions, dependking on whether a leadership
-  // election is possible, and if so, whether there is enough
-  // eligible participants for leadership.
+  // make sure a leader is elected.
   checkLeaderPresent(ctx, log, health);
 
   // If the leader is unhealthy, write a new term that
@@ -762,53 +778,103 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
   checkConverged(ctx, log);
 }
 
-// TODO: remove once refactored
-using namespace arangodb::cluster::paths;
 auto executeCheckReplicatedLog(DatabaseID const& dbName,
-                               std::string const& idString, Log log,
+                               std::string const& logIdString, Log log,
                                ParticipantsHealth const& health,
                                arangodb::agency::envelope envelope) noexcept
     -> arangodb::agency::envelope {
-  SupervisionContext ctx;
+  SupervisionContext sctx;
 
-  checkReplicatedLog(ctx, log, health);
+  sctx.enableErrorReporting();
 
-  if (ctx.hasAction()) {
-    if (log.target.supervision.has_value() &&
-        log.target.supervision->maxActionsTraceLength > 0) {
-      envelope =
-          envelope.write()
-              .push_queue_emplace(
-                  arangodb::cluster::paths::aliases::current()
-                      ->replicatedLogs()
-                      ->database(dbName)
-                      ->log(idString)
-                      ->actions()
-                      ->str(),
-                  // TODO: struct + inspect + transformWith
-                  [&](velocypack::Builder& b) {
-                    VPackObjectBuilder ob(&b);
-                    b.add("time", VPackValue(timepointToString(
-                                      std::chrono::system_clock::now())));
-                    b.add(VPackValue("desc"));
-                    arangodb::replication2::replicated_log::toVelocyPack(
-                        ctx.getAction(), b);
-                  },
-                  log.target.supervision->maxActionsTraceLength)
-              .end();
+  auto maxActionsTraceLength = std::invoke([&log]() {
+    if (log.target.supervision.has_value()) {
+      return log.target.supervision->maxActionsTraceLength;
+    } else {
+      return static_cast<size_t>(0);
     }
+  });
 
-    envelope = arangodb::replication2::replicated_log::execute(
-        ctx.getAction(), dbName, log.target.id, log.plan, log.current,
-        std::move(envelope));
+  checkReplicatedLog(sctx, log, health);
+
+  auto actionCtx = arangodb::replication2::replicated_log::executeAction(
+      std::move(log), sctx.getAction());
+
+  auto rep = sctx.getReport();
+  actionCtx.modifyOrCreate<LogCurrentSupervision>(
+      [&rep](LogCurrentSupervision& currentSupervision) {
+        if (rep.empty()) {
+          currentSupervision.statusReport.reset();
+        } else {
+          currentSupervision.statusReport = rep;
+        }
+      });
+
+  return buildAgencyTransaction(dbName, log.target.id, sctx, actionCtx,
+                                maxActionsTraceLength, std::move(envelope));
+}
+
+auto buildAgencyTransaction(DatabaseID const& dbName, LogId const& logId,
+                            SupervisionContext& sctx, ActionContext& actx,
+                            size_t maxActionsTraceLength,
+                            arangodb::agency::envelope envelope)
+    -> arangodb::agency::envelope {
+  auto planPath =
+      paths::plan()->replicatedLogs()->database(dbName)->log(logId)->str();
+
+  auto currentSupervisionPath = paths::current()
+                                    ->replicatedLogs()
+                                    ->database(dbName)
+                                    ->log(logId)
+                                    ->supervision()
+                                    ->str();
+
+  if (sctx.hasAction() && maxActionsTraceLength > 0) {
+    envelope = envelope.write()
+                   .push_queue_emplace(
+                       arangodb::cluster::paths::aliases::current()
+                           ->replicatedLogs()
+                           ->database(dbName)
+                           ->log(logId)
+                           ->actions()
+                           ->str(),
+                       // TODO: struct + inspect + transformWith
+                       [&](velocypack::Builder& b) {
+                         VPackObjectBuilder ob(&b);
+                         b.add("time", VPackValue(timepointToString(
+                                           std::chrono::system_clock::now())));
+                         b.add(VPackValue("desc"));
+                         std::visit([&b](auto&& arg) { serialize(b, arg); },
+                                    sctx.getAction());
+                       },
+                       maxActionsTraceLength)
+                   .end();
   }
 
-  auto rep = ctx.getReport();
-  for (auto&& v : rep) {
-    LOG_DEVEL << to_string(v.code);
-  }
-
-  return envelope;
+  return envelope
+      .write()
+      // this is here to trigger all waitForPlan, even if we only
+      // update current.
+      .inc(paths::plan()->version()->str())
+      .cond(actx.hasModificationFor<LogPlanSpecification>(),
+            [&](arangodb::agency::envelope::write_trx&& trx) {
+              return std::move(trx).emplace_object(
+                  planPath, [&](VPackBuilder& builder) {
+                    actx.getValue<LogPlanSpecification>().toVelocyPack(builder);
+                  });
+            })
+      .cond(actx.hasModificationFor<LogCurrentSupervision>(),
+            [&](arangodb::agency::envelope::write_trx&& trx) {
+              return std::move(trx)
+                  .emplace_object(
+                      currentSupervisionPath,
+                      [&](VPackBuilder& builder) {
+                        actx.getValue<LogPlanSpecification>().toVelocyPack(
+                            builder);
+                      })
+                  .inc(paths::current()->version()->str());
+            })
+      .end();
 }
 
 }  // namespace arangodb::replication2::replicated_log

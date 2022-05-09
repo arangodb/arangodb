@@ -77,9 +77,15 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
                         ParticipantsHealth const& health) -> void;
 
 auto executeCheckReplicatedLog(DatabaseID const& database,
-                               std::string const& idString, Log log,
+                               std::string const& logIdString, Log log,
                                ParticipantsHealth const& health,
                                arangodb::agency::envelope envelope) noexcept
+    -> arangodb::agency::envelope;
+
+auto buildAgencyTransaction(DatabaseID const& dbName, LogId const& logId,
+                            SupervisionContext& sctx, ActionContext& actx,
+                            size_t maxActionsTraceLength,
+                            arangodb::agency::envelope envelope)
     -> arangodb::agency::envelope;
 
 }  // namespace arangodb::replication2::replicated_log

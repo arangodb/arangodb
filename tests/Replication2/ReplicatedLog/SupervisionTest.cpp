@@ -24,6 +24,8 @@
 #include <gtest/gtest.h>
 #include <variant>
 
+#include <fmt/core.h>
+
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
@@ -374,7 +376,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
   // We expect a UpdateParticipantsFlagsAction to unset the allowedInQuorum
   // flag for d
   ASSERT_TRUE(std::holds_alternative<UpdateParticipantFlagsAction>(r))
-      << to_string(r);
+      << fmt::format("{}", r);
 
   auto action = std::get<UpdateParticipantFlagsAction>(r);
   ASSERT_EQ(action._participant, "D");
@@ -447,7 +449,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
   auto const& r = ctx.getAction();
 
   ASSERT_TRUE(std::holds_alternative<NoActionPossibleAction>(r))
-      << to_string(r);
+      << fmt::format("{}", r);
 }
 
 TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
@@ -508,7 +510,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
 
   // We expect an RemoveParticipantFromPlanAction to finally remove D
   ASSERT_TRUE(std::holds_alternative<RemoveParticipantFromPlanAction>(r))
-      << to_string(r);
+      << fmt::format("{}", r);
 
   auto action = std::get<RemoveParticipantFromPlanAction>(r);
   ASSERT_EQ(action._participant, "D");
@@ -587,7 +589,8 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
 
   // Since the leader is `A` and the rebootId in health is higher than the one
   // in plan, we need to write an empty term
-  ASSERT_TRUE(std::holds_alternative<WriteEmptyTermAction>(r)) << to_string(r);
+  ASSERT_TRUE(std::holds_alternative<WriteEmptyTermAction>(r))
+      << fmt::format("{}", r);
 
   auto writeEmptyTermAction = std::get<WriteEmptyTermAction>(r);
 
