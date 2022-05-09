@@ -87,10 +87,10 @@ TEST_F(ReplicatedStateModelCheckerTest, check_state_and_log) {
       MC_ALWAYS(mcpreds::nonExcludedServerHasSnapshot()),
   };
 
-  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+                                            AgencyState, AgencyTransition>;
   auto result = Engine::run(driver, allTests, initState);
   EXPECT_FALSE(result.failed) << *result.failed;
-  std::cout << result.stats << std::endl;
 }
 
 TEST_F(ReplicatedStateModelCheckerTest, check_state_and_log_with_leader) {
@@ -128,10 +128,10 @@ TEST_F(ReplicatedStateModelCheckerTest, check_state_and_log_with_leader) {
       MC_EVENTUALLY_ALWAYS(mcpreds::serverIsLeader("A")),
   };
 
-  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+                                            AgencyState, AgencyTransition>;
   auto result = Engine::run(driver, allTests, initState);
   EXPECT_FALSE(result.failed) << *result.failed;
-  std::cout << result.stats << std::endl;
 }
 
 TEST_F(ReplicatedStateModelCheckerTest, DISABLED_check_state_and_log_kill_any) {
@@ -164,10 +164,10 @@ TEST_F(ReplicatedStateModelCheckerTest, DISABLED_check_state_and_log_kill_any) {
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
       MC_ALWAYS(mcpreds::nonExcludedServerHasSnapshot()),
   };
-  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+                                            AgencyState, AgencyTransition>;
   auto result = Engine::run(driver, allTests, initState);
   EXPECT_FALSE(result.failed) << *result.failed;
-  std::cout << result.stats << std::endl;
 }
 
 TEST_F(ReplicatedStateModelCheckerTest,
@@ -201,11 +201,11 @@ TEST_F(ReplicatedStateModelCheckerTest,
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
       MC_ALWAYS(mcpreds::nonExcludedServerHasSnapshot()),
   };
-  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+                                            AgencyState, AgencyTransition>;
 
   auto result = Engine::run(driver, allTests, initState);
   EXPECT_FALSE(result.failed) << *result.failed;
-  std::cout << result.stats << std::endl;
 }
 
 TEST_F(ReplicatedStateModelCheckerTest, DISABLED_everything_ok_kill_server) {
@@ -253,11 +253,11 @@ TEST_F(ReplicatedStateModelCheckerTest, DISABLED_everything_ok_kill_server) {
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
       MC_ALWAYS(mcpreds::nonExcludedServerHasSnapshot()),
   };
-  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+                                            AgencyState, AgencyTransition>;
 
   auto result = Engine::run(driver, allTests, initState);
   EXPECT_FALSE(result.failed) << *result.failed;
-  std::cout << result.stats << std::endl;
 }
 
 TEST_F(ReplicatedStateModelCheckerTest, DISABLED_change_leader) {
@@ -307,11 +307,11 @@ TEST_F(ReplicatedStateModelCheckerTest, DISABLED_change_leader) {
       MC_ALWAYS(mcpreds::nonExcludedServerHasSnapshot()),
       MC_EVENTUALLY_ALWAYS(mcpreds::serverIsLeader("C")),
   };
-  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+                                            AgencyState, AgencyTransition>;
 
   auto result = Engine::run(driver, allTests, initState);
   EXPECT_FALSE(result.failed) << *result.failed;
-  std::cout << result.stats << std::endl;
 }
 
 TEST_F(ReplicatedStateModelCheckerTest, DISABLED_everything_ok_replace_server) {
@@ -372,11 +372,11 @@ TEST_F(ReplicatedStateModelCheckerTest, DISABLED_everything_ok_replace_server) {
       MC_ALWAYS(mcpreds::nonExcludedServerHasSnapshot()),
       eventuallyDAdded,
   };
-  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+                                            AgencyState, AgencyTransition>;
 
   auto result = Engine::run(driver, allTests, initState);
   EXPECT_FALSE(result.failed) << *result.failed;
-  std::cout << result.stats << std::endl;
 }
 
 TEST_F(ReplicatedStateModelCheckerTest, DISABLED_everything_ok_replace_leader) {
@@ -451,9 +451,9 @@ TEST_F(ReplicatedStateModelCheckerTest, DISABLED_everything_ok_replace_leader) {
       MC_ALWAYS(mcpreds::nonExcludedServerHasSnapshot()),
       eventuallyDAdded,
   };
-  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+                                            AgencyState, AgencyTransition>;
 
   auto result = Engine::run(driver, allTests, initState);
   EXPECT_FALSE(result.failed) << *result.failed;
-  std::cout << result.stats << std::endl;
 }

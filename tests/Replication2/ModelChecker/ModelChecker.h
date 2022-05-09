@@ -145,6 +145,7 @@ struct DFSEnumerator {
       return !isNewVertex() && searchIndex > this->outgoing.size();
     }
     auto isNewVertex() const noexcept { return uniqueId == 0; }
+    auto isActive() const noexcept { return !isNewVertex() && !isCompleted(); }
   };
 
   struct ObserverError {
@@ -192,7 +193,7 @@ struct DFSEnumerator {
 
   template<typename Driver>
   static auto run(Driver& driver, Observer initialObserver,
-                  StateType initialState) {
+                  StateType initialState, std::uint64_t) {
     std::size_t nextUniqueId{0};
     Result result;
     std::vector<std::shared_ptr<StateVertex>> path;
@@ -255,8 +256,10 @@ struct DFSEnumerator {
             return result;
           }
           v->outgoing.emplace_back(std::move(transition), step);
-          if (!step->isNewVertex() && !step->isCompleted()) {
+          if (step->isActive()) {
             v->searchIndex = v->outgoing.size();
+            // TODO Maybe the path from the root to the cycle, i.e. what's
+            //      erased here, would be interesting to report as well.
             path.erase(path.begin(), std::find(path.begin(), path.end(), step));
             result.cycle.emplace(buildPathVector());
             result.failed.emplace(CheckError("cycle detected"), step,
@@ -291,9 +294,10 @@ template<typename StateType, typename TransitionType>
 struct DFSEngine {
   template<typename Driver, typename Observer>
   static auto run(Driver& driver, Observer initialObserver,
-                  StateType initialState, std::uint64_t = 0) {
+                  StateType initialState, std::uint64_t iterations = 0) {
     return DFSEnumerator<StateType, TransitionType, Observer>::run(
-        driver, std::move(initialObserver), std::move(initialState));
+        driver, std::move(initialObserver), std::move(initialState),
+        iterations);
   }
 };
 
@@ -347,6 +351,7 @@ struct RandomEnumerator {
       return !isNewVertex() && searchIndex > this->outgoing.size();
     }
     auto isNewVertex() const noexcept { return uniqueId == 0; }
+    auto isActive() const noexcept { return !isNewVertex() && !isCompleted(); }
   };
 
   struct ObserverError {
@@ -385,26 +390,24 @@ struct RandomEnumerator {
                          FingerprintCompare>;
 
   struct Result {
-    FingerprintSet fingerprints;
-    std::vector<std::shared_ptr<StateVertex const>> finalStates;
     std::optional<ObserverError> failed;
     std::optional<PathVectorType> cycle;
-    Stats stats{};
   };
 
   template<typename Driver>
-  static auto run(Driver& driver, Observer initialObserver,
-                  StateType initialState) {
+  static auto runOnce(Driver& driver, Observer initialObserver,
+                      StateType initialState) {
     std::size_t nextUniqueId{0};
     Result result;
     std::vector<std::shared_ptr<StateVertex>> path;
     std::shared_ptr<StateVertex> startVertex;
+    FingerprintSet fingerprints;
 
     auto const registerFingerprint = [&](StateType state, Observer observer)
         -> std::pair<bool, std::shared_ptr<StateVertex>> {
       auto step =
           std::make_shared<StateVertex>(std::move(state), std::move(observer));
-      auto [iter, inserted] = result.fingerprints.emplace(step);
+      auto [iter, inserted] = fingerprints.emplace(step);
       return {inserted, *iter};
     };
 
@@ -441,12 +444,8 @@ struct RandomEnumerator {
         for (auto& [transition, state] : driver.expand(v->state)) {
           auto [inserted, step] =
               registerFingerprint(std::move(state), v->observer);
-          result.stats.discoveredStates += 1;
           if (inserted) {
-            result.stats.uniqueStates += 1;
             step->depth = v->depth + 1;
-          } else {
-            result.stats.eliminatedStates += 1;
           }
           auto checkResult = step->observer.check(step->state);
           if (isPrune(checkResult)) {
@@ -457,8 +456,10 @@ struct RandomEnumerator {
             return result;
           }
           v->outgoing.emplace_back(std::move(transition), step);
-          if (!step->isNewVertex() && !step->isCompleted()) {
+          if (step->isActive()) {
             v->searchIndex = v->outgoing.size();
+            // TODO Maybe the path from the root to the cycle, i.e. what's
+            //      erased here, would be interesting to report as well.
             path.erase(path.begin(), std::find(path.begin(), path.end(), step));
             result.cycle.emplace(buildPathVector());
             result.failed.emplace(CheckError("cycle detected"), step,
@@ -468,8 +469,6 @@ struct RandomEnumerator {
       } else if (v->outgoing.empty() || v->searchIndex.has_value()) {
         path.pop_back();
         if (v->outgoing.empty()) {
-          result.stats.finalStates += 1;
-          result.finalStates.emplace_back(v);
           if (auto checkResult = v->observer.finalStep(v->state);
               isError(checkResult)) {
             auto p = buildPathVector();
@@ -489,6 +488,18 @@ struct RandomEnumerator {
 
     return result;
   }
+
+  template<typename Driver>
+  static auto run(Driver& driver, Observer initialObserver,
+                  StateType initialState, std::uint64_t iterations) {
+    for (auto i = std::uint64_t{0}; i < iterations; ++i) {
+      auto res = runOnce(driver, initialObserver, initialState);
+      if (res.failed) {
+        return res;
+      }
+    }
+    return Result();
+  }
 };
 
 // TODO The RandomEngine is mostly a c&p of the DFSEngine. The common code
@@ -499,7 +510,8 @@ struct RandomEngine {
   static auto run(Driver& driver, Observer initialObserver,
                   StateType initialState, std::uint64_t iterations) {
     return RandomEnumerator<StateType, TransitionType, Observer>::run(
-        driver, std::move(initialObserver), std::move(initialState));
+        driver, std::move(initialObserver), std::move(initialState),
+        iterations);
   }
 };
 

@@ -77,7 +77,7 @@ TYPED_TEST_P(TypedModelCheckerTest, simple_model_test) {
     ASSERT_GE(state.x, 0);
   });
 
-  auto result = Engine::run(driver, test, {.x = 0});
+  auto result = Engine::run(driver, test, {.x = 0}, 3);
   EXPECT_FALSE(result.failed) << *result.failed;
 
   auto stats = result.stats;
@@ -99,14 +99,18 @@ TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_eventually) {
 
   auto test = MC_EVENTUALLY(MC_BOOL_PRED(state, { return state.x == 5; }));
 
-  auto result = Engine::run(driver, test, {.x = 0}, 1);
+  auto result = Engine::run(driver, test, {.x = 0}, 3);
   EXPECT_FALSE(result.failed) << *result.failed;
 
-  auto stats = result.stats;
-  EXPECT_EQ(stats.eliminatedStates, 0);
-  EXPECT_EQ(stats.discoveredStates, 10);
-  EXPECT_EQ(stats.uniqueStates, 10);
-  EXPECT_EQ(stats.finalStates, 1);
+  // RandomEngine doesn't have stats
+  if constexpr (!std::is_same_v<Engine, model_checker::RandomEngine<
+                                            MyState, MyTransition>>) {
+    auto stats = result.stats;
+    EXPECT_EQ(stats.eliminatedStates, 0);
+    EXPECT_EQ(stats.discoveredStates, 10);
+    EXPECT_EQ(stats.uniqueStates, 10);
+    EXPECT_EQ(stats.finalStates, 1);
+  }
 }
 
 TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_eventually_always) {
@@ -122,14 +126,18 @@ TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_eventually_always) {
   auto test =
       MC_EVENTUALLY_ALWAYS(MC_BOOL_PRED(state, { return state.x > 5; }));
 
-  auto result = Engine::run(driver, test, {.x = 0}, 1);
+  auto result = Engine::run(driver, test, {.x = 0}, 3);
   EXPECT_FALSE(result.failed) << *result.failed;
 
-  auto stats = result.stats;
-  EXPECT_EQ(stats.eliminatedStates, 0);
-  EXPECT_EQ(stats.discoveredStates, 10);
-  EXPECT_EQ(stats.uniqueStates, 10);
-  EXPECT_EQ(stats.finalStates, 1);
+  // RandomEngine doesn't have stats
+  if constexpr (!std::is_same_v<Engine, model_checker::RandomEngine<
+                                            MyState, MyTransition>>) {
+    auto stats = result.stats;
+    EXPECT_EQ(stats.eliminatedStates, 0);
+    EXPECT_EQ(stats.discoveredStates, 10);
+    EXPECT_EQ(stats.uniqueStates, 10);
+    EXPECT_EQ(stats.finalStates, 1);
+  }
 }
 
 TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_eventually_always_fail) {
@@ -145,7 +153,7 @@ TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_eventually_always_fail) {
   auto test =
       MC_EVENTUALLY_ALWAYS(MC_BOOL_PRED(state, { return state.x > 11; }));
 
-  auto result = Engine::run(driver, test, {.x = 0}, 1);
+  auto result = Engine::run(driver, test, {.x = 0}, 3);
   EXPECT_TRUE(result.failed);
 }
 
@@ -163,9 +171,8 @@ TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_cycle_detector) {
   auto test =
       MC_EVENTUALLY_ALWAYS(MC_BOOL_PRED(state, { return state.x > 11; }));
 
-  auto result = Engine::run(driver, test, {.x = 0}, 1);
+  auto result = Engine::run(driver, test, {.x = 0}, 3);
   EXPECT_TRUE(result.cycle);
-  // std::cout << *result.cycle << std::endl;
   EXPECT_TRUE(result.failed);
 }
 
@@ -245,8 +252,9 @@ TEST_F(ModelCheckerTest, simple_model_test_actor) {
 
   auto test = MC_EVENTUALLY_ALWAYS(
       MC_BOOL_PRED(global, { return global.state.x > 2; }));
-  using Engine = model_checker::ActorEngine<MyState, MyTransition>;
+  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+                                            MyState, MyTransition>;
 
-  auto result = Engine::run(driver, test, {.x = 0});
+  auto result = Engine::run(driver, test, {.x = 0}, 3);
   EXPECT_FALSE(result.failed) << *result.failed;
 }
