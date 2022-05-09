@@ -64,6 +64,7 @@ class IResearchFlushSubscription final : public FlushSubscription {
   }
 
   void tick(TRI_voc_tick_t tick) noexcept {
+    TRI_ASSERT(_tick.load(std::memory_order_acquire) <= tick);
     _tick.store(tick, std::memory_order_release);
   }
 
@@ -156,7 +157,8 @@ template<typename FieldIteratorType, typename MetaType>
 Result insertDocument(irs::index_writer::documents_context& ctx,
                       transaction::Methods const& trx, FieldIteratorType& body,
                       velocypack::Slice document, LocalDocumentId documentId,
-                      MetaType const& meta, IndexId id) {
+                      MetaType const& meta, IndexId id,
+                      arangodb::StorageEngine* engine) {
   body.reset(document, meta);  // reset reusable container to doc
 
   if (!body.valid()) {
@@ -217,6 +219,9 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
                 std::to_string(documentId.id()) + "'"};
   }
 
+  if (trx.state()->hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
+    ctx.tick(engine->currentTick());
+  }
   return {};
 }
 }  // namespace
@@ -758,7 +763,7 @@ Result IResearchDataStore::commitUnsafeImpl(bool wait, CommitResult* code) {
 
       // no changes, can release the latest tick before commit
       impl.tick(lastTickBeforeCommit);
-
+      _lastCommittedTick = lastTickBeforeCommit;
       return {};
     }
 
@@ -1001,7 +1006,6 @@ Result IResearchDataStore::initDataStore(
                 "failed to get last committed tick while initializing link '" +
                     std::to_string(id().id()) + "'"};
       }
-
       LOG_TOPIC("7e028", TRACE, TOPIC)
           << "successfully opened existing data store data store reader for "
           << "link '" << id() << "', docs count '"
@@ -1351,12 +1355,13 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
     return {};
   }
 
-  auto insertImpl = [&meta, &trx, &doc, &documentId, id = id()](
-                        irs::index_writer::documents_context& ctx) -> Result {
+  auto insertImpl =
+      [&meta, &trx, &doc, &documentId, id = id(),
+       engine = _engine](irs::index_writer::documents_context& ctx) -> Result {
     try {
       FieldIteratorType body(trx, meta._collectionName, id);
 
-      return insertDocument(ctx, trx, body, doc, documentId, meta, id);
+      return insertDocument(ctx, trx, body, doc, documentId, meta, id, engine);
     } catch (basics::Exception const& e) {
       return {e.code(),
               "caught exception while inserting document into arangosearch "
@@ -1387,7 +1392,6 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
   if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
     auto lock = _asyncSelf->lock();
     auto ctx = _dataStore._writer->documents();
-
     TRI_IF_FAILURE("ArangoSearch::MisreportCreationInsertAsFailed") {
       auto res = insertImpl(ctx);  // we need insert to succeed, so  we have
                                    // things to cleanup in storage
