@@ -215,17 +215,11 @@ ResultT<bool> RocksDBSettingsManager::sync(bool force) {
 
     if (_scratch.capacity() >= 32 * 1024 * 1024) {
       // much data in _scratch, let's shrink it to save memory
-      _scratch.clear();
-      _scratch.shrink_to_fit();
-    }
-
-    if (_scratch.capacity() >= 32 * 1024 * 1024) {
-      // much data in _scratch, let's shrink it to save memory
       TRI_ASSERT(scratchBufferSize < 32 * 1024 * 1024);
       _scratch.resize(scratchBufferSize);
       _scratch.shrink_to_fit();
-      _scratch.clear();
     }
+    _scratch.clear();
     TRI_ASSERT(_scratch.empty());
 
     auto const lastSync = _lastSync.load();
