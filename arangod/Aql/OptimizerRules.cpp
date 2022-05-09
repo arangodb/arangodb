@@ -8274,14 +8274,13 @@ void findSubqueriesSuitableForSplicing(
     }
 
     bool enterSubquery(ExecutionNode*, ExecutionNode*) final {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       ++_isSuitableLevel;
-#endif
       return true;
     }
 
     void leaveSubquery(ExecutionNode* subQuery, ExecutionNode*) final {
-      TRI_ASSERT(_isSuitableLevel-- != 0);
+      TRI_ASSERT(_isSuitableLevel != 0);
+      --_isSuitableLevel;
       _suitableNodes.emplace(ExecutionNode::castTo<SubqueryNode*>(subQuery));
     }
 
@@ -8290,9 +8289,7 @@ void findSubqueriesSuitableForSplicing(
     ResultVector& _result;
     // only suitable subquery nodes will be added to this set
     SuitableNodeSet& _suitableNodes;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     size_t _isSuitableLevel{1};  // push the top-level query
-#endif
   };
 
   using SuitableNodeArena = SuitableNodeSet::allocator_type::arena_type;
