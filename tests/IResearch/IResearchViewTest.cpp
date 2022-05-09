@@ -3690,50 +3690,51 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
   // test load persisted CIDs on open (TRI_vocbase_t::createView(...) will call
   // open()) use separate view ID for this test since doing open from persisted
   // store
-  {// initial populate persisted view
-   {auto& engine = *static_cast<StorageEngineMock*>(
+  {  // initial populate persisted view
+   {
+      auto& engine = *static_cast<StorageEngineMock*>(
         &server.getFeature<arangodb::EngineSelectorFeature>().engine());
-  engine.views.clear();
-  auto collectionJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testCollection\" }");
-  auto linkJson =
-      arangodb::velocypack::Parser::fromJson("{ \"view\": \"testView\" }");
-  auto createJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 102 "
-      "}");
-  ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
-  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                  testDBInfo(server.server()));
-  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-  ASSERT_TRUE((false == !logicalCollection));
-  auto logicalView = vocbase.createView(createJson->slice());
-  ASSERT_TRUE((false == !logicalView));
-  auto* viewImpl =
-      dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
-  ASSERT_TRUE((nullptr != viewImpl));
-  auto index = StorageEngineMock::buildLinkMock(
-      arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
-  ASSERT_NE(nullptr, index);
-  auto link =
-      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-  ASSERT_TRUE((false == !link));
+      engine.views.clear();
+      auto collectionJson = arangodb::velocypack::Parser::fromJson(
+          "{ \"name\": \"testCollection\" }");
+      auto linkJson =
+          arangodb::velocypack::Parser::fromJson("{ \"view\": \"testView\" }");
+      auto createJson = arangodb::velocypack::Parser::fromJson(
+          "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 102 "
+          "}");
+      ASSERT_TRUE(server.server().hasFeature<arangodb::FlushFeature>());
+      Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                      testDBInfo(server.server()));
+      auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+      ASSERT_TRUE((false == !logicalCollection));
+      auto logicalView = vocbase.createView(createJson->slice());
+      ASSERT_TRUE((false == !logicalView));
+      auto* viewImpl =
+          dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+      ASSERT_TRUE((nullptr != viewImpl));
+      auto index = StorageEngineMock::buildLinkMock(
+          arangodb::IndexId{42}, *logicalCollection, linkJson->slice());
+      ASSERT_NE(nullptr, index);
+      auto link =
+          std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+      ASSERT_TRUE((false == !link));
 
-  static std::vector<std::string> const EMPTY;
-  auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
-  arangodb::iresearch::IResearchLinkMeta meta;
-  meta._includeAllFields = true;
-  arangodb::transaction::Methods trx(
-      arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-      EMPTY, arangodb::transaction::Options());
-  EXPECT_TRUE((trx.begin().ok()));
-  EXPECT_TRUE(
-      (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
-  EXPECT_TRUE((trx.commit().ok()));
-  EXPECT_TRUE((link->commit().ok()));  // commit to persisted store
-}
+      static std::vector<std::string> const EMPTY;
+      auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+      arangodb::iresearch::IResearchLinkMeta meta;
+      meta._includeAllFields = true;
+      arangodb::transaction::Methods trx(
+          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
+          EMPTY, arangodb::transaction::Options());
+      EXPECT_TRUE((trx.begin().ok()));
+      EXPECT_TRUE(
+          (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
+      EXPECT_TRUE((trx.commit().ok()));
+      EXPECT_TRUE((link->commit().ok()));  // commit to persisted store
+    }
 
-// test persisted CIDs on open
-{
+    // test persisted CIDs on open
+    {
   auto& engine = *static_cast<StorageEngineMock*>(
       &server.getFeature<arangodb::EngineSelectorFeature>().engine());
   engine.views.clear();
@@ -3755,65 +3756,27 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
   });
   EXPECT_TRUE((actual.empty()));  // persisted cids do not modify view meta
 }
-}
-
-// test add via link after open (TRI_vocbase_t::createView(...) will call
-// open())
-{
-  auto& engine = *static_cast<StorageEngineMock*>(
-      &server.getFeature<arangodb::EngineSelectorFeature>().engine());
-  engine.views.clear();
-  auto updateJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"links\": { \"testCollection\": { } } }");
-  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                  testDBInfo(server.server()));
-  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-  ASSERT_TRUE((nullptr != logicalCollection));
-  auto logicalView = vocbase.createView(viewJson->slice());
-  ASSERT_TRUE((false == !logicalView));
-  auto* viewImpl =
-      dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
-  ASSERT_TRUE((nullptr != viewImpl));
-
-  EXPECT_TRUE((viewImpl->properties(updateJson->slice(), true, false).ok()));
-
-  std::set<arangodb::DataSourceId> actual;
-  std::set<arangodb::DataSourceId> expected = {arangodb::DataSourceId{100}};
-  viewImpl->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
-    actual.emplace(cid);
-    return true;
-  });
-
-  for (auto& cid : actual) {
-    EXPECT_TRUE((1 == expected.erase(cid)));
   }
 
-  EXPECT_TRUE((expected.empty()));
-}
-
-// test drop via link after open (TRI_vocbase_t::createView(...) will call
-// open())
-{
-  auto& engine = *static_cast<StorageEngineMock*>(
-      &server.getFeature<arangodb::EngineSelectorFeature>().engine());
-  engine.views.clear();
-  auto updateJson0 = arangodb::velocypack::Parser::fromJson(
-      "{ \"links\": { \"testCollection\": { } } }");
-  auto updateJson1 = arangodb::velocypack::Parser::fromJson(
-      "{ \"links\": { \"testCollection\": null } }");
-  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                  testDBInfo(server.server()));
-  auto logicalCollection = vocbase.createCollection(collectionJson->slice());
-  ASSERT_TRUE((nullptr != logicalCollection));
-  auto logicalView = vocbase.createView(viewJson->slice());
-  ASSERT_TRUE((false == !logicalView));
-  auto* viewImpl =
-      dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
-  ASSERT_TRUE((nullptr != viewImpl));
-
-  // create link
+  // test add via link after open (TRI_vocbase_t::createView(...) will call
+  // open())
   {
-    EXPECT_TRUE((viewImpl->properties(updateJson0->slice(), true, false).ok()));
+    auto& engine = *static_cast<StorageEngineMock*>(
+        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+    engine.views.clear();
+    auto updateJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"links\": { \"testCollection\": { } } }");
+    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                    testDBInfo(server.server()));
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+    ASSERT_TRUE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewJson->slice());
+    ASSERT_TRUE((false == !logicalView));
+    auto* viewImpl =
+        dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+    ASSERT_TRUE((nullptr != viewImpl));
+
+    EXPECT_TRUE((viewImpl->properties(updateJson->slice(), true, false).ok()));
 
     std::set<arangodb::DataSourceId> actual;
     std::set<arangodb::DataSourceId> expected = {arangodb::DataSourceId{100}};
@@ -3829,18 +3792,56 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
     EXPECT_TRUE((expected.empty()));
   }
 
-  // drop link
+  // test drop via link after open (TRI_vocbase_t::createView(...) will call
+  // open())
   {
-    EXPECT_TRUE((viewImpl->properties(updateJson1->slice(), true, false).ok()));
+    auto& engine = *static_cast<StorageEngineMock*>(
+        &server.getFeature<arangodb::EngineSelectorFeature>().engine());
+    engine.views.clear();
+    auto updateJson0 = arangodb::velocypack::Parser::fromJson(
+        "{ \"links\": { \"testCollection\": { } } }");
+    auto updateJson1 = arangodb::velocypack::Parser::fromJson(
+        "{ \"links\": { \"testCollection\": null } }");
+    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                    testDBInfo(server.server()));
+    auto logicalCollection = vocbase.createCollection(collectionJson->slice());
+    ASSERT_TRUE((nullptr != logicalCollection));
+    auto logicalView = vocbase.createView(viewJson->slice());
+    ASSERT_TRUE((false == !logicalView));
+    auto* viewImpl =
+        dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
+    ASSERT_TRUE((nullptr != viewImpl));
 
-    std::set<arangodb::DataSourceId> actual;
-    viewImpl->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
-      actual.emplace(cid);
-      return true;
-    });
-    EXPECT_TRUE((actual.empty()));
+    // create link
+    {
+      EXPECT_TRUE((viewImpl->properties(updateJson0->slice(), true, false).ok()));
+
+      std::set<arangodb::DataSourceId> actual;
+      std::set<arangodb::DataSourceId> expected = {arangodb::DataSourceId{100}};
+      viewImpl->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      });
+
+      for (auto& cid : actual) {
+        EXPECT_TRUE((1 == expected.erase(cid)));
+      }
+
+      EXPECT_TRUE((expected.empty()));
+    }
+
+    // drop link
+    {
+      EXPECT_TRUE((viewImpl->properties(updateJson1->slice(), true, false).ok()));
+
+      std::set<arangodb::DataSourceId> actual;
+      viewImpl->visitCollections([&actual](arangodb::DataSourceId cid) -> bool {
+        actual.emplace(cid);
+        return true;
+      });
+      EXPECT_TRUE((actual.empty()));
+    }
   }
-}
 }
 
 TEST_F(IResearchViewTest, test_overwrite_immutable_properties) {
