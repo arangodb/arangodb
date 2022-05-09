@@ -223,7 +223,16 @@ class IResearchFlushSubscription final : public FlushSubscription {
   }
 
   void tick(TRI_voc_tick_t tick) noexcept {
-    _tick.store(tick, std::memory_order_release);
+    auto value = _tick.load(std::memory_order_acquire);
+    TRI_ASSERT(value <= tick);
+
+    // tick value must never go backwards
+    while (tick > value) {
+      if (_tick.compare_exchange_weak(value, tick, std::memory_order_release,
+                                      std::memory_order_acquire)) {
+        break;
+      }
+    }
   }
 
  private:
