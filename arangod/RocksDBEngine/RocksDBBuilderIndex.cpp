@@ -297,7 +297,6 @@ void IndexCreatorThread::run() {
     }
   }
 
-  LOG_DEVEL << "INDEXING THREAD DONE. INDEXED: " << _statistics.numNexts;
   _sharedWorkEnv->postStatistics(_statistics);
   _sharedWorkEnv->incTerminatedThreads();
 }
