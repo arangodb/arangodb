@@ -85,32 +85,36 @@ class RocksDBCuckooIndexEstimator {
     uint32_t* _counter;
 
    public:
-    explicit Slot(uint16_t* data) : _data(data), _counter(nullptr) {}
+    explicit Slot(uint16_t* data) noexcept : _data(data), _counter(nullptr) {}
     ~Slot() = default;
 
-    bool operator==(const Slot& other) const { return _data == other._data; }
+    bool operator==(Slot const& other) const noexcept {
+      return _data == other._data;
+    }
 
-    uint16_t* fingerprint() const {
+    uint16_t* fingerprint() const noexcept {
       TRI_ASSERT(_data != nullptr);
       return _data;
     }
-    uint32_t* counter() const {
+    uint32_t* counter() const noexcept {
       TRI_ASSERT(_counter != nullptr);
       return _counter;
     }
 
-    void reset() {
+    void reset() noexcept {
       *fingerprint() = 0;
       *counter() = 0;
     }
 
-    bool isEqual(uint16_t fp) const { return ((*fingerprint()) == fp); }
+    bool isEqual(uint16_t fp) const noexcept {
+      return ((*fingerprint()) == fp);
+    }
 
-    bool isEmpty() const { return (*fingerprint()) == 0; }
+    bool isEmpty() const noexcept { return (*fingerprint()) == 0; }
 
     // If this returns FALSE we have removed the
     // last element => we need to remove the fingerprint as well.
-    bool decrease() {
+    bool decrease() noexcept {
       if (*counter() > 1) {
         (*counter())--;
         return true;
@@ -124,7 +128,7 @@ class RocksDBCuckooIndexEstimator {
       }
     }
 
-    void init(uint16_t fp) {
+    void init(uint16_t fp) noexcept {
       // This is the first element
       *fingerprint() = fp;
       *counter() = 1;
@@ -210,24 +214,36 @@ class RocksDBCuckooIndexEstimator {
 
   bool lookup(Key const& k) const;
 
-  /// @brief only call directly during startup/recovery; otherwise buffer
-  bool insert(Key const& k);
+  /// @brief insert key under the write-lock.
+  /// only call directly during startup/recovery; otherwise buffer
+  void insert(Key const& k);
 
-  /// @brief only call directly during startup/recovery; otherwise buffer
+  /// @brief vectorized version of insert. acquires write-lock once for all
+  /// keys
+  void insert(std::vector<Key> const& keys);
+
+  /// @brief insert key under the write-lock. returns true if key was found.
+  /// only call directly during startup/recovery; otherwise buffer
   bool remove(Key const& k);
 
-  uint64_t capacity() const { return _size * kSlotsPerBucket; }
+  /// @brief vectorized version of remove. acquires write-lock once for all
+  /// keys
+  void remove(std::vector<Key> const& keys);
+
+  uint64_t capacity() const noexcept { return _size * kSlotsPerBucket; }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // not thread safe. called only during tests
+  uint64_t nrTotal() const noexcept { return _nrTotal; }
 
   // not thread safe. called only during tests
-  uint64_t nrTotal() const { return _nrTotal; }
+  uint64_t nrUsed() const noexcept { return _nrUsed; }
 
   // not thread safe. called only during tests
-  uint64_t nrUsed() const { return _nrUsed; }
+  uint64_t nrCuckood() const noexcept { return _nrCuckood; }
+#endif
 
-  // not thread safe. called only during tests
-  uint64_t nrCuckood() const { return _nrCuckood; }
-
-  bool needToPersist() const {
+  bool needToPersist() const noexcept {
     return _needToPersist.load(std::memory_order_acquire);
   }
 
@@ -253,13 +269,13 @@ class RocksDBCuckooIndexEstimator {
    *
    * @return The latest seq/tick through which the estimate is valid
    */
-  rocksdb::SequenceNumber appliedSeq() const {
+  rocksdb::SequenceNumber appliedSeq() const noexcept {
     return _appliedSeq.load(std::memory_order_acquire);
   }
 
   /// @brief set the most recently set "committed" seq/tick
   /// only set when recalculating the index estimate
-  void setAppliedSeq(rocksdb::SequenceNumber seq) {
+  void setAppliedSeq(rocksdb::SequenceNumber seq) noexcept {
     _appliedSeq.store(seq, std::memory_order_release);
     _needToPersist.store(true, std::memory_order_release);
   }
@@ -443,14 +459,14 @@ class RocksDBCuckooIndexEstimator {
     return Slot(ret);
   }
 
-  uint32_t* findCounter(uint64_t pos, uint64_t slot) const {
+  uint32_t* findCounter(uint64_t pos, uint64_t slot) const noexcept {
     TRI_ASSERT(kCounterSize * (pos * kSlotsPerBucket + slot) <=
                _counterAllocSize);
     char* address = _counters + kCounterSize * (pos * kSlotsPerBucket + slot);
     return reinterpret_cast<uint32_t*>(address);
   }
 
-  uint64_t hashToPos(uint64_t hash) const {
+  uint64_t hashToPos(uint64_t hash) const noexcept {
     uint64_t relevantBits = (hash >> _sizeShift) & _sizeMask;
     return ((relevantBits < _size) ? relevantBits : (relevantBits - _size));
   }
@@ -467,7 +483,7 @@ class RocksDBCuckooIndexEstimator {
     return ((pos << _sizeShift) ^ _hasherShort(fingerprint));
   }
 
-  uint8_t pseudoRandomChoice() {
+  uint8_t pseudoRandomChoice() noexcept {
     _randState = _randState * 997 + 17;  // ignore overflows
     return static_cast<uint8_t>((_randState >> 37) & 0xff);
   }

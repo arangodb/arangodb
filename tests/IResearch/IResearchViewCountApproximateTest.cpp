@@ -527,9 +527,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
       arangodb::aql::ExecutionPlan::instantiateFromAst(query->ast(), false);
   plan->planRegisters();
 
-  arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(1, nodes.size());
@@ -608,9 +606,7 @@ TEST_F(IResearchViewCountApproximateTest,
       arangodb::aql::ExecutionPlan::instantiateFromAst(query->ast(), false);
   plan->planRegisters();
 
-  arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(1, nodes.size());
@@ -691,9 +687,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
       arangodb::aql::ExecutionPlan::instantiateFromAst(query->ast(), false);
   plan->planRegisters();
 
-  arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(1, nodes.size());

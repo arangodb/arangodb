@@ -93,6 +93,13 @@ ArangoPrototypeState.prototype.getSnapshot = function (waitForIndex) {
   return requestResult.result;
 };
 
+ArangoPrototypeState.prototype.waitForApplied = function (waitForIndex) {
+  let query = `/wait-for-applied/${waitForIndex}`;
+  let requestResult = this._database._connection.GET(this._baseurl() + query);
+  arangosh.checkRequestResult(requestResult);
+  return requestResult.result;
+};
+
 ArangoPrototypeState.prototype.toString = function () {
   return `[object ArangoPrototypeState ${this._database._name()}/${this.id()}]`;
 };

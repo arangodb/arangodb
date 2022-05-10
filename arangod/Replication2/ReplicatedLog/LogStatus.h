@@ -27,6 +27,7 @@
 #include <unordered_map>
 #include <variant>
 
+#include <Inspection/VPack.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -57,7 +58,46 @@ struct QuickLogStatus {
   [[nodiscard]] auto getCurrentTerm() const noexcept -> std::optional<LogTerm>;
   [[nodiscard]] auto getLocalStatistics() const noexcept
       -> std::optional<LogStatistics>;
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder) {
+    serialize(builder, *this);
+  }
+  auto fromVelocyPack(arangodb::velocypack::Slice slice) {
+    return deserialize<QuickLogStatus>(slice);
+  }
 };
+
+auto to_string(ParticipantRole) noexcept -> std::string_view;
+
+struct ParticipantRoleStringTransformer {
+  using SerializedType = std::string;
+  auto toSerialized(ParticipantRole source, std::string& target) const
+      -> inspection::Status;
+  auto fromSerialized(std::string const& source, ParticipantRole& target) const
+      -> inspection::Status;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, QuickLogStatus& x) {
+  auto activeParticipantsConfig = std::shared_ptr<ParticipantsConfig>();
+  auto committedParticipantsConfig = std::shared_ptr<ParticipantsConfig>();
+  if constexpr (!Inspector::isLoading) {
+    activeParticipantsConfig = std::make_shared<ParticipantsConfig>();
+    committedParticipantsConfig = std::make_shared<ParticipantsConfig>();
+  }
+  auto res = f.object(x).fields(
+      f.field("role", x.role).transformWith(ParticipantRoleStringTransformer{}),
+      f.field("term", x.term), f.field("local", x.local),
+      f.field("leadershipEstablished", x.leadershipEstablished),
+      f.field("commitFailReason", x.commitFailReason),
+      f.field("activeParticipantsConfig", activeParticipantsConfig),
+      f.field("committedParticipantsConfig", committedParticipantsConfig));
+  if constexpr (Inspector::isLoading) {
+    x.activeParticipantsConfig = activeParticipantsConfig;
+    x.committedParticipantsConfig = committedParticipantsConfig;
+  }
+  return res;
+}
 
 struct FollowerStatistics : LogStatistics {
   AppendEntriesErrorReason lastErrorReason;
@@ -128,6 +168,7 @@ struct LogStatus {
       -> std::optional<LogStatistics>;
 
   [[nodiscard]] auto asLeaderStatus() const noexcept -> LeaderStatus const*;
+  [[nodiscard]] auto asFollowerStatus() const noexcept -> FollowerStatus const*;
 
   static auto fromVelocyPack(velocypack::Slice slice) -> LogStatus;
   void toVelocyPack(velocypack::Builder& builder) const;

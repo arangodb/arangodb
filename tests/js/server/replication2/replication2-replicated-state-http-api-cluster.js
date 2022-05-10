@@ -70,7 +70,7 @@ const unsetLeader = (database, logId) => {
   return result;
 };
 
-const replicatedStateSuite = function () {
+const replicatedStateSuite = function (stateType) {
   const targetConfig = {
     writeConcern: 2,
     softWriteConcern: 2,
@@ -105,7 +105,7 @@ const replicatedStateSuite = function () {
     tearDown: lh.registerAgencyTestEnd,
 
     testGetLocalStatus: function () {
-      const {stateId, followers, leader} = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      const {stateId, followers, leader} = sh.createReplicatedStateTarget(database, targetConfig, stateType);
 
       {
         const status = sh.getLocalStatus(leader, database, stateId);
@@ -133,7 +133,7 @@ const replicatedStateSuite = function () {
         stateId,
         servers: participants,
         followers
-      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      } = sh.createReplicatedStateTarget(database, targetConfig, stateType);
       const nonParticipants = _.without(lh.dbservers, ...participants);
       const oldParticipant = _.sample(followers);
       const newParticipant = _.sample(nonParticipants);
@@ -168,7 +168,7 @@ const replicatedStateSuite = function () {
         stateId,
         servers: participants,
         leader
-      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      } = sh.createReplicatedStateTarget(database, targetConfig, stateType);
       const nonParticipants = _.without(lh.dbservers, ...participants);
       const oldParticipant = leader;
       const newParticipant = _.sample(nonParticipants);
@@ -203,7 +203,7 @@ const replicatedStateSuite = function () {
         stateId,
         servers: participants,
         leader
-      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      } = sh.createReplicatedStateTarget(database, targetConfig, stateType);
 
       {
         // Explicitly set the leader, just use the existing one
@@ -251,7 +251,7 @@ const replicatedStateSuite = function () {
       const {
         stateId,
         servers: participants,
-      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      } = sh.createReplicatedStateTarget(database, targetConfig, stateType);
       const nonParticipants = _.without(lh.dbservers, ...participants);
       const [oldParticipant, newParticipant] = _.sampleSize(nonParticipants, 2);
 
@@ -273,7 +273,7 @@ const replicatedStateSuite = function () {
       const {
         stateId,
         servers: participants,
-      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      } = sh.createReplicatedStateTarget(database, targetConfig, stateType);
       const [oldParticipant, newParticipant] = _.sampleSize(participants, 2);
 
       try {
@@ -294,7 +294,7 @@ const replicatedStateSuite = function () {
       const {
         stateId,
         followers,
-      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      } = sh.createReplicatedStateTarget(database, targetConfig, stateType);
       const newLeader = _.sample(followers);
 
       const result = setLeader(database, stateId, newLeader);
@@ -311,7 +311,7 @@ const replicatedStateSuite = function () {
       const {
         stateId,
         followers,
-      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      } = sh.createReplicatedStateTarget(database, targetConfig, stateType);
       { // set the leader first
         const newLeader = _.sample(followers);
 
@@ -346,7 +346,7 @@ const replicatedStateSuite = function () {
       const {
         stateId,
         servers: participants,
-      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      } = sh.createReplicatedStateTarget(database, targetConfig, stateType);
       const nonParticipants = _.without(lh.dbservers, ...participants);
       const newLeader = _.sample(nonParticipants);
 
@@ -365,5 +365,11 @@ const replicatedStateSuite = function () {
   };
 };
 
-jsunity.run(replicatedStateSuite);
+const suiteWithState = function (stateType) {
+  return function () {
+    return replicatedStateSuite(stateType);
+  };
+};
+
+jsunity.run(suiteWithState("black-hole"));
 return jsunity.done();
