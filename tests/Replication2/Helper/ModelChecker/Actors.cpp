@@ -62,8 +62,13 @@ auto SupervisionActor::stepReplicatedLog(AgencyState const& agency)
   }
   replicated_log::SupervisionContext ctx;
   replicated_log::checkReplicatedLog(ctx, *agency.replicatedLog, agency.health);
+
   if (ctx.hasAction()) {
-    return SupervisionLogAction{std::move(ctx.getAction())};
+    auto action = ctx.getAction();
+    if (!std::holds_alternative<replicated_log::NoActionPossibleAction>(
+            action)) {
+      return SupervisionLogAction{std::move(action)};
+    }
   }
   return std::nullopt;
 }

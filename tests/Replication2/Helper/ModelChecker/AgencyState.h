@@ -20,12 +20,12 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include <optional>
-#include <boost/container_hash/hash_fwd.hpp>
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
-#include "Replication2/ReplicatedLog/SupervisionAction.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
+#include "Replication2/ReplicatedLog/SupervisionAction.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
+#include <boost/container_hash/hash_fwd.hpp>
+#include <optional>
 
 namespace arangodb::test {
 
@@ -47,19 +47,21 @@ struct AgencyState {
 
   friend auto operator<<(std::ostream& os, AgencyState const& state)
       -> std::ostream& {
-    return os;
+    //    return os;
     auto const print = [&](auto const& x) {
       VPackBuilder builder;
       x.toVelocyPack(builder);
       os << builder.toJson() << std::endl;
     };
 
-    print(state.replicatedState->target);
-    if (state.replicatedState->plan) {
-      print(*state.replicatedState->plan);
-    }
-    if (state.replicatedState->current) {
-      print(*state.replicatedState->current);
+    if (state.replicatedState) {
+      print(state.replicatedState->target);
+      if (state.replicatedState->plan) {
+        print(*state.replicatedState->plan);
+      }
+      if (state.replicatedState->current) {
+        print(*state.replicatedState->current);
+      }
     }
     if (state.replicatedLog) {
       print(state.replicatedLog->target);
