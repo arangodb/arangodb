@@ -876,7 +876,7 @@ auto buildAgencyTransaction(DatabaseID const& dbName, LogId const& logId,
                   .emplace_object(
                       currentSupervisionPath,
                       [&](VPackBuilder& builder) {
-                        actx.getValue<LogPlanSpecification>().toVelocyPack(
+                        actx.getValue<LogCurrentSupervision>().toVelocyPack(
                             builder);
                       })
                   .inc(paths::current()->version()->str());
