@@ -170,7 +170,7 @@ export class GraphView extends React.Component {
       plugins: [toolbar, contextMenu],
       enabledStack: true,
       layout: {
-        type: 'gForce',
+        type: 'force',
 
         //minMovement: 0.01,
         //maxIteration: 100,
@@ -224,16 +224,16 @@ export class GraphView extends React.Component {
           //fill: '#dee072', // The filling color of Nodes
           fill: '#' + this.props.nodeColor,
           //stroke: '#576e3e', // The stroke color of nodes
-          stroke: '#fbe08e',
+          stroke: '#' + this.props.nodeColor,
           lineWidth: 1, // The line width of the stroke of nodes
           cursor: 'pointer',
         },
         labelCfg: {
           position: 'right',
           style: {
-            fill: '#576e3e',
+            //fill: '#576e3e',
+            fill: '#555555',
             fontStyle: 'regular',
-            //fontFamily: 'sans-serif',
             fontFamily: 'Roboto',
             fontSize: 12
           },
@@ -241,26 +241,42 @@ export class GraphView extends React.Component {
       },
       nodeStateStyles: {
         hover: {
-          fill: '#fbe08e',
+          fill: '#' + this.props.nodeColor,
           stroke: '#ffffff',
           lineWidth: 2,
-          shadowColor: '#fbe08e',
+          shadowColor: '#' + this.props.nodeColor,
           shadowBlur: 20,
           cursor: 'pointer',
+          style: {
+            fill: '#' + this.props.nodeColor,
+            stroke: '#ffffff',
+            lineWidth: 2,
+            shadowColor: '#' + this.props.nodeColor,
+            shadowBlur: 20,
+            cursor: 'pointer'
+          },
         },
         searchedNode: {
-          fill: '#fbe08e',
-          stroke: '#65bef3',
+          fill: '#' + this.props.nodeColor,
+          stroke: '#555555',
           lineWidth: 4,
-          shadowColor: '#65bef3',
+          shadowColor: '#' + this.props.nodeColor,
           shadowBlur: 10,
           cursor: 'pointer',
         }
       },
       defaultEdge: {
-        type: 'quadratic', // assign the edges to be quadratic bezier curves
+        type: this.props.edgeType, // assign the edges to be quadratic bezier curves
         labelCfg: {
           autoRotate: true,
+          refY: 10,
+          style: {
+            //fill: '#576e3e',
+            fill: '#555555',
+            fontStyle: 'regular',
+            fontFamily: 'Roboto',
+            fontSize: 12
+          },
         },
         style: {
           stroke: '#' + this.props.edgeColor,
@@ -269,43 +285,43 @@ export class GraphView extends React.Component {
       },
       edgeStateStyles: {
         hover: {
-            shadowColor: '#848484',
-            shadowBlur: 10,
-            lineWidth: 2,
-            cursor: 'pointer'
+          shadowColor: '#848484',
+          shadowBlur: 10,
+          lineWidth: 1,
+          cursor: 'pointer'
         },
         line: {
           type: 'polyline',
           endArrow: false,
-          lineWidth: 2,
+          lineWidth: 1,
           cursor: 'pointer'
         },
         arrow: {
           endArrow: true,
-          lineWidth: 2,
+          lineWidth: 1,
           cursor: 'pointer'
         },
         curve: {
-          type: 'arc',
+          type: 'cubic',
           endArrow: false,
-          lineWidth: 2,
+          lineWidth: 1,
           cursor: 'pointer'
         },
         dotted: {
           endArrow: false,
-          lineWidth: 2,
+          lineWidth: 1,
           lineDash: [2, 2, 2, 2, 2, 2],
           cursor: 'pointer'
         },
         dashed: {
           endArrow: false,
-          lineWidth: 2,
+          lineWidth: 1,
           lineDash: [7, 7, 7, 7, 7, 7],
           cursor: 'pointer'
         },
         tapered: {
           endArrow: false,
-          lineWidth: 2,
+          lineWidth: 1,
           stroke: `l(0) 0:#ffffff 0.5:#9fb53a 1:#82962d`,
           cursor: 'pointer'
         },
@@ -826,7 +842,7 @@ export class GraphView extends React.Component {
       <Card
           title={this.props.graphName}
           id="graph-card"
-          bodyStyle={{ 'height': '500px', 'backgroundColor': '#f2f2f2' }}
+          bodyStyle={{ 'height': '800px', 'backgroundColor': '#f2f2f2' }}
         >
           <div ref={this.ref} className={styles.graphContainer}> </div>
       </Card>
