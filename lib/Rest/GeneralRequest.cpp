@@ -244,6 +244,18 @@ namespace arangodb {
 
 template<>
 auto GeneralRequest::parsedValue(std::string const& key)
+    -> std::optional<std::string> {
+  bool found = false;
+  std::string const& val = this->value(key, found);
+  if (found) {
+    return val;
+  } else {
+    return std::nullopt;
+  }
+}
+
+template<>
+auto GeneralRequest::parsedValue(std::string const& key)
     -> std::optional<bool> {
   bool found = false;
   std::string const& val = this->value(key, found);
