@@ -37,6 +37,16 @@ auto PrototypeLogEntry::getType() noexcept -> std::string_view {
       op);
 }
 
+auto PrototypeLogEntry::createInsert(
+    std::unordered_map<std::string, std::string> map) -> PrototypeLogEntry {
+  return PrototypeLogEntry{PrototypeLogEntry::InsertOperation{std::move(map)}};
+}
+
+auto PrototypeLogEntry::createDelete(std::vector<std::string> keys)
+    -> PrototypeLogEntry {
+  return PrototypeLogEntry{PrototypeLogEntry::DeleteOperation{std::move(keys)}};
+}
+
 auto replicated_state::EntryDeserializer<
     replicated_state::prototype::PrototypeLogEntry>::
 operator()(

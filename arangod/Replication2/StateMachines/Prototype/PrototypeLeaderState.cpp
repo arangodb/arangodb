@@ -62,66 +62,50 @@ auto PrototypeLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
   return std::move(result);
 }
 
+auto PrototypeLeaderState::executeOp(
+    PrototypeLogEntry const& entry,
+    PrototypeStateMethods::PrototypeWriteOptions options)
+    -> futures::Future<LogIndex> {
+  auto [f, da] = _guardedData.doUnderLock(
+      [&](auto& data) -> std::pair<futures::Future<LogIndex>, DeferredAction> {
+        if (data.didResign()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
+        }
+
+        auto [idx, action] = getStream()->insertDeferred(entry);
+        data.core->execute(idx, entry);
+
+        if (options.waitForApplied) {
+          return std::make_pair(
+              std::move(data.waitForApplied(idx))
+                  .thenValue([idx = idx](auto&&) { return idx; }),
+              std::move(action));
+        }
+        return std::make_pair(idx, std::move(action));
+      });
+  da.fire();
+  return std::move(f);
+}
+
 auto PrototypeLeaderState::set(
     std::unordered_map<std::string, std::string> entries,
     PrototypeStateMethods::PrototypeWriteOptions options)
     -> futures::Future<LogIndex> {
-  auto stream = getStream();
-  PrototypeLogEntry entry{
-      PrototypeLogEntry::InsertOperation{std::move(entries)}};
-  auto idx = stream->insert(entry);
-  if (!options.waitForApplied) {
-    return idx;
-  }
-
-  auto f = _guardedData.doUnderLock([idx](auto& data) {
-    if (data.didResign()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
-    }
-    return data.waitForApplied(idx);
-  });
-
-  return std::move(f).thenValue([idx](auto&&) { return idx; });
+  return executeOp(PrototypeLogEntry::createInsert(std::move(entries)),
+                   options);
 }
 
 auto PrototypeLeaderState::remove(
     std::string key, PrototypeStateMethods::PrototypeWriteOptions options)
     -> futures::Future<LogIndex> {
-  auto stream = getStream();
-  PrototypeLogEntry entry{PrototypeLogEntry::DeleteOperation{.keys = {key}}};
-  auto idx = stream->insert(entry);
-  if (!options.waitForApplied) {
-    return {idx};
-  }
-
-  auto f = _guardedData.doUnderLock([idx](auto& data) {
-    if (data.didResign()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
-    }
-    return data.waitForApplied(idx);
-  });
-  return std::move(f).thenValue([idx](auto&&) { return idx; });
+  return remove(std::vector<std::string>{std::move(key)}, options);
 }
 
 auto PrototypeLeaderState::remove(
     std::vector<std::string> keys,
     PrototypeStateMethods::PrototypeWriteOptions options)
     -> futures::Future<LogIndex> {
-  auto stream = getStream();
-  PrototypeLogEntry entry{
-      PrototypeLogEntry::DeleteOperation{.keys = std::move(keys)}};
-  auto idx = stream->insert(entry);
-  if (!options.waitForApplied) {
-    return {idx};
-  }
-
-  auto f = _guardedData.doUnderLock([idx](auto& data) {
-    if (data.didResign()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
-    }
-    return data.waitForApplied(idx);
-  });
-  return std::move(f).thenValue([idx](auto&&) { return idx; });
+  return executeOp(PrototypeLogEntry::createDelete(std::move(keys)), options);
 }
 
 auto PrototypeLeaderState::get(std::vector<std::string> keys,
@@ -253,7 +237,7 @@ auto PrototypeLeaderState::GuardedData::applyEntries(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
   }
   auto toIndex = ptr->range().to;
-  core->applyEntries(std::move(ptr));
+  core->update(std::move(ptr));
   nextWaitForIndex = toIndex;
 
   if (core->flush()) {

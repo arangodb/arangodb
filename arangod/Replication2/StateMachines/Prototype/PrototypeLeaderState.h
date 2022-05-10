@@ -48,6 +48,10 @@ struct PrototypeLeaderState
 
   void onSnapshotCompleted() override;
 
+  auto executeOp(PrototypeLogEntry const&,
+                 PrototypeStateMethods::PrototypeWriteOptions)
+      -> futures::Future<LogIndex>;
+
   auto set(std::unordered_map<std::string, std::string> entries,
            PrototypeStateMethods::PrototypeWriteOptions)
       -> futures::Future<LogIndex>;

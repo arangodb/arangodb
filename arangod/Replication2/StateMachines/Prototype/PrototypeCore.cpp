@@ -79,7 +79,7 @@ void PrototypeCore::loadStateFromDB() {
 
 auto PrototypeCore::getSnapshot()
     -> std::unordered_map<std::string, std::string> {
-  auto snapshot = _store;
+  auto snapshot = getReadState();
   return std::unordered_map<std::string, std::string>{snapshot.begin(),
                                                       snapshot.end()};
 }
@@ -101,7 +101,7 @@ auto PrototypeCore::getDump() -> PrototypeDump {
 
 auto PrototypeCore::get(std::string const& key) noexcept
     -> std::optional<std::string> {
-  if (auto it = _store.find(key); it != nullptr) {
+  if (auto it = getReadState().find(key); it != nullptr) {
     return *it;
   }
   return std::nullopt;
@@ -110,13 +110,36 @@ auto PrototypeCore::get(std::string const& key) noexcept
 auto PrototypeCore::get(std::vector<std::string> const& keys)
     -> std::unordered_map<std::string, std::string> {
   std::unordered_map<std::string, std::string> result;
-  auto snapshot = _store;
+  auto snapshot = getReadState();
   for (auto const& it : keys) {
-    if (auto found = _store.find(it); found != nullptr) {
+    if (auto found = snapshot.find(it); found != nullptr) {
       result.emplace(it, *found);
     }
   }
   return result;
+}
+
+auto PrototypeCore::getReadState() -> StorageType {
+  if (_ongoingStates.empty()) {
+    // This can happen on followers or before any entries have been applied.
+    return _store;
+  }
+  return _ongoingStates.front().second;
+}
+
+void PrototypeCore::execute(LogIndex idx, PrototypeLogEntry const& entry) {
+  std::visit(overload{[&](PrototypeLogEntry::InsertOperation const& op) {
+                        for (auto const& [key, value] : op.map) {
+                          _store = _store.set(key, value);
+                        }
+                      },
+                      [&](PrototypeLogEntry::DeleteOperation const& op) {
+                        for (auto const& it : op.keys) {
+                          _store = _store.erase(it);
+                        }
+                      }},
+             entry.op);
+  _ongoingStates.emplace_back(idx, _store);
 }
 
 auto PrototypeCore::getLastPersistedIndex() const noexcept -> LogIndex const& {

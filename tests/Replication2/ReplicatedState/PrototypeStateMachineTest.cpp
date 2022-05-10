@@ -218,6 +218,14 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
   decltype(LogIndex::value) index{0};
   PrototypeStateMethods::PrototypeWriteOptions options{};
 
+  // Get before insert
+  {
+    auto result = leaderState->get("baz", LogIndex{index}).get();
+    ASSERT_EQ(result.get(), std::nullopt);
+    result = followerState->get("baz", LogIndex{index}).get();
+    ASSERT_EQ(result.get(), std::nullopt);
+  }
+
   // Inserting one entry
   {
     auto entries = std::unordered_map<std::string, std::string>{{"foo", "bar"}};

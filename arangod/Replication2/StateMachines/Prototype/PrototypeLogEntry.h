@@ -57,6 +57,9 @@ struct PrototypeLogEntry {
   std::variant<DeleteOperation, InsertOperation> op;
 
   auto getType() noexcept -> std::string_view;
+  static auto createInsert(std::unordered_map<std::string, std::string> map)
+      -> PrototypeLogEntry;
+  static auto createDelete(std::vector<std::string> keys) -> PrototypeLogEntry;
 };
 
 template<class Inspector>

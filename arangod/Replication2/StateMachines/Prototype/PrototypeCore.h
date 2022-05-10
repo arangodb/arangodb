@@ -87,6 +87,9 @@ struct PrototypeCore {
   template<typename EntryIterator>
   void applyEntries(std::unique_ptr<EntryIterator> ptr);
 
+  template<typename EntryIterator>
+  void update(std::unique_ptr<EntryIterator> ptr);
+
   auto getSnapshot() -> std::unordered_map<std::string, std::string>;
   void applySnapshot(
       std::unordered_map<std::string, std::string> const& snapshot);
@@ -99,6 +102,9 @@ struct PrototypeCore {
   auto get(std::vector<std::string> const& keys)
       -> std::unordered_map<std::string, std::string>;
 
+  auto getReadState() -> StorageType;
+  void execute(LogIndex, PrototypeLogEntry const& entry);
+
   [[nodiscard]] auto getLastPersistedIndex() const noexcept -> LogIndex const&;
   [[nodiscard]] auto getLogId() const noexcept -> GlobalLogIdentifier const&;
 
@@ -110,6 +116,7 @@ struct PrototypeCore {
   LogIndex _lastAppliedIndex;
   StorageType _store;
   std::shared_ptr<IPrototypeStorageInterface> _storage;
+  std::deque<std::pair<LogIndex, StorageType>> _ongoingStates;
 };
 
 /*
@@ -133,6 +140,19 @@ void PrototypeCore::applyEntries(std::unique_ptr<EntryIterator> ptr) {
                    },
                },
                logEntry.op);
+  }
+  _lastAppliedIndex = std::move(lastAppliedIndex);
+}
+
+/*
+ * Advances through the deque.
+ */
+template<typename EntryIterator>
+void PrototypeCore::update(std::unique_ptr<EntryIterator> ptr) {
+  auto lastAppliedIndex = ptr->range().to.saturatedDecrement();
+  while (!_ongoingStates.empty() &&
+         _ongoingStates.front().first < lastAppliedIndex) {
+    _ongoingStates.pop_front();
   }
   _lastAppliedIndex = std::move(lastAppliedIndex);
 }
