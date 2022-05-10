@@ -26,9 +26,11 @@
 #include "Aql/AqlValue.h"
 #include "Basics/ResourceUsage.h"
 #include "Containers/FlatHashMap.h"
+
 #include "Containers/SmallVector.h"
 
 #include <limits>
+#include <span>
 #include <thread>
 #include <unordered_map>
 #include <unordered_set>
@@ -255,8 +257,8 @@ class AqlItemBlock {
    * @return SharedAqlItemBlockPtr A block where all the slices are contained in
    * the order of the list
    */
-  auto slice(arangodb::containers::SmallVector<std::pair<size_t, size_t>> const&
-                 ranges) const -> SharedAqlItemBlockPtr;
+  auto slice(std::span<std::pair<size_t, size_t> const> ranges) const
+      -> SharedAqlItemBlockPtr;
 
   /// @brief create an AqlItemBlock with a single row, with copies of the
   /// specified registers from the current block

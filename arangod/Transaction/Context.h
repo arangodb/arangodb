@@ -134,10 +134,8 @@ class Context {
   TRI_vocbase_t& _vocbase;
   std::unique_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
 
-  ::arangodb::containers::SmallVectorWithArena<arangodb::velocypack::Builder*,
-                                               32>
-      _builders;
-  ::arangodb::containers::SmallVectorWithArena<std::string*, 32> _strings;
+  containers::SmallVector<arangodb::velocypack::Builder*, 8> _builders;
+  containers::SmallVector<std::string*, 4> _strings;
 
   arangodb::velocypack::Options _options;
 

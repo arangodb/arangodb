@@ -356,7 +356,7 @@ bool AqlAnalyzer::next() {
                 std::get<2>(_attrs).value =
                     arangodb::iresearch::getBytesRef(value.slice());
               } else {
-                VPackFunctionParameters params{_params_arena};
+                VPackFunctionParameters params;
                 params.push_back(value);
                 aql::NoVarExpressionContext ctx(_query->trxForOptimization(),
                                                 *_query,
@@ -372,7 +372,7 @@ bool AqlAnalyzer::next() {
               if (value.isNumber()) {
                 std::get<3>(_attrs).value = value.slice();
               } else {
-                VPackFunctionParameters params{_params_arena};
+                VPackFunctionParameters params;
                 params.push_back(value);
                 aql::NoVarExpressionContext ctx(_query->trxForOptimization(),
                                                 *_query,
@@ -387,7 +387,7 @@ bool AqlAnalyzer::next() {
               if (value.isBoolean()) {
                 std::get<3>(_attrs).value = value.slice();
               } else {
-                VPackFunctionParameters params{_params_arena};
+                VPackFunctionParameters params;
                 params.push_back(value);
                 aql::NoVarExpressionContext ctx(_query->trxForOptimization(),
                                                 *_query,
