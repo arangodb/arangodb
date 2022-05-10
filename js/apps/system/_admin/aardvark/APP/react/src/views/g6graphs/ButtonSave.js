@@ -31,7 +31,7 @@ const ButtonSave = ({ graphName, onGraphDataLoaded }) => {
   
   return (
     <>
-      <Tooltip placement="bottom" title={"Use current settings to receive data"}>    
+      <Tooltip placement="left" title={"Use current settings to receive data"}>    
         <Button
           type="primary"
           style={{ background: "#2ecc71", borderColor: "#2ecc71" }}

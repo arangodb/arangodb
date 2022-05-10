@@ -78,9 +78,6 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadS
       <ButtonSave
         graphName={graphName}
         onGraphDataLoaded={(newGraphData) => onGraphDataLoaded(newGraphData)}/>
-      <ButtonRestoreDefault
-        graphName={graphName}
-        onGraphDataLoaded={(newGraphData) => onGraphDataLoaded(newGraphData)}/>
     </Space>
   </>;
 
