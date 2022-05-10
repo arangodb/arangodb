@@ -10,7 +10,7 @@ LZ4 has the following API sets :
    such as LZ4 command line utility, node-lz4, etc.
  - "Block" API : This is recommended for simple purpose.
    It compress single raw memory block to LZ4 memory block and vice versa.
- - "Streaming" API : This is designed for complex thing.
+ - "Streaming" API : This is designed for complex things.
    For example, compress huge stream data in restricted memory environment.
 
 Basically, you should use "Auto Framing" API.
@@ -19,13 +19,13 @@ But if you want to write advanced application, it's time to use Block or Streami
 
 ## What is difference between Block and Streaming API ?
 
-Block API (de)compresses single contiguous memory block.
-In other words, LZ4 library find redundancy from single contiguous memory block.
-Streaming API does same thing but (de)compress multiple adjacent contiguous memory block.
+Block API (de)compresses a single contiguous memory block.
+In other words, LZ4 library finds redundancy from a single contiguous memory block.
+Streaming API does same thing but (de)compresses multiple adjacent contiguous memory blocks.
 So LZ4 library could find more redundancy than Block API.
 
 The following figure shows difference between API and block sizes.
-In these figures, original data is splitted to 4KiBytes contiguous chunks.
+In these figures, the original data is split into 4KiBytes contiguous chunks.
 
 ```
 Original Data
@@ -81,7 +81,7 @@ This dependency improves compression ratio.
 
 ## Restriction of Streaming API
 
-For the efficiency, Streaming API doesn't keep mirror copy of dependent (de)compressed memory.
+For efficiency, Streaming API doesn't keep a mirror copy of dependent (de)compressed memory.
 This means users should keep these dependent (de)compressed memory explicitly.
 Usually, "Dependent memory" is previous adjacent contiguous memory up to 64KiBytes.
 LZ4 will not access further memories.

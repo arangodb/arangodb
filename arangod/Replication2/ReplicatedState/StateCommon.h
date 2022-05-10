@@ -65,6 +65,8 @@ struct StateGeneration {
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 };
 
+auto to_string(StateGeneration) -> std::string;
+
 template<class Inspector>
 auto inspect(Inspector& f, StateGeneration& x) {
   if constexpr (Inspector::isLoading) {

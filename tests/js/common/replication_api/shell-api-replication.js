@@ -23,7 +23,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';

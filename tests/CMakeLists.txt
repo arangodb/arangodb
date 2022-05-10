@@ -295,6 +295,8 @@ set(ARANGODB_TESTS_SOURCES
   ${ADDITIONAL_TEST_SOURCES})
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
+  Replication2/Helper/ModelChecker/Actors.cpp
+  Replication2/Helper/ModelChecker/AgencyTransition.cpp
   Replication2/Helper/WaitForQueue.cpp
   Replication2/Mocks/AsyncFollower.cpp
   Replication2/Mocks/AsyncFollower.h
@@ -308,8 +310,12 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Mocks/FakeReplicatedLog.h
   Replication2/Mocks/FakeReplicatedState.cpp
   Replication2/Mocks/PersistedLog.cpp
+  Replication2/Mocks/PersistedLog.cpp
+  Replication2/Mocks/PersistedLog.h
   Replication2/Mocks/PersistedLog.h
   Replication2/Mocks/ReplicatedLogMetricsMock.cpp
+  Replication2/ModelChecker/ModelChecker.cpp
+  Replication2/ModelChecker/Tests/ModelCheckerTest.cpp
   Replication2/ReplicatedLog/AppendEntriesBatchTest.cpp
   Replication2/ReplicatedLog/AppendEntriesErrorReasonTest.cpp
   Replication2/ReplicatedLog/CalcCommitIndexTest.cpp
@@ -322,11 +328,13 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/FollowerWaitFor.cpp
   Replication2/ReplicatedLog/InMemoryLogTest.cpp
   Replication2/ReplicatedLog/LeaderAppendEntriesTest.cpp
+  Replication2/ReplicatedLog/LogFollowerCompactionTest.cpp
   Replication2/ReplicatedLog/LogParticipantWaitForResignTests.cpp
   Replication2/ReplicatedLog/LogReclaimTest.cpp
   Replication2/ReplicatedLog/LogStatusTest.cpp
   Replication2/ReplicatedLog/MaintenanceTests.cpp
   Replication2/ReplicatedLog/MultiTermTest.cpp
+  Replication2/ReplicatedLog/ParticipantResignTest.cpp
   Replication2/ReplicatedLog/ReplicatedLogTest.cpp
   Replication2/ReplicatedLog/RewriteLogTest.cpp
   Replication2/ReplicatedLog/RocksDBLogTest.cpp
@@ -345,8 +353,8 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedState/ReplicatedStateFeatureTest.cpp
   Replication2/ReplicatedState/ReplicatedStateTest.cpp
   Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
-  Replication2/Mocks/PersistedLog.cpp
-  Replication2/Mocks/PersistedLog.h
+  Replication2/ReplicatedState/SupervisionModelChecker.cpp
+  Replication2/ReplicatedState/SupervisionTest.cpp
   Replication2/Serialization/AgencyLogSpecificationTest.cpp
   Replication2/Serialization/LogCommonTest.cpp
   Replication2/Serialization/LogStatusTest.cpp
@@ -354,7 +362,6 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Streams/MultiplexerConcurrencyTest.cpp
   Replication2/Streams/TestLogSpecification.cpp
   Replication2/Streams/TestLogSpecification.h
-  Replication2/ReplicatedState/SupervisionTest.cpp
 )
 
 set(ARANGODB_GRAPH_TEST_SOURCES
@@ -441,6 +448,7 @@ target_link_libraries(arangodbtests
   snappy
   gtest
   boost_boost
+  fmt
 )
 
 if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
@@ -451,6 +459,7 @@ if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
     arangoserver
     arango_replication2
     arango_iresearch
+    fmt
   )
 endif()
 

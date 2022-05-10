@@ -35,21 +35,22 @@ So it's necessary to include all `*.c` and `*.h` files present in `/lib`.
 
 Definitions which are not guaranteed to remain stable in future versions,
 are protected behind macros, such as `LZ4_STATIC_LINKING_ONLY`.
-As the name implies, these definitions can only be invoked
+As the name strongly implies, these definitions should only be invoked
 in the context of static linking ***only***.
 Otherwise, dependent application may fail on API or ABI break in the future.
-The associated symbols are also not present in dynamic library by default.
+The associated symbols are also not exposed by the dynamic library by default.
 Should they be nonetheless needed, it's possible to force their publication
-by using build macro `LZ4_PUBLISH_STATIC_FUNCTIONS`.
+by using build macros `LZ4_PUBLISH_STATIC_FUNCTIONS`
+and `LZ4F_PUBLISH_STATIC_FUNCTIONS`.
 
 
 #### Build macros
 
-The following build macro can be selected at compilation time :
+The following build macro can be selected to adjust source code behavior at compilation time :
 
-- `LZ4_FAST_DEC_LOOP` : this triggers the optimized decompression loop.
-  This loops works great on x86/x64 cpus, and is automatically enabled on this platform.
-  It's possible to enable or disable it manually, by passing `LZ4_FAST_DEC_LOOP=1` or `0` to the preprocessor.
+- `LZ4_FAST_DEC_LOOP` : this triggers a speed optimized decompression loop, more powerful on modern cpus.
+  This loop works great on `x86`, `x64` and `aarch64` cpus, and is automatically enabled for them.
+  It's also possible to enable or disable it manually, by passing `LZ4_FAST_DEC_LOOP=1` or `0` to the preprocessor.
   For example, with `gcc` : `-DLZ4_FAST_DEC_LOOP=1`,
   and with `make` : `CPPFLAGS+=-DLZ4_FAST_DEC_LOOP=1 make lz4`.
 
@@ -65,8 +66,24 @@ The following build macro can be selected at compilation time :
   Should this be a problem, it's generally possible to make the compiler ignore these warnings,
   for example with `-Wno-deprecated-declarations` on `gcc`,
   or `_CRT_SECURE_NO_WARNINGS` for Visual Studio.
-  Another method is to define `LZ4_DISABLE_DEPRECATE_WARNINGS`
-  before including the LZ4 header files.
+  This build macro offers another project-specific method
+  by defining `LZ4_DISABLE_DEPRECATE_WARNINGS` before including the LZ4 header files.
+
+- `LZ4_USER_MEMORY_FUNCTIONS` : replace calls to <stdlib>'s `malloc`, `calloc` and `free`
+  by user-defined functions, which must be called `LZ4_malloc()`, `LZ4_calloc()` and `LZ4_free()`.
+  User functions must be available at link time.
+
+- `LZ4_FORCE_SW_BITCOUNT` : by default, the compression algorithm tries to determine lengths
+  by using bitcount instructions, generally implemented as fast single instructions in many cpus.
+  In case the target cpus doesn't support it, or compiler intrinsic doesn't work, or feature bad performance,
+  it's possible to use an optimized software path instead.
+  This is achieved by setting this build macros .
+  In most cases, it's not expected to be necessary,
+  but it can be legitimately considered for less common platforms.
+
+- `LZ4_ALIGN_TEST` : alignment test ensures that the memory area
+  passed as argument to become a compression state is suitably aligned.
+  This test can be disabled if it proves flaky, by setting this value to 0.
 
 
 #### Amalgamation
@@ -102,7 +119,7 @@ The compiled executable will require LZ4 DLL which is available at `dll\liblz4.d
 
 #### Miscellaneous
 
-Other files present in the directory are not source code. There are :
+Other files present in the directory are not source code. They are :
 
  - `LICENSE` : contains the BSD license text
  - `Makefile` : `make` script to compile and install lz4 library (static and dynamic)

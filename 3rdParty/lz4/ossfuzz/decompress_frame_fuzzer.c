@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "fuzz_helpers.h"
+#include "fuzz_data_producer.h"
 #include "lz4.h"
 #define LZ4F_STATIC_LINKING_ONLY
 #include "lz4frame.h"
@@ -29,11 +30,17 @@ static void decompress(LZ4F_dctx* dctx, void* dst, size_t dstCapacity,
 
 int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
+    FUZZ_dataProducer_t *producer = FUZZ_dataProducer_create(data, size);
+    size_t const dstCapacitySeed = FUZZ_dataProducer_retrieve32(producer);
+    size_t const dictSizeSeed = FUZZ_dataProducer_retrieve32(producer);
+    size = FUZZ_dataProducer_remainingBytes(producer);
 
-    uint32_t seed = FUZZ_seed(&data, &size);
-    size_t const dstCapacity = FUZZ_rand32(&seed, 0, 4 * size);
+    size_t const dstCapacity = FUZZ_getRange_from_uint32(
+      dstCapacitySeed, 0, 4 * size);
     size_t const largeDictSize = 64 * 1024;
-    size_t const dictSize = FUZZ_rand32(&seed, 0, largeDictSize);
+    size_t const dictSize = FUZZ_getRange_from_uint32(
+      dictSizeSeed, 0, largeDictSize);
+
     char* const dst = (char*)malloc(dstCapacity);
     char* const dict = (char*)malloc(dictSize);
     LZ4F_decompressOptions_t opts;
@@ -62,6 +69,7 @@ int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     LZ4F_freeDecompressionContext(dctx);
     free(dst);
     free(dict);
+    FUZZ_dataProducer_free(producer);
 
     return 0;
 }

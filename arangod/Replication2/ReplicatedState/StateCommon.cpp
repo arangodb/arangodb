@@ -113,6 +113,10 @@ auto replicated_state::snapshotStatusFromString(
   }
 }
 
+auto replicated_state::to_string(StateGeneration g) -> std::string {
+  return std::to_string(g.value);
+}
+
 void SnapshotInfo::toVelocyPack(velocypack::Builder& builder) const {
   velocypack::ObjectBuilder ob(&builder);
   TRI_ASSERT(!error.has_value());  // error not yet implemented

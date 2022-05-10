@@ -29,6 +29,7 @@
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
 using namespace arangodb::replication2::agency;
 namespace paths = arangodb::cluster::paths::aliases;
@@ -44,8 +45,8 @@ void toVelocyPack(Action const& action, VPackBuilder& builder) {
 }
 
 auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
-             std::optional<LogPlanSpecification> const plan,
-             std::optional<LogCurrent> const current,
+             std::optional<LogPlanSpecification> const& plan,
+             std::optional<LogCurrent> const& current,
              arangodb::agency::envelope envelope)
     -> arangodb::agency::envelope {
   auto planPath =
@@ -62,7 +63,7 @@ auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
     return envelope;
   }
 
-  auto ctx = ActionContext{std::move(plan), std::move(current)};
+  auto ctx = ActionContext{plan, current};
 
   std::visit([&](auto& action) { action.execute(ctx); }, action);
 
