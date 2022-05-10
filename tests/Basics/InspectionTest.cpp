@@ -480,6 +480,7 @@ TEST_F(VPackSaveInspectorTest, store_empty_object) {
   auto result = inspector.apply(empty);
   EXPECT_TRUE(result.ok());
   EXPECT_TRUE(builder.slice().isObject());
+  EXPECT_EQ(0, builder.slice().length());
 }
 
 TEST_F(VPackSaveInspectorTest, store_int) {
