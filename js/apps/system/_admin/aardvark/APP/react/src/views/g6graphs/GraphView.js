@@ -309,7 +309,7 @@ export class GraphView extends React.Component {
           cursor: 'pointer'
         },
         curve: {
-          type: 'cubic-vertical',
+          type: 'arc',
           startArrow: false,
           endArrow: {
             path: G6.Arrow.triangle(10, 20, 25),
