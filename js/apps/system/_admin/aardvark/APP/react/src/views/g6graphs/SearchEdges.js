@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Tooltip } from 'antd';
 import { Edge } from './components/edge/edge.component';
 import { InfoCircleFilled } from '@ant-design/icons';
 import PlainLabel from "./components/pure-css/form/PlainLabel";
 
 const SearchEdges = ({ edges, graphData, onEdgeInfo, data, onDeleteEdge, onEdgeSelect }) => {
-
+  const [previousSearchedEdge, setPreviousSearchedEdge] = useState(null);
+  
   return (
     <div style={{'marginTop': '24px', marginBottom: '20px'}}>
       <PlainLabel htmlFor={'searchedges'}>Search edge</PlainLabel>
@@ -17,8 +18,8 @@ const SearchEdges = ({ edges, graphData, onEdgeInfo, data, onDeleteEdge, onEdgeS
           onChange={
             (e) => {
               if(e.target.value.includes("/")) {
-                console.log("e.target.value (in SearchEdges): ", e.target.value);
-                onEdgeSelect(e.target.value);
+                onEdgeSelect(previousSearchedEdge, e.target.value);
+                setPreviousSearchedEdge(e.target.value);
               }
             }
           }

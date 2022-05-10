@@ -361,8 +361,10 @@ export class GraphView extends React.Component {
           cursor: 'pointer'
         },
         searchedEdge: {
-          stroke: '#82962d',
-          lineWidth: 4,
+          stroke: '#555555',
+          lineWidth: 2,
+          shadowColor: '#555555',
+          shadowBlur: 5,
           cursor: 'pointer',
         }
       },
@@ -711,10 +713,11 @@ export class GraphView extends React.Component {
     }
   }
 
-  highlightEdge = (edge) => {
+  highlightEdge = (previousSearchedEdge, edge) => {
     if(edge) {
-      console.log("searched edge: ", edge);
-      //this.graph.clearItemStates(edge);
+      if(previousSearchedEdge) {
+        this.graph.clearItemStates(previousSearchedEdge);
+      }
       this.graph.setItemState(edge, 'searchedEdge', true);
       this.graph.focusItem(edge, true);
     }
@@ -864,7 +867,7 @@ export class GraphView extends React.Component {
         onLoadFullGraph={() => this.props.onLoadFullGraph}
         onDocumentSelect={(document) => this.highlightDocument(document)}
         onNodeSearched={(previousSearchedNode, node) => this.highlightNode(previousSearchedNode, node)}
-        onEdgeSearched={(edge) => this.highlightEdge(edge)}
+        onEdgeSearched={(previousSearchedEdge, edge) => this.highlightEdge(previousSearchedEdge, edge)}
         onEdgeStyleChanged={(edgeStyle) => this.changeEdgeStyleFromUi(edgeStyle)}
         onGraphLayoutChange={(layout) => this.changeGraphLayoutFromUi(layout)}
         onGraphDataLoaded={(newGraphData) => this.props.onGraphDataLoaded(newGraphData)}

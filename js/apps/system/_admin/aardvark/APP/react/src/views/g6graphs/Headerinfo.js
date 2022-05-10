@@ -232,7 +232,7 @@ const screenshotMenu = (
               edges={graphData.edges}
               graphData={graphData}
               onEdgeInfo={() => console.log('onEdgeInfo() in MenuGraph')}
-              onEdgeSelect={(edge) => onEdgeSearched(edge)}
+              onEdgeSelect={(previousSearchedEdge, edge) => onEdgeSearched(previousSearchedEdge, edge)}
             />
           </TabPane>
         </Tabs>
