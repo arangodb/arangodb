@@ -35,6 +35,7 @@
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
+#include "IResearch/MakeViewSnapshot.h"
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"

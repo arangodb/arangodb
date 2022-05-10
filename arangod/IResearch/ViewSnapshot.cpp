@@ -38,42 +38,51 @@ namespace {
 class ViewSnapshotCookie final : public ViewSnapshotImpl,
                                  public TransactionState::Cookie {
  public:
-  bool equalCollections(Links const& links);
+  ViewSnapshotCookie() noexcept = default;
+
+  ViewSnapshotCookie(Links&& links) noexcept;
 
   void clear() noexcept;
 
-  void add(DataSourceId cid, irs::directory_reader&& reader) noexcept;
+  bool compute(bool sync, std::string_view name);
 
-  void set(Links&& links) noexcept;
+  void add(DataSourceId cid, irs::directory_reader&& reader) noexcept;
 
   std::vector<irs::directory_reader> _readers;
   // prevent data-store deallocation (lock @ AsyncSelf)
   Links _links;
 };
 
-bool ViewSnapshotCookie::equalCollections(Links const& links) {
-  if (_links.size() != links.size()) {
-    TRI_ASSERT(_links.empty());
-    return false;
-  }
-  for (auto const& entry : _links) {
-    if (!links.contains(entry.first)) {
-      // key not found -> maybe sync + create + return new key
-      // key     found -> return key
-      //             \--> sync + recompute + return key
-      TRI_ASSERT(false);
-      return false;
-    }
-  }
-  return true;
-}
+ViewSnapshotCookie::ViewSnapshotCookie(Links&& links) noexcept
+    : _links{std::move(links)} {}
 
 void ViewSnapshotCookie::clear() noexcept {
   _live_docs_count = 0;
   _docs_count = 0;
   _segments.clear();
   _readers.clear();
-  _links = {};
+}
+
+bool ViewSnapshotCookie::compute(bool sync, std::string_view name) {
+  for (auto& link : _links) {
+    if (!link) {
+      LOG_TOPIC("fffff", WARN, TOPIC)
+          << "failed to lock a link for view '" << name;
+      return false;
+    }
+    auto const cid = link->collection().id();
+    if (sync) {
+      auto r = IResearchDataStore::commit(link, true);
+      if (!r.ok()) {
+        LOG_TOPIC("fd776", WARN, TOPIC)
+            << "failed to sync while creating snapshot for view '" << name
+            << "', previous snapshot will be used instead, error: '"
+            << r.errorMessage() << "'";
+      }
+    }
+    add(cid, IResearchDataStore::reader(link));
+  }
+  return true;
 }
 
 void ViewSnapshotCookie::add(DataSourceId cid,
@@ -85,10 +94,6 @@ void ViewSnapshotCookie::add(DataSourceId cid,
   _live_docs_count += reader.live_docs_count();
   _docs_count += reader.docs_count();
   _readers.emplace_back(std::move(reader));
-}
-
-void ViewSnapshotCookie::set(Links&& links) noexcept {
-  _links = std::move(links);
 }
 
 }  // namespace
@@ -108,58 +113,39 @@ ViewSnapshotView::ViewSnapshotView(
   }
 }
 
-ViewSnapshot const* makeViewSnapshot(transaction::Methods& trx,
-                                     ViewSnapshotMode mode,
-                                     ViewSnapshot::Links&& links,
-                                     void const* key,
-                                     std::string_view name) noexcept {
+ViewSnapshot* getViewSnapshot(transaction::Methods& trx,
+                              void const* key) noexcept {
+  TRI_ASSERT(key != nullptr);
+  TRI_ASSERT(trx.state());
+  auto& state = *(trx.state());
+  return basics::downCast<ViewSnapshotCookie>(state.cookie(key));
+}
+
+void syncViewSnapshot(ViewSnapshot& snapshot, std::string_view name) {
+  auto& ctx = basics::downCast<ViewSnapshotCookie>(snapshot);
+  ctx.clear();
+  TRI_ASSERT(ctx.compute(true, name));
+}
+
+ViewSnapshot* makeViewSnapshot(transaction::Methods& trx, void const* key,
+                               bool sync, std::string_view name,
+                               ViewSnapshot::Links&& links) noexcept {
   if (links.empty()) {
-    static const ViewSnapshotImpl empty;
+    // cannot be a const, we can call syncViewSnapshot on it,
+    // that should do nothing but in generally we cannot prove it
+    static ViewSnapshotCookie empty;
     return &empty;  // TODO(MBkkt) Maybe nullptr?
   }
   TRI_ASSERT(trx.state());
   auto& state = *(trx.state());
-  auto* ctx = basics::downCast<ViewSnapshotCookie>(state.cookie(key));
-  // We want to check ==, but not >= because ctx also is reader
-  if (mode == ViewSnapshotMode::Find) {
-    return ctx && ctx->equalCollections(links) ? ctx : nullptr;
-  }
-  std::unique_ptr<ViewSnapshotCookie> cookie;
-  if (ctx) {
-    if (mode == ViewSnapshotMode::FindOrCreate &&
-        ctx->equalCollections(links)) {
-      return ctx;
-    }
-    ctx->clear();
-  } else {
-    cookie = std::make_unique<ViewSnapshotCookie>();
-    ctx = cookie.get();
-  }
-  TRI_ASSERT(ctx);
+  TRI_ASSERT(state.cookie(key) == nullptr);
+  auto cookie = std::make_unique<ViewSnapshotCookie>(std::move(links));
+  auto& ctx = *cookie;
   try {
-    for (auto& entry : links) {
-      if (!entry.second) {
-        LOG_TOPIC("fffff", WARN, TOPIC)
-            << "failed to lock a link for collection '" << entry.first
-            << "' for view '" << name;
-        return nullptr;
-      }
-      if (mode == ViewSnapshotMode::SyncAndReplace) {
-        auto r = IResearchDataStore::commit(entry.second, true);
-        if (!r.ok()) {
-          LOG_TOPIC("fd776", WARN, TOPIC)
-              << "failed to sync while creating snapshot for view '" << name
-              << "', previous snapshot will be used instead, error: '"
-              << r.errorMessage() << "'";
-        }
-      }
-      ctx->add(entry.first, IResearchDataStore::reader(entry.second));
-    }
-    ctx->set(std::move(links));
-    if (cookie) {
+    if (ctx.compute(sync, name)) {
       state.cookie(key, std::move(cookie));
+      return &ctx;
     }
-    return ctx;
   } catch (basics::Exception const& e) {
     LOG_TOPIC("29b30", WARN, TOPIC)
         << "caught exception while collecting readers for snapshot of view '"
