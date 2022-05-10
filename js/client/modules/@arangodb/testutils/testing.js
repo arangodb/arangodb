@@ -78,8 +78,6 @@ let optionsDocumentation = [
   '   - `sleepBeforeStart` : sleep at tcpdump info - use this dump traffic or attach debugger',
   '   - `sleepBeforeShutdown`: let the system rest before terminating it',
   '',
-  '   - `storageEngine`: set to `rocksdb` - defaults to `rocksdb`',
-  '',
   '   - `server`: server_url (e.g. tcp://127.0.0.1:8529) for external server',
   '   - `serverRoot`: directory where data/ points into the db server. Use in',
   '                   conjunction with `server`.',
@@ -219,7 +217,6 @@ const optionsDefaults = {
       global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
       global.ARANGODB_CLIENT_VERSION(true).tsan === 'true'),
   'skipTimeCritical': false,
-  'storageEngine': 'rocksdb',
   'test': undefined,
   'testBuckets': undefined,
   'testOutputDirectory': 'out',
@@ -590,6 +587,9 @@ function unitTest (cases, options) {
   loadTestSuites(options);
   // testsuites may register more defaults...
   _.defaults(options, optionsDefaults);
+  if (options.memprof) {
+    process.env['MALLOC_CONF'] = 'prof:true';
+  }
 
   options.noStartStopLogs = !options.extremeVerbosity && options.noStartStopLogs;
 
@@ -615,6 +615,10 @@ function unitTest (cases, options) {
         message: err.message
       }]
     };
+  }
+
+  if (options.encryptionAtRest && !pu.isEnterpriseClient) {
+    options.encryptionAtRest = false;
   }
 
   arango.forceJson(options.forceJson);

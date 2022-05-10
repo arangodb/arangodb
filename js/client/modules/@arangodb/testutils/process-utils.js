@@ -437,6 +437,26 @@ function setupBinaries (builddir, buildType, configDir) {
   global.ARANGOSH_BIN = ARANGOSH_BIN;
 }
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief if we forgot about processes, this safe guard will clean up and mark failed
+// //////////////////////////////////////////////////////////////////////////////
+
+function killRemainingProcesses(results) {
+  let running = internal.getExternalSpawned();
+  results.status = results.status && (running.length === 0);
+  let i = 0;
+  for (i = 0; i < running.length; i++) {
+    let status = internal.statusExternal(running[i].pid, false);
+    if (status.status === "TERMINATED") {
+      print("process exited without us joining it (marking crashy): " + JSON.stringify(running[i]) + JSON.stringify(status));
+    }
+    else {
+      print("Killing remaining process & marking crashy: " + JSON.stringify(running[i]));
+      print(killExternal(running[i].pid, abortSignal));
+    }
+    results.crashed = true;
+  }
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // //////////////////////////////////////////////////////////////////////////////
@@ -582,113 +602,6 @@ function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = f
   return executeAndWait(ARANGOBENCH_BIN, toArgv(args), options, 'arangobench', instanceInfo.rootDir, coreCheck);
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief finds a free port
-// //////////////////////////////////////////////////////////////////////////////
-
-function findFreePort (minPort, maxPort, usedPorts) {
-  if (typeof maxPort !== 'number') {
-    maxPort = 32768;
-  }
-
-  if (maxPort - minPort < 0) {
-    throw new Error('minPort ' + minPort + ' is smaller than maxPort ' + maxPort);
-  }
-
-  let tries = 0;
-  while (true) {
-    const port = Math.floor(Math.random() * (maxPort - minPort)) + minPort;
-    tries++;
-    if (tries > 20) {
-      throw new Error('Couldn\'t find a port after ' + tries + ' tries. portrange of ' + minPort + ', ' + maxPort + ' too narrow?');
-    }
-    if (Array.isArray(usedPorts) && usedPorts.indexOf(port) >= 0) {
-      continue;
-    }
-    const free = testPort('tcp://0.0.0.0:' + port);
-
-    if (free) {
-      return port;
-    }
-
-    internal.wait(0.1, false);
-  }
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief scans the log files for important infos
-// //////////////////////////////////////////////////////////////////////////////
-
-function readImportantLogLines (logPath) {
-  const list = fs.list(logPath);
-  let importantLines = {};
-
-  for (let i = 0; i < list.length; i++) {
-    let fnLines = [];
-
-    if (list[i].slice(0, 3) === 'log') {
-      const buf = fs.readBuffer(fs.join(logPath, list[i]));
-      let lineStart = 0;
-      let maxBuffer = buf.length;
-
-      for (let j = 0; j < maxBuffer; j++) {
-        if (buf[j] === 10) { // \n
-          const line = buf.asciiSlice(lineStart, j);
-          lineStart = j + 1;
-
-          // filter out regular INFO lines, and test related messages
-          let warn = line.search('WARNING about to execute:') !== -1;
-          let info = line.search(' INFO ') !== -1;
-
-          if (warn || info) {
-            continue;
-          }
-          fnLines.push(line);
-        }
-      }
-    }
-
-    if (fnLines.length > 0) {
-      importantLines[list[i]] = fnLines;
-    }
-  }
-
-  return importantLines;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief scans the log files for assert lines
-// //////////////////////////////////////////////////////////////////////////////
-
-function readAssertLogLines (logPath) {
-  const list = fs.list(logPath);
-
-  for (let i = 0; i < list.length; i++) {
-    let fnLines = [];
-
-    if (list[i].slice(0, 3) === 'log') {
-      const buf = fs.readBuffer(fs.join(logPath, list[i]));
-      let lineStart = 0;
-      let maxBuffer = buf.length;
-
-      for (let j = 0; j < maxBuffer; j++) {
-        if (buf[j] === 10) { // \n
-          const line = buf.asciiSlice(lineStart, j);
-          lineStart = j + 1;
-
-          // scan for asserts from the crash dumper
-          if (line.search('{crash}') !== -1) {
-            if (!IS_A_TTY) {
-              // else the server has already printed these:
-              print("ERROR: " + line);
-            }
-            assertLines.push(line);
-          }
-        }
-      }
-    }
-  }
-}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief cleans up the database directory
@@ -812,215 +725,7 @@ function endpointToURL (endpoint) {
   return 'http' + endpoint.substr(pos);
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief arguments for testing (server)
-// //////////////////////////////////////////////////////////////////////////////
 
-function makeArgsArangod (options, appDir, role, tmpDir) {
-  console.assert(tmpDir !== undefined);
-  if (appDir === undefined) {
-    appDir = fs.getTempPath();
-  }
-
-  fs.makeDirectoryRecursive(appDir, true);
-
-  fs.makeDirectoryRecursive(tmpDir, true);
-
-  let config = 'arangod.conf';
-
-  if (role !== undefined && role !== null && role !== '') {
-    config = 'arangod-' + role + '.conf';
-  }
-
-  let args = {
-    'configuration': fs.join(CONFIG_DIR, config),
-    'define': 'TOP_DIR=' + TOP_DIR,
-    'javascript.app-path': appDir,
-    'javascript.copy-installation': false,
-    'http.trusted-origin': options.httpTrustedOrigin || 'all',
-    'temp.path': tmpDir
-  };
-  if (options.storageEngine !== undefined) {
-    args['server.storage-engine'] = options.storageEngine;
-  }
-  return args;
-}
-
-function killWithCoreDump (options, instanceInfo) {
-  if (platform.substr(0, 3) === 'win') {
-    if (!options.disableMonitor) {
-      crashUtils.stopProcdump (options, instanceInfo, true);
-    }
-    crashUtils.runProcdump (options, instanceInfo, instanceInfo.rootDir, instanceInfo.pid, true);
-  }
-  instanceInfo.exitStatus = killExternal(instanceInfo.pid, abortSignal);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief aggregates information from /proc about the SUT
-// //////////////////////////////////////////////////////////////////////////////
-function getProcessStats(pid) {
-  let processStats = statisticsExternal(pid);
-  if (platform === 'linux') {
-    let pidStr = "" + pid;
-    let ioraw;
-    let fn = fs.join('/', 'proc', pidStr, 'io');
-    try {
-      ioraw = fs.readBuffer(fn);
-    } catch (x) {
-      print("Proc FN gone: " + fn);
-      print(x.stack);
-      throw x;
-    }
-    /*
-     * rchar: 1409391
-     * wchar: 681539
-     * syscr: 3303
-     * syscw: 2969
-     * read_bytes: 0
-     * write_bytes: 0
-     * cancelled_write_bytes: 0
-     */
-    let lineStart = 0;
-    let maxBuffer = ioraw.length;
-    for (let j = 0; j < maxBuffer; j++) {
-      if (ioraw[j] === 10) { // \n
-        const line = ioraw.asciiSlice(lineStart, j);
-        lineStart = j + 1;
-        let x = line.split(":");
-        processStats[x[0]] = parseInt(x[1]);
-      }
-    }
-    /* 
-     * sockets: used 1272
-     * TCP: inuse 27 orphan 0 tw 117 alloc 382 mem 25
-     * UDP: inuse 19 mem 17
-     * UDPLITE: inuse 0
-     * RAW: inuse 0
-     * FRAG: inuse 0 memory 0
-     */
-    ioraw = getSockStatFile(pid);
-    ioraw.split('\n').forEach(line => {
-      if (line.length > 0) {
-        let x = line.split(":");
-        let values = x[1].split(" ");
-        for (let k = 1; k < values.length; k+= 2) {
-          processStats['sockstat_' + x[0] + '_' + values[k]]
-            = parseInt(values[k + 1]);
-        }
-      }
-    });
-  }
-  return processStats;
-}
-
-function initProcessStats(instanceInfo) {
-  instanceInfo.arangods.forEach((arangod) => {
-    arangod.stats = getProcessStats(arangod.pid);
-  });
-}
-
-function getDeltaProcessStats(instanceInfo) {
-  try {
-    let deltaStats = {};
-    let deltaSum = {};
-    instanceInfo.arangods.forEach((arangod) => {
-      let newStats = getProcessStats(arangod.pid);
-      let myDeltaStats = {};
-      for (let key in arangod.stats) {
-        if (key.startsWith('sockstat_')) {
-          myDeltaStats[key] = newStats[key];
-        } else {
-          myDeltaStats[key] = newStats[key] - arangod.stats[key];
-        }
-      }
-      deltaStats[arangod.pid + '_' + arangod.role] = myDeltaStats;
-      arangod.stats = newStats;
-      for (let key in myDeltaStats) {
-        if (deltaSum.hasOwnProperty(key)) {
-          deltaSum[key] += myDeltaStats[key];
-        } else {
-          deltaSum[key] = myDeltaStats[key];
-        }
-      }
-    });
-    deltaStats['sum_servers'] = deltaSum;
-    return deltaStats;
-  }
-  catch (x) {
-    print("aborting stats generation");
-    return {};
-  }
-}
-
-function summarizeStats(deltaStats) {
-  let sumStats = {};
-  for (let instance in deltaStats) {
-    for (let key in deltaStats[instance]) {
-      if (!sumStats.hasOwnProperty(key)) {
-        sumStats[key] = 0;
-      }
-      sumStats[key] += deltaStats[instance][key];
-    }
-  }
-  return sumStats;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief aggregates information from /proc about the SUT
-// //////////////////////////////////////////////////////////////////////////////
-
-function getMemProfSnapshot(instanceInfo, options, counter) {
-  if (options.memprof) {
-    let opts = Object.assign(makeAuthorizationHeaders(options),
-                             { method: 'GET' });
-
-    instanceInfo.arangods.forEach((arangod) => {
-      let fn = fs.join(arangod.rootDir, `${arangod.role}_${arangod.pid}_${counter}_.heap`);
-      let heapdumpReply = download(arangod.url + '/_admin/status?memory=true', opts);
-      if (heapdumpReply.code === 200) {
-        fs.write(fn, heapdumpReply.body);
-        print(CYAN + Date() + ` Saved ${fn}` + RESET);
-      } else {
-        print(RED + Date() + ` Acquiring Heapdump for ${fn} failed!` + RESET);
-        print(heapdumpReply);
-      }
-
-      let fnMetrics = fs.join(arangod.rootDir, `${arangod.role}_${arangod.pid}_${counter}_.metrics`);
-      let metricsReply = download(arangod.url + '/_admin/metrics/v2', opts);
-      if (metricsReply.code === 200) {
-        fs.write(fnMetrics, metricsReply.body);
-        print(CYAN + Date() + ` Saved ${fnMetrics}` + RESET);
-      } else if (metricsReply.code === 503) {
-        print(RED + Date() + ` Acquiring metrics for ${fnMetrics} not possible!` + RESET);
-      } else {
-        print(RED + Date() + ` Acquiring metrics for ${fnMetrics} failed!` + RESET);
-        print(metricsReply);
-      }
-    });
-  }
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief if we forgot about processes, this safe guard will clean up and mark failed
-// //////////////////////////////////////////////////////////////////////////////
-
-function killRemainingProcesses(results) {
-  let running = internal.getExternalSpawned();
-  results.status = results.status && (running.length === 0);
-  let i = 0;
-  for (i = 0; i < running.length; i++) {
-    let status = internal.statusExternal(running[i].pid, false);
-    if (status.status === "TERMINATED") {
-      print("process exited without us joining it (marking crashy): " + JSON.stringify(running[i]) + JSON.stringify(status));
-    }
-    else {
-      print("Killing remaining process & marking crashy: " + JSON.stringify(running[i]));
-      print(killExternal(running[i].pid, abortSignal));
-    }
-    results.crashed = true;
-  }
-}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief executes a command and waits for result
@@ -1212,6 +917,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
   }
 }
 
+<<<<<<< HEAD
 // //////////////////////////////////////////////////////////////////////////////
 // //////////////////////////////////////////////////////////////////////////////
 // / Server up/down utilities
@@ -2663,27 +2369,18 @@ function checkServersGOOD(instanceInfo) {
 }
 
 // exports.analyzeServerCrash = analyzeServerCrash;
+=======
+exports.setupBinaries = setupBinaries;
+exports.endpointToURL = endpointToURL;
+exports.coverageEnvironment = coverageEnvironment;
+>>>>>>> f36639b42bb (start splitting, cleaning & objectizing up the testing.js instance management)
 exports.makeArgs = {
-  arangod: makeArgsArangod,
   arangosh: makeArgsArangosh
 };
 
-exports.arangod = {
-  check: {
-    alive: checkArangoAlive,
-    instanceAlive: checkInstanceAlive,
-    uptime: checkUptime
-  },
-  shutdown: shutdownArangod
-};
-
-exports.findFreePort = findFreePort;
-exports.coverageEnvironment = coverageEnvironment;
-exports.getJwtSecret = getJwtSecret;
-
-exports.executeArangod = executeArangod;
 exports.executeAndWait = executeAndWait;
 exports.killRemainingProcesses = killRemainingProcesses;
+exports.isEnterpriseClient = isEnterpriseClient;
 
 exports.createBaseConfig = createBaseConfigBuilder;
 exports.run = {
@@ -2695,30 +2392,12 @@ exports.run = {
   arangoBackup: runArangoBackup
 };
 
-exports.shutdownInstance = shutdownInstance;
-exports.shutDownOneInstance = shutDownOneInstance;
-exports.getProcessStats = getProcessStats;
-exports.getDeltaProcessStats = getDeltaProcessStats;
-exports.checkServerFailurePoints = checkServerFailurePoints;
-exports.summarizeStats = summarizeStats;
-exports.getMemProfSnapshot = getMemProfSnapshot;
-exports.startArango = startArango;
-exports.startInstance = startInstance;
-exports.reStartInstance = reStartInstance;
-exports.restartOneInstance = restartOneInstance;
-exports.setupBinaries = setupBinaries;
-exports.executableExt = executableExt;
-exports.serverCrashed = serverCrashedLocal;
-exports.checkServersGOOD = checkServersGOOD;
-
-exports.aggregateFatalErrors = aggregateFatalErrors;
 exports.cleanupDBDirectoriesAppend = cleanupDBDirectoriesAppend;
 exports.cleanupDBDirectories = cleanupDBDirectories;
 exports.cleanupLastDirectory = cleanupLastDirectory;
 exports.getCleanupDBDirectories = getCleanupDBDirectories;
 
 exports.makeAuthorizationHeaders = makeAuthorizationHeaders;
-exports.dumpAgency = dumpAgency;
 Object.defineProperty(exports, 'ARANGOBACKUP_BIN', {get: () => ARANGOBACKUP_BIN});
 Object.defineProperty(exports, 'ARANGOBENCH_BIN', {get: () => ARANGOBENCH_BIN});
 Object.defineProperty(exports, 'ARANGODUMP_BIN', {get: () => ARANGODUMP_BIN});

@@ -29,6 +29,7 @@ const _ = require('lodash');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const im = require('@arangodb/testutils/instance-manager');
 const time = require('internal').time;
 const sleep = require('internal').sleep;
 const userManager = require("@arangodb/users");
@@ -295,7 +296,7 @@ class testRunner {
       this.cleanupChecks.push(graphsTest);
     }
     this.cleanupChecks.push();
-
+    this.instanceManager;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -430,11 +431,12 @@ class testRunner {
       };
     }
 
-    this.instanceInfo = pu.startInstance(this.options.protocol,
-                                         this.options,
-                                         this.serverOptions,
-                                         this.friendlyName);
-
+    this.instanceManager = new im.instanceManager(this.options.protocol,
+                                                  this.options,
+                                                  this.serverOptions,
+                                                  this.friendlyName);
+    this.instanceManager.prepareInstance();
+    
     if (this.instanceInfo === false) {
       this.customInstanceInfos['startFailed'] = this.startFailed();
       return {
