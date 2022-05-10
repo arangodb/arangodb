@@ -102,8 +102,8 @@ export class GraphView extends React.Component {
           this.props.onEditEdge(item._cfg.id);
         } 
       },
-      offsetX: 16 + 10,
-      offsetY: 0,
+      offsetX: 16,
+      offsetY: -90,
       itemTypes: ['node', 'edge', 'canvas'],
     });
     

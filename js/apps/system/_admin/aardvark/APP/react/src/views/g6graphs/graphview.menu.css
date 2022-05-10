@@ -5,4 +5,10 @@ ul#graphViewerMenu {
 ul#graphViewerMenu li {
   list-style-type: none;
   margin-left: -16px;
+  margin-right: 16px;
+  cursor: pointer;
+}
+
+ul#graphViewerMenu li:hover {
+  text-decoration: underline;
 }
