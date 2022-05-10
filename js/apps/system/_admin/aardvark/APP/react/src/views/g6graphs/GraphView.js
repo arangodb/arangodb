@@ -888,7 +888,7 @@ export class GraphView extends React.Component {
         onGraphDataLoaded={(newGraphData) => this.props.onGraphDataLoaded(newGraphData)}
       />
       <Card
-          title={this.props.graphName}
+          title={null}
           id="graph-card"
           bodyStyle={{ 'height': '800px', 'backgroundColor': '#f2f2f2' }}
         >
