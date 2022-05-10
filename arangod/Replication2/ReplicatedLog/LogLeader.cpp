@@ -962,6 +962,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::getLocalStatistics() const
   result.commitIndex = _commitIndex;
   result.firstIndex = _inMemoryLog.getFirstIndex();
   result.spearHead = _inMemoryLog.getLastTermIndexPair();
+  result.releaseIndex = _releaseIndex;
   return result;
 }
 
@@ -1018,6 +1019,26 @@ auto replicated_log::LogLeader::GuardedLeaderData::calculateCommitLag()
            "should be the commitIndex. _commitIndex = "
         << _commitIndex << ", lastIndex = " << _inMemoryLog.getLastIndex();
     return {};
+  }
+}
+
+auto replicated_log::LogLeader::GuardedLeaderData::waitForResign()
+    -> std::pair<futures::Future<futures::Unit>, DeferredAction> {
+  if (!_didResign) {
+    auto future = _waitForResignQueue.addWaitFor();
+    return {std::move(future), DeferredAction{}};
+  } else {
+    TRI_ASSERT(_waitForResignQueue.empty());
+    auto promise = futures::Promise<futures::Unit>{};
+    auto future = promise.getFuture();
+
+    auto action =
+        DeferredAction([promise = std::move(promise)]() mutable noexcept {
+          TRI_ASSERT(promise.valid());
+          promise.setValue();
+        });
+
+    return {std::move(future), std::move(action)};
   }
 }
 
@@ -1427,7 +1448,13 @@ auto replicated_log::LogLeader::getParticipantConfigGenerations() const noexcept
 
 auto replicated_log::LogLeader::waitForResign()
     -> futures::Future<futures::Unit> {
-  return _guardedLeaderData.getLockedGuard()->_waitForResignQueue.addWaitFor();
+  using namespace arangodb::futures;
+  auto&& [future, action] =
+      _guardedLeaderData.getLockedGuard()->waitForResign();
+
+  action.fire();
+
+  return std::move(future);
 }
 
 auto replicated_log::LogLeader::LocalFollower::release(LogIndex stop) const
