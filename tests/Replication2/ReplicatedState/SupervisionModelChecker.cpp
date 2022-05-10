@@ -395,7 +395,7 @@ TEST_F(ReplicatedStateModelCheckerTest, everything_ok_replace_server) {
   EXPECT_FALSE(result.failed) << *result.failed;
 }
 
-TEST_F(ReplicatedStateModelCheckerTest, everything_ok_replace_leader) {
+TEST_F(ReplicatedStateModelCheckerTest, DISABLED_everything_ok_replace_leader) {
   AgencyStateBuilder state;
   state.setId(logId)
       .setTargetParticipants("A", "B")
@@ -476,7 +476,8 @@ TEST_F(ReplicatedStateModelCheckerTest, everything_ok_replace_leader) {
   EXPECT_FALSE(result.failed) << *result.failed;
 }
 
-TEST_F(ReplicatedStateModelCheckerTest, start_with_nothing_replace_server) {
+TEST_F(ReplicatedStateModelCheckerTest,
+       DISABLED_start_with_nothing_replace_server) {
   AgencyStateBuilder state;
   state.setId(logId)
       .setTargetParticipants("A", "B")
@@ -543,7 +544,8 @@ TEST_F(ReplicatedStateModelCheckerTest, start_with_nothing_replace_server) {
   EXPECT_FALSE(result.failed) << *result.failed;
 }
 
-TEST_F(ReplicatedStateModelCheckerTest, start_with_nothing_replace_leader) {
+TEST_F(ReplicatedStateModelCheckerTest,
+       DISABLED_start_with_nothing_replace_leader) {
   AgencyStateBuilder state;
   state.setId(logId)
       .setTargetParticipants("A", "B")
