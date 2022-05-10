@@ -487,12 +487,12 @@ void transaction::Methods::buildDocumentIdentity(
   if (_state->isRunningInCluster()) {
     std::string resolved = resolver()->getCollectionNameCluster(cid);
 #ifdef USE_ENTERPRISE
-    if (resolved.compare(0, 7, "_local_") == 0) {
-      resolved.erase(0, 7);
-    } else if (resolved.compare(0, 6, "_from_") == 0) {
-      resolved.erase(0, 6);
-    } else if (resolved.compare(0, 4, "_to_") == 0) {
-      resolved.erase(0, 4);
+    if (resolved.starts_with(StaticStrings::FullLocalPrefix)) {
+      resolved.erase(0, StaticStrings::FullLocalPrefix.size());
+    } else if (resolved.starts_with(StaticStrings::FullFromPrefix)) {
+      resolved.erase(0, StaticStrings::FullFromPrefix.size());
+    } else if (resolved.starts_with(StaticStrings::FullToPrefix)) {
+      resolved.erase(0, StaticStrings::FullToPrefix.size());
     }
 #endif
     // build collection name
@@ -1139,9 +1139,11 @@ Future<OperationResult> transaction::Methods::insertLocal(
       if (options.overwriteMode == OperationOptions::OverwriteMode::Ignore) {
         // in case of unique constraint violation: ignore and do nothing (no
         // write!)
-        buildDocumentIdentity(collection.get(), resultBuilder, cid,
-                              key.stringView(), oldRevisionId,
-                              RevisionId::none(), nullptr, nullptr);
+        if (replicationType != ReplicationType::FOLLOWER) {
+          buildDocumentIdentity(collection.get(), resultBuilder, cid,
+                                key.stringView(), oldRevisionId,
+                                RevisionId::none(), nullptr, nullptr);
+        }
         // we have not written anything, so exclude this document from
         // replication!
         excludeFromReplication = true;
@@ -1187,10 +1189,12 @@ Future<OperationResult> transaction::Methods::insertLocal(
           prevDocResult.revisionId().isSet()) {
         TRI_ASSERT(didReplace);
 
-        buildDocumentIdentity(collection.get(), resultBuilder, cid,
-                              value.get(StaticStrings::KeyString).stringView(),
-                              prevDocResult.revisionId(), RevisionId::none(),
-                              nullptr, nullptr);
+        if (replicationType != ReplicationType::FOLLOWER) {
+          buildDocumentIdentity(
+              collection.get(), resultBuilder, cid,
+              value.get(StaticStrings::KeyString).stringView(),
+              prevDocResult.revisionId(), RevisionId::none(), nullptr, nullptr);
+        }
       }
       return res;
     }
@@ -1213,10 +1217,13 @@ Future<OperationResult> transaction::Methods::insertLocal(
                         .stringView();
       }
 
-      buildDocumentIdentity(collection.get(), resultBuilder, cid, keyString,
-                            docResult.revisionId(), prevDocResult.revisionId(),
-                            showReplaced ? &prevDocResult : nullptr,
-                            options.returnNew ? &docResult : nullptr);
+      if (replicationType != ReplicationType::FOLLOWER) {
+        buildDocumentIdentity(collection.get(), resultBuilder, cid, keyString,
+                              docResult.revisionId(),
+                              prevDocResult.revisionId(),
+                              showReplaced ? &prevDocResult : nullptr,
+                              options.returnNew ? &docResult : nullptr);
+      }
     }
     return res;
   };

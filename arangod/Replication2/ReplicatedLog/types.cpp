@@ -24,9 +24,9 @@
 #include "types.h"
 
 #include <Basics/Exceptions.h>
-#include <Basics/StaticStrings.h>
 #include <Basics/application-exit.h>
 #include <Basics/voc-errors.h>
+#include <Inspection/VPack.h>
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -69,33 +69,12 @@ void replicated_log::QuorumData::toVelocyPack(
 
 void replicated_log::LogStatistics::toVelocyPack(
     velocypack::Builder& builder) const {
-  VPackObjectBuilder ob(&builder);
-  builder.add(StaticStrings::CommitIndex, VPackValue(commitIndex.value));
-  builder.add("firstIndex", VPackValue(firstIndex.value));
-  builder.add(VPackValue(StaticStrings::Spearhead));
-  spearHead.toVelocyPack(builder);
+  serialize(builder, *this);
 }
 
 auto replicated_log::LogStatistics::fromVelocyPack(velocypack::Slice slice)
     -> LogStatistics {
-  LogStatistics stats;
-  stats.commitIndex = slice.get(StaticStrings::CommitIndex).extract<LogIndex>();
-  stats.firstIndex = slice.get("firstIndex").extract<LogIndex>();
-  stats.spearHead =
-      TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
-  return stats;
-}
-
-auto replicated_log::operator==(LogStatistics const& left,
-                                LogStatistics const& right) noexcept -> bool {
-  return left.spearHead == right.spearHead &&
-         left.commitIndex == right.commitIndex &&
-         left.firstIndex == right.firstIndex;
-}
-
-auto replicated_log::operator!=(LogStatistics const& left,
-                                LogStatistics const& right) noexcept -> bool {
-  return !(left == right);
+  return deserialize<LogStatistics>(slice);
 }
 
 auto replicated_log::AppendEntriesErrorReason::getErrorMessage() const noexcept

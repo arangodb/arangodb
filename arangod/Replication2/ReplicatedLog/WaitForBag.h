@@ -44,6 +44,8 @@ struct WaitForBag {
 
   void resolveAll(std::exception_ptr const&);
 
+  [[nodiscard]] auto empty() const noexcept -> bool;
+
  private:
   std::vector<futures::Promise<futures::Unit>> _waitForBag;
 };

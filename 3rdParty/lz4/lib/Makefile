@@ -28,7 +28,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # You can contact the author at :
-#  - LZ4 source repository : https://github.com/Cyan4973/lz4
+#  - LZ4 source repository : https://github.com/lz4/lz4
 #  - LZ4 forum froup : https://groups.google.com/forum/#!forum/lz4c
 # ################################################################
 

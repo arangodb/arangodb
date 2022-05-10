@@ -66,6 +66,8 @@ struct PrototypeLeaderState
   auto getSnapshot(LogIndex waitForIndex)
       -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>>;
 
+  auto waitForApplied(LogIndex waitForIndex) -> futures::Future<futures::Unit>;
+
   LoggerContext const loggerContext;
 
  private:
