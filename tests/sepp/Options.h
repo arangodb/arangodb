@@ -24,9 +24,14 @@
 #pragma once
 
 #include <cstddef>
+#include <variant>
 
 #include "RocksDBOptions.h"
+
+#include "Inspection/Types.h"
+#include "Inspection/VPackLoadInspector.h"
 #include "Workloads/InsertDocuments.h"
+#include "Workloads/IterateDocuments.h"
 
 namespace arangodb::sepp {
 
@@ -67,11 +72,25 @@ auto inspect(Inspector& f, Setup& o) {
                             f.field("prefill", o.prefill).fallback(f.keep()));
 }
 
+using WorkloadVariants = std::variant<workloads::InsertDocuments::Options,
+                                      workloads::IterateDocuments::Options>;
+namespace workloads {
+// this inspect function must be in namespace workloads for ADL to pick it up
+template<class Inspector>
+inline auto inspect(Inspector& f, WorkloadVariants& o) {
+  namespace insp = arangodb::inspection;
+  return f.variant(o).unqualified().alternatives(
+      insp::type<workloads::InsertDocuments::Options>("insert"),
+      insp::type<workloads::IterateDocuments::Options>("iterate"));
+}
+}  // namespace workloads
+
 struct Options {
   std::string databaseDirectory;
 
   Setup setup;
-  workloads::InsertDocuments::Options workload;
+
+  WorkloadVariants workload;
 
   RocksDBOptions rocksdb;
 };

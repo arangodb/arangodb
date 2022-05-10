@@ -29,12 +29,13 @@
 
 namespace arangodb {
 struct RocksDBOptionsProvider;
-}
+}  // namespace arangodb
 
 namespace arangodb::sepp {
 
 struct Server {
-  Server(arangodb::RocksDBOptionsProvider const& optionsProvider, std::string databaseDirectory);
+  Server(arangodb::RocksDBOptionsProvider const& optionsProvider,
+         std::string databaseDirectory);
   ~Server();
 
   void start(char const* exectuable);

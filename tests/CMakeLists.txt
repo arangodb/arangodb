@@ -433,6 +433,7 @@ set(ARANGODB_SEPP_SOURCES
   sepp/RocksDBOptions.cpp
   sepp/Server.cpp
   sepp/Workloads/InsertDocuments.cpp
+  sepp/Workloads/IterateDocuments.cpp
 )
 
 add_executable(

@@ -29,9 +29,11 @@
 
 #include "Inspection/VPack.h"
 
+#include "Basics/overload.h"
 #include "Execution.h"
 #include "Server.h"
 #include "Workloads/InsertDocuments.h"
+#include "Workloads/IterateDocuments.h"
 
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
@@ -63,8 +65,18 @@ auto Runner::runBenchmark() -> Report {
   startServer();
   setup();
 
-  auto workload =
-      std::make_shared<workloads::InsertDocuments>(_options.workload);
+  std::cout << "Running benchmark...\n";
+  auto workload = std::visit(
+      overload{[](workloads::InsertDocuments::Options& opts)
+                   -> std::shared_ptr<Workload> {
+                 return std::make_shared<workloads::InsertDocuments>(opts);
+               },
+               [](workloads::IterateDocuments::Options& opts)
+                   -> std::shared_ptr<Workload> {
+                 return std::make_shared<workloads::IterateDocuments>(opts);
+               }},
+      _options.workload);
+
   Execution exec(_options, workload);
   exec.createThreads(*_server);
   auto report = exec.run();
@@ -83,6 +95,7 @@ void Runner::startServer() {
 }
 
 void Runner::setup() {
+  std::cout << "Setting up collections\n";
   for (auto& col : _options.setup.collections) {
     auto collection = createCollection(col.name);
     for (auto& idx : col.indexes) {
@@ -90,6 +103,7 @@ void Runner::setup() {
     }
   }
 
+  std::cout << "Running prefill...\n";
   for (auto& opts : _options.setup.prefill) {
     auto workload = std::make_shared<workloads::InsertDocuments>(opts);
     Execution exec(_options, workload);

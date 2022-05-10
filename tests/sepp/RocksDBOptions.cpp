@@ -24,7 +24,6 @@
 #include "RocksDBOptions.h"
 
 #include "Basics/PhysicalMemory.h"
-#include "Basics/overload.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 
 #include <rocksdb/filter_policy.h>
