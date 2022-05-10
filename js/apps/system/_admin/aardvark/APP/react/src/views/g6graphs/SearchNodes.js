@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Tooltip } from 'antd';
 import { Node } from './components/node/node.component';
 import { InfoCircleFilled } from '@ant-design/icons';
 import PlainLabel from "./components/pure-css/form/PlainLabel";
 
 const SearchNodes = ({ nodes, graphData, onNodeInfo, data, onDeleteNode, onNodeSelect }) => {
+  const [previousSearchedNode, setPreviousSearchedNode] = useState(null);
 
   return (
     <div style={{'marginTop': '24px'}}>
@@ -17,8 +18,8 @@ const SearchNodes = ({ nodes, graphData, onNodeInfo, data, onDeleteNode, onNodeS
           onChange={
             (e) => {
               if(e.target.value.includes("/")) {
-                console.log("e.target.value (in SearchNodes): ", e.target.value);
-                onNodeSelect(e.target.value);
+                onNodeSelect(previousSearchedNode, e.target.value);
+                setPreviousSearchedNode(e.target.value);
               }
             }
           }

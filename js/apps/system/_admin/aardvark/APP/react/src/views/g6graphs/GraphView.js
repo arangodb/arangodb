@@ -701,20 +701,14 @@ export class GraphView extends React.Component {
     }
   }
 
-  highlightNode = (node) => {
+  highlightNode = (previousSearchedNode, node) => {
     if(node !== undefined) {
-      console.log("searched node: ", node);
-      //this.graph.clearItemStates(node);
+      if(previousSearchedNode) {
+        this.graph.clearItemStates(previousSearchedNode);
+      }
       this.graph.setItemState(node, 'searchedNode', true);
       this.graph.focusItem(node, true);
     }
-    /*
-    const findParis = this.graph.findById('frenchCity/Paris');
-    console.log("findParis: ", findParis);
-
-    const findX = this.graph.findById('x');
-    console.log("findX: ", findX);
-    */
   }
 
   highlightEdge = (edge) => {
@@ -869,7 +863,7 @@ export class GraphView extends React.Component {
         }}
         onLoadFullGraph={() => this.props.onLoadFullGraph}
         onDocumentSelect={(document) => this.highlightDocument(document)}
-        onNodeSearched={(node) => this.highlightNode(node)}
+        onNodeSearched={(previousSearchedNode, node) => this.highlightNode(previousSearchedNode, node)}
         onEdgeSearched={(edge) => this.highlightEdge(edge)}
         onEdgeStyleChanged={(edgeStyle) => this.changeEdgeStyleFromUi(edgeStyle)}
         onGraphLayoutChange={(layout) => this.changeGraphLayoutFromUi(layout)}

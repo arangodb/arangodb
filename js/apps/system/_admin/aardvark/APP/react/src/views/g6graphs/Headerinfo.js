@@ -226,7 +226,7 @@ const screenshotMenu = (
               nodes={graphData.nodes}
               graphData={graphData}
               onNodeInfo={() => console.log('onNodeInfo() in MenuGraph')}
-              onNodeSelect={(node) => onNodeSearched(node)}
+              onNodeSelect={(previousSearchedNode, node) => onNodeSearched(previousSearchedNode, node)}
             />
             <SearchEdges
               edges={graphData.edges}
