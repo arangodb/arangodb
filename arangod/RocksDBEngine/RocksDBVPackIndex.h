@@ -97,6 +97,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// @brief return the attribute paths
   std::vector<std::vector<std::string>> const& paths() const { return _paths; }
 
+  /// @brief whether or not the index has estimates
+  bool hasEstimates() const noexcept { return _estimates; }
+
   Index::FilterCosts supportsFilterCondition(
       std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
       arangodb::aql::AstNode const* node,

@@ -1449,7 +1449,8 @@ void ClusterInfo::loadPlan() {
              VPackObjectIterator(logsSlice)) {
           auto spec =
               std::make_shared<replication2::agency::LogPlanSpecification>(
-                  replication2::agency::from_velocypack, logSlice);
+                  replication2::agency::LogPlanSpecification::fromVelocyPack(
+                      logSlice));
           newLogs.emplace(spec->id, spec);
         }
         stuff->replicatedLogs = std::move(newLogs);
@@ -5841,6 +5842,44 @@ CollectionID ClusterInfo::getCollectionNameForShard(std::string_view shardId) {
     return it->second;
   }
   return StaticStrings::Empty;
+}
+
+auto ClusterInfo::getReplicatedLogsParticipants(std::string_view database) const
+    -> ResultT<
+        std::unordered_map<replication2::LogId, std::vector<std::string>>> {
+  READ_LOCKER(readLocker, _planProt.lock);
+
+  auto it = _newStuffByDatabase.find(database);
+  if (it == std::end(_newStuffByDatabase)) {
+    return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
+  }
+
+  auto replicatedLogs =
+      std::unordered_map<replication2::LogId, std::vector<std::string>>{};
+  for (auto const& [logId, logPlanSpecification] : it->second->replicatedLogs) {
+    std::vector<std::string> participants;
+    auto const& planParticipants =
+        logPlanSpecification->participantsConfig.participants;
+    participants.reserve(planParticipants.size());
+    for (auto const& pInfo : planParticipants) {
+      participants.push_back(pInfo.first);
+    }
+
+    // Move the leader at the top of the list.
+    if (logPlanSpecification->currentTerm.has_value() &&
+        logPlanSpecification->currentTerm->leader.has_value()) {
+      for (auto& p : participants) {
+        if (p == logPlanSpecification->currentTerm->leader->serverId) {
+          std::swap(p, participants[0]);
+          break;
+        }
+      }
+    }
+
+    replicatedLogs.emplace(logId, std::move(participants));
+  }
+
+  return replicatedLogs;
 }
 
 auto ClusterInfo::getReplicatedLogLeader(std::string_view database,

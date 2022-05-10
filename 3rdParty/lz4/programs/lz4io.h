@@ -39,13 +39,13 @@
 /* ************************************************** */
 /* Special input/output values                        */
 /* ************************************************** */
+#define stdinmark  "stdin"
+#define stdoutmark "stdout"
 #define NULL_OUTPUT "null"
-static const char stdinmark[]  = "stdin";
-static const char stdoutmark[] = "stdout";
 #ifdef _WIN32
-static const char nulmark[] = "nul";
+#define nulmark "nul"
 #else
-static const char nulmark[] = "/dev/null";
+#define nulmark "/dev/null"
 #endif
 
 /* ************************************************** */
@@ -55,7 +55,7 @@ static const char nulmark[] = "/dev/null";
 typedef struct LZ4IO_prefs_s LZ4IO_prefs_t;
 
 LZ4IO_prefs_t* LZ4IO_defaultPreferences(void);
-void LZ4IO_freePreferences(LZ4IO_prefs_t* const prefs);
+void LZ4IO_freePreferences(LZ4IO_prefs_t* prefs);
 
 /* Size in bytes of a legacy block header in little-endian format */
 #define LZIO_LEGACY_BLOCK_HEADER_SIZE 4
@@ -65,12 +65,12 @@ void LZ4IO_freePreferences(LZ4IO_prefs_t* const prefs);
 /* ************************************************** */
 
 /* if output_filename == stdoutmark, writes to stdout */
-int LZ4IO_compressFilename(LZ4IO_prefs_t* const prefs, const char* input_filename, const char* output_filename, int compressionlevel);
-int LZ4IO_decompressFilename(LZ4IO_prefs_t* const prefs, const char* input_filename, const char* output_filename);
+int LZ4IO_compressFilename(const char* input_filename, const char* output_filename, int compressionlevel, const LZ4IO_prefs_t* prefs);
+int LZ4IO_decompressFilename(const char* input_filename, const char* output_filename, const LZ4IO_prefs_t* prefs);
 
 /* if suffix == stdoutmark, writes to stdout */
-int LZ4IO_compressMultipleFilenames(LZ4IO_prefs_t* const prefs, const char** inFileNamesTable, int ifntSize, const char* suffix, int compressionlevel);
-int LZ4IO_decompressMultipleFilenames(LZ4IO_prefs_t* const prefs, const char** inFileNamesTable, int ifntSize, const char* suffix);
+int LZ4IO_compressMultipleFilenames(const char** inFileNamesTable, int ifntSize, const char* suffix, int compressionlevel, const LZ4IO_prefs_t* prefs);
+int LZ4IO_decompressMultipleFilenames(const char** inFileNamesTable, int ifntSize, const char* suffix, const LZ4IO_prefs_t* prefs);
 
 
 /* ************************************************** */
