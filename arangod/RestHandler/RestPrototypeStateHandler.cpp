@@ -200,12 +200,14 @@ RestStatus RestPrototypeStateHandler::handlePostRetrieveMulti(
     keys.push_back(entry.copyString());
   }
 
-  auto waitForApplied = LogIndex{
+  PrototypeStateMethods::ReadOptions readOptions;
+  readOptions.waitForApplied = LogIndex{
       _request->parsedValue<decltype(LogIndex::value)>("waitForApplied")
           .value_or(0)};
+  readOptions.readFrom = _request->parsedValue<ParticipantId>("readFrom");
 
   return waitForFuture(
-      methods.get(logId, std::move(keys), waitForApplied)
+      methods.get(logId, std::move(keys), readOptions)
           .thenValue([this](
                          ResultT<std::unordered_map<std::string, std::string>>&&
                              waitForResult) {
@@ -255,9 +257,12 @@ RestStatus RestPrototypeStateHandler::handleGetRequest(
     return handleGetEntry(methods, logId);
   } else if (verb == "snapshot") {
     return handleGetSnapshot(methods, logId);
+  } else if (verb == "wait-for-applied") {
+    return handleGetWaitForApplied(methods, logId);
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-                  "expected one of the resources 'entry', 'snapshot'");
+                  "expected one of the resources 'entry', 'snapshot', "
+                  "'wait-for-applied'");
   }
   return RestStatus::DONE;
 }
@@ -271,12 +276,14 @@ RestStatus RestPrototypeStateHandler::handleGetEntry(
     return RestStatus::DONE;
   }
 
-  auto waitForApplied = LogIndex{
+  PrototypeStateMethods::ReadOptions readOptions;
+  readOptions.waitForApplied = LogIndex{
       _request->parsedValue<decltype(LogIndex::value)>("waitForApplied")
           .value_or(0)};
+  readOptions.readFrom = _request->parsedValue<ParticipantId>("readFrom");
 
   return waitForFuture(
-      methods.get(logId, suffixes[2], waitForApplied)
+      methods.get(logId, suffixes[2], readOptions)
           .thenValue([this, key = suffixes[2]](auto&& waitForResult) {
             if (waitForResult.fail()) {
               generateError(waitForResult.result());
@@ -295,6 +302,30 @@ RestStatus RestPrototypeStateHandler::handleGetEntry(
               }
             }
           }));
+}
+
+RestStatus RestPrototypeStateHandler::handleGetWaitForApplied(
+    const replication2::PrototypeStateMethods& methods,
+    replication2::LogId logId) {
+  auto const& suffixes = _request->suffixes();
+  if (suffixes.size() != 3) {
+    generateError(
+        rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expect GET /_api/prototype-state/<state-id>/wait-for-applied/<idx>");
+    return RestStatus::DONE;
+  }
+
+  LogIndex idx{basics::StringUtils::uint64(suffixes[2])};
+
+  return waitForFuture(methods.waitForApplied(logId, idx)
+                           .thenValue([this](auto&& waitForResult) {
+                             if (waitForResult.fail()) {
+                               generateError(waitForResult);
+                             } else {
+                               generateOk(rest::ResponseCode::OK,
+                                          VPackSlice::noneSlice());
+                             }
+                           }));
 }
 
 RestStatus RestPrototypeStateHandler::handleGetSnapshot(

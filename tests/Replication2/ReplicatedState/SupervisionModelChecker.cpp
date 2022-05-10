@@ -45,7 +45,7 @@ using namespace arangodb::replication2::replicated_state;
 namespace RLA = arangodb::replication2::agency;
 namespace RSA = arangodb::replication2::replicated_state::agency;
 
-struct ReplicatedStateSupervisionSimulationTest2 : ::testing::Test {
+struct ReplicatedStateModelCheckerTest : ::testing::Test {
   LogConfig const defaultConfig = {2, 2, 3, false};
   LogId const logId{12};
 
@@ -54,7 +54,7 @@ struct ReplicatedStateSupervisionSimulationTest2 : ::testing::Test {
                                                  .allowedAsLeader = false};
 };
 
-TEST_F(ReplicatedStateSupervisionSimulationTest2, check_state_and_log) {
+TEST_F(ReplicatedStateModelCheckerTest, check_state_and_log) {
   AgencyStateBuilder state;
   state.setId(logId)
       .setTargetParticipants("A", "B", "C")
@@ -93,8 +93,7 @@ TEST_F(ReplicatedStateSupervisionSimulationTest2, check_state_and_log) {
   std::cout << result.stats << std::endl;
 }
 
-TEST_F(ReplicatedStateSupervisionSimulationTest2,
-       check_state_and_log_with_leader) {
+TEST_F(ReplicatedStateModelCheckerTest, check_state_and_log_with_leader) {
   AgencyStateBuilder state;
   state.setId(logId)
       .setTargetParticipants("A", "B", "C")
@@ -135,8 +134,7 @@ TEST_F(ReplicatedStateSupervisionSimulationTest2,
   std::cout << result.stats << std::endl;
 }
 
-TEST_F(ReplicatedStateSupervisionSimulationTest2,
-       check_state_and_log_kill_any) {
+TEST_F(ReplicatedStateModelCheckerTest, DISABLED_check_state_and_log_kill_any) {
   AgencyStateBuilder state;
   state.setId(logId)
       .setTargetParticipants("A", "B", "C")
@@ -172,8 +170,8 @@ TEST_F(ReplicatedStateSupervisionSimulationTest2,
   std::cout << result.stats << std::endl;
 }
 
-TEST_F(ReplicatedStateSupervisionSimulationTest2,
-       check_state_and_log_kill_server) {
+TEST_F(ReplicatedStateModelCheckerTest,
+       DISABLED_check_state_and_log_kill_server) {
   AgencyStateBuilder state;
   state.setId(logId)
       .setTargetParticipants("A", "B", "C")
@@ -210,7 +208,7 @@ TEST_F(ReplicatedStateSupervisionSimulationTest2,
   std::cout << result.stats << std::endl;
 }
 
-TEST_F(ReplicatedStateSupervisionSimulationTest2, everything_ok_kill_server) {
+TEST_F(ReplicatedStateModelCheckerTest, DISABLED_everything_ok_kill_server) {
   AgencyStateBuilder state;
   state.setId(logId)
       .setTargetParticipants("A", "B", "C")
@@ -262,7 +260,7 @@ TEST_F(ReplicatedStateSupervisionSimulationTest2, everything_ok_kill_server) {
   std::cout << result.stats << std::endl;
 }
 
-TEST_F(ReplicatedStateSupervisionSimulationTest2, change_leader) {
+TEST_F(ReplicatedStateModelCheckerTest, DISABLED_change_leader) {
   AgencyStateBuilder state;
   state.setId(logId)
       .setTargetParticipants("A", "B", "C")
@@ -316,8 +314,7 @@ TEST_F(ReplicatedStateSupervisionSimulationTest2, change_leader) {
   std::cout << result.stats << std::endl;
 }
 
-TEST_F(ReplicatedStateSupervisionSimulationTest2,
-       everything_ok_replace_server) {
+TEST_F(ReplicatedStateModelCheckerTest, DISABLED_everything_ok_replace_server) {
   AgencyStateBuilder state;
   state.setId(logId)
       .setTargetParticipants("A", "B")
@@ -382,8 +379,7 @@ TEST_F(ReplicatedStateSupervisionSimulationTest2,
   std::cout << result.stats << std::endl;
 }
 
-TEST_F(ReplicatedStateSupervisionSimulationTest2,
-       everything_ok_replace_leader) {
+TEST_F(ReplicatedStateModelCheckerTest, DISABLED_everything_ok_replace_leader) {
   AgencyStateBuilder state;
   state.setId(logId)
       .setTargetParticipants("A", "B")

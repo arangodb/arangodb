@@ -31,6 +31,7 @@
 #include <velocypack/Slice.h>
 #include <memory>
 #include <mutex>
+#include <unordered_map>
 
 #include "Agency/AgencyComm.h"
 #include "Basics/Mutex.h"
@@ -979,6 +980,10 @@ class ClusterInfo final {
                                          replication2::LogId) const
       -> ResultT<
           std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
+
+  auto getReplicatedLogsParticipants(std::string_view database) const
+      -> ResultT<
+          std::unordered_map<replication2::LogId, std::vector<std::string>>>;
 
   /**
    * @brief Lock agency's hot backup with TTL 60 seconds
