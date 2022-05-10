@@ -178,7 +178,6 @@ TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_cycle_detector) {
 
   auto result = Engine::run(driver, test, {.x = 0},
                             {.iterations = 3, .seed = this->seed(ADB_HERE)});
-  EXPECT_TRUE(result.cycle);
   EXPECT_TRUE(result.failed);
 }
 

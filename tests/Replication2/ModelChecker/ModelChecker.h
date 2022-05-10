@@ -71,7 +71,7 @@ struct CheckError {
 
   friend auto operator<<(std::ostream& os, CheckError const& err)
       -> std::ostream& {
-    return os << err.message << std::endl;
+    return os << err.message;
   }
 };
 
@@ -183,6 +183,7 @@ struct DFSEnumerator {
     CheckError error;
     std::shared_ptr<StateVertex> badState;
     PathVectorType path;
+    std::optional<PathVectorType> cycle;
 
     ObserverError(CheckError error, std::shared_ptr<StateVertex> badState,
                   PathVectorType path)
@@ -192,7 +193,14 @@ struct DFSEnumerator {
 
     friend auto operator<<(std::ostream& os, ObserverError const& oe)
         -> std::ostream& {
-      return os << oe.error << ": " << oe.path << oe.badState->state;
+      os << "Error: " << oe.error << ".\n"
+         << "Path: " << oe.path << "\n"
+         << "Bad state: " << oe.badState->state << "\n";
+      if (oe.cycle.has_value()) {
+        os << "Cycle: " << *oe.cycle << "\n";
+      }
+
+      return os;
     }
   };
 
@@ -218,7 +226,6 @@ struct DFSEnumerator {
     FingerprintSet fingerprints;
     std::vector<std::shared_ptr<StateVertex const>> finalStates;
     std::optional<ObserverError> failed;
-    std::optional<PathVectorType> cycle;
     Stats stats{};
   };
 
@@ -299,7 +306,7 @@ struct DFSEnumerator {
             result.failed.emplace(CheckError("cycle detected"), step,
                                   buildPathVector());
             std::swap(path, cycle);
-            result.cycle.emplace(buildPathVector());
+            result.failed->cycle.emplace(buildPathVector());
             return result;
           }
         }
@@ -393,6 +400,7 @@ struct RandomEnumerator {
     CheckError error;
     std::shared_ptr<StateVertex> badState;
     PathVectorType path;
+    std::optional<PathVectorType> cycle;
 
     ObserverError(CheckError error, std::shared_ptr<StateVertex> badState,
                   PathVectorType path)
@@ -402,7 +410,14 @@ struct RandomEnumerator {
 
     friend auto operator<<(std::ostream& os, ObserverError const& oe)
         -> std::ostream& {
-      return os << oe.error << ": " << oe.path << oe.badState->state;
+      os << "Error: " << oe.error << ".\n"
+         << "Path: " << oe.path << "\n"
+         << "Bad state: " << oe.badState->state << "\n";
+      if (oe.cycle.has_value()) {
+        os << "Cycle: " << *oe.cycle << "\n";
+      }
+
+      return os;
     }
   };
 
@@ -426,7 +441,6 @@ struct RandomEnumerator {
 
   struct Result {
     std::optional<ObserverError> failed;
-    std::optional<PathVectorType> cycle;
     std::optional<unsigned long> seed;
   };
 
@@ -506,7 +520,7 @@ struct RandomEnumerator {
             result.failed.emplace(CheckError("cycle detected"), step,
                                   buildPathVector());
             std::swap(path, cycle);
-            result.cycle.emplace(buildPathVector());
+            result.failed->cycle.emplace(buildPathVector());
             return result;
           }
         }
