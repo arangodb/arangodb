@@ -167,6 +167,7 @@ export class GraphView extends React.Component {
       width: 1200,
       //height: container.offsetHeight,
       height: 400,
+      fitCenter: true,
       plugins: [toolbar, contextMenu],
       enabledStack: true,
       layout: {
@@ -176,11 +177,12 @@ export class GraphView extends React.Component {
         //maxIteration: 100,
         preventOverlap: true,
         //damping: 0.99,
-        fitView: true,
-        linkDistance: 100
+        fitView: true
+        //linkDistance: 100
       },
       modes: {
         default: [
+          'brush-select',
           'drag-canvas',
           'zoom-canvas',
           'drag-node',
@@ -256,13 +258,17 @@ export class GraphView extends React.Component {
             cursor: 'pointer'
           },
         },
+        selected: {
+          stroke: '#555555',
+          lineWidth: 4
+        },
         searchedNode: {
           fill: '#' + this.props.nodeColor,
           stroke: '#555555',
           lineWidth: 4,
           shadowColor: '#' + this.props.nodeColor,
           shadowBlur: 10,
-          cursor: 'pointer',
+          cursor: 'pointer'
         }
       },
       defaultEdge: {
@@ -289,6 +295,12 @@ export class GraphView extends React.Component {
           shadowBlur: 10,
           lineWidth: 1,
           cursor: 'pointer'
+        },
+        selected: {
+          stroke: '#f00',
+          shadowColor: '#848484',
+          shadowBlur: 10,
+          lineWidth: 1
         },
         line: {
           type: 'polyline',
@@ -750,7 +762,10 @@ export class GraphView extends React.Component {
   changeGraphLayoutFromUi = (layout) => {
     console.log("LAYOUT IN GRAPHVOEW: ", layout);
     this.graph.updateLayout({
-      type: layout
+      type: layout,
+      preventOverlap: true,
+      fitView: true,
+      linkDistance: 100
     });
   }
 
