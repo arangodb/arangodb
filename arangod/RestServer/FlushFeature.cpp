@@ -96,6 +96,7 @@ std::tuple<size_t, size_t, TRI_voc_tick_t> FlushFeature::releaseUnusedTicks() {
         itr = _flushSubscriptions.erase(itr);
         ++stale;
       } else {
+        ++itr;
         minTick = std::min(minTick, entry->tick());
         ++active;
       }
