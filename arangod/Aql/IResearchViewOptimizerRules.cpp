@@ -441,9 +441,8 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   }
 }
 
-void keepReplacementViewVariables(
-    arangodb::containers::SmallVector<ExecutionNode*> const& calcNodes,
-    arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes) {
+void keepReplacementViewVariables(std::span<ExecutionNode* const> calcNodes,
+                                  std::span<ExecutionNode* const> viewNodes) {
   std::vector<latematerialized::NodeWithAttrsColumn> nodesToChange;
   std::vector<std::vector<latematerialized::ColumnVariant<false>>>
       usedColumnsCounter;
@@ -508,7 +507,7 @@ void keepReplacementViewVariables(
 }
 
 bool noDocumentMaterialization(
-    arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes,
+    std::span<ExecutionNode* const> viewNodes,
     arangodb::containers::HashSet<ExecutionNode*>& toUnlink) {
   auto modified = false;
   VarSet currentUsedVars;
@@ -601,9 +600,7 @@ void lateDocumentMaterializationArangoSearchRule(
     return;
   }
 
-  ::arangodb::containers::SmallVector<
-      ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, ExecutionNode::LIMIT, true);
   for (auto* limitNode : nodes) {
     auto* loop = const_cast<ExecutionNode*>(limitNode->getLoop());
@@ -681,10 +678,7 @@ void lateDocumentMaterializationArangoSearchRule(
                     *ExecutionNode::castTo<SubqueryNode*>(current);
                 auto* subquery = subqueryNode.getSubquery();
                 TRI_ASSERT(subquery);
-                ::arangodb::containers::SmallVector<
-                    ExecutionNode*>::allocator_type::arena_type sa;
-                ::arangodb::containers::SmallVector<ExecutionNode*>
-                    subqueryCalcNodes{sa};
+                containers::SmallVector<ExecutionNode*, 8> subqueryCalcNodes;
                 // find calculation nodes in the plan of a subquery
                 CalculationNodeVarFinder finder(&var, subqueryCalcNodes);
                 valid = !subquery->walk(finder);
@@ -796,9 +790,7 @@ void handleConstrainedSortInView(Optimizer* opt,
     return;
   }
 
-  ::arangodb::containers::SmallVector<
-      ExecutionNode*>::allocator_type::arena_type va;
-  ::arangodb::containers::SmallVector<ExecutionNode*> viewNodes{va};
+  containers::SmallVector<ExecutionNode*, 8> viewNodes;
   plan->findNodesOfType(viewNodes, ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
                         true);
   for (auto* node : viewNodes) {
@@ -837,9 +829,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     return;
   }
 
-  ::arangodb::containers::SmallVector<
-      ExecutionNode*>::allocator_type::arena_type ca;
-  ::arangodb::containers::SmallVector<ExecutionNode*> calcNodes{ca};
+  containers::SmallVector<ExecutionNode*, 8> calcNodes;
 
   // replace scorers in all calculation nodes with references
   plan->findNodesOfType(calcNodes, ExecutionNode::CALCULATION, true);
@@ -853,9 +843,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
   }
 
   // register replaced scorers to be evaluated by corresponding view nodes
-  ::arangodb::containers::SmallVector<
-      ExecutionNode*>::allocator_type::arena_type va;
-  ::arangodb::containers::SmallVector<ExecutionNode*> viewNodes{va};
+  containers::SmallVector<ExecutionNode*, 8> viewNodes;
   plan->findNodesOfType(viewNodes, ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
                         true);
 
@@ -909,9 +897,7 @@ void scatterViewInClusterRule(Optimizer* opt,
                               OptimizerRule const& rule) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   bool wasModified = false;
-  ::arangodb::containers::SmallVector<
-      ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  containers::SmallVector<ExecutionNode*, 8> nodes;
 
   // find subqueries
   std::unordered_map<ExecutionNode*, ExecutionNode*> subqueries;

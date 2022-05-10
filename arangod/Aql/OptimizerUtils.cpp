@@ -63,9 +63,7 @@ bool sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNode* root,
 
   typedef std::pair<arangodb::aql::AstNode*, std::shared_ptr<arangodb::Index>>
       ConditionData;
-  ::arangodb::containers::SmallVector<
-      ConditionData*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ConditionData*> conditionData{a};
+  containers::SmallVector<ConditionData*, 8> conditionData;
 
   auto sg = arangodb::scopeGuard([&conditionData]() noexcept -> void {
     for (auto& it : conditionData) {

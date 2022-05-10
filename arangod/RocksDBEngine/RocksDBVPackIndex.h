@@ -44,6 +44,8 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <span>
+
 namespace arangodb {
 namespace aql {
 class SortCondition;
@@ -197,32 +199,31 @@ class RocksDBVPackIndex : public RocksDBIndex {
       std::vector<int>* expanding);
 
   /// @brief helper function to insert a document into any index type
-  ErrorCode fillElement(
-      velocypack::Builder& leased, LocalDocumentId const& documentId,
-      VPackSlice doc, ::arangodb::containers::SmallVector<RocksDBKey>& elements,
-      ::arangodb::containers::SmallVector<uint64_t>& hashes);
+  ErrorCode fillElement(velocypack::Builder& leased,
+                        LocalDocumentId const& documentId, VPackSlice doc,
+                        containers::SmallVector<RocksDBKey, 4>& elements,
+                        containers::SmallVector<uint64_t, 4>& hashes);
 
   /// @brief helper function to build the key and value for rocksdb from the
   /// vector of slices
   /// @param hashes list of VPackSlice hashes for the estimator.
-  void addIndexValue(
-      velocypack::Builder& leased, LocalDocumentId const& documentId,
-      VPackSlice document,
-      ::arangodb::containers::SmallVector<RocksDBKey>& elements,
-      ::arangodb::containers::SmallVector<uint64_t>& hashes,
-      ::arangodb::containers::SmallVector<VPackSlice>& sliceStack);
+  void addIndexValue(velocypack::Builder& leased,
+                     LocalDocumentId const& documentId, VPackSlice document,
+                     containers::SmallVector<RocksDBKey, 4>& elements,
+                     containers::SmallVector<uint64_t, 4>& hashes,
+                     std::span<VPackSlice const> sliceStack);
 
   /// @brief helper function to create a set of value combinations to insert
   /// into the rocksdb index.
   /// @param elements vector of resulting index entries
   /// @param sliceStack working list of values to insert into the index
   /// @param hashes list of VPackSlice hashes for the estimator.
-  void buildIndexValues(
-      velocypack::Builder& leased, LocalDocumentId const& documentId,
-      VPackSlice const document, size_t level,
-      ::arangodb::containers::SmallVector<RocksDBKey>& elements,
-      ::arangodb::containers::SmallVector<uint64_t>& hashes,
-      ::arangodb::containers::SmallVector<VPackSlice>& sliceStack);
+  void buildIndexValues(velocypack::Builder& leased,
+                        LocalDocumentId const& documentId,
+                        VPackSlice const document, size_t level,
+                        containers::SmallVector<RocksDBKey, 4>& elements,
+                        containers::SmallVector<uint64_t, 4>& hashes,
+                        containers::SmallVector<VPackSlice, 4>& sliceStack);
 
   /// @brief the attribute paths (for regular fields)
   std::vector<std::vector<std::string>> _paths;

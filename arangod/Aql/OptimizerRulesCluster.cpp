@@ -191,9 +191,7 @@ void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode,
 bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
                                                     ExecutionPlan* plan,
                                                     OptimizerRule const& rule) {
-  ::arangodb::containers::SmallVector<
-      ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, EN::INDEX, false);
 
   if (nodes.size() != 1) {
@@ -297,9 +295,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
 
 bool substituteClusterSingleDocumentOperationsNoIndex(
     Optimizer* opt, ExecutionPlan* plan, OptimizerRule const& rule) {
-  ::arangodb::containers::SmallVector<
-      ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {EN::INSERT, EN::REMOVE, EN::UPDATE, EN::REPLACE}, false);
 

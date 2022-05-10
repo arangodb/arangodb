@@ -316,8 +316,7 @@ class TransactionState {
   /// @brief current status
   transaction::Status _status = transaction::Status::CREATED;
 
-  arangodb::containers::SmallVectorWithArena<TransactionCollection*>
-      _collections;
+  containers::SmallVector<TransactionCollection*, 8> _collections;
 
   transaction::Hints _hints{};  // hints; set on _nestingLevel == 0
 
