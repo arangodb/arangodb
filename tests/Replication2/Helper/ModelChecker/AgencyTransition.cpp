@@ -51,13 +51,13 @@ namespace arangodb::test {
 
 auto SupervisionStateAction::toString() const -> std::string {
   return std::string{"Supervision "} +
-         std::visit([&](auto const& x) { return typeid(x).name(); }, _action);
+         std::visit([&](auto const &x) { return typeid(x).name(); }, _action);
 }
 
 SupervisionStateAction::SupervisionStateAction(replicated_state::Action action)
     : _action(std::move(action)) {}
 
-void SupervisionStateAction::apply(AgencyState& agency) {
+void SupervisionStateAction::apply(AgencyState &agency) {
   auto actionCtx =
       executeAction(*agency.replicatedState, agency.replicatedLog, _action);
   if (actionCtx.hasModificationFor<RLA::LogTarget>()) {
@@ -84,19 +84,19 @@ auto KillServerAction::toString() const -> std::string {
 
 KillServerAction::KillServerAction(ParticipantId id) : id(std::move(id)) {}
 
-void KillServerAction::apply(AgencyState& agency) {
+void KillServerAction::apply(AgencyState &agency) {
   agency.health._health.at(id).notIsFailed = false;
 }
 
 auto SupervisionLogAction::toString() const -> std::string {
   return std::string{"Supervision "} +
-         std::visit([&](auto const& x) { return typeid(x).name(); }, _action);
+         std::visit([&](auto const &x) { return typeid(x).name(); }, _action);
 }
 
 SupervisionLogAction::SupervisionLogAction(replicated_log::Action action)
     : _action(std::move(action)) {}
 
-void SupervisionLogAction::apply(AgencyState& agency) {
+void SupervisionLogAction::apply(AgencyState &agency) {
   if (!agency.replicatedLog.has_value()) {
     // TODO: What now?
     TRI_ASSERT(false);
@@ -119,11 +119,11 @@ auto DBServerSnapshotCompleteAction::toString() const -> std::string {
          to_string(generation);
 }
 
-void DBServerSnapshotCompleteAction::apply(AgencyState& agency) {
+void DBServerSnapshotCompleteAction::apply(AgencyState &agency) {
   if (!agency.replicatedState->current) {
     agency.replicatedState->current.emplace();
   }
-  auto& status = agency.replicatedState->current->participants[name];
+  auto &status = agency.replicatedState->current->participants[name];
   status.generation = generation;
   status.snapshot.status = SnapshotStatus::kCompleted;
 }
@@ -136,11 +136,11 @@ auto DBServerReportTermAction::toString() const -> std::string {
   return std::string{"Report Term for "} + name + ", term" + to_string(term);
 }
 
-void DBServerReportTermAction::apply(AgencyState& agency) const {
+void DBServerReportTermAction::apply(AgencyState &agency) const {
   if (!agency.replicatedLog->current) {
     agency.replicatedLog->current.emplace();
   }
-  auto& status = agency.replicatedLog->current->localState[name];
+  auto &status = agency.replicatedLog->current->localState[name];
   status.term = term;
 }
 
@@ -158,7 +158,7 @@ DBServerCommitConfigAction::DBServerCommitConfigAction(ParticipantId name,
                                                        LogTerm term)
     : name(std::move(name)), generation(generation), term(term) {}
 
-void DBServerCommitConfigAction::apply(AgencyState& agency) const {
+void DBServerCommitConfigAction::apply(AgencyState &agency) const {
   if (!agency.replicatedLog->current) {
     agency.replicatedLog->current.emplace();
   }
@@ -166,7 +166,7 @@ void DBServerCommitConfigAction::apply(AgencyState& agency) const {
     agency.replicatedLog->current->leader.emplace();
   }
 
-  auto& leader = *agency.replicatedLog->current->leader;
+  auto &leader = *agency.replicatedLog->current->leader;
   leader.leadershipEstablished = true;
   leader.serverId = name;
   leader.term = term;
@@ -175,8 +175,8 @@ void DBServerCommitConfigAction::apply(AgencyState& agency) const {
   leader.committedParticipantsConfig->generation = generation;
 }
 
-auto operator<<(std::ostream& os, AgencyTransition const& a) -> std::ostream& {
-  return os << std::visit([](auto const& action) { return action.toString(); },
+auto operator<<(std::ostream &os, AgencyTransition const &a) -> std::ostream & {
+  return os << std::visit([](auto const &action) { return action.toString(); },
                           a);
 }
 
@@ -188,12 +188,42 @@ auto ReplaceServerTargetState::toString() const -> std::string {
   return fmt::format("replacing {} with {}", oldServer, newServer);
 }
 
-void ReplaceServerTargetState::apply(AgencyState& agency) const {
+void ReplaceServerTargetState::apply(AgencyState &agency) const {
   TRI_ASSERT(agency.replicatedState.has_value());
-  auto& target = agency.replicatedState->target;
+  auto &target = agency.replicatedState->target;
   target.participants.erase(oldServer);
   target.participants[newServer];
   target.version.emplace(target.version.value_or(0) + 1);
 }
 
-}  // namespace arangodb::test
+AddLogParticipantAction::AddLogParticipantAction(
+    replication2::ParticipantId server)
+    : server(std::move(server)) {}
+
+void AddLogParticipantAction::apply(AgencyState &agency) const {
+  TRI_ASSERT(agency.replicatedLog.has_value());
+  auto &target = agency.replicatedLog->target;
+  target.participants[server];
+  target.version.emplace(target.version.value_or(0) + 1);
+}
+
+auto AddLogParticipantAction::toString() const -> std::string {
+  return fmt::format("adding participant {}", server);
+}
+
+RemoveLogParticipantAction::RemoveLogParticipantAction(
+    replication2::ParticipantId server)
+    : server(std::move(server)) {}
+
+void RemoveLogParticipantAction::apply(AgencyState &agency) const {
+  TRI_ASSERT(agency.replicatedLog.has_value());
+  auto &target = agency.replicatedLog->target;
+  target.participants.erase(server);
+  target.version.emplace(target.version.value_or(0) + 1);
+}
+
+auto RemoveLogParticipantAction::toString() const -> std::string {
+  return fmt::format("removing participant {}", server);
+}
+
+} // namespace arangodb::test

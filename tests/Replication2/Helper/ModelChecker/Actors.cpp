@@ -242,6 +242,43 @@ auto KillAnyServerActor::expand(AgencyState const& s,
   }
   return result;
 }
+
+AddServerActor::AddServerActor(ParticipantId newServer)
+    : newServer(std::move(newServer)) {}
+
+auto AddServerActor::step(AgencyState const& agency) const
+    -> std::vector<AgencyTransition> {
+  if (!agency.replicatedLog) {
+    return {};
+  }
+
+  auto const& target = agency.replicatedLog->target;
+  TRI_ASSERT(!target.participants.contains(newServer));
+  auto result = std::vector<AgencyTransition>{};
+
+  result.emplace_back(AddLogParticipantAction{newServer});
+
+  return result;
+}
+
+RemoveServerActor::RemoveServerActor(ParticipantId server)
+    : server(std::move(server)) {}
+
+auto RemoveServerActor::step(AgencyState const& agency) const
+    -> std::vector<AgencyTransition> {
+  if (!agency.replicatedLog) {
+    return {};
+  }
+
+  auto const& target = agency.replicatedLog->target;
+  //  TRI_ASSERT(target.participants.contains(server));
+  auto result = std::vector<AgencyTransition>{};
+
+  result.emplace_back(RemoveLogParticipantAction{server});
+
+  return result;
+}
+
 ReplaceAnyServerActor::ReplaceAnyServerActor(ParticipantId newServer)
     : newServer(std::move(newServer)) {}
 
