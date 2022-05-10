@@ -266,7 +266,7 @@ export class GraphView extends React.Component {
         }
       },
       defaultEdge: {
-        type: this.props.edgeType, // assign the edges to be quadratic bezier curves
+        type: this.props.edgeType,
         labelCfg: {
           autoRotate: true,
           refY: 10,
@@ -292,7 +292,14 @@ export class GraphView extends React.Component {
         },
         line: {
           type: 'polyline',
-          endArrow: false,
+          startArrow: false,
+          endArrow: {
+            path: G6.Arrow.triangle(10, 20, 25),
+            fill: '#f00',
+            stroke: '#0f0',
+            opacity: 0,
+            lineWidth: 3,
+          },
           lineWidth: 1,
           cursor: 'pointer'
         },
@@ -302,25 +309,53 @@ export class GraphView extends React.Component {
           cursor: 'pointer'
         },
         curve: {
-          type: 'cubic',
-          endArrow: false,
+          type: 'cubic-vertical',
+          startArrow: false,
+          endArrow: {
+            path: G6.Arrow.triangle(10, 20, 25),
+            fill: '#f00',
+            stroke: '#0f0',
+            opacity: 0,
+            lineWidth: 3,
+          },
           lineWidth: 1,
           cursor: 'pointer'
         },
         dotted: {
-          endArrow: false,
+          startArrow: false,
+          endArrow: {
+            path: G6.Arrow.triangle(10, 20, 25),
+            fill: '#f00',
+            stroke: '#0f0',
+            opacity: 0,
+            lineWidth: 3,
+          },
           lineWidth: 1,
           lineDash: [2, 2, 2, 2, 2, 2],
           cursor: 'pointer'
         },
         dashed: {
-          endArrow: false,
+          startArrow: false,
+          endArrow: {
+            path: G6.Arrow.triangle(10, 20, 25),
+            fill: '#f00',
+            stroke: '#0f0',
+            opacity: 0,
+            lineWidth: 3,
+          },
           lineWidth: 1,
           lineDash: [7, 7, 7, 7, 7, 7],
           cursor: 'pointer'
         },
         tapered: {
-          endArrow: false,
+          startArrow: false,
+          endArrow: {
+            path: G6.Arrow.triangle(10, 20, 25),
+            fill: '#f00',
+            stroke: '#0f0',
+            opacity: 0,
+            lineWidth: 3,
+          },
           lineWidth: 1,
           stroke: `l(0) 0:#ffffff 0.5:#9fb53a 1:#82962d`,
           cursor: 'pointer'
@@ -716,6 +751,7 @@ export class GraphView extends React.Component {
   }
 
   changeGraphLayoutFromUi = (layout) => {
+    console.log("LAYOUT IN GRAPHVOEW: ", layout);
     this.graph.updateLayout({
       type: layout
     });
