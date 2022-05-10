@@ -69,6 +69,7 @@ Result partiallyCommitInsertions(rocksdb::WriteBatchBase& batch,
   auto docsInBatch = batch.GetWriteBatch()->Count();
   if (docsInBatch > 0) {
     rocksdb::WriteOptions wo;
+    wo.disableWAL = true;
     rocksdb::Status s = rootDB->Write(wo, batch.GetWriteBatch());
     if (!s.ok()) {
       return rocksutils::convertStatus(s, rocksutils::StatusHint::index);
@@ -188,7 +189,9 @@ void IndexCreatorThread::run() {
           RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(
               _rcoll->objectId(), workItem.first, UINT64_MAX);
           it->Seek(bounds.start());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           _statistics.numSeeks++;
+#endif
         }
 
         bool timeExceeded = false;
@@ -211,7 +214,9 @@ void IndexCreatorThread::run() {
 
           it->Next();
           numDocsWritten++;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           _statistics.numNexts++;
+#endif
 
           if (++count > 100) {
             count = 0;
@@ -252,7 +257,8 @@ void IndexCreatorThread::run() {
             // update workItem in place for the next round
             workItem.first = nextId;
 
-            if (numDocsWritten >= _batchSize || timeExceeded) {
+            if ((numDocsWritten >= _batchSize || timeExceeded) &&
+                nextId < workItem.second) {
               // the partition's first item in range will now be the first
               // id that has not been processed yet
               // maybe push more work onto the queue and, as we will split
@@ -419,6 +425,7 @@ static Result processPartitions(
   }
   sharedWorkEnv->waitUntilAllThreadsTerminate();
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   uint64_t seekCounter = 2;
   uint64_t nextCounter = 0;
   for (auto const& threadStats : sharedWorkEnv->getThreadStatistics()) {
@@ -426,6 +433,7 @@ static Result processPartitions(
     nextCounter += threadStats.numNexts;
   }
   LOG_DEVEL << "Total seeks: " << seekCounter << ", next: " << nextCounter;
+#endif
 
   return sharedWorkEnv->getResponse();
 }
