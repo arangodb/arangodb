@@ -69,7 +69,6 @@ Result partiallyCommitInsertions(rocksdb::WriteBatchBase& batch,
   auto docsInBatch = batch.GetWriteBatch()->Count();
   if (docsInBatch > 0) {
     rocksdb::WriteOptions wo;
-    wo.disableWAL = true;
     rocksdb::Status s = rootDB->Write(wo, batch.GetWriteBatch());
     if (!s.ok()) {
       return rocksutils::convertStatus(s, rocksutils::StatusHint::index);
