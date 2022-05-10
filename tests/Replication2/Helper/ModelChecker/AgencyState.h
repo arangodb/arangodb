@@ -47,7 +47,7 @@ struct AgencyState {
 
   friend auto operator<<(std::ostream& os, AgencyState const& state)
       -> std::ostream& {
-    //    return os;
+    return os;
     auto const print = [&](auto const& x) {
       VPackBuilder builder;
       x.toVelocyPack(builder);

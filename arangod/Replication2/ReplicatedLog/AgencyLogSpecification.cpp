@@ -133,24 +133,6 @@ auto agency::operator==(const LogCurrentSupervisionElection& left,
          left.detail == right.detail;
 }
 
-auto agency::to_string(LogCurrentSupervisionError error) noexcept
-    -> std::string_view {
-  switch (error) {
-    case LogCurrentSupervisionError::GENERAL_ERROR:
-      return "generic error.";
-    case LogCurrentSupervisionError::TARGET_LEADER_INVALID:
-      return "the leader selected in target is invalid";
-    case LogCurrentSupervisionError::TARGET_LEADER_EXCLUDED:
-      return "the leader selected in target is excluded";
-    case LogCurrentSupervisionError::TARGET_NOT_ENOUGH_PARTICIPANTS:
-      return "not enough participants to create the log safely";
-  }
-  LOG_TOPIC("7eee2", FATAL, arangodb::Logger::REPLICATION2)
-      << "Invalid LogCurrentSupervisionError "
-      << static_cast<std::underlying_type_t<decltype(error)>>(error);
-  FATAL_ERROR_ABORT();
-}
-
 auto LogCurrent::Leader::toVelocyPack(VPackBuilder& builder) const -> void {
   serialize(builder, *this);
 }

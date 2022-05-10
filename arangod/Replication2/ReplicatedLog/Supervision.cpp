@@ -210,11 +210,8 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
   // Check whether there are enough participants to reach a quorum
   if (plan.participantsConfig.participants.size() + 1 <=
       plan.currentTerm->config.writeConcern) {
-    ctx.reportStatus(
-        LogCurrentSupervision::StatusCode::kLeaderElectionImpossible,
-        std::nullopt);
-    // FIXME: this is a fatal condition and there is no point in the supervision
-    //        continuing from here
+    ctx.reportStatus<LogCurrentSupervision::LeaderElectionImpossible>();
+    ctx.createAction<NoActionPossibleAction>();
     return;
   }
 
@@ -234,8 +231,9 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
 
   if (numElectible == 0 ||
       numElectible > std::numeric_limits<uint16_t>::max()) {
-    // TODO: should this be a report?
-    ctx.createAction<LeaderElectionOutOfBoundsAction>(election);
+    // TODO: enter some detail about numElectible
+    ctx.reportStatus<LogCurrentSupervision::LeaderElectionOutOfBounds>();
+    ctx.createAction<NoActionPossibleAction>();
     return;
   }
 
@@ -260,7 +258,9 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
   } else {
     // Not enough participants were available to form a quorum, so
     // we can't elect a leader
-    ctx.createAction<LeaderElectionQuorumNotReachedAction>(election);
+    ctx.reportStatus<LogCurrentSupervision::LeaderElectionQuorumNotReached>(
+        election);
+    ctx.createAction<NoActionPossibleAction>();
     return;
   }
 }
@@ -335,10 +335,9 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
   auto const& current = *log.current;
 
   if (!isConfigurationCommitted(log)) {
-    ctx.reportStatus(
-        LogCurrentSupervision::StatusCode::kWaitingForConfigCommitted,
-        std::nullopt);
+    ctx.reportStatus<LogCurrentSupervision::WaitingForConfigCommitted>();
     ctx.createAction<NoActionPossibleAction>();
+    return;
   }
   auto const& committedParticipants =
       current.leader->committedParticipantsConfig->participants;
@@ -363,9 +362,8 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
               LogPlanTermSpecification::Leader{participant, *rebootId});
           return;
         } else {
-          ctx.reportStatus(
-              LogCurrentSupervision::StatusCode::kDictateLeaderFailed,
-              participant);
+          // TODO: this should get the participant
+          ctx.reportStatus<LogCurrentSupervision::SwitchLeaderFailed>();
         }
       }
     }
@@ -386,8 +384,7 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
       ctx.createAction<UpdateParticipantFlagsAction>(chosenOne, flags);
     } else {
       // We did not have a selectable leader
-      ctx.reportStatus(LogCurrentSupervision::StatusCode::kDictateLeaderFailed,
-                       std::nullopt);
+      ctx.reportStatus<LogCurrentSupervision::SwitchLeaderFailed>();
     }
   }
 }
@@ -405,24 +402,19 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
   if (target.leader.has_value()) {
     // The leader set in target is not valid
     if (!plan.participantsConfig.participants.contains(*target.leader)) {
-      ctx.reportStatus(LogCurrentSupervision::StatusCode::kTargetLeaderInvalid,
-                       *target.leader);
-      ctx.createAction<NoActionPossibleAction>();
+      // TODO: Add detail which leader we find invalid (or even rename this
+      // status code to leader not a participant)
+      ctx.reportStatus<LogCurrentSupervision::TargetLeaderInvalid>();
       return;
     }
 
     if (!health.notIsFailed(*target.leader)) {
-      ctx.reportStatus(LogCurrentSupervision::StatusCode::kTargetLeaderFailed,
-                       *target.leader);
-      ctx.createAction<NoActionPossibleAction>();
+      ctx.reportStatus<LogCurrentSupervision::TargetLeaderFailed>();
       return;
     };
 
     if (!isConfigurationCommitted(log)) {
-      ctx.reportStatus(
-          LogCurrentSupervision::StatusCode::kWaitingForConfigCommitted,
-          std::nullopt);
-      ctx.createAction<NoActionPossibleAction>();
+      ctx.reportStatus<LogCurrentSupervision::WaitingForConfigCommitted>();
       return;
     }
 
@@ -441,10 +433,7 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
       }
 
       if (!planLeaderConfig.allowedAsLeader) {
-        ctx.reportStatus(
-            LogCurrentSupervision::StatusCode::kTargetLeaderExcluded,
-            *target.leader);
-        ctx.createAction<NoActionPossibleAction>();
+        ctx.reportStatus<LogCurrentSupervision::TargetLeaderExcluded>();
         return;
       }
 
@@ -453,9 +442,7 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
         ctx.createAction<SwitchLeaderAction>(
             LogPlanTermSpecification::Leader{*target.leader, *rebootId});
       } else {
-        ctx.reportStatus(
-            LogCurrentSupervision::StatusCode::kTargetLeaderInvalid,
-            *target.leader);
+        ctx.reportStatus<LogCurrentSupervision::TargetLeaderInvalid>();
       }
     }
   }
@@ -563,9 +550,7 @@ auto checkLogExists(SupervisionContext& ctx, Log const& log,
     // The log is not planned right now, so we create it
     // provided we have enough participants
     if (target.participants.size() + 1 < target.config.writeConcern) {
-      ctx.reportStatus(
-          LogCurrentSupervision::StatusCode::kTargetNotEnoughParticipants,
-          std::nullopt);
+      ctx.reportStatus<LogCurrentSupervision::TargetNotEnoughParticipants>();
       ctx.createAction<NoActionPossibleAction>();
     } else {
       auto leader = pickLeader(target.leader, target.participants, health);
@@ -641,9 +626,7 @@ auto checkParticipantToRemove(SupervisionContext& ctx, Log const& log,
         ctx.createAction<UpdateParticipantFlagsAction>(participantId, newFlags);
       } else {
         // still waiting
-        ctx.reportStatus(
-            LogCurrentSupervision::StatusCode::kWaitingForConfigCommitted,
-            participantId);
+        ctx.reportStatus<LogCurrentSupervision::WaitingForConfigCommitted>();
       }
     }
   }
@@ -685,9 +668,7 @@ auto checkConfigUpdated(SupervisionContext& ctx, Log const& log,
   auto const& currentTerm = *plan.currentTerm;
 
   if (target.config != currentTerm.config) {
-    ctx.reportStatus(
-        LogCurrentSupervision::StatusCode::kConfigChangeNotImplemented,
-        std::nullopt);
+    ctx.reportStatus<LogCurrentSupervision::ConfigChangeNotImplemented>();
   }
 }
 

@@ -30,30 +30,30 @@ namespace arangodb::replication2::replicated_log {
 
 struct SupervisionContext {
   SupervisionContext() = default;
-  SupervisionContext(SupervisionContext const &) = delete;
-  SupervisionContext(SupervisionContext &&) noexcept = delete;
-  SupervisionContext &operator=(SupervisionContext const &) = delete;
-  SupervisionContext &operator=(SupervisionContext &&) noexcept = delete;
+  SupervisionContext(SupervisionContext const&) = delete;
+  SupervisionContext(SupervisionContext&&) noexcept = delete;
+  SupervisionContext& operator=(SupervisionContext const&) = delete;
+  SupervisionContext& operator=(SupervisionContext&&) noexcept = delete;
 
-  template <typename ActionType, typename... Args>
-  void createAction(Args &&...args) {
+  template<typename ActionType, typename... Args>
+  void createAction(Args&&... args) {
     if (!_action.has_value()) {
       _action.emplace<ActionType>(ActionType{std::forward<Args>(args)...});
     }
   }
 
-  void reportStatus(LogCurrentSupervision::StatusCode code,
-                    std::optional<ParticipantId> participant) {
+  template<typename StatusType, typename... Args>
+  void reportStatus(Args&&... args) {
     if (_isErrorReportingEnabled) {
-      _reports.emplace_back(code, std::move(participant));
+      _reports.emplace_back(StatusType{std::forward<Args>(args)...});
     }
   }
 
   void enableErrorReporting() noexcept { _isErrorReportingEnabled = true; }
 
   auto hasAction() noexcept -> bool { return _action.has_value(); }
-  auto getAction() -> Action & { return *_action; }
-  auto getReport() noexcept -> LogCurrentSupervision::StatusReport & {
+  auto getAction() -> Action& { return *_action; }
+  auto getReport() noexcept -> LogCurrentSupervision::StatusReport& {
     return _reports;
   }
 
@@ -68,10 +68,10 @@ struct SupervisionContext {
   std::size_t numberServersInTarget;
   std::size_t numberServersOk;
 
-private:
+ private:
   bool _isErrorReportingEnabled{true};
   std::optional<Action> _action;
   LogCurrentSupervision::StatusReport _reports;
 };
 
-} // namespace arangodb::replication2::replicated_log
+}  // namespace arangodb::replication2::replicated_log
