@@ -32,7 +32,8 @@
 using namespace arangodb::test;
 
 template<typename Engine>
-struct TypedModelCheckerTest : ::testing::Test {};
+struct TypedModelCheckerTest : ::testing::Test,
+                               model_checker::testing::TracedSeedGenerator {};
 TYPED_TEST_CASE_P(TypedModelCheckerTest);
 
 namespace {
@@ -77,7 +78,8 @@ TYPED_TEST_P(TypedModelCheckerTest, simple_model_test) {
     ASSERT_GE(state.x, 0);
   });
 
-  auto result = Engine::run(driver, test, {.x = 0}, 3);
+  auto result = Engine::run(driver, test, {.x = 0},
+                            {.iterations = 3, .seed = this->seed(ADB_HERE)});
   EXPECT_FALSE(result.failed) << *result.failed;
 
   auto stats = result.stats;
@@ -99,7 +101,8 @@ TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_eventually) {
 
   auto test = MC_EVENTUALLY(MC_BOOL_PRED(state, { return state.x == 5; }));
 
-  auto result = Engine::run(driver, test, {.x = 0}, 3);
+  auto result = Engine::run(driver, test, {.x = 0},
+                            {.iterations = 3, .seed = this->seed(ADB_HERE)});
   EXPECT_FALSE(result.failed) << *result.failed;
 
   // RandomEngine doesn't have stats
@@ -126,7 +129,8 @@ TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_eventually_always) {
   auto test =
       MC_EVENTUALLY_ALWAYS(MC_BOOL_PRED(state, { return state.x > 5; }));
 
-  auto result = Engine::run(driver, test, {.x = 0}, 3);
+  auto result = Engine::run(driver, test, {.x = 0},
+                            {.iterations = 3, .seed = this->seed(ADB_HERE)});
   EXPECT_FALSE(result.failed) << *result.failed;
 
   // RandomEngine doesn't have stats
@@ -153,7 +157,8 @@ TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_eventually_always_fail) {
   auto test =
       MC_EVENTUALLY_ALWAYS(MC_BOOL_PRED(state, { return state.x > 11; }));
 
-  auto result = Engine::run(driver, test, {.x = 0}, 3);
+  auto result = Engine::run(driver, test, {.x = 0},
+                            {.iterations = 3, .seed = this->seed(ADB_HERE)});
   EXPECT_TRUE(result.failed);
 }
 
@@ -171,7 +176,8 @@ TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_cycle_detector) {
   auto test =
       MC_EVENTUALLY_ALWAYS(MC_BOOL_PRED(state, { return state.x > 11; }));
 
-  auto result = Engine::run(driver, test, {.x = 0}, 3);
+  auto result = Engine::run(driver, test, {.x = 0},
+                            {.iterations = 3, .seed = this->seed(ADB_HERE)});
   EXPECT_TRUE(result.cycle);
   EXPECT_TRUE(result.failed);
 }
@@ -242,7 +248,8 @@ struct IncrementActor {
 };
 }  // namespace
 
-struct ModelCheckerTest : ::testing::Test {};
+struct ModelCheckerTest : ::testing::Test,
+                          model_checker::testing::TracedSeedGenerator {};
 
 TEST_F(ModelCheckerTest, simple_model_test_actor) {
   auto driver = model_checker::ActorDriver{
@@ -255,6 +262,7 @@ TEST_F(ModelCheckerTest, simple_model_test_actor) {
   using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
                                             MyState, MyTransition>;
 
-  auto result = Engine::run(driver, test, {.x = 0}, 3);
+  auto result = Engine::run(driver, test, {.x = 0},
+                            {.iterations = 3, .seed = this->seed(ADB_HERE)});
   EXPECT_FALSE(result.failed) << *result.failed;
 }

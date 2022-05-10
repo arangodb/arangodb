@@ -22,22 +22,48 @@
 #pragma once
 
 #include "Basics/debugging.h"
+#include "Basics/NumberOfCores.h"
+#include "Basics/SourceLocation.h"
 #include "Random/RandomGenerator.h"
 
-#include <memory>
 #include <chrono>
-#include <utility>
-#include <vector>
-#include <tuple>
-#include <optional>
-#include <unordered_set>
 #include <deque>
 #include <iostream>
+#include <memory>
+#include <optional>
+#include <random>
+#include <thread>
+#include <tuple>
+#include <unordered_set>
+#include <utility>
 #include <variant>
+#include <vector>
 
 #include <boost/container_hash/hash_fwd.hpp>
+#include <fmt/core.h>
+
+#include <gtest/gtest.h>
 
 namespace arangodb::test::model_checker {
+
+namespace testing {
+// Inherit this with your testing class so you can get a seed in each test which
+// is automatically printed on failure.
+struct TracedSeedGenerator {
+  // Get a seed, and make sure it gets printed in case of failure.
+  auto seed(arangodb::basics::SourceLocation location) -> unsigned long {
+    TRI_ASSERT(!_seedTrace.has_value())
+        << "A seed should only be taken once per test!";
+    auto seed = arangodb::RandomDevice::seed();
+    _seedTrace.emplace(location.file_name(), location.line(),
+                       fmt::format("Seed used: {}", seed));
+    return seed;
+  }
+
+ private:
+  std::optional<::testing::ScopedTrace> _seedTrace;
+};
+}  // namespace testing
 
 struct CheckError {
   explicit CheckError(std::string message) : message(std::move(message)) {}
@@ -94,6 +120,11 @@ struct Stats {
 };
 
 auto operator<<(std::ostream& os, Stats const& stats) -> std::ostream&;
+
+struct RandomParameters {
+  std::uint64_t iterations{1};
+  unsigned long seed{};
+};
 
 template<typename StateType, typename TransitionType, typename Observer>
 struct DFSEnumerator {
@@ -193,7 +224,7 @@ struct DFSEnumerator {
 
   template<typename Driver>
   static auto run(Driver& driver, Observer initialObserver,
-                  StateType initialState, std::uint64_t) {
+                  StateType initialState, RandomParameters = {}) {
     std::size_t nextUniqueId{0};
     Result result;
     std::vector<std::shared_ptr<StateVertex>> path;
@@ -251,19 +282,25 @@ struct DFSEnumerator {
           if (isPrune(checkResult)) {
             continue;
           } else if (isError(checkResult)) {
-            auto p = buildPathVector();
-            result.failed.emplace(checkResult.asError(), step, p);
+            result.failed.emplace(checkResult.asError(), step,
+                                  buildPathVector());
             return result;
           }
           v->outgoing.emplace_back(std::move(transition), step);
           if (step->isActive()) {
             v->searchIndex = v->outgoing.size();
-            // TODO Maybe the path from the root to the cycle, i.e. what's
-            //      erased here, would be interesting to report as well.
-            path.erase(path.begin(), std::find(path.begin(), path.end(), step));
-            result.cycle.emplace(buildPathVector());
+            auto cycle = decltype(path)();
+            {
+              // move cycle from `path` to `cycle`
+              auto stepIt = std::find(path.begin(), path.end(), step);
+              std::move(stepIt, path.end(), std::back_inserter(cycle));
+              path.erase(stepIt, path.end());
+            }
             result.failed.emplace(CheckError("cycle detected"), step,
                                   buildPathVector());
+            std::swap(path, cycle);
+            result.cycle.emplace(buildPathVector());
+            return result;
           }
         }
       } else if (v->outgoing.size() == v->searchIndex) {
@@ -274,8 +311,7 @@ struct DFSEnumerator {
           result.finalStates.emplace_back(v);
           if (auto checkResult = v->observer.finalStep(v->state);
               isError(checkResult)) {
-            auto p = buildPathVector();
-            result.failed.emplace(checkResult.asError(), v, p);
+            result.failed.emplace(checkResult.asError(), v, buildPathVector());
             return result;
           }
         }
@@ -294,10 +330,9 @@ template<typename StateType, typename TransitionType>
 struct DFSEngine {
   template<typename Driver, typename Observer>
   static auto run(Driver& driver, Observer initialObserver,
-                  StateType initialState, std::uint64_t iterations = 0) {
+                  StateType initialState, RandomParameters = {}) {
     return DFSEnumerator<StateType, TransitionType, Observer>::run(
-        driver, std::move(initialObserver), std::move(initialState),
-        iterations);
+        driver, std::move(initialObserver), std::move(initialState));
   }
 };
 
@@ -392,6 +427,7 @@ struct RandomEnumerator {
   struct Result {
     std::optional<ObserverError> failed;
     std::optional<PathVectorType> cycle;
+    std::optional<unsigned long> seed;
   };
 
   template<typename Driver>
@@ -427,7 +463,9 @@ struct RandomEnumerator {
     auto const buildPathVector = [&] {
       PathVectorType result;
       for (auto const& p : path) {
-        result.emplace_back(p, p->outgoing[p->searchIndex.value() - 1].first);
+        auto idx = p->searchIndex.value();
+        TRI_ASSERT(idx > 0);
+        result.emplace_back(p, p->outgoing.at(idx - 1).first);
       }
       return result;
     };
@@ -451,19 +489,25 @@ struct RandomEnumerator {
           if (isPrune(checkResult)) {
             continue;
           } else if (isError(checkResult)) {
-            auto p = buildPathVector();
-            result.failed.emplace(checkResult.asError(), step, p);
+            result.failed.emplace(checkResult.asError(), step,
+                                  buildPathVector());
             return result;
           }
           v->outgoing.emplace_back(std::move(transition), step);
           if (step->isActive()) {
             v->searchIndex = v->outgoing.size();
-            // TODO Maybe the path from the root to the cycle, i.e. what's
-            //      erased here, would be interesting to report as well.
-            path.erase(path.begin(), std::find(path.begin(), path.end(), step));
-            result.cycle.emplace(buildPathVector());
+            auto cycle = decltype(path)();
+            {
+              // move cycle from `path` to `cycle`
+              auto stepIt = std::find(path.begin(), path.end(), step);
+              std::move(stepIt, path.end(), std::back_inserter(cycle));
+              path.erase(stepIt, path.end());
+            }
             result.failed.emplace(CheckError("cycle detected"), step,
                                   buildPathVector());
+            std::swap(path, cycle);
+            result.cycle.emplace(buildPathVector());
+            return result;
           }
         }
       } else if (v->outgoing.empty() || v->searchIndex.has_value()) {
@@ -471,8 +515,7 @@ struct RandomEnumerator {
         if (v->outgoing.empty()) {
           if (auto checkResult = v->observer.finalStep(v->state);
               isError(checkResult)) {
-            auto p = buildPathVector();
-            result.failed.emplace(checkResult.asError(), v, p);
+            result.failed.emplace(checkResult.asError(), v, buildPathVector());
             return result;
           }
         }
@@ -482,7 +525,7 @@ struct RandomEnumerator {
         v->searchIndex = RandomGenerator::interval(
             std::int32_t{0}, static_cast<std::int32_t>(v->outgoing.size() - 1));
         path.push_back(std::static_pointer_cast<StateVertex>(
-            v->outgoing[*v->searchIndex].second));
+            v->outgoing[(*v->searchIndex)++].second));
       }
     }
 
@@ -491,27 +534,79 @@ struct RandomEnumerator {
 
   template<typename Driver>
   static auto run(Driver& driver, Observer initialObserver,
-                  StateType initialState, std::uint64_t iterations) {
-    for (auto i = std::uint64_t{0}; i < iterations; ++i) {
-      auto res = runOnce(driver, initialObserver, initialState);
-      if (res.failed) {
-        return res;
+                  StateType initialState, RandomParameters randomParameters) {
+    // Note that the way pseudo-random numbers are used as seed here has
+    // weaknesses. It'd be much better to use a splittable PRNG like the one
+    // proposed in https://doi.org/10.1145/2578854.2503784.
+    // Additionally, I guess using only 32bit random numbers might be too small,
+    // so maybe using at least std::mt19937_64 would be preferrable - but I
+    // didn't want to touch RandomGenerator/RandomDevice for now.
+
+    auto gen = std::mt19937(randomParameters.seed);
+    auto const numThreads =
+        std::min(NumberOfCores::getValue(), randomParameters.iterations);
+    auto threads = std::vector<std::thread>();
+    threads.reserve(numThreads);
+    auto results = std::vector<std::optional<Result>>(numThreads, std::nullopt);
+    auto iterationsLeftToDistribute = randomParameters.iterations;
+    for (std::size_t thrIdx = 0; thrIdx < numThreads; ++thrIdx) {
+      // Note that with a fixed `randomParameters.seed`, the pairs (thrIdx,
+      // threadSeed) given here are deterministic.
+      auto const iters = iterationsLeftToDistribute / (numThreads - thrIdx);
+      iterationsLeftToDistribute -= iters;
+      threads.emplace_back([&driver, initialObserver, initialState, iters,
+                            threadSeed = gen(), result = &results[thrIdx]] {
+        // the random device is thread_local
+        RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
+        // use an additional PRNG, so we can report the seed that can be
+        // used to create the failed path
+        auto gen = std::mt19937(threadSeed);
+        for (auto i = std::uint64_t{0}; i < iters; ++i) {
+          auto const iterSeed = gen();
+          // set the seed of the thread_local random generator, used in
+          // runOnce()
+          RandomGenerator::seed(iterSeed);
+          auto res = runOnce(driver, initialObserver, initialState);
+          if (res.failed) {
+            // make sure we report the correct type
+            static_assert(
+                std::is_same_v<std::remove_const_t<decltype(iterSeed)>,
+                               typename decltype(res.seed)::value_type>);
+            res.seed = iterSeed;
+            *result = res;
+          }
+        }
+        *result = Result{};
+      });
+    }
+
+    TRI_ASSERT(iterationsLeftToDistribute == 0);
+
+    for (auto& thr : threads) {
+      thr.join();
+    }
+
+    for (auto const& result : results) {
+      TRI_ASSERT(result.has_value());
+      if (result.value().failed) {
+        return *result;
       }
     }
+
     return Result();
   }
 };
 
-// TODO The RandomEngine is mostly a c&p of the DFSEngine. The common code
-//      should be consolidated.
+// TODO The RandomEngine (in particular the RandomEnumerator) is mostly a c&p of
+//      the DFSEngine. The common code should be consolidated if possible.
 template<typename StateType, typename TransitionType>
 struct RandomEngine {
   template<typename Driver, typename Observer>
   static auto run(Driver& driver, Observer initialObserver,
-                  StateType initialState, std::uint64_t iterations) {
+                  StateType initialState, RandomParameters randomParameters) {
     return RandomEnumerator<StateType, TransitionType, Observer>::run(
         driver, std::move(initialObserver), std::move(initialState),
-        iterations);
+        randomParameters);
   }
 };
 

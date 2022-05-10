@@ -103,12 +103,12 @@ template<template<typename, typename, typename> typename EnumeratorT,
 struct ActorEngine {
   template<typename... Actors, typename Observer>
   static auto run(ActorDriver<Actors...>& driver, Observer observer,
-                  State initState, std::uint64_t iterations = 1) {
+                  State initState, RandomParameters randomParameters = {}) {
     using GlobalState = GlobalActorState<State, Transition, Actors...>;
     return EnumeratorT<GlobalState, Transition, Observer>::run(
         driver, std::move(observer),
         driver.template initialState<Transition>(std::move(initState)),
-        iterations);
+        randomParameters);
   }
 };
 

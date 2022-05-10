@@ -43,7 +43,7 @@ struct gtest_predicate : private F {
   auto check(S const& state) const {
     static_assert(std::is_invocable_r_v<void, F const&, S const&>);
     F::operator()(state);
-    if (testing::Test::HasFailure()) {
+    if (::testing::Test::HasFailure()) {
       return CheckResult::withError(Location::annotate("GTest failed"));
     }
     return CheckResult::withOk();
