@@ -23,6 +23,7 @@ import ParameterEdgeColor from "./ParameterEdgeColor";
 import ParameterNodeSize from './ParameterNodeSize';
 import ParameterNodeSizeByEdges from "./ParameterNodeSizeByEdges";
 import ButtonSave from "./ButtonSave";
+import ButtonRestoreDefault from "./ButtonRestoreDefault";
 import EdgeStyleSelector from "./EdgeStyleSelector";
 import GraphLayoutSelector from "./GraphLayoutSelector";
 import SearchNodes from "./SearchNodes";
@@ -77,9 +78,9 @@ export const Headerinfo = ({ graphName, graphData, responseDuration, onDownloadS
       <ButtonSave
         graphName={graphName}
         onGraphDataLoaded={(newGraphData) => onGraphDataLoaded(newGraphData)}/>
-      <Button>
-        Restore default values
-      </Button>
+      <ButtonRestoreDefault
+        graphName={graphName}
+        onGraphDataLoaded={(newGraphData) => onGraphDataLoaded(newGraphData)}/>
     </Space>
   </>;
 
