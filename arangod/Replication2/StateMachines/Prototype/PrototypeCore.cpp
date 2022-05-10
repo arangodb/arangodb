@@ -119,6 +119,13 @@ auto PrototypeCore::get(std::vector<std::string> const& keys)
   return result;
 }
 
+bool PrototypeCore::compare(std::string const& key, std::string const& value) {
+  if (auto it = _store.find(key); it != nullptr) {
+    return *it == value;
+  }
+  return false;
+}
+
 auto PrototypeCore::getReadState() -> StorageType {
   if (_ongoingStates.empty()) {
     // This can happen on followers or before any entries have been applied.
@@ -127,18 +134,9 @@ auto PrototypeCore::getReadState() -> StorageType {
   return _ongoingStates.front().second;
 }
 
-void PrototypeCore::execute(LogIndex idx, PrototypeLogEntry const& entry) {
-  std::visit(overload{[&](PrototypeLogEntry::InsertOperation const& op) {
-                        for (auto const& [key, value] : op.map) {
-                          _store = _store.set(key, value);
-                        }
-                      },
-                      [&](PrototypeLogEntry::DeleteOperation const& op) {
-                        for (auto const& it : op.keys) {
-                          _store = _store.erase(it);
-                        }
-                      }},
-             entry.op);
+void PrototypeCore::applyToOngoingState(LogIndex idx,
+                                        PrototypeLogEntry const& entry) {
+  applyToLocalStore(entry);
   _ongoingStates.emplace_back(idx, _store);
 }
 
@@ -148,6 +146,24 @@ auto PrototypeCore::getLastPersistedIndex() const noexcept -> LogIndex const& {
 
 auto PrototypeCore::getLogId() const noexcept -> GlobalLogIdentifier const& {
   return _logId;
+}
+
+void PrototypeCore::applyToLocalStore(PrototypeLogEntry const& entry) {
+  std::visit(
+      overload{[&](PrototypeLogEntry::InsertOperation const& op) {
+                 for (auto const& [key, value] : op.map) {
+                   _store = _store.set(key, value);
+                 }
+               },
+               [&](PrototypeLogEntry::DeleteOperation const& op) {
+                 for (auto const& it : op.keys) {
+                   _store = _store.erase(it);
+                 }
+               },
+               [&](PrototypeLogEntry::CompareExchangeOperation const& op) {
+                 _store = _store.set(op.key, op.newValue);
+               }},
+      entry.op);
 }
 
 void PrototypeDump::toVelocyPack(velocypack::Builder& b) {

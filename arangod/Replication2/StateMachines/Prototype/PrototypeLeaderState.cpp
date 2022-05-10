@@ -62,37 +62,49 @@ auto PrototypeLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
   return std::move(result);
 }
 
-auto PrototypeLeaderState::executeOp(
-    PrototypeLogEntry const& entry,
-    PrototypeStateMethods::PrototypeWriteOptions options)
-    -> futures::Future<LogIndex> {
-  auto [f, da] = _guardedData.doUnderLock(
-      [&](auto& data) -> std::pair<futures::Future<LogIndex>, DeferredAction> {
-        if (data.didResign()) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
-        }
-
-        auto [idx, action] = getStream()->insertDeferred(entry);
-        data.core->execute(idx, entry);
-
-        if (options.waitForApplied) {
-          return std::make_pair(
-              std::move(data.waitForApplied(idx))
-                  .thenValue([idx = idx](auto&&) { return idx; }),
-              std::move(action));
-        }
-        return std::make_pair(idx, std::move(action));
-      });
-  da.fire();
-  return std::move(f);
-}
-
 auto PrototypeLeaderState::set(
     std::unordered_map<std::string, std::string> entries,
     PrototypeStateMethods::PrototypeWriteOptions options)
     -> futures::Future<LogIndex> {
   return executeOp(PrototypeLogEntry::createInsert(std::move(entries)),
                    options);
+}
+
+auto PrototypeLeaderState::compareExchange(
+    std::string key, std::string oldValue, std::string newValue,
+    PrototypeStateMethods::PrototypeWriteOptions options)
+    -> futures::Future<ResultT<LogIndex>> {
+  auto [f, da] = _guardedData.doUnderLock(
+      [this, options, key = std::move(key), oldValue = std::move(oldValue),
+       newValue = std::move(newValue)](auto& data) mutable
+      -> std::pair<futures::Future<ResultT<LogIndex>>, DeferredAction> {
+        if (data.didResign()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
+        }
+
+        if (!data.core->compare(key, oldValue)) {
+          return std::make_pair(
+              ResultT<LogIndex>::error(TRI_ERROR_ARANGO_CONFLICT),
+              DeferredAction());
+        }
+
+        auto entry = PrototypeLogEntry::createCompareExchange(
+            std::move(key), std::move(oldValue), std::move(newValue));
+        auto [idx, action] = getStream()->insertDeferred(entry);
+        data.core->applyToOngoingState(idx, entry);
+
+        if (options.waitForApplied) {
+          return std::make_pair(std::move(data.waitForApplied(idx))
+                                    .thenValue([idx = idx](auto&&) {
+                                      return ResultT<LogIndex>::success(idx);
+                                    }),
+                                std::move(action));
+        }
+        return std::make_pair(ResultT<LogIndex>::success(idx),
+                              std::move(action));
+      });
+  da.fire();
+  return std::move(f);
 }
 
 auto PrototypeLeaderState::remove(
@@ -197,6 +209,31 @@ auto PrototypeLeaderState::getSnapshot(LogIndex waitForIndex)
               return {data.core->getSnapshot()};
             });
       });
+}
+
+auto PrototypeLeaderState::executeOp(
+    PrototypeLogEntry const& entry,
+    PrototypeStateMethods::PrototypeWriteOptions options)
+    -> futures::Future<LogIndex> {
+  auto [f, da] = _guardedData.doUnderLock(
+      [&](auto& data) -> std::pair<futures::Future<LogIndex>, DeferredAction> {
+        if (data.didResign()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_LEADER);
+        }
+
+        auto [idx, action] = getStream()->insertDeferred(entry);
+        data.core->applyToOngoingState(idx, entry);
+
+        if (options.waitForApplied) {
+          return std::make_pair(
+              std::move(data.waitForApplied(idx))
+                  .thenValue([idx = idx](auto&&) { return idx; }),
+              std::move(action));
+        }
+        return std::make_pair(idx, std::move(action));
+      });
+  da.fire();
+  return std::move(f);
 }
 
 auto PrototypeLeaderState::pollNewEntries() {
