@@ -92,8 +92,7 @@ class NgramMatchFunctionTest : public ::testing::Test {
     fakeit::When(Method(expressionContextMock, trx)).AlwaysReturn(*trx);
     fakeit::When(Method(expressionContextMock, vocbase))
         .AlwaysReturn(trx->vocbase());
-    SmallVector<AqlValue>::allocator_type::arena_type arena;
-    SmallVector<AqlValue> params{arena};
+    containers::SmallVector<AqlValue, 5> params;
     if (Attribute) {
       params.emplace_back(*Attribute);
     }

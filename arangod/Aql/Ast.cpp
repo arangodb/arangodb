@@ -3005,7 +3005,7 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
   }
 
   AstNode* result = nullptr;
-  ::arangodb::containers::SmallVectorWithArena<std::string_view> attributeParts;
+  containers::SmallVector<std::string_view, 4> attributeParts;
 
   std::function<void(AstNode const*)> createCondition =
       [&](AstNode const* object) -> void {
@@ -3914,7 +3914,7 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node,
   TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
   AstNode const* original = node;
 
-  ::arangodb::containers::SmallVectorWithArena<std::string_view> attributeNames;
+  containers::SmallVector<std::string_view, 4> attributeNames;
 
   while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     attributeNames.push_back(node->getStringView());

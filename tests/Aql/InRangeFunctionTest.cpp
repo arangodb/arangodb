@@ -68,8 +68,7 @@ class InRangeFunctionTest : public ::testing::Test {
     fakeit::When(Method(expressionContextMock, trx))
         .AlwaysDo([&trx]() -> transaction::Methods& { return *trx; });
 
-    SmallVector<AqlValue>::allocator_type::arena_type arena;
-    SmallVector<AqlValue> params{arena};
+    containers::SmallVector<AqlValue, 5> params;
     if (attribute) {
       params.emplace_back(*attribute);
     }
