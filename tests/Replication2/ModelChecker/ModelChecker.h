@@ -588,6 +588,7 @@ struct RandomEnumerator {
                                typename decltype(res.seed)::value_type>);
             res.seed = iterSeed;
             *result = res;
+            return;
           }
         }
         *result = Result{};
