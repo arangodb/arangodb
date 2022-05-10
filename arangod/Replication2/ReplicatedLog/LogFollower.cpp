@@ -632,8 +632,12 @@ auto LogFollower::getCommitIndex() const noexcept -> LogIndex {
 }
 
 auto LogFollower::waitForResign() -> futures::Future<futures::Unit> {
-  return _guardedFollowerData.getLockedGuard()
-      ->_waitForResignQueue.addWaitFor();
+  auto&& [future, action] =
+      _guardedFollowerData.getLockedGuard()->waitForResign();
+
+  action.fire();
+
+  return std::move(future);
 }
 
 auto LogFollower::construct(LoggerContext const& loggerContext,
@@ -700,4 +704,23 @@ auto LogFollower::GuardedFollowerData::checkCompaction() -> Result {
   LOG_CTX("f1028", TRACE, _follower._loggerContext)
       << "compaction result = " << res.errorMessage();
   return res;
+}
+auto LogFollower::GuardedFollowerData::waitForResign()
+    -> std::pair<futures::Future<futures::Unit>, DeferredAction> {
+  if (!didResign()) {
+    auto future = _waitForResignQueue.addWaitFor();
+    return {std::move(future), DeferredAction{}};
+  } else {
+    TRI_ASSERT(_waitForResignQueue.empty());
+    auto promise = futures::Promise<futures::Unit>{};
+    auto future = promise.getFuture();
+
+    auto action =
+        DeferredAction([promise = std::move(promise)]() mutable noexcept {
+          TRI_ASSERT(promise.valid());
+          promise.setValue();
+        });
+
+    return {std::move(future), std::move(action)};
+  }
 }
