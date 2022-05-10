@@ -36,11 +36,6 @@ namespace paths = arangodb::cluster::paths::aliases;
 
 namespace arangodb::replication2::replicated_log {
 
-/*
-auto to_string(Action const &action) -> std::string_view {
-return std::visit([](auto &&arg) { return arg.name; }, action);
-}
-*/
 auto executeAction(Log log, Action &action) -> ActionContext {
   auto currentSupervision =
       std::invoke([&]() -> std::optional<LogCurrentSupervision> {

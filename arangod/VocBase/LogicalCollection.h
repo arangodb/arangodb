@@ -180,7 +180,8 @@ class LogicalCollection : public LogicalDataSource {
   /// if no SmartJoin attribute is present)
   std::string const& smartJoinAttribute() const noexcept;
 
-  std::string const& smartGraphAttribute() const noexcept;
+  std::string smartGraphAttribute() const;
+  void setSmartGraphAttribute(std::string const& value);
 
   bool usesRevisionsAsDocumentIds() const noexcept;
 
@@ -431,6 +432,8 @@ class LogicalCollection : public LogicalDataSource {
   std::atomic<bool> _syncByRevision;
 
 #ifdef USE_ENTERPRISE
+  mutable Mutex
+      _smartGraphAttributeLock;  // lock protecting the smartGraphAttribute
   std::string _smartGraphAttribute;
 
   std::string _smartJoinAttribute;

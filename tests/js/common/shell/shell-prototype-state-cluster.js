@@ -95,7 +95,7 @@ function PrototypeStateTestSuite() {
 
     testReadEntries: function () {
       const state = db._createPrototypeState({config});
-      state.write({"A":"1", "B":"2", "C": "3", "D": "4"}, {waitForApplied: true});
+      state.write({"A": "1", "B": "2", "C": "3", "D": "4"}, {waitForApplied: true});
 
       const valueA = state.read("A");
       assertEqual(valueA, "1");
@@ -109,16 +109,65 @@ function PrototypeStateTestSuite() {
       assertEqual(otherNonEx, {});
     },
 
-    testSnapshotWaitFor: function() {
+    testReadWaitFor: function () {
+      const state = db._createPrototypeState({config});
+      let idx = state.write({"A": "1", "B": "2", "C": "3", "D": "4"}, {waitForCommit: false});
+
+      const {A: valueA, B: valueB, C: valueC} = state.read(["A", "B", "C"], {waitForApplied: idx});
+      assertEqual(valueA, "1");
+      assertEqual(valueB, "2");
+      assertEqual(valueC, "3");
+    },
+
+    testReadFromServer: function () {
+      const state = db._createPrototypeState({config});
+      let idx = state.write({"A": "1", "B": "2", "C": "3", "D": "4"}, {waitForCommit: false});
+
+      const status = db._replicatedLog(state.id()).status();
+      const follower = _.sample(_.without(Object.keys(status.participants), status.leaderId));
+
+      const {A: valueA, B: valueB, C: valueC} = state.read(["A", "B", "C"], {waitForApplied: idx, readFrom: follower});
+      assertEqual(valueA, "1");
+      assertEqual(valueB, "2");
+      assertEqual(valueC, "3");
+    },
+
+    testReadFromOtherServer: function () {
+      const state = db._createPrototypeState({config});
+      let idx = state.write({"A": "1", "B": "2", "C": "3", "D": "4"}, {waitForCommit: false});
+
+      try {
+        state.read(["A", "B", "C"], {
+          waitForApplied: idx,
+          readFrom: "DOES_NOT_EXIST"
+        });
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, arangodb.errors.ERROR_CLUSTER_BACKEND_UNAVAILABLE.code);
+      }
+    },
+
+    testStandAloneWaitFor: function () {
+      const state = db._createPrototypeState({config});
+      let idx = state.write({"A": "1", "B": "2", "C": "3", "D": "4"}, {waitForCommit: false});
+
+      state.waitForApplied(idx);
+      const {A: valueA, B: valueB, C: valueC} = state.read(["A", "B", "C"]);
+      assertEqual(valueA, "1");
+      assertEqual(valueB, "2");
+      assertEqual(valueC, "3");
+    },
+
+    testSnapshotWaitFor: function () {
       const state = db._createPrototypeState({config});
       let lastIndex;
-      for(let i = 0; i < 1000; i++) {
+      for (let i = 0; i < 1000; i++) {
         // dump in data, wait for nothing
         lastIndex = state.write(`key${i}`, `value${i}`, {waitForApplied: false, waitForCommit: false});
       }
 
       const snapshot = state.getSnapshot(lastIndex);
-      for(let i = 0; i < 1000; i++) {
+      for (let i = 0; i < 1000; i++) {
         assertEqual(snapshot[`key${i}`], `value${i}`);
       }
     }

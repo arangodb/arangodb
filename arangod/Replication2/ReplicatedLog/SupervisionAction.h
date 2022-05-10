@@ -431,7 +431,6 @@ using Action = std::variant<
     ConvergedToTargetAction>;
 
 auto executeAction(Log log, Action &action) -> ActionContext;
-
 } // namespace arangodb::replication2::replicated_log
 
 template <>

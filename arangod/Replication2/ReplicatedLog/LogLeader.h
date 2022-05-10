@@ -308,6 +308,9 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
         std::optional<InMemoryLogEntry::clock::time_point> insertTp)
         -> LogIndex;
 
+    [[nodiscard]] auto waitForResign()
+        -> std::pair<futures::Future<futures::Unit>, DeferredAction>;
+
     LogLeader& _self;
     InMemoryLog _inMemoryLog;
     std::unordered_map<ParticipantId, std::shared_ptr<FollowerInfo>>
