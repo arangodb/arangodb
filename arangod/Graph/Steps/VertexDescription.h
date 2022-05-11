@@ -35,7 +35,7 @@ struct VertexDescription {
   std::string_view id;
   uint64_t depth;
   double weight;
-  
+
   bool operator==(VertexDescription const& other) const = default;
 };
 

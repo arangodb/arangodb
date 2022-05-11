@@ -297,6 +297,8 @@ class MockGraphProvider {
   void unPrepareContext();
   bool isResponsible(Step const& step) const;
 
+  [[nodiscard]] bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
+
   [[nodiscard]] transaction::Methods* trx();
 
   aql::TraversalStats stealStats();

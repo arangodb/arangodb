@@ -24,9 +24,11 @@
 #include "RocksDBChecksumEnv.h"
 
 #include "Basics/Exceptions.h"
-#include "Basics/files.h"
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/RocksDBUtils.h"
+#include "Basics/error.h"
+#include "Basics/files.h"
 #include "Logger/LogMacros.h"
 
 #undef DeleteFile
@@ -89,8 +91,10 @@ bool ChecksumHelper::isFileNameSst(std::string const& fileName) {
 bool ChecksumHelper::writeShaFile(std::string const& fileName,
                                   std::string const& checksum) {
   TRI_ASSERT(isFileNameSst(fileName));
+  TRI_ASSERT(!checksum.empty());
 
   std::string shaFileName = buildShaFileNameFromSst(fileName, checksum);
+  TRI_ASSERT(!shaFileName.empty());
 
   LOG_TOPIC("80257", DEBUG, arangodb::Logger::ENGINES)
       << "shaCalcFile: done " << fileName << " result: " << shaFileName;
@@ -171,9 +175,11 @@ void ChecksumHelper::checkMissingShaFiles() {
 }
 
 std::string ChecksumHelper::removeFromTable(std::string const& fileName) {
+  TRI_ASSERT(!fileName.empty());
+
+  std::string baseName = TRI_Basename(fileName);
   std::string checksum;
   {
-    std::string baseName = TRI_Basename(fileName);
     MUTEX_LOCKER(mutexLock, _calculatedHashesMutex);
     if (auto it = _fileNamesToHashes.find(baseName);
         it != _fileNamesToHashes.end()) {
@@ -212,8 +218,8 @@ rocksdb::Status ChecksumWritableFile::Close() {
 }
 
 rocksdb::Status ChecksumEnv::NewWritableFile(
-    const std::string& fileName, std::unique_ptr<rocksdb::WritableFile>* result,
-    const rocksdb::EnvOptions& options) {
+    std::string const& fileName, std::unique_ptr<rocksdb::WritableFile>* result,
+    rocksdb::EnvOptions const& options) {
   std::unique_ptr<rocksdb::WritableFile> writableFile;
   rocksdb::Status s =
       rocksdb::EnvWrapper::NewWritableFile(fileName, &writableFile, options);
@@ -236,7 +242,7 @@ rocksdb::Status ChecksumEnv::NewWritableFile(
   return s;
 }
 
-rocksdb::Status ChecksumEnv::DeleteFile(const std::string& fileName) {
+rocksdb::Status ChecksumEnv::DeleteFile(std::string const& fileName) {
   if (_helper->isFileNameSst(fileName)) {
     std::string checksum = _helper->removeFromTable(fileName);
     std::string shaFileName =
@@ -248,19 +254,28 @@ rocksdb::Status ChecksumEnv::DeleteFile(const std::string& fileName) {
             << "deleteCalcFile: delete file succeeded for " << shaFileName;
       } else {
         LOG_TOPIC("acb34", WARN, arangodb::Logger::ENGINES)
-            << "deleteCalcFile: delete file failed for " << shaFileName;
+            << "deleteCalcFile: delete file failed for " << shaFileName << ": "
+            << TRI_errno_string(res);
       }
     }
   }
-  rocksdb::Status res = rocksdb::EnvWrapper::DeleteFile(fileName);
-  if (res.ok()) {
+  rocksdb::Status s = rocksdb::EnvWrapper::DeleteFile(fileName);
+  if (s.ok()) {
     LOG_TOPIC("77a2a", DEBUG, arangodb::Logger::ENGINES)
         << "deleteCalcFile: delete file succeeded for " << fileName;
-  } else {
+  } else if (!s.IsPathNotFound()) {
+    // background: RocksDB can call the DeleteFile() API also for
+    // files it originally intends to create, but then changes its mind
+    // about.
+    // for example, when RocksDB flushes a memtable, it may turn out
+    // that the to-be-created .sst file would be fully empty. in this
+    // case, RocksDB does not create the .sst file, but it still calls
+    // the DeleteFile() API To clean it up.
     LOG_TOPIC("ce937", WARN, arangodb::Logger::ENGINES)
-        << "deleteCalcFile: delete file failed for " << fileName;
+        << "deleteCalcFile: delete file failed for " << fileName << ": "
+        << rocksutils::convertStatus(s).errorMessage();
   }
-  return res;
+  return s;
 }
 
 }  // namespace arangodb::checksum

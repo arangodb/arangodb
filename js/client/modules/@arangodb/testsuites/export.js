@@ -373,6 +373,39 @@ class exportRunner extends tu.runInArangoshRunner {
           };
         }
       }
+      
+      print(CYAN + Date() + ': Export query from file (jsonl)' + RESET);
+      {
+        let tempFile = fs.join(tmpPath, 'query-string');
+        let args = Object.assign({}, commonArgValues);
+        fs.writeFileSync(tempFile, 'FOR doc IN UnitTestsExport RETURN doc');
+        args['type'] = 'jsonl';
+        args['custom-query-file'] = tempFile;
+        testName = "exportQueryFile" + idx;
+        results[testName] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, 'arangosh', tmpPath, this.options.coreCheck);
+        results[testName].failed = results[testName].status ? 0 : 1;
+      }
+
+      {
+        testName = "parseQueryFile" + idx;
+        try {
+          fs.read(fs.join(tmpPath, 'query.jsonl')).split('\n')
+            .filter(line => line.trim() !== '')
+            .forEach(line => JSON.parse(line));
+          results[testName] = {
+            failed: 0,
+            status: true
+          };
+        } catch (e) {
+          print(e);
+          results.failed += 1;
+          results[testName] = {
+            failed: 1,
+            status: false,
+            message: e
+          };
+        }
+      }
 
       print(CYAN + Date() + ': Export query (jsonl)' + RESET);
       {

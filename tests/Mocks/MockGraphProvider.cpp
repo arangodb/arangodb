@@ -261,6 +261,11 @@ void MockGraphProvider::unPrepareContext() {
 
 bool MockGraphProvider::isResponsible(Step const& step) const { return true; }
 
+bool MockGraphProvider::hasDepthSpecificLookup(uint64_t depth) const noexcept {
+  // TODO: This needs to be implemented / checked.
+  LOG_DEVEL << "----- Adjustments needed here -----";
+  return false;
+}
 [[nodiscard]] transaction::Methods* MockGraphProvider::trx() { return &_trx; }
 
 aql::TraversalStats MockGraphProvider::stealStats() {

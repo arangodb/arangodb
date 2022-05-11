@@ -554,6 +554,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   arangodb::iresearch::IResearchViewSort sort;
   sort.emplace_back({{std::string_view("value"), false}}, true);
   std::vector<arangodb::iresearch::Scorer> emptyScorers;
+  std::vector<std::pair<size_t, bool>> emptyScorersSort;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(
       reader,
       arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{}, {},
@@ -562,7 +563,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
       viewNode.getRegisterPlan()->varInfo, 0,
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
       arangodb::iresearch::CountApproximate::Exact,
-      arangodb::iresearch::FilterOptimization::MAX);
+      arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0);
 
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable>
@@ -634,6 +635,7 @@ TEST_F(IResearchViewCountApproximateTest,
   arangodb::iresearch::IResearchViewSort sort;
   sort.emplace_back({{std::string_view("value"), false}}, true);
   std::vector<arangodb::iresearch::Scorer> emptyScorers;
+  std::vector<std::pair<size_t, bool>> emptyScorersSort;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(
       reader,
       arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{}, {},
@@ -642,7 +644,7 @@ TEST_F(IResearchViewCountApproximateTest,
       viewNode.getRegisterPlan()->varInfo, 0,
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
       arangodb::iresearch::CountApproximate::Exact,
-      arangodb::iresearch::FilterOptimization::MAX);
+      arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0);
 
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable>
@@ -716,6 +718,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   arangodb::iresearch::IResearchViewSort sort;
   sort.emplace_back({{std::string_view("value"), false}}, true);
   std::vector<arangodb::iresearch::Scorer> emptyScorers;
+  std::vector<std::pair<size_t, bool>> emptyScorersSort;
   arangodb::aql::IResearchViewExecutorInfos executorInfos(
       reader,
       arangodb::aql::IResearchViewExecutorInfos::NoMaterializeRegisters{}, {},
@@ -724,7 +727,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
       viewNode.getRegisterPlan()->varInfo, 0,
       arangodb::iresearch::IResearchViewNode::ViewValuesRegisters{},
       arangodb::iresearch::CountApproximate::Cost,
-      arangodb::iresearch::FilterOptimization::MAX);
+      arangodb::iresearch::FilterOptimization::MAX, emptyScorersSort, 0);
 
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable>

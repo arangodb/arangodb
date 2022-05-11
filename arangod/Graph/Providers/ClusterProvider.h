@@ -120,6 +120,8 @@ class ClusterProvider {
   void unPrepareContext();
   bool isResponsible(Step const& step) const;
 
+  [[nodiscard]] bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
+
  private:
   // Unique_ptr to have this class movable, and to keep reference of trx()
   // alive - Note: _trx must be first here because it is used in _cursor

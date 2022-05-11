@@ -218,6 +218,12 @@ void ProviderTracer<ProviderImpl>::unPrepareContext() {
 }
 
 template<class ProviderImpl>
+bool ProviderTracer<ProviderImpl>::hasDepthSpecificLookup(
+    uint64_t depth) const noexcept {
+  return _impl.hasDepthSpecificLookup(depth);
+}
+
+template<class ProviderImpl>
 bool ProviderTracer<ProviderImpl>::isResponsible(const Step& step) const {
   double start = TRI_microtime();
   auto sg = arangodb::scopeGuard([&]() noexcept {
@@ -225,8 +231,6 @@ bool ProviderTracer<ProviderImpl>::isResponsible(const Step& step) const {
   });
   return _impl.isResponsible(step);
 }
-
-
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
 template class ::arangodb::graph::ProviderTracer<

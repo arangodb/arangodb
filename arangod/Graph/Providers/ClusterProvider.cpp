@@ -571,4 +571,9 @@ bool ClusterProvider<StepImpl>::isResponsible(StepImpl const& step) const {
   return true;
 }
 
+template<class StepImpl>
+bool ClusterProvider<StepImpl>::hasDepthSpecificLookup(
+    uint64_t depth) const noexcept {
+  return _opts.hasDepthSpecificLookup(depth);
+}
 template class graph::ClusterProvider<ClusterProviderStep>;

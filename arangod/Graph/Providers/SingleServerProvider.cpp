@@ -277,6 +277,12 @@ auto SingleServerProvider<StepType>::fetchEdges(
   return TRI_ERROR_NO_ERROR;
 }
 
+template<class StepType>
+bool SingleServerProvider<StepType>::hasDepthSpecificLookup(
+    uint64_t depth) const noexcept {
+  return _cursor->hasDepthSpecificLookup(depth);
+}
+
 template class arangodb::graph::SingleServerProvider<SingleServerProviderStep>;
 
 #ifdef USE_ENTERPRISE

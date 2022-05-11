@@ -784,12 +784,18 @@ ClusterBaseProviderOptions TraversalNode::getClusterBaseProviderOptions(
         filterConditionVariables) const {
   auto traverserCache = std::make_shared<RefactoredClusterTraverserCache>(
       opts->query().resourceMonitor());
+  std::unordered_set<uint64_t> availableDepthsSpecificConditions;
+  availableDepthsSpecificConditions.reserve(opts->_depthLookupInfo.size());
+  for (auto const& [depth, _] : opts->_depthLookupInfo) {
+    availableDepthsSpecificConditions.emplace(depth);
+  }
   return {traverserCache,
           engines(),
           false,
           opts->produceVertices(),
           &opts->getExpressionCtx(),
-          filterConditionVariables};
+          filterConditionVariables,
+          std::move(availableDepthsSpecificConditions)};
 }
 
 SingleServerBaseProviderOptions

@@ -160,7 +160,8 @@ struct ClusterBaseProviderOptions {
       std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
       bool produceVertices, aql::FixedVarExpressionContext* expressionContext,
       std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
-          filterConditionVariables);
+          filterConditionVariables,
+      std::unordered_set<uint64_t> availableDepthsSpecificConditions);
 
   RefactoredClusterTraverserCache* getCache();
 
@@ -190,6 +191,8 @@ struct ClusterBaseProviderOptions {
   enterprise::SmartGraphRPCCommunicator& getRPCCommunicator();
 #endif
 
+  bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
+
  private:
   std::shared_ptr<RefactoredClusterTraverserCache> _cache;
 
@@ -216,6 +219,8 @@ struct ClusterBaseProviderOptions {
   // properly owned by this class
   std::unique_ptr<enterprise::SmartGraphRPCCommunicator> _communicator;
 #endif
+
+  std::unordered_set<uint64_t> _availableDepthsSpecificConditions;
 };
 
 }  // namespace graph

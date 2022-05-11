@@ -170,8 +170,7 @@ template class ::arangodb::graph::PathResult<
 
 #ifdef USE_ENTERPRISE
 template class ::arangodb::graph::PathResult<
-    ::arangodb::graph::enterprise::SmartGraphProvider<
-        ClusterProviderStep>,
+    ::arangodb::graph::enterprise::SmartGraphProvider<ClusterProviderStep>,
     ClusterProviderStep>;
 template class ::arangodb::graph::PathResult<
     ::arangodb::graph::ProviderTracer<

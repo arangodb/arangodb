@@ -81,6 +81,7 @@ class ExportFeature final : public ArangoExportFeature,
 
   std::vector<std::string> _collections;
   std::string _customQuery;
+  std::string _customQueryFile;
   std::string _graphName;
   std::string _xgmmlLabelAttribute;
   std::string _typeExport;
