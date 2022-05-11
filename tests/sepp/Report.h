@@ -30,7 +30,7 @@
 namespace arangodb::sepp {
 
 struct ThreadReport {
-  // a velocypack value containing arbitrary result data for this thread
+  // a velocypack value containing arbitrary result data for this thread (TODO)
   velocypack::Builder data;
   // total number of operations performed by this thread
   std::uint64_t operations;
@@ -39,8 +39,10 @@ struct ThreadReport {
 template<class Inspector>
 auto inspect(Inspector& f, ThreadReport& o) {
   auto data = o.data.slice();
-  return f.object(o).fields(f.field("data", data),
-                            f.field("operations", o.operations));
+  return f.object(o).fields(
+      // TODO - workloads need to actually provide data
+      // f.field("data", data),
+      f.field("operations", o.operations));
 }
 
 struct Report {
