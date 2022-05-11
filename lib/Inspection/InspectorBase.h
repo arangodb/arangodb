@@ -84,9 +84,16 @@ struct InspectorBase {
   }
 
   template<typename T>
+  [[nodiscard]] auto field(std::string_view name, T&& value) const noexcept {
+    using TT = std::remove_cvref_t<T>;
+    return field(name, static_cast<TT const&>(value));
+  }
+
+  template<typename T>
   [[nodiscard]] RawField<T> field(std::string_view name,
                                   T& value) const noexcept {
-    static_assert(!std::is_const<T>::value || !Derived::isLoading);
+    static_assert(!std::is_const<T>::value || !Derived::isLoading,
+                  "Loading inspector must pass non-const lvalue reference");
     return RawField<T>{{name}, value};
   }
 

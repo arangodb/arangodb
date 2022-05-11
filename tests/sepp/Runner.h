@@ -47,15 +47,17 @@ class Runner {
   void run();
 
  private:
-  auto runBenchmark() -> Report;
   void startServer();
   void setup();
   auto createCollection(std::string const& name)
       -> std::shared_ptr<LogicalCollection>;
   void createIndex(LogicalCollection& col, IndexSetup const& index);
+  auto runBenchmark() -> Report;
+  void printSummary(Report const& report);
+  void writeReport(Report const& report);
 
   std::string_view _executable;
-  std::string_view _reportFile;
+  std::string _reportFile;
 
   Options _options;
   std::unique_ptr<Server> _server;

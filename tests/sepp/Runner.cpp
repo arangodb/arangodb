@@ -23,6 +23,7 @@
 
 #include "Runner.h"
 
+#include <fstream>
 #include <numeric>
 #include <memory>
 #include <stdexcept>
@@ -34,6 +35,7 @@
 #include "Server.h"
 #include "Workloads/InsertDocuments.h"
 #include "Workloads/IterateDocuments.h"
+#include "velocypack/Collection.h"
 
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
@@ -53,9 +55,9 @@ Runner::Runner(std::string_view executable, std::string_view reportFile,
 Runner::~Runner() = default;
 
 void Runner::run() {
-  runBenchmark();
-  // printSummary(report);
-  // writeReport(report);
+  auto report = runBenchmark();
+  printSummary(report);
+  writeReport(report);
 }
 
 auto Runner::runBenchmark() -> Report {
@@ -80,12 +82,50 @@ auto Runner::runBenchmark() -> Report {
   Execution exec(_options, workload);
   exec.createThreads(*_server);
   auto report = exec.run();
-  std::cout << " - "
-            << static_cast<double>(report.operations()) / report.runtime
-            << " ops/ms" << std::endl;
   report.timestamp = timestamp.count();
 
   return report;
+}
+
+void Runner::printSummary(Report const& report) {
+  std::cout << "Summary:\n"
+            << "  runtime: " << report.runtime << " ms\n"
+            << "  operations: " << report.operations() << " ops\n"
+            << "  throughput: " << report.throughput() << " ops/ms"
+            << std::endl;
+}
+
+void Runner::writeReport(Report const& report) {
+  if (_reportFile.empty()) {
+    return;
+  }
+
+  velocypack::Builder reportBuilder;
+  reportBuilder.openArray();
+
+  std::ifstream oldReportFile(_reportFile);
+  if (oldReportFile.is_open()) {
+    try {
+      std::stringstream buffer;
+      buffer << oldReportFile.rdbuf();
+
+      auto oldReport = arangodb::velocypack::Parser::fromJson(buffer.str());
+      if (oldReport) {
+        velocypack::Collection::appendArray(reportBuilder, oldReport->slice());
+      }
+    } catch (std::exception const& e) {
+      std::cerr << "Failed to parse existing report file \"" << _reportFile
+                << "\" - " << e.what() << "\nSkipping report generation!"
+                << std::endl;
+      return;
+    }
+  }
+
+  velocypack::serialize(reportBuilder, report);
+  reportBuilder.close();
+
+  std::ofstream out(_reportFile);
+  out << reportBuilder.slice().toString();
 }
 
 void Runner::startServer() {

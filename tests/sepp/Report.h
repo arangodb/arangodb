@@ -36,6 +36,13 @@ struct ThreadReport {
   std::uint64_t operations;
 };
 
+template<class Inspector>
+auto inspect(Inspector& f, ThreadReport& o) {
+  auto data = o.data.slice();
+  return f.object(o).fields(f.field("data", data),
+                            f.field("operations", o.operations));
+}
+
 struct Report {
   std::int64_t timestamp;
   // TODO - rocksdb statistics
@@ -57,5 +64,15 @@ struct Report {
     return static_cast<double>(operations()) / runtime;
   }
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, Report& o) {
+  return f.object(o).fields(f.field("timestamp", o.timestamp),        //
+                            f.field("threads", o.threads),            //
+                            f.field("runtime", o.runtime),            //
+                            f.field("databaseSize", o.databaseSize),  //
+                            f.field("operations", o.operations()),    //
+                            f.field("throughput", o.throughput()));
+}
 
 }  // namespace arangodb::sepp
