@@ -757,7 +757,8 @@ ViewSnapshotPtr snapshotSingleServer(IResearchViewNode const& node,
     }
     return {ViewSnapshotPtr{}, snapshot};
   }
-  if (trx.isMainTransaction()) {
+  if (!options.forceSync && trx.isMainTransaction()) {
+    TRI_ASSERT(false);
     return {};
   }
   auto links = [&] {
@@ -768,7 +769,7 @@ ViewSnapshotPtr snapshotSingleServer(IResearchViewNode const& node,
   }();
   snapshot = makeViewSnapshot(trx, key, options.forceSync, view.name(),
                               std::move(links));
-  if (options.restrictSources && snapshot) {
+  if (options.restrictSources && snapshot != nullptr) {
     return std::make_shared<ViewSnapshotView>(*snapshot, options.sources);
   }
   return {ViewSnapshotPtr{}, snapshot};
@@ -1039,8 +1040,8 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
     auto const& collections = plan.getAst()->query().collections();
 
     for (auto const shardSlice : velocypack::ArrayIterator(shardsSlice)) {
-      auto const shardId =
-          shardSlice.copyString();  // shardID is collection name on db server
+      // shardID is collection name on db server
+      auto const shardId = shardSlice.stringView();
       auto const* shard = collections.get(shardId);
 
       if (!shard) {
@@ -1050,7 +1051,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
         continue;
       }
 
-      _shards.push_back(shard->name());
+      _shards.insert(shard->name());
     }
   } else {
     LOG_TOPIC("a48f3", ERR, arangodb::iresearch::TOPIC)
@@ -1386,7 +1387,7 @@ IResearchViewNode::collections() const {
     auto const* collection = collections.get(id);
 
     if (collection) {
-      viewCollections.push_back(*collection);
+      viewCollections.emplace_back(*collection);
     } else {
       LOG_TOPIC("ee270", WARN, arangodb::iresearch::TOPIC)
           << "collection with id '" << id

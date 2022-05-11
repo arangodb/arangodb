@@ -40,7 +40,7 @@ class ViewSnapshotCookie final : public ViewSnapshotImpl,
  public:
   ViewSnapshotCookie() noexcept = default;
 
-  ViewSnapshotCookie(Links&& links) noexcept;
+  explicit ViewSnapshotCookie(Links&& links) noexcept;
 
   void clear() noexcept;
 
@@ -87,7 +87,8 @@ bool ViewSnapshotCookie::compute(bool sync, std::string_view name) {
 
 void ViewSnapshotCookie::add(DataSourceId cid,
                              irs::directory_reader&& reader) noexcept {
-  _readers.reserve(_readers.size() + reader.size());
+  _readers.reserve(_readers.size() +
+                   std::max(reader.size(), _readers.size() / 2));
   for (auto const& segment : reader) {
     _segments.emplace_back(cid, &segment);
   }
