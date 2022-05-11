@@ -49,7 +49,7 @@ class IResearchLink;
 class IResearchViewCoordinator final : public LogicalView {
  public:
   static constexpr std::pair<ViewType, std::string_view> typeInfo() noexcept {
-    return {ViewType::kSearch, StaticStrings::DataSourceType};
+    return {ViewType::kSearch, StaticStrings::ViewType};
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -102,7 +102,7 @@ class IResearchViewCoordinator final : public LogicalView {
     return _meta._storedValues;
   }
 
- protected:
+ private:
   Result appendVPackImpl(VPackBuilder& build, Serialization ctx,
                          bool safe) const final;
 
@@ -110,7 +110,6 @@ class IResearchViewCoordinator final : public LogicalView {
 
   Result renameImpl(std::string const& oldName) final;
 
- private:
   struct ViewFactory;
 
   IResearchViewCoordinator(TRI_vocbase_t& vocbase, VPackSlice info);

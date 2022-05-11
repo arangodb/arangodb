@@ -29,6 +29,7 @@
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/types.h"
+#include "Containers/FlatHashSet.h"
 #include "IResearch/IResearchFilterOptimization.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
@@ -75,7 +76,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief node options
   struct Options {
     /// @brief a list of data source CIDs to restrict a query
-    ::arangodb::containers::HashSet<DataSourceId> sources;
+    containers::FlatHashSet<DataSourceId> sources;
 
     /// @brief use the list of sources to restrict a query
     bool restrictSources{false};
@@ -289,7 +290,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
         std::vector<aql::latematerialized::NodeWithAttrsColumn> const&
             nodesToChange);
 
-    bool canVariablesBeReplaced(aql::CalculationNode* calclulationNode) const;
+    bool canVariablesBeReplaced(aql::CalculationNode* calculationNode) const;
 
     ViewVarsInfo replaceViewVariables(
         std::vector<aql::CalculationNode*> const& calcNodes,

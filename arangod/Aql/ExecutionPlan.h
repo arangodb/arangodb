@@ -196,24 +196,22 @@ class ExecutionPlan {
   }
 
   /// @brief find nodes of a certain type
-  void findNodesOfType(
-      ::arangodb::containers::SmallVector<ExecutionNode*>& result,
-      ExecutionNode::NodeType, bool enterSubqueries);
+  void findNodesOfType(containers::SmallVector<ExecutionNode*, 8>& result,
+                       ExecutionNode::NodeType, bool enterSubqueries);
 
   /// @brief find nodes of certain types
-  void findNodesOfType(
-      ::arangodb::containers::SmallVector<ExecutionNode*>& result,
-      std::initializer_list<ExecutionNode::NodeType> const&,
-      bool enterSubqueries);
+  void findNodesOfType(containers::SmallVector<ExecutionNode*, 8>& result,
+                       std::initializer_list<ExecutionNode::NodeType> const&,
+                       bool enterSubqueries);
 
   /// @brief find unique nodes of certain types
   void findUniqueNodesOfType(
-      ::arangodb::containers::SmallVector<ExecutionNode*>& result,
+      containers::SmallVector<ExecutionNode*, 8>& result,
       std::initializer_list<ExecutionNode::NodeType> const&,
       bool enterSubqueries);
 
   /// @brief find all end nodes in a plan
-  void findEndNodes(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+  void findEndNodes(containers::SmallVector<ExecutionNode*, 8>& result,
                     bool enterSubqueries) const;
 
   /// @brief determine and set _varsUsedLater and _varSetBy
@@ -319,10 +317,9 @@ class ExecutionPlan {
  private:
   template<WalkerUniqueness U>
   /// @brief find nodes of certain types
-  void findNodesOfType(
-      ::arangodb::containers::SmallVector<ExecutionNode*>& result,
-      std::initializer_list<ExecutionNode::NodeType> const&,
-      bool enterSubqueries);
+  void findNodesOfType(containers::SmallVector<ExecutionNode*, 8>& result,
+                       std::initializer_list<ExecutionNode::NodeType> const&,
+                       bool enterSubqueries);
 
   /// @brief creates a calculation node
   ExecutionNode* createCalculation(Variable*, AstNode const*, ExecutionNode*);

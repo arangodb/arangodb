@@ -30,6 +30,7 @@
 #include <variant>
 #include <optional>
 
+#include "Basics/StaticStrings.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
 namespace arangodb::futures {
@@ -119,21 +120,25 @@ struct LogStatistics {
   TermIndexPair spearHead{};
   LogIndex commitIndex{};
   LogIndex firstIndex{};
+  LogIndex releaseIndex{};
 
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice slice)
       -> LogStatistics;
 
   friend auto operator==(LogStatistics const& left,
-                         LogStatistics const& right) noexcept -> bool;
-  friend auto operator!=(LogStatistics const& left,
-                         LogStatistics const& right) noexcept -> bool;
+                         LogStatistics const& right) noexcept -> bool = default;
 };
 
-[[nodiscard]] auto operator==(LogStatistics const& left,
-                              LogStatistics const& right) noexcept -> bool;
-[[nodiscard]] auto operator!=(LogStatistics const& left,
-                              LogStatistics const& right) noexcept -> bool;
+template<class Inspector>
+auto inspect(Inspector& f, LogStatistics& x) {
+  using namespace arangodb;
+  return f.object(x).fields(
+      f.field(StaticStrings::Spearhead, x.spearHead),
+      f.field(StaticStrings::CommitIndex, x.commitIndex),
+      f.field(StaticStrings::FirstIndex, x.firstIndex),
+      f.field(StaticStrings::ReleaseIndex, x.releaseIndex));
+}
 
 struct AbstractFollower {
   virtual ~AbstractFollower() = default;

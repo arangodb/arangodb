@@ -561,9 +561,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(size_t from, size_t to) const {
   TRI_ASSERT(from < to);
   TRI_ASSERT(to <= _numRows);
 
-  arangodb::containers::SmallVector<
-      std::pair<size_t, size_t>>::allocator_type::arena_type arena;
-  arangodb::containers::SmallVector<std::pair<size_t, size_t>> ranges{arena};
+  containers::SmallVector<std::pair<size_t, size_t>, 4> ranges;
   ranges.emplace_back(from, to);
   return slice(ranges);
 }
@@ -580,8 +578,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(size_t from, size_t to) const {
  * @return SharedAqlItemBlockPtr A block where all the slices are contained in
  * the order of the list
  */
-auto AqlItemBlock::slice(
-    arangodb::containers::SmallVector<std::pair<size_t, size_t>> const& ranges)
+auto AqlItemBlock::slice(std::span<std::pair<size_t, size_t> const> ranges)
     const -> SharedAqlItemBlockPtr {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // Analyze correctness of ranges

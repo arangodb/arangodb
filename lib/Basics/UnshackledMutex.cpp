@@ -25,28 +25,29 @@
 
 #include "Basics/debugging.h"
 
-void arangodb::basics::UnshackledMutex::lock() {
-  auto guard = std::unique_lock(_mutex);
-  _cv.wait(guard, [&] { return !_locked; });
-  TRI_ASSERT(!_locked);
+namespace arangodb::basics {
+
+void UnshackledMutex::lock() noexcept {
+  absl::MutexLock guard{
+      &_mutex,
+      absl::Condition{+[](bool const* locked) noexcept { return !*locked; },
+                      &std::as_const(_locked)}};
   _locked = true;
 }
 
-void arangodb::basics::UnshackledMutex::unlock() {
-  {
-    auto guard = std::unique_lock(_mutex);
-    TRI_ASSERT(_locked);
-    _locked = false;
-  }
-  _cv.notify_one();
+void UnshackledMutex::unlock() noexcept {
+  absl::MutexLock guard{&_mutex};
+  TRI_ASSERT(_locked);
+  _locked = false;
 }
 
-auto arangodb::basics::UnshackledMutex::try_lock() -> bool {
-  auto guard = std::unique_lock(_mutex, std::try_to_lock);
-  if (guard.owns_lock() && !_locked) {
-    _locked = true;
-    return true;
+bool UnshackledMutex::try_lock() noexcept {
+  if (!_mutex.TryLock()) {
+    return false;
   }
-
-  return false;
+  bool const was_locked = std::exchange(_locked, true);
+  _mutex.Unlock();
+  return !was_locked;
 }
+
+}  // namespace arangodb::basics

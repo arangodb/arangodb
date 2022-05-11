@@ -98,7 +98,7 @@ const replicatedStateVersionConverged = function (database, logId, expectedVersi
 
     const supervision = current.supervision;
     if (supervision.version === undefined || supervision.version < expectedVersion) {
-      return Error(`Expected version ${expectedVersion}, found version ${supervision.value}`);
+      return Error(`Expected version ${expectedVersion}, found version ${supervision.version}`);
     }
 
     if (supervision.statusReport !== undefined && supervision.statusReport.length !== 0) {

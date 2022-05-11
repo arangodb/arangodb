@@ -343,11 +343,13 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/FollowerWaitFor.cpp
   Replication2/ReplicatedLog/InMemoryLogTest.cpp
   Replication2/ReplicatedLog/LeaderAppendEntriesTest.cpp
+  Replication2/ReplicatedLog/LogFollowerCompactionTest.cpp
   Replication2/ReplicatedLog/LogParticipantWaitForResignTests.cpp
   Replication2/ReplicatedLog/LogReclaimTest.cpp
   Replication2/ReplicatedLog/LogStatusTest.cpp
   Replication2/ReplicatedLog/MaintenanceTests.cpp
   Replication2/ReplicatedLog/MultiTermTest.cpp
+  Replication2/ReplicatedLog/ParticipantResignTest.cpp
   Replication2/ReplicatedLog/ReplicatedLogTest.cpp
   Replication2/ReplicatedLog/RewriteLogTest.cpp
   Replication2/ReplicatedLog/RocksDBLogTest.cpp
@@ -366,7 +368,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedState/ReplicatedStateFeatureTest.cpp
   Replication2/ReplicatedState/ReplicatedStateTest.cpp
   Replication2/ReplicatedState/StateMachines/MyStateMachine.cpp
-  Replication2/ReplicatedState/SupervisionSimulationTest2.cpp
+  Replication2/ReplicatedState/SupervisionModelChecker.cpp
   Replication2/ReplicatedState/SupervisionTest.cpp
   Replication2/Serialization/AgencyLogSpecificationTest.cpp
   Replication2/Serialization/LogCommonTest.cpp
