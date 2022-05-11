@@ -33,7 +33,7 @@ namespace {
 std::size_t getFolderSize(std::string_view path) {
   return std::accumulate(std::filesystem::recursive_directory_iterator(path),
                          std::filesystem::recursive_directory_iterator(), 0ull,
-                         [](auto size, auto& path) {
+                         [](auto size, auto const& path) {
                            return std::filesystem::is_directory(path)
                                       ? size
                                       : size + std::filesystem::file_size(path);
@@ -119,7 +119,7 @@ Report Execution::buildReport(double runtime) {
   for (auto& thread : _threads) {
     threadReports.push_back(thread->report());
   }
-  return {.threads = threadReports,
+  return {.threads = std::move(threadReports),
           .runtime = runtime,
           .databaseSize = getFolderSize(_options.databaseDirectory)};
 }

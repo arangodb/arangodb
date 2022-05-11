@@ -56,7 +56,7 @@ struct Options {
 
 std::pair<std::string_view, std::string_view> splitKeyValue(
     std::string_view s) {
-  auto pos = s.find("=");
+  auto pos = s.find('=');
   if (pos == std::string::npos) {
     throw InvalidArgumentException(s);
   }
@@ -65,17 +65,17 @@ std::pair<std::string_view, std::string_view> splitKeyValue(
 
 void addConfig(arangodb::velocypack::Builder& config, std::string_view param) {
   auto [path, v] = splitKeyValue(param);
-  auto value = arangodb::velocypack::Parser::fromJson(std::string(v));
+  auto value = arangodb::velocypack::Parser::fromJson(v.data(), v.size());
 
   arangodb::velocypack::Builder builder;
   builder.openObject();
-  auto fieldPos = path.find(".");
+  auto fieldPos = path.find('.');
   for (;;) {
     builder.add(VPackValue(path.substr(0, fieldPos)));
     if (fieldPos != std::string::npos) {
       builder.openObject();
       path = path.substr(fieldPos + 1);
-      fieldPos = path.find(".");
+      fieldPos = path.find('.');
     } else {
       break;
     }
@@ -148,11 +148,11 @@ int main(int argc, char const* argv[]) {
     arangodb::sepp::Runner runner(argv[0], options.report, config->slice());
     runner.run();
 
-  } catch (const InvalidArgumentException& e) {
+  } catch (InvalidArgumentException const& e) {
     std::cerr << "Invalid argument: " << e.what() << std::endl;
     printUsage();
     return 1;
-  } catch (const std::exception& e) {
+  } catch (std::exception const& e) {
     std::cerr << "ERROR: " << e.what() << std::endl;
     return 2;
   }
