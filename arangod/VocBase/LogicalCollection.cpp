@@ -21,6 +21,7 @@
 /// @author Michael Hackstein
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "LogicalCollection.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -437,8 +438,12 @@ std::string const& LogicalCollection::smartJoinAttribute() const noexcept {
 #endif
 
 #ifndef USE_ENTERPRISE
-std::string const& LogicalCollection::smartGraphAttribute() const noexcept {
+std::string LogicalCollection::smartGraphAttribute() const {
   return StaticStrings::Empty;
+}
+
+void LogicalCollection::setSmartGraphAttribute(std::string const& /*value*/) {
+  TRI_ASSERT(false);
 }
 #endif
 
@@ -461,12 +466,9 @@ bool LogicalCollection::useSyncByRevision() const noexcept {
 bool LogicalCollection::determineSyncByRevision() const {
   if (version() >= LogicalCollection::Version::v37) {
     auto& server = vocbase().server();
-    if (server.hasFeature<EngineSelectorFeature>() &&
-        server.hasFeature<ReplicationFeature>()) {
-      auto& engine = server.getFeature<EngineSelectorFeature>();
+    if (server.hasFeature<ReplicationFeature>()) {
       auto& replication = server.getFeature<ReplicationFeature>();
-      return engine.isRocksDB() && replication.syncByRevision() &&
-             usesRevisionsAsDocumentIds();
+      return replication.syncByRevision() && usesRevisionsAsDocumentIds();
     }
   }
   return false;
@@ -932,7 +934,7 @@ Result LogicalCollection::properties(velocypack::Slice slice, bool) {
         slice, StaticStrings::InternalValidatorTypes, _internalValidatorTypes);
     if (nextType != _internalValidatorTypes) {
       // This is a bit dangerous operation, if the internalValidators are NOT
-      // empty a concurrent writer could have one in it's hand while this thread
+      // empty a concurrent writer could have one in its hand while this thread
       // deletes it. For now the situation cannot happen, but may happen in the
       // future. As soon as it happens we need to make sure that we hold a write
       // lock on this collection while we swap the validators. (Or apply some
@@ -942,6 +944,18 @@ Result LogicalCollection::properties(velocypack::Slice slice, bool) {
       _internalValidatorTypes = nextType;
       _internalValidators.clear();
       decorateWithInternalValidators();
+    }
+
+    // Inject SmartGraphAttribute into Shards
+    if (slice.hasKey(StaticStrings::GraphSmartGraphAttribute) &&
+        smartGraphAttribute().empty()) {
+      // This is a bit dangerous operation and should only be run in MAINTENANCE
+      // task we upgrade the SmartGraphAttribute within the Shard, this is
+      // required to allow the DBServer to generate new ID values
+      auto sga = slice.get(StaticStrings::GraphSmartGraphAttribute);
+      if (sga.isString()) {
+        setSmartGraphAttribute(sga.copyString());
+      }
     }
   }
 

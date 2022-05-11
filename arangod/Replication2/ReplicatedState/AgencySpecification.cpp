@@ -251,7 +251,8 @@ auto StatusCodeStringTransformer::fromSerialized(std::string const& source,
   } else if (source == "LogParticipantNotYetGone") {
     target = StatusCode::kLogParticipantNotYetGone;
   } else {
-    inspection::Status{"Invalid status code name " + std::string{source}};
+    return inspection::Status{"Invalid status code name " +
+                              std::string{source}};
   }
   return {};
 }

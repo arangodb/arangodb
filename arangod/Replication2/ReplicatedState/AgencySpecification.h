@@ -47,6 +47,10 @@ struct ImplementationSpec {
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice)
       -> ImplementationSpec;
+
+  friend auto operator==(ImplementationSpec const& s,
+                         ImplementationSpec const& s2) noexcept
+      -> bool = default;
 };
 
 struct Properties {
@@ -54,6 +58,9 @@ struct Properties {
 
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Properties;
+
+  friend auto operator==(Properties const& s, Properties const& s2) noexcept
+      -> bool = default;
 };
 
 struct Plan {
@@ -66,12 +73,17 @@ struct Plan {
 
     void toVelocyPack(velocypack::Builder& builder) const;
     [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Participant;
+    friend auto operator==(Participant const& s, Participant const& s2) noexcept
+        -> bool = default;
   };
 
   std::unordered_map<ParticipantId, Participant> participants;
 
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Plan;
+
+  friend auto operator==(Plan const& s, Plan const& s2) noexcept
+      -> bool = default;
 };
 
 struct Current {
@@ -158,6 +170,8 @@ struct Target {
   struct Participant {
     void toVelocyPack(velocypack::Builder& builder) const;
     [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Participant;
+    friend auto operator==(Participant const& s, Participant const& s2) noexcept
+        -> bool = default;
   };
 
   std::unordered_map<ParticipantId, Participant> participants;
@@ -168,12 +182,17 @@ struct Target {
 
   void toVelocyPack(velocypack::Builder& builder) const;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Target;
+
+  friend auto operator==(Target const& s, Target const& s2) noexcept
+      -> bool = default;
 };
 
 struct State {
   Target target;
   std::optional<Plan> plan;
   std::optional<Current> current;
+  friend auto operator==(State const& s, State const& s2) noexcept
+      -> bool = default;
 };
 
 template<class Inspector>

@@ -56,7 +56,7 @@ const {setUpAll, tearDownAll} = (function () {
   };
 }());
 
-const replicatedStateSuite = function () {
+const replicatedStateSuite = function (stateType) {
 
   const createReplicatedState = function (database, logId, servers, leader) {
     SH.updateReplicatedStatePlan(database, logId, function () {
@@ -86,7 +86,7 @@ const replicatedStateSuite = function () {
         participants: {},
         properties: {
           implementation: {
-            type: "black-hole",
+            type: stateType,
           }
         }
       };
@@ -105,7 +105,7 @@ const replicatedStateSuite = function () {
     setUp: LH.registerAgencyTestBegin,
     tearDown: LH.registerAgencyTestEnd,
 
-    testCreateReplicatedState: function () {
+    ["testCreateReplicatedState_" + stateType]: function () {
       const logId = LH.nextUniqueLogId();
       const servers = _.sampleSize(LH.dbservers, 3);
       const leader = servers[0];
@@ -113,7 +113,7 @@ const replicatedStateSuite = function () {
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
     },
 
-    testCheckTimestampSnapshotStatus: function () {
+    ["testCheckTimestampSnapshotStatus_" + stateType]: function () {
       const logId = LH.nextUniqueLogId();
       const servers = _.sampleSize(LH.dbservers, 3);
       const leader = servers[0];
@@ -127,7 +127,7 @@ const replicatedStateSuite = function () {
       }
     },
 
-    testReplicatedStateUpdateParticipantGeneration: function () {
+    ["testReplicatedStateUpdateParticipantGeneration_" + stateType]: function () {
       const logId = LH.nextUniqueLogId();
       const servers = _.sampleSize(LH.dbservers, 3);
       const leader = servers[0];
@@ -146,7 +146,7 @@ const replicatedStateSuite = function () {
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
     },
 
-    testReplicatedStateChangeLeader: function () {
+    ["testReplicatedStateChangeLeader_" + stateType]: function () {
       const logId = LH.nextUniqueLogId();
       const servers = _.sampleSize(LH.dbservers, 3);
       const leader = servers[0];
@@ -163,7 +163,7 @@ const replicatedStateSuite = function () {
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
     },
 
-    testReplicatedStateIncreaseSnapshotGen: function () {
+    ["testReplicatedStateIncreaseSnapshotGen_" + stateType]: function () {
       const logId = LH.nextUniqueLogId();
       const servers = _.sampleSize(LH.dbservers, 3);
       const leader = servers[0];
@@ -182,7 +182,7 @@ const replicatedStateSuite = function () {
       LH.waitFor(spreds.replicatedStateIsReady(database, logId, servers));
     },
 
-    testReplicatedStateDropFollower: function () {
+    ["testReplicatedStateDropFollower_" + stateType]: function () {
       const logId = LH.nextUniqueLogId();
       const servers = _.sampleSize(LH.dbservers, 3);
       const leader = servers[0];
@@ -210,5 +210,12 @@ const replicatedStateSuite = function () {
   };
 };
 
-jsunity.run(replicatedStateSuite);
+const suiteWithState = function (stateType) {
+  return function () {
+    return replicatedStateSuite(stateType);
+  };
+};
+
+jsunity.run(suiteWithState("black-hole"));
+jsunity.run(suiteWithState("prototype"));
 return jsunity.done();

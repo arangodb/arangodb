@@ -125,7 +125,7 @@ struct PrototypeStateMachineTest : test::ReplicatedLogTest {
       std::make_shared<MockPrototypeStorageInterface>();
 };
 
-TEST_F(PrototypeStateMachineTest, prorotype_core_flush) {
+TEST_F(PrototypeStateMachineTest, prototype_core_flush) {
   auto logId = LogId{1};
   auto followerLog = makeReplicatedLog(logId);
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");

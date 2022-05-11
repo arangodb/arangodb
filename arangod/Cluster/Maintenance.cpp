@@ -98,7 +98,8 @@ static std::shared_ptr<VPackBuilder> compareRelevantProps(
     VPackSlice const& first, VPackSlice const& second) {
   static std::vector<std::string> const compareProperties{
       WAIT_FOR_SYNC, SCHEMA, CACHE_ENABLED,
-      StaticStrings::InternalValidatorTypes};
+      StaticStrings::InternalValidatorTypes,
+      StaticStrings::GraphSmartGraphAttribute};
   auto result = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder b(result.get());
@@ -920,8 +921,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
                                               ->vec());
       if (planLogInDatabaseSlice.isObject()) {
         for (auto [key, value] : VPackObjectIterator(planLogInDatabaseSlice)) {
-          auto spec =
-              agency::LogPlanSpecification(agency::from_velocypack, value);
+          auto spec = agency::LogPlanSpecification::fromVelocyPack(value);
           planLogsInDatabase.emplace(spec.id, std::move(spec));
         }
       }
@@ -1158,20 +1158,29 @@ arangodb::Result arangodb::maintenance::executePlan(
       feature.addAction(std::move(action), false);
     } else {
       TRI_ASSERT(action->has(SHARD));
+      TRI_ASSERT(action->has(DATABASE));
 
       std::string shardName = action->get(SHARD);
       bool ok = feature.lockShard(shardName, action);
-      TRI_ASSERT(ok);
-      try {
-        Result res = feature.addAction(std::move(action), false);
-        if (res.fail()) {
+      if (ok) {
+        try {
+          Result res = feature.addAction(std::move(action), false);
+          if (res.fail()) {
+            feature.unlockShard(shardName);
+          }
+        } catch (std::exception const& exc) {
           feature.unlockShard(shardName);
+          LOG_TOPIC("86762", INFO, Logger::MAINTENANCE)
+              << "Exception caught when adding action, unlocking shard "
+              << shardName << " again: " << exc.what();
         }
-      } catch (std::exception const& exc) {
-        feature.unlockShard(shardName);
-        LOG_TOPIC("86762", INFO, Logger::MAINTENANCE)
-            << "Exception caught when adding action, unlocking shard "
-            << shardName << " again: " << exc.what();
+      } else {
+        TRI_ASSERT(action->has(DATABASE));
+        std::string dbName = action->get(DATABASE);
+        // For security measure let us flag this database as dirty.
+        // This ensures we are going to recheck it next turn when the shard
+        // is hopefully unlocked
+        feature.addDirty(dbName);
       }
     }
   }
@@ -2343,8 +2352,8 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         if (lshard.isObject()) {  // just in case
           VPackSlice theLeader = lshard.get("theLeader");
           if (theLeader.isString() &&
-              theLeader.compareString(maintenance::ResignShardLeadership::
-                                          LeaderNotYetKnownString) == 0) {
+              theLeader.stringView() ==
+                  maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
             needsResyncBecauseOfRestart = true;
           }
         }
@@ -2357,6 +2366,9 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         std::string leader = pservers[0].copyString();
         std::string forcedResync =
             needsResyncBecauseOfRestart ? "true" : "false";
+        std::string syncByRevision =
+            pcol.value.get(StaticStrings::SyncByRevision).isTrue() ? "true"
+                                                                   : "false";
         std::shared_ptr<ActionDescription> description =
             std::make_shared<ActionDescription>(
                 std::map<std::string, std::string>{
@@ -2366,6 +2378,7 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
                     {SHARD, std::string(shname)},
                     {THE_LEADER, std::move(leader)},
                     {FORCED_RESYNC, std::move(forcedResync)},
+                    {SYNC_BY_REVISION, syncByRevision},
                     {SHARD_VERSION, std::to_string(feature.shardVersion(
                                         std::string(shname)))}},
                 SYNCHRONIZE_PRIORITY, true);

@@ -29,6 +29,7 @@
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/types.h"
+#include "Containers/FlatHashSet.h"
 #include "IResearch/IResearchFilterOptimization.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
@@ -75,7 +76,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief node options
   struct Options {
     /// @brief a list of data source CIDs to restrict a query
-    ::arangodb::containers::HashSet<DataSourceId> sources;
+    containers::FlatHashSet<DataSourceId> sources;
 
     /// @brief use the list of sources to restrict a query
     bool restrictSources{false};
@@ -203,6 +204,18 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   ///       sort condition
   std::pair<bool, bool> volatility(bool force = false) const;
 
+  void setScorersSort(std::vector<std::pair<size_t, bool>>&& sort,
+                      size_t limit) {
+    _scorersSort = std::move(sort);
+    _scorersSortLimit = limit;
+  }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  size_t getScorersSortLimit() const noexcept { return _scorersSortLimit; }
+
+  auto getScorersSort() const noexcept { return std::span(_scorersSort); }
+#endif
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<aql::ExecutionBlock> createBlock(
       aql::ExecutionEngine& engine,
@@ -277,7 +290,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
         std::vector<aql::latematerialized::NodeWithAttrsColumn> const&
             nodesToChange);
 
-    bool canVariablesBeReplaced(aql::CalculationNode* calclulationNode) const;
+    bool canVariablesBeReplaced(aql::CalculationNode* calculationNode) const;
 
     ViewVarsInfo replaceViewVariables(
         std::vector<aql::CalculationNode*> const& calcNodes,
@@ -355,6 +368,10 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief IResearchViewNode options
   Options _options;
+
+  /// @brief internal order for scorers
+  std::vector<std::pair<size_t, bool>> _scorersSort;
+  size_t _scorersSortLimit{0};
 };  // IResearchViewNode
 
 }  // namespace iresearch

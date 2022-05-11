@@ -385,6 +385,9 @@ std::string const StaticStrings::Spearhead("spearhead");
 std::string const StaticStrings::TargetConfig("targetConfig");
 std::string const StaticStrings::Term("term");
 std::string const StaticStrings::CommitIndex("commitIndex");
+std::string const StaticStrings::FirstIndex("firstIndex");
+std::string const StaticStrings::ReleaseIndex("releaseIndex");
+std::string const StaticStrings::LowestIndexToKeep("lowestIndexToKeep");
 std::string const StaticStrings::Outcome("outcome");
 
 // Generic attribute names

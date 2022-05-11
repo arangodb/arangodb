@@ -1474,7 +1474,7 @@ RecoveryState RocksDBEngine::recoveryState() noexcept {
 // current recovery tick
 TRI_voc_tick_t RocksDBEngine::recoveryTick() noexcept {
   return TRI_voc_tick_t(
-      server().getFeature<RocksDBRecoveryManager>().recoveryTick());
+      server().getFeature<RocksDBRecoveryManager>().recoverySequenceNumber());
 }
 
 void RocksDBEngine::scheduleTreeRebuild(TRI_voc_tick_t database,
