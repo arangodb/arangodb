@@ -27,6 +27,7 @@ import { omit, pick } from "lodash";
 import { JsonEditor as Editor } from 'jsoneditor-react';
 import { UrlParametersContext } from "./url-parameters-context";
 import URLPARAMETERS from "./UrlParameters";
+import ButtonScrollTo from "./ButtonScrollTo";
 import FetchData from "./FetchData";
 import G6FuncComponent from "./G6FuncComponent";
 import './tooltip.css';
@@ -796,7 +797,7 @@ const G6JsGraph = () => {
   }
 
   const lookUpDocument = (document) => {
-    const documentId = document.item._cfg.id
+    const documentId = document.item._cfg.id;
     const slashPos = documentId.indexOf("/");
     const documentDataObject = {
       "keys": [
@@ -879,10 +880,19 @@ const G6JsGraph = () => {
         }
 
         // <UrlParametersContext.Provider value={urlParameters}>
+        //<AttributesInfo attributes={lookedUpData} />
+        /*
+        // Test Buttons
+        <button onClick={() => printGraphData()}>Print graphData</button>
+        <button onClick={() => currentUrlParams()}>current Url Params</button>
+        <button onClick={() => testApiParams()}>Test API Params</button>
+        <button onClick={() => changeGraphDataTest()}>Change graph data test</button>
+        <button onClick={() => updateGraphDataWithEdge(edgeModelToAdd)}>Add edge to graph drawing</button>
+        <div>urlParameters: {JSON.stringify(urlParameters)}</div>
+        */
         
   return (
     <div>
-      <button onClick={() => printGraphData()}>Print graphData</button>
       <UrlParametersContext.Provider value={[urlParameters, setUrlParameters, vertexCollectionsColors]}>
 
         <EditModal
@@ -997,10 +1007,7 @@ const G6JsGraph = () => {
         >
           <strong>Add node</strong>
         </AddNodeModal2>
-        <button onClick={() => currentUrlParams()}>current Url Params</button>
-        <button onClick={() => testApiParams()}>Test API Params</button>
-        <button onClick={() => changeGraphDataTest()}>Change graph data test</button>
-        <button onClick={() => updateGraphDataWithEdge(edgeModelToAdd)}>Add edge to graph drawing</button>
+        
 
         <GraphView
               data={graphData}
@@ -1030,8 +1037,10 @@ const G6JsGraph = () => {
               onGraphDataLoaded={(newGraphData) => setGraphData(newGraphData)}
               vertexCollectionsColors={vertexCollectionsColors}
               nodeColor={urlParameters.nodeColor}
+              edgeType={urlParameters.edgeType}
         />
         <AttributesInfo attributes={lookedUpData} />
+        <ButtonScrollTo />
       </UrlParametersContext.Provider>
     </div>
   );
