@@ -42,6 +42,24 @@ namespace arangodb::replication2::replicated_log {
 using ActionContext =
     ModifyContext<LogPlanSpecification, LogCurrentSupervision>;
 
+/* The empty action signifies that no action has been put
+ * into an action context yet; we use a seprarte action
+ * instead of a std::optional<Action>, because it is less
+ * prone to crashes and undefined behaviour
+ */
+struct EmptyAction {
+  static constexpr std::string_view name = "EmptyAction";
+
+  explicit EmptyAction(){};
+
+  auto execute(ActionContext& ctx) const -> void {}
+};
+template<typename Inspector>
+auto inspect(Inspector& f, EmptyAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(f.field("type", hack));
+}
+
 /*
  * This action is placed into the supervision action to prevent
  * any other action from taking place.
@@ -286,8 +304,14 @@ auto inspect(Inspector& f, ConvergedToTargetAction& x) {
                             f.field("version", x.version));
 }
 
+/* NOTE!
+ *
+ * EmptyAction *has* *to* *be* first, as the default constructor
+ * of a variant constructs the variant with index 0
+ *
+ */
 using Action =
-    std::variant<NoActionPossibleAction, AddLogToPlanAction,
+    std::variant<EmptyAction, NoActionPossibleAction, AddLogToPlanAction,
                  CurrentNotAvailableAction, SwitchLeaderAction,
                  WriteEmptyTermAction, LeaderElectionAction,
                  UpdateParticipantFlagsAction, AddParticipantToPlanAction,

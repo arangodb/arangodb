@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <variant>
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
 
@@ -37,7 +38,7 @@ struct SupervisionContext {
 
   template<typename ActionType, typename... Args>
   void createAction(Args&&... args) {
-    if (!_action.has_value()) {
+    if (!std::holds_alternative<EmptyAction>(_action)) {
       _action.emplace<ActionType>(ActionType{std::forward<Args>(args)...});
     }
   }
@@ -51,14 +52,18 @@ struct SupervisionContext {
 
   void enableErrorReporting() noexcept { _isErrorReportingEnabled = true; }
 
-  auto hasAction() noexcept -> bool { return _action.has_value(); }
-  auto getAction() -> Action& { return *_action; }
+  auto hasAction() noexcept -> bool {
+    return not std::holds_alternative<EmptyAction>(_action);
+  }
+  auto getAction() -> Action& { return _action; }
   auto getReport() noexcept -> LogCurrentSupervision::StatusReport& {
     return _reports;
   }
 
   auto hasUpdates() noexcept -> bool {
-    return _action.has_value() || !_reports.empty();
+    return (not(std::holds_alternative<EmptyAction>(_action) or
+                std::holds_alternative<NoActionPossibleAction>(_action))) or
+           !_reports.empty();
   }
 
   auto isErrorReportingEnabled() const noexcept {
@@ -70,7 +75,7 @@ struct SupervisionContext {
 
  private:
   bool _isErrorReportingEnabled{true};
-  std::optional<Action> _action;
+  Action _action;
   LogCurrentSupervision::StatusReport _reports;
 };
 

@@ -31,12 +31,15 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
+#include <fmt/core.h>
+#include <variant>
+
 using namespace arangodb::replication2::agency;
 namespace paths = arangodb::cluster::paths::aliases;
 
 namespace arangodb::replication2::replicated_log {
 
-auto executeAction(Log log, Action &action) -> ActionContext {
+auto executeAction(Log log, Action& action) -> ActionContext {
   auto currentSupervision =
       std::invoke([&]() -> std::optional<LogCurrentSupervision> {
         if (log.current.has_value()) {
@@ -47,8 +50,9 @@ auto executeAction(Log log, Action &action) -> ActionContext {
       });
 
   auto ctx = ActionContext{std::move(log.plan), std::move(currentSupervision)};
-  std::visit([&](auto &action) { action.execute(ctx); }, action);
+
+  std::visit([&](auto&& action) { action.execute(ctx); }, action);
   return ctx;
 }
 
-} // namespace arangodb::replication2::replicated_log
+}  // namespace arangodb::replication2::replicated_log
