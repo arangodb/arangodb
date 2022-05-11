@@ -34,14 +34,14 @@ class CalculationNodeVarFinder final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   Variable const* _lookingFor;
 
-  ::arangodb::containers::SmallVector<ExecutionNode*>& _out;
+  containers::SmallVector<ExecutionNode*, 8>& _out;
 
   VarSet _currentUsedVars;
 
  public:
   CalculationNodeVarFinder(
       Variable const* var,
-      ::arangodb::containers::SmallVector<ExecutionNode*>& out) noexcept;
+      containers::SmallVector<ExecutionNode*, 8>& out) noexcept;
 
   bool before(ExecutionNode*) override final;
 };

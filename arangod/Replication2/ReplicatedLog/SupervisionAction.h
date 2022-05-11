@@ -520,8 +520,8 @@ using Action = std::variant<
     ConvergedToTargetAction>;
 
 auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
-             std::optional<LogPlanSpecification> plan,
-             std::optional<LogCurrent> current,
+             std::optional<LogPlanSpecification> const& plan,
+             std::optional<LogCurrent> const& current,
              arangodb::agency::envelope envelope) -> arangodb::agency::envelope;
 
 auto to_string(Action const& action) -> std::string_view;

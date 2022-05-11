@@ -27,6 +27,7 @@
 #include "Containers/FlatHashMap.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "IResearch/IResearchKludge.h"
+#include "IResearch/ViewSnapshot.h"
 #include "Transaction/Status.h"
 #include "VocBase/LogicalView.h"
 
@@ -81,31 +82,8 @@ class IResearchView final : public LogicalView {
   using AsyncLinkPtr = std::shared_ptr<AsyncLinkHandle>;
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a snapshot representation of the view with ability to query for cid
-  //////////////////////////////////////////////////////////////////////////////
-  class Snapshot : public irs::index_reader {
-   public:
-    // @return cid of the sub-reader at operator['offset'] or 0 if undefined
-    virtual DataSourceId cid(size_t offset) const noexcept = 0;
-  };
-
-  /// @enum snapshot getting mode
-  enum class SnapshotMode {
-    /// @brief lookup existing snapshot from a transaction
-    Find,
-
-    /// @brief lookup existing snapshop from a transaction
-    /// or create if it doesn't exist
-    FindOrCreate,
-
-    /// @brief retrieve the latest view snapshot and cache
-    /// it in a transaction
-    SyncAndReplace
-  };
-
   static constexpr std::pair<ViewType, std::string_view> typeInfo() noexcept {
-    return {ViewType::kSearch, StaticStrings::DataSourceType};
+    return {ViewType::kSearch, StaticStrings::ViewType};
   }
 
   ~IResearchView() final;
@@ -144,24 +122,6 @@ class IResearchView final : public LogicalView {
   Result properties(velocypack::Slice properties, bool isUserRequest,
                     bool partialUpdate) final;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @param shards the list of shard to restrict the snapshot to
-  ///        nullptr == use all registered links
-  ///        !nullptr && shard not registred then return nullptr
-  ///        if mode == Find && list found doesn't match then return nullptr
-  /// @param key the specified key will be as snapshot indentifier
-  ///        in a transaction
-  ///        (nullptr == view address will be used)
-  /// @return pointer to an index reader containing the datastore record
-  ///         snapshot associated with 'state'
-  ///         (nullptr == no view snapshot associated with the specified state)
-  ///         if force == true && no snapshot -> associate current snapshot
-  ////////////////////////////////////////////////////////////////////////////////
-  Snapshot const* snapshot(
-      transaction::Methods& trx, SnapshotMode mode = SnapshotMode::Find,
-      containers::FlatHashSet<DataSourceId> const* shards = nullptr,
-      void const* key = nullptr) const;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unlink remove 'cid' from the persisted list of tracked collection
   ///        IDs
@@ -196,6 +156,15 @@ class IResearchView final : public LogicalView {
     return _meta._storedValues;
   }
 
+  auto linksReadLock() const noexcept {
+    return std::shared_lock<boost::upgrade_mutex>{_mutex};
+  }
+
+  LinkLock linkLock(std::shared_lock<boost::upgrade_mutex> const& guard,
+                    DataSourceId cid) const noexcept;
+
+  ViewSnapshot::Links getLinks() const noexcept;
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchView object
@@ -221,8 +190,8 @@ class IResearchView final : public LogicalView {
   AsyncViewPtr _asyncSelf;
   // 'this' for the lifetime of the view (for use with asynchronous calls)
   // (AsyncLinkPtr may be nullptr on single-server if link did not come up yet)
-  using Links = containers::FlatHashMap<DataSourceId, AsyncLinkPtr>;
-  Links _links;
+  using Indexes = containers::FlatHashMap<DataSourceId, AsyncLinkPtr>;
+  Indexes _links;
   IResearchViewMeta _meta;              // the view configuration
   mutable boost::upgrade_mutex _mutex;  // for '_meta', '_links'
   std::mutex _updateLinksLock;          // prevents simultaneous 'updateLinks'
@@ -232,11 +201,6 @@ class IResearchView final : public LogicalView {
 
   IResearchView(TRI_vocbase_t& vocbase, velocypack::Slice const& info,
                 IResearchViewMeta&& meta);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief persist data store states for all known links to permanent storage
-  //////////////////////////////////////////////////////////////////////////////
-  Result commitUnsafe();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief called when a view's properties are updated (i.e. delta-modified)

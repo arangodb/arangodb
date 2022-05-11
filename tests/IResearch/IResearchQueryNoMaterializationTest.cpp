@@ -78,7 +78,7 @@ class IResearchQueryNoMaterializationTest : public IResearchQueryTest {
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE(slice.get("type").copyString() ==
-                arangodb::iresearch::StaticStrings::DataSourceType);
+                arangodb::iresearch::StaticStrings::ViewType);
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
@@ -466,7 +466,7 @@ TEST_P(IResearchQueryNoMaterializationTest, testStoredValuesRecord) {
   auto slice = builder.slice();
   EXPECT_TRUE(slice.isObject());
   EXPECT_TRUE(slice.get("type").copyString() ==
-              arangodb::iresearch::StaticStrings::DataSourceType);
+              arangodb::iresearch::StaticStrings::ViewType);
   EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
   auto tmpSlice = slice.get("links");
   EXPECT_TRUE(tmpSlice.isObject() && 1 == tmpSlice.length());
@@ -630,7 +630,7 @@ TEST_P(IResearchQueryNoMaterializationTest,
   auto slice = builder.slice();
   EXPECT_TRUE(slice.isObject());
   EXPECT_TRUE(slice.get("type").copyString() ==
-              arangodb::iresearch::StaticStrings::DataSourceType);
+              arangodb::iresearch::StaticStrings::ViewType);
   EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
   auto tmpSlice = slice.get("links");
   EXPECT_TRUE(tmpSlice.isObject() && 1 == tmpSlice.length());

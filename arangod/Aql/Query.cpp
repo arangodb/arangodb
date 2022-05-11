@@ -1593,9 +1593,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
 }
 
 void Query::injectVertexCollectionIntoGraphNodes(ExecutionPlan& plan) {
-  ::arangodb::containers::SmallVectorWithArena<ExecutionNode*>
-      graphNodesStorage;
-  auto& graphNodes = graphNodesStorage.vector();
+  containers::SmallVector<ExecutionNode*, 8> graphNodes;
 
   plan.findNodesOfType(graphNodes,
                        {ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH,
