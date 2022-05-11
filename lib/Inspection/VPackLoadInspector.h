@@ -329,6 +329,10 @@ struct VPackLoadInspectorImpl
   }
 
  protected:
+  Status::Success parseFields(velocypack::Slice* slices) {
+    return Status::Success{};
+  }
+
   template<class Arg>
   Status parseFields(velocypack::Slice* slices, Arg&& arg) {
     return parseField(*slices, std::forward<Arg>(arg));
