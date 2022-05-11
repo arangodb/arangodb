@@ -121,7 +121,7 @@ jobs:
           name: Build
           command: |
             cd build
-            make -j $(nproc) velocypack
+            make -j $(nproc)  arangodbtests_replication2 arangod arangosh arangobench arangodump arangorestore arangoimport arangoexport
       - run:
           name: CCache Statistics
           command: ccache -sv

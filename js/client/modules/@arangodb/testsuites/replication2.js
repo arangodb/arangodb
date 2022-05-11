@@ -42,7 +42,8 @@ const testPaths = {
 ////////////////////////////////////////////////////////////////////////////////
 
 function replication2Client(options) {
-  const testCases = tu.scanTestPaths(testPaths.replication2_client, options);
+  let testCases = tu.scanTestPaths(testPaths.replication2_client, options);
+  testCases = tu.splitBuckets(options, testCases);
 
   const opts = _.clone(options);
   opts.dbServers = Math.max(opts.dbServers, 3);
@@ -55,7 +56,8 @@ function replication2Client(options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function replication2Server(options) {
-  const testCases = tu.scanTestPaths(testPaths.replication2_server, options);
+  let testCases = tu.scanTestPaths(testPaths.replication2_server, options);
+  testCases = tu.splitBuckets(options, testCases);
 
   const opts = _.clone(options);
   opts.dbServers = Math.max(opts.dbServers, 6);
