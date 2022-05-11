@@ -290,4 +290,9 @@ void PrototypeLeaderState::onSnapshotCompleted() {
   handlePollResult(pollNewEntries());
 }
 
+auto PrototypeLeaderState::waitForApplied(LogIndex waitForIndex)
+    -> futures::Future<futures::Unit> {
+  return _guardedData.getLockedGuard()->waitForApplied(waitForIndex);
+}
+
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"

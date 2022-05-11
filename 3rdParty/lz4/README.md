@@ -26,25 +26,13 @@ LZ4 library is provided as open-source software using BSD 2-Clause license.
 
 |Branch      |Status   |
 |------------|---------|
-|master      | [![Build Status][travisMasterBadge]][travisLink] [![Build status][AppveyorMasterBadge]][AppveyorLink] [![coverity][coverBadge]][coverlink] |
 |dev         | [![Build Status][travisDevBadge]][travisLink]    [![Build status][AppveyorDevBadge]][AppveyorLink]                                         |
 
-[travisMasterBadge]: https://travis-ci.org/lz4/lz4.svg?branch=master "Continuous Integration test suite"
 [travisDevBadge]: https://travis-ci.org/lz4/lz4.svg?branch=dev "Continuous Integration test suite"
 [travisLink]: https://travis-ci.org/lz4/lz4
-[AppveyorMasterBadge]: https://ci.appveyor.com/api/projects/status/github/lz4/lz4?branch=master&svg=true "Windows test suite"
 [AppveyorDevBadge]: https://ci.appveyor.com/api/projects/status/github/lz4/lz4?branch=dev&svg=true "Windows test suite"
 [AppveyorLink]: https://ci.appveyor.com/project/YannCollet/lz4-1lndh
-[coverBadge]: https://scan.coverity.com/projects/4735/badge.svg "Static code analysis of Master branch"
-[coverlink]: https://scan.coverity.com/projects/4735
 
-> **Branch Policy:**
-> - The "master" branch is considered stable, at all times.
-> - The "dev" branch is the one where all contributions must be merged
-    before being promoted to master.
->   + If you plan to propose a patch, please commit into the "dev" branch,
-      or its own feature branch.
-      Direct commit to "master" are not permitted.
 
 Benchmarks
 -------------------------
@@ -95,6 +83,17 @@ It is compatible with parallel builds (`-j#`).
 [redirection]: https://www.gnu.org/prep/standards/html_node/Directory-Variables.html
 [command redefinition]: https://www.gnu.org/prep/standards/html_node/Utilities-in-Makefiles.html
 
+Building LZ4 - Using vcpkg
+
+You can download and install LZ4 using the [vcpkg](https://github.com/Microsoft/vcpkg) dependency manager:
+
+    git clone https://github.com/Microsoft/vcpkg.git
+    cd vcpkg
+    ./bootstrap-vcpkg.sh
+    ./vcpkg integrate install
+    vcpkg install lz4
+
+The LZ4 port in vcpkg is kept up to date by Microsoft team members and community contributors. If the version is out of date, please [create an issue or pull request](https://github.com/Microsoft/vcpkg) on the vcpkg repository.
 
 Documentation
 -------------------------

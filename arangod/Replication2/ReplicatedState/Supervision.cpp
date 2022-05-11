@@ -75,6 +75,9 @@ auto isParticipantSnapshotCompleted(ParticipantId const& participant,
   TRI_ASSERT(plan.participants.at(participant).generation == expectedGeneration)
       << "expected = " << expectedGeneration
       << " planned = " << plan.participants.at(participant).generation;
+  if (expectedGeneration == StateGeneration{1}) {
+    return true;
+  }
   if (auto iter = current.participants.find(participant);
       iter != current.participants.end()) {
     auto const& state = iter->second;

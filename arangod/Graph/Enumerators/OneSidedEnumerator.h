@@ -133,7 +133,8 @@ class OneSidedEnumerator : public TraversalEnumerator {
   auto getNextPath() -> std::unique_ptr<PathResultInterface> override;
 
 #ifdef USE_ENTERPRISE
-  auto smartSearch(arangodb::velocypack::Builder&) -> void override;
+  auto smartSearch(size_t amountOfExpansions, arangodb::velocypack::Builder&)
+      -> void override;
 #endif
 
   /**

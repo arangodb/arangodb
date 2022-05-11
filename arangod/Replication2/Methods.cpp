@@ -34,16 +34,17 @@
 #include "Replication2/AgencyMethods.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "VocBase/vocbase.h"
 
-#include "Methods.h"
-#include "Agency/AsyncAgencyComm.h"
-#include "Random/RandomGenerator.h"
 #include "Agency/AgencyPaths.h"
+#include "Agency/AsyncAgencyComm.h"
+#include "Methods.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -75,8 +76,15 @@ struct ReplicatedLogMethodsDBServer final
   }
 
   auto getReplicatedLogs() const -> futures::Future<std::unordered_map<
-      arangodb::replication2::LogId, replicated_log::LogStatus>> override {
-    return vocbase.getReplicatedLogs();
+      arangodb::replication2::LogId,
+      std::variant<replicated_log::LogStatus, ParticipantsList>>> override {
+    auto result = std::unordered_map<
+        arangodb::replication2::LogId,
+        std::variant<replicated_log::LogStatus, ParticipantsList>>{};
+    for (auto& replicatedLog : vocbase.getReplicatedLogs()) {
+      result[replicatedLog.first] = std::move(replicatedLog.second);
+    }
+    return result;
   }
 
   auto getLocalStatus(LogId id) const
@@ -422,8 +430,22 @@ struct ReplicatedLogMethodsCoordinator final
   }
 
   auto getReplicatedLogs() const -> futures::Future<std::unordered_map<
-      arangodb::replication2::LogId, replicated_log::LogStatus>> override {
-    return vocbase.getReplicatedLogs();
+      arangodb::replication2::LogId,
+      std::variant<replicated_log::LogStatus, ParticipantsList>>> override {
+    auto logsParticipants =
+        clusterInfo.getReplicatedLogsParticipants(vocbase.name());
+
+    if (logsParticipants.fail()) {
+      THROW_ARANGO_EXCEPTION(logsParticipants.result());
+    }
+
+    auto result = std::unordered_map<
+        arangodb::replication2::LogId,
+        std::variant<replicated_log::LogStatus, ParticipantsList>>{};
+    for (auto& replicatedLog : logsParticipants.get()) {
+      result[replicatedLog.first] = std::move(replicatedLog.second);
+    }
+    return result;
   }
 
   [[noreturn]] auto getLocalStatus(LogId id) const
@@ -766,8 +788,9 @@ struct ReplicatedLogMethodsCoordinator final
       auto& read = result.get();
       auto status = statusFromResult(read.asResult());
       if (read.ok() && !read.value().isNone()) {
-        status.response.emplace(arangodb::replication2::agency::from_velocypack,
-                                read.value());
+        status.response.emplace(
+            arangodb::replication2::agency::LogCurrentSupervision::
+                fromVelocyPack(read.value()));
       }
 
       return status;

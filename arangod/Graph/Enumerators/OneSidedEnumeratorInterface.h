@@ -99,7 +99,8 @@ class TraversalEnumerator {
   virtual auto prepareIndexExpressions(aql::Ast* ast) -> void = 0;
   virtual auto getNextPath() -> std::unique_ptr<PathResultInterface> = 0;
 #ifdef USE_ENTERPRISE
-  virtual auto smartSearch(arangodb::velocypack::Builder& result) -> void = 0;
+  virtual auto smartSearch(size_t amountOfExpansions,
+                           arangodb::velocypack::Builder& result) -> void = 0;
 #endif
   virtual bool skipPath() = 0;
   virtual auto destroyEngines() -> void = 0;

@@ -84,8 +84,11 @@ LogUnconfiguredParticipant::GuardedData::GuardedData(
 
 auto LogUnconfiguredParticipant::waitForResign()
     -> futures::Future<futures::Unit> {
-  return _guardedData.doUnderLock(
-      [](auto& self) { return self.waitForResign(); });
+  auto&& [future, action] = _guardedData.getLockedGuard()->waitForResign();
+
+  action.fire();
+
+  return std::move(future);
 }
 
 auto LogUnconfiguredParticipant::copyInMemoryLog() const -> InMemoryLog {
@@ -101,7 +104,27 @@ auto LogUnconfiguredParticipant::GuardedData::resign() && -> std::tuple<
   return std::make_tuple(std::move(_logCore), std::move(defer));
 }
 
+auto LogUnconfiguredParticipant::GuardedData::didResign() const noexcept
+    -> bool {
+  return _logCore == nullptr;
+}
+
 auto LogUnconfiguredParticipant::GuardedData::waitForResign()
-    -> futures::Future<futures::Unit> {
-  return _waitForResignQueue.addWaitFor();
+    -> std::pair<futures::Future<futures::Unit>, DeferredAction> {
+  if (!didResign()) {
+    auto future = _waitForResignQueue.addWaitFor();
+    return {std::move(future), DeferredAction{}};
+  } else {
+    TRI_ASSERT(_waitForResignQueue.empty());
+    auto promise = futures::Promise<futures::Unit>{};
+    auto future = promise.getFuture();
+
+    auto action =
+        DeferredAction([promise = std::move(promise)]() mutable noexcept {
+          TRI_ASSERT(promise.valid());
+          promise.setValue();
+        });
+
+    return {std::move(future), std::move(action)};
+  }
 }
