@@ -50,6 +50,7 @@ let usersTests = {
     try {
       this.usersCount = userManager.all().length;
     } catch (x) {
+      print(x.message)
       obj.results[te] = {
         status: false,
         message: 'failed to fetch the users on the system before the test: ' + x.message
@@ -61,17 +62,29 @@ let usersTests = {
     return true;
   },
   runCheck: function (obj, te) {
-    if (userManager.all().length !== this.usersCount) {
-      obj.continueTesting = false;
+    try {
+      if (userManager.all().length !== this.usersCount) {
+        obj.continueTesting = false;
+        obj.results[te] = {
+          status: false,
+          message: 'Cleanup of users missing - found users left over: [ ' +
+            JSON.stringify(userManager.all()) +
+            ' ] - Original test status: ' +
+            JSON.stringify(obj.results[te])
+        };
+        return false;
+      }
+    } catch (x) {
+      print(x.message)
       obj.results[te] = {
         status: false,
-        message: 'Cleanup of users missing - found users left over: [ ' +
-          JSON.stringify(userManager.all()) +
-          ' ] - Original test status: ' +
-          JSON.stringify(obj.results[te])
+        message: 'failed to fetch the users on the system before the test: ' + x.message
       };
+      obj.continueTesting = false;
+      obj.serverDead = true;
       return false;
     }
+    print(true)
     return true;
   }
 };
@@ -315,10 +328,11 @@ class testRunner {
   // / @brief checks whether the SUT is alive and well:
   // //////////////////////////////////////////////////////////////////////////////
   healthCheck() {
-    if (pu.arangod.check.instanceAlive(this.instanceManager, this.options) &&
+    if (this.instanceManager.checkInstanceAlive() &&
         this.alive()) {
       return true;
     } else {
+      print('baddddd')
       this.continueTesting = false;
       return false;
     }
@@ -403,6 +417,7 @@ class testRunner {
   ////////////////////////////////////////////////////////////////////////////////
   // Main loop - launch the SUT, iterate over testList, shut down
   run(testList) {
+    this.continueTesting = true;
     this.testList = testList;
     if (this.testList.length === 0) {
       print('Testsuite is empty!');
@@ -436,7 +451,7 @@ class testRunner {
                                                   this.serverOptions,
                                                   this.friendlyName);
     this.instanceManager.prepareInstance();
-    
+    this.instanceManager.launchTcpDump("");
     if (this.instanceManager.launchInstance() === false) {
       this.customInstanceInfos['startFailed'] = this.startFailed();
       return {
@@ -446,7 +461,7 @@ class testRunner {
         }
       };
     }
-
+    this.instanceManager.reconnect();
     this.customInstanceInfos['postStart'] = this.postStart();
     if (this.customInstanceInfos.postStart.state === false) {
       let shutdownStatus = this.customInstanceInfos.postStart.shutdown;
@@ -479,12 +494,15 @@ class testRunner {
         
         for (let j = 0; j < this.cleanupChecks.length; j++) {
           if (!this.continueTesting || !this.cleanupChecks[j].setUp(this, te)) {
+            print(RED+'server pretest "' + this.cleanupChecks[j].name + '" failed!'+RESET);
+            j = this.cleanupChecks.length;
             continue;
           }
         }
         while (first || this.options.loopEternal) {
           if (!this.continueTesting) {
             this.abortTestOnError(te);
+            i = this.testList.length;
             break;
           }
 
@@ -527,7 +545,9 @@ class testRunner {
           if (this.healthCheck()) {
             this.continueTesting = true;
             for (let j = 0; j < this.cleanupChecks.length; j++) {
-              if (!this.continueTesting || this.cleanupChecks[j].runCheck(this, te)) {
+              if (!this.continueTesting || !this.cleanupChecks[j].runCheck(this, te)) {
+                print(RED+'server posttest "' + this.cleanupChecks[j].name + '" failed!'+RESET);
+                j = this.cleanupChecks.length;
                 continue;
               }
             }

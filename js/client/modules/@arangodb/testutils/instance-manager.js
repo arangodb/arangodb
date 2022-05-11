@@ -89,7 +89,7 @@ class instanceManager {
   }
   
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief starts any sort server instance
+  // / @brief prepares all instances required for a deployment
   // /
   // / protocol must be one of ["tcp", "ssl", "unix"]
   // //////////////////////////////////////////////////////////////////////////////
@@ -177,7 +177,11 @@ class instanceManager {
     const startTime = time();
     try {
       this.arangods.forEach(arangod => arangod.startArango());
-      
+      if (this.options.cluster) {
+        this.checkClusterAlive();
+      } else if (this.options.activefailover) {
+        this.detectCurrentLeader();
+      }
       this.launchFinalize(startTime);
       return true;
     } catch (e) {
@@ -199,6 +203,91 @@ class instanceManager {
                       );
     }
     this.launchFinalize(startTime);
+  }
+  printProcessInfo(startTime) {
+    if (this.options.noStartStopLogs) {
+      return;
+    }
+    print(CYAN + Date() + ' up and running in ' + (time() - startTime) + ' seconds' + RESET);
+    var matchPort = /.*:.*:([0-9]*)/;
+    var ports = [];
+    var processInfo = [];
+    this.arangods.forEach(arangod => {
+      let res = matchPort.exec(arangod.endpoint);
+      if (!res) {
+        return;
+      }
+      var port = res[1];
+      if (arangod.isRole(instanceRole.agent)) {
+        if (this.options.sniffAgency) {
+          ports.push('port ' + port);
+        }
+      } else if (arangod.isRole(instanceRole.dbServer)) {
+        if (this.options.sniffDBServers) {
+          ports.push('port ' + port);
+        }
+      } else {
+        ports.push('port ' + port);
+      }
+      processInfo.push('  [' + arangod.name +
+                       '] up with pid ' + arangod.pid +
+                       ' - ' + arangod.dataDir);
+    });
+    print(processInfo.join('\n') + '\n');
+  }
+  launchTcpDump(name) {
+    if (this.options.sniff === undefined || this.options.sniff === false) {
+      return;
+    }
+    this.options.cleanup = false;
+    let device = 'lo';
+    if (platform.substr(0, 3) === 'win') {
+      device = '1';
+    }
+    if (this.options.sniffDevice !== undefined) {
+      device = this.options.sniffDevice;
+    }
+
+    let prog = 'tcpdump';
+    if (platform.substr(0, 3) === 'win') {
+      prog = 'c:/Program Files/Wireshark/tshark.exe';
+    }
+    if (this.options.sniffProgram !== undefined) {
+      prog = this.options.sniffProgram;
+    }
+    
+    let pcapFile = fs.join(this.rootDir, name + 'out.pcap');
+    let args;
+    if (prog === 'ngrep') {
+      args = ['-l', '-Wbyline', '-d', device];
+    } else {
+      args = ['-ni', device, '-s0', '-w', pcapFile];
+    }
+    for (let port = 0; port < ports.length; port ++) {
+      if (port > 0) {
+        args.push('or');
+      }
+      args.push(ports[port]);
+    }
+
+    if (this.options.sniff === 'sudo') {
+      args.unshift(prog);
+      prog = 'sudo';
+    }
+    print(CYAN + 'launching ' + prog + ' ' + JSON.stringify(args) + RESET);
+    tcpdump = executeExternal(prog, args);
+  }
+  stopTcpDump() {
+    if (tcpdump !== undefined) {
+      print(CYAN + "Stopping tcpdump" + RESET);
+      killExternal(tcpdump.pid);
+      try {
+        statusExternal(tcpdump.pid, true);
+      } catch (x)
+      {
+        print(Date() + ' wasn\'t able to stop tcpdump: ' + x.message );
+      }
+    }
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -271,33 +360,11 @@ class instanceManager {
   // //////////////////////////////////////////////////////////////////////////////
 
   getMemProfSnapshot(instanceInfo, options, counter) {
-    if (options.memprof) {
+    if (this.options.memprof) {
       let opts = Object.assign(pu.makeAuthorizationHeaders(this.options),
                                { method: 'GET' });
 
-      instanceInfo.arangods.forEach((arangod) => {
-        let fn = fs.join(arangod.rootDir, `${arangod.role}_${arangod.pid}_${counter}_.heap`);
-        let heapdumpReply = download(arangod.url + '/_admin/status?memory=true', opts);
-        if (heapdumpReply.code === 200) {
-          fs.write(fn, heapdumpReply.body);
-          print(CYAN + Date() + ` Saved ${fn}` + RESET);
-        } else {
-          print(RED + Date() + ` Acquiring Heapdump for ${fn} failed!` + RESET);
-          print(heapdumpReply);
-        }
-
-        let fnMetrics = fs.join(arangod.rootDir, `${arangod.role}_${arangod.pid}_${counter}_.metrics`);
-        let metricsReply = download(arangod.url + '/_admin/metrics/v2', opts);
-        if (metricsReply.code === 200) {
-          fs.write(fnMetrics, metricsReply.body);
-          print(CYAN + Date() + ` Saved ${fnMetrics}` + RESET);
-        } else if (metricsReply.code === 503) {
-          print(RED + Date() + ` Acquiring metrics for ${fnMetrics} not possible!` + RESET);
-        } else {
-          print(RED + Date() + ` Acquiring metrics for ${fnMetrics} failed!` + RESET);
-          print(metricsReply);
-        }
-      });
+      this.arangods.forEach(arangod.getMemprofSnapshot(opts));
     }
   }
 
@@ -347,8 +414,8 @@ class instanceManager {
   _checkServersGOOD() {
     try {
       const health = internal.clusterHealth();
-      return instanceInfo.arangods.every((arangod) => {
-        if (arangod.role === "agent" || arangod.role === "single") {
+      return this.arangods.every((arangod) => {
+        if (arangod.isRole(instanceRole.agent) || arangod.isRole(instanceRole.single)) {
           return true;
         }
         if (health.hasOwnProperty(arangod.id)) {
@@ -845,16 +912,6 @@ class instanceManager {
     instanceInfo.arangods.forEach(arangod => {
       readAssertLogLines(arangod.rootDir);
     });
-    if (tcpdump !== undefined) {
-      print(CYAN + "Stopping tcpdump" + RESET);
-      killExternal(tcpdump.pid);
-      try {
-        statusExternal(tcpdump.pid, true);
-      } catch (x)
-      {
-        print(Date() + ' wasn\'t able to stop tcpdump: ' + x.message );
-      }
-    }
     cleanupDirectories.unshift(instanceInfo.rootDir);
     return shutdownSuccess;
   }
@@ -896,7 +953,6 @@ class instanceManager {
 
   checkClusterAlive() {
     let httpOptions = _.clone(this.httpAuthOptions)
-    httpOptions.method = 'POST';
     httpOptions.returnBodyOnError = true;
 
     // scrape the jwt token
@@ -927,9 +983,12 @@ class instanceManager {
         let url = arangod.url;
         if (arangod.isRole(instanceRole.coordinator) && arangod.args["javascript.enabled"] !== "false") {
           url += '/_admin/aardvark/index.html';
+          httpOptions.method = 'GET';
         } else {
           url += '/_api/version';
+          httpOptions.method = 'POST';
         }
+        
         const reply = download(url, '', httpOptions);
         if (!reply.error && reply.code === 200) {
           arangod.upAndRunning = true;
@@ -976,17 +1035,20 @@ class instanceManager {
       print("Determining server IDs");
     }
     this.arangods.forEach(arangod => {
-      if (arangod.suspended) {
+      if (arangod.suspended || arangod.pid === null) {
         return;
       }
       // agents don't support the ID call...
-      if (!arangod.isRole(instanceRole.agent) && !arangod.isRole(instanceRole.single)) {
+      if (!arangod.isRole(instanceRole.agent) &&
+          !arangod.isRole(instanceRole.single)) {
         let reply;
         try {
+          httpOptions.method = 'GET';
           reply = download(arangod.url + '/_db/_system/_admin/server/id', '', httpOptions);
         } catch (e) {
           print(RED + Date() + " error requesting server '" + JSON.stringify(arangod) + "' Error: " + JSON.stringify(e) + RESET);
           if (e instanceof ArangoError && e.message.search('Connection reset by peer') >= 0) {
+            httpOptions.method = 'GET';
             internal.sleep(5);
             reply = download(arangod.url + '/_db/_system/_admin/server/id', '', httpOptions);
           } else {
@@ -1019,7 +1081,7 @@ class instanceManager {
   reconnect()
   {
     // we need to find the leading server
-    if (options.activefailover) {
+    if (this.options.activefailover) {
       internal.wait(5.0, false);
       let d = this.detectCurrentLeader();
       if (d === undefined) {
@@ -1041,6 +1103,17 @@ class instanceManager {
       }
     }
     return true;
+  }
+  /// make arangosh use HTTP, VST or HTTP2 according to option
+  findEndpoint() {
+    let endpoint = this.endpoint;
+    if (this.options.vst) {
+      endpoint = endpoint.replace(/.*\/\//, 'vst://');
+    } else if (this.options.http2) {
+      endpoint = endpoint.replace(/.*\/\//, 'h2://');
+    }
+    print("using endpoint ", endpoint);
+    return endpoint;
   }
 
   launchFinalize(startTime) {
@@ -1098,88 +1171,25 @@ class instanceManager {
       this.urls = [this.url];
     } else {
       this.arangods.forEach(arangod => {
-        if (arangod.role === 'coordinator') {
+        if (arangod.isRole(instanceRole.coordinator)) {
           this.urls.push(arangod.url);
           this.endpoints.push(arangod.endpoint);
         }
       });
+      if (this.endpoints.length === 0) {
+        throw new Error("Unable to find coordinator!");
+      }
+      this.url = this.urls[0];
+      this.endpoint = this.endpoints[0];
     }
-    if (!this.options.noStartStopLogs) {
-      print(CYAN + Date() + ' up and running in ' + (time() - startTime) + ' seconds' + RESET);
-    }
-    var matchPort = /.*:.*:([0-9]*)/;
-    var ports = [];
-    var processInfo = [];
-    this.arangods.forEach(arangod => {
-      let res = matchPort.exec(arangod.endpoint);
-      if (!res) {
-        return;
-      }
-      var port = res[1];
-      if (arangod.isRole(instanceRole.agent)) {
-        if (this.options.sniffAgency) {
-          ports.push('port ' + port);
-        }
-      } else if (arangod.isRole(instanceRole.dbServer)) {
-        if (this.options.sniffDBServers) {
-          ports.push('port ' + port);
-        }
-      } else {
-        ports.push('port ' + port);
-      }
-      processInfo.push('  [' + arangod.name +
-                       '] up with pid ' + arangod.pid +
-                       ' - ' + arangod.dataDir);
-    });
-
-    if (this.options.sniff !== undefined && this.options.sniff !== false) {
-      this.options.cleanup = false;
-      let device = 'lo';
-      if (platform.substr(0, 3) === 'win') {
-        device = '1';
-      }
-      if (this.options.sniffDevice !== undefined) {
-        device = this.options.sniffDevice;
-      }
-
-      let prog = 'tcpdump';
-      if (platform.substr(0, 3) === 'win') {
-        prog = 'c:/Program Files/Wireshark/tshark.exe';
-      }
-      if (this.options.sniffProgram !== undefined) {
-        prog = this.options.sniffProgram;
-      }
-
-      let pcapFile = fs.join(this.rootDir, 'out.pcap');
-      let args;
-      if (prog === 'ngrep') {
-        args = ['-l', '-Wbyline', '-d', device];
-      } else {
-        args = ['-ni', device, '-s0', '-w', pcapFile];
-      }
-      for (let port = 0; port < ports.length; port ++) {
-        if (port > 0) {
-          args.push('or');
-        }
-        args.push(ports[port]);
-      }
-
-      if (this.options.sniff === 'sudo') {
-        args.unshift(prog);
-        prog = 'sudo';
-      }
-      print(CYAN + 'launching ' + prog + ' ' + JSON.stringify(args) + RESET);
-      tcpdump = executeExternal(prog, args);
-    }
-    if (!this.options.noStartStopLogs) {
-      print(processInfo.join('\n') + '\n');
-    }
+    
+    this.printProcessInfo(startTime);
     internal.sleep(this.options.sleepBeforeStart);
     if (!this.options.disableClusterMonitor) {
       this.initProcessStats();
     }
   }
-
+  
   reStartInstance(options, instanceInfo, moreArgs) {
 
     const startTime = time();

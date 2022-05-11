@@ -454,7 +454,7 @@ class instance {
   // / @brief executes a command, possible with valgrind
   // //////////////////////////////////////////////////////////////////////////////
 
-  executeArangod () {
+  _executeArangod () {
     let cmd = pu.ARANGOD_BIN;
     let args = [];
     if (this.options.valgrind) {
@@ -498,7 +498,7 @@ class instance {
 
   startArango () {
     try {
-      this.pid = this.executeArangod().pid;
+      this.pid = this._executeArangod().pid;
     } catch (x) {
       print(Date() + ' failed to run arangod - ' + JSON.stringify(x));
 
@@ -529,7 +529,7 @@ class instance {
     try {
       Object.assign(oneInstanceInfo.args, moreArgs);
       /// TODO Y? Where?
-      oneInstanceInfo.pid = this.executeArangod(oneInstanceInfo.args).pid;
+      oneInstanceInfo.pid = this._executeArangod(oneInstanceInfo.args).pid;
     } catch (x) {
       print(Date() + ' failed to run arangod - ' + JSON.stringify(x));
 
@@ -632,7 +632,29 @@ class instance {
     return crashUtils.analyzeCrash(pu.ARANGOD_BIN, this, this.options, checkStr);
   }
 
+  getMemProfSnapshot(opts) {
+    let fn = fs.join(this.rootDir, `${arangod.role}_${arangod.pid}_${counter}_.heap`);
+    let heapdumpReply = download(this.url + '/_admin/status?memory=true', opts);
+    if (heapdumpReply.code === 200) {
+      fs.write(fn, heapdumpReply.body);
+      print(CYAN + Date() + ` Saved ${fn}` + RESET);
+    } else {
+      print(RED + Date() + ` Acquiring Heapdump for ${fn} failed!` + RESET);
+      print(heapdumpReply);
+    }
 
+    let fnMetrics = fs.join(this.rootDir, `${arangod.role}_${arangod.pid}_${counter}_.metrics`);
+    let metricsReply = download(arangod.url + '/_admin/metrics/v2', opts);
+    if (metricsReply.code === 200) {
+      fs.write(fnMetrics, metricsReply.body);
+      print(CYAN + Date() + ` Saved ${fnMetrics}` + RESET);
+    } else if (metricsReply.code === 503) {
+      print(RED + Date() + ` Acquiring metrics for ${fnMetrics} not possible!` + RESET);
+    } else {
+      print(RED + Date() + ` Acquiring metrics for ${fnMetrics} failed!` + RESET);
+      print(metricsReply);
+    }
+  }
 }
 
 
