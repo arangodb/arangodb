@@ -244,7 +244,7 @@ let failurePointsCheck = {
   name: 'failurepoints',
   setUp: function(obj, te) { return true; },
   runCheck: function(obj, te) {
-    let failurePoints = pu.checkServerFailurePoints(obj.instanceInfo);
+    let failurePoints = pu.checkServerFailurePoints(obj.instanceManager);
     if (failurePoints.length > 0) {
       obj.continueTesting = false;
       obj.results[te] = {
@@ -315,7 +315,7 @@ class testRunner {
   // / @brief checks whether the SUT is alive and well:
   // //////////////////////////////////////////////////////////////////////////////
   healthCheck() {
-    if (pu.arangod.check.instanceAlive(this.instanceInfo, this.options) &&
+    if (pu.arangod.check.instanceAlive(this.instanceManager, this.options) &&
         this.alive()) {
       return true;
     } else {
@@ -349,7 +349,7 @@ class testRunner {
       this.results['SKIPPED'].message += te;
     }
 
-    this.instanceInfo.exitStatus = 'server is gone.';
+    this.instanceManager.exitStatus = 'server is gone.';
 
   }
 
@@ -358,10 +358,10 @@ class testRunner {
   // //////////////////////////////////////////////////////////////////////////////
   loadClusterTestStabilityInfo(){
     try {
-      if (this.instanceInfo.hasOwnProperty('clusterHealthMonitorFile')) {
+      if (this.instanceManager.hasOwnProperty('clusterHealthMonitorFile')) {
         let status = true;
         let slow = [];
-        let buf = fs.readBuffer(this.instanceInfo.clusterHealthMonitorFile);
+        let buf = fs.readBuffer(this.instanceManager.clusterHealthMonitorFile);
         let lineStart = 0;
         let maxBuffer = buf.length;
 
@@ -437,7 +437,7 @@ class testRunner {
                                                   this.friendlyName);
     this.instanceManager.prepareInstance();
     
-    if (this.instanceInfo === false) {
+    if (this.instanceManager.launchInstance() === false) {
       this.customInstanceInfos['startFailed'] = this.startFailed();
       return {
         setup: {
@@ -450,7 +450,7 @@ class testRunner {
     this.customInstanceInfos['postStart'] = this.postStart();
     if (this.customInstanceInfos.postStart.state === false) {
       let shutdownStatus = this.customInstanceInfos.postStart.shutdown;
-      shutdownStatus = shutdownStatus && pu.shutdownInstance(this.instanceInfo, this.options);
+      shutdownStatus = shutdownStatus && this.instanceManager.shutdownInstance();
       return {
         setup: {
           status: false,
@@ -489,7 +489,7 @@ class testRunner {
           }
 
           this.preRun(te);
-          pu.getMemProfSnapshot(this.instanceInfo, this.options, this.memProfCounter++);
+          this.instanceManager.getMemProfSnapshot(this.memProfCounter++);
           
           print('\n' + (new Date()).toISOString() + GREEN + " [============] " + this.info + ': Trying', te, '...', RESET);
           let reply = this.runOneTest(te);
@@ -503,7 +503,7 @@ class testRunner {
           if (reply.hasOwnProperty('status')) {
             this.results[te] = reply;
             if (!this.options.disableClusterMonitor) {
-              this.results[te]['processStats'] = pu.getDeltaProcessStats(this.instanceInfo);
+              this.results[te]['processStats'] = this.instanceManager.getDeltaProcessStats();
             }
 
             if (this.results[te].status === false) {
@@ -570,7 +570,7 @@ class testRunner {
     }
 
     if (this.continueTesting) {
-      pu.getMemProfSnapshot(this.instanceInfo, this.options, this.memProfCounter++);
+      this.instanceManager.getMemProfSnapshot(this.memProfCounter++);
     }
 
     let shutDownStart = time();
@@ -594,7 +594,7 @@ class testRunner {
     if (this.serverOptions['server.jwt-secret'] && !clonedOpts['server.jwt-secret']) {
       clonedOpts['server.jwt-secret'] = this.serverOptions['server.jwt-secret'];
     }
-    this.results.shutdown = this.results.shutdown && pu.shutdownInstance(this.instanceInfo, clonedOpts, forceTerminate);
+    this.results.shutdown = this.results.shutdown && this.instanceManager.shutdownInstance(clonedOpts, forceTerminate);
 
     this.loadClusterTestStabilityInfo();
 

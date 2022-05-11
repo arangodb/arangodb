@@ -69,8 +69,10 @@ let GDB_OUTPUT = '';
 function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
   let gdbOutputFile = fs.getTempFile();
 
-  let command = 'ulimit -c 0; (';
-  command += 'printf \'' +
+  let command = 'ulimit -c 0; sleep 10;(';
+  // send some line breaks in case of gdb wanting to paginate...
+  command += 'printf \'\\n\\n\\n\\n' +
+    'set pagination off\\n' +
     'set logging file ' + gdbOutputFile + '\\n' +
     'set logging on\\n' +
     'bt\\n' +
@@ -91,11 +93,15 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
 
   const args = ['-c', command];
   print(JSON.stringify(args));
-
+  
   sleep(5);
   executeExternalAndWait('/bin/bash', args);
   GDB_OUTPUT += `--------------------------------------------------------------------------------
-Crash analysis of: ` + JSON.stringify(instanceInfo) + '\n';
+Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
+  if (!fs.exists(gdbOutputFile)) {
+    print("Failed to generate GDB output file?")
+    return "";
+  }
   let thisDump = fs.read(gdbOutputFile);
   GDB_OUTPUT += thisDump;
   if (options.extremeVerbosity === true) {
@@ -332,12 +338,12 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
     return;
   }
   let message = 'during: ' + checkStr + ': Core dump written; ' +
-        /*
+      /*
         'copying ' + binary + ' to ' +
         storeArangodPath + ' for later analysis.\n' +
-        */
-        'Process facts :\n' +
-        yaml.safeDump(instanceInfo) +
+      */
+      'Process facts :\n' +
+      yaml.safeDump(instanceInfo.getStructure()) +
       'marking build as crashy.';
   pu.serverFailMessages = pu.serverFailMessages + '\n' + message;
 
