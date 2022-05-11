@@ -203,6 +203,8 @@ static void JS_WaitForEstimatorSync(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+  TRI_GET_SERVER_GLOBALS(ArangodServer);
+
   // release all unused ticks from flush feature
   v8g->server().getFeature<FlushFeature>().releaseUnusedTicks();
 
@@ -211,7 +213,6 @@ static void JS_WaitForEstimatorSync(
       v8g->server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
   engine.settingsManager()->sync(/*force*/ true);
 
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
   v8g->server()
       .getFeature<EngineSelectorFeature>()
       .engine()
