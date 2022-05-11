@@ -37,6 +37,22 @@ constexpr auto RW_MUTEX_WAIT_TIMEOUT = 50ms;
 }
 
 namespace arangodb {
+void syncIndexOnCreate(Index& index) {
+  iresearch::IResearchLink* store{nullptr};
+  switch (index.type()) {
+    case Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK:
+      store = &basics::downCast<iresearch::IResearchRocksDBLink>(index);
+      break;
+    default:
+      break;
+  }
+  if (store) {
+    store->commit();
+  }
+}
+}  // namespace arangodb
+
+namespace arangodb {
 namespace iresearch {
 namespace kludge {
 

@@ -243,6 +243,8 @@ void reportPrimaryIndexInconsistency(
 
 namespace arangodb {
 
+void syncIndexOnCreate(Index&);
+
 RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                                      arangodb::velocypack::Slice const& info)
     : RocksDBMetaCollection(collection, info),
@@ -589,6 +591,8 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 #if USE_PLAN_CACHE
     arangodb::aql::PlanCache::instance()->invalidate(vocbase);
 #endif
+
+    syncIndexOnCreate(*newIdx.get());
 
     // inBackground index might not recover selectivity estimate w/o sync
     if (inBackground && !newIdx->unique() && newIdx->hasSelectivityEstimate()) {
