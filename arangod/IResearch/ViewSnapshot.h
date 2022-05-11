@@ -116,13 +116,13 @@ ViewSnapshot* getViewSnapshot(transaction::Methods& trx,
 /// Try to commit every link/index in snapshot and then recompute snapshot data
 /// Commit different links is not atomic.
 ///
-/// @param snapshot should be a VIewSnapshotCookie
+/// @param snapshot should be a ViewSnapshotCookie
 /// @param name of snapshot view
 ////////////////////////////////////////////////////////////////////////////////
 void syncViewSnapshot(ViewSnapshot& snapshot, std::string_view name);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// Create new VIewSnapshot
+/// Create new ViewSnapshot
 ///
 /// @pre getViewSnapshot(trx, key) == nullptr
 /// @post getViewSnapshot(trx, key) == this return

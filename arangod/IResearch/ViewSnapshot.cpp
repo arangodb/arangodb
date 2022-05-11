@@ -46,15 +46,16 @@ class ViewSnapshotCookie final : public ViewSnapshotImpl,
 
   bool compute(bool sync, std::string_view name);
 
-  void add(DataSourceId cid, irs::directory_reader&& reader) noexcept;
-
+ private:
   std::vector<irs::directory_reader> _readers;
   // prevent data-store deallocation (lock @ AsyncSelf)
   Links _links;
 };
 
 ViewSnapshotCookie::ViewSnapshotCookie(Links&& links) noexcept
-    : _links{std::move(links)} {}
+    : _links{std::move(links)} {
+  _readers.reserve(links.size());
+}
 
 void ViewSnapshotCookie::clear() noexcept {
   _live_docs_count = 0;
@@ -64,13 +65,13 @@ void ViewSnapshotCookie::clear() noexcept {
 }
 
 bool ViewSnapshotCookie::compute(bool sync, std::string_view name) {
+  size_t segments = 0;
   for (auto& link : _links) {
     if (!link) {
       LOG_TOPIC("fffff", WARN, TOPIC)
           << "failed to lock a link for view '" << name;
       return false;
     }
-    auto const cid = link->collection().id();
     if (sync) {
       auto r = IResearchDataStore::commit(link, true);
       if (!r.ok()) {
@@ -80,21 +81,20 @@ bool ViewSnapshotCookie::compute(bool sync, std::string_view name) {
             << r.errorMessage() << "'";
       }
     }
-    add(cid, IResearchDataStore::reader(link));
+    _readers.push_back(IResearchDataStore::reader(link));
+    segments += _readers.back().size();
+  }
+  _segments.reserve(segments);
+  for (size_t i = 0; i != _links.size(); ++i) {
+    auto const cid = _links[i]->collection().id();
+    auto const& reader = _readers[i];
+    for (auto const& segment : reader) {
+      _segments.emplace_back(cid, &segment);
+    }
+    _live_docs_count += reader.live_docs_count();
+    _docs_count += reader.docs_count();
   }
   return true;
-}
-
-void ViewSnapshotCookie::add(DataSourceId cid,
-                             irs::directory_reader&& reader) noexcept {
-  _readers.reserve(_readers.size() +
-                   std::max(reader.size(), _readers.size() / 2));
-  for (auto const& segment : reader) {
-    _segments.emplace_back(cid, &segment);
-  }
-  _live_docs_count += reader.live_docs_count();
-  _docs_count += reader.docs_count();
-  _readers.emplace_back(std::move(reader));
 }
 
 }  // namespace
