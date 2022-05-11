@@ -24,10 +24,12 @@
 #include "RocksDBBuilderIndex.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/TempFeature.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Containers/HashSet.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
+#include "RocksDBEngine/Methods/RocksDBSstFileMethods.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedWithIndexMethods.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -95,7 +97,7 @@ Result partiallyCommitInsertions(rocksdb::WriteBatchBase& batch,
       }
     }
   }
-  docsProcessed.fetch_add(docsInBatch, std::memory_order_relaxed);
+  // docsProcessed.fetch_add(docsInBatch, std::memory_order_relaxed);
   return {};
 }
 
@@ -130,9 +132,11 @@ IndexCreatorThread::IndexCreatorThread(
   if (_isUniqueIndex) {
     // for later
   } else {
-    _batch = std::make_unique<rocksdb::WriteBatch>(32 * 1024 * 1024);
-    _methods = std::make_unique<RocksDBBatchedMethods>(
-        reinterpret_cast<rocksdb::WriteBatch*>(_batch.get()));
+    // _batch = std::make_unique<rocksdb::WriteBatch>(32 * 1024 * 1024);
+    _methods = std::make_unique<RocksDBSstFileMethods>(
+        ridx.collection().vocbase().server().getFeature<TempFeature>());
+    // _methods = std::make_unique<RocksDBBatchedMethods>(
+    //     reinterpret_cast<rocksdb::WriteBatch*>(_batch.get()));
   }
 }
 
@@ -166,6 +170,7 @@ void IndexCreatorThread::run() {
   std::unique_ptr<rocksdb::Iterator> it(_rootDB->NewIterator(ro, docCF));
 
   try {
+    Result res;
     while (true) {
       WorkItem workItem = {};
       bool hasWork = _sharedWorkEnv->fetchWorkItem(workItem);
@@ -176,7 +181,6 @@ void IndexCreatorThread::run() {
 
       TRI_ASSERT(workItem.first <= workItem.second);
 
-      Result res;
       bool hasLeftoverWork = false;
       do {
         uint64_t numDocsWritten = 0;
@@ -231,11 +235,6 @@ void IndexCreatorThread::run() {
           res = rocksutils::convertStatus(it->status(),
                                           rocksutils::StatusHint::index);
         }
-        if (res.ok() && numDocsWritten > 0) {  // commit buffered writes
-          res =
-              ::partiallyCommitInsertions(*(_batch.get()), _rootDB, _trxColl,
-                                          _docsProcessed, _ridx, _isForeground);
-        }
 
         if (res.ok() && _ridx.collection().vocbase().server().isStopping()) {
           res.reset(TRI_ERROR_SHUTTING_DOWN);
@@ -286,6 +285,17 @@ void IndexCreatorThread::run() {
       if (res.fail()) {
         _sharedWorkEnv->registerError(res);
         break;
+      }
+    }
+    if (res.ok()) {
+      std::vector<std::string> fileNames;
+      rocksdb::Status s = static_cast<RocksDBSstFileMethods*>(_methods.get())
+                              ->stealFileNames(fileNames);
+      if (s.ok()) {
+        s = _rootDB->IngestExternalFile(_ridx.columnFamily(), fileNames, {});
+      }
+      if (!s.ok()) {
+        LOG_DEVEL << "Error: " << s.ToString();
       }
     }
   } catch (std::exception const& ex) {
