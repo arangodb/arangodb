@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchKludge.h"
+#include "IResearchRocksDBLink.h"
 
 #include "utils/thread_utils.hpp"
 
@@ -37,11 +38,12 @@ constexpr auto RW_MUTEX_WAIT_TIMEOUT = 50ms;
 }
 
 namespace arangodb {
+
 void syncIndexOnCreate(Index& index) {
   iresearch::IResearchLink* store{nullptr};
   switch (index.type()) {
     case Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK:
-      store = &basics::downCast<iresearch::IResearchRocksDBLink>(index);
+      store = &static_cast<iresearch::IResearchRocksDBLink&>(index);
       break;
     default:
       break;
