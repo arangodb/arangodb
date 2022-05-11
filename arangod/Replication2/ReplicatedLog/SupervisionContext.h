@@ -27,6 +27,9 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
 
+#include <fmt/core.h>
+#include <Logger/LogMacros.h>
+
 namespace arangodb::replication2::replicated_log {
 
 struct SupervisionContext {
@@ -38,7 +41,7 @@ struct SupervisionContext {
 
   template<typename ActionType, typename... Args>
   void createAction(Args&&... args) {
-    if (!std::holds_alternative<EmptyAction>(_action)) {
+    if (std::holds_alternative<EmptyAction>(_action)) {
       _action.emplace<ActionType>(ActionType{std::forward<Args>(args)...});
     }
   }
