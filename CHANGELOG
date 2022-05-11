@@ -1,6 +1,19 @@
 devel
 -----
 
+* The API `/_admin/status` now returns a progress attribute that shows the 
+  server's current state (starting, stopping, etc.), with details about which 
+  feature is currently started, stopped etc. During recovery, the current WAL 
+  recovery sequence number is also reported in a sub-attribute of the 
+  `progress` attribute. Clients can query this attribute to track the 
+  progress of the WAL recovery.
+  The additional progress attribute returned by `/_admin/status` is most
+  useful when using the `--server.early-connections true` setting. With that
+  setting, the server will respond to incoming requests to a limited set of
+  APIs already during server startup. When the setting is not used, the REST
+  interface will be opened relatively late during the startup sequence, so
+  that the progress attribute will likely not be very useful anymore.
+
 * Optionally start up HTTP interface of servers earlier, so that ping probes 
   from tools can already be responded to when the server is not fully started.
   By default, the HTTP interface is opened at the same point during the startup
