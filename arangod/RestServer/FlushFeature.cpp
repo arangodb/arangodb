@@ -102,13 +102,19 @@ std::tuple<size_t, size_t, TRI_voc_tick_t> FlushFeature::releaseUnusedTicks() {
   TRI_ASSERT(minTick <= engine.currentTick());
 
   TRI_IF_FAILURE("FlushCrashBeforeSyncingMinTick") {
-    TRI_TerminateDebugging("crashing before syncing min tick");
+    if (ServerState::instance()->isDBServer() ||
+        ServerState::instance()->isSingleServer()) {
+      TRI_TerminateDebugging("crashing before syncing min tick");
+    }
   }
 
   engine.releaseTick(minTick);
 
   TRI_IF_FAILURE("FlushCrashAfterReleasingMinTick") {
-    TRI_TerminateDebugging("crashing after releasing min tick");
+    if (ServerState::instance()->isDBServer() ||
+        ServerState::instance()->isSingleServer()) {
+      TRI_TerminateDebugging("crashing after releasing min tick");
+    }
   }
 
   LOG_TOPIC("2b2e2", DEBUG, arangodb::Logger::FLUSH)
