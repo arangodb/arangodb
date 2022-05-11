@@ -306,35 +306,35 @@ workflows:
         only:
           - /^(bug-fix|feature)\/cinfra-.*$/
     jobs:
-      #- compile-linux-community
+      - compile-linux-community
       - compile-macos-llvm-community
-      #- compile-windows-community
-      #- run-gtest-executable-linux:
-      #    name: replication2 gtest linux
-      #    executable: 'build/bin/arangodbtests_replication2'
-      #    requires:
-      #      - compile-linux-community
-      #- run-gtest-executable-windows:
-      #    name: replication2-gtest-windows
-      #    executable: 'build/bin/Debug/arangodbtests_replication2'
-      #    requires:
-      #      - compile-windows-community
+      - compile-windows-community
+      - run-gtest-executable-linux:
+          name: replication2 gtest linux
+          executable: 'build/bin/arangodbtests_replication2'
+          requires:
+            - compile-linux-community
+      - run-gtest-executable-windows:
+          name: replication2-gtest-windows
+          executable: 'build/bin/Debug/arangodbtests_replication2'
+          requires:
+            - compile-windows-community
       - run-gtest-executable-macos:
           name: replication2-gtest-mac
           executable: 'build/bin/arangodbtests_replication2'
           requires:
             - compile-macos-llvm-community
-      #- testing-js-run-test-suite:
-      #    name: replication2 server - << matrix.bucketIndex >>
-      #    matrix:
-      #      parameters:
-      #        bucketIndex: [0, 1, 2]
-      #    suite: replication2_server
-      #    bucketCount: 3
-      #    requires:
-      #      - compile-linux-community
-      #- testing-js-run-test-suite:
-      #    name: replication2 client
-      #    suite: replication2_client
-      #    requires:
-      #      - compile-linux-community
+      - testing-js-run-test-suite:
+          name: replication2 server - << matrix.bucketIndex >>
+          matrix:
+            parameters:
+              bucketIndex: [0, 1, 2]
+          suite: replication2_server
+          bucketCount: 3
+          requires:
+            - compile-linux-community
+      - testing-js-run-test-suite:
+          name: replication2 client
+          suite: replication2_client
+          requires:
+            - compile-linux-community
