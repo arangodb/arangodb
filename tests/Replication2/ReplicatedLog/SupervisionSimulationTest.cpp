@@ -30,13 +30,15 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
-#include <utility>
 
 #include "Replication2/Helper/ModelChecker/Actors.h"
 #include "Replication2/Helper/ModelChecker/AgencyState.h"
 #include "Replication2/Helper/ModelChecker/AgencyTransitions.h"
 #include "Replication2/Helper/ModelChecker/HashValues.h"
 #include "Replication2/Helper/ModelChecker/Predicates.h"
+
+#include <utility>
+#include <fmt/core.h>
 
 using namespace arangodb;
 using namespace arangodb::test;
@@ -70,10 +72,85 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_created) {
       AgencyState{.replicatedLog = log.get(), .health = std::move(health)};
 
   auto driver = model_checker::ActorDriver{
-      SupervisionActor{},  // KillLeaderActor{},  KillAnyServerActor{},
+      SupervisionActor{},
       DBServerActor{"A"},
       DBServerActor{"B"},
       DBServerActor{"C"},
+  };
+
+  auto allTests = model_checker::combined{
+      MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
+  };
+  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+
+  auto result = Engine::run(driver, allTests, initState);
+  EXPECT_FALSE(result.failed) << *result.failed;
+  std::cout << result.stats << std::endl;
+  for (auto s : result.finalStates) {
+    std::cout << s->state << std::endl;
+  }
+}
+
+TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_leader_fails) {
+  AgencyLogBuilder log;
+  log.setId(logId)
+      .setTargetParticipant("A", defaultFlags)
+      .setTargetParticipant("B", defaultFlags)
+      .setTargetParticipant("C", defaultFlags);
+
+  replicated_log::ParticipantsHealth health;
+  health._health.emplace(
+      "A", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "B", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+
+  auto initState =
+      AgencyState{.replicatedLog = log.get(), .health = std::move(health)};
+
+  auto driver = model_checker::ActorDriver{
+      SupervisionActor{}, KillLeaderActor{},  DBServerActor{"A"},
+      DBServerActor{"B"}, DBServerActor{"C"},
+  };
+
+  auto allTests = model_checker::combined{
+      MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
+  };
+  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+
+  auto result = Engine::run(driver, allTests, initState);
+  EXPECT_FALSE(result.failed) << *result.failed;
+  std::cout << result.stats << std::endl;
+}
+
+TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_any_fails) {
+  AgencyLogBuilder log;
+  log.setId(logId)
+      .setTargetParticipant("A", defaultFlags)
+      .setTargetParticipant("B", defaultFlags)
+      .setTargetParticipant("C", defaultFlags);
+
+  replicated_log::ParticipantsHealth health;
+  health._health.emplace(
+      "A", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "B", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+  health._health.emplace(
+      "C", replicated_log::ParticipantHealth{.rebootId = RebootId(0),
+                                             .notIsFailed = true});
+
+  auto initState =
+      AgencyState{.replicatedLog = log.get(), .health = std::move(health)};
+
+  auto driver = model_checker::ActorDriver{
+      SupervisionActor{}, KillAnyServerActor{}, DBServerActor{"A"},
+      DBServerActor{"B"}, DBServerActor{"C"},
   };
 
   auto allTests = model_checker::combined{
@@ -159,9 +236,8 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log) {
       AgencyState{.replicatedLog = log.get(), .health = std::move(health)};
 
   auto driver = model_checker::ActorDriver{
-      SupervisionActor{}, KillLeaderActor{},  DBServerActor{"A"},
-      DBServerActor{"B"}, DBServerActor{"C"},
-  };
+      SupervisionActor{}, KillLeaderActor{}, DBServerActor{"A"},
+      DBServerActor{"B"}, DBServerActor{"C"}};
 
   auto allTests = model_checker::combined{
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),

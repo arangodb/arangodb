@@ -35,20 +35,20 @@ struct AgencyState {
   std::optional<arangodb::replication2::agency::Log> replicatedLog;
   arangodb::replication2::replicated_log::ParticipantsHealth health;
 
-  friend std::size_t hash_value(AgencyState const& s) {
+  friend std::size_t hash_value(AgencyState const &s) {
     std::size_t seed = 0;
     boost::hash_combine(seed, s.replicatedState);
     boost::hash_combine(seed, s.replicatedLog);
     boost::hash_combine(seed, s.health);
     return seed;
   }
-  friend auto operator==(AgencyState const& s, AgencyState const& s2) noexcept
+  friend auto operator==(AgencyState const &s, AgencyState const &s2) noexcept
       -> bool = default;
 
-  friend auto operator<<(std::ostream& os, AgencyState const& state)
-      -> std::ostream& {
-    return os;
-    auto const print = [&](auto const& x) {
+  friend auto operator<<(std::ostream &os, AgencyState const &state)
+      -> std::ostream & {
+    // return os;
+    auto const print = [&](auto const &x) {
       VPackBuilder builder;
       x.toVelocyPack(builder);
       os << builder.toJson() << std::endl;
@@ -72,11 +72,11 @@ struct AgencyState {
         print(*state.replicatedLog->current);
       }
     }
-    for (auto const& [name, ph] : state.health._health) {
-      std::cout << name << " reboot id = " << ph.rebootId.value()
-                << " failed = " << !ph.notIsFailed;
+    for (auto const &[name, ph] : state.health._health) {
+      os << name << " reboot id = " << ph.rebootId.value()
+         << " failed = " << !ph.notIsFailed;
     }
     return os;
   }
 };
-}  // namespace arangodb::test
+} // namespace arangodb::test

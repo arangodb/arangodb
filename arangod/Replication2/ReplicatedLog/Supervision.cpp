@@ -501,7 +501,8 @@ auto getRemovedParticipant(ParticipantsFlagsMap const& targetParticipants,
 
 // Pick leader at random from participants
 auto pickRandomParticipantToBeLeader(ParticipantsFlagsMap const& participants,
-                                     ParticipantsHealth const& health)
+                                     ParticipantsHealth const& health,
+                                     uint64_t logId)
     -> std::optional<ParticipantId> {
   auto acceptableParticipants = std::vector<ParticipantId>{};
 
@@ -512,10 +513,10 @@ auto pickRandomParticipantToBeLeader(ParticipantsFlagsMap const& participants,
   }
 
   if (!acceptableParticipants.empty()) {
-    auto maxIdx = static_cast<uint16_t>(acceptableParticipants.size() - 1);
+    auto maxIdx = static_cast<uint16_t>(acceptableParticipants.size());
     auto p = acceptableParticipants.begin();
 
-    std::advance(p, RandomGenerator::interval(maxIdx));
+    std::advance(p, logId % maxIdx);
 
     return *p;
   }
@@ -525,12 +526,12 @@ auto pickRandomParticipantToBeLeader(ParticipantsFlagsMap const& participants,
 
 auto pickLeader(std::optional<ParticipantId> targetLeader,
                 ParticipantsFlagsMap const& participants,
-                ParticipantsHealth const& health)
+                ParticipantsHealth const& health, uint64_t logId)
     -> std::optional<LogPlanTermSpecification::Leader> {
   auto leaderId = targetLeader;
 
   if (!leaderId) {
-    leaderId = pickRandomParticipantToBeLeader(participants, health);
+    leaderId = pickRandomParticipantToBeLeader(participants, health, logId);
   }
 
   if (leaderId.has_value()) {
@@ -553,7 +554,8 @@ auto checkLogExists(SupervisionContext& ctx, Log const& log,
       ctx.reportStatus<LogCurrentSupervision::TargetNotEnoughParticipants>();
       ctx.createAction<NoActionPossibleAction>();
     } else {
-      auto leader = pickLeader(target.leader, target.participants, health);
+      auto leader = pickLeader(target.leader, target.participants, health,
+                               log.target.id.id());
       ctx.createAction<AddLogToPlanAction>(target.id, target.participants,
                                            target.config, leader);
     }
@@ -563,7 +565,7 @@ auto checkLogExists(SupervisionContext& ctx, Log const& log,
 auto checkCurrentExists(SupervisionContext& ctx, Log const& log) -> void {
   // If the Current subtree does not exist yet, create it by writing
   // a message into it.
-  if (!log.current) {
+  if (!log.current || !log.current->supervision) {
     ctx.createAction<CurrentNotAvailableAction>();
   }
 }
