@@ -35,11 +35,11 @@ struct Workload;
 struct Server;
 
 enum class ExecutionState {
-  starting,
-  preparing,
-  initializing,
-  running,
-  stopped
+  kStarting,
+  kPreparing,
+  kInitializing,
+  kRunning,
+  kStopped
 };
 
 struct Execution {

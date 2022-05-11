@@ -44,27 +44,27 @@ void ExecutionThread::threadFunc() {
     std::cerr << "Thread " << std::this_thread::get_id()
               << " failed: " << e.what() << std::endl;
   }
-  _state.store(ThreadState::finished);
+  _state.store(ThreadState::kFinished);
 }
 
 void ExecutionThread::doRun() {
-  if (_execution.state(std::memory_order_relaxed) == ExecutionState::stopped) {
+  if (_execution.state(std::memory_order_relaxed) == ExecutionState::kStopped) {
     return;
   }
 
-  _state.store(ThreadState::running);
+  _state.store(ThreadState::kRunning);
 
   waitUntilInitialization();
 
   initialize(_execution.numThreads());
 
-  _state.store(ThreadState::ready);
+  _state.store(ThreadState::kReady);
 
   waitUntilBenchmarkStarts();
 
   auto start = std::chrono::high_resolution_clock::now();
 
-  while (_execution.state() == ExecutionState::running && !shouldStop()) {
+  while (_execution.state() == ExecutionState::kRunning && !shouldStop()) {
     run();
   }
 
@@ -74,19 +74,19 @@ void ExecutionThread::doRun() {
 
 void ExecutionThread::waitUntilAllThreadsAreStarted() {
   while (_execution.state(std::memory_order_acquire) ==
-         ExecutionState::starting) {
+         ExecutionState::kStarting) {
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
 }
 
 void ExecutionThread::waitUntilInitialization() {
-  while (_execution.state() == ExecutionState::preparing) {
+  while (_execution.state() == ExecutionState::kPreparing) {
     ;
   }
 }
 
 void ExecutionThread::waitUntilBenchmarkStarts() {
-  while (_execution.state() == ExecutionState::initializing) {
+  while (_execution.state() == ExecutionState::kInitializing) {
     ;
   }
 }

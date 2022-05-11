@@ -44,12 +44,12 @@ std::size_t getFolderSize(std::string_view path) {
 namespace arangodb::sepp {
 
 Execution::Execution(Options const& options, std::shared_ptr<Workload> workload)
-    : _state(ExecutionState::starting),
+    : _state(ExecutionState::kStarting),
       _options(options),
       _workload(std::move(workload)) {}
 
 Execution::~Execution() {
-  _state.store(ExecutionState::stopped);
+  _state.store(ExecutionState::kStopped);
   for (auto& thread : _threads) {
     if (thread->_thread.joinable()) {
       thread->_thread.join();
@@ -69,15 +69,15 @@ void Execution::signalFinishedThread() noexcept { _activeThreads.fetch_sub(1); }
 
 Report Execution::run() {
   _activeThreads.store(_threads.size());
-  _state.store(ExecutionState::preparing);
+  _state.store(ExecutionState::kPreparing);
 
-  waitUntilAllThreadsAre(ThreadState::running);
+  waitUntilAllThreadsAre(ThreadState::kRunning);
 
-  _state.store(ExecutionState::initializing);
+  _state.store(ExecutionState::kInitializing);
 
-  waitUntilAllThreadsAre(ThreadState::ready);
+  waitUntilAllThreadsAre(ThreadState::kReady);
 
-  _state.store(ExecutionState::running);
+  _state.store(ExecutionState::kRunning);
 
   auto start = std::chrono::high_resolution_clock::now();
 
@@ -100,9 +100,9 @@ Report Execution::run() {
     // TODO - record samples (memory usage, rocksdb stats, ...)
   }
 
-  _state.store(ExecutionState::stopped);
+  _state.store(ExecutionState::kStopped);
 
-  waitUntilAllThreadsAre(ThreadState::finished);
+  waitUntilAllThreadsAre(ThreadState::kFinished);
 
   std::chrono::duration<double, std::milli> runtime =
       std::chrono::high_resolution_clock::now() - start;
@@ -111,7 +111,9 @@ Report Execution::run() {
 
 Report Execution::buildReport(double runtime) {
   for (auto& thread : _threads) {
-    thread->_thread.join();
+    if (thread->_thread.joinable()) {
+      thread->_thread.join();
+    }
   }
 
   std::vector<ThreadReport> threadReports;
@@ -134,7 +136,7 @@ void Execution::waitUntilThreadStateIs(ExecutionThread const& thread,
                                        ThreadState expected) {
   auto state = thread._state.load(std::memory_order_relaxed);
   while (state != expected) {
-    if (state == ThreadState::finished) {
+    if (state == ThreadState::kFinished) {
       throw std::runtime_error("worker thread finished prematurely");
     }
     state = thread._state.load(std::memory_order_relaxed);

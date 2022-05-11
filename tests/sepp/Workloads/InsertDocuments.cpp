@@ -94,7 +94,7 @@ void InsertDocuments::Thread::run() {
         _options.collection, AccessMode::Type::WRITE);
 
     trx->begin();
-    trx->insert("testcol", _options.object->slice(), {});
+    trx->insert(_options.collection, _options.object->slice(), {});
     trx->commit();
   }
   _operations += numOps;

@@ -34,7 +34,7 @@ namespace arangodb::sepp {
 
 struct Server;
 
-enum class ThreadState { starting, running, ready, finished };
+enum class ThreadState { kStarting, kRunning, kReady, kFinished };
 
 struct Execution;
 
@@ -52,7 +52,7 @@ struct ExecutionThread {
 
  private:
   Execution& _execution;
-  std::atomic<ThreadState> _state{ThreadState::starting};
+  std::atomic<ThreadState> _state{ThreadState::kStarting};
   std::mt19937_64 _randomizer{};
   std::thread _thread{};
   std::chrono::duration<double, std::milli> _runtime{};
