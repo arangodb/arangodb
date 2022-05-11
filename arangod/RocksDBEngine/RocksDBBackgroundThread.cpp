@@ -187,8 +187,6 @@ void RocksDBBackgroundThread::run() {
   }
 
   // final write on shutdown
-  flushFeature.releaseUnusedTicks();
-
   auto syncRes = _engine.settingsManager()->sync(/*force*/ true);
   if (syncRes.fail()) {
     LOG_TOPIC("f3aa6", WARN, Logger::ENGINES)
