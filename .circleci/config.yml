@@ -301,10 +301,10 @@ jobs:
 
 workflows:
   replication-two-pr:
-    filters:
-      branches:
-        only:
-          - /^(bug-fix|feature)\/cinfra-.*$/
+    when:
+      matches:
+        pattern: /^(bug-fix|feature)\/cinfra-.*$/
+        value: << pipeline.git.branch >>
     jobs:
       - compile-linux-community
       - compile-macos-llvm-community
