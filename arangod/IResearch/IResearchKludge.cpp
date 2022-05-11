@@ -23,15 +23,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchKludge.h"
+#include "IResearchRocksDBLink.h"
 
 #include "Basics/Common.h"
 
 namespace arangodb {
+
 void syncIndexOnCreate(Index& index) {
   iresearch::IResearchLink* store{nullptr};
   switch (index.type()) {
     case Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK:
-      store = &basics::downCast<iresearch::IResearchRocksDBLink>(index);
+      store = &static_cast<iresearch::IResearchRocksDBLink&>(index);
       break;
     default:
       break;
