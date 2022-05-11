@@ -390,7 +390,7 @@ struct RandomEnumerator {
         : SimulationState{std::move(state), std::move(observer)} {}
 
     auto isCompleted() const noexcept {
-      return !isNewVertex() && searchIndex > this->outgoing.size();
+      return !isNewVertex() && searchIndex >= this->outgoing.size();
     }
     auto isNewVertex() const noexcept { return uniqueId == 0; }
     auto isActive() const noexcept { return !isNewVertex() && !isCompleted(); }
@@ -478,8 +478,7 @@ struct RandomEnumerator {
       PathVectorType result;
       for (auto const& p : path) {
         auto idx = p->searchIndex.value();
-        TRI_ASSERT(idx > 0);
-        result.emplace_back(p, p->outgoing.at(idx - 1).first);
+        result.emplace_back(p, p->outgoing[idx].first);
       }
       return result;
     };
@@ -509,7 +508,7 @@ struct RandomEnumerator {
           }
           v->outgoing.emplace_back(std::move(transition), step);
           if (step->isActive()) {
-            v->searchIndex = v->outgoing.size();
+            v->searchIndex = v->outgoing.size() - 1;
             auto cycle = decltype(path)();
             {
               // move cycle from `path` to `cycle`
@@ -539,7 +538,7 @@ struct RandomEnumerator {
         v->searchIndex = RandomGenerator::interval(
             std::int32_t{0}, static_cast<std::int32_t>(v->outgoing.size() - 1));
         path.push_back(std::static_pointer_cast<StateVertex>(
-            v->outgoing[(*v->searchIndex)++].second));
+            v->outgoing[*v->searchIndex].second));
       }
     }
 
