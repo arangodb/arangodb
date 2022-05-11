@@ -28,6 +28,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
+#include "RestServer/FlushFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -201,6 +202,15 @@ static void JS_WaitForEstimatorSync(
   v8::HandleScope scope(isolate);
 
   TRI_GET_GLOBALS();
+
+  // release all unused ticks from flush feature
+  v8g->_server.getFeature<FlushFeature>().releaseUnusedTicks();
+
+  // force-flush
+  RocksDBEngine& engine =
+      v8g->_server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  engine.settingsManager()->sync(/*force*/ true);
+
   v8g->_server.getFeature<EngineSelectorFeature>()
       .engine()
       .waitForEstimatorSync(std::chrono::seconds(10));
