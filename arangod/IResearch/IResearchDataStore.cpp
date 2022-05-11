@@ -573,15 +573,15 @@ IResearchDataStore::Snapshot IResearchDataStore::snapshot() const {
         << id() << "'";
     return {};  // return an empty reader
   }
-  return snapshot(std::move(linkLock));
+  auto reader = IResearchDataStore::reader(linkLock);
+  return {std::move(linkLock), std::move(reader)};
 }
 
-IResearchDataStore::Snapshot IResearchDataStore::snapshot(LinkLock linkLock) {
+irs::directory_reader IResearchDataStore::reader(LinkLock const& linkLock) {
   TRI_ASSERT(linkLock);
   TRI_ASSERT(linkLock->_dataStore);
-  // must be valid if _asyncSelf->lock() is valid
-  return {std::move(linkLock),
-          irs::directory_reader(linkLock->_dataStore._reader)};
+  TRI_ASSERT(linkLock->_dataStore._reader);
+  return irs::directory_reader(linkLock->_dataStore._reader);
 }
 
 void IResearchDataStore::scheduleCommit(std::chrono::milliseconds delay) {
@@ -659,10 +659,10 @@ Result IResearchDataStore::commit(bool wait /*= true*/) {
             "link '" +
                 std::to_string(id().id()) + "'"};
   }
-  return commit(std::move(linkLock), wait);
+  return commit(linkLock, wait);
 }
 
-Result IResearchDataStore::commit(LinkLock linkLock, bool wait) {
+Result IResearchDataStore::commit(LinkLock& linkLock, bool wait) {
   TRI_ASSERT(linkLock);
   TRI_ASSERT(linkLock->_dataStore);
   // must be valid if _asyncSelf->lock() is valid
@@ -721,7 +721,7 @@ Result IResearchDataStore::commitUnsafeImpl(bool wait, CommitResult* code) {
     return {};
   }
 
-  auto& impl = static_cast<IResearchFlushSubscription&>(*subscription);
+  auto& impl = basics::downCast<IResearchFlushSubscription>(*subscription);
 
   try {
     auto const lastTickBeforeCommit = _engine->currentTick();
@@ -1635,7 +1635,7 @@ irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
   dataPath /= "databases";
   dataPath /= "database-";
   dataPath += std::to_string(link.collection().vocbase().id());
-  dataPath /= StaticStrings::DataSourceType;
+  dataPath /= StaticStrings::ViewType;
   dataPath += "-";
   // has to be 'id' since this can be a per-shard collection
   dataPath += std::to_string(link.collection().id().id());
