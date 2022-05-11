@@ -140,9 +140,8 @@ TEST(DateFunctionsTest, IS_DATESTRING) {
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&fun));
 
+  containers::SmallVector<AqlValue, 4> params;
   for (auto const& testee : testees) {
-    SmallVector<AqlValue>::allocator_type::arena_type arena;
-    SmallVector<AqlValue> params{arena};
     testee.buildParams(params);
     AqlValue res = Functions::IsDatestring(&expressionContext, node, params);
     testee.validateResult(res);
@@ -151,6 +150,7 @@ TEST(DateFunctionsTest, IS_DATESTRING) {
     for (auto& it : params) {
       it.destroy();
     }
+    params.clear();
   }
 }
 
@@ -200,9 +200,8 @@ TEST(DateFunctionsTest, DATE_COMPARE) {
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&fun));
 
+  containers::SmallVector<AqlValue, 4> params;
   for (auto const& testee : testees) {
-    SmallVector<AqlValue>::allocator_type::arena_type arena;
-    SmallVector<AqlValue> params{arena};
     testee.buildParams(params);
     AqlValue res = Functions::DateCompare(&expressionContext, node, params);
     testee.validateResult(res);
@@ -210,6 +209,7 @@ TEST(DateFunctionsTest, DATE_COMPARE) {
     for (auto& it : params) {
       it.destroy();
     }
+    params.clear();
   }
 }
 
@@ -238,8 +238,7 @@ class DateFunctionsTestDateDiff : public ::testing::Test {
   double dateDiffMillis;
   // Average number of days per month in the given dates
   double avgDaysPerMonth;
-  SmallVector<AqlValue>::allocator_type::arena_type arena;
-  SmallVector<AqlValue> params;
+  containers::SmallVector<AqlValue, 4> params;
   VPackBuilder dateBuilder;
   VPackBuilder flagBuilder;
   VPackBuilder switchBuilder;
@@ -250,8 +249,7 @@ class DateFunctionsTestDateDiff : public ::testing::Test {
         earlierDate("2000-04-01T02:48:42.123"),
         laterDate("2001-06-13T06:53:48.246"),
         dateDiffMillis(37857906123),
-        avgDaysPerMonth(365.0 / 12.0),
-        params(arena) {
+        avgDaysPerMonth(365.0 / 12.0) {
     dateBuilder.openArray();
     dateBuilder.add(VPackValue(earlierDate));
     dateBuilder.add(VPackValue(laterDate));
@@ -462,8 +460,7 @@ TEST(DateFunctionsTest, DATE_SUBTRACT) {
   node.setData(static_cast<void const*>(&fun));
 
   for (auto const& testee : testees) {
-    SmallVector<AqlValue>::allocator_type::arena_type arena;
-    SmallVector<AqlValue> params{arena};
+    containers::SmallVector<AqlValue, 4> params;
     testee.buildParams(params);
     AqlValue res = Functions::DateSubtract(&expressionContext, node, params);
     testee.validateResult(res);

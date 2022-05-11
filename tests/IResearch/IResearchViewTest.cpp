@@ -245,7 +245,7 @@ TEST_F(IResearchViewTest, test_defaults) {
                  false == slice.get("globallyUniqueId").copyString().empty()));
     EXPECT_TRUE(slice.get("name").copyString() == "testView");
     EXPECT_TRUE(slice.get("type").copyString() ==
-                arangodb::iresearch::StaticStrings::DataSourceType);
+                arangodb::iresearch::StaticStrings::ViewType);
     EXPECT_TRUE(false == slice.get("deleted").getBool());
     EXPECT_TRUE(false == slice.get("isSystem").getBool());
     EXPECT_TRUE((!slice.hasKey("links")));  // for persistence so no links
@@ -283,7 +283,7 @@ TEST_F(IResearchViewTest, test_defaults) {
                  false == slice.get("globallyUniqueId").copyString().empty()));
     EXPECT_TRUE(slice.get("name").copyString() == "testView");
     EXPECT_TRUE(slice.get("type").copyString() ==
-                arangodb::iresearch::StaticStrings::DataSourceType);
+                arangodb::iresearch::StaticStrings::ViewType);
     EXPECT_TRUE((false == slice.hasKey("deleted")));
     EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
 
@@ -410,7 +410,7 @@ TEST_F(IResearchViewTest, test_defaults) {
                  !slice.get("globallyUniqueId").copyString().empty()));
     EXPECT_TRUE((slice.get("name").copyString() == "testView"));
     EXPECT_TRUE((slice.get("type").copyString() ==
-                 arangodb::iresearch::StaticStrings::DataSourceType));
+                 arangodb::iresearch::StaticStrings::ViewType));
     EXPECT_TRUE((false == slice.hasKey("deleted")));
     EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
 
@@ -2126,8 +2126,10 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      auto* snapshot = view->snapshot(
-          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+      ASSERT_TRUE(trx.state());
+      auto* snapshot = makeViewSnapshot(
+          trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+          view->getLinks(), view, view->name());
       EXPECT_TRUE(1 == snapshot->live_docs_count());
     }
 
@@ -2149,8 +2151,10 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      auto* snapshot = view->snapshot(
-          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+      ASSERT_TRUE(trx.state());
+      auto* snapshot = makeViewSnapshot(
+          trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+          view->getLinks(), view, view->name());
       EXPECT_TRUE(0 == snapshot->live_docs_count());
     }
   }
@@ -2200,8 +2204,10 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      auto* snapshot = view->snapshot(
-          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+      ASSERT_TRUE(trx.state());
+      auto* snapshot = makeViewSnapshot(
+          trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+          view->getLinks(), view, view->name());
       EXPECT_TRUE(1 == snapshot->live_docs_count());
     }
 
@@ -2223,8 +2229,10 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      auto* snapshot = view->snapshot(
-          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+      ASSERT_TRUE(trx.state());
+      auto* snapshot = makeViewSnapshot(
+          trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+          view->getLinks(), view, view->name());
       EXPECT_TRUE(0 == snapshot->live_docs_count());
     }
   }
@@ -2275,8 +2283,10 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      auto* snapshot = view->snapshot(
-          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+      ASSERT_TRUE(trx.state());
+      auto* snapshot = makeViewSnapshot(
+          trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+          view->getLinks(), view, view->name());
       EXPECT_TRUE(1 == snapshot->live_docs_count());
     }
 
@@ -2305,8 +2315,10 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      auto* snapshot = view->snapshot(
-          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+      ASSERT_TRUE(trx.state());
+      auto* snapshot = makeViewSnapshot(
+          trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+          view->getLinks(), view, view->name());
       EXPECT_TRUE(0 == snapshot->live_docs_count());
     }
 
@@ -2374,8 +2386,10 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      auto* snapshot = view->snapshot(
-          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+      ASSERT_TRUE(trx.state());
+      auto* snapshot = makeViewSnapshot(
+          trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+          view->getLinks(), view, view->name());
       EXPECT_TRUE(1 == snapshot->live_docs_count());
     }
 
@@ -2394,8 +2408,10 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      auto* snapshot = view->snapshot(
-          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+      ASSERT_TRUE(trx.state());
+      auto* snapshot = makeViewSnapshot(
+          trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+          view->getLinks(), view, view->name());
       EXPECT_TRUE(1 == snapshot->live_docs_count());
     }
 
@@ -2465,8 +2481,10 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      auto* snapshot = view->snapshot(
-          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+      ASSERT_TRUE(trx.state());
+      auto* snapshot = makeViewSnapshot(
+          trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+          view->getLinks(), view, view->name());
       EXPECT_TRUE(1 == snapshot->live_docs_count());
     }
 
@@ -2495,8 +2513,10 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      auto* snapshot = view->snapshot(
-          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+      ASSERT_TRUE(trx.state());
+      auto* snapshot = makeViewSnapshot(
+          trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+          view->getLinks(), view, view->name());
       EXPECT_TRUE(0 == snapshot->live_docs_count());
     }
 
@@ -2653,8 +2673,10 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      auto* snapshot = view->snapshot(
-          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+      ASSERT_TRUE(trx.state());
+      auto* snapshot = makeViewSnapshot(
+          trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+          view->getLinks(), view, view->name());
       EXPECT_TRUE(1 == snapshot->live_docs_count());
     }
 
@@ -2676,8 +2698,10 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      auto* snapshot = view->snapshot(
-          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+      ASSERT_TRUE(trx.state());
+      auto* snapshot = makeViewSnapshot(
+          trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+          view->getLinks(), view, view->name());
       EXPECT_TRUE(0 == snapshot->live_docs_count());
     }
   }
@@ -2728,8 +2752,10 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      auto* snapshot = view->snapshot(
-          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+      ASSERT_TRUE(trx.state());
+      auto* snapshot = makeViewSnapshot(
+          trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+          view->getLinks(), view, view->name());
       EXPECT_TRUE(1 == snapshot->live_docs_count());
     }
 
@@ -2751,8 +2777,10 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      auto* snapshot = view->snapshot(
-          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+      ASSERT_TRUE(trx.state());
+      auto* snapshot = makeViewSnapshot(
+          trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+          view->getLinks(), view, view->name());
       EXPECT_TRUE(0 == snapshot->live_docs_count());
     }
   }
@@ -3238,8 +3266,10 @@ TEST_F(IResearchViewTest, test_insert) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    ASSERT_TRUE(trx.state());
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        view->getLinks(), view, view->name());
     EXPECT_EQ(2, snapshot->live_docs_count());
   }
 
@@ -3316,9 +3346,10 @@ TEST_F(IResearchViewTest, test_insert) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    ASSERT_TRUE(trx.state());
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        view->getLinks(), view, view->name());
     EXPECT_EQ(2, snapshot->live_docs_count());
   }
 
@@ -3370,8 +3401,10 @@ TEST_F(IResearchViewTest, test_insert) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    ASSERT_TRUE(trx.state());
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        view->getLinks(), view, view->name());
     EXPECT_TRUE((4 == snapshot->docs_count()));
   }
 
@@ -3425,8 +3458,10 @@ TEST_F(IResearchViewTest, test_insert) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
+    ASSERT_TRUE(trx.state());
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
+        view->getLinks(), view, view->name());
     EXPECT_TRUE((4 == snapshot->docs_count()));
   }
 
@@ -3472,8 +3507,10 @@ TEST_F(IResearchViewTest, test_insert) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
+    ASSERT_TRUE(trx.state());
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
+        view->getLinks(), view, view->name());
     EXPECT_TRUE((1 == snapshot->docs_count()));
   }
 
@@ -3525,8 +3562,10 @@ TEST_F(IResearchViewTest, test_insert) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    ASSERT_TRUE(trx.state());
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
+        view->getLinks(), view, view->name());
     EXPECT_TRUE((4 == snapshot->docs_count()));
   }
 
@@ -3578,8 +3617,10 @@ TEST_F(IResearchViewTest, test_insert) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
+    ASSERT_TRUE(trx.state());
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
+        view->getLinks(), view, view->name());
     EXPECT_TRUE((4 == snapshot->docs_count()));
   }
 }
@@ -3670,8 +3711,10 @@ TEST_F(IResearchViewTest, test_remove) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    ASSERT_TRUE(trx.state());
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
+        view->getLinks(), view, view->name());
     EXPECT_EQ(2, snapshot->live_docs_count());
   }
 
@@ -3747,9 +3790,10 @@ TEST_F(IResearchViewTest, test_remove) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    ASSERT_TRUE(trx.state());
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        view->getLinks(), view, view->name());
     EXPECT_EQ(2, snapshot->live_docs_count());
   }
 
@@ -3801,8 +3845,10 @@ TEST_F(IResearchViewTest, test_remove) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    ASSERT_TRUE(trx.state());
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        view->getLinks(), view, view->name());
     EXPECT_TRUE((4 == snapshot->docs_count()));
   }
 
@@ -3856,8 +3902,10 @@ TEST_F(IResearchViewTest, test_remove) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
+    ASSERT_TRUE(trx.state());
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
+        view->getLinks(), view, view->name());
     EXPECT_TRUE((4 == snapshot->docs_count()));
   }
 
@@ -3903,8 +3951,10 @@ TEST_F(IResearchViewTest, test_remove) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
+    ASSERT_TRUE(trx.state());
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
+        view->getLinks(), view, view->name());
     EXPECT_TRUE((1 == snapshot->docs_count()));
   }
 
@@ -3956,8 +4006,10 @@ TEST_F(IResearchViewTest, test_remove) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    ASSERT_TRUE(trx.state());
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        view->getLinks(), view, view->name());
     EXPECT_TRUE((4 == snapshot->docs_count()));
   }
 
@@ -4009,8 +4061,10 @@ TEST_F(IResearchViewTest, test_remove) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
+    ASSERT_TRUE(trx.state());
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
+        view->getLinks(), view, view->name());
     EXPECT_TRUE((4 == snapshot->docs_count()));
   }
 }
@@ -4066,8 +4120,10 @@ TEST_F(IResearchViewTest, test_query) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    ASSERT_TRUE(trx.state());
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        view->getLinks(), view, view->name());
     EXPECT_TRUE(0 == snapshot->docs_count());
   }
 
@@ -4116,8 +4172,10 @@ TEST_F(IResearchViewTest, test_query) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    ASSERT_TRUE(trx.state());
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        view->getLinks(), view, view->name());
     EXPECT_TRUE(12 == snapshot->docs_count());
   }
 
@@ -4170,8 +4228,10 @@ TEST_F(IResearchViewTest, test_query) {
     arangodb::transaction::Methods trx0(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    auto* snapshot0 = view->snapshot(
-        trx0, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    ASSERT_TRUE(trx0.state());
+    auto* snapshot0 = makeViewSnapshot(
+        trx0, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        view->getLinks(), view, view->name());
     EXPECT_TRUE(12 == snapshot0->docs_count());
 
     // add more data
@@ -4199,8 +4259,10 @@ TEST_F(IResearchViewTest, test_query) {
     arangodb::transaction::Methods trx1(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    auto* snapshot1 = view->snapshot(
-        trx1, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    ASSERT_TRUE(trx1.state());
+    auto* snapshot1 = makeViewSnapshot(
+        trx1, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        view->getLinks(), view, view->name());
     EXPECT_TRUE(24 == snapshot1->docs_count());
   }
 
@@ -4254,9 +4316,10 @@ TEST_F(IResearchViewTest, test_query) {
         arangodb::transaction::Methods trx(
             arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
             EMPTY, EMPTY, options);
-        auto* snapshot = view->snapshot(
-            trx,
-            arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
+        ASSERT_TRUE(trx.state());
+        auto* snapshot = makeViewSnapshot(
+            trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
+            view->getLinks(), view, view->name());
         EXPECT_TRUE(i == snapshot->docs_count());
       }
     }
@@ -4312,7 +4375,7 @@ TEST_F(IResearchViewTest, test_register_link) {
       EXPECT_TRUE(slice.get("id").copyString() == "101");
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
-                  arangodb::iresearch::StaticStrings::DataSourceType);
+                  arangodb::iresearch::StaticStrings::ViewType);
       EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     }
 
@@ -4392,7 +4455,7 @@ TEST_F(IResearchViewTest, test_register_link) {
       EXPECT_TRUE(slice.get("id").copyString() == "101");
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
-                  arangodb::iresearch::StaticStrings::DataSourceType);
+                  arangodb::iresearch::StaticStrings::ViewType);
       EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     }
 
@@ -4401,8 +4464,10 @@ TEST_F(IResearchViewTest, test_register_link) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      auto* snapshot = view->snapshot(
-          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+      ASSERT_TRUE(trx.state());
+      auto* snapshot = makeViewSnapshot(
+          trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+          view->getLinks(), view, view->name());
       EXPECT_TRUE((0 == snapshot->docs_count()));
     }
 
@@ -4425,11 +4490,13 @@ TEST_F(IResearchViewTest, test_register_link) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-    EXPECT_TRUE((
-        0 ==
-        snapshot->docs_count()));  // link addition does trigger collection load
+    ASSERT_TRUE(trx.state());
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        view->getLinks(), view, view->name());
+    ASSERT_TRUE(snapshot != nullptr);
+    // link addition does trigger collection load
+    EXPECT_TRUE(snapshot->docs_count() == 0);
 
     // link addition does modify view meta
     {
@@ -4468,9 +4535,11 @@ TEST_F(IResearchViewTest, test_register_link) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      auto* snapshot = view->snapshot(
-          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-      EXPECT_TRUE((nullptr == snapshot));
+      ASSERT_TRUE(trx.state());
+      auto* snapshot = makeViewSnapshot(
+          trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+          view->getLinks(), view, view->name());
+      ASSERT_TRUE(snapshot == nullptr);
     }
 
     {
@@ -4500,10 +4569,13 @@ TEST_F(IResearchViewTest, test_register_link) {
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      auto* snapshot = view->snapshot(
-          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-      EXPECT_TRUE((0 == snapshot->docs_count()));  // link addition does trigger
-                                                   // collection load
+      ASSERT_TRUE(trx.state());
+      auto* snapshot = makeViewSnapshot(
+          trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+          view->getLinks(), view, view->name());
+      ASSERT_TRUE(snapshot != nullptr);
+      // link addition does trigger collection load
+      EXPECT_TRUE(snapshot->docs_count() == 0);
     }
 
     {
@@ -4536,15 +4608,16 @@ TEST_F(IResearchViewTest, test_register_link) {
         arangodb::IndexId{1}, *logicalCollection, linkJson->slice());
     EXPECT_FALSE(persisted);
     EXPECT_NE(nullptr, link1);  // duplicate link creation is allowed
-    std::unordered_set<arangodb::DataSourceId> cids;
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    auto* snapshot = view->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-    EXPECT_TRUE((
-        0 ==
-        snapshot->docs_count()));  // link addition does trigger collection load
+    ASSERT_TRUE(trx.state());
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        view->getLinks(), view, view->name());
+    ASSERT_TRUE(snapshot != nullptr);
+    EXPECT_TRUE(snapshot->docs_count() == 0);
+    // link addition does trigger collection load
 
     {
       std::unordered_set<arangodb::DataSourceId> expected = {
@@ -4627,13 +4700,15 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
 
     {
-      std::unordered_set<arangodb::DataSourceId> cids;
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      auto* snapshot = view->snapshot(
-          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-      EXPECT_TRUE((1 == snapshot->docs_count()));
+      ASSERT_TRUE(trx.state());
+      auto* snapshot = makeViewSnapshot(
+          trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+          view->getLinks(), view, view->name());
+      ASSERT_TRUE(snapshot != nullptr);
+      EXPECT_TRUE(snapshot->docs_count() == 1);
     }
 
     {
@@ -4669,13 +4744,15 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     EXPECT_TRUE((nullptr == vocbase.lookupCollection("testCollection")));
 
     {
-      std::unordered_set<arangodb::DataSourceId> cids;
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      auto* snapshot = view->snapshot(
-          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-      EXPECT_TRUE((0 == snapshot->docs_count()));
+      ASSERT_TRUE(trx.state());
+      auto* snapshot = makeViewSnapshot(
+          trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+          view->getLinks(), view, view->name());
+      ASSERT_TRUE(snapshot != nullptr);
+      EXPECT_TRUE(snapshot->docs_count() == 0);
     }
 
     {
@@ -4741,13 +4818,15 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
 
     {
-      std::unordered_set<arangodb::DataSourceId> cids;
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      auto* snapshot = view->snapshot(
-          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-      EXPECT_TRUE((1 == snapshot->docs_count()));
+      ASSERT_TRUE(trx.state());
+      auto* snapshot = makeViewSnapshot(
+          trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+          view->getLinks(), view, view->name());
+      ASSERT_TRUE(snapshot != nullptr);
+      EXPECT_TRUE(snapshot->docs_count() == 1);
     }
 
     {
@@ -4775,13 +4854,15 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     EXPECT_TRUE((nullptr == vocbase.lookupCollection("testCollection")));
 
     {
-      std::unordered_set<arangodb::DataSourceId> cids;
       arangodb::transaction::Methods trx(
           arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
           EMPTY, EMPTY, arangodb::transaction::Options());
-      auto* snapshot = view->snapshot(
-          trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-      EXPECT_TRUE((0 == snapshot->docs_count()));
+      ASSERT_TRUE(trx.state());
+      auto* snapshot = makeViewSnapshot(
+          trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+          view->getLinks(), view, view->name());
+      ASSERT_TRUE(snapshot != nullptr);
+      EXPECT_TRUE(snapshot->docs_count() == 0);
     }
 
     {
@@ -5036,7 +5117,6 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
       EXPECT_TRUE((actual.empty()));
     }
   }
-
   // test load persisted CIDs on open (TRI_vocbase_t::createView(...) will call
   // open()) use separate view ID for this test since doing open from persisted
   // store
@@ -5714,8 +5794,11 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    auto* snapshot = viewImpl->snapshot(trx);
-    EXPECT_TRUE((nullptr == snapshot));
+    ASSERT_TRUE(trx.state());
+    auto* snapshot =
+        makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
+                         viewImpl->getLinks(), viewImpl, viewImpl->name());
+    EXPECT_TRUE(snapshot == nullptr);
   }
 
   // no snapshot in TransactionState (force == true, waitForSync = false)
@@ -5723,23 +5806,24 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, arangodb::transaction::Options());
-    EXPECT_TRUE(
-        nullptr ==
-        viewImpl->snapshot(
-            trx, arangodb::iresearch::IResearchView::SnapshotMode::Find));
-    auto* snapshot = viewImpl->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-    EXPECT_TRUE(
-        snapshot ==
-        viewImpl->snapshot(
-            trx, arangodb::iresearch::IResearchView::SnapshotMode::Find));
-    EXPECT_TRUE(
-        snapshot ==
-        viewImpl->snapshot(
-            trx,
-            arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate));
-    EXPECT_TRUE(nullptr != snapshot);
-    EXPECT_TRUE((0 == snapshot->live_docs_count()));
+    ASSERT_TRUE(trx.state());
+    auto* snapshot =
+        makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
+                         viewImpl->getLinks(), viewImpl, viewImpl->name());
+    EXPECT_TRUE(snapshot == nullptr);
+    snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        viewImpl->getLinks(), viewImpl, viewImpl->name());
+    ASSERT_TRUE(snapshot != nullptr);
+    auto* snapshotFind =
+        makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
+                         viewImpl->getLinks(), viewImpl, viewImpl->name());
+    EXPECT_TRUE(snapshotFind == snapshot);
+    auto* snapshotCreate = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        viewImpl->getLinks(), viewImpl, viewImpl->name());
+    EXPECT_TRUE(snapshotCreate == snapshot);
+    EXPECT_TRUE(snapshot->live_docs_count() == 0);
   }
 
   // no snapshot in TransactionState (force == false, waitForSync = true)
@@ -5749,8 +5833,10 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, opts);
-    auto* snapshot = viewImpl->snapshot(trx);
-    EXPECT_TRUE((nullptr == snapshot));
+    auto* snapshot =
+        makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
+                         viewImpl->getLinks(), viewImpl, viewImpl->name());
+    EXPECT_TRUE(snapshot == nullptr);
   }
 
   // no snapshot in TransactionState (force == true, waitForSync = true)
@@ -5759,22 +5845,23 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
     arangodb::transaction::Methods trx(
         arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
         EMPTY, opts);
-    EXPECT_TRUE(
-        nullptr ==
-        viewImpl->snapshot(
-            trx, arangodb::iresearch::IResearchView::SnapshotMode::Find));
-    auto* snapshot = viewImpl->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
-    EXPECT_TRUE(
-        snapshot ==
-        viewImpl->snapshot(
-            trx, arangodb::iresearch::IResearchView::SnapshotMode::Find));
-    EXPECT_TRUE(
-        snapshot ==
-        viewImpl->snapshot(
-            trx,
-            arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate));
-    EXPECT_TRUE((nullptr != snapshot));
+    auto* snapshot =
+        makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
+                         viewImpl->getLinks(), viewImpl, viewImpl->name());
+    EXPECT_TRUE(snapshot == nullptr);
+    ASSERT_TRUE(trx.state());
+    snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
+        viewImpl->getLinks(), viewImpl, viewImpl->name());
+    ASSERT_TRUE(snapshot != nullptr);
+    auto* snapshotFind =
+        makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
+                         viewImpl->getLinks(), viewImpl, viewImpl->name());
+    EXPECT_TRUE(snapshot == snapshotFind);
+    auto* snapshotCreate = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        viewImpl->getLinks(), viewImpl, viewImpl->name());
+    EXPECT_TRUE(snapshot == snapshotCreate);
     EXPECT_TRUE((1 == snapshot->live_docs_count()));
   }
 
@@ -5799,7 +5886,9 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
         EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE((true == viewImpl->apply(trx)));
     EXPECT_TRUE((true == trx.begin().ok()));
-    auto* snapshot = viewImpl->snapshot(trx);
+    auto* snapshot =
+        makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
+                         viewImpl->getLinks(), viewImpl, viewImpl->name());
     EXPECT_TRUE((nullptr != snapshot));
     EXPECT_TRUE((1 == snapshot->live_docs_count()));
     EXPECT_TRUE(true == trx.abort().ok());  // prevent assertion in destructor
@@ -5812,17 +5901,17 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
         EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE((true == viewImpl->apply(trx)));
     EXPECT_TRUE((true == trx.begin().ok()));
-    auto* snapshot = viewImpl->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-    EXPECT_TRUE(
-        snapshot ==
-        viewImpl->snapshot(
-            trx, arangodb::iresearch::IResearchView::SnapshotMode::Find));
-    EXPECT_TRUE(
-        snapshot ==
-        viewImpl->snapshot(
-            trx,
-            arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate));
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        viewImpl->getLinks(), viewImpl, viewImpl->name());
+    auto* snapshotFind =
+        makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
+                         viewImpl->getLinks(), viewImpl, viewImpl->name());
+    auto* snapshotCreate = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        viewImpl->getLinks(), viewImpl, viewImpl->name());
+    EXPECT_TRUE(snapshot == snapshotFind);
+    EXPECT_TRUE(snapshot == snapshotCreate);
     EXPECT_TRUE((nullptr != snapshot));
     EXPECT_TRUE((1 == snapshot->live_docs_count()));
     EXPECT_TRUE(true == trx.abort().ok());  // prevent assertion in destructor
@@ -5839,12 +5928,13 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
     EXPECT_TRUE((true == viewImpl->apply(trx)));
     EXPECT_TRUE((true == trx.begin().ok()));
     state->waitForSync(true);
-    auto* snapshot = viewImpl->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-    EXPECT_TRUE(
-        snapshot ==
-        viewImpl->snapshot(
-            trx, arangodb::iresearch::IResearchView::SnapshotMode::Find));
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        viewImpl->getLinks(), viewImpl, viewImpl->name());
+    auto* snapshotFind =
+        makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
+                         viewImpl->getLinks(), viewImpl, viewImpl->name());
+    EXPECT_TRUE(snapshot == snapshotFind);
     EXPECT_TRUE((nullptr != snapshot));
     EXPECT_TRUE((1 == snapshot->live_docs_count()));
     EXPECT_TRUE(true == trx.abort().ok());  // prevent assertion in destructor
@@ -5861,12 +5951,14 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
     ASSERT_TRUE(state);
     EXPECT_TRUE((true == viewImpl->apply(trx)));
     EXPECT_TRUE((true == trx.begin().ok()));
-    auto* snapshot = viewImpl->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace);
-    EXPECT_TRUE(
-        snapshot ==
-        viewImpl->snapshot(
-            trx, arangodb::iresearch::IResearchView::SnapshotMode::Find));
+    ASSERT_TRUE(trx.state());
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
+        viewImpl->getLinks(), viewImpl, viewImpl->name());
+    auto snapshotFind =
+        makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
+                         viewImpl->getLinks(), viewImpl, viewImpl->name());
+    EXPECT_TRUE(snapshot == snapshotFind);
     EXPECT_TRUE((nullptr != snapshot));
     EXPECT_TRUE((2 == snapshot->live_docs_count()));
     EXPECT_TRUE(true == trx.abort().ok());  // prevent assertion in destructor
@@ -5924,7 +6016,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
              false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
         EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
         auto tmpSlice = slice.get("links");
@@ -5949,7 +6041,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         EXPECT_EQ(19, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(
             (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
              false ==
@@ -5995,7 +6087,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
              false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
         EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
         auto tmpSlice = slice.get("links");
@@ -6020,7 +6112,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         EXPECT_EQ(19, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(
             (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
              false ==
@@ -6079,7 +6171,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
            false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() ==
-                   arangodb::iresearch::StaticStrings::DataSourceType));
+                   arangodb::iresearch::StaticStrings::ViewType));
       EXPECT_TRUE((slice.get("deleted").isNone()));  // no system properties
       EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
       auto tmpSlice = slice.get("links");
@@ -6104,7 +6196,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       EXPECT_EQ(19, slice.length());
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() ==
-                   arangodb::iresearch::StaticStrings::DataSourceType));
+                   arangodb::iresearch::StaticStrings::ViewType));
       EXPECT_TRUE(
           (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
            false ==
@@ -6165,7 +6257,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
            false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() ==
-                   arangodb::iresearch::StaticStrings::DataSourceType));
+                   arangodb::iresearch::StaticStrings::ViewType));
       EXPECT_TRUE((slice.get("deleted").isNone()));  // no system properties
       EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
       auto tmpSlice = slice.get("links");
@@ -6190,7 +6282,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       EXPECT_EQ(19, slice.length());
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() ==
-                   arangodb::iresearch::StaticStrings::DataSourceType));
+                   arangodb::iresearch::StaticStrings::ViewType));
       EXPECT_TRUE(
           (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
            false ==
@@ -6252,7 +6344,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
            false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() ==
-                   arangodb::iresearch::StaticStrings::DataSourceType));
+                   arangodb::iresearch::StaticStrings::ViewType));
       EXPECT_TRUE((slice.get("deleted").isNone()));  // no system properties
       EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
       auto tmpSlice = slice.get("links");
@@ -6281,7 +6373,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       EXPECT_EQ(19, slice.length());
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() ==
-                   arangodb::iresearch::StaticStrings::DataSourceType));
+                   arangodb::iresearch::StaticStrings::ViewType));
       EXPECT_TRUE(
           (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
            false ==
@@ -6344,7 +6436,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
              false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE((slice.get("name").copyString() == "testView"));
         EXPECT_TRUE((slice.get("type").copyString() ==
-                     arangodb::iresearch::StaticStrings::DataSourceType));
+                     arangodb::iresearch::StaticStrings::ViewType));
         EXPECT_TRUE((slice.get("deleted").isNone()));  // no system properties
         EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
 
@@ -6385,7 +6477,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         EXPECT_EQ(19, slice.length());
         EXPECT_TRUE((slice.get("name").copyString() == "testView"));
         EXPECT_TRUE((slice.get("type").copyString() ==
-                     arangodb::iresearch::StaticStrings::DataSourceType));
+                     arangodb::iresearch::StaticStrings::ViewType));
         EXPECT_TRUE(
             (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
              false ==
@@ -6435,7 +6527,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
              false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE((slice.get("name").copyString() == "testView"));
         EXPECT_TRUE((slice.get("type").copyString() ==
-                     arangodb::iresearch::StaticStrings::DataSourceType));
+                     arangodb::iresearch::StaticStrings::ViewType));
         EXPECT_TRUE((slice.get("deleted").isNone()));  // no system properties
         EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
         auto tmpSlice = slice.get("links");
@@ -6460,7 +6552,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         EXPECT_EQ(19, slice.length());
         EXPECT_TRUE((slice.get("name").copyString() == "testView"));
         EXPECT_TRUE((slice.get("type").copyString() ==
-                     arangodb::iresearch::StaticStrings::DataSourceType));
+                     arangodb::iresearch::StaticStrings::ViewType));
         EXPECT_TRUE(
             (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
              false ==
@@ -6530,7 +6622,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
              false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
         EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
 
@@ -6571,7 +6663,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         EXPECT_EQ(19, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(
             (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
              false ==
@@ -6622,7 +6714,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
              false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
         EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
 
@@ -6663,7 +6755,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         EXPECT_EQ(19, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(
             (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
              false ==
@@ -6718,7 +6810,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
              false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
         auto tmpSlice = slice.get("links");
         EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
@@ -6743,7 +6835,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         EXPECT_EQ(19, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(
             (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
              false ==
@@ -6777,7 +6869,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
              false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
         auto tmpSlice = slice.get("links");
         EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
@@ -6801,7 +6893,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         EXPECT_EQ(19, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(
             (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
              false ==
@@ -7688,7 +7780,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
            false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
-                  arangodb::iresearch::StaticStrings::DataSourceType);
+                  arangodb::iresearch::StaticStrings::ViewType);
       EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
       EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
       auto tmpSlice = slice.get("links");
@@ -7713,7 +7805,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       EXPECT_EQ(19, slice.length());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
-                  arangodb::iresearch::StaticStrings::DataSourceType);
+                  arangodb::iresearch::StaticStrings::ViewType);
       EXPECT_TRUE(
           (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
            false ==
@@ -7767,7 +7859,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
            false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() ==
-                   arangodb::iresearch::StaticStrings::DataSourceType));
+                   arangodb::iresearch::StaticStrings::ViewType));
       EXPECT_TRUE((slice.get("deleted").isNone()));  // no system properties
       EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
       auto tmpSlice = slice.get("links");
@@ -7792,7 +7884,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       EXPECT_EQ(19, slice.length());
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() ==
-                   arangodb::iresearch::StaticStrings::DataSourceType));
+                   arangodb::iresearch::StaticStrings::ViewType));
       EXPECT_TRUE(
           (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
            false ==
@@ -7849,7 +7941,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
            false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() ==
-                   arangodb::iresearch::StaticStrings::DataSourceType));
+                   arangodb::iresearch::StaticStrings::ViewType));
       EXPECT_TRUE((slice.get("deleted").isNone()));  // no system properties
       EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
       auto tmpSlice = slice.get("links");
@@ -7874,7 +7966,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       EXPECT_EQ(19, slice.length());
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() ==
-                   arangodb::iresearch::StaticStrings::DataSourceType));
+                   arangodb::iresearch::StaticStrings::ViewType));
       EXPECT_TRUE(
           (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
            false ==
@@ -7936,7 +8028,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
            false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() ==
-                   arangodb::iresearch::StaticStrings::DataSourceType));
+                   arangodb::iresearch::StaticStrings::ViewType));
       EXPECT_TRUE((slice.get("deleted").isNone()));  // no system properties
       EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
       auto tmpSlice = slice.get("links");
@@ -7961,7 +8053,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       EXPECT_EQ(19, slice.length());
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() ==
-                   arangodb::iresearch::StaticStrings::DataSourceType));
+                   arangodb::iresearch::StaticStrings::ViewType));
       EXPECT_TRUE(
           (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
            false ==
@@ -8024,7 +8116,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
              false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE((slice.get("name").copyString() == "testView"));
         EXPECT_TRUE((slice.get("type").copyString() ==
-                     arangodb::iresearch::StaticStrings::DataSourceType));
+                     arangodb::iresearch::StaticStrings::ViewType));
         EXPECT_TRUE((slice.get("deleted").isNone()));  // no system properties
         EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
 
@@ -8065,7 +8157,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_EQ(19, slice.length());
         EXPECT_TRUE((slice.get("name").copyString() == "testView"));
         EXPECT_TRUE((slice.get("type").copyString() ==
-                     arangodb::iresearch::StaticStrings::DataSourceType));
+                     arangodb::iresearch::StaticStrings::ViewType));
         EXPECT_TRUE(
             (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
              false ==
@@ -8119,7 +8211,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
              false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE((slice.get("name").copyString() == "testView"));
         EXPECT_TRUE((slice.get("type").copyString() ==
-                     arangodb::iresearch::StaticStrings::DataSourceType));
+                     arangodb::iresearch::StaticStrings::ViewType));
         EXPECT_TRUE((slice.get("deleted").isNone()));  // no system properties
         EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
 
@@ -8160,7 +8252,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_EQ(19, slice.length());
         EXPECT_TRUE((slice.get("name").copyString() == "testView"));
         EXPECT_TRUE((slice.get("type").copyString() ==
-                     arangodb::iresearch::StaticStrings::DataSourceType));
+                     arangodb::iresearch::StaticStrings::ViewType));
         EXPECT_TRUE(
             (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
              false ==
@@ -8220,7 +8312,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
            false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
-                  arangodb::iresearch::StaticStrings::DataSourceType);
+                  arangodb::iresearch::StaticStrings::ViewType);
       EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
       EXPECT_TRUE(slice.isObject());
       EXPECT_TRUE((true == slice.hasKey("links") &&
@@ -8242,7 +8334,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       EXPECT_EQ(19, slice.length());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
-                  arangodb::iresearch::StaticStrings::DataSourceType);
+                  arangodb::iresearch::StaticStrings::ViewType);
       EXPECT_TRUE(
           (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
            false ==
@@ -8304,7 +8396,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
            false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
-                  arangodb::iresearch::StaticStrings::DataSourceType);
+                  arangodb::iresearch::StaticStrings::ViewType);
       EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
       EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
 
@@ -8344,7 +8436,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       EXPECT_EQ(19, slice.length());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
-                  arangodb::iresearch::StaticStrings::DataSourceType);
+                  arangodb::iresearch::StaticStrings::ViewType);
       EXPECT_TRUE(
           (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
            false ==
@@ -8426,7 +8518,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
            false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
-                  arangodb::iresearch::StaticStrings::DataSourceType);
+                  arangodb::iresearch::StaticStrings::ViewType);
       EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
       EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
 
@@ -8466,7 +8558,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       EXPECT_EQ(19, slice.length());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
-                  arangodb::iresearch::StaticStrings::DataSourceType);
+                  arangodb::iresearch::StaticStrings::ViewType);
       EXPECT_TRUE(
           (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
            false ==
@@ -8524,7 +8616,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
            false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
-                  arangodb::iresearch::StaticStrings::DataSourceType);
+                  arangodb::iresearch::StaticStrings::ViewType);
       EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
       EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
       auto tmpSlice = slice.get("links");
@@ -8549,7 +8641,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       EXPECT_EQ(19, slice.length());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
-                  arangodb::iresearch::StaticStrings::DataSourceType);
+                  arangodb::iresearch::StaticStrings::ViewType);
       EXPECT_TRUE(
           (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
            false ==
@@ -8604,7 +8696,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
            false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
-                  arangodb::iresearch::StaticStrings::DataSourceType);
+                  arangodb::iresearch::StaticStrings::ViewType);
       EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
       EXPECT_TRUE((true == slice.hasKey("links") &&
                    slice.get("links").isObject() &&
@@ -8641,7 +8733,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
            false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
-                  arangodb::iresearch::StaticStrings::DataSourceType);
+                  arangodb::iresearch::StaticStrings::ViewType);
       EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
       EXPECT_TRUE((true == slice.hasKey("links") &&
                    slice.get("links").isObject() &&
@@ -8697,7 +8789,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
              false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
         EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
         auto tmpSlice = slice.get("links");
@@ -8722,7 +8814,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_EQ(19, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(
             (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
              false ==
@@ -8767,7 +8859,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
              false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
         EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
         auto tmpSlice = slice.get("links");
@@ -8792,7 +8884,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_EQ(19, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(
             (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
              false ==
@@ -8847,7 +8939,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
            false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
-                  arangodb::iresearch::StaticStrings::DataSourceType);
+                  arangodb::iresearch::StaticStrings::ViewType);
       EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
       EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
       auto tmpSlice = slice.get("links");
@@ -8872,7 +8964,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       EXPECT_EQ(19, slice.length());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
-                  arangodb::iresearch::StaticStrings::DataSourceType);
+                  arangodb::iresearch::StaticStrings::ViewType);
       EXPECT_TRUE(
           (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
            false ==
@@ -8928,7 +9020,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
            false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
-                  arangodb::iresearch::StaticStrings::DataSourceType);
+                  arangodb::iresearch::StaticStrings::ViewType);
       EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
       EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
       auto tmpSlice = slice.get("links");
@@ -8953,7 +9045,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       EXPECT_EQ(19, slice.length());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
-                  arangodb::iresearch::StaticStrings::DataSourceType);
+                  arangodb::iresearch::StaticStrings::ViewType);
       EXPECT_TRUE(
           (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
            false ==
@@ -9000,7 +9092,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
              false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
         auto tmpSlice = slice.get("links");
         EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
@@ -9020,7 +9112,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_EQ(19, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(
             (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
              false ==
@@ -9063,7 +9155,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
              false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
         auto tmpSlice = slice.get("links");
         EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
@@ -9083,7 +9175,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_EQ(19, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(
             (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
              false ==
@@ -9140,7 +9232,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
              false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
         auto tmpSlice = slice.get("links");
         EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
@@ -9165,7 +9257,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_EQ(19, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(
             (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
              false ==
@@ -9189,7 +9281,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_EQ(15, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(slice.hasKey("links"));
         auto linksSlice = slice.get("links");
         ASSERT_TRUE(linksSlice.isObject());
@@ -9225,7 +9317,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
              false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
         auto tmpSlice = slice.get("links");
         EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
@@ -9250,7 +9342,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_EQ(19, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(
             (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
              false ==
@@ -9274,7 +9366,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_EQ(15, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(slice.hasKey("links"));
         auto linksSlice = slice.get("links");
         ASSERT_TRUE(linksSlice.isObject());
@@ -9310,7 +9402,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
              false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
         auto tmpSlice = slice.get("links");
         EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
@@ -9335,7 +9427,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_EQ(19, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(
             (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
              false ==
@@ -9359,7 +9451,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_EQ(15, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(slice.hasKey("links"));
         auto linksSlice = slice.get("links");
         ASSERT_TRUE(linksSlice.isObject());
@@ -9395,7 +9487,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
              false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
         auto tmpSlice = slice.get("links");
         EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
@@ -9420,7 +9512,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_EQ(19, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(
             (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
              false ==
@@ -9444,7 +9536,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_EQ(15, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(slice.hasKey("links"));
         auto linksSlice = slice.get("links");
         ASSERT_TRUE(linksSlice.isObject());
@@ -9480,7 +9572,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
              false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
         auto tmpSlice = slice.get("links");
         EXPECT_TRUE((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
@@ -9505,7 +9597,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_EQ(19, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(
             (slice.hasKey("deleted") && slice.get("deleted").isBoolean() &&
              false ==
@@ -9529,7 +9621,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         EXPECT_EQ(15, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() ==
-                    arangodb::iresearch::StaticStrings::DataSourceType);
+                    arangodb::iresearch::StaticStrings::ViewType);
         EXPECT_TRUE(slice.hasKey("links"));
         auto linksSlice = slice.get("links");
         ASSERT_TRUE(linksSlice.isObject());
