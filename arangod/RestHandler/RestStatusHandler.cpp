@@ -125,6 +125,15 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
 
     result.add("serverInfo", VPackValue(VPackValueType::Object));
 
+    auto [progressPhase, progressFeature] = server().progressInfo();
+    result.add("progress", VPackValue(VPackValueType::Object));
+    result.add("phase", VPackValue(progressPhase));
+    result.add("feature", VPackValue(progressFeature));
+    StorageEngine& engine =
+        server().getFeature<EngineSelectorFeature>().engine();
+    result.add("recoveryTick", VPackValue(engine.recoveryTick()));
+    result.close();  // progress
+
     result.add("maintenance",
                VPackValue(serverState->isStartupOrMaintenance()));
     result.add("role",

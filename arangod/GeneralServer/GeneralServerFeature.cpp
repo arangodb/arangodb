@@ -256,9 +256,8 @@ void GeneralServerFeature::collectOptions(
       .setIntroducedIn(30900);
 
   options
-      ->addOption("--server.allow-early-connections",
-                  "allow incoming connections to limited APIs early during "
-                  "server startup",
+      ->addOption("--server.early-connections",
+                  "allow requests to limited APIs early during server startup",
                   new BooleanParameter(&_allowEarlyConnections))
       .setIntroducedIn(31000);
 
@@ -349,14 +348,21 @@ void GeneralServerFeature::prepare() {
 
   _jobManager = std::make_unique<AsyncJobManager>();
 
+  // create an initial, very stripped-down RestHandlerFactory.
+  // this initial factory only knows a few selected RestHandlers.
+  // we will later create another RestHandlerFactory that knows
+  // all routes.
   auto hf = std::make_shared<RestHandlerFactory>();
   defineInitialHandlers(*hf);
+  // make handler-factory read-only
+  hf->seal();
+
   std::atomic_store(&_handlerFactory, std::move(hf));
 
   buildServers();
 
   if (_allowEarlyConnections) {
-    // open HTTP interface early
+    // open HTTP interface early if this is requested.
     startListening();
   }
 
@@ -371,10 +377,16 @@ void GeneralServerFeature::prepare() {
 
 void GeneralServerFeature::start() {
   TRI_ASSERT(ServerState::instance()->mode() == ServerState::Mode::STARTUP);
+
+  // create the full RestHandlerFactory that knows all the routes.
+  // this will replace the previous, stripped-down RestHandlerFactory
+  // instance.
   auto hf = std::make_shared<RestHandlerFactory>();
 
   defineInitialHandlers(*hf);
   defineRemainingHandlers(*hf);
+  hf->seal();
+
   std::atomic_store(&_handlerFactory, std::move(hf));
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

@@ -5,12 +5,12 @@ devel
   from tools can already be responded to when the server is not fully started.
   By default, the HTTP interface is opened at the same point during the startup
   sequence as before, but it can optionally be opened earlier by setting the 
-  new startup option `--server.allow-early-connections` to `true`. This will 
+  new startup option `--server.early-connections` to `true`. This will 
   open the HTTP interface early in the startup, so that the server can respond
   to a limited set of REST APIs even during recovery. This can be useful 
   because the recovery procedure can take time proportional to the amount of 
   data to recover.
-  When the `--server.allow-early-connections` option is set to `true`, the
+  When the `--server.early-connections` option is set to `true`, the
   server will respond to requests to the following APIs during the startup
   already:
   - `/_api/version`

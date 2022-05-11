@@ -29,7 +29,6 @@
 #include <vector>
 
 #include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -53,8 +52,7 @@ class RestHandlerFactory {
                                                       GeneralResponse*,
                                                       void* data);
 
-  // cppcheck-suppress *
-  RestHandlerFactory() = default;
+  RestHandlerFactory();
 
   // creates a new handler
   std::shared_ptr<RestHandler> createHandler(
@@ -68,15 +66,18 @@ class RestHandlerFactory {
   void addPrefixHandler(std::string const& path, create_fptr,
                         void* data = nullptr);
 
- private:
-  // lock protecting _constructors and _prefixes
-  mutable arangodb::basics::ReadWriteLock _lock;
+  // make the factory read-only (i.e. no new handlers can be added)
+  void seal();
 
+ private:
   // list of constructors
   std::unordered_map<std::string, std::pair<create_fptr, void*>> _constructors;
 
   // list of prefix handlers
   std::vector<std::string> _prefixes;
+
+  // whether or not handlers can be added (sealed = false)
+  bool _sealed;
 };
 }  // namespace rest
 }  // namespace arangodb

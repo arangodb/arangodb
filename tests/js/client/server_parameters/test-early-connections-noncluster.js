@@ -30,7 +30,7 @@ if (getOptions === true) {
   return {
     'server.jwt-secret': jwtSecret,
     'server.authentication': 'true',
-    'server.allow-early-connections': 'true',
+    'server.early-connections': 'true',
     'server.failure-point': 'startListeningEarly',
   };
 }
