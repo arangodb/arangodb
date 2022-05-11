@@ -206,7 +206,7 @@ struct PrototypeStateMethodsCoordinator final
     VPackBuilder builder{};
     {
       VPackObjectBuilder ob{&builder};
-      builder.add(key, key);
+      builder.add(VPackValue(key));
       {
         VPackObjectBuilder ob2{&builder};
         builder.add("oldValue", oldValue);

@@ -243,7 +243,7 @@ const replicatedStateSuite = function () {
       assertEqual(result.json.result.foo400,  "foobar");
 
       result = compareExchange(leaderUrl, stateId, {"foo400": {"oldValue": "bar400", "newValue": "foobar"}});
-      assertEqual(result.json.code, 1200); // TRI_ERROR_ARANGO_CONFLICT
+      assertEqual(result.json.code, 409);
       result = getEntry(coordUrl, stateId, "foo400", index);
       lh.checkRequestResult(result);
       assertEqual(result.json.result.foo400,  "foobar");
@@ -251,13 +251,13 @@ const replicatedStateSuite = function () {
       result = compareExchange(coordUrl, stateId, {"foo400": {"oldValue": "foobar", "newValue": "bar400"}});
       lh.checkRequestResult(result);
       index = result.json.result.index;
-      assertEqual(index, 9);
+      assertEqual(index, 10);
       result = getEntry(coordUrl, stateId, "foo400", index);
       lh.checkRequestResult(result);
       assertEqual(result.json.result.foo400,  "bar400");
 
       result = compareExchange(coordUrl, stateId, {"foo400": {"oldValue": "foobar", "newValue": "bar400"}});
-      assertEqual(result.json.code, 1200); // TRI_ERROR_ARANGO_CONFLICT
+      assertEqual(result.json.code, 409);
     },
   };
 };
