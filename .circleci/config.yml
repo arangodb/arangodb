@@ -301,7 +301,7 @@ jobs:
 
 workflows:
   replication-two-pr:
-    filter:
+    filters:
       branches:
         only:
           - /^(bug-fix|feature)\/cinfra-.*$/
