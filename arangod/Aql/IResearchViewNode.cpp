@@ -758,7 +758,6 @@ ViewSnapshotPtr snapshotSingleServer(IResearchViewNode const& node,
     return {ViewSnapshotPtr{}, snapshot};
   }
   if (!options.forceSync && trx.isMainTransaction()) {
-    TRI_ASSERT(false);
     return {};
   }
   auto links = [&] {
