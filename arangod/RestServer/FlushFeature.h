@@ -25,14 +25,19 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/ReadWriteLock.h"
 #include "RestServer/arangod.h"
-#include "Utils/FlushThread.h"
 #include "VocBase/voc-types.h"
+
+#include <cstdint>
+#include <memory>
+#include <mutex>
+#include <tuple>
+#include <vector>
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class FlushThread;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct FlushSubscription
@@ -46,16 +51,11 @@ struct FlushSubscription {
 
 class FlushFeature final : public ArangodFeature {
  public:
-  /// @brief handle a 'Flush' marker during recovery
-  /// @param vocbase the vocbase the marker applies to
-  /// @param slice the originally stored marker body
-  /// @return success
-  using FlushRecoveryCallback = std::function<Result(
-      TRI_vocbase_t const& vocbase, velocypack::Slice const& slice)>;
-
   static constexpr std::string_view name() noexcept { return "Flush"; }
 
   explicit FlushFeature(Server& server);
+
+  ~FlushFeature();
 
   void collectOptions(
       std::shared_ptr<options::ProgramOptions> options) override;
@@ -68,27 +68,17 @@ class FlushFeature final : public ArangodFeature {
       const std::shared_ptr<FlushSubscription>& subscription);
 
   /// @brief release all ticks not used by the flush subscriptions
-  /// @param 'count' a number of released subscriptions
-  /// @param 'tick' released tick
-  arangodb::Result releaseUnusedTicks(size_t& count, TRI_voc_tick_t& tick);
+  /// returns number of active flush subscriptions removed, the number of stale
+  /// flush scriptions removed, and the tick value up to which the storage
+  /// engine could release ticks. if no active or stale flush subscriptions were
+  /// found, the returned tick value is 0.
+  std::tuple<size_t, size_t, TRI_voc_tick_t> releaseUnusedTicks();
 
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void prepare() override;
-  void start() override;
-  void beginShutdown() override;
   void stop() override;
-  void unprepare() override {}
-
-  static bool isRunning() { return _isRunning.load(); }
 
  private:
-  static std::atomic<bool> _isRunning;
-
-  uint64_t _flushInterval;
-  std::unique_ptr<FlushThread> _flushThread;
-  basics::ReadWriteLock _threadLock;
-  std::list<std::weak_ptr<FlushSubscription>> _flushSubscriptions;
   std::mutex _flushSubscriptionsMutex;
+  std::vector<std::weak_ptr<FlushSubscription>> _flushSubscriptions;
   bool _stopped;
 };
 
