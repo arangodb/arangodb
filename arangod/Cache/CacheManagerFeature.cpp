@@ -84,7 +84,7 @@ void CacheManagerFeature::collectOptions(
 
 void CacheManagerFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions>) {
-  if (_cacheSize < Manager::minSize) {
+  if (_cacheSize > 0 && _cacheSize < Manager::minSize) {
     LOG_TOPIC("75778", FATAL, arangodb::Logger::FIXME)
         << "invalid value for `--cache.size', need at least "
         << Manager::minSize;
@@ -100,7 +100,7 @@ void CacheManagerFeature::validateOptions(
 }
 
 void CacheManagerFeature::start() {
-  if (ServerState::instance()->isAgent()) {
+  if (ServerState::instance()->isAgent() || _cacheSize == 0) {
     // we intentionally do not activate the cache on an agency node, as it
     // is not needed there
     return;
