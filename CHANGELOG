@@ -1,9 +1,19 @@
 v3.9.2 (XXXX-XX-XX)
 -------------------
 
-* Fixed BTS-860. Changed ArangoSearch index recovery procedure to
-  remove necessity to always fully recreate index if IndexCreation marker
-  encountered.
+* Fixed BTS-860. Changed ArangoSearch index recovery procedure to remove
+  necessity to always fully recreate index if IndexCreation marker encountered.
+
+* Removed separate FlushThread (for views syncing) and merged it with the
+  RocksDBBackgroundThread.
+
+* Fix some issues with WAL recovery for views. Previously it was possible that
+  changes to a view/link were already recovered and persisted, but that the
+  lower bound WAL tick was not moved forward. This could lead to already fully
+  recovered views/links being recovered again on the next restart.
+
+* Put hotbackup requests on the HIGH priority queue to make hotbackups work
+  under high load (BTS-865).
 
 * Allow starting with option value `--cache.size 0`, to turn off in-memory
   caches for indexes entirely (for performance testing or limiting memory
