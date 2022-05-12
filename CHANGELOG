@@ -9,6 +9,8 @@ devel
   lower bound WAL tick was not moved forward. This could lead to already fully
   recovered views/links being recovered again on the next restart.
 
+* Updated OpenSSL to 1.1.1o and OpenLDAP to 2.6.2.
+
 * Upgrade jemalloc to version 5.3.0.
 
 * Fixed BTS-860. Changed ArangoSearch index recovery procedure to
