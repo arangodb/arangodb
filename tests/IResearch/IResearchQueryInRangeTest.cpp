@@ -32,6 +32,8 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 
+#include "IResearch/MakeViewSnapshot.h"
+
 #include <velocypack/Iterator.h>
 
 #include "utils/string_utils.hpp"

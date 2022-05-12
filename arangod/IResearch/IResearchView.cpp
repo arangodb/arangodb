@@ -230,16 +230,13 @@ IResearchView::IResearchView(TRI_vocbase_t& vocbase,
       return;
     }
     if (auto viewLock = asyncSelf->lock(); viewLock) {  // populate snapshot
-      if (!trx.state()) {
-        TRI_ASSERT(false);
-        LOG_TOPIC("47101", WARN, TOPIC)
-            << "failed to get transaction state while creating arangosearch "
-               "view snapshot";
-        return;
+      TRI_ASSERT(trx.state());
+      void const* key = static_cast<LogicalView*>(viewLock.get());
+      auto* snapshot = getViewSnapshot(trx, key);
+      if (snapshot == nullptr) {
+        makeViewSnapshot(trx, key, false, viewLock->name(),
+                         viewLock->getLinks());
       }
-      makeViewSnapshot(
-          trx, ViewSnapshotMode::FindOrCreate, viewLock->getLinks(),
-          static_cast<LogicalView*>(viewLock.get()), viewLock->name());
     }
   };
 }
@@ -690,8 +687,8 @@ ViewSnapshot::Links IResearchView::getLinks() const noexcept {
   ViewSnapshot::Links links;
   links.reserve(_links.size());
   auto const guard = linksReadLock();
-  for (auto const& [cid, link] : _links) {
-    links.emplace(cid, link ? link->lock() : LinkLock{});
+  for (auto const& [_, link] : _links) {
+    links.emplace_back(link ? link->lock() : LinkLock{});
   }
   return links;
 }

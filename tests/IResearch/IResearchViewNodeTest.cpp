@@ -35,6 +35,7 @@
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
+#include "IResearch/MakeViewSnapshot.h"
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
@@ -2134,8 +2135,8 @@ TEST_F(IResearchViewNodeTest, clone) {
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
 
-    node.shards().emplace_back("abc");
-    node.shards().emplace_back("def");
+    node.shards().emplace("abc");
+    node.shards().emplace("def");
 
     // clone without properties into the same plan
     {
@@ -2241,8 +2242,8 @@ TEST_F(IResearchViewNodeTest, clone) {
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
 
-    node.shards().emplace_back("abc");
-    node.shards().emplace_back("def");
+    node.shards().emplace("abc");
+    node.shards().emplace("def");
 
     // clone without properties into the same plan
     {

@@ -2,10 +2,23 @@ devel
 -----
 
 * APM-135: Added multithreading to assigning non-unique indexes to documents,
-  in foreground or background mode. The number of threads is hardcoded to 10 
-  and the threshold amount of documents a thread will process before enqueuing
-  the rest of the documents in the range of document ids is hardcoded to 1000.
-  The number of threads will be added as a startup option. 
+  in foreground or background mode. The number of threads and the batch size
+  for the thread to process before splitting its partitions is given by the 
+  parameters `numThreads` and `threadBatchSize` on index creation. Default:
+  2 threads, 5000 batch size. 
+
+* Put hotbackup requests on the HIGH priority queue to make hotbackups work
+  under high load (BTS-865).
+
+* Removed separate FlushThread (for views syncing) and merged it with the
+  RocksDBBackgroundThread.
+
+* Fix some issues with WAL recovery for views. Previously it was possible that
+  changes to a view/link were already recovered and persisted, but that the
+  lower bound WAL tick was not moved forward. This could lead to already fully
+  recovered views/links being recovered again on the next restart.
+
+* Updated OpenSSL to 1.1.1o and OpenLDAP to 2.6.2.
 
 * Upgrade jemalloc to version 5.3.0.
 

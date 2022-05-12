@@ -1222,12 +1222,11 @@ void RocksDBEngine::stop() {
     _backgroundThread->beginShutdown();
 
     if (_settingsManager) {
-      try {
-        _settingsManager->sync(true);
-      } catch (std::exception const& ex) {
+      auto syncRes = _settingsManager->sync(/*force*/ true);
+      if (syncRes.fail()) {
         LOG_TOPIC("0582f", WARN, Logger::ENGINES)
             << "caught exception while shutting down RocksDB engine: "
-            << ex.what();
+            << syncRes.errorMessage();
       }
     }
 
@@ -2238,7 +2237,7 @@ void RocksDBEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
 /// @brief Add engine-specific V8 functions
 void RocksDBEngine::addV8Functions() {
   // there are no specific V8 functions here
-  RocksDBV8Functions::registerResources();
+  RocksDBV8Functions::registerResources(*this);
 }
 
 /// @brief Add engine-specific REST handlers
