@@ -1188,13 +1188,11 @@ bool State::loadRemaining(index_t cind) {
                                             : std::string();
 
           uint64_t millis = 0;
-          if (ii.hasKey("epoch_millis")) {
-            if (ii.get("epoch_millis").isInteger()) {
-              try {
-                millis = ii.get("epoch_millis").getNumber<uint64_t>();
-              } catch () { }
-	    }
-          }
+	  if (auto milliSlice = ii.get("epoch_millis"); milliSlice.isNumber()) {
+	    try {
+	      millis = milliSlice.getNumber<uint64_t>();
+	    } catch (...) {	}
+	  }
 
           logEmplaceBackNoLock(
             log_t(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()),
