@@ -884,7 +884,7 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
 
       // no changes, can release the latest tick before commit
       impl.tick(lastTickBeforeCommit);
-
+      _lastCommittedTick = lastTickBeforeCommit;
       return {};
     }
 
