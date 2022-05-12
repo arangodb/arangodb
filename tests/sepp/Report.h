@@ -38,7 +38,7 @@ struct ThreadReport {
 
 template<class Inspector>
 auto inspect(Inspector& f, ThreadReport& o) {
-  auto data = o.data.slice();
+  // auto data = o.data.slice();
   return f.object(o).fields(
       // TODO - workloads need to actually provide data
       // f.field("data", data),

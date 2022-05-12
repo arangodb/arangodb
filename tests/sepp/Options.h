@@ -26,6 +26,8 @@
 #include <cstddef>
 #include <variant>
 
+#include "Basics/files.h"
+#include "Basics/FileUtils.h"
 #include "RocksDBOptions.h"
 
 #include "Inspection/Types.h"
@@ -98,7 +100,10 @@ struct Options {
 template<class Inspector>
 auto inspect(Inspector& f, Options& o) {
   return f.object(o).fields(
-      f.field("databaseDirectory", o.databaseDirectory).fallback("/tmp/sepp"),
+      f.field("databaseDirectory", o.databaseDirectory)
+          .fallback(basics::FileUtils::buildFilename(
+              TRI_GetTempPath(),
+              "sepp-" + std::to_string(Thread::currentProcessId()))),
       f.field("setup", o.setup),                           //
       f.field("workload", o.workload).fallback(f.keep()),  //
       f.field("rocksdb", o.rocksdb));
