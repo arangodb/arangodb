@@ -21,6 +21,9 @@ const ButtonSave = ({ graphName, onGraphDataLoaded }) => {
           console.log("data.nodes: ", data.nodes);
           console.log("data.nodes[0]: ", data.nodes[0]);
           console.log("data.nodes[0].color: ", data.nodes[0].color);
+          const element = document.getElementById("graph-card");
+          console.log("element: ", element);
+          element.scrollIntoView({ behavior: "smooth" });
           onGraphDataLoaded(data);
         },
         error: function (e) {
