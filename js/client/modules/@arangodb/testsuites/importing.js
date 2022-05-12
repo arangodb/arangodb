@@ -440,9 +440,13 @@ function importing (options) {
       tu.makePathUnix(fs.join(testPaths.importing[0], 'import-teardown.js')));
 
     result.teardown.failed = result.teardown.success ? 0 : 1;
-  } catch (banana) {
-    print('An exceptions of the following form was caught:',
-          yaml.safeDump(banana));
+  } catch (exception) {
+    result['run'] = {
+      'failed': 1,
+      'message': 'An exception of the following form was caught: ' + exception + "\n" + exception.stack
+    };
+    print('An exception of the following form was caught: ',
+          exception);
   }
 
   print('Shutting down...');
