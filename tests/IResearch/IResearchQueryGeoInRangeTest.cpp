@@ -23,6 +23,7 @@
 
 #include "IResearchQueryCommon.h"
 #include "common.h"
+#include "IResearch/MakeViewSnapshot.h"
 
 #include "IResearch/IResearchView.h"
 #include "Transaction/StandaloneContext.h"
