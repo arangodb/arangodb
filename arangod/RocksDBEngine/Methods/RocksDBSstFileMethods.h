@@ -26,6 +26,10 @@
 #include "RocksDBEngine/RocksDBMethods.h"
 
 #include "ApplicationFeatures/TempFeature.h"
+#include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionCollection.h"
 
 #include <rocksdb/sst_file_writer.h>
 #include <rocksdb/status.h>
@@ -35,7 +39,10 @@ namespace arangodb {
 /// wraps an sst file writer - non transactional
 class RocksDBSstFileMethods final : public RocksDBMethods {
  public:
-  explicit RocksDBSstFileMethods(TempFeature& tempFeature);
+  explicit RocksDBSstFileMethods(bool isForeground, ArangodServer const& server,
+                                 rocksdb::DB* rootDB,
+                                 RocksDBTransactionCollection* trxColl,
+                                 RocksDBIndex& ridx);
   ~RocksDBSstFileMethods();
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
@@ -60,13 +67,19 @@ class RocksDBSstFileMethods final : public RocksDBMethods {
   void cleanUpFiles();
 
   rocksdb::Status writeToFile();
+  void insertEstimators();
 
   static constexpr uint64_t kMaxDataSize = 64 * 1024 * 1024;
   uint64_t _bytesToWriteCount = 0;
 
-  TempFeature& _tempFeature;
+  bool _isForeground;
+  ArangodServer const& _server;
+  rocksdb::DB* _rootDB;
+  RocksDBTransactionCollection* _trxColl;
+  RocksDBIndex& _ridx;
   rocksdb::SstFileWriter _sstFileWriter;
   rocksdb::ColumnFamilyHandle* _cf;
+  std::string _tmpPath;
   std::vector<std::string> _sstFileNames;
   std::vector<std::pair<std::string, std::string>> _sortedKeyValPairs;
 };

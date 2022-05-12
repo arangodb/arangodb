@@ -134,7 +134,8 @@ IndexCreatorThread::IndexCreatorThread(
   } else {
     // _batch = std::make_unique<rocksdb::WriteBatch>(32 * 1024 * 1024);
     _methods = std::make_unique<RocksDBSstFileMethods>(
-        ridx.collection().vocbase().server().getFeature<TempFeature>());
+        _isForeground, ridx.collection().vocbase().server(), _rootDB, _trxColl,
+        _ridx);
     // _methods = std::make_unique<RocksDBBatchedMethods>(
     //     reinterpret_cast<rocksdb::WriteBatch*>(_batch.get()));
   }
@@ -302,10 +303,11 @@ void IndexCreatorThread::run() {
     _sharedWorkEnv->registerError(Result(TRI_ERROR_INTERNAL, ex.what()));
   }
   if (_sharedWorkEnv->getResponse().ok()) {  // required so iresearch commits
+
     Result res = _trx.commit();
     if (res.ok()) {
       if (_ridx.estimator() != nullptr) {
-        _ridx.estimator()->setAppliedSeq(_rootDB->GetLatestSequenceNumber());
+        _ridx.estimator()->updateAppliedSeq(_rootDB->GetLatestSequenceNumber());
       }
     } else {
       _sharedWorkEnv->registerError(res);

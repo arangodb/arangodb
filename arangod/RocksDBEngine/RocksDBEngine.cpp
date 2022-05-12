@@ -122,6 +122,15 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
+namespace {
+void cleanUpExtFiles(std::string_view path) {
+  for (auto const& fileName : TRI_FullTreeDirectory(path.data())) {
+    TRI_UnlinkFile(
+        basics::FileUtils::buildFilename(path.data(), fileName.data()).data());
+  }
+}
+}  // namespace
+
 namespace arangodb {
 
 DECLARE_GAUGE(rocksdb_wal_sequence, uint64_t, "Current RocksDB WAL sequence");
@@ -648,7 +657,13 @@ void RocksDBEngine::start() {
 
   // set the database sub-directory for RocksDB
   auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
+
   _path = databasePathFeature.subdirectoryName("engine-rocksdb");
+  std::string idxPath =
+      basics::FileUtils::buildFilename(_path, "tmp-idx-creation");
+  if (basics::FileUtils::exists(idxPath.data())) {
+    ::cleanUpExtFiles(idxPath.data());
+  }
 
   [[maybe_unused]] bool createdEngineDir = false;
   if (!basics::FileUtils::isDirectory(_path)) {

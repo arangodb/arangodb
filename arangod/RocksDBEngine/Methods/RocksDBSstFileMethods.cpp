@@ -23,52 +23,93 @@
 
 #include "RocksDBSstFileMethods.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/files.h"
+#include "Basics/FileUtils.h"
 #include "Basics/RocksDBUtils.h"
+#include "Random/RandomGenerator.h"
+#include "RestServer/DatabasePathFeature.h"
+
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
+namespace FU = basics::FileUtils;
 
-RocksDBSstFileMethods::RocksDBSstFileMethods(arangodb::TempFeature& tempFeature)
+RocksDBSstFileMethods::RocksDBSstFileMethods(
+    bool isForeground, ArangodServer const& server, rocksdb::DB* rootDB,
+    RocksDBTransactionCollection* trxColl, RocksDBIndex& ridx)
     : RocksDBMethods(),
-      _tempFeature(tempFeature),
+      _isForeground(isForeground),
+      _server(server),
+      _rootDB(rootDB),
+      _trxColl(trxColl),
+      _ridx(ridx),
       _sstFileWriter(rocksdb::EnvOptions(), rocksdb::Options()),
-      _cf(nullptr) {}
+      _cf(nullptr),
+      _tmpPath(std::move(FU::buildFilename(
+          _server.getFeature<DatabasePathFeature>().subdirectoryName(
+              "engine-rocksdb"),
+          "tmp-idx-creation"))) {
+  if (!FU::exists(_tmpPath)) {
+    FU::createDirectory(_tmpPath, nullptr);
+  }
+}
 
 RocksDBSstFileMethods::~RocksDBSstFileMethods() { cleanUpFiles(); }
+
+void RocksDBSstFileMethods::insertEstimators() {
+  auto ops = _trxColl->stealTrackedIndexOperations();
+  if (!ops.empty()) {
+    TRI_ASSERT(_ridx.hasSelectivityEstimate() && ops.size() == 1);
+    auto it = ops.begin();
+    TRI_ASSERT(_ridx.id() == it->first);
+
+    auto* estimator = _ridx.estimator();
+    if (estimator != nullptr) {
+      if (_isForeground) {
+        estimator->insert(it->second.inserts);
+      } else {
+        uint64_t seq = _rootDB->GetLatestSequenceNumber();
+        // since cuckoo estimator uses a map with seq as key we need to
+        estimator->bufferUpdates(seq, std::move(it->second.inserts),
+                                 std::move(it->second.removals));
+      }
+    }
+  }
+}
 
 rocksdb::Status RocksDBSstFileMethods::writeToFile() {
   if (_sortedKeyValPairs.empty()) {
     return rocksdb::Status::OK();
   }
+
   auto comparator = _cf->GetComparator();
   std::sort(_sortedKeyValPairs.begin(), _sortedKeyValPairs.end(),
             [&comparator](auto& v1, auto& v2) {
               return comparator->Compare({v1.first}, {v2.first}) < 0;
             });
-  std::string fileName;
-  long systemError;
-  std::string errorMsg;
-  ErrorCode errorCode = TRI_GetTempName(_tempFeature.path().data(), fileName,
-                                        false, systemError, errorMsg);
-  if (errorCode == TRI_ERROR_NO_ERROR) {
-    rocksdb::Status res = _sstFileWriter.Open(fileName);
-    if (res.ok()) {
-      _bytesToWriteCount = 0;
-      _sstFileNames.emplace_back(fileName);
-      for (auto const& [key, val] : _sortedKeyValPairs) {
-        _sstFileWriter.Put(rocksdb::Slice(key), rocksdb::Slice(val));
-      }
-      _sortedKeyValPairs.clear();
-      rocksdb::Status res = _sstFileWriter.Finish();
-      if (!res.ok()) {
-        cleanUpFiles();
-      }
+  TRI_pid_t pid = Thread::currentProcessId();
+  std::string tmpFileName =
+      std::to_string(pid) + '-' +
+      std::to_string(RandomGenerator::interval(UINT32_MAX));
+  std::string fileName = FU::buildFilename(_tmpPath, tmpFileName);
+  fileName += ".ext";
+  rocksdb::Status res = _sstFileWriter.Open(fileName);
+  if (res.ok()) {
+    _bytesToWriteCount = 0;
+    _sstFileNames.emplace_back(fileName);
+    for (auto const& [key, val] : _sortedKeyValPairs) {
+      _sstFileWriter.Put(rocksdb::Slice(key), rocksdb::Slice(val));
     }
-    return res;
-  } else {
-    cleanUpFiles();
-    return rocksdb::Status::NotSupported();  // TODO: change to matching error
+    _sortedKeyValPairs.clear();
+    rocksdb::Status res = _sstFileWriter.Finish();
+    if (!res.ok()) {
+      cleanUpFiles();
+    } else {
+      insertEstimators();
+    }
   }
+  return res;
 }
 
 rocksdb::Status RocksDBSstFileMethods::stealFileNames(
