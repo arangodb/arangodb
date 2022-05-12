@@ -1568,7 +1568,7 @@ Result IResearchLink::insert(
   }
 
   auto insertImpl = [this, doc, documentId, &trx, engine = _engine]  //
-      (irs::index_writer::documents_context & ctx) -> Result {
+      (irs::index_writer::documents_context& ctx) -> Result {
     try {
       FieldIterator body(trx, _meta._collectionName, _id);
 
