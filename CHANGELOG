@@ -1,6 +1,10 @@
 v3.8.7 (XXXX-XX-XX)
 -------------------
 
+* No good reason to fatal error in agency state, when local database entries
+  lack local timestamp (legacy). In that situation, we will record epoch
+  begin as local time.
+
 * Updated OpenSSL to 1.1.1o and OpenLDAP to 2.6.2.
 
 * Added option `--enable-revision-trees` to arangorestore, which will add the
