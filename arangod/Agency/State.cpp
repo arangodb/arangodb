@@ -1155,7 +1155,7 @@ bool State::loadRemaining(index_t cind) {
       if (auto milliSlice = ii.get("epoch_millis"); milliSlice.isNumber()) {
         try {
           millis = milliSlice.getNumber<uint64_t>();
-        }
+        } catch (...) {}
       }
 
       // Empty patches :
