@@ -42,26 +42,30 @@ void DebugRaceController::reset() {
   _didTrigger = false;
 }
 
-bool DebugRaceController::didTrigger() const {
-  std::unique_lock<std::mutex> guard(_mutex);
-  return _didTrigger;
-}
-
 std::vector<std::any> DebugRaceController::data() const {
   std::unique_lock<std::mutex> guard(_mutex);
   return _data;
 }
 
-void DebugRaceController::waitForOthers(
+auto DebugRaceController::waitForOthers(
     size_t numberOfThreadsToWaitFor, std::any myData,
-    arangodb::application_features::ApplicationServer const& server) {
+    arangodb::application_features::ApplicationServer const& server) -> bool {
   std::unique_lock<std::mutex> guard(_mutex);
-  _data.emplace_back(std::move(myData));
-  _condVariable.wait(guard, [&] {
-    return _data.size() == numberOfThreadsToWaitFor || server.isStopping();
-  });
-  _didTrigger = true;
-  _condVariable.notify_all();
+  if (!_didTrigger) {
+    _data.emplace_back(std::move(myData));
+    _condVariable.wait(guard, [&] {
+      // check emtpy to continue after beeing resetted
+      return _data.empty() || _data.size() == numberOfThreadsToWaitFor ||
+             server.isStopping();
+    });
+    if (!_data.empty()) {
+      _didTrigger = true;
+    }
+    _condVariable.notify_all();
+    return true;
+  } else {
+    return false;
+  }
 }
 
 #endif
