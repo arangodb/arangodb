@@ -1,6 +1,10 @@
 devel
 -----
 
+* No good reason to fatal error in agency state, when local database entries
+  lack local timestamp (legacy). In that situation, we will record epoch
+  begin as local time.
+
 * Upgrade jemalloc to version 5.3.0.
 
 * Fixed BTS-860. Changed ArangoSearch index recovery procedure to
