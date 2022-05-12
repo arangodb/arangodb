@@ -1,6 +1,10 @@
 v3.9.2 (XXXX-XX-XX)
 -------------------
 
+* Allow starting with option value `--cache.size 0`, to turn off in-memory
+  caches for indexes entirely (for performance testing or limiting memory
+  usage).
+
 * Updated OpenSSL to 1.1.1o and OpenLDAP to 2.6.2.
 
 * Added option `--enable-revision-trees` to arangorestore, which will add the 
