@@ -2,7 +2,9 @@ v3.8.7 (XXXX-XX-XX)
 -------------------
 
 * Put hotbackup requests on the HIGH priority queue to make hotbackups work
-  under high load.
+  under high load (BTS-865).
+
+* Updated OpenSSL to 1.1.1o and OpenLDAP to 2.6.2.
 
 * Added option `--enable-revision-trees` to arangorestore, which will add the
   attributes `syncByRevision` and `usesRevisionsAsDocumentIds` to the collection
@@ -57,8 +59,6 @@ v3.8.7 (XXXX-XX-XX)
   Same with low priority authentication like internal UI requests to .html files
   for the UI. This solves a performance problem for shards getting in sync with
   audit log switched on.
-
-* Updated OpenSSL to 1.1.1n and OpenLDAP to 2.6.1.
 
 * Bug-Fix: Resolve BTS-673/Issue #15107, a spliced subquery could return too few
   results.
