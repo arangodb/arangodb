@@ -1,6 +1,9 @@
 devel
 -----
 
+* Put hotbackup requests on the HIGH priority queue to make hotbackups work
+  under high load (BTS-865).
+
 * Removed separate FlushThread (for views syncing) and merged it with the
   RocksDBBackgroundThread.
 
