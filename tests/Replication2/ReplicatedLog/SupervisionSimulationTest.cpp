@@ -87,6 +87,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_created) {
 
   auto result = Engine::run(driver, allTests, initState);
   EXPECT_FALSE(result.failed) << *result.failed;
+  std::cout << result.stats << std::endl;
 }
 
 TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_leader_fails) {
