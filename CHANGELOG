@@ -1,6 +1,10 @@
 v3.9.2 (XXXX-XX-XX)
 -------------------
 
+* No good reason to fatal error in agency state, when local database entries
+  lack local timestamp (legacy). In that situation, we will record epoch
+  begin as local time.
+
 * Very verbose warning from failing to parse GEO JSON in search. Has lead to
   Billions of log lines on deployed services.
 
