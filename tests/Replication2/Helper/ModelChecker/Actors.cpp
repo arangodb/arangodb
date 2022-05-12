@@ -276,7 +276,7 @@ auto RemoveServerActor::step(AgencyState const& agency) const
   }
 
   auto const& target = agency.replicatedLog->target;
-  //  TRI_ASSERT(target.participants.contains(server));
+  TRI_ASSERT(target.participants.contains(server));
   auto result = std::vector<AgencyTransition>{};
 
   result.emplace_back(RemoveLogParticipantAction{server});

@@ -81,7 +81,8 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_created) {
   auto allTests = model_checker::combined{
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
   };
-  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+                                            AgencyState, AgencyTransition>;
 
   auto result = Engine::run(driver, allTests, initState);
   EXPECT_FALSE(result.failed) << *result.failed;
@@ -120,7 +121,8 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_leader_fails) {
   auto allTests = model_checker::combined{
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
   };
-  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+                                            AgencyState, AgencyTransition>;
 
   auto result = Engine::run(driver, allTests, initState);
   EXPECT_FALSE(result.failed) << *result.failed;
@@ -156,7 +158,8 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_any_fails) {
   auto allTests = model_checker::combined{
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
   };
-  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+                                            AgencyState, AgencyTransition>;
 
   auto result = Engine::run(driver, allTests, initState);
   EXPECT_FALSE(result.failed) << *result.failed;
@@ -200,7 +203,8 @@ TEST_F(ReplicatedLogSupervisionSimulationTest,
       MC_ALWAYS(mcpreds::isParticipantNotPlanned("E")),
       MC_EVENTUALLY_ALWAYS(mcpreds::isParticipantNotPlanned("F")),
   };
-  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+                                            AgencyState, AgencyTransition>;
 
   auto result = Engine::run(driver, allTests, initState);
   EXPECT_FALSE(result.failed) << *result.failed;
@@ -242,7 +246,8 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log) {
   auto allTests = model_checker::combined{
       MC_EVENTUALLY_ALWAYS(mcpreds::isLeaderHealth()),
   };
-  using Engine = model_checker::ActorEngine<AgencyState, AgencyTransition>;
+  using Engine = model_checker::ActorEngine<model_checker::DFSEnumerator,
+                                            AgencyState, AgencyTransition>;
 
   auto result = Engine::run(driver, allTests, initState);
   EXPECT_FALSE(result.failed) << *result.failed;
