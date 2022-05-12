@@ -1,6 +1,16 @@
 devel
 -----
 
+* Removed separate FlushThread (for views syncing) and merged it with the
+  RocksDBBackgroundThread.
+
+* Fix some issues with WAL recovery for views. Previously it was possible that
+  changes to a view/link were already recovered and persisted, but that the
+  lower bound WAL tick was not moved forward. This could lead to already fully
+  recovered views/links being recovered again on the next restart.
+
+* Updated OpenSSL to 1.1.1o and OpenLDAP to 2.6.2.
+
 * Upgrade jemalloc to version 5.3.0.
 
 * Fixed BTS-860. Changed ArangoSearch index recovery procedure to
