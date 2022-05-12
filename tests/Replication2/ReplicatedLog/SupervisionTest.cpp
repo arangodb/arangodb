@@ -38,6 +38,7 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::agency;
 using namespace arangodb::replication2::replicated_log;
 
+#if 0
 using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
 
 VPackBuffer<uint8_t> vpackFromJsonString(char const* c) {
@@ -55,6 +56,7 @@ VPackBuffer<uint8_t> vpackFromJsonString(char const* c) {
 VPackBuffer<uint8_t> operator"" _vpack(const char* json, size_t) {
   return vpackFromJsonString(json);
 }
+#endif
 
 struct LeaderElectionCampaignTest : ::testing::Test {};
 TEST_F(LeaderElectionCampaignTest, test_computeReason) {
@@ -617,6 +619,7 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
   ASSERT_EQ(writeEmptyTermAction.minTerm, LogTerm{3});
 }
 
+#if 0
 TEST_F(LogSupervisionTest, test_failed_to_select_leader) {
   SupervisionContext ctx;
 
@@ -661,3 +664,4 @@ TEST_F(LogSupervisionTest, test_failed_to_select_leader) {
   ASSERT_EQ(leaderElectionAction._electedLeader.serverId, "B");
   ASSERT_EQ(leaderElectionAction._electedLeader.serverId, "C");
 }
+#endif

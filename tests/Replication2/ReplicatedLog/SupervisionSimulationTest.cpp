@@ -52,7 +52,8 @@ struct ReplicatedLogSupervisionSimulationTest : ::testing::Test {
 
 TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_created) {
   AgencyLogBuilder log;
-  log.setId(logId)
+  log.setTargetConfig(LogConfig(2, 2, 3, true))
+      .setId(logId)
       .setTargetParticipant("A", defaultFlags)
       .setTargetParticipant("B", defaultFlags)
       .setTargetParticipant("C", defaultFlags);
@@ -86,15 +87,12 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_created) {
 
   auto result = Engine::run(driver, allTests, initState);
   EXPECT_FALSE(result.failed) << *result.failed;
-  std::cout << result.stats << std::endl;
-  for (auto s : result.finalStates) {
-    std::cout << s->state << std::endl;
-  }
 }
 
 TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_leader_fails) {
   AgencyLogBuilder log;
-  log.setId(logId)
+  log.setTargetConfig(LogConfig(2, 2, 3, true))
+      .setId(logId)
       .setTargetParticipant("A", defaultFlags)
       .setTargetParticipant("B", defaultFlags)
       .setTargetParticipant("C", defaultFlags);
@@ -131,7 +129,8 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_leader_fails) {
 
 TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_any_fails) {
   AgencyLogBuilder log;
-  log.setId(logId)
+  log.setTargetConfig(LogConfig(2, 2, 3, true))
+      .setId(logId)
       .setTargetParticipant("A", defaultFlags)
       .setTargetParticipant("B", defaultFlags)
       .setTargetParticipant("C", defaultFlags);
@@ -169,7 +168,8 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_any_fails) {
 TEST_F(ReplicatedLogSupervisionSimulationTest,
        check_participant_added_created) {
   AgencyLogBuilder log;
-  log.setId(logId)
+  log.setTargetConfig(LogConfig(2, 2, 3, true))
+      .setId(logId)
       .setTargetParticipant("A", defaultFlags)
       .setTargetParticipant("B", defaultFlags)
       .setTargetParticipant("C", defaultFlags)
