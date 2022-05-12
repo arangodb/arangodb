@@ -9,6 +9,9 @@ v3.9.2 (XXXX-XX-XX)
   lower bound WAL tick was not moved forward. This could lead to already fully
   recovered views/links being recovered again on the next restart.
 
+* Put hotbackup requests on the HIGH priority queue to make hotbackups work
+  under high load (BTS-865).
+
 * Allow starting with option value `--cache.size 0`, to turn off in-memory
   caches for indexes entirely (for performance testing or limiting memory
   usage).
