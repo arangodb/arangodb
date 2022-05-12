@@ -145,7 +145,8 @@ struct LinkTrxState final : public TransactionState::Cookie {
 Result insertDocument(irs::index_writer::documents_context& ctx,
                       transaction::Methods const& trx, FieldIterator& body,
                       velocypack::Slice document, LocalDocumentId documentId,
-                      IResearchLinkMeta const& meta, IndexId id) {
+                      IResearchLinkMeta const& meta, IndexId id,
+                      arangodb::StorageEngine* engine) {
   body.reset(document, meta);  // reset reusable container to doc
 
   if (!body.valid()) {
@@ -209,6 +210,10 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
                 std::to_string(documentId.id()) + "'"};
   }
 
+  if (trx.state()->hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
+    ctx.tick(engine->currentTick());
+  }
+
   return {};
 }
 
@@ -224,6 +229,7 @@ class IResearchFlushSubscription final : public FlushSubscription {
 
   void tick(TRI_voc_tick_t tick) noexcept {
     auto value = _tick.load(std::memory_order_acquire);
+    TRI_ASSERT(value <= tick);
 
     // tick value must never go backwards
     while (tick > value) {
@@ -886,7 +892,7 @@ Result IResearchLink::commitUnsafe(bool wait, CommitResult* code) {
 
       // no changes, can release the latest tick before commit
       impl.tick(lastTickBeforeCommit);
-
+      _lastCommittedTick = lastTickBeforeCommit;
       return {};
     }
 
@@ -1666,12 +1672,13 @@ Result IResearchLink::insert(transaction::Methods& trx,
     return {};
   }
 
-  auto insertImpl = [this, doc, documentId, &trx]  //
+  auto insertImpl = [this, doc, documentId, &trx, engine = _engine]  //
       (irs::index_writer::documents_context & ctx) -> Result {
     try {
       FieldIterator body(trx, _meta._collectionName, _id);
 
-      return insertDocument(ctx, trx, body, doc, documentId, _meta, id());
+      return insertDocument(ctx, trx, body, doc, documentId, _meta, id(),
+                            engine);
     } catch (basics::Exception const& e) {
       return {
           e.code(),
