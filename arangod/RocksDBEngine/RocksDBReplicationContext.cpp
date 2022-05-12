@@ -79,7 +79,7 @@ DataSourceId normalizeIdentifier(TRI_vocbase_t& vocbase,
 rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
   auto* sm = engine.settingsManager();
   if (sm) {
-    sm->sync(true);  // force
+    sm->sync(/*force*/ true);
   }
   return engine.db()->GetLatestSequenceNumber();
 }
