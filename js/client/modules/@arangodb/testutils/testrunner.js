@@ -50,12 +50,10 @@ let usersTests = {
     try {
       this.usersCount = userManager.all().length;
     } catch (x) {
-      print(x.message)
       obj.results[te] = {
         status: false,
         message: 'failed to fetch the users on the system before the test: ' + x.message
       };
-      obj.continueTesting = false;
       obj.serverDead = true;
       return false;
     }
@@ -64,7 +62,6 @@ let usersTests = {
   runCheck: function (obj, te) {
     try {
       if (userManager.all().length !== this.usersCount) {
-        obj.continueTesting = false;
         obj.results[te] = {
           status: false,
           message: 'Cleanup of users missing - found users left over: [ ' +
@@ -75,16 +72,13 @@ let usersTests = {
         return false;
       }
     } catch (x) {
-      print(x.message)
       obj.results[te] = {
         status: false,
         message: 'failed to fetch the users on the system before the test: ' + x.message
       };
-      obj.continueTesting = false;
       obj.serverDead = true;
       return false;
     }
-    print(true)
     return true;
   }
 };
@@ -104,7 +98,6 @@ let collectionsTest = {
         status: false,
         message: 'failed to fetch the previously available collections: ' + x.message
       };
-      obj.continueTesting = false;
       obj.serverDead = true;
       return false;
     }
@@ -121,7 +114,6 @@ let collectionsTest = {
         status: false,
         message: 'failed to fetch the currently available collections: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
       };
-      obj.continueTesting = false;
       return false;
     }
     let delta = tu.diffArray(obj.collectionsBefore, collectionsAfter).filter(function(name) {
@@ -155,7 +147,6 @@ let viewsTest = {
         status: false,
         message: 'failed to fetch the previously available views: ' + x.message
       };
-      obj.continueTesting = false;
       obj.serverDead = true;
       return false;
     }
@@ -172,7 +163,6 @@ let viewsTest = {
         status: false,
         message: 'failed to fetch the currently available views: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
       };
-      obj.continueTesting = false;
       return false;
     }
     let delta = tu.diffArray(obj.viewsBefore, viewsAfter).filter(function(name) {
@@ -208,7 +198,6 @@ let graphsTest = {
         status: false,
         message: 'failed to fetch the graphs: ' + x.message + '. Original test status: ' + JSON.stringify(obj.results[te])
       };
-      obj.continueTesting = false;
       return false;
     }
     if (graphs && graphs.count() !== obj.graphCount) {
@@ -243,7 +232,6 @@ let databasesTest = {
         status: false,
         message: 'Cleanup missing - test left over databases: ' + JSON.stringify(databasesAfter) + '. Original test status: ' + JSON.stringify(obj.results[te])
       };
-      obj.continueTesting = false;
       return false;
     }
     return true;
@@ -259,7 +247,6 @@ let failurePointsCheck = {
   runCheck: function(obj, te) {
     let failurePoints = pu.checkServerFailurePoints(obj.instanceManager);
     if (failurePoints.length > 0) {
-      obj.continueTesting = false;
       obj.results[te] = {
         status: false,
         message: 'Cleanup of failure points missing - found failure points engaged: [ ' +
@@ -332,7 +319,6 @@ class testRunner {
         this.alive()) {
       return true;
     } else {
-      print('baddddd')
       this.continueTesting = false;
       return false;
     }
@@ -494,6 +480,7 @@ class testRunner {
         
         for (let j = 0; j < this.cleanupChecks.length; j++) {
           if (!this.continueTesting || !this.cleanupChecks[j].setUp(this, te)) {
+            this.continueTesting = false;
             print(RED+'server pretest "' + this.cleanupChecks[j].name + '" failed!'+RESET);
             j = this.cleanupChecks.length;
             continue;
@@ -547,6 +534,7 @@ class testRunner {
             for (let j = 0; j < this.cleanupChecks.length; j++) {
               if (!this.continueTesting || !this.cleanupChecks[j].runCheck(this, te)) {
                 print(RED+'server posttest "' + this.cleanupChecks[j].name + '" failed!'+RESET);
+                this.continueTesting = false;
                 j = this.cleanupChecks.length;
                 continue;
               }
@@ -614,7 +602,7 @@ class testRunner {
     if (this.serverOptions['server.jwt-secret'] && !clonedOpts['server.jwt-secret']) {
       clonedOpts['server.jwt-secret'] = this.serverOptions['server.jwt-secret'];
     }
-    this.results.shutdown = this.results.shutdown && this.instanceManager.shutdownInstance(clonedOpts, forceTerminate);
+    this.results.shutdown = this.results.shutdown && this.instanceManager.shutdownInstance(forceTerminate);
 
     this.loadClusterTestStabilityInfo();
 

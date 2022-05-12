@@ -85,7 +85,7 @@ function makeDataWrapper (options) {
       tests.forEach(file => {
         count += 1;
         let args = pu.makeArgs.arangosh(this.options);
-        args['server.endpoint'] = tu.findEndpoint(this.options, this.instanceInfo);
+        args['server.endpoint'] = this.instanceManager.findEndpoint();
         args['javascript.execute'] = file;
         if (this.options.forceJson) {
           args['server.force-json'] = true;

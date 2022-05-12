@@ -80,6 +80,7 @@ class instanceManager {
     this.endpoints = [];
     this.arangods = [];
     this.restKeyFile = '';
+    this.tcpdump = null;
     if (this.options.encryptionAtRest) {
       this.restKeyFile = fs.join(this.rootDir, 'openSesame.txt');
       fs.makeDirectoryRecursive(this.rootDir);
@@ -98,11 +99,11 @@ class instanceManager {
     try {
       if (this.options.hasOwnProperty('server')) {
         /// external server, not managed by us.
-        this.endpoint = this.options.server,
-        this.rootDir = this.options.serverRoot,
-        this.url = this.options.server.replace('tcp', 'http'),
+        this.endpoint = this.options.server;
+        this.rootDir = this.options.serverRoot;
+        this.url = this.options.server.replace('tcp', 'http');
         arango.reconnect(this.endpoint, '_system', 'root', '');
-        return rc;
+        return true;
       }
 
       for (let count = 0;
@@ -164,7 +165,7 @@ class instanceManager {
                                              this.addArgs,
                                              this.httpAuthOptions,
                                              this.protocol,
-                                             fs.join(this.rootDir, instanceRole.single + "_" + count),
+                                             fs.join(this.rootDir, instanceRole.single + "_0"),
                                              this.restKeyFile,
                                              this.agencyConfig));
       }
@@ -190,11 +191,11 @@ class instanceManager {
     }
   }
 
-  restartOneInstance(moreArgs) {
+  restartOneInstance(moreArgs, startTime) {
     /// todo
     if (this.options.cluster && !this.options.skipReconnect) {
-      this.checkClusterAlive(instanceInfo, {}); // todo addArgs
-      print("reconnecting " + instanceInfo.endpoint);
+      this.checkClusterAlive({}); // todo addArgs
+      print("reconnecting " + this.endpoint);
       arango.reconnect(this.endpoint,
                        '_system',
                        this.options.username,
@@ -218,7 +219,7 @@ class instanceManager {
         return;
       }
       var port = res[1];
-      if (arangod.isRole(instanceRole.agent)) {
+      if (arangod.isAgent()) {
         if (this.options.sniffAgency) {
           ports.push('port ' + port);
         }
@@ -263,30 +264,33 @@ class instanceManager {
     } else {
       args = ['-ni', device, '-s0', '-w', pcapFile];
     }
-    for (let port = 0; port < ports.length; port ++) {
-      if (port > 0) {
+    let count = 0;
+    this.arangods.forEach(arangod => {
+      if (count > 0) {
         args.push('or');
       }
-      args.push(ports[port]);
-    }
+      args.push(arangod.port);
+      count ++;
+    });
 
     if (this.options.sniff === 'sudo') {
       args.unshift(prog);
       prog = 'sudo';
     }
     print(CYAN + 'launching ' + prog + ' ' + JSON.stringify(args) + RESET);
-    tcpdump = executeExternal(prog, args);
+    this.tcpdump = executeExternal(prog, args);
   }
   stopTcpDump() {
-    if (tcpdump !== undefined) {
+    if (this.tcpdump !== null) {
       print(CYAN + "Stopping tcpdump" + RESET);
-      killExternal(tcpdump.pid);
+      killExternal(this.tcpdump.pid);
       try {
-        statusExternal(tcpdump.pid, true);
+        statusExternal(this.tcpdump.pid, true);
       } catch (x)
       {
         print(Date() + ' wasn\'t able to stop tcpdump: ' + x.message );
       }
+      this.tcpdump = null;
     }
   }
 
@@ -303,9 +307,9 @@ class instanceManager {
     return importantLines;
   }
 
-  initProcessStats(instanceInfo) {
-    instanceInfo.arangods.forEach((arangod) => {
-      arangod.stats = getProcessStats(arangod.pid);
+  initProcessStats() {
+    this.arangods.forEach((arangod) => {
+      arangod.stats = arangod.getProcessStats();
     });
   }
 
@@ -364,7 +368,7 @@ class instanceManager {
       let opts = Object.assign(pu.makeAuthorizationHeaders(this.options),
                                { method: 'GET' });
 
-      this.arangods.forEach(arangod.getMemprofSnapshot(opts));
+      this.arangods.forEach(arangod => arangod.getMemprofSnapshot(opts));
     }
   }
 
@@ -377,13 +381,13 @@ class instanceManager {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief dump the state of the agency to disk. if we still can get one.
   // //////////////////////////////////////////////////////////////////////////////
-  dumpAgency(instanceInfo, options) {
+  dumpAgency() {
     this.arangods.forEach((arangod) => {
       if (arangod.role === "agent") {
         if (arangod.hasOwnProperty('exitStatus')) {
-          print(Date() + " this agent is already dead: " + JSON.stringify(arangod));
+          print(Date() + " this agent is already dead: " + JSON.stringify(arangod.getStructure()));
         } else {
-          print(Date() + " Attempting to dump Agent: " + JSON.stringify(arangod));
+          print(Date() + " Attempting to dump Agent: " + JSON.stringify(arangod.getStructure()));
           arangod.dumpAgent( '/_api/agency/config', 'GET', 'agencyConfig');
 
           arangod.dumpAgent('/_api/agency/state', 'GET', 'agencyState');
@@ -415,7 +419,7 @@ class instanceManager {
     try {
       const health = internal.clusterHealth();
       return this.arangods.every((arangod) => {
-        if (arangod.isRole(instanceRole.agent) || arangod.isRole(instanceRole.single)) {
+        if (arangod.isAgent() || arangod.isRole(instanceRole.single)) {
           return true;
         }
         if (health.hasOwnProperty(arangod.id)) {
@@ -452,7 +456,7 @@ class instanceManager {
       let d = this.detectCurrentLeader();
       if (this.endpoint !== d.endpoint) {
         print(Date() + ' failover has happened, leader is no more! Marking Crashy!');
-        serverCrashedLocal = true;
+        d.serverCrashedLocal = true;
         this.dumpAgency();
         return false;
       }
@@ -461,7 +465,7 @@ class instanceManager {
     let rc = this.arangods.reduce((previous, arangod) => {
       let ret = arangod.checkArangoAlive();
       if (!ret) {
-        instanceInfo.message += arangod.message;
+        this.message += arangod.message;
       }
       return previous && ret;
     }, true);
@@ -558,157 +562,6 @@ class instanceManager {
     }
   }
 
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief on linux get a statistic about the sockets we used
-  // //////////////////////////////////////////////////////////////////////////////
-
-  getSockStat(arangod, options, preamble) {
-    if (this.options.getSockStat && (platform === 'linux')) {
-      let sockStat = preamble + arangod.pid + "\n";
-      sockStat += getSockStatFile(arangod.pid);
-      return sockStat;
-    }
-  }
-  getSockStatFile(pid) {
-    try {
-      return fs.read("/proc/" + pid + "/net/sockstat");
-    } catch (e) {/* oops, process already gone? don't care. */ }
-    return "";
-  }
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief commands a server to shut down via webcall
-  // //////////////////////////////////////////////////////////////////////////////
-
-  shutdownArangod (arangod, options, forceTerminate) {
-    if (forceTerminate === undefined) {
-      forceTerminate = false;
-    }
-    if (options.hasOwnProperty('server')) {
-      print(Date() + ' running with external server');
-      return;
-    }
-
-    if (options.valgrind) {
-      waitOnServerForGC(arangod, options, 60);
-    }
-    if (options.rr && forceTerminate) {
-      forceTerminate = false;
-      options.useKillExternal = true;
-    }
-    if ((!arangod.hasOwnProperty('exitStatus')) ||
-        (arangod.exitStatus.status === 'RUNNING')) {
-      if (forceTerminate) {
-        let sockStat = this.getSockStat(arangod, options, "Force killing - sockstat before: ");
-        arangod.killWithCoreDump();
-        arangod.analyzeServerCrash('shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun ' + sockStat);
-      } else if (options.useKillExternal) {
-        let sockStat = this.getSockStat(arangod, options, "Shutdown by kill - sockstat before: ");
-        arangod.exitStatus = killExternal(arangod.pid);
-        print(sockStat);
-      } else {
-        const requestOptions = pu.makeAuthorizationHeaders(this.options);
-        requestOptions.method = 'DELETE';
-        requestOptions.timeout = 60; // 60 seconds hopefully are enough for getting a response
-        if (!options.noStartStopLogs) {
-          print(Date() + ' ' + arangod.url + '/_admin/shutdown');
-        }
-        let sockStat = this.getSockStat(arangod, options, "Sock stat for: ");
-        const reply = download(arangod.url + '/_admin/shutdown', '', requestOptions);
-        if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
-            !((reply.code === 500) &&
-              (
-                (reply.message === "Connection closed by remote") || // http connection
-                  reply.message.includes('failed with #111')           // https connection
-              ))) {
-          serverCrashedLocal = true;
-          print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
-          shutdownArangod(arangod, options, true);
-        }
-        else if (!options.noStartStopLogs) {
-          print(sockStat);
-        }
-        if (options.extremeVerbosity) {
-          print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
-        }
-      }
-    } else {
-      print(Date() + ' Server already dead, doing nothing.');
-    }
-  }
-
-
-  shutDownOneInstance(options, arangod, fullInstance, counters, forceTerminate, timeout) {
-    let shutdownTime = internal.time();
-    if (!arangod.hasOwnProperty('exitStatus')) {
-      shutdownArangod(arangod, options, forceTerminate);
-      if (forceTerminate) {
-        print(Date() + " FORCED shut down: " + JSON.stringify(arangod));
-      } else {
-        arangod.exitStatus = {
-          status: 'RUNNING'
-        };
-        print(Date() + " Commanded shut down: " + JSON.stringify(arangod));
-      }
-      return true;
-    }
-    if (arangod.exitStatus.status === 'RUNNING') {
-      arangod.exitStatus = statusExternal(arangod.pid, false);
-      if (!crashUtils.checkMonitorAlive(pu.ARANGOD_BIN, arangod, options, arangod.exitStatus)) {
-        if (arangod.role !== 'agent') {
-          counters.nonAgenciesCount--;
-        }
-        print(Date() + ' Server "' + arangod.role + '" shutdown: detected irregular death by monitor: pid', arangod.pid);
-        return false;
-      }
-    }
-    if (arangod.exitStatus.status === 'RUNNING') {
-      let localTimeout = timeout;
-      if (arangod.role === 'agent') {
-        localTimeout = localTimeout + 60;
-      }
-      if ((internal.time() - shutdownTime) > localTimeout) {
-        this.dumpAgency(fullInstance, options);
-        print(Date() + ' forcefully terminating ' + yaml.safeDump(arangod.getStructure()) +
-              ' after ' + timeout + 's grace period; marking crashy.');
-        serverCrashedLocal = true;
-        counters.shutdownSuccess = false;
-        arangod.killWithCoreDump();
-        arangod.analyzeServerCrash('shutdown timeout; instance "' +
-                                   arangod.role +
-                                   '" forcefully KILLED after 60s - ' +
-                                   arangod.exitStatus.signal);
-        if (arangod.role !== 'agent') {
-          counters.nonAgenciesCount--;
-        }
-        return false;
-      } else {
-        return true;
-      }
-    } else if (arangod.exitStatus.status !== 'TERMINATED') {
-      if (arangod.role !== 'agent') {
-        counters.nonAgenciesCount--;
-      }
-      if (arangod.exitStatus.hasOwnProperty('signal') || arangod.exitStatus.hasOwnProperty('monitor')) {
-        arangod.analyzeServerCrash('instance "' + arangod.role + '" Shutdown - ' + arangod.exitStatus.signal);
-        print(Date() + " shutdownInstance: Marking crashy - " + JSON.stringify(arangod));
-        serverCrashedLocal = true;
-        counters.shutdownSuccess = false;
-      }
-      crashUtils.stopProcdump(options, arangod);
-    } else {
-      if (arangod.role !== 'agent') {
-        counters.nonAgenciesCount--;
-      }
-      if (!options.noStartStopLogs) {
-        print(Date() + ' Server "' + arangod.role + '" shutdown: Success: pid', arangod.pid);
-      }
-      crashUtils.stopProcdump(options, arangod);
-      return false;
-    }
-  }
-
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief shuts down an instance
   // //////////////////////////////////////////////////////////////////////////////
@@ -724,7 +577,7 @@ class instanceManager {
       let d = this.detectCurrentLeader();
       if (this.endpoint !== d.endpoint) {
         print(Date() + ' failover has happened, leader is no more! Marking Crashy!');
-        serverCrashedLocal = true;
+        d.serverCrashedLocal = true;
         forceTerminate = true;
         shutdownSuccess = false;
       }
@@ -738,14 +591,14 @@ class instanceManager {
       try {
         // send a maintenance request to any of the coordinators, so that
         // no failed server/failed follower jobs will be started on shutdown
-        let coords = instanceInfo.arangods.filter(arangod =>
-          arangod.role === 'coordinator' &&
-            !arangod.hasOwnProperty('exitStatus'));
+        let coords = this.arangods.filter(arangod =>
+          arangod.isRole(instanceRole.coordinator) &&
+            (arangod.exitStatus !== null));
         if (coords.length > 0) {
           let requestOptions = pu.makeAuthorizationHeaders(this.options);
           requestOptions.method = 'PUT';
 
-          if (!options.noStartStopLogs) {
+          if (!this.options.noStartStopLogs) {
             print(coords[0].url + "/_admin/cluster/maintenance");
           }
           download(coords[0].url + "/_admin/cluster/maintenance", JSON.stringify("on"), requestOptions);
@@ -771,148 +624,153 @@ class instanceManager {
 
     let toShutdown = this.arangods.slice();
     toShutdown.sort((a, b) => {
-      if (a.role === b.role) return 0;
-      if (a.role === 'coordinator' &&
-          b.role === 'dbserver') return -1;
-      if (b.role === 'coordinator' &&
-          a.role === 'dbserver') return 1;
-      if (a.role === 'agent') return 1;
-      if (b.role === 'agent') return -1;
+      print(a.name)
+      print(b.name)
+      if (a.instanceRole === b.instanceRole) return 0;
+      if (a.isRole(instanceRole.coordinator) &&
+          b.isRole(instanceRole.dbServer)) return -1;
+      if (b.isRole(instanceRole.coordinator) &&
+          a.isRole(instanceRole.dbServer)) return 1;
+      if (a.isAgent()) return 1;
+      if (b.isAgent()) return -1;
       return 0;
     });
-
+    print('-------------')
     if (!this.options.noStartStopLogs) {
-      print(Date() + ' Shutdown order ' + JSON.stringify(toShutdown));
+      let shutdown = [];
+      toShutdown.forEach(arangod => {shutdown.push(arangod.name); print(arangod.name)});
+      print(Date() + ' Shutdown order ' + JSON.stringify(shutdown));
     }
 
     let nonAgenciesCount = this.arangods.filter(arangod => {
-      if (arangod.hasOwnProperty('exitStatus') &&
+      if ((arangod.exitStatus !== null) &&
           (arangod.exitStatus.status !== 'RUNNING')) {
         return false;
       }
-      return arangod.isRole(instanceRole.agent);
+      return arangod.isAgent();
     }).length;
 
     let timeout = 666;
-    if (options.valgrind) {
+    if (this.options.valgrind) {
       timeout *= 10;
     }
-    if (options.sanitizer) {
+    if (this.options.sanitizer) {
       timeout *= 2;
     }
 
-    if ((toShutdown.length > 0) && (options.agency === true) && (options.dumpAgencyOnError === true)) {
-      this.dumpAgency(instanceInfo, options);
+    if ((toShutdown.length > 0) && (this.options.agency === true) && (this.options.dumpAgencyOnError === true)) {
+      this.dumpAgency();
     }
     var shutdownTime = internal.time();
     while (toShutdown.length > 0) {
       toShutdown = toShutdown.filter(arangod => {
-        if (!arangod.hasOwnProperty('exitStatus')) {
-          if ((nonAgenciesCount > 0) && (arangod.role === 'agent')) {
+        if (arangod.exitStatus === null) {
+          if ((nonAgenciesCount > 0) && arangod.isAgent()) {
             return true;
           }
-          shutdownArangod(arangod, options, forceTerminate);
+          arangod.shutdownArangod(forceTerminate);
           if (forceTerminate) {
-            print(Date() + " FORCED shut down: " + JSON.stringify(arangod));
+            print(Date() + " FORCED shut down: " + JSON.stringify(arangod.getStructure()));
           } else {
             arangod.exitStatus = {
               status: 'RUNNING'
             };
 
-            if (!options.noStartStopLogs) {
-              print(Date() + " Commanded shut down: " + JSON.stringify(arangod));
+            if (!this.options.noStartStopLogs) {
+              print(Date() + " Commanded shut down: " + arangod.name);
             }
           }
           return true;
         }
-        if (arangod.exitStatus.status === 'RUNNING') {
+        if ((arangod.exitStatus !== null) && (arangod.exitStatus.status === 'RUNNING')) {
           arangod.exitStatus = statusExternal(arangod.pid, false);
-          if (!crashUtils.checkMonitorAlive(pu.ARANGOD_BIN, arangod, options, arangod.exitStatus)) {
-            if (arangod.role !== 'agent') {
+          if (!crashUtils.checkMonitorAlive(pu.ARANGOD_BIN, arangod, this.options, arangod.exitStatus)) {
+            if (!arangod.isAgent()) {
               nonAgenciesCount--;
             }
-            print(Date() + ' Server "' + arangod.role + '" shutdown: detected irregular death by monitor: pid', arangod.pid);
+            print(Date() + ' Server "' + arangod.name + '" shutdown: detected irregular death by monitor: pid', arangod.pid);
             return false;
           }
         }
-        if (arangod.exitStatus.status === 'RUNNING') {
+        if ((arangod.exitStatus !== null) && (arangod.exitStatus.status === 'RUNNING')) {
           let localTimeout = timeout;
-          if (arangod.role === 'agent') {
+          if (arangod.isAgent()) {
             localTimeout = localTimeout + 60;
           }
           if ((internal.time() - shutdownTime) > localTimeout) {
-            this.dumpAgency(instanceInfo, options);
+            this.dumpAgency();
             print(Date() + ' forcefully terminating ' + yaml.safeDump(arangod.getStructure()) +
                   ' after ' + timeout + 's grace period; marking crashy.');
-            serverCrashedLocal = true;
+            arangod.serverCrashedLocal = true;
             shutdownSuccess = false;
             arangod.killWithCoreDump();
             arangod.analyzeServerCrash('shutdown timeout; instance "' +
-                                       arangod.role +
+                                       arangod.name +
                                        '" forcefully KILLED after 60s - ' +
                                        arangod.exitStatus.signal);
-            if (arangod.role !== 'agent') {
+            if (!arangod.isAgent()) {
               nonAgenciesCount--;
             }
             return false;
           } else {
             return true;
           }
-        } else if (arangod.exitStatus.status !== 'TERMINATED') {
-          if (arangod.role !== 'agent') {
+        } else if ((arangod.exitStatus !== null) && (arangod.exitStatus.status !== 'TERMINATED')) {
+          if (!arangod.isAgent()) {
             nonAgenciesCount--;
           }
           if (arangod.exitStatus.hasOwnProperty('signal') || arangod.exitStatus.hasOwnProperty('monitor')) {
-            arangod.analyzeServerCrash('instance "' + arangod.role + '" Shutdown - ' + arangod.exitStatus.signal);
-            print(Date() + " shutdownInstance: Marking crashy - " + JSON.stringify(arangod));
-            serverCrashedLocal = true;
+            arangod.analyzeServerCrash('instance "' + arangod.name + '" Shutdown - ' + arangod.exitStatus.signal);
+            print(Date() + " shutdownInstance: Marking crashy - " + JSON.stringify(arangod.getStructure()));
+            arangod.serverCrashedLocal = true;
             shutdownSuccess = false;
           }
-          crashUtils.stopProcdump(options, arangod);
+          crashUtils.stopProcdump(this.options, arangod);
         } else {
-          if (arangod.role !== 'agent') {
+          if (!arangod.isAgent()) {
             nonAgenciesCount--;
           }
-          if (!options.noStartStopLogs) {
-            print(Date() + ' Server "' + arangod.role + '" shutdown: Success: pid', arangod.pid);
+          if (!this.options.noStartStopLogs) {
+            print(Date() + ' Server "' + arangod.name + '" shutdown: Success: pid', arangod.pid);
           }
-          crashUtils.stopProcdump(options, arangod);
+          crashUtils.stopProcdump(this.options, arangod);
           return false;
         }
       });
       if (toShutdown.length > 0) {
         let roles = {};
+        // TODO
         toShutdown.forEach(arangod => {
-          if (!roles.hasOwnProperty(arangod.role)) {
-            roles[arangod.role] = 0;
+          if (!roles.hasOwnProperty(arangod.instanceRole)) {
+            roles[arangod.instanceRole] = 0;
           }
-          ++roles[arangod.role];
+          ++roles[arangod.instanceRole];
         });
         let roleNames = [];
         for (let r in roles) {
           // e.g. 2 + coordinator + (s)
           roleNames.push(roles[r] + ' ' + r + '(s)');
         }
-        if (!options.noStartStopLogs) {
+        if (!this.options.noStartStopLogs) {
           print(roleNames.join(', ') + ' are still running...');
         }
         require('internal').wait(1, false);
       }
     }
 
-    if (!options.skipLogAnalysis) {
-      instanceInfo.arangods.forEach(arangod => {
-        let errorEntries = readImportantLogLines(arangod.rootDir);
+    if (!this.options.skipLogAnalysis) {
+      this.arangods.forEach(arangod => {
+        let errorEntries = arangod.readImportantLogLines();
         if (Object.keys(errorEntries).length > 0) {
           print(Date() + ' Found messages in the server logs: \n' +
                 yaml.safeDump(errorEntries));
         }
       });
     }
-    instanceInfo.arangods.forEach(arangod => {
-      readAssertLogLines(arangod.rootDir);
+    this.arangods.forEach(arangod => {
+      arangod.readAssertLogLines();
     });
-    cleanupDirectories.unshift(instanceInfo.rootDir);
+    pu.cleanupDBDirectoriesRemove(this.rootDir);
     return shutdownSuccess;
   }
 
@@ -952,7 +810,7 @@ class instanceManager {
   }
 
   checkClusterAlive() {
-    let httpOptions = _.clone(this.httpAuthOptions)
+    let httpOptions = _.clone(this.httpAuthOptions);
     httpOptions.returnBodyOnError = true;
 
     // scrape the jwt token
@@ -997,7 +855,7 @@ class instanceManager {
 
         if (arangod.pid !== null && !arangod.checkArangoAlive()) {
           this.arangods.forEach(arangod => {
-            if (!arangod.hasOwnProperty('exitStatus') ||
+            if ((arangod.exitStatus === null) ||
                 (arangod.exitStatus.status === 'RUNNING')) {
               // arangod.killWithCoreDump();
               arangod.exitStatus = killExternal(arangod.pid, termSignal);
@@ -1039,14 +897,14 @@ class instanceManager {
         return;
       }
       // agents don't support the ID call...
-      if (!arangod.isRole(instanceRole.agent) &&
+      if (!arangod.isAgent() &&
           !arangod.isRole(instanceRole.single)) {
         let reply;
         try {
           httpOptions.method = 'GET';
           reply = download(arangod.url + '/_db/_system/_admin/server/id', '', httpOptions);
         } catch (e) {
-          print(RED + Date() + " error requesting server '" + JSON.stringify(arangod) + "' Error: " + JSON.stringify(e) + RESET);
+          print(RED + Date() + " error requesting server '" + JSON.stringify(arangod.getStructure()) + "' Error: " + JSON.stringify(e) + RESET);
           if (e instanceof ArangoError && e.message.search('Connection reset by peer') >= 0) {
             httpOptions.method = 'GET';
             internal.sleep(5);
@@ -1069,13 +927,13 @@ class instanceManager {
         !this.hasOwnProperty('clusterHealthMonitor') &&
         !this.options.disableClusterMonitor) {
       print("spawning cluster health inspector");
-      internal.env.INSTANCEINFO = JSON.stringify(this);
+      internal.env.INSTANCEINFO = JSON.stringify(this.getStructure());
       internal.env.OPTIONS = JSON.stringify(this.options);
-      let args = makeArgsArangosh(this.options);
+      let args = pu.makeArgsArangosh(this.options);
       args['javascript.execute'] = fs.join('js', 'client', 'modules', '@arangodb', 'testutils', 'clusterstats.js');
       const argv = toArgv(args);
       this.clusterHealthMonitor = executeExternal(pu.ARANGOSH_BIN, argv);
-      this.clusterHealthMonitorFile = fs.join(instanceInfo.rootDir, 'stats.jsonl');
+      this.clusterHealthMonitorFile = fs.join(this.rootDir, 'stats.jsonl');
     }
   }
   reconnect()
@@ -1118,7 +976,7 @@ class instanceManager {
 
   launchFinalize(startTime) {
     if (!this.options.cluster) {
-      let httpOptions = _.clone(this.httpAuthOptions)
+      let httpOptions = _.clone(this.httpAuthOptions);
       httpOptions.method = 'POST';
       httpOptions.returnBodyOnError = true;
       let count = 0;
@@ -1190,32 +1048,32 @@ class instanceManager {
     }
   }
   
-  reStartInstance(options, instanceInfo, moreArgs) {
+  reStartInstance(moreArgs) {
 
     const startTime = time();
 
-    instanceInfo.arangods.forEach(function (oneInstance, i) {
+    this.arangods.forEach(function (oneInstance, i) {
       if (oneInstance.pid) {
         return;
       }
-      delete(oneInstance.exitStatus);
-      delete(oneInstance.pid);
+      oneInstance.exitStatus = null;
+      oneInstance.pid = null;
       oneInstance.upAndRunning = false;
     });
 
-    if (options.cluster) {
+    if (this.options.cluster) {
       let agencyInstance = {arangods: []};
-      instanceInfo.arangods.forEach(function (oneInstance, i) {
+      this.arangods.forEach(function (oneInstance, i) {
         if (oneInstance.pid) {
           return;
         }
-        if (oneInstance.role === 'agent') {
-          print("relaunching: " + JSON.stringify(oneInstance));
-          launchInstance(options, oneInstance, moreArgs);
-          agencyInstance.arangods.push(_.clone(oneInstance));
+        if (oneInstance.isAgent()) {
+          print("relaunching: " + JSON.stringify(oneInstance.getStructure()));
+          oneInstance.launchInstance(moreArgs);
+          /// TODO: do we need this?agencyInstance.arangods.push(_.clone(oneInstance));
         }
       });
-      if (!checkInstanceAlive(agencyInstance, options, {skipHealthCheck: true})) {
+      if (!agencyInstance.checkInstanceAlive({skipHealthCheck: true})) {
         throw new Error('startup of agency failed! bailing out!');
       }
     }
@@ -1244,17 +1102,17 @@ class instanceManager {
         return;
       }
       if (oneInstance.isRole(instanceRole.single)) {
-        launchInstance(options, oneInstance, moreArgs);
+        oneInstance.launchInstance(moreArgs);
       }
     });
 
     if (this.options.cluster && !this.options.skipReconnect) {
       this.checkClusterAlive({}); // todo addArgs
       print("reconnecting " + this.endpoint);
-      arango.reconnect(instanceInfo.endpoint,
+      arango.reconnect(this.endpoint,
                        '_system',
-                       options.username,
-                       options.password,
+                       this.options.username,
+                       this.options.password,
                        false
                       );
     }

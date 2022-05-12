@@ -99,7 +99,7 @@ function analyzeCoreDump (instanceInfo, options, storeArangodPath, pid) {
   GDB_OUTPUT += `--------------------------------------------------------------------------------
 Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
   if (!fs.exists(gdbOutputFile)) {
-    print("Failed to generate GDB output file?")
+    print("Failed to generate GDB output file?");
     return "";
   }
   let thisDump = fs.read(gdbOutputFile);

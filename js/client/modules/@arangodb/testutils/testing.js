@@ -547,7 +547,7 @@ function iterateTests(cases, options) {
     } else {
       cleanup = false;
     }
-    pu.aggregateFatalErrors(currentTest);
+    //// TODOpu.aggregateFatalErrors(currentTest);
   }
 
   results.status = globalStatus;

@@ -66,9 +66,15 @@ const abortSignal = 6;
 const termSignal = 15;
 
 let tcpdump;
-let assertLines = [];
 
 let PORTMANAGER;
+
+function getSockStatFile(pid) {
+  try {
+    return fs.read("/proc/" + pid + "/net/sockstat");
+  } catch (e) {/* oops, process already gone? don't care. */ }
+  return "";
+}
 
 class portManager {
   // //////////////////////////////////////////////////////////////////////////////
@@ -139,6 +145,7 @@ class agencyConfig {
   getStructure() {
     return {
       agencySize: this.agencySize,
+      agencyInstances: this.agencyInstances.length,
       supervision: this.supervision,
       waitForSync: this.waitForSync,
       agencyEndpoint: this.agencyEndpoint,
@@ -167,6 +174,8 @@ class instance {
     this.message = '';
     this.port = '';
     this.endpoint = '';
+    this.assertLines = [];
+    this.memProfCounter = 0;
 
     this.dataDir = fs.join(this.rootDir, 'data');
     this.appDir = fs.join(this.rootDir, 'apps');
@@ -181,6 +190,7 @@ class instance {
     this.name = instanceRole + ' - ' + this.port;
     this.pid = null;
     this.exitStatus = null;
+    this.serverCrashedLocal = false;
   }
 
   getStructure() {
@@ -203,7 +213,8 @@ class instance {
       logFile: this.logFile,
       args: this.args,
       pid: this.pid,
-      exitStatus: this.exitStatus
+      exitStatus: this.exitStatus,
+      serverCrashedLocal: this.serverCrashedLocal
     };
   }
 
@@ -211,6 +222,9 @@ class instance {
     return this.instanceRole === compareRole;
   }
 
+  isAgent() {
+    return this.instanceRole === instanceRole.agent;
+  }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief arguments for testing (server)
   // //////////////////////////////////////////////////////////////////////////////
@@ -234,7 +248,7 @@ class instance {
 
     let config = 'arangod.conf';
 
-    if (this.instanceType !== instanceRole.single) {
+    if (this.instanceRole !== instanceRole.single) {
       config = 'arangod-' + this.instanceRole + '.conf';
     }
 
@@ -274,7 +288,7 @@ class instance {
     } else if (this.options.noStartStopLogs) {
       this.args['log.level'] = 'all=error';
     }
-    if (this.instanceRole === instanceRole.agent) {
+    if (this.isAgent()) {
       this.args = Object.assign(this.args, {
         'agency.activate': 'true',
         'agency.size': this.agencyConfig.agencySize,
@@ -383,6 +397,14 @@ class instance {
     }
     return processStats;
   }
+  getSockStat(preamble) {
+    if (this.options.getSockStat && (platform === 'linux')) {
+      let sockStat = preamble + this.pid + "\n";
+      sockStat += getSockStatFile(pid);
+      return sockStat;
+    }
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief scans the log files for assert lines
   // //////////////////////////////////////////////////////////////////////////////
@@ -403,7 +425,7 @@ class instance {
             // else the server has already printed these:
             print("ERROR: " + line);
           }
-          assertLines.push(line);
+          this.assertLines.push(line);
         }
       }
     }
@@ -439,15 +461,15 @@ class instance {
     return fnLines;
   }
   aggregateFatalErrors(currentTest) {
-    if (assertLines.length > 0) {
-      assertLines.forEach(line => {
+    if (this.assertLines.length > 0) {
+      this.assertLines.forEach(line => {
         rp.addFailRunsMessage(currentTest, line);
       });
-      assertLines = [];
+      this.assertLines = [];
     }
-    if (serverCrashedLocal) {
-      rp.addFailRunsMessage(currentTest, serverFailMessagesLocal);
-      serverFailMessagesLocal = "";
+    if (this.serverCrashedLocal) {
+      rp.addFailRunsMessage(currentTest, this.serverFailMessagesLocal);
+      this.serverFailMessagesLocal = "";
     }
   }
   // //////////////////////////////////////////////////////////////////////////////
@@ -515,10 +537,10 @@ class instance {
       }
     }
     sleep(0.5);
-    if (this.instanceRole === instanceRole.agent) {
+    if (this.isAgent()) {
       this.agencyConfig.agentsLaunched += 1;
       if (this.agencyConfig.agentsLaunched === this.agencyConfig.agencySize) {
-        this.agencyConfig.wholeCluster.checkClusterAlive()
+        this.agencyConfig.wholeCluster.checkClusterAlive();
       }
     }
   }
@@ -572,7 +594,7 @@ class instance {
       if (!this.hasOwnProperty('exitStatus')) {
         this.exitStatus = res;
       }
-      print(this);
+      print(this.getStructure());
 
       if (res.hasOwnProperty('signal') &&
           ((res.signal === 11) ||
@@ -584,7 +606,7 @@ class instance {
         this.exitStatus = res;
         msg = 'health Check Signal(' + res.signal + ') ';
         this.analyzeServerCrash(msg);
-        serverCrashedLocal = true;
+        this.serverCrashedLocal = true;
         this.message += msg;
         msg = " checkArangoAlive: Marking crashy";
         this.message += msg;
@@ -622,6 +644,138 @@ class instance {
     this.exitStatus = killExternal(this.pid, abortSignal);
   }
   // //////////////////////////////////////////////////////////////////////////////
+  // / @brief commands a server to shut down via webcall
+  // //////////////////////////////////////////////////////////////////////////////
+
+  shutdownArangod (forceTerminate) {
+    print('stopping ' + this.name + ' force terminate: ' + forceTerminate);
+    if (forceTerminate === undefined) {
+      forceTerminate = false;
+    }
+    if (this.options.hasOwnProperty('server')) {
+      print(Date() + ' running with external server');
+      return;
+    }
+
+    if (this.options.valgrind) {
+      this.waitOnServerForGC(60);
+    }
+    if (this.options.rr && forceTerminate) {
+      forceTerminate = false;
+      this.options.useKillExternal = true;
+    }
+    if ((this.exitStatus === null) ||
+        (this.exitStatus.status === 'RUNNING')) {
+      if (forceTerminate) {
+        let sockStat = this.getSockStat("Force killing - sockstat before: ");
+        this.killWithCoreDump();
+        this.analyzeServerCrash('shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun ' + sockStat);
+      } else if (this.options.useKillExternal) {
+        let sockStat = this.getSockStat("Shutdown by kill - sockstat before: ");
+        this.exitStatus = killExternal(this.pid);
+        print(sockStat);
+      } else {
+        const requestOptions = pu.makeAuthorizationHeaders(this.options);
+        requestOptions.method = 'DELETE';
+        requestOptions.timeout = 60; // 60 seconds hopefully are enough for getting a response
+        if (!this.options.noStartStopLogs) {
+          print(Date() + ' ' + this.url + '/_admin/shutdown');
+        }
+        let sockStat = this.getSockStat("Sock stat for: ");
+        const reply = download(this.url + '/_admin/shutdown', '', requestOptions);
+        if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
+            !((reply.code === 500) &&
+              (
+                (reply.message === "Connection closed by remote") || // http connection
+                  reply.message.includes('failed with #111')           // https connection
+              ))) {
+          this.serverCrashedLocal = true;
+          print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
+          this.shutdownArangod(true);
+        }
+        else if (!this.options.noStartStopLogs) {
+          print(sockStat);
+        }
+        if (this.options.extremeVerbosity) {
+          print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
+        }
+      }
+    } else {
+      print(Date() + ' Server already dead, doing nothing.');
+    }
+  }
+
+
+  shutDownOneInstance(fullInstance, counters, forceTerminate, timeout) {
+    let shutdownTime = internal.time();
+    if (this.exitStatus === null) {
+      this.shutdownArangod(forceTerminate);
+      if (forceTerminate) {
+        print(Date() + " FORCED shut down: " + JSON.stringify(this.getStructure()));
+      } else {
+        this.exitStatus = {
+          status: 'RUNNING'
+        };
+        print(Date() + " Commanded shut down: " + JSON.stringify(this.getStructure()));
+      }
+      return true;
+    }
+    if (this.exitStatus.status === 'RUNNING') {
+      this.exitStatus = statusExternal(this.pid, false);
+      if (!crashUtils.checkMonitorAlive(pu.ARANGOD_BIN, this, this.options, this.exitStatus)) {
+        if (this.isAgent()) {
+          counters.nonAgenciesCount--;
+        }
+        print(Date() + ' Server "' + this.name + '" shutdown: detected irregular death by monitor: pid', this.pid);
+        return false;
+      }
+    }
+    if (this.exitStatus.status === 'RUNNING') {
+      let localTimeout = timeout;
+      if (this.isAgent()) {
+        localTimeout = localTimeout + 60;
+      }
+      if ((internal.time() - shutdownTime) > localTimeout) {
+        this.agencyConfig.wholeCluster.dumpAgency();
+        print(Date() + ' forcefully terminating ' + yaml.safeDump(this.getStructure()) +
+              ' after ' + timeout + 's grace period; marking crashy.');
+        this.serverCrashedLocal = true;
+        counters.shutdownSuccess = false;
+        this.killWithCoreDump();
+        this.analyzeServerCrash('shutdown timeout; instance "' +
+                                   this.name +
+                                   '" forcefully KILLED after 60s - ' +
+                                   this.exitStatus.signal);
+        if (!this.isAgent()) {
+          counters.nonAgenciesCount--;
+        }
+        return false;
+      } else {
+        return true;
+      }
+    } else if (this.exitStatus.status !== 'TERMINATED') {
+      if (!this.isAgent()) {
+        counters.nonAgenciesCount--;
+      }
+      if (this.exitStatus.hasOwnProperty('signal') || this.exitStatus.hasOwnProperty('monitor')) {
+        this.analyzeServerCrash('instance "' + this.name + '" Shutdown - ' + this.exitStatus.signal);
+        print(Date() + " shutdownInstance: Marking crashy - " + JSON.stringify(this.getStructure()));
+        this.serverCrashedLocal = true;
+        counters.shutdownSuccess = false;
+      }
+      crashUtils.stopProcdump(this.options, this);
+    } else {
+      if (!this.isAgent()) {
+        counters.nonAgenciesCount--;
+      }
+      if (!this.options.noStartStopLogs) {
+        print(Date() + ' Server "' + this.name + '" shutdown: Success: pid', this.pid);
+      }
+      crashUtils.stopProcdump(this.options, this);
+      return false;
+    }
+  }
+  // //////////////////////////////////////////////////////////////////////////////
   // / @brief the bad has happened, tell it the user and try to gather more
   // /        information about the incident. (arangod wrapper for the crash-utils)
   // //////////////////////////////////////////////////////////////////////////////
@@ -633,7 +787,7 @@ class instance {
   }
 
   getMemProfSnapshot(opts) {
-    let fn = fs.join(this.rootDir, `${arangod.role}_${arangod.pid}_${counter}_.heap`);
+    let fn = fs.join(this.rootDir, `${this.role}_${this.pid}_${this.memProfCounter}_.heap`);
     let heapdumpReply = download(this.url + '/_admin/status?memory=true', opts);
     if (heapdumpReply.code === 200) {
       fs.write(fn, heapdumpReply.body);
@@ -643,8 +797,8 @@ class instance {
       print(heapdumpReply);
     }
 
-    let fnMetrics = fs.join(this.rootDir, `${arangod.role}_${arangod.pid}_${counter}_.metrics`);
-    let metricsReply = download(arangod.url + '/_admin/metrics/v2', opts);
+    let fnMetrics = fs.join(this.rootDir, `${this.role}_${this.pid}_${this.memProfCounter}_.metrics`);
+    let metricsReply = download(this.url + '/_admin/metrics/v2', opts);
     if (metricsReply.code === 200) {
       fs.write(fnMetrics, metricsReply.body);
       print(CYAN + Date() + ` Saved ${fnMetrics}` + RESET);
@@ -654,6 +808,7 @@ class instance {
       print(RED + Date() + ` Acquiring metrics for ${fnMetrics} failed!` + RESET);
       print(metricsReply);
     }
+    this.memProfCounter ++;
   }
 }
 

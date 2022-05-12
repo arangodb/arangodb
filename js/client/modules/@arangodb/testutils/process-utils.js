@@ -656,6 +656,11 @@ function cleanupDBDirectoriesAppend (appendThis) {
   cleanupDirectories.unshift(appendThis);
 }
 
+function cleanupDBDirectoriesRemove (removeThis) {
+  cleanupDirectories = cleanupDirectories.filter(dir => { return dir === removeThis;});
+  print(cleanupDirectories)
+}
+
 function getCleanupDBDirectories () {
   return JSON.stringify(cleanupDirectories);
 }
@@ -2396,6 +2401,7 @@ exports.cleanupDBDirectoriesAppend = cleanupDBDirectoriesAppend;
 exports.cleanupDBDirectories = cleanupDBDirectories;
 exports.cleanupLastDirectory = cleanupLastDirectory;
 exports.getCleanupDBDirectories = getCleanupDBDirectories;
+exports.cleanupDBDirectoriesRemove = cleanupDBDirectoriesRemove;
 
 exports.makeAuthorizationHeaders = makeAuthorizationHeaders;
 Object.defineProperty(exports, 'ARANGOBACKUP_BIN', {get: () => ARANGOBACKUP_BIN});

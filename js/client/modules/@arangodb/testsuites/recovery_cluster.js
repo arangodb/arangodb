@@ -167,7 +167,7 @@ function runArangodRecovery (params) {
     }
   }
   let agentArgs = pu.makeArgs.arangosh(params.options);
-  agentArgs['server.endpoint'] = tu.findEndpoint(params.options, params.instanceInfo);
+  agentArgs['server.endpoint'] = params.instanceManager.findEndpoint();
   if (params.args['log.level']) {
     agentArgs['log.level'] = params.args['log.level'];
   }
