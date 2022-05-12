@@ -37,6 +37,7 @@
 #include "IResearch/ExpressionContextMock.h"
 #include "IResearch/IResearchTestCommon.h"
 #include "IResearch/common.h"
+#include "IResearch/MakeViewSnapshot.h"
 #include "Mocks/IResearchLinkMock.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
