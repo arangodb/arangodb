@@ -186,7 +186,7 @@ void EngineSelectorFeature::prepare() {
           << "disabling storage engine " << engine.first;
       e.disable();
       if (engine.first == _engineName) {
-        LOG_TOPIC("4a3fc", INFO, Logger::FIXME)
+        LOG_TOPIC("4a3fc", DEBUG, Logger::STARTUP)
             << "using storage engine " << engine.first;
         ce.setActualEngine(&e);
       }
@@ -199,7 +199,7 @@ void EngineSelectorFeature::prepare() {
 
       if (engine.first == _engineName) {
         // this is the selected engine
-        LOG_TOPIC("144fe", INFO, Logger::FIXME)
+        LOG_TOPIC("144fe", DEBUG, Logger::STARTUP)
             << "using storage engine '" << engine.first << "'";
         e.enable();
 
