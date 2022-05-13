@@ -25,8 +25,10 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/TempFeature.h"
+#include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
+#include "Basics/files.h"
 #include "Containers/HashSet.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
 #include "RocksDBEngine/Methods/RocksDBSstFileMethods.h"
@@ -555,6 +557,13 @@ static arangodb::Result fillIndex(
       res = processPartitions(foreground, std::move(partitions), trx, snap,
                               rcoll, rootDB, ridx, docsProcessed, numThreads,
                               threadBatchSize, dbOptions, idxPath);
+      if (res.ok()) {
+        for (auto const& fileName : TRI_FullTreeDirectory(idxPath.data())) {
+          TRI_UnlinkFile(
+              basics::FileUtils::buildFilename(idxPath.data(), fileName.data())
+                  .data());
+        }
+      }
     }
   }
   return res;
