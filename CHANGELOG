@@ -4,6 +4,53 @@ v3.9.2 (XXXX-XX-XX)
 * Very verbose warning from failing to parse GEO JSON in search. Has lead to
   Billions of log lines on deployed services.
 
+* Fixed BTS-860. Changed ArangoSearch index recovery procedure to remove
+  necessity to always fully recreate index if IndexCreation marker encountered.
+
+* Removed separate FlushThread (for views syncing) and merged it with the
+  RocksDBBackgroundThread.
+
+* Fix some issues with WAL recovery for views. Previously it was possible that
+  changes to a view/link were already recovered and persisted, but that the
+  lower bound WAL tick was not moved forward. This could lead to already fully
+  recovered views/links being recovered again on the next restart.
+
+* Put hotbackup requests on the HIGH priority queue to make hotbackups work
+  under high load (BTS-865).
+
+* Allow starting with option value `--cache.size 0`, to turn off in-memory
+  caches for indexes entirely (for performance testing or limiting memory
+  usage).
+
+* Updated OpenSSL to 1.1.1o and OpenLDAP to 2.6.2.
+
+* Added option `--enable-revision-trees` to arangorestore, which will add the 
+  attributes `syncByRevision` and `usesRevisionsAsDocumentIds` to the 
+  collection structure if they are missing. As a consequence, these collections
+  created by arangorestore will be able to use revision trees and a faster
+  getting-in-sync procedure after a restart. The option defaults to `true`,
+  meaning the attributes will be added if they are missing. If the option is
+  set to `false`, the attributes will not be added to the collection structure.
+  If the attributes are already present in the dump data, they will not be 
+  modified by arangorestore irrespective of the setting of this option.
+
+* Updated arangosync to v2.9.1.
+
+* Fix agency inception when one of the gossip peers responds with HTTP 503 or
+  another unexpected error.
+
+* Make sure that newly created TTL indexes do not use index estimates, which
+  wouldn't be used for TTL indexes anyway.
+
+* Improve log output for WAL recovery, by providing more information and making
+  the wording more clear.
+
+* Fix: Highly unlikely race in cluster maintenance. For every shard only one
+  operation (change attribute, change leadership) should be performed at the
+  same time. However if two changes are detected in the same hearbeat  it could
+  lead to both operations to be executed in parallel. In most cases this is also
+  fine, but could lead to races on the same attribute, however the race will be
+  sorted out in the next heartbeat interval.
 
 * Fix: for the Windows build, the new Snappy version, which was introduced in
   3.9, generated code that contained BMI2 instructions which where introduced
@@ -18,8 +65,6 @@ v3.9.2 (XXXX-XX-XX)
   write operations time out while waiting to acquire this global mutex. The lock
   timeout on followers is now significantly increased to make this very
   unlikely.
-
-* Updated arangosync to v2.9.0.
 
 * Improve validation for variables used in the `KEEP` part of AQL COLLECT
   operations. Previously referring to a variable that was introduced by the
