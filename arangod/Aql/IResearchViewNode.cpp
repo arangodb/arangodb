@@ -340,7 +340,7 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view,
 
          auto& resolver = query.resolver();
          containers::FlatHashSet<DataSourceId> sources;
-         size_t n = value.numMembers();
+         auto const n = value.numMembers();
          sources.reserve(n);
          // get list of CIDs for restricted collections
          for (size_t i = 0; i != n; ++i) {
@@ -691,6 +691,17 @@ ViewSnapshotPtr snapshotDBServer(IResearchViewNode const& node,
   TRI_ASSERT(ServerState::instance()->isDBServer());
   auto const& view = *node.view();
   auto const& options = node.options();
+  // Cluster is not transactional,
+  // so we don't make sense to make ViewSnapshotView for restrictSources
+  void const* key = options.restrictSources ? static_cast<void const*>(&node)
+                                            : static_cast<void const*>(&view);
+  auto* snapshot = getViewSnapshot(trx, key);
+  if (snapshot != nullptr) {
+    if (options.forceSync) {
+      syncViewSnapshot(*snapshot, view.name());
+    }
+    return {ViewSnapshotPtr{}, snapshot};
+  }
   auto* resolver = trx.resolver();
   TRI_ASSERT(resolver);
   auto const& shards = node.shards();
@@ -712,17 +723,10 @@ ViewSnapshotPtr snapshotDBServer(IResearchViewNode const& node,
       continue;  // skip restricted collections if any
     }
     auto const cid = collection->id();
-    links.emplace(cid, viewImpl.linkLock(guard, cid));
+    links.emplace_back(viewImpl.linkLock(guard, cid));
   }
-  // use node address as the snapshot identifier
-  auto const mode = options.forceSync ? ViewSnapshotMode::SyncAndReplace
-                                      : ViewSnapshotMode::FindOrCreate;
-  // Cluster is not transactional,
-  // so we don't make sense to make ViewSnapshotView for restrictSources
-  void const* key = options.restrictSources ? static_cast<void const*>(&node)
-                                            : static_cast<void const*>(&view);
-  return {ViewSnapshotPtr{},
-          makeViewSnapshot(trx, mode, std::move(links), key, view.name())};
+  return {ViewSnapshotPtr{}, makeViewSnapshot(trx, key, options.forceSync,
+                                              view.name(), std::move(links))};
 }
 
 /// @brief Since single-server is transactional we do the following:
@@ -742,25 +746,32 @@ ViewSnapshotPtr snapshotSingleServer(IResearchViewNode const& node,
   TRI_ASSERT(ServerState::instance()->isSingleServer());
   auto const& view = *node.view();
   auto const& options = node.options();
+  void const* key = static_cast<void const*>(&view);
+  auto* snapshot = getViewSnapshot(trx, key);
+  if (snapshot != nullptr) {
+    if (options.forceSync) {
+      syncViewSnapshot(*snapshot, view.name());
+    }
+    if (options.restrictSources) {
+      return std::make_shared<ViewSnapshotView>(*snapshot, options.sources);
+    }
+    return {ViewSnapshotPtr{}, snapshot};
+  }
+  if (!options.forceSync && trx.isMainTransaction()) {
+    return {};
+  }
   auto links = [&] {
     // TODO(MBkkt) Runtime checks type of view
     // TODO(MBkkt) Don't need to make this allocation if key already exist
     auto const& viewImpl = basics::downCast<IResearchView>(*node.view());
     return viewImpl.getLinks();
   }();
-  auto mode = ViewSnapshotMode::Find;
-  if (options.forceSync) {
-    mode = ViewSnapshotMode::SyncAndReplace;
-  } else if (!trx.isMainTransaction()) {  // for js transactions
-    mode = ViewSnapshotMode::FindOrCreate;
+  snapshot = makeViewSnapshot(trx, key, options.forceSync, view.name(),
+                              std::move(links));
+  if (options.restrictSources && snapshot != nullptr) {
+    return std::make_shared<ViewSnapshotView>(*snapshot, options.sources);
   }
-  ViewSnapshotPtr snapshot{
-      ViewSnapshotPtr{},
-      makeViewSnapshot(trx, mode, std::move(links), &view, view.name())};
-  if (options.restrictSources && snapshot) {  // reassemble reader
-    snapshot = std::make_shared<ViewSnapshotView>(*snapshot, options.sources);
-  }
-  return snapshot;
+  return {ViewSnapshotPtr{}, snapshot};
 }
 
 inline IResearchViewSort const& primarySort(arangodb::LogicalView const& view) {
@@ -1028,8 +1039,8 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
     auto const& collections = plan.getAst()->query().collections();
 
     for (auto const shardSlice : velocypack::ArrayIterator(shardsSlice)) {
-      auto const shardId =
-          shardSlice.copyString();  // shardID is collection name on db server
+      // shardID is collection name on db server
+      auto const shardId = shardSlice.stringView();
       auto const* shard = collections.get(shardId);
 
       if (!shard) {
@@ -1039,7 +1050,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
         continue;
       }
 
-      _shards.push_back(shard->name());
+      _shards.insert(shard->name());
     }
   } else {
     LOG_TOPIC("a48f3", ERR, arangodb::iresearch::TOPIC)
@@ -1375,7 +1386,7 @@ IResearchViewNode::collections() const {
     auto const* collection = collections.get(id);
 
     if (collection) {
-      viewCollections.push_back(*collection);
+      viewCollections.emplace_back(*collection);
     } else {
       LOG_TOPIC("ee270", WARN, arangodb::iresearch::TOPIC)
           << "collection with id '" << id

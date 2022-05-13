@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "IResearch/IResearchDataStore.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -48,7 +47,7 @@ namespace iresearch {
 //////////////////////////////////////////////////////////////////////////////
 class ViewSnapshot : public irs::index_reader {
  public:
-  using Links = containers::FlatHashMap<DataSourceId, LinkLock>;
+  using Links = std::vector<LinkLock>;
 
   /// @return cid of the sub-reader at operator['offset'] or 0 if undefined
   [[nodiscard]] virtual DataSourceId cid(std::size_t offset) const noexcept = 0;
@@ -84,7 +83,8 @@ class ViewSnapshotImpl : public ViewSnapshot {
   }
 
   [[nodiscard]] DataSourceId cid(std::size_t i) const noexcept final {
-    return i < _segments.size() ? _segments[i].first : DataSourceId::none();
+    TRI_ASSERT(i < _segments.size());
+    return _segments[i].first;
   }
 };
 
@@ -103,34 +103,42 @@ class ViewSnapshotView final : public ViewSnapshotImpl {
       containers::FlatHashSet<DataSourceId> const& collections) noexcept;
 };
 
-/// @enum snapshot getting mode
-enum class ViewSnapshotMode {
-  /// @brief lookup existing snapshot from a transaction
-  Find,
-
-  /// @brief lookup existing snapshot from a transaction
-  /// or create if it doesn't exist
-  FindOrCreate,
-
-  /// @brief retrieve the latest view snapshot and cache it in a transaction
-  SyncAndReplace,
-};
-
 ////////////////////////////////////////////////////////////////////////////////
-/// makeViewSnapshot
+/// Get view snapshot from transaction state
 ///
-/// @param trx ...
-/// @param mode ...
-/// @param links ...
-/// @param key ...
-/// @param name ...
-/// @return ...
+/// @param trx transaction
+/// @param key should be a LogicalView* or IResearchViewNode*
 ////////////////////////////////////////////////////////////////////////////////
-ViewSnapshot const* makeViewSnapshot(transaction::Methods& trx,
-                                     ViewSnapshotMode mode,
-                                     ViewSnapshot::Links&& links,
-                                     void const* key,
-                                     std::string_view name) noexcept;
+ViewSnapshot* getViewSnapshot(transaction::Methods& trx,
+                              void const* key) noexcept;
+
+////////////////////////////////////////////////////////////////////////////////
+/// Try to commit every link/index in snapshot and then recompute snapshot data
+/// Commit different links is not atomic.
+///
+/// @param snapshot should be a ViewSnapshotCookie
+/// @param name of snapshot view
+////////////////////////////////////////////////////////////////////////////////
+void syncViewSnapshot(ViewSnapshot& snapshot, std::string_view name);
+
+////////////////////////////////////////////////////////////////////////////////
+/// Create new ViewSnapshot
+///
+/// @pre getViewSnapshot(trx, key) == nullptr
+/// @post getViewSnapshot(trx, key) == this return
+///
+/// @param trx transaction
+/// @param key should be a LogicalView* or IResearchViewNode*
+/// @param sync need commit link/index before take snapshot,
+///             commit different links is not atomic
+/// @param name of snapshot view
+/// @param links LinkLocks for link/index,
+///              if its empty return valid empty snapshot
+/// @return new snapshot or nullptr if error
+////////////////////////////////////////////////////////////////////////////////
+ViewSnapshot* makeViewSnapshot(transaction::Methods& trx, void const* key,
+                               bool sync, std::string_view name,
+                               ViewSnapshot::Links&& links) noexcept;
 
 }  // namespace iresearch
 }  // namespace arangodb
