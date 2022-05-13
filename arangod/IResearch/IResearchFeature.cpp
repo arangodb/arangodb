@@ -83,20 +83,17 @@
 using namespace std::chrono_literals;
 
 namespace arangodb {
-
 namespace aql {
+
 class Query;
+
 }  // namespace aql
-
 }  // namespace arangodb
-
+namespace arangodb::iresearch {
 namespace {
 
-using namespace arangodb;
-using namespace arangodb::iresearch;
-
 aql::AqlValue dummyFilterFunc(aql::ExpressionContext*, aql::AstNode const&,
-                              containers::SmallVector<aql::AqlValue> const&) {
+                              std::span<aql::AqlValue const>) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,
       "ArangoSearch filter functions EXISTS, PHRASE "
@@ -109,7 +106,7 @@ aql::AqlValue dummyFilterFunc(aql::ExpressionContext*, aql::AstNode const&,
 // Just returns its first argument as outside ArangoSearch context
 // there is nothing to do with search stuff, but optimization could roll.
 aql::AqlValue contextFunc(aql::ExpressionContext* ctx, aql::AstNode const&,
-                          containers::SmallVector<aql::AqlValue> const& args) {
+                          std::span<aql::AqlValue const> args) {
   TRI_ASSERT(ctx);
   TRI_ASSERT(!args.empty());  // ensured by function signature
 
@@ -127,9 +124,8 @@ inline aql::AqlValue errorAqlValue(aql::ExpressionContext* ctx,
 // Executes STARTS_WITH function with const parameters locally the same way
 // it will be done in ArangoSearch at runtime
 // This will allow optimize out STARTS_WITH call if all arguments are const
-aql::AqlValue startsWithFunc(
-    aql::ExpressionContext* ctx, aql::AstNode const&,
-    containers::SmallVector<aql::AqlValue> const& args) {
+aql::AqlValue startsWithFunc(aql::ExpressionContext* ctx, aql::AstNode const&,
+                             std::span<aql::AqlValue const> args) {
   static char const* AFN = "STARTS_WITH";
 
   auto const argc = args.size();
@@ -188,7 +184,7 @@ aql::AqlValue startsWithFunc(
 /// it will be done in ArangoSearch at runtime
 /// This will allow optimize out MIN_MATCH call if all arguments are const
 aql::AqlValue minMatchFunc(aql::ExpressionContext* ctx, aql::AstNode const&,
-                           containers::SmallVector<aql::AqlValue> const& args) {
+                           std::span<aql::AqlValue const> args) {
   static char const* AFN = "MIN_MATCH";
 
   TRI_ASSERT(args.size() > 1);  // ensured by function signature
@@ -210,7 +206,7 @@ aql::AqlValue minMatchFunc(aql::ExpressionContext* ctx, aql::AstNode const&,
 }
 
 aql::AqlValue dummyScorerFunc(aql::ExpressionContext*, aql::AstNode const&,
-                              containers::SmallVector<aql::AqlValue> const&) {
+                              std::span<aql::AqlValue const>) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,
       "ArangoSearch scorer functions BM25() and TFIDF() are designed to "
@@ -462,7 +458,7 @@ bool upgradeSingleServerArangoSearchView0_1(
     dataPath /= "databases";
     dataPath /= "database-";
     dataPath += std::to_string(vocbase.id());
-    dataPath /= arangodb::iresearch::StaticStrings::DataSourceType;
+    dataPath /= arangodb::iresearch::StaticStrings::ViewType;
     dataPath += "-";
     dataPath += std::to_string(view->id().id());
 
@@ -582,8 +578,7 @@ void registerSingleFactory(
     auto& engine = server.getFeature<T>();
     auto& engineFactory = const_cast<IndexFactory&>(engine.indexFactory());
     Result res = engineFactory.emplace(
-        std::string{arangodb::iresearch::StaticStrings::DataSourceType},
-        factory);
+        std::string{arangodb::iresearch::StaticStrings::ViewType}, factory);
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           res.errorNumber(),
@@ -782,9 +777,6 @@ void IResearchLogTopic::log_appender(void* /*context*/, const char* function,
 }
 
 }  // namespace
-
-namespace arangodb {
-namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class IResearchAsync
@@ -1133,5 +1125,4 @@ IndexTypeFactory& IResearchFeature::factory() {
 template IndexTypeFactory& IResearchFeature::factory<ClusterEngine>();
 template IndexTypeFactory& IResearchFeature::factory<RocksDBEngine>();
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch

@@ -35,6 +35,7 @@
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
+#include "IResearch/MakeViewSnapshot.h"
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
@@ -2134,8 +2135,8 @@ TEST_F(IResearchViewNodeTest, clone) {
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
 
-    node.shards().emplace_back("abc");
-    node.shards().emplace_back("def");
+    node.shards().emplace("abc");
+    node.shards().emplace("def");
 
     // clone without properties into the same plan
     {
@@ -2241,8 +2242,8 @@ TEST_F(IResearchViewNodeTest, clone) {
     EXPECT_TRUE(node.collections().empty());  // view has no links
     EXPECT_TRUE(node.shards().empty());
 
-    node.shards().emplace_back("abc");
-    node.shards().emplace_back("def");
+    node.shards().emplace("abc");
+    node.shards().emplace("def");
 
     // clone without properties into the same plan
     {
@@ -3581,34 +3582,28 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
     ASSERT_TRUE(trx.state());
 
     // start transaction (put snapshot into)
-    EXPECT_TRUE(
-        nullptr ==
-        arangodb::basics::downCast<arangodb::iresearch::IResearchView>(
-            *logicalView)
-            .snapshot(trx,
-                      arangodb::iresearch::IResearchView::SnapshotMode::Find));
+    auto& view = arangodb::basics::downCast<arangodb::iresearch::IResearchView>(
+        *logicalView);
     auto* snapshot =
-        arangodb::basics::downCast<arangodb::iresearch::IResearchView>(
-            *logicalView)
-            .snapshot(
-                trx,
-                arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
-    EXPECT_TRUE(
-        snapshot ==
-        arangodb::basics::downCast<arangodb::iresearch::IResearchView>(
-            *logicalView)
-            .snapshot(trx,
-                      arangodb::iresearch::IResearchView::SnapshotMode::Find));
-    EXPECT_TRUE(snapshot ==
-                arangodb::basics::downCast<arangodb::iresearch::IResearchView>(
-                    *logicalView)
-                    .snapshot(trx, arangodb::iresearch::IResearchView::
-                                       SnapshotMode::FindOrCreate));
-    EXPECT_TRUE(snapshot ==
-                arangodb::basics::downCast<arangodb::iresearch::IResearchView>(
-                    *logicalView)
-                    .snapshot(trx, arangodb::iresearch::IResearchView::
-                                       SnapshotMode::SyncAndReplace));
+        makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
+                         view.getLinks(), &view, view.name());
+    EXPECT_TRUE(snapshot == nullptr);
+    snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        view.getLinks(), &view, view.name());
+    ASSERT_TRUE(snapshot != nullptr);
+    auto* snapshotFind =
+        makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
+                         view.getLinks(), &view, view.name());
+    EXPECT_TRUE(snapshotFind == snapshot);
+    auto* snapshotCreate = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        view.getLinks(), &view, view.name());
+    EXPECT_TRUE(snapshotCreate == snapshot);
+    auto* snapshotSync = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
+        view.getLinks(), &view, view.name());
+    EXPECT_TRUE(snapshotSync == snapshot);
 
     // after transaction has started
     {
@@ -3866,9 +3861,7 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterSubqueryWithVar) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(2, nodes.size());
@@ -3900,9 +3893,7 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterSubquery) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(2, nodes.size());
@@ -3934,9 +3925,7 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterNonDetVar) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(2, nodes.size());
@@ -3968,9 +3957,7 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterListWithVar) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(1, nodes.size());
@@ -3999,9 +3986,7 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterList) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(1, nodes.size());
@@ -4030,9 +4015,7 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterListNonVolatile) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(1, nodes.size());
@@ -4061,9 +4044,7 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterQueryNonVolatile) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(2, nodes.size());
@@ -4096,9 +4077,7 @@ TEST_F(IResearchViewVolatitlityTest, volatilityFilterListSubquery) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(2, nodes.size());
@@ -4131,9 +4110,7 @@ TEST_F(IResearchViewVolatitlityTest, volatilitySortFilterListSubquery) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(2, nodes.size());
@@ -4166,9 +4143,7 @@ TEST_F(IResearchViewVolatitlityTest, volatilitySortNonVolatileFilter) {
   auto prepared = arangodb::tests::prepareQuery(*vocbase, queryString);
   auto plan = prepared->plan();
   ASSERT_NE(nullptr, plan);
-  ::arangodb::containers::SmallVector<
-      arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
   plan->findNodesOfType(
       nodes, {arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW}, true);
   ASSERT_EQ(2, nodes.size());

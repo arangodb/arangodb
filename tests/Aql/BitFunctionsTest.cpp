@@ -46,8 +46,7 @@ namespace {
 
 AqlValue callFn(AstNode const& node, char const* input1,
                 char const* input2 = nullptr, char const* input3 = nullptr) {
-  SmallVector<AqlValue>::allocator_type::arena_type arena;
-  SmallVector<AqlValue> params{arena};
+  containers::SmallVector<AqlValue, 3> params;
 
   auto add = [&](char const* input) {
     if (input != nullptr) {
