@@ -63,8 +63,7 @@ AqlValue evaluate(AqlValue const& lhs, AqlValue const& rhs) {
   fakeit::When(Method(expressionContextMock, trx))
       .AlwaysDo([&trx]() -> transaction::Methods& { return trx; });
 
-  SmallVector<AqlValue>::allocator_type::arena_type arena;
-  SmallVector<AqlValue> params{arena};
+  containers::SmallVector<AqlValue, 4> params;
   params.emplace_back(lhs);
   params.emplace_back(rhs);
   params.emplace_back(VPackSlice::nullSlice());  // redundant argument

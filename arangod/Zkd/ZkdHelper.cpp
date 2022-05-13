@@ -356,10 +356,7 @@ auto zkd::testInBox(byte_string_view cur, byte_string_view min,
   BitReader min_reader(min);
   BitReader max_reader(max);
 
-  ::arangodb::containers::SmallVector<
-      std::pair<bool, bool>>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<std::pair<bool, bool>>
-      isLargerLowerThanMinMax{a};
+  containers::SmallVector<std::pair<bool, bool>, 32> isLargerLowerThanMinMax;
   isLargerLowerThanMinMax.resize(dimensions);
 
   unsigned dim = 0;

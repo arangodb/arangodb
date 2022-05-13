@@ -42,6 +42,8 @@
 
 namespace arangodb::iresearch {
 
+class IResearchView;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief common base class for functionality required to link an ArangoDB
 ///        LogicalCollection with an IResearchView

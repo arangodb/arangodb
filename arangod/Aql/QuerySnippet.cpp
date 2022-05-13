@@ -279,19 +279,17 @@ void QuerySnippet::addNode(ExecutionNode* node) {
     case ExecutionNode::UPSERT: {
       // We do not actually need to know the details here.
       // We just wanna know the shards!
-      auto collectionAccessingNode =
-          dynamic_cast<CollectionAccessingNode*>(node);
-      TRI_ASSERT(collectionAccessingNode != nullptr);
-      _expansions.emplace_back(node,
-                               !collectionAccessingNode->isUsedAsSatellite(),
-                               collectionAccessingNode->isUsedAsSatellite());
+      auto* collectionAccessingNode =
+          ExecutionNode::castTo<CollectionAccessingNode*>(node);
+      bool const isSatellite = collectionAccessingNode->isUsedAsSatellite();
+      _expansions.emplace_back(node, !isSatellite, isSatellite);
       break;
     }
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::K_SHORTEST_PATHS: {
       auto* graphNode = ExecutionNode::castTo<GraphNode*>(node);
-      auto const isSatellite = graphNode->isUsedAsSatellite();
+      bool const isSatellite = graphNode->isUsedAsSatellite();
       _expansions.emplace_back(node, !isSatellite, isSatellite);
       break;
     }
@@ -587,8 +585,8 @@ auto QuerySnippet::prepareFirstBranch(
       // We need to inject them all at once.
       auto* viewNode =
           ExecutionNode::castTo<iresearch::IResearchViewNode*>(exp.node);
-      auto& viewShardList = viewNode->shards();
-      viewShardList.clear();
+      auto& viewShards = viewNode->shards();
+      viewShards.clear();
 
       auto collections = viewNode->collections();
       for (aql::Collection const& c : collections) {
@@ -601,7 +599,7 @@ auto QuerySnippet::prepareFirstBranch(
           // before
           TRI_ASSERT(check != shardMapping.end());
           if (check->second == server) {
-            viewShardList.emplace_back(s);
+            viewShards.insert(s);
           }
         }
       }

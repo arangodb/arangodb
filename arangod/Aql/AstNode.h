@@ -658,7 +658,7 @@ std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const&);
   }                                                                     \
   auto sg = arangodb::scopeGuard([&]() noexcept {                       \
     FINALIZE_SUBTREE_CONDITIONAL(n, wasFinalizedAlready);               \
-  });
+  })
 #else
 #define FINALIZE_SUBTREE(n) \
   while (0) {               \
