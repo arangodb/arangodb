@@ -100,6 +100,18 @@ class SingleServerProvider {
   void addEdgeIDToBuilder(typename Step::Edge const& edge,
                           arangodb::velocypack::Builder& builder);
 
+  /**
+   * Adds the given Edge into the given builder, which is required to
+   * be an open Object.
+   * We will then add a key value pair:
+   * `edgeId`: edgeData
+   *
+   * @param edge The edge to insert
+   * @param builder The output builder, required to be an openObject
+   */
+  void addEdgeToLookupMap(typename Step::Edge const& edge,
+                          arangodb::velocypack::Builder& builder);
+
   void destroyEngines(){};
 
   [[nodiscard]] transaction::Methods* trx();

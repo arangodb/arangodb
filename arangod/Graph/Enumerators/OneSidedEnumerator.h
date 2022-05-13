@@ -54,6 +54,7 @@ struct VertexDescription;
 
 namespace enterprise {
 class SmartGraphStep;
+template<class Provider>
 struct SmartGraphResponse;
 }  // namespace enterprise
 
@@ -74,7 +75,7 @@ class OneSidedEnumerator : public TraversalEnumerator {
 
   using ResultList = typename std::conditional_t<
       std::is_same_v<Step, enterprise::SmartGraphStep>,
-      enterprise::SmartGraphResponse, std::vector<Step>>;
+      enterprise::SmartGraphResponse<Provider>, std::vector<Step>>;
   using GraphOptions = arangodb::graph::OneSidedEnumeratorOptions;
 
  public:
@@ -132,7 +133,8 @@ class OneSidedEnumerator : public TraversalEnumerator {
   auto getNextPath() -> std::unique_ptr<PathResultInterface> override;
 
 #ifdef USE_ENTERPRISE
-  auto smartSearch(size_t amountOfExpansions) -> enterprise::SmartGraphResponse override;
+  auto smartSearch(size_t amountOfExpansions, arangodb::velocypack::Builder&)
+      -> void override;
 #endif
 
   /**
@@ -183,8 +185,10 @@ class OneSidedEnumerator : public TraversalEnumerator {
 #endif
 
  private:
+  auto initResultList() -> ResultList;
+
+ private:
   GraphOptions _options;
-  ResultList _results{};
   bool _resultsFetched{false};
   aql::TraversalStats _stats{};
 
@@ -192,6 +196,7 @@ class OneSidedEnumerator : public TraversalEnumerator {
   typename Configuration::Provider _provider;
   typename Configuration::Store _interior;  // This stores all paths processed
   typename Configuration::Validator _validator;
+  ResultList _results;
 };
 }  // namespace graph
 }  // namespace arangodb
