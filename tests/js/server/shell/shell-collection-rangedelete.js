@@ -77,7 +77,7 @@ function CollectionRangeDeleteSuite () {
       }
     },
     
-    testRangeDeleteDontTriggerInCluster : function () {
+    testRangeDeleteDoesNotTriggerInCluster : function () {
       if (!require("@arangodb/cluster").isCluster()) {
         return;
       }
@@ -94,9 +94,45 @@ function CollectionRangeDeleteSuite () {
       assertEqual(100000, c.count());
 
       internal.debugSetFailAt("RocksDBRemoveLargeRangeOn");
-      // should not fire
+      // should not fire!
       c.truncate({ compact: false });
       
+      assertEqual(0, c.count());
+    },
+    
+    testRangeDeleteTriggersInCluster : function () {
+      if (!require("@arangodb/cluster").isCluster()) {
+        return;
+      }
+
+      let docs = [];
+      for (let i = 0; i < 100000; ++i) {
+        docs.push({});
+        if (docs.length === 5000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+      
+      assertEqual(100000, c.count());
+
+      // force range-deletions
+      internal.debugSetFailAt("ForceRangeDeleteInWal");
+
+      internal.debugSetFailAt("RocksDBRemoveLargeRangeOn");
+      // should fire!
+      try {
+        c.truncate({ compact: false });
+        fail();
+      } catch (err) {
+        assertTrue(err.errorNum === ERRORS.ERROR_DEBUG.code ||
+                   err.errorNum === ERRORS.ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION.code);
+      }
+      
+      assertEqual(100000, c.count());
+      internal.debugClearFailAt();
+      
+      c.truncate({ compact: false });
       assertEqual(0, c.count());
     },
 

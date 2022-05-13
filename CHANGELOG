@@ -1,6 +1,14 @@
 v3.9.2 (XXXX-XX-XX)
 -------------------
 
+* Optionally enable range deletions in the WAL for truncate operationns in 
+  the cluster, too. This can speed up truncate operations for large 
+  collections/shards. Range deletions are turned off by default to ensure
+  compatibility with all versions of arangosync. They can be turned on by
+  using the startup option `--rocksdb.use-range-delete-in-wal` and setting it
+  to `true`. The default value of that option will change from `false` to
+  `true` in ArangoDB 3.10.
+
 * Fixed BTS-860. Changed ArangoSearch index recovery procedure to remove
   necessity to always fully recreate index if IndexCreation marker encountered.
 
