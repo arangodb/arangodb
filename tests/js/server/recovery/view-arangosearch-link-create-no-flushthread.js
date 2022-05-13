@@ -42,7 +42,7 @@ function runSetup () {
   db._createView('UnitTestsRecoveryEmpty', 'arangosearch', {});
 
   internal.wal.flush(true, true);
-  internal.debugSetFailAt("FlushThreadDisableAll");
+  internal.debugSetFailAt("RocksDBBackgroundThread::run");
   internal.wait(2); // make sure failure point takes effect
 
   var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };

@@ -578,7 +578,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 
     // inBackground index might not recover selectivity estimate w/o sync
     if (inBackground && !newIdx->unique() && newIdx->hasSelectivityEstimate()) {
-      engine.settingsManager()->sync(false);
+      engine.settingsManager()->sync(/*force*/ false);
     }
 
     // Step 6. persist in rocksdb
@@ -769,7 +769,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx,
     rocksdb::DB* db = engine.db()->GetRootDB();
 
     TRI_IF_FAILURE("RocksDBCollection::truncate::forceSync") {
-      engine.settingsManager()->sync(false);
+      engine.settingsManager()->sync(/*force*/ false);
     }
 
     // pre commit sequence needed to place a blocker

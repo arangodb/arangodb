@@ -1193,7 +1193,7 @@ else ()
   find_package(OpenSSL REQUIRED)
 endif ()
 
-if (OPENSSL_FOUND)
+if (OPENSSL_FOUND AND USE_STRICT_OPENSSL_VERSION)
   if (NOT "${OPENSSL_VERSION}" MATCHES "${ARANGODB_REQUIRED_OPENSSL_VERSION}")
     message (FATAL_ERROR "Wrong OpenSSL version was found: ${OPENSSL_VERSION}! Required version: ${MSG_ARANGODB_REQUIRED_OPENSSL_VERSION}!")
   endif ()
@@ -1253,7 +1253,6 @@ link_libraries(
   absl::flat_hash_map
   absl::node_hash_set
   absl::node_hash_map
-  absl::inlined_vector
   absl::synchronization
 )
 

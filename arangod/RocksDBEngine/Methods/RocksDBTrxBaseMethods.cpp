@@ -365,7 +365,7 @@ arangodb::Result RocksDBTrxBaseMethods::doCommit() {
       auto& engine = selector.engine<RocksDBEngine>();
       auto* sm = engine.settingsManager();
       if (sm) {
-        sm->sync(true);  // force
+        sm->sync(/*force*/ true);
       }
     }
   }
