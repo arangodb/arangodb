@@ -56,7 +56,9 @@ function runSetup () {
   
   lastTick = replication.logger.state().state.lastLogTick;
   c.insert({ _key: "lastLogTick2", tick: lastTick });
-  
+ 
+  // make sure view has caught up
+  db._query(`FOR doc IN ${vn} SEARCH doc.value1 == 42 OPTIONS {waitForSync: true} RETURN doc`);
   internal.waitForEstimatorSync();
   
   lastTick = replication.logger.state().state.lastLogTick;
