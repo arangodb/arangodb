@@ -241,20 +241,28 @@ combined(Os...) -> combined<Os...>;
 
 }  // namespace arangodb::test::model_checker
 
-template<const char File[], std::size_t Line>
+template<const char File[], std::size_t FileLen, typename>
+struct StringBuffer;
+template<const char File[], std::size_t FileLen, std::size_t... Idxs>
+struct StringBuffer<File, FileLen, std::index_sequence<Idxs...>> {
+  static inline constexpr char buffer[FileLen] = {File[Idxs]...};
+};
+
+template<const char File[], std::size_t FileLen, std::size_t Line>
 struct FileLineType {
-  static inline constexpr auto filename = File;
+  static inline constexpr auto filename =
+      StringBuffer<File, FileLen, std::make_index_sequence<FileLen>>::buffer;
   static inline constexpr std::size_t line = Line;
 
   static auto annotate(std::string_view message) -> std::string {
-    return fmt::format("{}:{}: {}", filename, line, message);
+    return std::string{filename};
   }
 };
 
-#define MC_HERE                              \
-  ([] {                                      \
-    static constexpr char data[] = __FILE__; \
-    return ::FileLineType<data, __LINE__>{}; \
+#define MC_HERE                                                \
+  ([] {                                                        \
+    static constexpr char data[sizeof(__FILE__)] = __FILE__;   \
+    return ::FileLineType<data, sizeof(__FILE__), __LINE__>{}; \
   }())
 
 #define MC_GTEST_PRED(name, pred)           \
