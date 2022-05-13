@@ -132,7 +132,8 @@ class OneSidedEnumerator : public TraversalEnumerator {
   auto getNextPath() -> std::unique_ptr<PathResultInterface> override;
 
 #ifdef USE_ENTERPRISE
-  auto smartSearch(size_t amountOfExpansions) -> enterprise::SmartGraphResponse override;
+  auto smartSearch(size_t amountOfExpansions)
+      -> enterprise::SmartGraphResponse override;
 #endif
 
   /**

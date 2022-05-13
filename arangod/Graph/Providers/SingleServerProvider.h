@@ -113,8 +113,6 @@ class SingleServerProvider {
   /**
  * Return true if the vertex whose id is stored in the class (in _vertex) has
  * its data on this DB-server.
- * @param trx
- * @return
    */
   bool isResponsible(Step const& step) const;
   [[nodiscard]] bool hasDepthSpecificLookup(uint64_t depth) const noexcept;

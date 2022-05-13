@@ -115,6 +115,8 @@ struct VPackSaveInspector : InspectorBase<VPackSaveInspector> {
            | [&]() { return endObject(); };     //
   }
 
+  auto applyFields() { return Status::Success{}; }
+
   template<class Arg, class... Args>
   auto applyFields(Arg&& arg, Args&&... args) {
     auto res = self().applyField(std::forward<Arg>(arg));

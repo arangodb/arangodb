@@ -601,9 +601,7 @@ void SimpleHttpClient::setRequest(
 
   // basic authorization
   using ExclusionType = std::pair<size_t, size_t>;
-  ::arangodb::containers::SmallVector<ExclusionType>::allocator_type::arena_type
-      arena;
-  ::arangodb::containers::SmallVector<ExclusionType> exclusions{arena};
+  containers::SmallVector<ExclusionType, 4> exclusions;
   size_t pos = 0;
   if (!_params._jwt.empty()) {
     _writeBuffer.appendText(std::string_view("Authorization: bearer "));

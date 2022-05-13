@@ -27,9 +27,9 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/SkipResult.h"
-#include "Containers/SmallVector.h"
 
 #include <memory>
+#include <span>
 
 namespace arangodb {
 namespace aql {
@@ -106,8 +106,7 @@ class ConstFetcher {
   auto indexIsValid() const noexcept -> bool;
   auto numRowsLeft() const noexcept -> size_t;
   auto canUseFullBlock(
-      arangodb::containers::SmallVector<std::pair<size_t, size_t>> const&
-          ranges) const noexcept -> bool;
+      std::span<std::pair<size_t, size_t> const> ranges) const noexcept -> bool;
 };
 
 }  // namespace aql
