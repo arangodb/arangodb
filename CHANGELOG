@@ -36,6 +36,9 @@ devel
   mechanisms that require access to the database data will also be responded to
   with HTTP 503 errors, even if correct credentials are used.
 
+* Put hotbackup requests on the HIGH priority queue to make hotbackups work
+  under high load (BTS-865).
+
 * Removed separate FlushThread (for views syncing) and merged it with the
   RocksDBBackgroundThread.
 

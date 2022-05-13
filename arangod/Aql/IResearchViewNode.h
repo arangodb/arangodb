@@ -157,10 +157,10 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   void filterCondition(aql::AstNode const* node) noexcept;
 
   /// @brief return list of shards related to the view (cluster only)
-  std::vector<std::string> const& shards() const noexcept { return _shards; }
+  auto const& shards() const noexcept { return _shards; }
 
   /// @brief return list of shards related to the view (cluster only)
-  std::vector<std::string>& shards() noexcept { return _shards; }
+  auto& shards() noexcept { return _shards; }
 
   /// @brief return the scorers to pass to the view
   std::vector<Scorer> const& scorers() const noexcept { return _scorers; }
@@ -361,7 +361,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   std::vector<Scorer> _scorers;
 
   /// @brief list of shards involved, need this for the cluster
-  std::vector<std::string> _shards;
+  containers::FlatHashSet<std::string> _shards;
 
   /// @brief volatility mask
   mutable int _volatilityMask{-1};
