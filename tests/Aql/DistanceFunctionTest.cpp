@@ -84,12 +84,10 @@ void expectEqSlices(const VPackSlice actualSlice,
     double rhs = expectedSlice.getNumber<decltype(rhs)>();
     ASSERT_DOUBLE_EQ(lhs, rhs);
   }
-
-  return;
 }
 
-AqlValue evaluateDistanceFunction(const SmallVector<AqlValue>& params,
-                                  const arangodb::aql::AstNode& node) {
+AqlValue evaluateDistanceFunction(std::span<AqlValue const> params,
+                                  arangodb::aql::AstNode const& node) {
   fakeit::Mock<ExpressionContext> expressionContextMock;
   ExpressionContext& expressionContext = expressionContextMock.get();
   fakeit::When(Method(expressionContextMock, registerWarning))
@@ -114,7 +112,7 @@ AqlValue evaluateDistanceFunction(const SmallVector<AqlValue>& params,
 }
 
 void assertDistanceFunction(char const* expected, char const* x, char const* y,
-                            const arangodb::aql::AstNode& node) {
+                            arangodb::aql::AstNode const& node) {
   // get slice for expected value
   auto const expectedJson = VPackParser::fromJson(expected);
   auto const expectedSlice = expectedJson->slice();
@@ -134,10 +132,9 @@ void assertDistanceFunction(char const* expected, char const* x, char const* y,
   // create params vector from y slice
   AqlValue arrayY = createArray(sliceY);
 
-  SmallVector<AqlValue>::allocator_type::arena_type arena;
-  SmallVector<AqlValue> params{2, arena};
-  params[0] = arrayX;
-  params[1] = arrayY;
+  containers::SmallVector<AqlValue, 4> params;
+  params.push_back(arrayX);
+  params.push_back(arrayY);
 
   // evaluate
   auto actual_value = evaluateDistanceFunction(params, node);
@@ -169,10 +166,9 @@ void assertDistanceFunctionFail(char const* x, char const* y,
   // create params vector from y slice
   AqlValue arrayY = createArray(sliceY);
 
-  SmallVector<AqlValue>::allocator_type::arena_type arena;
-  SmallVector<AqlValue> params{2, arena};
-  params[0] = arrayX;
-  params[1] = arrayY;
+  containers::SmallVector<AqlValue, 4> params;
+  params.push_back(arrayX);
+  params.push_back(arrayY);
 
   ASSERT_TRUE(evaluateDistanceFunction(params, node).isNull(false));
 
