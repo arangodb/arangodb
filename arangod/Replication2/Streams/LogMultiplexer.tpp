@@ -416,10 +416,10 @@ struct LogMultiplexerImplementation
     // circumvented by first inserting the entry but
     // not triggering replication immediately. We
     // trigger it here instead.
-    return std::make_pair(index,
-                          DeferredAction([interface = _interface]() noexcept {
-                            interface->triggerAsyncReplication();
-                          }));
+    auto action = DeferredAction([interface = _interface]() noexcept {
+      interface->triggerAsyncReplication();
+    });
+    return std::make_pair(index, std::move(action));
   }
 
   template<typename StreamDescriptor,
