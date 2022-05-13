@@ -27,6 +27,7 @@ const jsunity = require('jsunity');
 const _ = require('lodash');
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const lp = require("@arangodb/testutils/replicated-logs-predicates");
+const lhttp = require("@arangodb/testutils/replicated-logs-http-helper");
 
 const database = 'ReplLogsMaintenanceTest';
 
@@ -208,15 +209,47 @@ const replicatedLogSuite = function () {
   };
 };
 
+const checkLocalStatusStatusCode = function (database, logId, servers, code, errorNum) {
+  for (const server of servers) {
+    const response = lhttp.localStatus(server, database, logId);
+    if (response.code !== code) {
+      return Error(`Server ${server} returned code ${response.code}, expected ${code}`);
+    }
+    if (response.errorNum !== errorNum) {
+      return Error(`Server ${server} returned errorNum ${response.errorNum}, expected ${errorNum}`);
+    }
+  }
+  return true;
+};
+
+const hasLocalStatusStatusCode = function (database, logId, servers, code, errorNum) {
+  return function () {
+    return checkLocalStatusStatusCode(database, logId, servers, code, errorNum);
+  };
+};
+
+const assertLocalStatusStatusCode = function (database, logId, servers, code, errorNum) {
+  const res = checkLocalStatusStatusCode(database, logId, servers, code, errorNum);
+  if (res !== true) {
+    throw res;
+  }
+};
+
 const replicatedLogDropSuite = function () {
   return {
     setUpAll, tearDownAll, setUp, tearDown,
 
     testCreateDropReplicatedLog: function () {
-      const {logId} = lh.createReplicatedLogPlanOnly(database, targetConfig);
+      const {logId, servers} = lh.createReplicatedLogPlanOnly(database, targetConfig);
+      lh.waitFor(hasLocalStatusStatusCode(database, logId, servers, 200, undefined));
+
       lh.replicatedLogDeletePlan(database, logId);
+
       // wait for current to be gone as well
-      lh.waitFor(lp.replicatedLogIsGone(database, logId));
+      //lh.waitFor(lp.replicatedLogIsGone(database, logId));
+
+      // we expect all servers to report 404
+      lh.waitFor(hasLocalStatusStatusCode(database, logId, servers, 404, 1418));
     },
 
   };
