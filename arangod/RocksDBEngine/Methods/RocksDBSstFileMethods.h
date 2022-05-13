@@ -42,7 +42,9 @@ class RocksDBSstFileMethods final : public RocksDBMethods {
   explicit RocksDBSstFileMethods(bool isForeground, ArangodServer const& server,
                                  rocksdb::DB* rootDB,
                                  RocksDBTransactionCollection* trxColl,
-                                 RocksDBIndex& ridx);
+                                 RocksDBIndex& ridx,
+                                 rocksdb::Options const& dbOptions,
+                                 std::string const& idxPath);
   ~RocksDBSstFileMethods();
 
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
@@ -79,7 +81,7 @@ class RocksDBSstFileMethods final : public RocksDBMethods {
   RocksDBIndex& _ridx;
   rocksdb::SstFileWriter _sstFileWriter;
   rocksdb::ColumnFamilyHandle* _cf;
-  std::string _tmpPath;
+  std::string _idxPath;
   std::vector<std::string> _sstFileNames;
   std::vector<std::pair<std::string, std::string>> _sortedKeyValPairs;
 };

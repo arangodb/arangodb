@@ -659,10 +659,16 @@ void RocksDBEngine::start() {
   auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
 
   _path = databasePathFeature.subdirectoryName("engine-rocksdb");
-  std::string idxPath =
-      basics::FileUtils::buildFilename(_path, "tmp-idx-creation");
-  if (basics::FileUtils::exists(idxPath.data())) {
-    ::cleanUpExtFiles(idxPath.data());
+  _idxPath = basics::FileUtils::buildFilename(_path, "tmp-idx-creation");
+  if (basics::FileUtils::isDirectory(_idxPath.data())) {
+    ::cleanUpExtFiles(_idxPath.data());
+  } else {
+    auto errorMsg = TRI_ERROR_NO_ERROR;
+    if (!basics::FileUtils::createDirectory(_idxPath.data(), &errorMsg)) {
+      LOG_TOPIC("6d10f", ERR, Logger::ENGINES)
+          << "Cannot create tmp-idx-creation directory, error: code '"
+          << errorMsg << "'";
+    }
   }
 
   [[maybe_unused]] bool createdEngineDir = false;

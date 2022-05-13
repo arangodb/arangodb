@@ -37,23 +37,17 @@ namespace FU = basics::FileUtils;
 
 RocksDBSstFileMethods::RocksDBSstFileMethods(
     bool isForeground, ArangodServer const& server, rocksdb::DB* rootDB,
-    RocksDBTransactionCollection* trxColl, RocksDBIndex& ridx)
+    RocksDBTransactionCollection* trxColl, RocksDBIndex& ridx,
+    rocksdb::Options const& dbOptions, std::string const& idxPath)
     : RocksDBMethods(),
       _isForeground(isForeground),
       _server(server),
       _rootDB(rootDB),
       _trxColl(trxColl),
       _ridx(ridx),
-      _sstFileWriter(rocksdb::EnvOptions(), rocksdb::Options()),
+      _sstFileWriter(rocksdb::EnvOptions(), dbOptions),
       _cf(nullptr),
-      _tmpPath(std::move(FU::buildFilename(
-          _server.getFeature<DatabasePathFeature>().subdirectoryName(
-              "engine-rocksdb"),
-          "tmp-idx-creation"))) {
-  if (!FU::exists(_tmpPath)) {
-    FU::createDirectory(_tmpPath, nullptr);
-  }
-}
+      _idxPath(idxPath) {}
 
 RocksDBSstFileMethods::~RocksDBSstFileMethods() { cleanUpFiles(); }
 
@@ -92,8 +86,8 @@ rocksdb::Status RocksDBSstFileMethods::writeToFile() {
   std::string tmpFileName =
       std::to_string(pid) + '-' +
       std::to_string(RandomGenerator::interval(UINT32_MAX));
-  std::string fileName = FU::buildFilename(_tmpPath, tmpFileName);
-  fileName += ".ext";
+  std::string fileName = FU::buildFilename(_idxPath, tmpFileName);
+  fileName += ".sst";
   rocksdb::Status res = _sstFileWriter.Open(fileName);
   if (res.ok()) {
     _bytesToWriteCount = 0;

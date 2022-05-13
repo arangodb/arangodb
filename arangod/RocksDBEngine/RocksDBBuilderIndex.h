@@ -73,7 +73,9 @@ class IndexCreatorThread final : public Thread {
                      std::atomic<uint64_t>& docsProcessed,
                      std::shared_ptr<SharedWorkEnv> sharedWorkEnv,
                      RocksDBCollection* rcoll, rocksdb::DB* rootDB,
-                     RocksDBIndex& ridx, rocksdb::Snapshot const* snap);
+                     RocksDBIndex& ridx, rocksdb::Snapshot const* snap,
+                     rocksdb::Options const& dbOptions,
+                     std::string const& idxPath);
 
   ~IndexCreatorThread();
 
@@ -97,6 +99,7 @@ class IndexCreatorThread final : public Thread {
   rocksdb::Snapshot const* _snap;
   trx::BuilderTrx _trx;
   RocksDBTransactionCollection* _trxColl;
+  rocksdb::Options _dbOptions;
 
   // ptrs because of abstract class, have to know which type to craete
   std::unique_ptr<RocksDBMethods> _methods;
