@@ -1193,7 +1193,7 @@ bool State::loadRemaining(index_t cind) {
 	      millis = milliSlice.getNumber<uint64_t>();
 	    } catch (...) {	}
 	  }
-
+	  
           logEmplaceBackNoLock(
             log_t(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()),
                   ii.get("term").getNumber<uint64_t>(), tmp, clientId, millis));
