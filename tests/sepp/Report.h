@@ -56,7 +56,7 @@ struct Report {
 
   [[nodiscard]] std::uint64_t operations() const {
     std::uint64_t result = 0;
-    for (const auto& thread : threads) {
+    for (auto const& thread : threads) {
       result += thread.operations;
     }
     return result;

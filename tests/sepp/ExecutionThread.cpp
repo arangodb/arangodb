@@ -79,13 +79,13 @@ void ExecutionThread::waitUntilAllThreadsAreStarted() {
   }
 }
 
-void ExecutionThread::waitUntilInitialization() {
+void ExecutionThread::waitUntilInitialization() const {
   while (_execution.state() == ExecutionState::kPreparing) {
     ;
   }
 }
 
-void ExecutionThread::waitUntilBenchmarkStarts() {
+void ExecutionThread::waitUntilBenchmarkStarts() const {
   while (_execution.state() == ExecutionState::kInitializing) {
     ;
   }
