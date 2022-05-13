@@ -84,6 +84,7 @@ list(APPEND ARANGO_IRESEARCH_HEADERS
   IResearch/IResearchViewSort.h
   IResearch/IResearchViewStoredValues.h
   IResearch/VelocyPackHelper.h
+  IResearch/ViewSnapshot.h
   RestHandler/RestAnalyzerHandler.h
   )
 
@@ -126,6 +127,7 @@ list(APPEND ARANGO_IRESEARCH_SOURCES
   IResearch/IResearchViewSort.cpp
   IResearch/IResearchViewStoredValues.cpp
   IResearch/VelocyPackHelper.cpp
+  IResearch/ViewSnapshot.cpp
   RestHandler/RestAnalyzerHandler.cpp
   )
 
@@ -515,7 +517,6 @@ set(LIB_ARANGO_VOCBASE_SOURCES
 
 set(LIB_ARANGO_UTILS_SOURCES
   Utils/ExecContext.cpp
-  Utils/FlushThread.cpp
   Utils/OperationOptions.cpp
   Utils/UrlHelper.cpp
   ${ENTERPRISE_FILES}

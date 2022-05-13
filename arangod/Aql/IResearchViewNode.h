@@ -29,6 +29,7 @@
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/types.h"
+#include "Containers/FlatHashSet.h"
 #include "IResearch/IResearchFilterOptimization.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
@@ -75,7 +76,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief node options
   struct Options {
     /// @brief a list of data source CIDs to restrict a query
-    ::arangodb::containers::HashSet<DataSourceId> sources;
+    containers::FlatHashSet<DataSourceId> sources;
 
     /// @brief use the list of sources to restrict a query
     bool restrictSources{false};
@@ -156,10 +157,10 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   void filterCondition(aql::AstNode const* node) noexcept;
 
   /// @brief return list of shards related to the view (cluster only)
-  std::vector<std::string> const& shards() const noexcept { return _shards; }
+  auto const& shards() const noexcept { return _shards; }
 
   /// @brief return list of shards related to the view (cluster only)
-  std::vector<std::string>& shards() noexcept { return _shards; }
+  auto& shards() noexcept { return _shards; }
 
   /// @brief return the scorers to pass to the view
   std::vector<Scorer> const& scorers() const noexcept { return _scorers; }
@@ -289,7 +290,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
         std::vector<aql::latematerialized::NodeWithAttrsColumn> const&
             nodesToChange);
 
-    bool canVariablesBeReplaced(aql::CalculationNode* calclulationNode) const;
+    bool canVariablesBeReplaced(aql::CalculationNode* calculationNode) const;
 
     ViewVarsInfo replaceViewVariables(
         std::vector<aql::CalculationNode*> const& calcNodes,
@@ -360,7 +361,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   std::vector<Scorer> _scorers;
 
   /// @brief list of shards involved, need this for the cluster
-  std::vector<std::string> _shards;
+  containers::FlatHashSet<std::string> _shards;
 
   /// @brief volatility mask
   mutable int _volatilityMask{-1};

@@ -1449,6 +1449,7 @@ bool AgencyComm::shouldInitializeStructure() {
 
     if (!result.successful()) {  // Not 200 - 299
 
+      LOG_DEVEL << "BOOTSTRAP UNSUCCESSFUL. CODE: " << (int)result.httpCode();
       if (result.httpCode() == ResponseCode::UNAUTHORIZED) {
         // unauthorized
         LOG_TOPIC("32781", FATAL, Logger::STARTUP)
@@ -1462,6 +1463,7 @@ bool AgencyComm::shouldInitializeStructure() {
       continue;
 
     } else {
+      LOG_DEVEL << "BOOTSTRAP SUCCESSFUL. RESULT: " << result.slice().toJson();
       if (result.slice().isArray() && result.slice().length() == 1) {
         // No plan entry? Should initialize
         if (result.slice()[0].isObject() && result.slice()[0].length() == 0) {
