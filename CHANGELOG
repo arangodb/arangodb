@@ -5,6 +5,9 @@ v3.8.7 (XXXX-XX-XX)
   remove necessity to always fully recreate index if IndexCreation marker
   encountered.
 
+* Put hotbackup requests on the HIGH priority queue to make hotbackups work
+  under high load (BTS-865).
+
 * Updated OpenSSL to 1.1.1o and OpenLDAP to 2.6.2.
 
 * Added option `--enable-revision-trees` to arangorestore, which will add the
