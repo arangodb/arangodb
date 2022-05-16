@@ -13,9 +13,9 @@ is a JSON object with the following attributes:
 
 - *algorithm*: an algorithm used by the job.
 
-- *created*: date and time when the job was created.
+- *created*: a date and time when the job was created.
 
-- *expires*: date and time when the job results expire. The expiration date is only
+- *expires*: a date and time when the job results expire. The expiration date is only
   meaningful for jobs that were completed, canceled or resulted in an error. Such jobs
   are cleaned up by the garbage collection when they reach their expiration date/time.
 
