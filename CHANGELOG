@@ -1,6 +1,9 @@
 v3.7.18 (XXXX-XX-XX)
 --------------------
 
+* Fixed Github issue #16279: assertion failure/crash in AQL query optimizer
+  when permuting adjacent FOR loops that depended on each other.
+
 * No good reason to fatal error in agency state, when local database entries
   lack local timestamp (legacy). In that situation, we will record epoch begin
   as local time.
