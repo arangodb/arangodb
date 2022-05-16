@@ -1570,8 +1570,7 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
   }
 
   if (filterNode == nullptr && projectionNode->type == NODE_TYPE_REFERENCE &&
-      value.isArray() && offset == 0 && count == INT64_MAX) {
-    TRI_ASSERT(!isBoolean);
+      value.isArray() && offset == 0 && count == INT64_MAX && !isBoolean) {
     // no filter and no limit... we can return the array as it is
     auto other = static_cast<Variable const*>(projectionNode->getData());
 
