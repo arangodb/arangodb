@@ -2391,8 +2391,8 @@ void Supervision::resourceCreatorLost(
   bool coordinatorFound = false;
 
   if (rebootID && coordinatorID) {
-    keepResource = Supervision::verifyServerRebootID(
-        snapshot(), *coordinatorID, *rebootID, coordinatorFound);
+    keepResource = verifyServerRebootID(snapshot(), *coordinatorID, *rebootID,
+                                        coordinatorFound);
     // incomplete data, should not happen
   } else {
     //          v---- Please note this awesome log-id
@@ -2478,6 +2478,45 @@ void Supervision::checkBrokenCollections() {
                                    ev.coordinatorId, ev.coordinatorRebootId,
                                    ev.coordinatorFound);
           });
+
+      // also check all indexes of the collection to see if they are abandoned
+      if (collectionPair.second->has("indexes")) {
+        Slice indexes = collectionPair.second->get("indexes")
+                            .value()
+                            .get()
+                            .getArray()
+                            .value();
+        // check if the coordinator which started creating this index is
+        // still present...
+        for (auto const& planIndex : VPackArrayIterator(indexes)) {
+          if (VPackSlice isBuildingSlice =
+                  planIndex.get(StaticStrings::AttrIsBuilding);
+              !isBuildingSlice.isTrue()) {
+            // we are only interested in indexes that are still building
+            continue;
+          }
+
+          VPackSlice rebootIDSlice =
+              planIndex.get(StaticStrings::AttrCoordinatorRebootId);
+          VPackSlice coordinatorIDSlice =
+              planIndex.get(StaticStrings::AttrCoordinator);
+
+          if (rebootIDSlice.isNumber() && coordinatorIDSlice.isString()) {
+            auto rebootID = rebootIDSlice.getUInt();
+            auto coordinatorID = coordinatorIDSlice.copyString();
+
+            bool coordinatorFound = false;
+            bool keepResource = verifyServerRebootID(
+                snapshot(), coordinatorID, rebootID, coordinatorFound);
+
+            if (!keepResource) {
+              // delete this index
+              deleteBrokenIndex(dbpair.first, collectionPair.first, planIndex,
+                                coordinatorID, rebootID, coordinatorFound);
+            }
+          }
+        }
+      }
     }
   }
 }
@@ -2510,6 +2549,62 @@ void Supervision::checkBrokenAnalyzers() {
                 ev.coordinatorRebootId, ev.coordinatorFound);
           });
     }
+  }
+}
+
+void Supervision::deleteBrokenIndex(std::string const& database,
+                                    std::string const& collection,
+                                    arangodb::velocypack::Slice index,
+                                    std::string const& coordinatorID,
+                                    uint64_t rebootID, bool coordinatorFound) {
+  auto envelope = std::make_shared<Builder>();
+  {
+    VPackArrayBuilder trxs(envelope.get());
+    {
+      std::string collectionPath = plan()
+                                       ->collections()
+                                       ->database(database)
+                                       ->collection(collection)
+                                       ->str();
+      std::string indexesPath = plan()
+                                    ->collections()
+                                    ->database(database)
+                                    ->collection(collection)
+                                    ->indexes()
+                                    ->str();
+
+      VPackArrayBuilder trx(envelope.get());
+      {
+        VPackObjectBuilder operation(envelope.get());
+        // increment Plan Version
+        {
+          VPackObjectBuilder o(envelope.get(),
+                               _agencyPrefix + "/" + PLAN_VERSION);
+          envelope->add("op", VPackValue("increment"));
+        }
+        // delete the index from Plan/Collections/<db>/<collection>
+        {
+          VPackObjectBuilder o(envelope.get(), indexesPath);
+          envelope->add("op", VPackValue("erase"));
+          envelope->add("val", index);
+        }
+      }
+      {
+        // precondition that the collection is still in Plan
+        VPackObjectBuilder preconditions(envelope.get());
+        {
+          VPackObjectBuilder precondition(envelope.get(), collectionPath);
+          envelope->add("oldEmpty", VPackValue(!coordinatorFound));
+        }
+      }
+    }
+  }
+
+  write_ret_t res = _agent->write(envelope);
+  if (!res.successful()) {
+    LOG_TOPIC("01598", DEBUG, Logger::SUPERVISION)
+        << "failed to delete broken index in agency. Will retry. "
+        << envelope->toJson();
   }
 }
 
@@ -2784,6 +2879,14 @@ void Supervision::readyOrphanedIndexCreations() {
                               .slice();
                       for (auto const& curIndex :
                            VPackArrayIterator(curIndexes)) {
+                        VPackSlice errorSlice =
+                            curIndex.get(StaticStrings::Error);
+                        if (errorSlice.isTrue()) {
+                          // index creation for this shard has failed - don't
+                          // count it as valid!
+                          continue;
+                        }
+
                         auto const& curId = curIndex.get("id");
                         if (basics::VelocyPackHelper::equal(planId, curId,
                                                             false)) {

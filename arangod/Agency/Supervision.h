@@ -293,6 +293,12 @@ class Supervision : public arangodb::Thread {
       std::string const& coordinatorID, uint64_t rebootID,
       bool coordinatorFound);
 
+  void deleteBrokenIndex(std::string const& database,
+                         std::string const& collection,
+                         arangodb::velocypack::Slice index,
+                         std::string const& coordinatorID, uint64_t rebootID,
+                         bool coordinatorFound);
+
   /// @brief Migrate chains of distributeShardsLike to depth 1
   void fixPrototypeChain(VPackBuilder&);
 
