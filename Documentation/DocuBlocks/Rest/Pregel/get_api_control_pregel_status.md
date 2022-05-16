@@ -19,6 +19,24 @@ received messages.
 HTTP 200 will be returned in case the job execution id was valid and the state is
 returned along with the response.
 
+@RESTREPLYBODY{id,string,required,string}
+Id of the Pregel job, as a string.
+
+@RESTREPLYBODY{algorithm,string,required,string}
+The algorithm used by the job.
+
+@RESTREPLYBODY{created,string,required,string}
+The date and time the job was created.
+
+@RESTREPLYBODY{expires,string,optional,string}
+The date and time the job results will expire. The expiration date is only
+meaningful for jobs that have completed, errored or were canceled. Such jobs
+will be cleaned up by the garbage collection when they reach their expire date/time.
+
+@RESTREPLYBODY{ttl,number,required,float}
+The TTL (time to live) value for the job results, specified in seconds.
+The TTL is used to calculate the expire date for the job's results.
+
 @RESTREPLYBODY{state,string,required,string}
 State of the execution. The following values can be returned:
 - `"running"`: Algorithm is executing normally.
@@ -38,7 +56,7 @@ State of the execution. The following values can be returned:
 - `"recovering"` (currently unused): The execution is actively recovering, will
   switch back to `running` if the recovery was successful.
 
-@RESTREPLYBODY{gss,number,required,string}
+@RESTREPLYBODY{gss,number,required,int64}
 The number of global supersteps executed.
 
 @RESTREPLYBODY{totalRuntime,number,required,float}
