@@ -223,6 +223,7 @@ class instance {
   }
 
   isRole(compareRole) {
+    // print(this.instanceRole + ' ==? ' + compareRole);
     return this.instanceRole === compareRole;
   }
 
@@ -236,7 +237,6 @@ class instance {
   _makeArgsArangod () {
     console.assert(this.tmpDir !== undefined);
     let endpoint;
-
     if (!this.args.hasOwnProperty('server.endpoint')) {
       this.port = PORTMANAGER.findFreePort(this.options.minPort, this.options.maxPort);
       this.endpoint = this.protocol + '://127.0.0.1:' + this.port;
@@ -550,25 +550,25 @@ class instance {
       }
     }
   }
-  launchInstance(options, oneInstanceInfo, moreArgs) {
-    if (oneInstanceInfo.pid) {
+  launchInstance(moreArgs) {
+    if (this.pid !== null) {
       return;
     }
     try {
-      Object.assign(oneInstanceInfo.args, moreArgs);
+      Object.assign(this.args, moreArgs);
       /// TODO Y? Where?
-      oneInstanceInfo.pid = this._executeArangod(oneInstanceInfo.args).pid;
+      this.pid = this._executeArangod(this.args).pid;
     } catch (x) {
-      print(Date() + ' failed to run arangod - ' + JSON.stringify(x));
+      print(Date() + ' failed to run arangod - ' + JSON.stringify(x) + " - " + JSON.stringify(this.getStructure()));
 
       throw x;
     }
-    if (crashUtils.isEnabledWindowsMonitor(this.options, oneInstanceInfo, oneInstanceInfo.pid, pu.ARANGOD_BIN)) {
-      if (!crashUtils.runProcdump(this.options, oneInstanceInfo, oneInstanceInfo.rootDir, oneInstanceInfo.pid)) {
-        print('Killing ' + pu.ARANGOD_BIN + ' - ' + JSON.stringify(oneInstanceInfo.args));
-        let res = killExternal(oneInstanceInfo.pid);
-        oneInstanceInfo.pid = res.pid;
-        oneInstanceInfo.exitStatus = res;
+    if (crashUtils.isEnabledWindowsMonitor(this.options, this, this.pid, pu.ARANGOD_BIN)) {
+      if (!crashUtils.runProcdump(this.options, this, this.rootDir, this.pid)) {
+        print('Killing ' + pu.ARANGOD_BIN + ' - ' + JSON.stringify(this.args));
+        let res = killExternal(this.pid);
+        this.pid = res.pid;
+        this.exitStatus = res;
         throw new Error("launching procdump failed, aborting.");
       }
     }

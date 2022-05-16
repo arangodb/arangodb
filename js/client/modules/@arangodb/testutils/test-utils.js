@@ -304,7 +304,7 @@ function getTestCode(file, options, instanceInfo) {
     filter = filter || '';
     runTest = 'const runTest = require("@arangodb/mocha-runner");\n';
   }
-  return 'global.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + runTest +
+  return 'global.instanceInfo = ' + JSON.stringify(instanceInfo.getStructure()) + ';\n' + runTest +
          'return runTest(' + JSON.stringify(file) + ', true, ' + filter + ');\n';
 }
 // //////////////////////////////////////////////////////////////////////////////
@@ -486,7 +486,7 @@ class runLocalInArangoshRunner extends testRunnerBase{
     }
 
     let testCode = getTestCode(file, this.options, this.instanceManager);
-    require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager);
+    require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
     let testFunc;
     try {
       eval('testFunc = function () {\n' + testCode + "}");

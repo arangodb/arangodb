@@ -1105,43 +1105,43 @@ class instanceManager {
     });
 
     if (this.options.cluster) {
-      let agencyInstance = {arangods: []};
+      let agencyInstances = [];
+      let success = true;
       this.arangods.forEach(function (oneInstance, i) {
         if (oneInstance.pid) {
           return;
         }
         if (oneInstance.isAgent()) {
-          print("relaunching: " + JSON.stringify(oneInstance.getStructure()));
+          print("relaunching: " + oneInstance.name);
           oneInstance.launchInstance(moreArgs);
-          /// TODO: do we need this?agencyInstance.arangods.push(_.clone(oneInstance));
+          agencyInstances.push(_.clone(oneInstance));
+          success = success && oneInstance.checkArangoAlive();
         }
       });
-      if (!agencyInstance.checkInstanceAlive({skipHealthCheck: true})) {
+      if (!success) {
         throw new Error('startup of agency failed! bailing out!');
       }
     }
-
     this.arangods.forEach(function (oneInstance, i) {
-      if (oneInstance.pid) {
+      if (oneInstance.pid !== null) {
         return;
       }
-      if (oneInstance.isRole(instanceRole.primary) ||
-          oneInstance.isRole(instanceRole.dbserver)) {
-        print("relaunching: " + JSON.stringify(oneInstance.getStructure()));
+      if (oneInstance.isRole(instanceRole.dbServer)) {
+        print("relaunching: " + oneInstance.name);
         oneInstance.launchInstance(moreArgs);
       }
     });
     this.arangods.forEach(function (oneInstance, i) {
-      if (oneInstance.pid) {
+      if (oneInstance.pid !== null) {
         return;
       }
       if (oneInstance.isRole(instanceRole.coordinator)) {
-        print("relaunching: " + JSON.stringify(oneInstance.getStructure()));
+        print("relaunching: " + oneInstance.name);
         oneInstance.launchInstance(moreArgs);
       }
     });
     this.arangods.forEach(function (oneInstance, i) {
-      if (oneInstance.pid) {
+      if (oneInstance.pid !== null) {
         return;
       }
       if (oneInstance.isRole(instanceRole.single)) {

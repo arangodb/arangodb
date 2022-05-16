@@ -32,6 +32,7 @@ const yaml = require('js-yaml');
 
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const im = require('@arangodb/testutils/instance-manager');
 
 const toArgv = require('internal').toArgv;
 const executeScript = require('internal').executeScript;
@@ -95,8 +96,18 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
           if (obj.options.extremeVerbosity !== 'silent') {
             print(paramsFirstRun);
           }
-          obj.instanceInfo = pu.startInstance(clonedOpts.protocol, clonedOpts, paramsFirstRun, obj.friendlyName, rootDir); // first start
-          pu.cleanupDBDirectoriesAppend(obj.instanceInfo.rootDir);      
+          obj.instanceManager = new im.instanceManager(clonedOpts.protocol,
+                                                       clonedOpts,
+                                                       paramsFirstRun,
+                                                       obj.friendlyName,
+                                                       rootDir);
+          
+          obj.instanceManager.prepareInstance();
+          obj.instanceManager.launchTcpDump("");
+          if (!obj.instanceManager.launchInstance()) {
+            throw new Error("failed to launch instance");
+          }
+          obj.instanceManager.reconnect();
           try {
             print(BLUE + '================================================================================' + RESET);
             print(CYAN + 'Running Setup of: ' + testFile + RESET);
@@ -107,7 +118,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
               throw new Error("setup of test failed");
             }
           } catch (ex) {
-            shutdownStatus = pu.shutdownInstance(obj.instanceInfo, clonedOpts, false);                                     // stop
+            shutdownStatus = obj.instanceManager.shutdownInstance(false);                                     // stop
             results[testFile] = {
               status: false,
               messages: 'Warmup of system failed: ' + ex,
@@ -116,14 +127,14 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
             results['shutdown'] = results['shutdown'] && shutdownStatus;
             return;
           }
-          if (pu.shutdownInstance(obj.instanceInfo, clonedOpts, false)) {                                                     // stop
-            obj.instanceInfo.arangods.forEach(function(arangod) {
+          if (obj.instanceManager.shutdownInstance(false)) {                                                     // stop
+            obj.instanceManager.arangods.forEach(function(arangod) {
               arangod.pid = null;
             });
             if (obj.options.extremeVerbosity !== 'silent') {
               print(paramsSecondRun);
             }
-            pu.reStartInstance(clonedOpts, obj.instanceInfo, paramsSecondRun);      // restart with restricted permissions
+            obj.instanceManager.reStartInstance(paramsSecondRun);      // restart with restricted permissions
           }
           else {
             results[testFile] = {
@@ -133,22 +144,33 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
             };
           }
         } else {
-          obj.instanceInfo = pu.startInstance(clonedOpts.protocol, clonedOpts, paramsSecondRun, obj.friendlyName, rootDir); // one start
+          obj.instanceManager = new im.instanceManager(clonedOpts.protocol,
+                                                       clonedOpts,
+                                                       paramsSecondRun,
+                                                       obj.friendlyName,
+                                                       rootDir);
+          
+          obj.instanceManager.prepareInstance();
+          obj.instanceManager.launchTcpDump("");
+          if (!obj.instanceManager.launchInstance()) {
+            throw new Error("failed to launch instance");
+          }
+          obj.instanceManager.reconnect();
         }
 
         results[testFile] = obj.runOneTest(testFile);
-        if (obj.instanceInfo.hasOwnProperty("authOpts") &&
-            obj.instanceInfo.authOpts.hasOwnProperty("server.jwt-secret")) {
+        if (obj.instanceManager.addArgs.hasOwnProperty("authOpts") &&
+            obj.instanceInfo.addArgs.hasOwnProperty("server.jwt-secret")) {
           // Reconnect to set the server credentials right
           arango.reconnect(arango.getEndpoint(), '_system', "root", "", true,
-                           obj.instanceInfo.authOpts["server.jwt-secret"]);
+                           obj.instanceManager.addArgs["server.jwt-secret"]);
         }
-        shutdownStatus = pu.shutdownInstance(obj.instanceInfo, clonedOpts, false);
+        shutdownStatus = obj.instanceManager.shutdownInstance(false);
 
         results['shutdown'] = results['shutdown'] && shutdownStatus;
         
         if (!results[testFile].status || !shutdownStatus) {
-          print("Not cleaning up " + obj.instanceInfo.rootDir);
+          print("Not cleaning up " + obj.instanceManager.rootDir);
           results.status = false;
         }
         else {
