@@ -1188,21 +1188,12 @@ bool State::loadRemaining(index_t cind) {
                                             : std::string();
 
           uint64_t millis = 0;
-          if (ii.hasKey("epoch_millis")) {
-            if (ii.get("epoch_millis").isInteger()) {
-              try {
-                millis = ii.get("epoch_millis").getNumber<uint64_t>();
-              } catch (std::exception const& e) {
-                LOG_TOPIC("2ee75", FATAL, Logger::AGENCY)
-                  << "Failed to parse integer value for epoch_millis " << e.what();
-                FATAL_ERROR_EXIT();
-              }
-            } else {
-              LOG_TOPIC("52ee7", FATAL, Logger::AGENCY) << "epoch_millis is not an integer type";
-              FATAL_ERROR_EXIT();
-            }
-          }
-
+	  if (auto milliSlice = ii.get("epoch_millis"); milliSlice.isNumber()) {
+	    try {
+	      millis = milliSlice.getNumber<uint64_t>();
+	    } catch (...) {	}
+	  }
+	  
           logEmplaceBackNoLock(
             log_t(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()),
                   ii.get("term").getNumber<uint64_t>(), tmp, clientId, millis));
