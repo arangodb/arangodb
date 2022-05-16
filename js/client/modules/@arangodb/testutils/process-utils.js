@@ -658,7 +658,6 @@ function cleanupDBDirectoriesAppend (appendThis) {
 
 function cleanupDBDirectoriesRemove (removeThis) {
   cleanupDirectories = cleanupDirectories.filter(dir => { return dir === removeThis;});
-  print(cleanupDirectories)
 }
 
 function getCleanupDBDirectories () {

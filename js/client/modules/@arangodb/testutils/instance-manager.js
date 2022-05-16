@@ -75,7 +75,7 @@ class instanceManager {
     this.rootDir = fs.join(tmpDir || fs.getTempPath(), testname);
     this.options.agency = this.options.agency || this.options.cluster || this.options.activefailover;
     this.agencyConfig = new inst.agencyConfig(options, this);
-    this.httpAuthOptions = {};
+    this.leader = null;
     this.urls = [];
     this.endpoints = [];
     this.arangods = [];
@@ -87,6 +87,29 @@ class instanceManager {
       fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
     }
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options);
+  }
+
+  getStructure() {
+    let d = [];
+    let ln = "";
+    if (this.leader !== null) {
+      ln = this.leader.name;
+    }
+    this.arangods.forEach(arangod => { d.push(arangod.getStructure());});
+    return {
+      protocol: this.protocol,
+      options: this.options,
+      addArgs: this.addArgs,
+      rootDir: this.rootDir,
+      leader: ln,
+      agencyConfig: this.agencyConfig.getStructure(),
+      httpAuthOptions: this.httpAuthOptions,
+      urls: this.urls,
+      endpoints: this.endpoints,
+      arangods: d,
+      restKeyFile: this.restKeyFile,
+      tcpdump: this.tcpdump,
+    };
   }
   
   // //////////////////////////////////////////////////////////////////////////////
@@ -146,16 +169,18 @@ class instanceManager {
       }
       
       for (let count = 0;
-           this.options.activefailover && count < this.singles;
+           this.options.activefailover && count < this.options.singles;
            count ++) {
         this.arangods.push(new inst.instance(this.options,
-                                             instanceRole.singles,
+                                             instanceRole.failover,
                                              this.addArgs,
                                              this.httpAuthOptions,
                                              this.protocol,
                                              fs.join(this.rootDir, instanceRole.failover + "_" + count),
                                              this.restKeyFile,
                                              this.agencyConfig));
+        this.urls.push(this.arangods[this.arangods.length -1].url);
+        this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
       }
 
       if (!this.options.agency) {
@@ -168,6 +193,10 @@ class instanceManager {
                                              fs.join(this.rootDir, instanceRole.single + "_0"),
                                              this.restKeyFile,
                                              this.agencyConfig));
+        this.urls.push(this.arangods[this.arangods.length -1].url);
+        this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
+        this.url = this.urls[0];
+        this.endpoint = this.endpoints[0];
       }
     } catch (e) {
       print(e, e.stack);
@@ -181,7 +210,9 @@ class instanceManager {
       if (this.options.cluster) {
         this.checkClusterAlive();
       } else if (this.options.activefailover) {
-        this.detectCurrentLeader();
+        if (this.urls !== []) {
+          this.detectCurrentLeader();
+        }
       }
       this.launchFinalize(startTime);
       return true;
@@ -449,7 +480,7 @@ class instanceManager {
   checkInstanceAlive({skipHealthCheck = false} = {}) {
     if (this.options.activefailover &&
         this.hasOwnProperty('authOpts') &&
-        (this.url !== this.agencyUrl)
+        (this.url !== this.agencyConfig.urls[0])
        ) {
       // only detect a leader after we actually know one has been started.
       // the agency won't tell us anything about leaders.
@@ -624,8 +655,6 @@ class instanceManager {
 
     let toShutdown = this.arangods.slice();
     toShutdown.sort((a, b) => {
-      print(a.name)
-      print(b.name)
       if (a.instanceRole === b.instanceRole) return 0;
       if (a.isRole(instanceRole.coordinator) &&
           b.isRole(instanceRole.dbServer)) return -1;
@@ -635,21 +664,18 @@ class instanceManager {
       if (b.isAgent()) return -1;
       return 0;
     });
-    print('-------------')
     if (!this.options.noStartStopLogs) {
       let shutdown = [];
-      toShutdown.forEach(arangod => {shutdown.push(arangod.name); print(arangod.name)});
-      print(Date() + ' Shutdown order ' + JSON.stringify(shutdown));
+      toShutdown.forEach(arangod => {shutdown.push(arangod.name);});
+      print(Date() + ' Shutdown order: \n' + yaml.safeDump(shutdown));
     }
-
     let nonAgenciesCount = this.arangods.filter(arangod => {
       if ((arangod.exitStatus !== null) &&
           (arangod.exitStatus.status !== 'RUNNING')) {
         return false;
       }
-      return arangod.isAgent();
+      return !arangod.isAgent();
     }).length;
-
     let timeout = 666;
     if (this.options.valgrind) {
       timeout *= 10;
@@ -777,10 +803,10 @@ class instanceManager {
   detectCurrentLeader(instanceInfo) {
     let opts = {
       method: 'POST',
-      jwt: crypto.jwtEncode(instanceInfo.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256'),
+      jwt: crypto.jwtEncode(this.arangods[0].args['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256'),
       headers: {'content-type': 'application/json' }
     };
-    let reply = download(instanceInfo.agencyUrl + '/_api/agency/read', '[["/arango/Plan/AsyncReplication/Leader"]]', opts);
+    let reply = download(this.agencyConfig.urls[0] + '/_api/agency/read', '[["/arango/Plan/AsyncReplication/Leader"]]', opts);
 
     if (!reply.error && reply.code === 200) {
       let res = JSON.parse(reply.body);
@@ -790,23 +816,40 @@ class instanceManager {
         throw "Leader is not selected";
       }
     }
-    opts['method'] = 'GET';
-    reply = download(instanceInfo.url + '/_api/cluster/endpoints', '', opts);
-    let res;
-    try {
-      res = JSON.parse(reply.body);
+    this.leader = null;
+    while (this.leader === null) {
+      this.urls.forEach(url => {
+        opts['method'] = 'GET';
+        reply = download(url + '/_api/cluster/endpoints', '', opts);
+        if (reply.code === 200) {
+          let res;
+          try {
+            res = JSON.parse(reply.body);
+          }
+          catch (x) {
+            throw "Failed to parse endpoints reply: " + JSON.stringify(reply);
+          }
+          let leaderEndpoint = res.endpoints[0].endpoint;
+          let leaderInstance;
+          this.arangods.forEach(d => {
+            if (d.endpoint === leaderEndpoint) {
+              leaderInstance = d;
+            }
+          });
+          this.leader = leaderInstance;
+          this.url = leaderInstance.url;
+          this.endpoint = leaderInstance.endpoint;
+        }
+        if (this.options.extremeVerbosity) {
+          print(url + " not a leader " + JSON.stringify(reply));
+        }
+      });
+      sleep(0.5);
     }
-    catch (x) {
-      throw "Failed to parse endpoints reply: " + JSON.stringify(reply);
+    if (this.options.extremeVerbosity) {
+      print("detected leader: " + this.leader.name);
     }
-    let leader = res.endpoints[0].endpoint;
-    let leaderInstance;
-    instanceInfo.arangods.forEach(d => {
-      if (d.endpoint === leader) {
-        leaderInstance = d;
-      }
-    });
-    return leaderInstance;
+    return this.leader;
   }
 
   checkClusterAlive() {
@@ -989,7 +1032,7 @@ class instanceManager {
           if (this.options.useReconnect) {
             try {
               print(Date() + " reconnecting " + arangod.url);
-              arango.reconnect(this.endpoint,
+              arango.reconnect(arangod.endpoint,
                                '_system',
                                this.options.username,
                                this.options.password,

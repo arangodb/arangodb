@@ -141,6 +141,8 @@ class agencyConfig {
     this.agencyInstances = [];
     this.agencyEndpoint = "";
     this.agentsLaunched = 0;
+    this.urls = [];
+    this.endpoints = [];
   }
   getStructure() {
     return {
@@ -150,6 +152,8 @@ class agencyConfig {
       waitForSync: this.waitForSync,
       agencyEndpoint: this.agencyEndpoint,
       agentsLaunched: this.agentsLaunched,
+      urls: this.urls,
+      endpoints: this.endpoints
     };
   }
 }
@@ -313,6 +317,8 @@ class instance {
           agentInstance.args['agency.endpoint'] = _.clone(l);
         });
         this.agencyConfig.agencyEndpoint = this.agencyConfig.agencyInstances[0].endpoint;
+        this.agencyConfig.urls.push(this.url);
+        this.agencyConfig.endpoints.push(this.endpoint);
       }
     } else if (this.instanceRole === instanceRole.dbServer) {
       this.args = Object.assign(this.args, {
@@ -400,7 +406,7 @@ class instance {
   getSockStat(preamble) {
     if (this.options.getSockStat && (platform === 'linux')) {
       let sockStat = preamble + this.pid + "\n";
-      sockStat += getSockStatFile(pid);
+      sockStat += getSockStatFile(this.pid);
       return sockStat;
     }
   }

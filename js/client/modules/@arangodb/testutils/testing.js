@@ -199,7 +199,7 @@ const optionsDefaults = {
   'exceptionCount': 1,
   'sanitizer': false,
   'activefailover': false,
-  'singles': 2,
+  'singles': 1,
   'setInterruptable': ! internal.isATTy(),
   'sniff': false,
   'sniffAgency': true,
@@ -585,6 +585,7 @@ function unitTest (cases, options) {
     options = {};
   }
   loadTestSuites(options);
+
   // testsuites may register more defaults...
   _.defaults(options, optionsDefaults);
   if (options.memprof) {
@@ -599,6 +600,9 @@ function unitTest (cases, options) {
   }
   if (options.setInterruptable) {
     internal.SetSignalToImmediateDeadline();
+  }
+  if (options.activefailover && (options.singles === 1)) {
+    options.singles =  2;
   }
   
   try {
