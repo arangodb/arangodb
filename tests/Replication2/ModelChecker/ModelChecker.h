@@ -27,6 +27,7 @@
 #include "Random/RandomGenerator.h"
 
 #include <chrono>
+#include <cstdint>
 #include <deque>
 #include <iostream>
 #include <memory>
@@ -441,7 +442,9 @@ struct RandomEnumerator {
 
   struct Result {
     std::optional<ObserverError> failed;
-    std::optional<unsigned long> seed;
+    std::optional<std::uint_fast32_t> seed;
+    static_assert(
+        std::is_same_v<std::mt19937::result_type, decltype(seed)::value_type>);
   };
 
   template<typename Driver>
