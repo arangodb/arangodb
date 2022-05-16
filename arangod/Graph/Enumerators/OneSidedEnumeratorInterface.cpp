@@ -34,7 +34,6 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
-#include "Enterprise/Graph/Steps/SmartGraphCoordinatorStep.h"
 #endif
 
 using namespace arangodb::graph;
