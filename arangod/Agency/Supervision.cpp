@@ -1547,7 +1547,7 @@ void Supervision::cleanupLostCollections(Node const& snapshot,
     }
   }
 
-  if (failedServers.size() == 0) {
+  if (failedServers.empty()) {
     return;
   }
 
@@ -1700,7 +1700,7 @@ void Supervision::unlockHotBackup() {
 }
 
 // Guarded by caller
-bool Supervision::handleJobs() {
+void Supervision::handleJobs() {
   _lock.assertLockedByCurrentThread();
   // Do supervision
   LOG_TOPIC("67eef", TRACE, Logger::SUPERVISION) << "Begin unlockHotBackup";
@@ -1717,7 +1717,7 @@ bool Supervision::handleJobs() {
   cleanupLostCollections(snapshot(), _agent, _jobId);
   // Note that this function consumes job IDs, potentially many, so the member
   // is incremented inside the function. Furthermore, `cleanupLostCollections`
-  // is static for catch testing purposes.
+  // is static for unit testing purposes.
 
   LOG_TOPIC("00789", TRACE, Logger::SUPERVISION)
       << "Begin readyOrphanedIndexCreations";
@@ -1757,8 +1757,6 @@ bool Supervision::handleJobs() {
   LOG_TOPIC("0892d", TRACE, Logger::SUPERVISION)
       << "Begin failBrokenHotbackupTransferJobs";
   failBrokenHotbackupTransferJobs();
-
-  return true;
 }
 
 // Guarded by caller
@@ -2488,7 +2486,7 @@ void Supervision::checkBrokenCollections() {
                             .value();
         // check if the coordinator which started creating this index is
         // still present...
-        for (auto const& planIndex : VPackArrayIterator(indexes)) {
+        for (VPackSlice planIndex : VPackArrayIterator(indexes)) {
           if (VPackSlice isBuildingSlice =
                   planIndex.get(StaticStrings::AttrIsBuilding);
               !isBuildingSlice.isTrue()) {
@@ -2927,8 +2925,10 @@ void Supervision::readyOrphanedIndexCreations() {
                     {
                       VPackObjectBuilder props(envelope.get());
                       for (auto const& prop : VPackObjectIterator(planIndex)) {
-                        auto const& key = prop.key.copyString();
-                        if (key != StaticStrings::IndexIsBuilding) {
+                        auto const& key = prop.key.stringView();
+                        if (key != StaticStrings::IndexIsBuilding &&
+                            key != StaticStrings::AttrCoordinator &&
+                            key != StaticStrings::AttrCoordinatorRebootId) {
                           envelope->add(key, prop.value);
                         }
                       }

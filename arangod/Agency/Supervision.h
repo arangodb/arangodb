@@ -159,6 +159,14 @@ class Supervision : public arangodb::Thread {
                                    std::string const& serverID,
                                    uint64_t wantedRebootID, bool& serverFound);
 
+  // public only for unit testing:
+  static void cleanupLostCollections(Node const& snapshot,
+                                     AgentInterface* agent, uint64_t& jobId);
+
+  void setOkThreshold(double d) { _okThreshold = d; }
+
+  void setGracePeriod(double d) { _gracePeriod = d; }
+
  private:
   /// @brief get reference to the spearhead snapshot
   Node const& snapshot() const;
@@ -216,7 +224,6 @@ class Supervision : public arangodb::Thread {
   /// @brief Check for inconsistencies in replication factor vs dbs entries
   void enforceReplication();
 
- private:
   /// @brief Move shard from one db server to other db server
   bool moveShard(std::string const& from, std::string const& to);
 
@@ -258,17 +265,6 @@ class Supervision : public arangodb::Thread {
 
   void shrinkCluster();
 
- public:  // only for unit tests:
-  void setSnapshotForUnitTest(Node* snapshot) { _snapshot = snapshot; }
-
-  static void cleanupLostCollections(Node const& snapshot,
-                                     AgentInterface* agent, uint64_t& jobId);
-
-  void setOkThreshold(double d) { _okThreshold = d; }
-
-  void setGracePeriod(double d) { _gracePeriod = d; }
-
- private:
   /**
    * @brief Report status of supervision in agency
    * @param  status  Status, which will show in Supervision/State
@@ -277,7 +273,7 @@ class Supervision : public arangodb::Thread {
 
   bool isShuttingDown();
 
-  bool handleJobs();
+  void handleJobs();
   void handleShutdown();
   void deleteBrokenDatabase(std::string const& database,
                             std::string const& coordinatorID, uint64_t rebootID,
