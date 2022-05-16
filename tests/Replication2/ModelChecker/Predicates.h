@@ -260,10 +260,10 @@ struct FileLineType {
 };
 
 #define MC_HERE                                                \
-  ([] {                                                        \
+  std::invoke([]() {                                           \
     static constexpr char data[sizeof(__FILE__)] = __FILE__;   \
     return ::FileLineType<data, sizeof(__FILE__), __LINE__>{}; \
-  }())
+  })
 
 #define MC_GTEST_PRED(name, pred)           \
   model_checker::gtest_predicate {          \
