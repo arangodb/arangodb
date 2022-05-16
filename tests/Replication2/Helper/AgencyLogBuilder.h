@@ -77,8 +77,9 @@ struct AgencyLogBuilder {
     return plan.currentTerm.value();
   }
 
-  auto setPlanLeader(ParticipantId const& id) -> AgencyLogBuilder& {
-    makeTerm().leader.emplace(id, RebootId{0});
+  auto setPlanLeader(ParticipantId const& id, RebootId rid = RebootId{0})
+      -> AgencyLogBuilder& {
+    makeTerm().leader.emplace(id, rid);
     return *this;
   }
 
@@ -95,6 +96,21 @@ struct AgencyLogBuilder {
       _log.plan->participantsConfig.generation = 1;
     }
     return _log.plan.value();
+  }
+
+  auto establishLeadership() -> AgencyLogBuilder& {
+    auto& leader = makeCurrent().leader.emplace();
+    leader.term = makeTerm().term;
+    leader.leadershipEstablished = true;
+    leader.serverId = makeTerm().leader.value().serverId;
+    leader.committedParticipantsConfig = makePlan().participantsConfig;
+    return *this;
+  }
+
+  auto acknowledgeTerm(ParticipantId const& id) -> AgencyLogBuilder& {
+    auto& current = makeCurrent();
+    current.localState[id].term = makeTerm().term;
+    return *this;
   }
 
   auto makeCurrent() -> RLA::LogCurrent& {

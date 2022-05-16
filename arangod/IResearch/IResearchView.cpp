@@ -21,20 +21,22 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
-#include "IResearchCommon.h"
-#include "IResearchFeature.h"
-#include "IResearchLink.h"
-#include "IResearchLinkHelper.h"
-#include "VelocyPackHelper.h"
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
+#include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Containers/FlatHashSet.h"
+#include "IResearch/ViewSnapshot.h"
+#include "IResearch/IResearchView.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchLink.h"
+#include "IResearch/IResearchLinkHelper.h"
+#include "IResearch/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -46,94 +48,7 @@
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 
-#include "IResearchView.h"
-#include "Basics/DownCast.h"
-
 namespace arangodb::iresearch {
-namespace {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief index reader implementation over multiple irs::index_reader
-///        the container storing the view state for a given TransactionState
-/// @note it is assumed that DBServer ViewState resides in the same
-///       TransactionState as the IResearchView ViewState, therefore a separate
-///       lock is not required to be held by the DBServer CompoundReader
-////////////////////////////////////////////////////////////////////////////////
-class ViewTrxState final : public TransactionState::Cookie,
-                           public IResearchView::Snapshot {
- public:
-  irs::sub_reader const& operator[](size_t subReaderId) const noexcept final {
-    TRI_ASSERT(subReaderId < _subReaders.size());
-    return *(_subReaders[subReaderId].second);
-  }
-
-  void add(DataSourceId cid, IResearchDataStore::Snapshot&& snapshot);
-
-  DataSourceId cid(size_t offset) const noexcept final {
-    return offset < _subReaders.size() ? _subReaders[offset].first
-                                       : DataSourceId::none();
-  }
-
-  void clear() noexcept {
-    _collections.clear();
-    _subReaders.clear();
-    _snapshots.clear();
-    _live_docs_count = 0;
-    _docs_count = 0;
-  }
-
-  bool equalCollections(
-      containers::FlatHashSet<DataSourceId> const& collections) {
-    return collections == _collections;
-  }
-
-  template<typename Collections>
-  bool equalCollections(Collections const& collections) {
-    if (collections.size() != _collections.size()) {
-      return false;
-    }
-    for (auto const& cid : _collections) {
-      if (!collections.contains(cid)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  [[nodiscard]] uint64_t docs_count() const noexcept final {
-    return _docs_count;
-  }
-  [[nodiscard]] uint64_t live_docs_count() const noexcept final {
-    return _live_docs_count;
-  }
-  [[nodiscard]] size_t size() const noexcept final {
-    return _subReaders.size();
-  }
-
- private:
-  size_t _docs_count = 0;
-  size_t _live_docs_count = 0;
-  containers::FlatHashSet<DataSourceId> _collections;
-  std::vector<IResearchLink::Snapshot> _snapshots;
-  // prevent data-store deallocation (lock @ AsyncSelf)
-  std::vector<std::pair<DataSourceId, irs::sub_reader const*>> _subReaders;
-};
-
-void ViewTrxState::add(DataSourceId cid,
-                       IResearchDataStore::Snapshot&& snapshot) {
-  auto& reader = snapshot.getDirectoryReader();
-  for (auto& entry : reader) {
-    _subReaders.emplace_back(std::piecewise_construct,
-                             std::forward_as_tuple(cid),
-                             std::forward_as_tuple(&entry));
-  }
-  _docs_count += reader.docs_count();
-  _live_docs_count += reader.live_docs_count();
-  _collections.emplace(cid);
-  _snapshots.emplace_back(std::move(snapshot));
-}
-
-}  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchView-specific implementation of a ViewFactory
@@ -310,13 +225,18 @@ IResearchView::IResearchView(TRI_vocbase_t& vocbase,
   // initialize transaction read callback
   _trxCallback = [asyncSelf = _asyncSelf](transaction::Methods& trx,
                                           transaction::Status status) {
-    if (transaction::Status::RUNNING != status) {
+    if (!ServerState::instance()->isSingleServer() ||
+        status != transaction::Status::RUNNING) {
       return;
     }
-    auto viewLock = asyncSelf->lock();  // populate snapshot
-    if (viewLock && ServerState::instance()->isSingleServer()) {
-      // when view is registered with a transaction on single-server
-      viewLock->snapshot(trx, IResearchView::SnapshotMode::FindOrCreate);
+    if (auto viewLock = asyncSelf->lock(); viewLock) {  // populate snapshot
+      TRI_ASSERT(trx.state());
+      void const* key = static_cast<LogicalView*>(viewLock.get());
+      auto* snapshot = getViewSnapshot(trx, key);
+      if (snapshot == nullptr) {
+        makeViewSnapshot(trx, key, false, viewLock->name(),
+                         viewLock->getLinks());
+      }
     }
   };
 }
@@ -586,31 +506,6 @@ Result IResearchView::link(AsyncLinkPtr const& link) {
   return {};
 }
 
-Result IResearchView::commitUnsafe() {
-  // TODO Maybe we want sync all and skip errors, now we stop on first error?
-  for (auto& entry : _links) {
-    if (!entry.second) {
-      return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
-              "failed to find an arangosearch link in collection '" +
-                  std::to_string(entry.first.id()) +
-                  "' while syncing arangosearch view '" + name() + "'"};
-    }
-    // ensure link is not deallocated for the duration of the operation
-    auto linkLock = entry.second->lock();
-    if (!linkLock) {
-      return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
-              "link" + std::to_string(entry.first.id()) +
-                  "was removed while syncing arangosearch view '" + name() +
-                  "'"};
-    }
-    auto r = IResearchLink::commit(std::move(linkLock), true);
-    if (!r.ok()) {
-      return r;
-    }
-  }
-  return {};
-}
-
 void IResearchView::open() {
   auto& engine =
       vocbase().server().getFeature<EngineSelectorFeature>().engine();
@@ -638,124 +533,6 @@ Result IResearchView::renameImpl(std::string const& oldName) {
   return ServerState::instance()->isSingleServer()
              ? storage_helper::rename(*this, oldName)
              : Result{TRI_ERROR_CLUSTER_UNSUPPORTED};
-}
-
-IResearchView::Snapshot const* IResearchView::snapshot(
-    transaction::Methods& trx,
-    IResearchView::SnapshotMode mode /*= IResearchView::SnapshotMode::Find*/,
-    containers::FlatHashSet<DataSourceId> const* shards /*= nullptr*/,
-    void const* key /*= nullptr*/) const {
-  if (!trx.state()) {
-    LOG_TOPIC("47098", WARN, TOPIC)
-        << "failed to get transaction state while creating arangosearch view "
-           "snapshot";
-    return nullptr;
-  }
-  if (!key) {
-    key = this;
-  }
-  auto& state = *(trx.state());
-  // TODO find a better way to look up a ViewState
-  auto* ctx = basics::downCast<ViewTrxState>(state.cookie(key));
-  std::shared_lock lock{_mutex};
-  switch (mode) {
-      // We want to check ==, but not >= because ctx also is reader
-    case SnapshotMode::Find:
-      return ctx && (shards ? ctx->equalCollections(*shards)
-                            : ctx->equalCollections(_links))
-                 ? ctx
-                 : nullptr;  // ensure same collections
-    case SnapshotMode::FindOrCreate:
-      if (ctx) {
-        if ((shards ? ctx->equalCollections(*shards)
-                    : ctx->equalCollections(_links))) {
-          return ctx;  // ensure same collections
-        }
-        ctx->clear();  // reassemble snapshot
-      }
-      break;
-    case SnapshotMode::SyncAndReplace: {
-      if (ctx) {
-        ctx->clear();  // ignore existing cookie, recreate snapshot
-      }
-      auto r = const_cast<IResearchView*>(this)->commitUnsafe();
-      if (!r.ok()) {
-        LOG_TOPIC("fd776", WARN, TOPIC)
-            << "failed to sync while creating snapshot for arangosearch view '"
-            << name() << "', previous snapshot will be used instead, error: '"
-            << r.errorMessage() << "'";
-      }
-    } break;
-    default:              // TODO unreachable
-      TRI_ASSERT(false);  // all values of the enum should be covered
-  }
-  if (!ctx) {
-    auto ptr = std::make_unique<ViewTrxState>();
-    ctx = ptr.get();
-    state.cookie(key, std::move(ptr));
-  }
-  TRI_ASSERT(ctx);
-  try {
-    // collect snapshots from all requested links
-    auto iterate = [&](auto const& collections, auto h) -> Snapshot const* {
-      for (auto const& entry : collections) {
-        constexpr bool kIsShards = std::is_same_v<decltype(h), int>;
-        DataSourceId cid;
-        LinkLock linkLock;
-        if constexpr (kIsShards) {
-          cid = entry;
-          auto it = _links.find(cid);
-          if (it == _links.end()) {
-            LOG_TOPIC("e76eb", ERR, TOPIC)
-                << "failed to find an arangosearch link in collection '" << cid
-                << "' for arangosearch view '" << name() << "', skipping it";
-            state.cookie(key, nullptr);
-            return nullptr;
-          }
-          linkLock = it->second ? it->second->lock() : LinkLock{};
-        } else {
-          cid = entry.first;
-          linkLock = entry.second ? entry.second->lock() : LinkLock{};
-        }
-        if (!linkLock) {
-          LOG_TOPIC("d63ff", ERR, TOPIC)
-              << "failed to find an arangosearch link in collection '" << cid
-              << "' for arangosearch view '" << name() << "', skipping it";
-          state.cookie(key, nullptr);
-          return nullptr;
-        }
-        auto snapshot = IResearchLink::snapshot(std::move(linkLock));
-        if (!snapshot.getDirectoryReader()) {
-          LOG_TOPIC("fffff", ERR, TOPIC)
-              << "failed to find an arangosearch link in collection '" << cid
-              << "' for arangosearch view '" << name() << "', skipping it";
-          TRI_ASSERT(false);
-          state.cookie(key, nullptr);
-          return nullptr;
-        }
-        ctx->add(cid, std::move(snapshot));
-      }
-      return ctx;
-    };
-    return shards ? iterate(*shards, 0) : iterate(_links, "");
-  } catch (basics::Exception& e) {
-    LOG_TOPIC("29b30", WARN, TOPIC)
-        << "caught exception while collecting readers for snapshot of "
-           "arangosearch view '"
-        << name() << "', tid '" << state.id() << "': " << e.code() << " "
-        << e.what();
-  } catch (std::exception const& e) {
-    LOG_TOPIC("ffe73", WARN, TOPIC)
-        << "caught exception while collecting readers for snapshot of "
-           "arangosearch view '"
-        << name() << "', tid '" << state.id() << "': " << e.what();
-  } catch (...) {
-    LOG_TOPIC("c54e8", WARN, TOPIC)
-        << "caught exception while collecting readers for snapshot of "
-           "arangosearch view '"
-        << name() << "', tid '" << state.id() << "'";
-  }
-  return nullptr;
 }
 
 Result IResearchView::unlink(DataSourceId cid) noexcept {
@@ -894,6 +671,26 @@ bool IResearchView::visitCollections(
     }
   }
   return true;
+}
+
+LinkLock IResearchView::linkLock(
+    std::shared_lock<boost::upgrade_mutex> const& guard,
+    DataSourceId cid) const noexcept {
+  TRI_ASSERT(guard.owns_lock());
+  if (auto it = _links.find(cid); it != _links.end() && it->second) {
+    return it->second->lock();
+  }
+  return {};
+}
+
+ViewSnapshot::Links IResearchView::getLinks() const noexcept {
+  ViewSnapshot::Links links;
+  links.reserve(_links.size());
+  auto const guard = linksReadLock();
+  for (auto const& [_, link] : _links) {
+    links.emplace_back(link ? link->lock() : LinkLock{});
+  }
+  return links;
 }
 
 void IResearchView::verifyKnownCollections() {

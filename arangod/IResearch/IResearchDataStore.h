@@ -46,9 +46,7 @@ namespace iresearch {
 
 struct MaintenanceState;
 class IResearchFeature;
-class IResearchView;
 class IResearchDataStore;
-class IResearchLink;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchDataStore handle to use with asynchronous tasks
@@ -90,7 +88,7 @@ struct IResearchTrxState final : public TransactionState::Cookie {
   PrimaryKeyFilterContainer _removals;  // list of document removals
 
   IResearchTrxState(LinkLock&& linkLock, irs::index_writer& writer) noexcept
-      : _ctx(writer.documents()), _linkLock(std::move(linkLock)) {}
+      : _ctx{writer.documents()}, _linkLock{std::move(linkLock)} {}
 
   ~IResearchTrxState() final {
     if (_removals.empty()) {
@@ -149,7 +147,7 @@ class IResearchDataStore {
       return *this;
     }
 
-    irs::directory_reader const& getDirectoryReader() const noexcept {
+    [[nodiscard]] auto const& getDirectoryReader() const noexcept {
       return _reader;
     }
 
@@ -166,15 +164,16 @@ class IResearchDataStore {
   /// @brief 'this' for the lifetime of the link data-store
   ///        for use with asynchronous calls, e.g. callbacks, view
   ///////////////////////////////////////////////////////////////////////////////
-  AsyncLinkPtr self() const { return _asyncSelf; }
+  [[nodiscard]] AsyncLinkPtr self() const { return _asyncSelf; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return pointer to an index reader containing the data store current
   ///         record snapshot
-  ///         (nullptr == no data store snapshot availabe, e.g. error)
+  ///         (nullptr == no data store snapshot available, e.g. error)
   //////////////////////////////////////////////////////////////////////////////
   Snapshot snapshot() const;
-  static Snapshot snapshot(LinkLock linkLock);
+  static irs::directory_reader reader(LinkLock const& linkLock);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the identifier for this link/index
   //////////////////////////////////////////////////////////////////////////////
@@ -201,7 +200,7 @@ class IResearchDataStore {
   /// @param wait even if other thread is committing
   //////////////////////////////////////////////////////////////////////////////
   Result commit(bool wait = true);
-  static Result commit(LinkLock linkLock, bool wait);
+  static Result commit(LinkLock& linkLock, bool wait);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this iResearch Link

@@ -48,3 +48,5 @@ void WaitForBag::resolveAll(std::exception_ptr const& ex) {
   }
   _waitForBag.clear();
 }
+
+auto WaitForBag::empty() const noexcept -> bool { return _waitForBag.empty(); }

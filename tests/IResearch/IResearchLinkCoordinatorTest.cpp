@@ -211,8 +211,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     EXPECT_TRUE(true == index->sparse());
     EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
                  index->type()));
-    EXPECT_TRUE((arangodb::iresearch::StaticStrings::DataSourceType ==
-                 index->typeName()));
+    EXPECT_TRUE(
+        (arangodb::iresearch::StaticStrings::ViewType == index->typeName()));
     EXPECT_TRUE((false == index->unique()));
 
     arangodb::iresearch::IResearchLinkMeta actualMeta;
@@ -362,8 +362,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     EXPECT_TRUE(true == index->sparse());
     EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
                  index->type()));
-    EXPECT_TRUE((arangodb::iresearch::StaticStrings::DataSourceType ==
-                 index->typeName()));
+    EXPECT_TRUE(
+        (arangodb::iresearch::StaticStrings::ViewType == index->typeName()));
     EXPECT_TRUE((false == index->unique()));
 
     {

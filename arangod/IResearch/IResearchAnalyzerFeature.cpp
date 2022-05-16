@@ -143,7 +143,7 @@ bool normalize(std::string& out, irs::string_ref type,
 
 aql::AqlValue aqlFnTokens(aql::ExpressionContext* expressionContext,
                           aql::AstNode const&,
-                          aql::VPackFunctionParameters const& args) {
+                          aql::VPackFunctionParametersView args) {
   if (ADB_UNLIKELY(args.empty() || args.size() > 2)) {
     irs::string_ref const message =
         "invalid arguments count while computing result for function 'TOKENS'";
