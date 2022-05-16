@@ -22,8 +22,6 @@
 
 #include "MockGraphProvider.h"
 
-#include "./MockGraph.h"
-
 #include "Basics/StaticStrings.h"
 
 #include "Aql/QueryContext.h"
