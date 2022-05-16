@@ -259,10 +259,13 @@ struct FileLineType {
   }
 };
 
-#define MC_HERE                                                          \
-  std::invoke([]() {                                                     \
-    static constexpr char data##__LINE__[sizeof(__FILE__)] = __FILE__;   \
-    return ::FileLineType<data##__LINE__, sizeof(__FILE__), __LINE__>{}; \
+#define CONCAT_TOKEN(x, y) x##y
+#define LINE_TOKEN(x) CONCAT_TOKEN(x_, __LINE__)
+
+#define MC_HERE                                                            \
+  std::invoke([]() {                                                       \
+    static constexpr char LINE_TOKEN(data)[sizeof(__FILE__)] = __FILE__;   \
+    return ::FileLineType<LINE_TOKEN(data), sizeof(__FILE__), __LINE__>{}; \
   })
 
 #define MC_GTEST_PRED(name, pred)           \
