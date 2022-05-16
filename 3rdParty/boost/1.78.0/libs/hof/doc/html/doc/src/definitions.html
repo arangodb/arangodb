@@ -1,0 +1,129 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Definitions &#8212; Boost.HigherOrderFunctions 0.6 documentation</title>
+    
+    <link rel="stylesheet" href="../../_static/boostbook.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '../../',
+        VERSION:     '0.6',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true,
+        SOURCELINK_SUFFIX: '.txt'
+      };
+    </script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Concepts" href="concepts.html" />
+    <link rel="prev" title="Overview" href="overview.html" /> 
+  </head>
+  <body role="document">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86"src="../../_static/boost.png"></td>
+</tr></table>
+
+<div class="spirit-nav">
+<a accesskey="p"  href="overview.html"><img src="../../_static/prev.png" alt="Prev"></a>
+<a accesskey="u" href="overview.html"><img src="../../_static/up.png" alt="Up"></a>
+<a accesskey="h" href="../index.html"><img src="../../_static/home.png" alt="Home"></a>
+<a accesskey="n"  href="concepts.html"><img src="../../_static/next.png" alt="Next"></a>
+</div>
+  
+
+    <div class="document">
+  <div class="chapter">
+      <div class="body" role="main">
+        
+  <!-- Copyright 2018 Paul Fultz II
+     Distributed under the Boost Software License, Version 1.0.
+     (http://www.boost.org/LICENSE_1_0.txt)
+--><div class="section" id="definitions">
+<h1>Definitions<a class="headerlink" href="#definitions" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="function-adaptor">
+<h2>Function Adaptor<a class="headerlink" href="#function-adaptor" title="Permalink to this headline">¶</a></h2>
+<p>A <a class="reference internal" href="#function-adaptor"><span class="std std-ref">Function Adaptor</span></a> takes a function(or functions) and returns a new function with enhanced capability. Each adaptor has a functional form with a corresponding class with <code class="docutils literal"><span class="pre">_adaptor</span></code> appended to it:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">template</span><span class="o">&lt;</span><span class="n">class</span><span class="p">...</span> <span class="n">Fs</span><span class="o">&gt;</span>
+<span class="n">FunctionAdaptor_adaptor</span><span class="o">&lt;</span><span class="n">Fs</span><span class="p">...</span><span class="o">&gt;</span> <span class="n">FunctionAdaptor</span><span class="p">(</span><span class="n">Fs</span><span class="p">...);</span>
+</pre></div>
+</div>
+<p>Both the functional form and the class form can be used to construct the adaptor.</p>
+</div>
+<div class="section" id="static-function-adaptor">
+<h2>Static Function Adaptor<a class="headerlink" href="#static-function-adaptor" title="Permalink to this headline">¶</a></h2>
+<p>A static function adaptor is a <a class="reference internal" href="#function-adaptor"><span class="std std-ref">Function Adaptor</span></a> that doesn&#8217;t have a functional form. It is only a class. It has an additional requirement that the function is <code class="docutils literal"><span class="pre">DefaultConstructible</span></code>:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">template</span><span class="o">&lt;</span><span class="n">class</span><span class="p">...</span> <span class="n">Fs</span><span class="o">&gt;</span>
+<span class="k">class</span> <span class="nc">StaticFunctionAdaptor</span><span class="p">;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="decorator">
+<h2>Decorator<a class="headerlink" href="#decorator" title="Permalink to this headline">¶</a></h2>
+<p>A decorator is a function that returns a <a class="reference internal" href="#function-adaptor"><span class="std std-ref">Function Adaptor</span></a>. The <a class="reference internal" href="#function-adaptor"><span class="std std-ref">Function Adaptor</span></a> may be an unspecified or private type.</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">template</span><span class="o">&lt;</span><span class="n">class</span><span class="p">...</span> <span class="n">Ts</span><span class="o">&gt;</span>
+<span class="n">FunctionAdaptor</span> <span class="n">Decorator</span><span class="p">(</span><span class="n">Ts</span><span class="p">...);</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="semantics">
+<h2>Semantics<a class="headerlink" href="#semantics" title="Permalink to this headline">¶</a></h2>
+<p>Some parts of the documentation provides the meaning(or equivalence) of an expression. Here is a guide of those symbols:</p>
+<ul class="simple">
+<li><code class="docutils literal"><span class="pre">f</span></code>, <code class="docutils literal"><span class="pre">g</span></code>, <code class="docutils literal"><span class="pre">fs</span></code>, <code class="docutils literal"><span class="pre">gs</span></code>, <code class="docutils literal"><span class="pre">p</span></code> are functions</li>
+<li><code class="docutils literal"><span class="pre">x</span></code>, <code class="docutils literal"><span class="pre">y</span></code>, <code class="docutils literal"><span class="pre">xs</span></code>, <code class="docutils literal"><span class="pre">ys</span></code> are parameters to a function</li>
+<li><code class="docutils literal"><span class="pre">T</span></code> represents some type</li>
+<li><code class="docutils literal"><span class="pre">...</span></code> are parameter packs and represent varidiac parameters</li>
+</ul>
+</div>
+<div class="section" id="signatures">
+<h2>Signatures<a class="headerlink" href="#signatures" title="Permalink to this headline">¶</a></h2>
+<p>All the functions are global function objects except where an explicit template parameter is required on older compilers. However, the documentation still shows the traditional signature since it is much clearer. So instead of writing this:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">struct</span> <span class="n">if_f</span>
+<span class="p">{</span>
+    <span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">IntegralConstant</span><span class="o">&gt;</span>
+    <span class="k">constexpr</span> <span class="k">auto</span> <span class="k">operator</span><span class="p">()(</span><span class="n">IntegralConstant</span><span class="p">)</span> <span class="k">const</span><span class="p">;</span>
+<span class="p">};</span>
+<span class="k">const</span> <span class="k">constexpr</span> <span class="n">if_f</span> <span class="n">if_</span> <span class="o">=</span> <span class="p">{};</span>
+</pre></div>
+</div>
+<p>The direct function signature is written even though it is actually declared like above:</p>
+<div class="highlight-cpp"><div class="highlight"><pre><span class="k">template</span><span class="o">&lt;</span><span class="k">class</span> <span class="nc">IntegralConstant</span><span class="o">&gt;</span>
+<span class="k">constexpr</span> <span class="k">auto</span> <span class="n">if_</span><span class="p">(</span><span class="n">IntegralConstant</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Its usage is the same except it has the extra benefit that the function can be directly passed to another function.</p>
+</div>
+</div>
+
+
+      </div>
+  </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer" role="contentinfo">
+    <table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+    <td align="left"></td>
+    <td align="right"><div class="copyright-footer">
+            &#169; Copyright 2016, Paul Fultz II.
+        
+          Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.5.6.
+          <p>Distributed under the Boost Software License, Version 1.0.
+          (See accompanying file <code class="filename">LICENSE_1_0.txt</code> or copy at 
+          <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+          </p>
+    </div></td>
+    </tr></table>
+    </div>
+  </body>
+</html>

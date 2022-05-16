@@ -13,10 +13,22 @@
   },
   "rules": {
     "accessor-pairs": 2,
-    "arrow-spacing": [2, { "before": true, "after": true }],
-    "comma-style": [2, "last"],
+    "arrow-spacing": [
+      2,
+      {
+        "before": true,
+        "after": true
+      }
+    ],
+    "comma-style": [
+      2,
+      "last"
+    ],
     "constructor-super": 2,
-    "eqeqeq": [2, "allow-null"],
+    "eqeqeq": [
+      2,
+      "allow-null"
+    ],
     "new-parens": 2,
     "no-array-constructor": 2,
     "no-caller": 2,
@@ -33,17 +45,29 @@
     "no-empty-pattern": 2,
     "no-ex-assign": 2,
     "no-extend-native": 2,
-    "no-extra-parens": [2, "functions"],
+    "no-extra-parens": [
+      2,
+      "functions"
+    ],
     "no-fallthrough": 2,
     "no-floating-decimal": 2,
     "no-func-assign": 2,
     "no-implied-eval": 2,
-    "no-inner-declarations": [2, "functions"],
+    "no-inner-declarations": [
+      2,
+      "functions"
+    ],
     "no-invalid-regexp": 2,
     "no-irregular-whitespace": 2,
     "no-iterator": 2,
     "no-label-var": 2,
-    "no-labels": [2, { "allowLoop": false, "allowSwitch": false }],
+    "no-labels": [
+      2,
+      {
+        "allowLoop": false,
+        "allowSwitch": false
+      }
+    ],
     "no-multi-str": 2,
     "no-native-reassign": 2,
     "no-negated-in-lhs": 2,
@@ -59,7 +83,10 @@
     "no-proto": 2,
     "no-redeclare": 2,
     "no-regex-spaces": 2,
-    "no-return-assign": [2, "except-parens"],
+    "no-return-assign": [
+      2,
+      "except-parens"
+    ],
     "no-self-assign": 2,
     "no-sequences": 2,
     "no-shadow-restricted-names": 2,
@@ -75,8 +102,14 @@
     "no-with": 2,
     "use-isnan": 2,
     "valid-typeof": 2,
-    "wrap-iife": [2, "any"],
-    "semi": [2, "always"],
+    "wrap-iife": [
+      2,
+      "any"
+    ],
+    "semi": [
+      2,
+      "always"
+    ],
     "spaced-comment": 1,
     "space-unary-ops": 1,
     "no-eval": 1,
@@ -129,5 +162,27 @@
     "quotes": "off",
     "padded-blocks": "off",
     "indent": "off"
-  }
+  },
+  "overrides": [
+    {
+      "files": [
+        "react/src/**/*.js",
+        "react/src/**/*.ts",
+        "react/src/**/*.jsx",
+        "react/src/**/*.tsx"
+      ],
+      "parserOptions": {
+        "sourceType": "module"
+      },
+      "env": {
+        "es6": true,
+        "browser": true
+      },
+      "settings": {
+        "react": {
+          "version": "detect"
+        }
+      }
+    }
+  ]
 }

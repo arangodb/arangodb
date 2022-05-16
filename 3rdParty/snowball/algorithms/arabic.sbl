@@ -362,11 +362,8 @@ define Prefix_Step1 as (
 )
 
 define Prefix_Step2 as (
-        not '{f}{a}'
-        not '{w}{a}'
         [substring] among (
-            '{f}' ($(len > 3) delete)
-            '{w}' ($(len > 3) delete)
+            '{f}' '{w}' ($(len > 3) not '{a}' delete)
         )
 )
 
@@ -378,8 +375,8 @@ define Prefix_Step3a_Noun as ( // it is noun and defined
 )
 
 define Prefix_Step3b_Noun as ( // probably  noun and defined
-        not '{b}{a}' // exception
         [substring] among (
+            '{b}{a}' ( ) // exception - not a valid verb prefix so can just succeed here
             '{b}' ($(len > 3) delete)
             // '{k}'  '{l}' ($(len > 3) delete) // BUG: cause confusion
             '{b}{b}' ($(len > 3) <-  '{b}'  )

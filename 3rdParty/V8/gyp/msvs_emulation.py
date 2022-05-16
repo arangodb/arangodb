@@ -16,8 +16,13 @@ import sys
 import time
 import hashlib
 import traceback
-from collections import Iterable, OrderedDict
+from collections import OrderedDict
 from tempfile import gettempdir
+
+try:
+  from collections.abc import Iterable
+except ImportError:
+  from collections import Iterable
 
 from gyp import DebugOutput, DEBUG_GENERAL
 from gyp.common import EnsureDirExists, WriteOnDiff, memoize

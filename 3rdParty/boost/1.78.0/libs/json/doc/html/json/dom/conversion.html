@@ -1,0 +1,1007 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Value Conversion</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.JSON">
+<link rel="up" href="../dom.html" title="Document Model">
+<link rel="prev" href="numbers.html" title="Numbers">
+<link rel="next" href="initializer_lists.html" title="Initializer Lists">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="numbers.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../dom.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="initializer_lists.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="json.dom.conversion"></a><a class="link" href="conversion.html" title="Value Conversion">Value Conversion</a>
+</h3></div></div></div>
+<p>
+        While the <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>
+        container makes it easy to create ad-hoc structures, often it is necessary
+        to convert between JSON and specific user-defined types. Converting from
+        a type <code class="computeroutput"><span class="identifier">T</span></code> to <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a> is done by <a class="link" href="../ref/boost__json__value_from.html" title="value_from"><code class="computeroutput"><span class="identifier">value_from</span></code></a>. The conversion in the
+        opposite direction is done with <a class="link" href="../ref/boost__json__value_to.html" title="value_to"><code class="computeroutput"><span class="identifier">value_to</span></code></a>.
+      </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="keyword">int</span> <span class="special">&gt;</span> <span class="identifier">v1</span><span class="special">{</span> <span class="number">1</span><span class="special">,</span> <span class="number">2</span><span class="special">,</span> <span class="number">3</span><span class="special">,</span> <span class="number">4</span> <span class="special">};</span>
+
+<span class="comment">// Convert the vector to a JSON array</span>
+<span class="identifier">value</span> <span class="identifier">jv</span> <span class="special">=</span> <span class="identifier">value_from</span><span class="special">(</span> <span class="identifier">v1</span> <span class="special">);</span>
+
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">is_array</span><span class="special">()</span> <span class="special">);</span>
+
+<span class="identifier">array</span><span class="special">&amp;</span> <span class="identifier">ja</span> <span class="special">=</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">as_array</span><span class="special">();</span>
+
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">ja</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span> <span class="special">==</span> <span class="number">4</span> <span class="special">);</span>
+
+<span class="keyword">for</span> <span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="identifier">v1</span><span class="special">.</span><span class="identifier">size</span><span class="special">();</span> <span class="special">++</span><span class="identifier">i</span> <span class="special">)</span>
+    <span class="identifier">assert</span><span class="special">(</span> <span class="identifier">v1</span><span class="special">[</span><span class="identifier">i</span><span class="special">]</span> <span class="special">==</span> <span class="identifier">ja</span><span class="special">[</span><span class="identifier">i</span><span class="special">].</span><span class="identifier">as_int64</span><span class="special">()</span> <span class="special">);</span>
+
+<span class="comment">// Convert back to vector&lt; int &gt;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="keyword">int</span> <span class="special">&gt;</span> <span class="identifier">v2</span> <span class="special">=</span> <span class="identifier">value_to</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="keyword">int</span> <span class="special">&gt;</span> <span class="special">&gt;(</span> <span class="identifier">jv</span> <span class="special">);</span>
+
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">v1</span> <span class="special">==</span> <span class="identifier">v2</span> <span class="special">);</span>
+</pre>
+<h5>
+<a name="json.dom.conversion.h0"></a>
+        <span class="phrase"><a name="json.dom.conversion.customization_points"></a></span><a class="link" href="conversion.html#json.dom.conversion.customization_points">Customization
+        Points</a>
+      </h5>
+<p>
+        A <span class="emphasis"><em>customization point</em></span> is a mechanism where a library
+        delegates behavior of some operation to the user, or gives the user the option
+        of controlling the behavior of some operation for a specific type. Within
+        the standard library, the <code class="computeroutput"><span class="identifier">swap</span></code>
+        function is a customization point that uses <a href="https://en.cppreference.com/w/cpp/language/adl" target="_top">argument-dependent
+        lookup</a> to find user-provided overloads within the namespace of the
+        arguments:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">identity_swap</span><span class="special">(</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">a</span><span class="special">,</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">b</span> <span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// introduces the declaration of</span>
+    <span class="comment">// std::swap into this scope</span>
+    <span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">swap</span><span class="special">;</span>
+    <span class="keyword">if</span><span class="special">(</span> <span class="special">&amp;</span><span class="identifier">a</span> <span class="special">==</span> <span class="special">&amp;</span><span class="identifier">b</span> <span class="special">)</span>
+        <span class="keyword">return</span><span class="special">;</span>
+    <span class="comment">// the overload set will contain std::swap,</span>
+    <span class="comment">// any declarations of swap within the enclosing</span>
+    <span class="comment">// namespace, and any declarations of swap within</span>
+    <span class="comment">// the namespaces associated with T</span>
+    <span class="identifier">swap</span><span class="special">(</span> <span class="identifier">a</span><span class="special">,</span> <span class="identifier">b</span> <span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Another example would be the class template <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">hash</span></code>,
+        which can be specialized for some type <code class="computeroutput"><span class="identifier">T</span></code>
+        to implement custom behavior:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">N</span> <span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">static_string</span> <span class="special">{</span> <span class="special">};</span>
+
+<span class="keyword">namespace</span> <span class="identifier">std</span>
+<span class="special">{</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">N</span> <span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">hash</span><span class="special">&lt;</span> <span class="identifier">static_string</span><span class="special">&lt;</span> <span class="identifier">N</span> <span class="special">&gt;</span> <span class="special">&gt;</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+    <span class="keyword">operator</span><span class="special">()(</span><span class="keyword">const</span> <span class="identifier">static_string</span><span class="special">&lt;</span> <span class="identifier">N</span> <span class="special">&gt;&amp;</span> <span class="identifier">str</span> <span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span>
+    <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">hash</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&gt;()(</span> <span class="identifier">str</span> <span class="special">);</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="special">}</span> <span class="comment">// std</span>
+</pre>
+<p>
+        While these mechanisms work, they are not without problems. Boost.JSON implements
+        value conversion customization points using the <code class="computeroutput"><span class="identifier">tag_invoke</span></code>
+        mechanism outlined in <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1895r0.pdf" target="_top">P1895</a>,
+        allowing users to define conversions to and from their own types. In essence,
+        <code class="computeroutput"><span class="identifier">tag_invoke</span></code> provides a uniform
+        interface for defining customization points by using argument-dependent lookup
+        to find a viable function from the point at which it's called. As the name
+        suggests, a tag type is passed as an argument in order to:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            discard candidates that are unrelated to that particular customization
+            point, and
+          </li>
+<li class="listitem">
+            embed the user-defined type into the arguments list (e.g. by using a
+            tag type template such as <code class="computeroutput"><span class="identifier">value_to_tag</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>) so that its <a href="http://eel.is/c++draft/basic.lookup.argdep#2" target="_top">associated
+            namespaces and entities</a> are examined when name lookup is performed.
+          </li>
+</ul></div>
+<p>
+        This has the effect of finding user-provided <code class="computeroutput"><span class="identifier">tag_invoke</span></code>
+        overloads, even if they are declared (lexically) after the definition of
+        the calling function.
+      </p>
+<h5>
+<a name="json.dom.conversion.h1"></a>
+        <span class="phrase"><a name="json.dom.conversion.tag_invoke_overloads"></a></span><a class="link" href="conversion.html#json.dom.conversion.tag_invoke_overloads"><code class="computeroutput"><span class="identifier">tag_invoke</span></code> overloads</a>
+      </h5>
+<p>
+        In all cases, conversions are done by calling an appropriate overload of
+        <code class="computeroutput"><span class="identifier">tag_invoke</span></code>. For <a class="link" href="../ref/boost__json__value_from.html" title="value_from"><code class="computeroutput"><span class="identifier">value_from</span></code></a>, these have the form:
+      </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">tag_invoke</span><span class="special">(</span> <span class="keyword">const</span> <span class="identifier">value_from_tag</span><span class="special">&amp;,</span> <span class="identifier">value</span><span class="special">&amp;,</span> <span class="identifier">T</span> <span class="special">);</span>
+</pre>
+<p>
+        Likewise, the overloads of <code class="computeroutput"><span class="identifier">tag_invoke</span></code>
+        called by <a class="link" href="../ref/boost__json__value_to.html" title="value_to"><code class="computeroutput"><span class="identifier">value_to</span></code></a>
+        take the form:
+      </p>
+<pre class="programlisting"><span class="identifier">T</span> <span class="identifier">tag_invoke</span><span class="special">(</span> <span class="keyword">const</span> <span class="identifier">value_to_tag</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;&amp;,</span> <span class="keyword">const</span> <span class="identifier">value</span><span class="special">&amp;</span> <span class="special">);</span>
+</pre>
+<p>
+        In both cases, overloads for user-provided types can be implemented:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">tag_invoke</span><span class="special">(</span> <span class="keyword">const</span> <span class="identifier">value_from_tag</span><span class="special">&amp;,</span> <span class="identifier">value</span><span class="special">&amp;</span> <span class="identifier">jv</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">t</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// Store a complex number as a 2-element array</span>
+    <span class="comment">// with the real part followed by the imaginary part</span>
+    <span class="identifier">jv</span> <span class="special">=</span> <span class="special">{</span> <span class="identifier">t</span><span class="special">.</span><span class="identifier">real</span><span class="special">(),</span> <span class="identifier">t</span><span class="special">.</span><span class="identifier">imag</span><span class="special">()</span> <span class="special">};</span>
+<span class="special">}</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+<span class="identifier">tag_invoke</span><span class="special">(</span> <span class="keyword">const</span> <span class="identifier">value_to_tag</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <span class="special">&gt;&amp;,</span> <span class="identifier">value</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">jv</span> <span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">return</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;(</span>
+        <span class="identifier">jv</span><span class="special">.</span><span class="identifier">as_array</span><span class="special">().</span><span class="identifier">at</span><span class="special">(</span><span class="number">0</span><span class="special">).</span><span class="identifier">to_number</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;(),</span>
+        <span class="identifier">jv</span><span class="special">.</span><span class="identifier">as_array</span><span class="special">().</span><span class="identifier">at</span><span class="special">(</span><span class="number">1</span><span class="special">).</span><span class="identifier">to_number</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;());</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Since the type being converted is embedded into the function's signature,
+        user-provided overloads are visible to argument-dependent lookup and will
+        be candidates when a conversion is performed:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">vec3</span>
+<span class="special">{</span>
+    <span class="identifier">T</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">y</span><span class="special">,</span> <span class="identifier">z</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">tag_invoke</span><span class="special">(</span> <span class="keyword">const</span> <span class="identifier">value_from_tag</span><span class="special">&amp;,</span> <span class="identifier">value</span><span class="special">&amp;</span> <span class="identifier">jv</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">vec3</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;&amp;</span> <span class="identifier">vec</span> <span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">jv</span> <span class="special">=</span> <span class="special">{</span>
+        <span class="special">{</span> <span class="string">"x"</span><span class="special">,</span> <span class="identifier">vec</span><span class="special">.</span><span class="identifier">x</span> <span class="special">},</span>
+        <span class="special">{</span> <span class="string">"y"</span><span class="special">,</span> <span class="identifier">vec</span><span class="special">.</span><span class="identifier">y</span> <span class="special">},</span>
+        <span class="special">{</span> <span class="string">"z"</span><span class="special">,</span> <span class="identifier">vec</span><span class="special">.</span><span class="identifier">z</span> <span class="special">}</span>
+    <span class="special">};</span>
+<span class="special">}</span>
+</pre>
+<p>
+        When <a class="link" href="../ref/boost__json__value_from.html" title="value_from"><code class="computeroutput"><span class="identifier">value_from</span></code></a>
+        is called, the <code class="computeroutput"><span class="identifier">tag_invoke</span></code>
+        function template will be found by argument-dependent lookup and used to
+        perform the conversion:
+      </p>
+<pre class="programlisting"><span class="identifier">vec3</span><span class="special">&lt;</span> <span class="keyword">int</span> <span class="special">&gt;</span> <span class="identifier">pos</span> <span class="special">=</span> <span class="special">{</span> <span class="number">4</span><span class="special">,</span> <span class="number">1</span><span class="special">,</span> <span class="number">4</span> <span class="special">};</span>
+
+<span class="identifier">value</span> <span class="identifier">jv</span> <span class="special">=</span> <span class="identifier">value_from</span><span class="special">(</span> <span class="identifier">pos</span> <span class="special">);</span>
+
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">serialize</span><span class="special">(</span> <span class="identifier">jv</span> <span class="special">)</span> <span class="special">==</span> <span class="string">"{\"x\":4,\"y\":1,\"z\":4}"</span> <span class="special">);</span>
+</pre>
+<p>
+        In addition to user-provided overloads of <code class="computeroutput"><span class="identifier">tag_invoke</span></code>,
+        the library will add its own function to the overload set when certain constraints
+        are satisfied. The library provided overloads have no special prioritization
+        over those provided by the user, so care should be taken to avoid writing
+        ambiguous declarations:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">enable_if</span><span class="special">&lt;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">is_floating_point</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;::</span><span class="identifier">value</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">*</span> <span class="special">=</span> <span class="keyword">nullptr</span> <span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">tag_invoke</span><span class="special">(</span> <span class="keyword">const</span> <span class="identifier">value_from_tag</span><span class="special">&amp;,</span> <span class="identifier">value</span><span class="special">&amp;</span> <span class="identifier">jv</span><span class="special">,</span> <span class="identifier">T</span> <span class="identifier">t</span> <span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">jv</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">llround</span><span class="special">(</span> <span class="identifier">t</span> <span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Upon calling this function, overload resolution will fail because the library
+        already provides an overload for floating-point types:
+      </p>
+<pre class="programlisting"><span class="identifier">value</span> <span class="identifier">jv</span> <span class="special">=</span> <span class="identifier">value_from</span><span class="special">(</span> <span class="number">1.5</span> <span class="special">);</span> <span class="comment">// error</span>
+</pre>
+<p>
+        Library-provided overloads of <code class="computeroutput"><span class="identifier">tag_invoke</span></code>
+        come in two variants: those that convert between JSON types (known as <span class="emphasis"><em>built-in
+        conversions</em></span>), and those that convert to/from container and string
+        types (known as <span class="emphasis"><em>generic conversions</em></span>). Generic conversions
+        offer convenience by eliminating the need to write repetitive overloads for
+        types that model common C++ concepts (e.g. sequence containers, associative
+        containers, tuples, and strings).
+      </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">,</span> <span class="identifier">vec3</span><span class="special">&lt;</span> <span class="keyword">int</span> <span class="special">&gt;</span> <span class="special">&gt;</span> <span class="identifier">positions</span> <span class="special">=</span> <span class="special">{</span>
+    <span class="special">{</span> <span class="string">"Alex"</span><span class="special">,</span> <span class="special">{</span> <span class="number">42</span><span class="special">,</span> <span class="special">-</span><span class="number">60</span><span class="special">,</span> <span class="number">18</span> <span class="special">}</span> <span class="special">},</span>
+    <span class="special">{</span> <span class="string">"Blake"</span><span class="special">,</span> <span class="special">{</span> <span class="number">300</span><span class="special">,</span> <span class="special">-</span><span class="number">60</span><span class="special">,</span> <span class="special">-</span><span class="number">240</span><span class="special">}</span> <span class="special">},</span>
+    <span class="special">{</span> <span class="string">"Carol"</span><span class="special">,</span> <span class="special">{</span> <span class="special">-</span><span class="number">60</span><span class="special">,</span> <span class="number">30</span><span class="special">,</span> <span class="number">30</span> <span class="special">}</span> <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="comment">// conversions are applied recursively;</span>
+<span class="comment">// the key type and value type will be converted</span>
+<span class="comment">// using value_from as well</span>
+<span class="identifier">value</span> <span class="identifier">jv</span> <span class="special">=</span> <span class="identifier">value_from</span><span class="special">(</span> <span class="identifier">positions</span> <span class="special">);</span>
+
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">is_object</span><span class="special">()</span> <span class="special">);</span>
+
+<span class="identifier">object</span><span class="special">&amp;</span> <span class="identifier">jo</span> <span class="special">=</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">as_object</span><span class="special">();</span>
+
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">jo</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span> <span class="special">==</span> <span class="number">3</span> <span class="special">);</span>
+
+<span class="comment">// The sum of the coordinates is 0</span>
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">accumulate</span><span class="special">(</span> <span class="identifier">jo</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">jo</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">int64_t</span><span class="special">(</span><span class="number">0</span><span class="special">),</span>
+    <span class="special">[](</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">int64_t</span> <span class="identifier">total</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">key_value_pair</span><span class="special">&amp;</span> <span class="identifier">jp</span> <span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">assert</span> <span class="special">(</span> <span class="identifier">jp</span><span class="special">.</span><span class="identifier">value</span><span class="special">().</span><span class="identifier">is_object</span><span class="special">()</span> <span class="special">);</span>
+
+        <span class="keyword">const</span> <span class="identifier">object</span><span class="special">&amp;</span> <span class="identifier">pos</span> <span class="special">=</span> <span class="identifier">jp</span><span class="special">.</span><span class="identifier">value</span><span class="special">().</span><span class="identifier">as_object</span><span class="special">();</span>
+
+        <span class="keyword">return</span> <span class="identifier">total</span> <span class="special">+</span> <span class="identifier">pos</span><span class="special">.</span><span class="identifier">at</span><span class="special">(</span> <span class="string">"x"</span> <span class="special">).</span><span class="identifier">as_int64</span><span class="special">()</span> <span class="special">+</span>
+            <span class="identifier">pos</span><span class="special">.</span><span class="identifier">at</span><span class="special">(</span> <span class="string">"y"</span> <span class="special">).</span><span class="identifier">as_int64</span><span class="special">()</span> <span class="special">+</span>
+            <span class="identifier">pos</span><span class="special">.</span><span class="identifier">at</span><span class="special">(</span> <span class="string">"z"</span> <span class="special">).</span><span class="identifier">as_int64</span><span class="special">();</span>
+
+    <span class="special">}</span> <span class="special">)</span> <span class="special">==</span> <span class="number">0</span> <span class="special">);</span>
+</pre>
+<h5>
+<a name="json.dom.conversion.h2"></a>
+        <span class="phrase"><a name="json.dom.conversion.converting_to_json_value"></a></span><a class="link" href="conversion.html#json.dom.conversion.converting_to_json_value">Converting
+        to json::value</a>
+      </h5>
+<p>
+        The function template <a class="link" href="../ref/boost__json__value_from.html" title="value_from"><code class="computeroutput"><span class="identifier">value_from</span></code></a> provides an interface
+        to construct a <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a> from a user- or library-provided
+        type <code class="computeroutput"><span class="identifier">T</span></code>. The optionally supplied
+        <a class="link" href="../ref/boost__json__storage_ptr.html" title="storage_ptr"><code class="computeroutput"><span class="identifier">storage_ptr</span></code></a>
+        argument is used as the <a class="link" href="../ref/boost__json__memory_resource.html" title="memory_resource"><code class="computeroutput"><span class="identifier">memory_resource</span></code></a> for the resulting
+        <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>
+        object. The parameter of type <code class="computeroutput"><span class="identifier">value</span><span class="special">&amp;</span></code> is the result of the conversion; this
+        ensures that the <a class="link" href="../ref/boost__json__storage_ptr.html" title="storage_ptr"><code class="computeroutput"><span class="identifier">storage_ptr</span></code></a> is correctly propagated
+        to the result. For example, consider the following struct:
+      </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">customer</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span> <span class="identifier">id</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">name</span><span class="special">;</span>
+    <span class="keyword">bool</span> <span class="identifier">late</span><span class="special">;</span>
+
+    <span class="identifier">customer</span><span class="special">()</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+
+    <span class="identifier">customer</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span> <span class="identifier">i</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&amp;</span> <span class="identifier">n</span><span class="special">,</span> <span class="keyword">bool</span> <span class="identifier">l</span> <span class="special">)</span>
+        <span class="special">:</span> <span class="identifier">id</span><span class="special">(</span> <span class="identifier">i</span> <span class="special">),</span> <span class="identifier">name</span><span class="special">(</span> <span class="identifier">n</span> <span class="special">),</span> <span class="identifier">late</span><span class="special">(</span> <span class="identifier">l</span> <span class="special">)</span> <span class="special">{</span> <span class="special">}</span>
+
+    <span class="keyword">explicit</span> <span class="identifier">customer</span><span class="special">(</span> <span class="identifier">value</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="special">);</span>
+<span class="special">};</span>
+
+<span class="keyword">void</span> <span class="identifier">tag_invoke</span><span class="special">(</span> <span class="keyword">const</span> <span class="identifier">value_from_tag</span><span class="special">&amp;,</span> <span class="identifier">value</span><span class="special">&amp;</span> <span class="identifier">jv</span><span class="special">,</span> <span class="identifier">customer</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">c</span> <span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// Assign a JSON value</span>
+    <span class="identifier">jv</span> <span class="special">=</span> <span class="special">{</span>
+        <span class="special">{</span> <span class="string">"id"</span><span class="special">,</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">id</span> <span class="special">},</span>
+        <span class="special">{</span> <span class="string">"name"</span><span class="special">,</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">name</span> <span class="special">},</span>
+        <span class="special">{</span> <span class="string">"late"</span><span class="special">,</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">late</span> <span class="special">}</span>
+    <span class="special">};</span>
+<span class="special">}</span>
+</pre>
+<p>
+        If our store has a lot of customers, it may be desirable to use a <a class="link" href="../ref/boost__json__monotonic_resource.html" title="monotonic_resource"><code class="computeroutput"><span class="identifier">monotonic_resource</span></code></a> when serializing
+        <code class="computeroutput"><span class="identifier">customer</span></code> objects to JSON.
+        <a class="link" href="../ref/boost__json__value_from.html" title="value_from"><code class="computeroutput"><span class="identifier">value_from</span></code></a>
+        ensures that the correct <a class="link" href="../ref/boost__json__memory_resource.html" title="memory_resource"><code class="computeroutput"><span class="identifier">memory_resource</span></code></a> is used:
+      </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">customer</span> <span class="special">&gt;</span> <span class="identifier">customers</span> <span class="special">=</span> <span class="special">{</span>
+    <span class="identifier">customer</span><span class="special">(</span> <span class="number">0</span><span class="special">,</span> <span class="string">"Alison"</span><span class="special">,</span> <span class="keyword">false</span> <span class="special">),</span>
+    <span class="identifier">customer</span><span class="special">(</span> <span class="number">1</span><span class="special">,</span> <span class="string">"Bill"</span><span class="special">,</span> <span class="keyword">false</span> <span class="special">),</span>
+    <span class="identifier">customer</span><span class="special">(</span> <span class="number">3</span><span class="special">,</span> <span class="string">"Catherine"</span><span class="special">,</span> <span class="keyword">true</span> <span class="special">),</span>
+    <span class="identifier">customer</span><span class="special">(</span> <span class="number">4</span><span class="special">,</span> <span class="string">"Doug"</span><span class="special">,</span> <span class="keyword">false</span> <span class="special">)</span>
+ <span class="special">};</span>
+
+<span class="identifier">storage_ptr</span> <span class="identifier">sp</span> <span class="special">=</span> <span class="identifier">make_shared_resource</span><span class="special">&lt;</span> <span class="identifier">monotonic_resource</span> <span class="special">&gt;();</span>
+
+<span class="identifier">value</span> <span class="identifier">jv</span> <span class="special">=</span> <span class="identifier">value_from</span><span class="special">(</span> <span class="identifier">customers</span><span class="special">,</span> <span class="identifier">sp</span> <span class="special">);</span>
+
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">storage</span><span class="special">()</span> <span class="special">==</span> <span class="identifier">sp</span> <span class="special">);</span>
+
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">is_array</span><span class="special">()</span> <span class="special">);</span>
+</pre>
+<p>
+        In addition to the user-provided overloads found by argument-dependent lookup,
+        the library provides its own overload of <code class="computeroutput"><span class="identifier">tag_invoke</span></code>
+        when certain conditions are met.
+      </p>
+<p>
+        If, for the type <code class="computeroutput"><span class="identifier">T</span></code> being
+        converted
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">is_assignable</span><span class="special">&lt;</span><span class="identifier">value</span><span class="special">&amp;,</span>
+            <span class="identifier">T</span><span class="special">&amp;&amp;&gt;::</span><span class="identifier">value</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>,
+            or
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">T</span></code> satisfies <span class="emphasis"><em>StringLike</em></span>,
+            or
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">T</span></code> satisfies <span class="emphasis"><em>FromMapLike</em></span>,
+            or
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">T</span></code> satisfies <span class="emphasis"><em>FromContainerLike</em></span>,
+            or
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">T</span></code> satisfies <span class="emphasis"><em>TupleLike</em></span>.
+          </li>
+</ul></div>
+<p>
+        Then a function template of the form
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">tag_invoke</span><span class="special">(</span> <span class="identifier">value_from_tag</span><span class="special">,</span> <span class="identifier">value</span><span class="special">&amp;</span> <span class="identifier">jv</span><span class="special">,</span> <span class="identifier">T</span><span class="special">&amp;&amp;</span> <span class="identifier">t</span> <span class="special">);</span>
+</pre>
+<p>
+        is added to the set of user-provided overloads found by argument-dependent
+        lookup; it performs the conversion corresponding to first condition met by
+        <code class="computeroutput"><span class="identifier">T</span></code> in the above list. For
+        example, if <code class="computeroutput"><span class="identifier">T</span></code> satisfies both
+        <span class="emphasis"><em>FromMapLike</em></span> and <span class="emphasis"><em>FromContainerLike</em></span>,
+        the conversion will be performed the one corresponding to <span class="emphasis"><em>FromMapLike</em></span>;
+        it will not be ambiguous.
+      </p>
+<pre class="programlisting"><span class="comment">// Satisfies both FromMapLike and FromContainerLike</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">unordered_map</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">,</span> <span class="keyword">bool</span> <span class="special">&gt;</span> <span class="identifier">available_tools</span> <span class="special">=</span> <span class="special">{</span>
+    <span class="special">{</span> <span class="string">"Crowbar"</span><span class="special">,</span> <span class="keyword">true</span> <span class="special">},</span>
+    <span class="special">{</span> <span class="string">"Hammer"</span><span class="special">,</span> <span class="keyword">true</span> <span class="special">},</span>
+    <span class="special">{</span> <span class="string">"Drill"</span><span class="special">,</span> <span class="keyword">true</span> <span class="special">},</span>
+    <span class="special">{</span> <span class="string">"Saw"</span><span class="special">,</span> <span class="keyword">false</span> <span class="special">},</span>
+<span class="special">};</span>
+
+<span class="identifier">value</span> <span class="identifier">jv</span> <span class="special">=</span> <span class="identifier">value_from</span><span class="special">(</span> <span class="identifier">available_tools</span> <span class="special">);</span>
+
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">is_object</span><span class="special">()</span> <span class="special">);</span>
+</pre>
+<p>
+        The conversion performed when the first condition is met (the library-provided
+        built-in conversion) is assignment to the <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a> parameter. For the generic
+        conversions, types that satisfy <span class="emphasis"><em>TupleLike</em></span> or <span class="emphasis"><em>FromContainerLike</em></span>
+        are converted to <a class="link" href="../ref/boost__json__array.html" title="array"><code class="computeroutput"><span class="identifier">array</span></code></a>, those that satisfy <span class="emphasis"><em>FromMapLike</em></span>
+        are converted to <a class="link" href="../ref/boost__json__object.html" title="object"><code class="computeroutput"><span class="identifier">object</span></code></a>, and types that satisfy
+        <span class="emphasis"><em>StringLike</em></span> are converted to <a class="link" href="../ref/boost__json__string.html" title="string"><code class="computeroutput"><span class="identifier">string</span></code></a>.
+      </p>
+<h5>
+<a name="json.dom.conversion.h3"></a>
+        <span class="phrase"><a name="json.dom.conversion.converting_to_foreign_types"></a></span><a class="link" href="conversion.html#json.dom.conversion.converting_to_foreign_types">Converting
+        to Foreign Types</a>
+      </h5>
+<p>
+        The function template <a class="link" href="../ref/boost__json__value_to.html" title="value_to"><code class="computeroutput"><span class="identifier">value_to</span></code></a> provides an interface to
+        construct a type <code class="computeroutput"><span class="identifier">T</span></code> from a
+        <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>.
+        In contrast to <a class="link" href="../ref/boost__json__value_from.html" title="value_from"><code class="computeroutput"><span class="identifier">value_from</span></code></a>, no output parameter
+        is used as there is no <a class="link" href="../ref/boost__json__storage_ptr.html" title="storage_ptr"><code class="computeroutput"><span class="identifier">storage_ptr</span></code></a> to propagate.
+      </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span> <span class="keyword">double</span> <span class="special">&gt;</span> <span class="identifier">c1</span> <span class="special">=</span> <span class="special">{</span> <span class="number">3.14159</span><span class="special">,</span> <span class="number">2.71828</span> <span class="special">};</span>
+
+<span class="comment">// Convert a complex number to JSON</span>
+<span class="identifier">value</span> <span class="identifier">jv</span> <span class="special">=</span> <span class="identifier">value_from</span><span class="special">(</span> <span class="identifier">c1</span> <span class="special">);</span>
+
+<span class="identifier">assert</span> <span class="special">(</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">is_array</span><span class="special">()</span> <span class="special">);</span>
+
+<span class="comment">// Convert back to a complex number</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span> <span class="keyword">double</span> <span class="special">&gt;</span> <span class="identifier">c2</span> <span class="special">=</span> <span class="identifier">value_to</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span> <span class="keyword">double</span> <span class="special">&gt;</span> <span class="special">&gt;(</span> <span class="identifier">jv</span> <span class="special">);</span>
+</pre>
+<p>
+        As with <a class="link" href="../ref/boost__json__value_from.html" title="value_from"><code class="computeroutput"><span class="identifier">value_from</span></code></a>,
+        the library provides its own overload of <code class="computeroutput"><span class="identifier">tag_invoke</span></code>
+        when certain conditions are met.
+      </p>
+<p>
+        If, for the type <code class="computeroutput"><span class="identifier">T</span></code>
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">T</span></code> is <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>, <a class="link" href="../ref/boost__json__object.html" title="object"><code class="computeroutput"><span class="identifier">object</span></code></a>, <a class="link" href="../ref/boost__json__array.html" title="array"><code class="computeroutput"><span class="identifier">array</span></code></a>, <a class="link" href="../ref/boost__json__string.html" title="string"><code class="computeroutput"><span class="identifier">string</span></code></a>, <a class="link" href="../ref/boost__json__string_view.html" title="string_view"><code class="computeroutput"><span class="identifier">string_view</span></code></a>, __value_ref__,
+            <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span><span class="identifier">value_ref</span><span class="special">&gt;</span></code>
+            or <code class="computeroutput"><span class="keyword">bool</span></code>, or if <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">is_arithmetic</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">value</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>,
+            or
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">T</span></code> satisfies <span class="emphasis"><em>StringLike</em></span>,
+            or
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">T</span></code> satisfies <span class="emphasis"><em>ToMapLike</em></span>,
+            or
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">T</span></code> satisfies <span class="emphasis"><em>ToContainerLike</em></span>,
+            or
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">T</span></code> satisfies <span class="emphasis"><em>TupleLike</em></span>.
+          </li>
+</ul></div>
+<p>
+        Then a function template of the form
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+<span class="identifier">T</span> <span class="identifier">tag_invoke</span><span class="special">(</span> <span class="identifier">value_to_tag</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;,</span> <span class="keyword">const</span> <span class="identifier">value</span><span class="special">&amp;</span> <span class="identifier">jv</span> <span class="special">);</span>
+</pre>
+<p>
+        is added to the set of user-provided overloads found by argument-dependent
+        lookup. As with <a class="link" href="../ref/boost__json__value_from.html" title="value_from"><code class="computeroutput"><span class="identifier">value_from</span></code></a>, it performs the conversion
+        corresponding to first condition met by <code class="computeroutput"><span class="identifier">T</span></code>
+        in the above list. Given the following definition of <code class="computeroutput"><span class="identifier">customer</span><span class="special">::</span><span class="identifier">customer</span><span class="special">(</span> <span class="keyword">const</span> <span class="identifier">value</span><span class="special">&amp;</span> <span class="special">)</span></code>:
+      </p>
+<pre class="programlisting"><span class="identifier">customer</span> <span class="identifier">tag_invoke</span><span class="special">(</span> <span class="keyword">const</span> <span class="identifier">value_to_tag</span><span class="special">&lt;</span><span class="identifier">customer</span><span class="special">&gt;&amp;,</span> <span class="keyword">const</span> <span class="identifier">value</span><span class="special">&amp;</span> <span class="identifier">jv</span> <span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// at() throws if `jv` is not an object, or if the key is not found.</span>
+    <span class="comment">// as_uint64() will throw if the value is not an unsigned 64-bit integer.</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span> <span class="identifier">id</span> <span class="special">=</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">at</span><span class="special">(</span> <span class="string">"id"</span> <span class="special">).</span><span class="identifier">as_uint64</span><span class="special">();</span>
+
+    <span class="comment">// We already know that jv is an object from</span>
+    <span class="comment">// the previous call to jv.as_object() succeeding,</span>
+    <span class="comment">// now we use jv.get_object() which skips the</span>
+    <span class="comment">// check. value_to will throw if jv.kind() != kind::string</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">name</span> <span class="special">=</span> <span class="identifier">value_to</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&gt;(</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">get_object</span><span class="special">().</span><span class="identifier">at</span><span class="special">(</span> <span class="string">"name"</span> <span class="special">)</span> <span class="special">);</span>
+
+    <span class="comment">// id and name are constructed from JSON in the member</span>
+    <span class="comment">// initializer list above, but we can also use regular</span>
+    <span class="comment">// assignments in the body of the function as shown below.</span>
+    <span class="comment">// as_bool() will throw if kv.kind() != kind::bool</span>
+    <span class="keyword">bool</span> <span class="identifier">late</span> <span class="special">=</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">get_object</span><span class="special">().</span><span class="identifier">at</span><span class="special">(</span> <span class="string">"late"</span> <span class="special">).</span><span class="identifier">as_bool</span><span class="special">();</span>
+
+    <span class="keyword">return</span> <span class="identifier">customer</span><span class="special">(</span><span class="identifier">id</span><span class="special">,</span> <span class="identifier">name</span><span class="special">,</span> <span class="identifier">late</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Objects of type <code class="computeroutput"><span class="identifier">customer</span></code>
+        can be converted to and from <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>:
+      </p>
+<pre class="programlisting"><span class="identifier">customer</span> <span class="identifier">c1</span><span class="special">(</span> <span class="number">5</span><span class="special">,</span> <span class="string">"Ed"</span><span class="special">,</span> <span class="keyword">false</span> <span class="special">);</span>
+
+<span class="comment">// Convert customer to value</span>
+<span class="identifier">value</span> <span class="identifier">jv</span> <span class="special">=</span> <span class="identifier">value_from</span><span class="special">(</span> <span class="identifier">c1</span> <span class="special">);</span>
+
+<span class="comment">// Convert the result back to customer</span>
+<span class="identifier">customer</span> <span class="identifier">c2</span> <span class="special">=</span> <span class="identifier">value_to</span><span class="special">&lt;</span> <span class="identifier">customer</span> <span class="special">&gt;(</span> <span class="identifier">jv</span> <span class="special">);</span>
+
+<span class="comment">// The resulting customer is unchanged</span>
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">name</span> <span class="special">==</span> <span class="identifier">c2</span><span class="special">.</span><span class="identifier">name</span> <span class="special">);</span>
+</pre>
+<p>
+        When the first condition is met, the conversion will simply return the object
+        of type <code class="computeroutput"><span class="identifier">T</span></code> stored within the
+        <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>
+        (e.g. using <code class="computeroutput"><span class="identifier">jv</span><span class="special">.</span><span class="identifier">as_object</span><span class="special">()</span></code>,
+        <code class="computeroutput"><span class="identifier">jv</span><span class="special">.</span><span class="identifier">as_array</span><span class="special">()</span></code>,
+        etc). When the second condition is met, the result of the conversion will
+        be <code class="computeroutput"><span class="identifier">T</span><span class="special">(</span><span class="identifier">jv</span><span class="special">)</span></code>. As
+        with <a class="link" href="../ref/boost__json__value_from.html" title="value_from"><code class="computeroutput"><span class="identifier">value_from</span></code></a>,
+        when generic conversions are selected, an attempt will be made to convert
+        the <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>
+        to <code class="computeroutput"><span class="identifier">T</span></code>.
+      </p>
+<pre class="programlisting"><span class="identifier">value</span> <span class="identifier">available_tools</span> <span class="special">=</span> <span class="special">{</span>
+    <span class="special">{</span> <span class="string">"Crowbar"</span><span class="special">,</span> <span class="keyword">true</span> <span class="special">},</span>
+    <span class="special">{</span> <span class="string">"Hammer"</span><span class="special">,</span> <span class="keyword">true</span> <span class="special">},</span>
+    <span class="special">{</span> <span class="string">"Drill"</span><span class="special">,</span> <span class="keyword">true</span> <span class="special">},</span>
+    <span class="special">{</span> <span class="string">"Saw"</span><span class="special">,</span> <span class="keyword">false</span> <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">available_tools</span><span class="special">.</span><span class="identifier">is_object</span><span class="special">()</span> <span class="special">);</span>
+
+<span class="keyword">auto</span> <span class="identifier">as_map</span> <span class="special">=</span> <span class="identifier">value_to</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">,</span> <span class="keyword">bool</span> <span class="special">&gt;</span> <span class="special">&gt;(</span> <span class="identifier">available_tools</span> <span class="special">);</span>
+
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">available_tools</span><span class="special">.</span><span class="identifier">as_object</span><span class="special">().</span><span class="identifier">size</span><span class="special">()</span> <span class="special">==</span> <span class="identifier">as_map</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span> <span class="special">);</span>
+</pre>
+<h5>
+<a name="json.dom.conversion.h4"></a>
+        <span class="phrase"><a name="json.dom.conversion.providing_conversions_without_ad"></a></span><a class="link" href="conversion.html#json.dom.conversion.providing_conversions_without_ad">Providing
+        Conversions Without Adding Dependency on Boost.JSON </a>
+      </h5>
+<div class="important"><table border="0" summary="Important">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Important]" src="../../../../../../doc/src/images/important.png"></td>
+<th align="left">Important</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          The contents of this subsection do not apply to <a class="link" href="../overview.html#json.overview.requirements.without_boost">standalone
+          mode</a>
+        </p></td></tr>
+</table></div>
+<p>
+        Library authors may wish to provide conversions between types in their libraries
+        and <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>.
+        It's possible to do this even without adding a physical dependency on Boost.JSON
+        with the help of a few forward declarations.
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">json</span> <span class="special">{</span>
+
+<span class="keyword">class</span> <span class="identifier">value</span><span class="special">;</span>
+
+<span class="keyword">struct</span> <span class="identifier">value_from_tag</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">value_to_tag</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+<span class="identifier">T</span> <span class="identifier">value_to</span><span class="special">(</span> <span class="keyword">const</span> <span class="identifier">value</span><span class="special">&amp;</span> <span class="identifier">v</span> <span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">value_from</span><span class="special">(</span> <span class="identifier">T</span><span class="special">&amp;&amp;</span> <span class="identifier">t</span><span class="special">,</span> <span class="identifier">value</span><span class="special">&amp;</span> <span class="identifier">jv</span> <span class="special">);</span>
+
+<span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Note that <a class="link" href="../ref/boost__json__value_from.html" title="value_from"><code class="computeroutput"><span class="identifier">value_from</span></code></a> is declared using an
+        out-parameter, rather then returning its result. This overload is specifically
+        designed for this use-case.
+      </p>
+<p>
+        After that the definitions of <code class="computeroutput"><span class="identifier">tag_invoke</span></code>
+        overloads should be provided. These overlaods have to be templates, since
+        <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>
+        is only forward-declared and hence is an incomplete type.
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">thirdparty</span> <span class="special">{</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">JsonValue</span> <span class="special">&gt;</span>
+<span class="identifier">customer</span> <span class="identifier">tag_invoke</span><span class="special">(</span> <span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">json</span><span class="special">::</span><span class="identifier">value_to_tag</span><span class="special">&lt;</span><span class="identifier">customer</span><span class="special">&gt;&amp;,</span> <span class="keyword">const</span> <span class="identifier">JsonValue</span><span class="special">&amp;</span> <span class="identifier">jv</span> <span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span> <span class="identifier">id</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">json</span><span class="special">::</span><span class="identifier">value_to</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span><span class="special">&gt;(</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">at</span><span class="special">(</span> <span class="string">"id"</span> <span class="special">)</span> <span class="special">);</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">name</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">json</span><span class="special">::</span><span class="identifier">value_to</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&gt;(</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">at</span><span class="special">(</span> <span class="string">"name"</span> <span class="special">)</span> <span class="special">);</span>
+    <span class="keyword">bool</span> <span class="identifier">late</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">json</span><span class="special">::</span><span class="identifier">value_to</span><span class="special">&lt;</span><span class="keyword">bool</span><span class="special">&gt;(</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">at</span><span class="special">(</span> <span class="string">"late"</span> <span class="special">)</span> <span class="special">);</span>
+    <span class="keyword">return</span> <span class="identifier">customer</span><span class="special">(</span><span class="identifier">id</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(</span><span class="identifier">name</span><span class="special">),</span> <span class="identifier">late</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">JsonValue</span> <span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">tag_invoke</span><span class="special">(</span> <span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">json</span><span class="special">::</span><span class="identifier">value_from_tag</span><span class="special">&amp;,</span> <span class="identifier">JsonValue</span><span class="special">&amp;</span> <span class="identifier">jv</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">customer</span><span class="special">&amp;</span> <span class="identifier">c</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">auto</span><span class="special">&amp;</span> <span class="identifier">obj</span> <span class="special">=</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">emplace_object</span><span class="special">();</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">json</span><span class="special">::</span><span class="identifier">value_from</span><span class="special">(</span><span class="identifier">c</span><span class="special">.</span><span class="identifier">id</span><span class="special">,</span> <span class="identifier">obj</span><span class="special">[</span><span class="string">"id"</span><span class="special">]);</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">json</span><span class="special">::</span><span class="identifier">value_from</span><span class="special">(</span><span class="identifier">c</span><span class="special">.</span><span class="identifier">name</span><span class="special">,</span> <span class="identifier">obj</span><span class="special">[</span><span class="string">"name"</span><span class="special">]);</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">json</span><span class="special">::</span><span class="identifier">value_from</span><span class="special">(</span><span class="identifier">c</span><span class="special">.</span><span class="identifier">late</span><span class="special">,</span> <span class="identifier">obj</span><span class="special">[</span><span class="string">"late"</span><span class="special">]);</span>
+<span class="special">}</span>
+
+<span class="special">}</span>
+</pre>
+<h5>
+<a name="json.dom.conversion.h5"></a>
+        <span class="phrase"><a name="json.dom.conversion.named_requirements_for_generic_c"></a></span><a class="link" href="conversion.html#json.dom.conversion.named_requirements_for_generic_c">Named Requirements
+        for Generic Conversions</a>
+      </h5>
+<p>
+        Each of the following tables specify valid operations on a type or expression
+        thereof meeting the requirement <span class="emphasis"><em>R</em></span>. A requirement <span class="emphasis"><em>Req</em></span>
+        prefixed with <span class="emphasis"><em>From/To</em></span> does not define a single requirement;
+        it defines the two requirements <span class="emphasis"><em>FromReq</em></span> and <span class="emphasis"><em>ToReq</em></span>
+        which correspond to <a class="link" href="../ref/boost__json__value_to.html" title="value_to"><code class="computeroutput"><span class="identifier">value_to</span></code></a> and <a class="link" href="../ref/boost__json__value_from.html" title="value_from"><code class="computeroutput"><span class="identifier">value_from</span></code></a>, respectively.
+      </p>
+<p>
+        In each of the following:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">T</span></code> is a type that satisfies
+            <span class="emphasis"><em>R</em></span>,
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">e</span></code> is an lvalue of type
+            <code class="computeroutput"><span class="identifier">T</span></code>,
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">has_value_trait</span></code> names
+            the template <a class="link" href="../ref/boost__json__has_value_to.html" title="has_value_to"><code class="computeroutput"><span class="identifier">has_value_to</span></code></a> (when <span class="emphasis"><em>R</em></span>
+            is prefixed with <span class="emphasis"><em>To</em></span>) or <a class="link" href="../ref/boost__json__has_value_from.html" title="has_value_from"><code class="computeroutput"><span class="identifier">has_value_from</span></code></a> (when <span class="emphasis"><em>R</em></span>
+            is prefixed with <span class="emphasis"><em>From</em></span>).
+          </li>
+<li class="listitem">
+            The namespace-scope declarations <code class="computeroutput"><span class="keyword">using</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">begin</span><span class="special">;</span></code>
+            and <code class="computeroutput"><span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">end</span><span class="special">;</span></code> precede the point at which the validity
+            and semantics of an expression is determined.
+          </li>
+</ul></div>
+<h3>
+<a name="json.dom.conversion.h6"></a>
+        <span class="phrase"><a name="json.dom.conversion.tuplelike_requirements"></a></span><a class="link" href="conversion.html#json.dom.conversion.tuplelike_requirements"><span class="emphasis"><em>TupleLike</em></span>
+        Requirements</a>
+      </h3>
+<div class="table">
+<a name="json.dom.conversion.valid_expressions"></a><p class="title"><b>Table 1.3. Valid expressions</b></p>
+<div class="table-contents"><table class="table" summary="Valid expressions">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Expression
+                </p>
+              </th>
+<th>
+                <p>
+                  Type
+                </p>
+              </th>
+<th>
+                <p>
+                  Semantics and Constraints
+                </p>
+              </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple_size</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">U</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="emphasis"><em>Constraints:</em></span> <code class="computeroutput"><span class="identifier">U</span><span class="special">::</span><span class="identifier">value</span></code>
+                  is greater than <code class="computeroutput"><span class="number">0</span></code>
+                </p>
+              </td>
+</tr></tbody>
+</table></div>
+</div>
+<br class="table-break"><h3>
+<a name="json.dom.conversion.h7"></a>
+        <span class="phrase"><a name="json.dom.conversion.stringlike_requirements"></a></span><a class="link" href="conversion.html#json.dom.conversion.stringlike_requirements"><span class="emphasis"><em>StringLike</em></span>
+        Requirements</a>
+      </h3>
+<div class="table">
+<a name="json.dom.conversion.valid_expressions0"></a><p class="title"><b>Table 1.4. Valid expressions</b></p>
+<div class="table-contents"><table class="table" summary="Valid expressions">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Expression
+                </p>
+              </th>
+<th>
+                <p>
+                  Type
+                </p>
+              </th>
+<th>
+                <p>
+                  Semantics and Constraints
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">is_constructible</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span>
+                  <span class="keyword">const</span> <span class="keyword">char</span><span class="special">*,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">&gt;</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">U</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="emphasis"><em>Constraints:</em></span> <code class="computeroutput"><span class="identifier">U</span><span class="special">::</span><span class="identifier">value</span></code>
+                  is <code class="computeroutput"><span class="keyword">true</span></code>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">e</span><span class="special">.</span><span class="identifier">data</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">pointer</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="emphasis"><em>Constraints:</em></span> <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">is_convertible</span><span class="special">&lt;</span><span class="identifier">pointer</span><span class="special">,</span> <span class="keyword">const</span>
+                  <span class="keyword">char</span><span class="special">*&gt;::</span><span class="identifier">value</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">e</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">size_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="emphasis"><em>Constraints:</em></span> <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">is_convertible</span><span class="special">&lt;</span><span class="identifier">size_type</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">&gt;::</span><span class="identifier">value</span></code>
+                  is <code class="computeroutput"><span class="keyword">true</span></code>
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><h3>
+<a name="json.dom.conversion.h8"></a>
+        <span class="phrase"><a name="json.dom.conversion.from_to_containerlike_requiremen"></a></span><a class="link" href="conversion.html#json.dom.conversion.from_to_containerlike_requiremen"><span class="emphasis"><em>From/To
+        ContainerLike</em></span> Requirements</a>
+      </h3>
+<div class="table">
+<a name="json.dom.conversion.valid_expressions1"></a><p class="title"><b>Table 1.5. Valid expressions</b></p>
+<div class="table-contents"><table class="table" summary="Valid expressions">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Expression
+                </p>
+              </th>
+<th>
+                <p>
+                  Type
+                </p>
+              </th>
+<th>
+                <p>
+                  Semantics and Constraints
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">T</span><span class="special">::</span><span class="identifier">value_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">value_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="emphasis"><em>Constraints:</em></span> <code class="computeroutput"><span class="identifier">has_value_trait</span><span class="special">&lt;</span><span class="identifier">value_type</span><span class="special">&gt;::</span><span class="identifier">value</span></code>
+                  is <code class="computeroutput"><span class="keyword">true</span></code>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">begin</span><span class="special">(</span><span class="identifier">e</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">iterator</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">end</span><span class="special">(</span><span class="identifier">e</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">iterator</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><h3>
+<a name="json.dom.conversion.h9"></a>
+        <span class="phrase"><a name="json.dom.conversion.from_to_maplike_requirements"></a></span><a class="link" href="conversion.html#json.dom.conversion.from_to_maplike_requirements"><span class="emphasis"><em>From/To
+        MapLike</em></span> Requirements</a>
+      </h3>
+<p>
+        In the following table <code class="computeroutput"><span class="identifier">vt</span></code>
+        is a prvalue of type <code class="computeroutput"><span class="identifier">T</span><span class="special">::</span><span class="identifier">value_type</span></code>.
+      </p>
+<div class="table">
+<a name="json.dom.conversion.valid_expressions2"></a><p class="title"><b>Table 1.6. Valid expressions</b></p>
+<div class="table-contents"><table class="table" summary="Valid expressions">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Expression
+                </p>
+              </th>
+<th>
+                <p>
+                  Type
+                </p>
+              </th>
+<th>
+                <p>
+                  Semantics and Constraints
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">begin</span><span class="special">(</span><span class="identifier">e</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">iterator</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">end</span><span class="special">(</span><span class="identifier">e</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">iterator</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">T</span><span class="special">::</span><span class="identifier">value_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">pair_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="emphasis"><em>Constraints:</em></span> <code class="computeroutput"><span class="identifier">pair_type</span></code>
+                  satisfies <span class="emphasis"><em>TupleLike</em></span> and <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple_size</span><span class="special">&lt;</span><span class="identifier">pair_type</span><span class="special">&gt;::</span><span class="identifier">value</span></code>
+                  is <code class="computeroutput"><span class="number">2</span></code>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple_element</span><span class="special">&lt;</span><span class="number">0</span><span class="special">,</span> <span class="identifier">pair_type</span><span class="special">&gt;::</span><span class="identifier">type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">key_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="emphasis"><em>Constraints for FromMapLike:</em></span> <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">is_convertible</span><span class="special">&lt;</span><span class="identifier">key_type</span><span class="special">,</span>
+                  <span class="identifier">string_view</span><span class="special">&gt;::</span><span class="identifier">value</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>
+                </p>
+                <p>
+                  <span class="emphasis"><em>Constraints for ToMapLike:</em></span> <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">is_constructible</span><span class="special">&lt;</span><span class="identifier">key_type</span><span class="special">,</span> <span class="identifier">string_view</span><span class="special">&gt;::</span><span class="identifier">value</span></code>
+                  is <code class="computeroutput"><span class="keyword">true</span></code>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple_element</span><span class="special">&lt;</span><span class="number">1</span><span class="special">,</span> <span class="identifier">pair_type</span><span class="special">&gt;::</span><span class="identifier">type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">value_type</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="emphasis"><em>Constraints:</em></span> <code class="computeroutput"><span class="identifier">has_value_trait</span><span class="special">&lt;</span><span class="identifier">value_type</span><span class="special">&gt;::</span><span class="identifier">value</span></code>
+                  is <code class="computeroutput"><span class="keyword">true</span></code>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">e</span><span class="special">.</span><span class="identifier">emplace</span><span class="special">(</span><span class="identifier">vt</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">U</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="emphasis"><em>Constraints:</em></span> <code class="computeroutput"><span class="identifier">U</span></code>
+                  satisfies <span class="emphasis"><em>TupleLike</em></span>
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Vinnie Falco<br>Copyright © 2020 Krystian Stasiowski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="numbers.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../dom.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="initializer_lists.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

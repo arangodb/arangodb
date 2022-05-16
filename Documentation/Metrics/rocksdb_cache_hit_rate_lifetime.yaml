@@ -1,7 +1,7 @@
 name: rocksdb_cache_hit_rate_lifetime
 introducedIn: "3.6.1"
 help: |
-  Lifetime hit rate of the ArangoDB cache in front of RocksDB
+  Lifetime hit rate of the ArangoDB cache in front of RocksDB.
 unit: ratio
 type: gauge
 category: RocksDB

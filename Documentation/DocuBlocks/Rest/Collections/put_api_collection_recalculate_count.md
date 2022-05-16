@@ -16,8 +16,6 @@ It returns an object with the attributes
 
 - *result*: will be *true* if recalculating the document count succeeded.
 
-**Note**: this method is specific for the RocksDB storage engine
-
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}

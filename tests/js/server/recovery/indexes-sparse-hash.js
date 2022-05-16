@@ -37,29 +37,35 @@ function runSetup () {
   internal.debugClearFailAt();
 
   db._drop('UnitTestsRecovery1');
-  var c = db._create('UnitTestsRecovery1'), i;
-  c.ensureHashIndex('value', { sparse: true });
+  let c = db._create('UnitTestsRecovery1');
+  c.ensureIndex({ type: "hash", fields: ["value"], sparse: true });
 
-  for (i = 0; i < 1000; ++i) {
-    c.save({ value: i });
+  let docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ value: i });
   }
+  c.insert(docs);
 
   db._drop('UnitTestsRecovery2');
   c = db._create('UnitTestsRecovery2');
-  c.ensureUniqueConstraint('a.value', { sparse: true });
+  c.ensureIndex({ type: "hash", fields: ["a.value"], unique: true, sparse: true });
 
-  for (i = 0; i < 1000; ++i) {
-    c.save({ a: { value: i } });
+  docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ a: { value: i } });
   }
+  c.insert(docs);
 
   db._drop('UnitTestsRecovery3');
   c = db._create('UnitTestsRecovery3');
-  c.ensureHashIndex('a', 'b', { sparse: true });
+  c.ensureIndex({ type: "hash", fields: ["a", "b"], sparse: true });
 
-  for (i = 0; i < 500; ++i) {
-    c.save({ a: (i % 2) + 1, b: 1 });
-    c.save({ a: (i % 2) + 1, b: 2 });
+  docs = [];
+  for (let i = 0; i < 500; ++i) {
+    docs.push({ a: (i % 2) + 1, b: 1 });
+    docs.push({ a: (i % 2) + 1, b: 2 });
   }
+  c.insert(docs);
 
   db._drop('test');
   c = db._create('test');

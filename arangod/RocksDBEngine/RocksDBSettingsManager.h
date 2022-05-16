@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,15 +26,17 @@
 
 #include <rocksdb/types.h>
 #include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
-#include "Basics/Result.h"
+#include "Basics/ResultT.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+
 #include <atomic>
+#include <cstdint>
+#include <mutex>
 
 namespace rocksdb {
 class DB;
@@ -44,18 +46,19 @@ class Transaction;
 namespace arangodb {
 
 class RocksDBSettingsManager {
-  friend class RocksDBEngine;
-
+ public:
   /// Constructor needs to be called synchronously,
   /// will load counts from the db and scan the WAL
   explicit RocksDBSettingsManager(RocksDBEngine& engine);
 
- public:
   /// Retrieve initial settings values from database on engine startup
   void retrieveInitialValues();
 
-  /// Thread-Safe force sync
-  Result sync(bool force);
+  /// Thread-Safe force sync. The returned boolean value will contain
+  /// true iff the latest tick values were written out successfully. If
+  /// force is false and nothing needs to be done, then it is possible that
+  /// a value of false is returned.
+  ResultT<bool> sync(bool force);
 
   // Earliest sequence number needed for recovery (don't throw out newer WALs)
   rocksdb::SequenceNumber earliestSeqNeeded() const;
@@ -63,19 +66,21 @@ class RocksDBSettingsManager {
  private:
   void loadSettings();
 
-  bool lockForSync(bool force);
-
- private:
   RocksDBEngine& _engine;
 
-  /// @brief a reusable builder, used inside sync() to serialize objects
+  /// @brief a reusable builder, used inside sync() to serialize objects.
+  /// implicitly protected by _syncingMutex.
   arangodb::velocypack::Builder _tmpBuilder;
+
+  /// @brief a reusable string object used for serialization.
+  /// implicitly protected by _syncingMutex.
+  std::string _scratch;
 
   /// @brief last sync sequence number
   std::atomic<rocksdb::SequenceNumber> _lastSync;
 
   /// @brief currently syncing
-  std::atomic<bool> _syncing;
+  std::mutex _syncingMutex;
 
   /// @brief rocksdb instance
   rocksdb::DB* _db;
@@ -83,4 +88,3 @@ class RocksDBSettingsManager {
   TRI_voc_tick_t _initialReleasedTick;
 };
 }  // namespace arangodb
-

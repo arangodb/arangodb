@@ -1,0 +1,9 @@
+[submodule "iresearch"]
+	path = 3rdParty/iresearch
+	url = https://github.com/iresearch-toolkit/iresearch.git
+[submodule "velocypack"]
+	path = 3rdParty/velocypack
+	url = https://github.com/arangodb/velocypack.git
+[submodule "3rdParty/fmt"]
+	path = 3rdParty/fmt
+	url = https://github.com/fmtlib/fmt

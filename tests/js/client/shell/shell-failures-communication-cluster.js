@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 400 */
-/*global fail, assertEqual, assertTrue, assertFalse, print */
+/*global fail, assertEqual, assertTrue, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure scenarios
@@ -67,13 +67,11 @@ function shellCommunicationsFailureSuite () {
       let id = res.headers["x-arango-async-id"];
       let inq = db._connection.PUT_RAW("/_api/job/" + id, {});
       // The leader refuses to write with 421, we are in retry loop on coordinator.
-      print("Expecting delay with 204:", inq);
       assertEqual(204, inq.code);
       assertFalse(inq.error);
       internal.wait(2.0);
       inq = db._connection.PUT_RAW("/_api/job/" + id, {});
       // The leader still refuses to write with 421, we are in retry loop on coordinator.
-      print("Expecting delay with 204:", inq);
       assertEqual(204, inq.code);
       assertFalse(inq.error);
       // Allow the leader to write
@@ -82,7 +80,6 @@ function shellCommunicationsFailureSuite () {
       while (new Date() - startTime < 10000) {
         // Eventually the write will succeed
         inq = db._connection.PUT_RAW("/_api/job/" + id, {});
-        print("Expecting delay with 204 followed by 202:", inq);
         if (inq.code !== 204) {
           break;
         }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,17 +25,27 @@
 
 #include <rocksdb/iterator.h>
 #include <rocksdb/options.h>
-#include <rocksdb/snapshot.h>
+#include <rocksdb/slice.h>
 
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "StorageEngine/ReplicationIterator.h"
+#include "VocBase/Identifiers/RevisionId.h"
+
+namespace rocksdb {
+class Snaspshot;
+}
 
 namespace arangodb {
+namespace transaction {
+class Methods;
+}
+
 class LogicalCollection;
 
 class RocksDBRevisionReplicationIterator : public RevisionReplicationIterator {
  public:
-  RocksDBRevisionReplicationIterator(LogicalCollection&, rocksdb::Snapshot const*);
+  RocksDBRevisionReplicationIterator(LogicalCollection&,
+                                     rocksdb::Snapshot const*);
   RocksDBRevisionReplicationIterator(LogicalCollection&, transaction::Methods&);
 
   virtual bool hasMore() const override;
@@ -49,8 +59,8 @@ class RocksDBRevisionReplicationIterator : public RevisionReplicationIterator {
 
  private:
   std::unique_ptr<rocksdb::Iterator> _iter;
-  rocksdb::ReadOptions _readOptions;
-  RocksDBKeyBounds _bounds;
+  RocksDBKeyBounds const _bounds;
+  rocksdb::Slice const _rangeBound;
   rocksdb::Comparator const* _cmp;
 };
 

@@ -1,0 +1,18 @@
+[
+  {
+    "key": "sort",
+    "name": "Sort",
+    "authors": [
+      "Steven Ross"
+    ],
+    "maintainers": [
+      "Steven Ross <spreadsort -at- gmail.com>"
+    ],
+    "description":
+      "High-performance templated sort functions.",
+    "category": [
+      "Algorithms"
+    ],
+    "cxxstd": "03"
+  }
+]

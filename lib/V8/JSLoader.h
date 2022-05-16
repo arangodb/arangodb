@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -56,7 +56,7 @@ class JSLoader : public ScriptLoader {
   //////////////////////////////////////////////////////////////////////////////
 
   JSLoader::eState loadScript(v8::Isolate* isolate, v8::Handle<v8::Context>&,
-                              std::string const& name, velocypack::Builder* builder);
+                              std::string const& name,
+                              velocypack::Builder* builder);
 };
 }  // namespace arangodb
-

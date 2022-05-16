@@ -22,8 +22,7 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef UNITTESTS_CACHE_TRANSACTIONAL_STORE_H
-#define UNITTESTS_CACHE_TRANSACTIONAL_STORE_H
+#pragma once
 
 #include <chrono>
 
@@ -90,5 +89,3 @@ class TransactionalStore {
 
 };  // end namespace cache
 };  // end namespace arangodb
-
-#endif

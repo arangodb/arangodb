@@ -170,6 +170,73 @@ const impTodos = [{
   convert: false,
   backslash: true
 }, {
+  id: 'csvtypesboolean',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-types.csv')),
+  coll: 'UnitTestsImportCsvTypesBoolean',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: false,
+  datatype: "value=boolean",
+}, {
+  id: 'csvtypesnumber',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-types.csv')),
+  coll: 'UnitTestsImportCsvTypesNumber',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: false,
+  datatype: "value=number",
+}, {
+  id: 'csvtypesstring',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-types.csv')),
+  coll: 'UnitTestsImportCsvTypesString',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: false,
+  datatype: "value=string",
+}, {
+  id: 'csvtypesprecedence',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-types.csv')),
+  coll: 'UnitTestsImportCsvTypesPrecedence',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: true,
+  datatype: "value=string",
+}, {
+  id: 'csvmergeattributes',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
+  coll: 'UnitTestsImportCsvMergeAttributes',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: true,
+  datatype: "value=string",
+  mergeAttributes: ["Id=[id]", "IdAndValue=[id]:[value]", "ValueAndId=value:[value]/id:[id]", "_key=[id][value]", "newAttr=[_key]"],
+}, {
+  id: 'csvmergeattributesInvalid',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
+  coll: 'UnitTestsImportCsvMergeAttributesInvalid',
+  type: 'csv',
+  mergeAttributes: ["Id=[]"],
+  expectFailure: true,
+}, {
+  id: 'csvmergeattributesInvalid2',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
+  coll: 'UnitTestsImportCsvMergeAttributesInvalid2',
+  type: 'csv',
+  mergeAttributes: ["idAndValue=[id[value]"],
+  expectFailure: true,
+}, {
+  id: 'csvmergeattributesInvalid3',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
+  coll: 'UnitTestsImportCsvMergeAttributesInvalid3',
+  type: 'csv',
+  mergeAttributes: ["idAndValue=[idAndValue]"],
+  expectFailure: true,
+}, {
   id: 'csvnoeol',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-noeol.csv')),
   coll: 'UnitTestsImportCsvNoEol',
@@ -250,75 +317,145 @@ const impTodos = [{
   create: 'true',
   database: 'UnitTestImportCreateDatabase',
   createDatabase: 'true'
+}, {
+  id: 'importUnicode1',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
+  coll: 'UnitTestsImportJson1',
+  type: 'json',
+  create: 'true',
+  database: 'maçã',
+}, {
+  id: 'importUnicode2',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
+  coll: 'UnitTestsImportJson1',
+  type: 'json',
+  create: 'true',
+  database: '😀',
+}, {
+  id: 'createUnicode1',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
+  coll: 'UnitTestsImportJson1',
+  type: 'json',
+  create: 'true',
+  database: 'ﻚﻠﺑ ﻞﻄﻴﻓ',
+  createDatabase: 'true'
+}, {
+  id: 'createUnicode2',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-1.json')),
+  coll: 'UnitTestsImportJson1',
+  type: 'json',
+  create: 'true',
+  database: 'abc mötor !" \' & <>',
+  createDatabase: 'true'
+}, {
+  id: 'importDataBatchSizeWithoutHeaderFile',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-data-with-header.csv')),
+  coll: 'UnitTestsImportDataBatchSizeWithoutHeaderFile',
+  type: 'csv',
+  create: 'true',
+  batchSize: 10,
+}, {
+  id: 'importDataBatchSizeWithoutHeaderFile2',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-data-with-header.csv')),
+  coll: 'UnitTestsImportDataBatchSizeWithoutHeaderFile2',
+  type: 'csv',
+  create: 'true',
+  batchSize: 1000
+}, {
+  id: 'importDataBatchSizeWithHeaderFile',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-data-without-headers.csv')),
+  headers: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-headers.csv')),
+  coll: 'UnitTestsImportDataBatchSizeWithHeaderFile',
+  type: 'csv',
+  create: 'true',
+  batchSize: 10,
+}, {
+  id: 'importDataBatchSizeWithHeaderFile2',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-data-without-headers.csv')),
+  headers: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-headers.csv')),
+  coll: 'UnitTestsImportDataBatchSizeWithHeaderFile2',
+  type: 'csv',
+  create: 'true',
+  batchSize: 1000
 }];
 
-function importing (options) {
-  let instanceInfo = pu.startInstance('tcp', options, {}, 'importing');
-
-  if (instanceInfo === false) {
-    return {
-      'failed': 1,
-      'importing': {
-        failed: 1,
-        status: false,
-        message: 'failed to start server!'
-      }
-    };
+class importRunner extends tu.runInArangoshRunner {
+  constructor(options, testname, ...optionalArgs) {
+    super(options, testname, ...optionalArgs);
+    this.info = "runImport";
   }
+  
+  run() {
+    this.instanceInfo = pu.startInstance('tcp', this.options, {}, 'importing');
 
-  let result = { failed: 0 };
-
-  try {
-    result.setup = tu.runInArangosh(
-      options,
-      instanceInfo,
-      tu.makePathUnix(fs.join(testPaths.importing[0],'import-setup.js')));
-
-    result.setup.failed = 0;
-    if (result.setup.status !== true) {
-      result.setup.failed = 1;
-      result.failed += 1;
-      throw new Error('cannot start import setup');
+    if (this.instanceInfo === false) {
+      return {
+        'failed': 1,
+        'importing': {
+          failed: 1,
+          status: false,
+          message: 'failed to start server!'
+        }
+      };
     }
 
-    for (let i = 0; i < impTodos.length; i++) {
-      const impTodo = impTodos[i];
+    let result = { failed: 0 };
 
-      result[impTodo.id] = pu.run.arangoImport(options, instanceInfo, impTodo, options.coreCheck);
-      result[impTodo.id].failed = 0;
+    try {
+      result.setup = this.runOneTest(tu.makePathUnix(fs.join(testPaths.importing[0],'import-setup.js')));
 
-      if (result[impTodo.id].status !== true && !options.force) {
-        result[impTodo.id].failed = 1;
+      result.setup.failed = 0;
+      if (result.setup.status !== true) {
+        result.setup.failed = 1;
         result.failed += 1;
-        throw new Error('cannot run import');
+        throw new Error('cannot start import setup');
       }
+
+      for (let i = 0; i < impTodos.length; i++) {
+        const impTodo = impTodos[i];
+        let cfg = pu.createBaseConfig('import', this.options, this.instanceInfo);
+        cfg.setWhatToImport(impTodo);
+        cfg.setEndpoint(this.instanceInfo.endpoint);
+        result[impTodo.id] = pu.run.arangoImport(cfg, this.options, this.instanceInfo.rootDir, this.options.coreCheck);
+        result[impTodo.id].failed = 0;
+
+        if (impTodo.expectFailure) {
+          // if status === false, we make true out of it
+          // if status === true, we make false out of it
+          result[impTodo.id].status = !result[impTodo.id].status;
+        }
+
+        if (result[impTodo.id].status !== true && !this.options.force) {
+          result[impTodo.id].failed = 1;
+          result.failed += 1;
+          throw new Error('cannot run import');
+        }
+      }
+
+      result.check = this.runOneTest(tu.makePathUnix(fs.join(testPaths.importing[0], 'import.js')));
+
+      result.check.failed = result.check.success ? 0 : 1;
+
+      result.teardown = this.runOneTest(tu.makePathUnix(fs.join(testPaths.importing[0], 'import-teardown.js')));
+
+      result.teardown.failed = result.teardown.success ? 0 : 1;
+    } catch (exception) {
+      result['run'] = {
+        'failed': 1,
+        'message': 'An exception of the following form was caught: ' + exception + "\n" + exception.stack
+      };
+      print('An exception of the following form was caught: ',
+            exception);
     }
-
-    result.check = tu.runInArangosh(
-      options,
-      instanceInfo,
-      tu.makePathUnix(fs.join(testPaths.importing[0], 'import.js')));
-
-    result.check.failed = result.check.success ? 0 : 1;
-
-    result.teardown = tu.runInArangosh(
-      options,
-      instanceInfo,
-      tu.makePathUnix(fs.join(testPaths.importing[0], 'import-teardown.js')));
-
-    result.teardown.failed = result.teardown.success ? 0 : 1;
-  } catch (banana) {
-    print('An exceptions of the following form was caught:',
-          yaml.safeDump(banana));
+    print('Shutting down...');
+    result['shutdown'] = pu.shutdownInstance(this.instanceInfo, this.options);
+    print('done.');
+    return result;
   }
-
-  print('Shutting down...');
-  result['shutdown'] = pu.shutdownInstance(instanceInfo, options);
-  print('done.');
-
-  return result;
 }
-
+function importing (options) {
+  return new importRunner(options, "importing").run();
+}
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['importing'] = importing;

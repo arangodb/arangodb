@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 #include "Basics/signals.h"
 #include "Basics/operating-system.h"
 
+#include <atomic>
 #ifdef TRI_HAVE_SIGNAL_H
 #include <signal.h>
 #endif
@@ -32,12 +33,11 @@
 #endif
 #include <sys/types.h>
 
-namespace arangodb {
-namespace signals {
+namespace arangodb::signals {
 
 #ifndef _WIN32
 /// @brief find out what impact a signal will have to the process we send it.
-SignalType signalType(int signal) {
+SignalType signalType(int signal) noexcept {
   // Some platforms don't have these. To keep our table clean
   // we just define them here:
 #ifndef SIGPOLL
@@ -55,9 +55,10 @@ SignalType signalType(int signal) {
   switch (signal) {
     case SIGHUP:  //    1       Term    Hangup detected on controlling terminal
       return SignalType::logrotate;  // or death of controlling process
-                         //                 we say this is non-deadly since we
-                         //                 should do a logrotate.
-    case SIGINT:         //    2       Term    Interrupt from keyboard
+                                     //                 we say this is
+                                     //                 non-deadly since we
+                                     //                 should do a logrotate.
+    case SIGINT:  //    2       Term    Interrupt from keyboard
       return SignalType::term;
     case SIGQUIT:  //    3       Core    Quit from keyboard
     case SIGILL:   //    4       Core    Illegal Instruction
@@ -84,9 +85,9 @@ SignalType signalType(int signal) {
       return SignalType::stop;
     case SIGBUS:  //  10,7,10   Core    Bus error (bad memory access)
       return SignalType::core;
-    case SIGPOLL:   //            Term    Pollable event (Sys V).
-      return SignalType::term; //         Synonym for SIGIO
-    case SIGPROF:   //  27,27,29  Term    Profiling timer expired
+    case SIGPOLL:               //            Term    Pollable event (Sys V).
+      return SignalType::term;  //         Synonym for SIGIO
+    case SIGPROF:               //  27,27,29  Term    Profiling timer expired
       return SignalType::term;
     case SIGSYS:   //  12,31,12  Core    Bad system call (SVr4);
                    //                     see also seccomp(2)
@@ -104,8 +105,9 @@ SignalType signalType(int signal) {
       return SignalType::core;
       // case SIGEMT:    //   7,-,7    Term    Emulator trap
     case SIGSTKFLT:  //   -,16,-   Term    Stack fault on coprocessor (unused)
-                     // case SIGIO:     //  23,29,22  Term    I/O now possible (4.2BSD)
-    case SIGPWR:  //  29,30,19  Term    Power failure (System V)
+                     // case SIGIO:     //  23,29,22  Term    I/O now possible
+                     // (4.2BSD)
+    case SIGPWR:     //  29,30,19  Term    Power failure (System V)
                   // case SIGINFO:   //   29,-,-           A synonym for SIGPWR
       // case SIGLOST:   //   -,-,-    Term    File lock lost (unused)
       return SignalType::term;
@@ -122,7 +124,7 @@ SignalType signalType(int signal) {
 #endif
 
 /// @brief whether or not the signal is deadly
-bool isDeadly(int signal) {
+bool isDeadly(int signal) noexcept {
 #ifndef _WIN32
   switch (signalType(signal)) {
     case SignalType::term:
@@ -146,7 +148,7 @@ bool isDeadly(int signal) {
 }
 
 /// @brief return the name for a signal
-char const* name(int signal) {
+std::string_view name(int signal) noexcept {
   if (signal >= 128) {
     signal -= 128;
   }
@@ -212,7 +214,9 @@ char const* name(int signal) {
   }
 }
 
-void maskAllSignals() {
+std::atomic<bool> isServer = true;
+
+void maskAllSignalsServer() {
 #ifdef TRI_HAVE_POSIX_THREADS
   sigset_t all;
   sigfillset(&all);
@@ -225,6 +229,29 @@ void maskAllSignals() {
 #endif
 }
 
+void maskAllSignalsClient() {
+  isServer.store(false);
+#ifdef TRI_HAVE_POSIX_THREADS
+  sigset_t all;
+  sigfillset(&all);
+  sigdelset(&all, SIGSEGV);
+  sigdelset(&all, SIGBUS);
+  sigdelset(&all, SIGILL);
+  sigdelset(&all, SIGFPE);
+  sigdelset(&all, SIGABRT);
+  sigdelset(&all, SIGINT);
+  pthread_sigmask(SIG_SETMASK, &all, nullptr);
+#endif
+}
+
+void maskAllSignals() {
+  if (isServer.load()) {
+    maskAllSignalsServer();
+  } else {
+    maskAllSignalsClient();
+  }
+}
+
 void unmaskAllSignals() {
 #ifdef TRI_HAVE_POSIX_THREADS
   sigset_t all;
@@ -233,5 +260,4 @@ void unmaskAllSignals() {
 #endif
 }
 
-}  // namespace signals
-}  // namespace arangodb
+}  // namespace arangodb::signals

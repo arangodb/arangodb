@@ -1,0 +1,32 @@
+[/============================================================================
+  Boost.Geometry (aka GGL, Generic Geometry Library)
+
+  Copyright (c) 2014, Oracle and/or its affiliates.
+
+  Contributed and/or modified by Menelaos Karavelas, on behalf of Oracle
+
+  Licensed under the Boost Software License version 1.0.
+  http://www.boost.org/users/license.html
+=============================================================================/]
+
+[def __this_function__ num_segments]
+
+[heading_conformance_no_ogc __this_function__]
+
+[heading Behavior]
+[table
+[[Case] [Behavior] ]
+[[__0dim__][[qbk_ret 0]]]
+[[__segment__][[qbk_ret 1]]]
+[[__box__][[qbk_ret d * 2^(d-1), where d is the dimension of the box]]]
+[[__range__][[qbk_ret boost::size(geometry) - 1]]]
+[[__other__][[qbk_ret the sum of the number of segments of its elements]]]
+]
+
+
+[heading Complexity]
+Constant or Linear
+
+[heading Examples]
+[num_segments]
+[num_segments_output]

@@ -1,0 +1,355 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE library PUBLIC "-//Boost//DTD BoostBook XML V1.1//EN"
+"http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<library dirname="safe_numerics" id="safe_numerics" last-revision="$Date"
+         name="Safe Numerics">
+  <title>Safe Numerics</title>
+
+  <libraryinfo last-revision="January 29, 2015">
+    <author>
+      <firstname>Robert</firstname>
+
+      <surname>Ramey</surname>
+    </author>
+
+    <copyright>
+      <year>2012-2021</year>
+
+      <holder>Robert Ramey</holder>
+    </copyright>
+
+    <legalnotice>
+      <para><ulink url="http://www.boost.org/LICENSE_1_0.txt">Subject to Boost
+      Software License</ulink></para>
+    </legalnotice>
+
+    <librarypurpose>Safe integer operations</librarypurpose>
+
+    <librarycategory name="Numerics">Numerics</librarycategory>
+  </libraryinfo>
+
+  <xi:include href="safe_introduction.xml" xpointer="element(/1)"
+              xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+  <xi:include href="tutorial.xml" xpointer="element(/1)"
+              xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+  <xi:include href="eliminate_runtime_penalty.xml" xpointer="element(/1)"
+              xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+  <section id="safe_numerics.case_studies">
+    <title>Case Studies</title>
+
+    <xi:include href="rational.xml" xpointer="element(/1)"
+                xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+    <xi:include href="motor.xml" xpointer="element(/1)"
+                xmlns:xi="http://www.w3.org/2001/XInclude"/>
+  </section>
+
+  <xi:include href="notes.xml" xpointer="element(/1)"
+              xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+  <section id="safe_numerics.concepts">
+    <title>Type Requirements</title>
+
+    <xi:include href="numeric_concept.xml" xpointer="element(/1)"
+                xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+    <xi:include href="integer_concept.xml" xpointer="element(/1)"
+                xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+    <xi:include href="promotion_policy_concept.xml" xpointer="element(/1)"
+                xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+    <xi:include href="exception_policy_concept.xml" xpointer="element(/1)"
+                xmlns:xi="http://www.w3.org/2001/XInclude"/>
+  </section>
+
+  <section id="safe_numerics.types">
+    <title>Types</title>
+
+    <xi:include href="safe.xml" xpointer="element(/1)"
+                xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+    <xi:include href="safe_range.xml" xpointer="element(/1)"
+                xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+    <xi:include href="safe_literal.xml" xpointer="element(/1)"
+                xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+    <xi:include href="exception.xml" xpointer="element(/1)"
+                xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+    <xi:include href="exception_policy.xml" xpointer="element(/1)"
+                xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+    <section id="safe_numerics.promotion_policies">
+      <title>Promotion Policies</title>
+
+      <xi:include href="native.xml" xpointer="element(/1)"
+                  xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+      <xi:include href="automatic.xml" xpointer="element(/1)"
+                  xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+      <xi:include href="cpp.xml" xpointer="element(/1)"
+                  xmlns:xi="http://www.w3.org/2001/XInclude"/>
+    </section>
+  </section>
+
+  <section id="safe_numerics.exception_safety">
+    <title>Exception Safety</title>
+
+    <para>All operations in this library are exception safe and meet the
+    strong guarantee.</para>
+  </section>
+
+  <section id="safe_numerics.library_implementation">
+    <title>Library Implementation</title>
+
+    <para>This library should compile and run correctly on any conforming
+    C++14 compiler.</para>
+
+    <para>The Safe Numerics library is implemented in terms of some more
+    fundamental software components described here. It is not necessary to
+    know about these components to use the library. This information has been
+    included to help those who want to understand how the library works so
+    they can extend it, correct bugs in it, or understand its limitations.
+    These components are also interesting and likely useful in their own
+    right. For all these reasons, they are documented here.</para>
+
+    <para>In general terms, the library works in the following manner:</para>
+
+    <para>At compile time:</para>
+
+    <itemizedlist>
+      <listitem>
+        <para>The library defines "safe" versions of C++ primitive arithmetic
+        types such as <code>int</code>, <code>unsigned int</code>, etc.</para>
+      </listitem>
+
+      <listitem>
+        <para>Arithmetic operators are defined for these "safe" types. These
+        operators are enhanced versions of the standard C/C++ implementations.
+        These operators are declared and implemented in the files "<ulink
+        url="../../include/boost/safe_numerics/safe_base.hpp">safe_base.hpp</ulink>"
+        and "<ulink
+        url="../../include/boost/safe_numerics/safe_base_operations.hpp">safe_base_operations.hpp</ulink>".</para>
+      </listitem>
+
+      <listitem>
+        <para>For binary operators, verify that both operands have the same
+        promotion and and exception handling policies. If they don't, invoke
+        compilation error.</para>
+      </listitem>
+
+      <listitem>
+        <para>Invoke the promotion policy to determine the result type R of
+        the operation.</para>
+      </listitem>
+
+      <listitem>
+        <para>For each operand of type T retrieve the range of values from
+        <code>std::numeric_limits&lt;T&gt;::min()</code> and
+        <code>std::numeric_limits&lt;T&gt;::max()</code>. A range is a pair of
+        values representing a closed interval with a minimum and maximum
+        value.</para>
+      </listitem>
+
+      <listitem>
+        <para>These ranges are cast to equivalent values of the result type,
+        R. It's possible that values cannot be cast to the result type so the
+        result of the cast is returned as a variant type, <link
+        linkend="safenumerics.checked_result"><code>checked_result&lt;R&gt;</code></link>.
+        <link
+        linkend="safenumerics.checked_result"><code>checked_result&lt;R&gt;</code></link>
+        may hold either a value of type R or a <link
+        linkend="safe_numerics.safe_numerics_error"><code>safe_numerics_error</code></link>
+        value indicating why the cast could not be accomplished. Ranges are
+        represented as a pair of values of the type <link
+        linkend="safenumerics.checked_result"><code>checked_result&lt;R&gt;</code></link>.</para>
+      </listitem>
+
+      <listitem>
+        <para><link
+        linkend="safenumerics.checked_result"><code>checked_result&lt;R&gt;</code></link>
+        can be considered enhanced versions of the underlying type R.
+        Operations which are legal on values of type R such as +, -, ... are
+        also legal on values of <link
+        linkend="safenumerics.checked_result"><code>checked_result&lt;R&gt;</code></link>.
+        The difference is that the latter can record operation failures and
+        propagate such failures to subsequent operations.<link
+        linkend="safenumerics.checked_result"><code>checked_result&lt;R&gt;</code></link>
+        is implemented in the header file "<ulink
+        url="../../include/boost/safe_numerics/checked_result.hpp">checked_result.hpp</ulink>".
+        Operations on such types are implemented in "<ulink
+        url="../../include/boost/safe_numerics/checked_result_operations.hpp">checked_result_operations.hpp</ulink>".</para>
+      </listitem>
+
+      <listitem>
+        <para>Given the ranges of the operands, determine the range of the
+        result of the operation using compile-time interval arithmetic. The
+        <code>constexpr</code> facility of C++14 permits the range of the
+        result to be calculated at compile time. Interval arithmetic is
+        implemented in the header file "<ulink
+        url="../../include/boost/safe_numerics/interval.hpp">interval.hpp</ulink>".
+        The range of the result is also represented as a pair of values of the
+        type <link
+        linkend="safenumerics.checked_result"><code>checked_result&lt;R&gt;</code></link>.</para>
+      </listitem>
+
+      <listitem>
+        <para>Operations on primitives are implemented via free standing
+        functions described as <link
+        linkend="safe_numerics.checked_arithmetic">checked arithmetic</link>.
+        These operations will return instances of <link
+        linkend="safenumerics.checked_result"><code>checked_result&lt;R&gt;</code></link>
+        .</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>At run time:</para>
+
+    <itemizedlist>
+      <listitem>
+        <para>If the range of the result type includes only arithmetically
+        valid values, the operation is guaranteed to produce an arithmetically
+        correct result and no runtime checking is necessary. The operation
+        invokes the original built-in C/C++ operation and returns the result
+        value.</para>
+      </listitem>
+
+      <listitem>
+        <para>Otherwise, operands are cast to the result type, R, according to
+        the selected promotion policy. These "checked" cast operations return
+        values of type <link
+        linkend="safenumerics.checked_result"><code>checked_result&lt;R&gt;</code></link>.</para>
+      </listitem>
+
+      <listitem>
+        <para>If either of the casting operations fails, an exception is
+        handled in accordance with the exception policy.</para>
+      </listitem>
+
+      <listitem>
+        <para>Otherwise, the operation is performed using "<link
+        linkend="safe_numerics.checked_arithmetic">checked arithmetic</link>".
+        These free functions mirror the normal operators +, -, *, ... except
+        that rather than returning values of type R, they return values of the
+        type <link
+        linkend="safenumerics.checked_result"><code>checked_result&lt;R&gt;</code></link>.
+        They are defined in files "<ulink
+        url="../../include/boost/safe_numerics/checked_default.hpp">checked_default.hpp</ulink>",
+        "<ulink
+        url="../../include/boost/safe_numerics/checked_integer.hpp">checked_integer.hpp</ulink>"
+        ,"<ulink
+        url="../../include/boost/safe_numerics/checked_float.hpp">checked_float.hpp</ulink>".</para>
+      </listitem>
+
+      <listitem>
+        <para>If the operation is not successful, the designated exception
+        policy function is invoked.</para>
+      </listitem>
+
+      <listitem>
+        <para>Otherwise, the result value is returned as a
+        <code>safe&lt;R&gt;</code> type with the above calculated result
+        range.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para>The following components realize the design described here.</para>
+
+    <xi:include href="checked_result.xml" xpointer="element(/1)"
+                xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+    <xi:include href="checked.xml" xpointer="element(/1)"
+                xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+    <xi:include href="interval.xml" xpointer="element(/1)"
+                xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+    <xi:include href="safe_compare.xml" xpointer="element(/1)"
+                xmlns:xi="http://www.w3.org/2001/XInclude"/>
+  </section>
+
+  <section id="safe_numerics.performance_tests">
+    <title>Performance Tests</title>
+
+    <para>Our goal is to create facilities which make it possible to write
+    programs known to be correct. But we also want programmers to actually use
+    the facilities we provide here. This won't happen if using these
+    facilities impacts performance to a significant degree. Although we've
+    taken precautions to avoid doing this, the only real way to know is to
+    create and run some tests.</para>
+
+    <para>So far we've only run one explicit performance test -
+    <filename><ulink
+    url="../../test/test_performance.cpp">test_performance.cpp</ulink></filename>.
+    This runs a test from the Boost Multiprecision library to count prime
+    numbers and makes extensive usage of integer arithmetic. We've run the
+    tests with <code>unsigned</code> integers and with
+    <code>safe&lt;unsigned&gt;</code> on two different compilers.. No other
+    change was made to the program. We list the results without further
+    comment.</para>
+
+    <screen>g++ (GCC) 6.2.0
+Testing type unsigned:
+time = 17.6215
+count = 1857858
+Testing type safe&lt;unsigned&gt;:
+time = 22.4226
+count = 1857858
+
+clang-802.0.41
+Testing type unsigned:
+time = 16.9174
+count = 1857858
+Testing type safe&lt;unsigned&gt;:
+time = 36.5166
+count = 1857858
+</screen>
+  </section>
+
+  <xi:include href="faq.xml" xpointer="element(/1)"
+              xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+  <xi:include href="pending.xml" xpointer="element(/1)"
+              xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+  <xi:include href="acknowledgements.xml" xpointer="element(/1)"
+              xmlns:xi="http://www.w3.org/2001/XInclude"/>
+
+  <section id="safe_numerics.change_log">
+    <title>Release Log</title>
+
+    <para>This is the third version.</para>
+
+    <para><revhistory>
+        <revision>
+          <revnumber>1.69</revnumber>
+
+          <date>29 September 2018</date>
+
+          <revdescription>
+            <para>First Boost Release</para>
+          </revdescription>
+        </revision>
+
+        <revision>
+          <revnumber>1.70</revnumber>
+
+          <date>9 March 2019</date>
+
+          <revdescription>
+            <para>Fixed Exception Policies for <code>trap</code> and
+            <code>ignore</code>.</para>
+          </revdescription>
+        </revision>
+      </revhistory></para>
+  </section>
+
+  <xi:include href="bibliography.xml" xpointer="element(/1)"
+              xmlns:xi="http://www.w3.org/2001/XInclude"/>
+</library>

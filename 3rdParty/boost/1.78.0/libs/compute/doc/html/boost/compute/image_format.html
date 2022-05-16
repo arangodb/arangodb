@@ -1,0 +1,129 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Class image_format</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Compute">
+<link rel="up" href="../../boost_compute/reference.html#header.boost.compute.image.image_format_hpp" title="Header &lt;boost/compute/image/image_format.hpp&gt;">
+<link rel="prev" href="image3d.html" title="Class image3d">
+<link rel="next" href="image_object.html" title="Class image_object">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="image3d.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_compute/reference.html#header.boost.compute.image.image_format_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="image_object.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.compute.image_format"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class image_format</span></h2>
+<p>boost::compute::image_format — A OpenCL image format. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../boost_compute/reference.html#header.boost.compute.image.image_format_hpp" title="Header &lt;boost/compute/image/image_format.hpp&gt;">boost/compute/image/image_format.hpp</a>&gt;
+
+</span>
+<span class="keyword">class</span> <a class="link" href="image_format.html" title="Class image_format">image_format</a> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+
+  <span class="keyword">enum</span> <a name="boost.compute.image_format.channel_order"></a>channel_order <span class="special">{</span> r = = CL_R, a = = CL_A, intensity = = CL_INTENSITY, 
+                       luminance = = CL_LUMINANCE, rg = = CL_RG, ra = = CL_RA, 
+                       rgb = = CL_RGB, rgba = = CL_RGBA, argb = = CL_ARGB, 
+                       bgra = = CL_BGRA <span class="special">}</span><span class="special">;</span>
+
+  <span class="keyword">enum</span> <a name="boost.compute.image_format.channel_data_type"></a>channel_data_type <span class="special">{</span> snorm_int8 = = CL_SNORM_INT8, 
+                           snorm_int16 = = CL_SNORM_INT16, 
+                           unorm_int8 = = CL_UNORM_INT8, 
+                           unorm_int16 = = CL_UNORM_INT16, 
+                           unorm_short_565 = = CL_UNORM_SHORT_565, 
+                           unorm_short_555 = = CL_UNORM_SHORT_555, 
+                           unorm_int_101010 = = CL_UNORM_INT_101010, 
+                           signed_int8 = = CL_SIGNED_INT8, 
+                           signed_int16 = = CL_SIGNED_INT16, 
+                           signed_int32 = = CL_SIGNED_INT32, 
+                           unsigned_int8 = = CL_UNSIGNED_INT8, 
+                           unsigned_int16 = = CL_UNSIGNED_INT16, 
+                           unsigned_int32 = = CL_UNSIGNED_INT32, 
+                           float16 = = CL_HALF_FLOAT, float32 = = CL_FLOAT <span class="special">}</span><span class="special">;</span>
+  <span class="comment">// <a class="link" href="image_format.html#boost.compute.image_formatconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <span class="keyword">explicit</span> <a class="link" href="image_format.html#idm9165-bb"><span class="identifier">image_format</span></a><span class="special">(</span><span class="identifier">cl_channel_order</span><span class="special">,</span> <span class="identifier">cl_channel_type</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="image_format.html#idm9173-bb"><span class="identifier">image_format</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">cl_image_format</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="image_format.html#idm9178-bb"><span class="identifier">image_format</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="image_format.html" title="Class image_format">image_format</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="image_format.html" title="Class image_format">image_format</a> <span class="special">&amp;</span> <a class="link" href="image_format.html#idm9184-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="image_format.html" title="Class image_format">image_format</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="image_format.html#idm9193-bb"><span class="special">~</span><span class="identifier">image_format</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="image_format.html#idm9142-bb">public member functions</a></span>
+  <span class="keyword">const</span> <span class="identifier">cl_image_format</span> <span class="special">*</span> <a class="link" href="image_format.html#idm9143-bb"><span class="identifier">get_format_ptr</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="image_format.html#idm9147-bb"><span class="keyword">operator</span><span class="special">==</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="image_format.html" title="Class image_format">image_format</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="image_format.html#idm9156-bb"><span class="keyword">operator</span><span class="special">!=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="image_format.html" title="Class image_format">image_format</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idm28178"></a><h2>Description</h2>
+<p>For example, to create a format for a 8-bit RGBA image: </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">compute</span><span class="special">::</span><span class="identifier">image_format</span> <span class="identifier">rgba8</span><span class="special">(</span><span class="identifier">CL_RGBA</span><span class="special">,</span> <span class="identifier">CL_UNSIGNED_INT8</span><span class="special">)</span><span class="special">;</span>
+</pre>
+<p>After being constructed, <a class="link" href="image_format.html" title="Class image_format">image_format</a> objects are usually passed to the constructor of the various image classes (e.g. <a class="link" href="image2d.html" title="Class image2d">image2d</a>, <a class="link" href="image3d.html" title="Class image3d">image3d</a>) to create an image object on a compute device.</p>
+<p>Image formats supported by a context can be queried with the static get_supported_formats() in each image class. For example: </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">image_format</span><span class="special">&gt;</span> <span class="identifier">formats</span> <span class="special">=</span> <span class="identifier">image2d</span><span class="special">::</span><span class="identifier">get_supported_formats</span><span class="special">(</span><span class="identifier">ctx</span><span class="special">)</span><span class="special">;</span>
+</pre>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p><a class="link" href="image2d.html" title="Class image2d">image2d</a> </p>
+<p>
+</p>
+<p>
+</p>
+<div class="refsect2">
+<a name="idm28220"></a><h3>
+<a name="boost.compute.image_formatconstruct-copy-destruct"></a><code class="computeroutput">image_format</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idm9165-bb"></a><span class="identifier">image_format</span><span class="special">(</span><span class="identifier">cl_channel_order</span> order<span class="special">,</span> <span class="identifier">cl_channel_type</span> type<span class="special">)</span><span class="special">;</span></pre>Creates a new image format object with <code class="computeroutput">order</code> and <code class="computeroutput">type</code>. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idm9173-bb"></a><span class="identifier">image_format</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">cl_image_format</span> <span class="special">&amp;</span> format<span class="special">)</span><span class="special">;</span></pre>Creates a new image format object from <code class="computeroutput">format</code>. </li>
+<li class="listitem">
+<pre class="literallayout"><a name="idm9178-bb"></a><span class="identifier">image_format</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="image_format.html" title="Class image_format">image_format</a> <span class="special">&amp;</span> other<span class="special">)</span><span class="special">;</span></pre>Creates a new image format object as a copy of <code class="computeroutput">other</code>. </li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="image_format.html" title="Class image_format">image_format</a> <span class="special">&amp;</span> <a name="idm9184-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="image_format.html" title="Class image_format">image_format</a> <span class="special">&amp;</span> other<span class="special">)</span><span class="special">;</span></pre>Copies the format from <code class="computeroutput">other</code> to <code class="computeroutput">*this</code>. </li>
+<li class="listitem">
+<pre class="literallayout"><a name="idm9193-bb"></a><span class="special">~</span><span class="identifier">image_format</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Destroys the image format object. </li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="idm28289"></a><h3>
+<a name="idm9142-bb"></a><code class="computeroutput">image_format</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">const</span> <span class="identifier">cl_image_format</span> <span class="special">*</span> <a name="idm9143-bb"></a><span class="identifier">get_format_ptr</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Returns a pointer to the <code class="computeroutput">cl_image_format</code> object. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idm9147-bb"></a><span class="keyword">operator</span><span class="special">==</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="image_format.html" title="Class image_format">image_format</a> <span class="special">&amp;</span> other<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Returns <code class="computeroutput">true</code> if <code class="computeroutput">*this</code> is the same as <code class="computeroutput">other</code>. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idm9156-bb"></a><span class="keyword">operator</span><span class="special">!=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="image_format.html" title="Class image_format">image_format</a> <span class="special">&amp;</span> other<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Returns <code class="computeroutput">true</code> if <code class="computeroutput">*this</code> is not the same as <code class="computeroutput">other</code>. </li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2013, 2014 Kyle Lutz<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="image3d.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_compute/reference.html#header.boost.compute.image.image_format_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="image_object.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

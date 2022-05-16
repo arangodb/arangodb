@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,8 +36,8 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Version.h>
-#include <velocypack/velocypack-aliases.h>
 
+#include "Basics/FeatureFlags.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/asio_ns.h"
@@ -46,7 +46,7 @@
 #include "Basics/conversions.h"
 #include "Basics/debugging.h"
 
-#include "3rdParty/iresearch/core/utils/version_defines.hpp"
+#include "../3rdParty/iresearch/core/utils/version_defines.hpp"
 
 using namespace arangodb::rest;
 
@@ -84,6 +84,53 @@ std::pair<int, int> Version::parseVersionString(std::string const& str) {
   return result;
 }
 
+/// parse a full version string into major, minor, patch
+/// returns -1, -1, -1 when the version string has an invalid format
+/// returns major, -1, -1 when only the major version can be determined,
+/// returns major, minor, -1 when only the major and minor version can be
+/// determined.
+FullVersion Version::parseFullVersionString(std::string const& str) {
+  FullVersion result{-1, -1, -1};
+  int tmp;
+
+  if (!str.empty()) {
+    char const* p = str.c_str();
+    char const* q = p;
+    tmp = 0;
+    while (*q >= '0' && *q <= '9') {
+      tmp = tmp * 10 + *q++ - '0';
+    }
+    if (p != q) {
+      result.major = tmp;
+      tmp = 0;
+
+      if (*q == '.') {
+        ++q;
+      }
+      p = q;
+      while (*q >= '0' && *q <= '9') {
+        tmp = tmp * 10 + *q++ - '0';
+      }
+      if (p != q) {
+        result.minor = tmp;
+        tmp = 0;
+        if (*q == '.') {
+          ++q;
+        }
+        p = q;
+        while (*q >= '0' && *q <= '9') {
+          tmp = tmp * 10 + *q++ - '0';
+        }
+        if (p != q) {
+          result.patch = tmp;
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
 // initialize
 void Version::initialize() {
   if (!Values.empty()) {
@@ -106,7 +153,7 @@ void Version::initialize() {
 #else
   Values["debug"] = "false";
 #endif
-#ifdef ARANGODB_USE_IPO 
+#ifdef ARANGODB_USE_IPO
   Values["ipo"] = "true";
 #else
   Values["ipo"] = "false";
@@ -135,7 +182,7 @@ void Version::initialize() {
 #else
   Values["pie"] = "none";
 #endif
-  Values["platform"] = TRI_PLATFORM;
+  Values["platform"] = getPlatform();
   Values["reactor-type"] = getBoostReactorType();
   Values["server-version"] = getServerVersion();
   Values["sizeof int"] = arangodb::basics::StringUtils::itoa(sizeof(int));
@@ -258,6 +305,12 @@ void Version::initialize() {
 #else
   Values["libunwind"] = "false";
 #endif
+
+  if (::arangodb::replication2::EnableReplication2) {
+    Values["replication2-enabled"] = "true";
+  } else {
+    Values["replication2-enabled"] = "false";
+  }
 
   for (auto& it : Values) {
     arangodb::basics::StringUtils::trimInPlace(it.second);
@@ -415,17 +468,24 @@ std::string Version::getEndianness() {
   static_assert(sizeof(value) == 8, "unexpected uint64_t size");
 
   unsigned char const* p = reinterpret_cast<unsigned char const*>(&value);
+
+  // cppcheck-suppress objectIndex
   if (p[0] == 0x12 && p[1] == 0x34 && p[2] == 0x56 && p[3] == 0x78 &&
+      // cppcheck-suppress objectIndex
       p[4] == 0xab && p[5] == 0xcd && p[6] == 0xef && p[7] == 0x99) {
     return "big";
   }
 
+  // cppcheck-suppress objectIndex
   if (p[0] == 0x99 && p[1] == 0xef && p[2] == 0xcd && p[3] == 0xab &&
+      // cppcheck-suppress objectIndex
       p[4] == 0x78 && p[5] == 0x56 && p[6] == 0x34 && p[7] == 0x12) {
     return "little";
   }
   return "unknown";
 }
+
+std::string Version::getPlatform() { return TRI_PLATFORM; }
 
 // get build date
 std::string Version::getBuildDate() {

@@ -23,27 +23,61 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
+const Ajv = require('ajv');
 const dd = require('dedent');
 const il = require('@arangodb/util').inline;
 const joi = require('joi');
 const util = require('util');
 const statuses = require('statuses');
 const mimeTypes = require('mime-types');
-const mediaTyper = require('media-typer');
+const ct = require('content-type');
 const ArangoError = require('@arangodb').ArangoError;
 const ERROR_BAD_PARAMETER = require('@arangodb').errors.ERROR_BAD_PARAMETER;
+const ajv = new Ajv({coerceTypes: true, useDefaults: true, strictSchema: false});
 
 function normalizeMimeType (mime) {
   if (mime === 'binary') {
     mime = 'application/octet-stream';
   }
   const contentType = mimeTypes.contentType(mime) || mime;
-  const parsed = mediaTyper.parse(contentType);
-  return mediaTyper.format(_.pick(parsed, [
-    'type',
-    'subtype',
-    'suffix'
-  ]));
+  const parsed = ct.parse(contentType);
+  return parsed.type;
+}
+
+function isJoiSchema (value, expectOpaque) {
+  if (!value) return false;
+  if (value.isJoi) return true;
+  if (expectOpaque) return false;
+  if (typeof value !== "object") return false;
+  if (Array.isArray(value)) return false;
+  const values = Object.values(value);
+  if (!values.length) return false;
+  return values.every(value => isJoiSchema(value, true));
+}
+
+function createSchemaValidator (schema, optional = false) {
+  if (schema.isJoi) {
+    return (value) => schema.validate(value);
+  }
+  if (schema === false) {
+    return (value) => {
+      if (value === null || value === undefined || value === "") {
+        return {value: undefined, error: null};
+      }
+      return {value, error: new Error('"value" is forbidden')};
+    };
+  }
+  const validator = ajv.compile(schema);
+  return (value) => {
+    if (optional && value === undefined) {
+      return {value: undefined, error: null};
+    }
+    const valid = validator(value);
+    if (valid) return {value, error: null};
+    return {value, error: new Error(
+      ajv.errorsText(validator.errors, {dataVar: `"value"`})
+    )};
+  };
 }
 
 function runValidation (methodName, paramName, type, value) {
@@ -207,64 +241,90 @@ exports.validateStatus = function (value) {
   return {value: status, error: null};
 };
 
-exports.validateSchema = function (value) {
-  if (value) {
-    if (value.isJoi || typeof value.validate === 'function') {
-      return {value, error: null};
+exports.validateSchema = function (schema = true, optional = false) {
+  if (schema === null) {
+    return {
+      value: {schema: false, validate: createSchemaValidator(false, optional)},
+      error: null
+    };
+  }
+  if (isJoiSchema(schema)) {
+    if (schema.isJoi) {
+      return {
+        value: {schema, validate: createSchemaValidator(schema, optional)},
+        error: null
+      };
     }
     try {
-      return {value: joi.object(value).required(), error: null};
+      schema = joi.object(schema).required();
     } catch (e) {
-      return {value, error: Object.assign(
-          new Error('"value" must be a schema'),
-          {cause: e}
+      return {value: schema, error: Object.assign(
+        new Error('"value" must be a schema'),
+        {cause: e}
       )};
     }
+    return {
+      value: {schema, validate: createSchemaValidator(schema, optional)},
+      error: null
+    };
   }
-  return {value, error: new Error('"value" must be a schema.')};
+  const valid = ajv.validateSchema(schema);
+  if (!valid) {
+    return {value: schema, error: new Error(
+      ajv.errorsText(ajv.errors, {dataVar: `"value"`})
+    )};
+  }
+  return {
+    value: {schema, validate: createSchemaValidator(schema, optional)},
+    error: null
+  };
 };
 
 exports.validateModel = function (value) {
-  const warnings = [];
   let model = value;
+  const warnings = [];
+
   let multiple = false;
-  if (model === null) {
-    return {value: {model, multiple}, error: null};
-  }
   if (Array.isArray(model)) {
     if (model.length !== 1) {
       return {value, error: new Error(il`
         "value" must be a model or schema
         or an array containing exactly one model or schema.
-        If you are trying to use multiple schemas
-        try using joi.alternatives instead.
       `), warnings};
     }
     model = model[0];
     multiple = true;
   }
 
-  const index = multiple ? '[0]' : '';
-  if (!model || typeof model !== 'object') {
+  let index = multiple ? '[0]' : '';
+  if (model && typeof model !== "object" && typeof model !== "boolean") {
     return {value, error: new Error(
-        `"value"${index} is not an object`
-    )};
+      `"value"${index} must be an object or boolean`
+    ), warnings};
   }
 
-  const result = exports.validateSchema(model);
-  if (!result.error) {
-    model = {schema: result.value};
+  let schemaIndex = index;
+  if (model && !model.isJoi && Object.keys(model).length && (
+    Object.values(model).some((prop) => typeof prop === "function")
+    || model.schema !== undefined
+  )) {
+    model = {...model};
+    schemaIndex = `${index}.schema`;
+  } else {
+    model = {schema: model};
   }
 
-  if (model.schema) {
-    const result = exports.validateSchema(model.schema);
-    if (result.error) {
-      result.error.message = result.error.message
-        .replace(/^"value"/, `"value"${index}.schema`);
-      return {value, error: result.error};
-    }
-    model.schema = result.value;
+  const result = exports.validateSchema(model.schema, model.optional);
+  if (result.error) {
+    result.error.message = result.error.message
+      .replace(/^"value"/, `"value"${schemaIndex}`);
+    return {value, error: result.error, warnings};
   }
+  model.schema = result.value.schema;
+  if (model.schema !== true || !model.validate) {
+    model.validate = result.value.validate;
+  }
+
   if (!model.forClient && typeof model.toClient === 'function') {
     warnings.push(il`
       "value"${index} has unexpected "toClient" method.
@@ -283,7 +343,47 @@ exports.validateModel = function (value) {
       not ${typeof model.fromClient}.
     `), warnings};
   }
-  return {value: {model, multiple}, error: null};
+
+  if (multiple) {
+    let baseModel = model;
+    model = {schema: baseModel.schema};
+    if (baseModel.fromClient) {
+      model.fromClient = (value) => Array.isArray(value)
+        ? value.map(item => baseModel.fromClient(item))
+        : value;
+    }
+    if (baseModel.forClient) {
+      model.forClient = (value) => Array.isArray(value)
+        ? value.map(item => baseModel.forClient(item))
+        : value;
+    }
+    if (baseModel.schema.isJoi) {
+      model.schema = joi.array().items(baseModel.schema).required();
+    } else {
+      model.schema = {type: "array", items: baseModel.schema};
+    }
+    if (baseModel.schema === true && baseModel.validate) {
+      const validateItem = baseModel.validate;
+      model.validate = (value) => {
+        if (!Array.isArray(value)) {
+          return {value, error: new Error(`"value" must be an array.`)};
+        }
+        const arr = Array(value.length);
+        for (const item of value) {
+          const result = validateItem(item);
+          if (result.error) {
+            return result;
+          }
+          arr.push(result.value);
+        }
+        return {value: arr, error: null};
+      };
+    } else {
+      model.validate = createSchemaValidator(model.schema, model.optional);
+    }
+  }
+
+  return {value: model, error: null};
 };
 
 exports.validateMimes = function (value) {

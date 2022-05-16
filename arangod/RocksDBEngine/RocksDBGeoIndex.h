@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,13 +34,12 @@
 namespace arangodb {
 
 class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
-  friend class RocksDBSphericalIndexIterator;
-
  public:
   RocksDBGeoIndex() = delete;
 
   RocksDBGeoIndex(IndexId iid, arangodb::LogicalCollection& collection,
-                  arangodb::velocypack::Slice const& info, std::string const& typeName);
+                  arangodb::velocypack::Slice info,
+                  std::string const& typeName);
 
   ~RocksDBGeoIndex() = default;
 
@@ -57,10 +56,17 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   char const* typeName() const override { return _typeName.c_str(); }
 
-  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
-                                                      arangodb::aql::AstNode const* node,
-                                                      arangodb::aql::Variable const* reference,
-                                                      IndexIteratorOptions const& opts) override;
+  std::vector<std::vector<arangodb::basics::AttributeName>> const&
+  coveredFields() const override {
+    // index does not cover the index attribute(s)!
+    return arangodb::Index::emptyCoveredFields;
+  }
+
+  std::unique_ptr<IndexIterator> iteratorForCondition(
+      transaction::Methods* trx, arangodb::aql::AstNode const* node,
+      arangodb::aql::Variable const* reference,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
+      int) override;
 
   bool canBeDropped() const override { return true; }
 
@@ -68,8 +74,9 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   bool hasSelectivityEstimate() const override { return false; }
 
-  void toVelocyPack(velocypack::Builder&,
-                    std::underlying_type<arangodb::Index::Serialize>::type) const override;
+  void toVelocyPack(
+      velocypack::Builder&,
+      std::underlying_type<arangodb::Index::Serialize>::type) const override;
 
   bool matchesDefinition(velocypack::Slice const& info) const override;
 
@@ -81,10 +88,11 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice doc) override;
+                LocalDocumentId const& documentId,
+                velocypack::Slice doc) override;
 
  private:
   std::string const _typeName;
+  bool _legacyPolygons;  // indicate if geoJson is parsed with legacy polygons
 };
 }  // namespace arangodb
-

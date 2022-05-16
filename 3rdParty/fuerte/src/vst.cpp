@@ -30,7 +30,6 @@
 #include <velocypack/HexDump.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Validator.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <boost/algorithm/string.hpp>
 

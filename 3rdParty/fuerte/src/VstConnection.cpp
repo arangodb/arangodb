@@ -28,7 +28,6 @@
 #include <fuerte/loop.h>
 #include <fuerte/message.h>
 #include <fuerte/types.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "debugging.h"
 

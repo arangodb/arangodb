@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#ifndef ARANGOD_GENERAL_SERVER_ACCEPTORUNIXDOMAIN_H
-#define ARANGOD_GENERAL_SERVER_ACCEPTORUNIXDOMAIN_H 1
 
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/AsioSocket.h"
@@ -33,7 +31,8 @@ namespace rest {
 
 class AcceptorUnixDomain final : public Acceptor {
  public:
-  AcceptorUnixDomain(rest::GeneralServer& server, rest::IoContext& ctx, Endpoint* endpoint)
+  AcceptorUnixDomain(rest::GeneralServer& server, rest::IoContext& ctx,
+                     Endpoint* endpoint)
       : Acceptor(server, ctx, endpoint), _acceptor(ctx.io_context) {}
 
  public:
@@ -50,5 +49,3 @@ class AcceptorUnixDomain final : public Acceptor {
 };
 }  // namespace rest
 }  // namespace arangodb
-
-#endif

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,8 +51,10 @@ struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
     return new SumCombiner<float>();
   }
 
-  VertexComputation<float, float, float>* createComputation(WorkerConfig const*) const override;
-  VertexCompensation<float, float, float>* createCompensation(WorkerConfig const*) const override;
+  VertexComputation<float, float, float>* createComputation(
+      WorkerConfig const*) const override;
+  VertexCompensation<float, float, float>* createCompensation(
+      WorkerConfig const*) const override;
   IAggregator* aggregator(std::string const& name) const override;
 };
 }  // namespace algos

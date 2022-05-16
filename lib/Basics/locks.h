@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,35 +35,34 @@
 #endif
 
 /// @brief initializes a new condition variable
-void TRI_InitCondition(TRI_condition_t* cond);
+void TRI_InitCondition(TRI_condition_t* cond) noexcept;
 
 /// @brief destroys a condition variable
-void TRI_DestroyCondition(TRI_condition_t* cond);
+void TRI_DestroyCondition(TRI_condition_t* cond) noexcept;
 
 /// @brief signals a condition variable
 ///
 /// Note that you must hold the lock.
-void TRI_SignalCondition(TRI_condition_t* cond);
+void TRI_SignalCondition(TRI_condition_t* cond) noexcept;
 
 /// @brief broad casts a condition variable
 ///
 /// Note that you must hold the lock.
-void TRI_BroadcastCondition(TRI_condition_t* cond);
+void TRI_BroadcastCondition(TRI_condition_t* cond) noexcept;
 
 /// @brief waits for a signal on a condition variable
 ///
 /// Note that you must hold the lock.
-void TRI_WaitCondition(TRI_condition_t* cond);
+void TRI_WaitCondition(TRI_condition_t* cond) noexcept;
 
 /// @brief waits for a signal with a timeout in micro-seconds
 /// returns true when the condition was signaled, false on timeout
 ///
 /// Note that you must hold the lock.
-bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay);
+bool TRI_TimedWaitCondition(TRI_condition_t* cond, uint64_t delay) noexcept;
 
 /// @brief locks the mutex of a condition variable
-void TRI_LockCondition(TRI_condition_t* cond);
+void TRI_LockCondition(TRI_condition_t* cond) noexcept;
 
 /// @brief unlocks the mutex of a condition variable
-void TRI_UnlockCondition(TRI_condition_t* cond);
-
+void TRI_UnlockCondition(TRI_condition_t* cond) noexcept;

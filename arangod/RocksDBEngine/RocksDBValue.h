@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,11 +29,10 @@
 #include <s2/s2point.h>
 
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
+#include "Replication2/ReplicatedLog/LogEntries.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/Identifiers/RevisionId.h"
@@ -48,16 +47,24 @@ class RocksDBValue {
   // parameter in an appropriate format into the underlying string buffer.
   //----------------------------------------------------------------------------
 
-  static RocksDBValue Database(VPackSlice const& data);
-  static RocksDBValue Collection(VPackSlice const& data);
-  static RocksDBValue PrimaryIndexValue(LocalDocumentId const& docId, RevisionId revision);
-  static RocksDBValue EdgeIndexValue(arangodb::velocypack::StringRef const& vertexId);
+  static RocksDBValue Database(VPackSlice data);
+  static RocksDBValue Collection(VPackSlice data);
+  static RocksDBValue ReplicatedLog(VPackSlice data);
+  static RocksDBValue PrimaryIndexValue(LocalDocumentId const& docId,
+                                        RevisionId revision);
+  static RocksDBValue EdgeIndexValue(std::string_view vertexId);
   static RocksDBValue VPackIndexValue();
+  static RocksDBValue VPackIndexValue(VPackSlice data);
+  static RocksDBValue ZkdIndexValue();
+  static RocksDBValue UniqueZkdIndexValue(LocalDocumentId const& docId);
   static RocksDBValue UniqueVPackIndexValue(LocalDocumentId const& docId);
-  static RocksDBValue View(VPackSlice const& data);
-  static RocksDBValue ReplicationApplierConfig(VPackSlice const& data);
-  static RocksDBValue KeyGeneratorValue(VPackSlice const& data);
+  static RocksDBValue UniqueVPackIndexValue(LocalDocumentId const& docId,
+                                            VPackSlice data);
+  static RocksDBValue View(VPackSlice data);
+  static RocksDBValue ReplicationApplierConfig(VPackSlice data);
+  static RocksDBValue KeyGeneratorValue(VPackSlice data);
   static RocksDBValue S2Value(S2Point const& c);
+  static RocksDBValue LogEntry(replication2::PersistingLogEntry const& entry);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Used to construct an empty value of the given type for retrieval
@@ -73,7 +80,7 @@ class RocksDBValue {
 
   static LocalDocumentId documentId(RocksDBValue const&);
   static LocalDocumentId documentId(rocksdb::Slice const&);
-  static LocalDocumentId documentId(std::string const&);
+  static LocalDocumentId documentId(std::string_view);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the revisionId from a value
@@ -89,7 +96,7 @@ class RocksDBValue {
   ///
   /// May be called only on EdgeIndexValue values. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
-  static arangodb::velocypack::StringRef vertexId(rocksdb::Slice const&);
+  static std::string_view vertexId(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the VelocyPack data from a value
@@ -99,17 +106,27 @@ class RocksDBValue {
   //////////////////////////////////////////////////////////////////////////////
   static VPackSlice data(RocksDBValue const&);
   static VPackSlice data(rocksdb::Slice const&);
-  static VPackSlice data(std::string const&);
+  static VPackSlice data(std::string_view);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Extracts the numeric value from the key field of a VPackSlice
-  //////////////////////////////////////////////////////////////////////////////
-  static uint64_t keyValue(rocksdb::Slice const&);
+  static VPackSlice uniqueIndexStoredValues(rocksdb::Slice const&);
+  static VPackSlice indexStoredValues(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Centroid of shape or point on the sphere surface in degrees
   //////////////////////////////////////////////////////////////////////////////
   static S2Point centroid(rocksdb::Slice const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extract the term of a log index value
+  //////////////////////////////////////////////////////////////////////////////
+  // TODO replace with persistingLogEntry()
+  static replication2::LogTerm logTerm(rocksdb::Slice const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extract the payload
+  //////////////////////////////////////////////////////////////////////////////
+  // TODO replace with persistingLogEntry()
+  static replication2::LogPayload logPayload(rocksdb::Slice const&);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -140,22 +157,22 @@ class RocksDBValue {
  private:
   RocksDBValue();
   explicit RocksDBValue(RocksDBEntryType type);
-  RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId, RevisionId revision);
-  RocksDBValue(RocksDBEntryType type, VPackSlice const& data);
-  RocksDBValue(RocksDBEntryType type, arangodb::velocypack::StringRef const& data);
+  RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
+               RevisionId revision);
+  RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
+               VPackSlice data);
+  RocksDBValue(RocksDBEntryType type, VPackSlice data);
+  RocksDBValue(RocksDBEntryType type, std::string_view data);
+  RocksDBValue(RocksDBEntryType type, replication2::PersistingLogEntry const&);
   explicit RocksDBValue(S2Point const&);
 
- private:
   static RocksDBEntryType type(char const* data, size_t size);
   static LocalDocumentId documentId(char const* data, uint64_t size);
-  static arangodb::velocypack::StringRef vertexId(char const* data, size_t size);
+  static std::string_view vertexId(char const* data, size_t size);
   static VPackSlice data(char const* data, size_t size);
-  static uint64_t keyValue(char const* data, size_t size);
 
- private:
   RocksDBEntryType _type;
   std::string _buffer;
 };
 
 }  // namespace arangodb
-

@@ -32,7 +32,6 @@
   // //////////////////////////////////////////////////////////////////////////////
 
   var exports = require('internal');
-  var console = require('console');
   var fs = require('fs');
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -62,6 +61,20 @@
 
   exports.ArangoView = global.ArangoView;
   delete global.ArangoView;
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief ArangoReplicatedLog
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.ArangoReplicatedLog = global.ArangoReplicatedLog;
+  delete global.ArangoReplicatedLog;
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief ArangoPrototypeState
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.ArangoPrototypeState = global.ArangoPrototypeState;
+  delete global.ArangoPrototypeState;
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief ArangoUsers
@@ -182,14 +195,19 @@
   // / @brief expose configuration
   // //////////////////////////////////////////////////////////////////////////////
 
-  if (global.SYS_IS_FOXX_API_DISABLED) {
+  if (typeof global.SYS_IS_FOXX_API_DISABLED !== 'undefined') {
     exports.isFoxxApiDisabled = global.SYS_IS_FOXX_API_DISABLED;
     delete global.SYS_IS_FOXX_API_DISABLED;
   }
 
-  if (global.SYS_IS_FOXX_STORE_DISABLED) {
+  if (typeof global.SYS_IS_FOXX_STORE_DISABLED !== 'undefined') {
     exports.isFoxxStoreDisabled = global.SYS_IS_FOXX_STORE_DISABLED;
     delete global.SYS_IS_FOXX_STORE_DISABLED;
+  }
+ 
+  if (typeof global.SYS_FOXX_ALLOW_INSTALL_FROM_REMOTE !== 'undefined') {
+    exports.foxxAllowInstallFromRemote = global.SYS_FOXX_ALLOW_INSTALL_FROM_REMOTE;
+    delete global.SYS_FOXX_ALLOW_INSTALL_FROM_REMOTE;
   }
 
   if (global.SYS_CLUSTER_API_JWT_POLICY) {
@@ -537,9 +555,19 @@
     exports.maxNumberOfShards = global.MAX_NUMBER_OF_SHARDS;
     delete global.MAX_NUMBER_OF_SHARDS;
   }
+  if (typeof global.MAX_NUMBER_OF_MOVE_SHARDS === 'number') {
+    exports.maxNumberOfMoveShards = global.MAX_NUMBER_OF_MOVE_SHARDS;
+    delete global.MAX_NUMBER_OF_MOVE_SHARDS;
+  }
   if (global.FORCE_ONE_SHARD) {
     exports.forceOneShard = global.FORCE_ONE_SHARD;
     delete global.FORCE_ONE_SHARD;
+  }
+
+  // server session timeout (for web UI)
+  if (global.SESSION_TIMEOUT) {
+    exports.sessionTimeout = global.SESSION_TIMEOUT;
+    delete global.SESSION_TIMEOUT;
   }
 
   // /////////////////////////////////////////////////////////////////////////////

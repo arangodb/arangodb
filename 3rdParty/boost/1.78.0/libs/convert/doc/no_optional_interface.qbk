@@ -1,0 +1,34 @@
+[/
+  Copyright (c) Vladimir Batov 2009-2020
+  Distributed under the Boost Software License, Version 1.0.
+  See copy at http://www.boost.org/LICENSE_1_0.txt.
+]
+
+[section Alternative Interface]
+
+[:[*['"It's not a question of happiness, it's a requirement. Consider the alternative” Doug Horton]]]
+
+As it was indicated previously [@boost:/libs/optional/index.html `boost::optional`] is the actual type returned by the `boost::convert()` main interface:
+
+ boost::optional<TypeOut> boost::convert(TypeIn const&, Converter const&);
+
+The signature is ['functionally-complete] and routinely elided during compilation. Still, the following alternative (and arguably more traditional) interface might be potentially more suitable for certain deployment scenarios (or due to personal preferences):
+
+ TypeOut convert(TypeIn const&, Converter const&, TypeOut const& fallback_value);
+ TypeOut convert(TypeIn const&, Converter const&, Functor const& fallback_func);
+ TypeOut convert(TypeIn const&, Converter const&, boost::throw_on_failure);
+
+The interface still provides unambiguous behavior and readability, full support for various program flows and various degrees of conversion-failure detection and processing. It can be deployed in a similar fashion as follows:
+
+[getting_serious_example5]
+[getting_serious_example7]
+
+Still, the described interfaces are convenience wrappers around the main interface which provides the described behavior with:
+
+[getting_serious_example8]
+
+[endsect] [/section Return Value]
+
+
+
+

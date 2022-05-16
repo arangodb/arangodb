@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@
 
 #pragma once
 
+#include "Pregel/CommonFormats.h"
 #include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/MessageFormat.h"
@@ -44,7 +45,8 @@ struct DMIDMessageFormat : public MessageFormat<DMIDMessage> {
     message.leaderId.key = (*(++array)).copyString();
     message.weight = (*(++array)).getNumber<float>();
   }
-  void addValue(VPackBuilder& arrayBuilder, DMIDMessage const& message) const override {
+  void addValue(VPackBuilder& arrayBuilder,
+                DMIDMessage const& message) const override {
     arrayBuilder.openArray();
     arrayBuilder.add(VPackValue(message.senderId.shard));
     arrayBuilder.add(VPackValuePair(message.senderId.key.data(),

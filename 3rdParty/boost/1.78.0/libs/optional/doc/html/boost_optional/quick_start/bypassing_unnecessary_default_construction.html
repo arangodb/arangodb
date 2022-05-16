@@ -1,0 +1,75 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Bypassing unnecessary default construction</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Optional">
+<link rel="up" href="../quick_start.html" title="Quick Start">
+<link rel="prev" href="optional_data_members.html" title="Optional data members">
+<link rel="next" href="storage_in_containers.html" title="Storage in containers">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="optional_data_members.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../quick_start.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="storage_in_containers.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_optional.quick_start.bypassing_unnecessary_default_construction"></a><a class="link" href="bypassing_unnecessary_default_construction.html" title="Bypassing unnecessary default construction">Bypassing
+      unnecessary default construction</a>
+</h3></div></div></div>
+<p>
+        Suppose we have class <code class="computeroutput"><span class="identifier">Date</span></code>,
+        which does not have a default constructor: there is no good candidate for
+        a default date. We have a function that returns two dates in form of a <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">tuple</span></code>:
+      </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span><span class="identifier">Date</span><span class="special">,</span> <span class="identifier">Date</span><span class="special">&gt;</span> <span class="identifier">getPeriod</span><span class="special">();</span>
+</pre>
+<p>
+        In other place we want to use the result of <code class="computeroutput"><span class="identifier">getPeriod</span></code>,
+        but want the two dates to be named: <code class="computeroutput"><span class="identifier">begin</span></code>
+        and <code class="computeroutput"><span class="identifier">end</span></code>. We want to implement
+        something like 'multiple return values':
+      </p>
+<pre class="programlisting"><span class="identifier">Date</span> <span class="identifier">begin</span><span class="special">,</span> <span class="identifier">end</span><span class="special">;</span> <span class="comment">// Error: no default ctor!</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">tie</span><span class="special">(</span><span class="identifier">begin</span><span class="special">,</span> <span class="identifier">end</span><span class="special">)</span> <span class="special">=</span> <span class="identifier">getPeriod</span><span class="special">();</span>
+</pre>
+<p>
+        The second line works already, this is the capability of <a href="../../../../../tuple/index.html" target="_top">Boost.Tuple</a>
+        library, but the first line won't work. We could set some invented initial
+        dates, but it is confusing and may be an unacceptable cost, given that these
+        values will be overwritten in the next line anyway. This is where <code class="computeroutput"><span class="identifier">optional</span></code> can help:
+      </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">Date</span><span class="special">&gt;</span> <span class="identifier">begin</span><span class="special">,</span> <span class="identifier">end</span><span class="special">;</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">tie</span><span class="special">(</span><span class="identifier">begin</span><span class="special">,</span> <span class="identifier">end</span><span class="special">)</span> <span class="special">=</span> <span class="identifier">getPeriod</span><span class="special">();</span>
+</pre>
+<p>
+        It works because inside <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">tie</span></code> a
+        move-assignment from <code class="computeroutput"><span class="identifier">T</span></code> is
+        invoked on <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>,
+        which internally calls a move-constructor of <code class="computeroutput"><span class="identifier">T</span></code>.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2003-2007 Fernando Luis Cacciola Carballal<br>Copyright © 2014-2021 Andrzej Krzemieński<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="optional_data_members.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../quick_start.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="storage_in_containers.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,171 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Coroutine</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Coroutine2">
+<link rel="up" href="../index.html" title="Chapter 1. Coroutine2">
+<link rel="prev" href="motivation.html" title="Motivation">
+<link rel="next" href="coroutine/asymmetric.html" title="Asymmetric coroutine">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="motivation.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="coroutine/asymmetric.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="coroutine2.coroutine"></a><a class="link" href="coroutine.html" title="Coroutine">Coroutine</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="coroutine/asymmetric.html">Asymmetric coroutine</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="coroutine/asymmetric/pull_coro.html">Class <code class="computeroutput"><span class="identifier">coroutine</span><span class="special">&lt;&gt;::</span><span class="identifier">pull_type</span></code></a></span></dt>
+<dt><span class="section"><a href="coroutine/asymmetric/push_coro.html">Class <code class="computeroutput"><span class="identifier">coroutine</span><span class="special">&lt;&gt;::</span><span class="identifier">push_type</span></code></a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="coroutine/implementations__fcontext_t__ucontext_t_and_winfiber.html">Implementations:
+      fcontext_t, ucontext_t and WinFiber</a></span></dt>
+</dl></div>
+<p>
+      <span class="bold"><strong>Boost.Coroutine2</strong></span> provides asymmetric coroutines.
+    </p>
+<p>
+      Implementations that produce sequences of values typically use asymmetric coroutines.
+      <a href="#ftn.coroutine2.coroutine.f0" class="footnote" name="coroutine2.coroutine.f0"><sup class="footnote">[5]</sup></a>
+    </p>
+<h4>
+<a name="coroutine2.coroutine.h0"></a>
+      <span class="phrase"><a name="coroutine2.coroutine.stackful"></a></span><a class="link" href="coroutine.html#coroutine2.coroutine.stackful">stackful</a>
+    </h4>
+<p>
+      Each instance of a coroutine has its own stack.
+    </p>
+<p>
+      In contrast to stackless coroutines, stackful coroutines allow invoking the
+      suspend operation out of arbitrary sub-stackframes, enabling escape-and-reenter
+      recursive operations.
+    </p>
+<h4>
+<a name="coroutine2.coroutine.h1"></a>
+      <span class="phrase"><a name="coroutine2.coroutine.move_only"></a></span><a class="link" href="coroutine.html#coroutine2.coroutine.move_only">move-only</a>
+    </h4>
+<p>
+      A coroutine is moveable-only.
+    </p>
+<p>
+      If it were copyable, then its stack with all the objects allocated on it would
+      be copied too. That would force undefined behaviour if some of these objects
+      were RAII-classes (manage a resource via RAII pattern). When the first of the
+      coroutine copies terminates (unwinds its stack), the RAII class destructors
+      will release their managed resources. When the second copy terminates, the
+      same destructors will try to doubly-release the same resources, leading to
+      undefined behaviour.
+    </p>
+<h4>
+<a name="coroutine2.coroutine.h2"></a>
+      <span class="phrase"><a name="coroutine2.coroutine.clean_up"></a></span><a class="link" href="coroutine.html#coroutine2.coroutine.clean_up">clean-up</a>
+    </h4>
+<p>
+      On coroutine destruction the associated stack will be unwound.
+    </p>
+<p>
+      The constructor of coroutine allows you to pass a customized <span class="emphasis"><em>stack-allocator</em></span>.
+      <span class="emphasis"><em>stack-allocator</em></span> is free to deallocate the stack or cache
+      it for future usage (for coroutines created later).
+    </p>
+<h4>
+<a name="coroutine2.coroutine.h3"></a>
+      <span class="phrase"><a name="coroutine2.coroutine.segmented_stack"></a></span><a class="link" href="coroutine.html#coroutine2.coroutine.segmented_stack">segmented
+      stack</a>
+    </h4>
+<p>
+      <span class="emphasis"><em>coroutine&lt;&gt;::push_type</em></span> and <span class="emphasis"><em>coroutine&lt;&gt;::pull_type</em></span>
+      support segmented stacks (growing on demand).
+    </p>
+<p>
+      It is not always possible to accurately estimate the required stack size -
+      in most cases too much memory is allocated (waste of virtual address-space).
+    </p>
+<p>
+      At construction a coroutine starts with a default (minimal) stack size. This
+      minimal stack size is the maximum of page size and the canonical size for signal
+      stack (macro SIGSTKSZ on POSIX).
+    </p>
+<p>
+      At this time of writing only GCC (4.7) <a href="#ftn.coroutine2.coroutine.f1" class="footnote" name="coroutine2.coroutine.f1"><sup class="footnote">[6]</sup></a> is known to support segmented stacks. With version 1.54 <span class="bold"><strong>Boost.Coroutine2</strong></span> provides support for <a class="link" href="stack/segmented.html#segmented"><span class="emphasis"><em>segmented
+      stacks</em></span></a>.
+    </p>
+<p>
+      The destructor releases the associated stack. The implementer is free to deallocate
+      the stack or to cache it for later usage.
+    </p>
+<h4>
+<a name="coroutine2.coroutine.h4"></a>
+      <span class="phrase"><a name="coroutine2.coroutine.context_switch"></a></span><a class="link" href="coroutine.html#coroutine2.coroutine.context_switch">context
+      switch</a>
+    </h4>
+<p>
+      A coroutine saves and restores registers according to the underlying ABI on
+      each context switch (using <span class="bold"><strong>Boost.Context</strong></span>).
+    </p>
+<p>
+      A context switch is done via <span class="emphasis"><em>coroutine&lt;&gt;::push_type::operator()</em></span>
+      and <span class="emphasis"><em>coroutine&lt;&gt;::pull_type::operator()</em></span>.
+    </p>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../../../../../doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        Calling <span class="emphasis"><em>coroutine&lt;&gt;::push_type::operator()</em></span> and
+        <span class="emphasis"><em>coroutine&lt;&gt;::pull_type::operator()</em></span> from inside
+        the <span class="underline">same</span> coroutine results in undefined
+        behaviour.
+      </p></td></tr>
+</table></div>
+<p>
+      As an example, the code below will result in undefined behaviour:
+    </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">coroutines2</span><span class="special">::</span><span class="identifier">coroutine</span><span class="special">&lt;</span><span class="keyword">void</span><span class="special">&gt;::</span><span class="identifier">push_type</span> <span class="identifier">coro</span><span class="special">(</span>
+    <span class="special">[&amp;](</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">coroutines2</span><span class="special">::</span><span class="identifier">coroutine</span><span class="special">&lt;</span><span class="keyword">void</span><span class="special">&gt;::</span><span class="identifier">pull_type</span><span class="special">&amp;</span> <span class="identifier">yield</span><span class="special">){</span>
+        <span class="identifier">coro</span><span class="special">();</span>
+<span class="special">});</span>
+<span class="identifier">coro</span><span class="special">();</span>
+</pre>
+<div class="footnotes">
+<br><hr style="width:100; text-align:left;margin-left: 0">
+<div id="ftn.coroutine2.coroutine.f0" class="footnote"><p><a href="#coroutine2.coroutine.f0" class="para"><sup class="para">[5] </sup></a>
+        Moura, Ana Lucia De and Ierusalimschy, Roberto. "Revisiting coroutines".
+        ACM Trans. Program. Lang. Syst., Volume 31 Issue 2, February 2009, Article
+        No. 6
+      </p></div>
+<div id="ftn.coroutine2.coroutine.f1" class="footnote"><p><a href="#coroutine2.coroutine.f1" class="para"><sup class="para">[6] </sup></a>
+        <a href="http://gcc.gnu.org/wiki/SplitStacks" target="_top">Ian Lance Taylor, Split
+        Stacks in GCC</a>
+      </p></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2014 Oliver Kowalke<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="motivation.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="coroutine/asymmetric.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,27 +33,28 @@
 #include "Sharding/ShardingFeature.h"
 #include "Sharding/ShardingStrategyDefault.h"
 #include "Utils/CollectionNameResolver.h"
-#include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
-
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
-ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* collection)
+ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
+                           LogicalCollection* collection)
     : _collection(collection),
-      _numberOfShards(basics::VelocyPackHelper::getNumericValue<size_t>(info, StaticStrings::NumberOfShards,
-                                                                         1)),
+      _numberOfShards(basics::VelocyPackHelper::getNumericValue<size_t>(
+          info, StaticStrings::NumberOfShards, 1)),
       _replicationFactor(1),
       _writeConcern(1),
-      _distributeShardsLike(basics::VelocyPackHelper::getStringValue(info, StaticStrings::DistributeShardsLike,
-                                                                     "")),
-      _shardIds(new ShardMap()) {
-  bool const isSmart =
-      basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::IsSmart, false);
+      _distributeShardsLike(basics::VelocyPackHelper::getStringValue(
+          info, StaticStrings::DistributeShardsLike, "")),
+      _shardIds(std::make_shared<ShardMap>()) {
+  bool const isSmart = basics::VelocyPackHelper::getBooleanValue(
+      info, StaticStrings::IsSmart, false);
 
-  if (isSmart && _collection->type() == TRI_COL_TYPE_EDGE) {
-    // smart edge collection
+  if (isSmart && _collection->type() == TRI_COL_TYPE_EDGE &&
+      ServerState::instance()->isRunningInCluster()) {
+    // A smart edge collection in a single server environment does get proper
+    // numberOfShards value. A smart edge collection in a cluster needs to set
+    // numberOfShards to zero by definition.
     _numberOfShards = 0;
   }
 
@@ -73,9 +74,9 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     // when a collection is created by a user, and on a restore
   }
 
-  VPackSlice distributeShardsLike = info.get(StaticStrings::DistributeShardsLike);
-  if (!distributeShardsLike.isNone() && 
-      !distributeShardsLike.isString() &&
+  VPackSlice distributeShardsLike =
+      info.get(StaticStrings::DistributeShardsLike);
+  if (!distributeShardsLike.isNone() && !distributeShardsLike.isString() &&
       !distributeShardsLike.isNull()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -103,7 +104,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     }
   }
 
-  bool isASatellite = false; 
+  bool isASatellite = false;
   auto replicationFactorSlice = info.get(StaticStrings::ReplicationFactor);
   if (!replicationFactorSlice.isNone()) {
     bool isError = true;
@@ -114,24 +115,20 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
         isError = false;
 #ifdef USE_ENTERPRISE
       } else if (_replicationFactor == 0) {
-        isError = false;
+        std::tie(isError, isASatellite) = makeSatellite();
 #endif
       }
     }
 #ifdef USE_ENTERPRISE
     else if (replicationFactorSlice.isString() &&
              replicationFactorSlice.copyString() == StaticStrings::Satellite) {
-      _replicationFactor = 0;
-      _writeConcern = 0;
-      _numberOfShards = 1;
-      _avoidServers.clear();
-      isError = false;
-      isASatellite = true;
+      std::tie(isError, isASatellite) = makeSatellite();
     }
 
     if (isSmart && isASatellite) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "'isSmart' and replicationFactor 'satellite' cannot be combined");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "'isSmart' and replicationFactor 'satellite' cannot be combined");
     }
 #endif
     if (isError) {
@@ -142,7 +139,8 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
 
   if (!isASatellite) {
     auto writeConcernSlice = info.get(StaticStrings::WriteConcern);
-    if (writeConcernSlice.isNone()) { // minReplicationFactor is deprecated in 3.6
+    if (writeConcernSlice
+            .isNone()) {  // minReplicationFactor is deprecated in 3.6
       writeConcernSlice = info.get(StaticStrings::MinReplicationFactor);
     }
     if (!writeConcernSlice.isNone()) {
@@ -166,7 +164,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       }
     }
   }
-  
+
   // replicationFactor == 0 -> SatelliteCollection
   if (shardKeysSlice.isNone() || _replicationFactor == 0) {
     // Use default.
@@ -175,9 +173,9 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     if (shardKeysSlice.isArray()) {
       for (VPackSlice sk : VPackArrayIterator(shardKeysSlice)) {
         if (sk.isString()) {
-          velocypack::StringRef key = sk.stringRef();
+          std::string_view key = sk.stringView();
           // remove : char at the beginning or end (for enterprise)
-          velocypack::StringRef stripped;
+          std::string_view stripped;
           if (!key.empty()) {
             if (key.front() == ':') {
               stripped = key.substr(1);
@@ -188,18 +186,19 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
             }
           }
           // system attributes are not allowed (except _key, _from and _to)
-          if (stripped == StaticStrings::IdString || 
+          if (stripped == StaticStrings::IdString ||
               stripped == StaticStrings::RevString) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, 
-                                           "_id or _rev cannot be used as shard keys");
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+                TRI_ERROR_BAD_PARAMETER,
+                "_id or _rev cannot be used as shard keys");
           }
 
           if (!stripped.empty()) {
-            _shardKeys.emplace_back(key.toString());
+            _shardKeys.emplace_back(std::string(key));
           }
         }
       }
-      if (_shardKeys.empty()) { 
+      if (_shardKeys.empty()) {
         // Compatibility. Old configs might store empty shard-keys locally.
         // This is translated to ["_key"]. In cluster-case this always was
         // forbidden.
@@ -212,8 +211,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
 
   if (_shardKeys.empty() || _shardKeys.size() > 8) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "invalid number of shard keys for collection");
+        TRI_ERROR_BAD_PARAMETER, "invalid number of shard keys for collection");
   }
 
   auto shardsSlice = info.get("shards");
@@ -238,12 +236,14 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     _shardingStrategy = std::make_unique<ShardingStrategyNone>();
   } else {
     auto& server = _collection->vocbase().server();
-    _shardingStrategy = server.getFeature<ShardingFeature>().fromVelocyPack(info, this);
+    _shardingStrategy =
+        server.getFeature<ShardingFeature>().fromVelocyPack(info, this);
   }
   TRI_ASSERT(_shardingStrategy != nullptr);
 }
 
-ShardingInfo::ShardingInfo(ShardingInfo const& other, LogicalCollection* collection)
+ShardingInfo::ShardingInfo(ShardingInfo const& other,
+                           LogicalCollection* collection)
     : _collection(collection),
       _numberOfShards(other.numberOfShards()),
       _replicationFactor(other.replicationFactor()),
@@ -251,14 +251,14 @@ ShardingInfo::ShardingInfo(ShardingInfo const& other, LogicalCollection* collect
       _distributeShardsLike(other.distributeShardsLike()),
       _avoidServers(other.avoidServers()),
       _shardKeys(other.shardKeys()),
-      _shardIds(new ShardMap()),
+      _shardIds(std::make_shared<ShardMap>()),
       _shardingStrategy() {
   TRI_ASSERT(_collection != nullptr);
 
   // set the sharding strategy
   auto& server = _collection->vocbase().server();
-  _shardingStrategy =
-      server.getFeature<ShardingFeature>().create(other._shardingStrategy->name(), this);
+  _shardingStrategy = server.getFeature<ShardingFeature>().create(
+      other._shardingStrategy->name(), this);
   TRI_ASSERT(_shardingStrategy != nullptr);
 }
 
@@ -272,12 +272,13 @@ std::string ShardingInfo::shardingStrategyName() const {
   return _shardingStrategy->name();
 }
 
-LogicalCollection* ShardingInfo::collection() const {
+LogicalCollection* ShardingInfo::collection() const noexcept {
   TRI_ASSERT(_collection != nullptr);
   return _collection;
 }
 
-void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) const {
+void ShardingInfo::toVelocyPack(VPackBuilder& result,
+                                bool translateCids) const {
   result.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
 
   result.add(VPackValue("shards"));
@@ -298,24 +299,36 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) const 
   result.close();  // shards
 
   if (isSatellite()) {
-    result.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
+    result.add(StaticStrings::ReplicationFactor,
+               VPackValue(StaticStrings::Satellite));
   } else {
-    result.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
+    result.add(StaticStrings::ReplicationFactor,
+               VPackValue(_replicationFactor));
   }
 
   // minReplicationFactor deprecated in 3.6
   result.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
   result.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));
 
-  if (!_distributeShardsLike.empty() && ServerState::instance()->isCoordinator()) {
-    if (translateCids) {
-      CollectionNameResolver resolver(_collection->vocbase());
+  if (!_distributeShardsLike.empty()) {
+    if (ServerState::instance()->isCoordinator()) {
+      // We either want to expose _distributeShardsLike if we're either on a
+      // Coordinator
+      if (translateCids) {
+        CollectionNameResolver resolver(_collection->vocbase());
 
+        result.add(StaticStrings::DistributeShardsLike,
+                   VPackValue(resolver.getCollectionNameCluster(DataSourceId{
+                       basics::StringUtils::uint64(distributeShardsLike())})));
+      } else {
+        result.add(StaticStrings::DistributeShardsLike,
+                   VPackValue(distributeShardsLike()));
+      }
+    } else if (ServerState::instance()->isSingleServer()) {
+      // Or we have found a Smart or Satellite collection on a single server
+      // instance.
       result.add(StaticStrings::DistributeShardsLike,
-                 VPackValue(resolver.getCollectionNameCluster(DataSourceId{
-                     basics::StringUtils::uint64(distributeShardsLike())})));
-    } else {
-      result.add(StaticStrings::DistributeShardsLike, VPackValue(distributeShardsLike()));
+                 VPackValue(distributeShardsLike()));
     }
   }
 
@@ -340,11 +353,12 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) const 
   _shardingStrategy->toVelocyPack(result);
 }
 
-std::string const& ShardingInfo::distributeShardsLike() const {
+std::string const& ShardingInfo::distributeShardsLike() const noexcept {
   return _distributeShardsLike;
 }
 
-void ShardingInfo::distributeShardsLike(std::string const& cid, ShardingInfo const* other) {
+void ShardingInfo::distributeShardsLike(std::string const& cid,
+                                        ShardingInfo const* other) {
   if (_shardKeys.size() != other->shardKeys().size()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -371,7 +385,7 @@ void ShardingInfo::distributeShardsLike(std::string const& cid, ShardingInfo con
   _numberOfShards = other->numberOfShards();
 }
 
-std::vector<std::string> const& ShardingInfo::avoidServers() const {
+std::vector<std::string> const& ShardingInfo::avoidServers() const noexcept {
   return _avoidServers;
 }
 
@@ -379,7 +393,7 @@ void ShardingInfo::avoidServers(std::vector<std::string> const& avoidServers) {
   _avoidServers = avoidServers;
 }
 
-size_t ShardingInfo::replicationFactor() const {
+size_t ShardingInfo::replicationFactor() const noexcept {
   TRI_ASSERT(isSatellite() || _writeConcern <= _replicationFactor);
   return _replicationFactor;
 }
@@ -395,7 +409,7 @@ void ShardingInfo::replicationFactor(size_t replicationFactor) {
   _replicationFactor = replicationFactor;
 }
 
-size_t ShardingInfo::writeConcern() const {
+size_t ShardingInfo::writeConcern() const noexcept {
   TRI_ASSERT(isSatellite() || _writeConcern <= _replicationFactor);
   return _writeConcern;
 }
@@ -411,7 +425,8 @@ void ShardingInfo::writeConcern(size_t writeConcern) {
   _writeConcern = writeConcern;
 }
 
-void ShardingInfo::setWriteConcernAndReplicationFactor(size_t writeConcern, size_t replicationFactor) {
+void ShardingInfo::setWriteConcernAndReplicationFactor(
+    size_t writeConcern, size_t replicationFactor) {
   if (writeConcern > replicationFactor) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -423,23 +438,34 @@ void ShardingInfo::setWriteConcernAndReplicationFactor(size_t writeConcern, size
   _replicationFactor = replicationFactor;
 }
 
-bool ShardingInfo::isSatellite() const { return _replicationFactor == 0; }
+bool ShardingInfo::isSatellite() const noexcept {
+  return _replicationFactor == 0;
+}
 
-size_t ShardingInfo::numberOfShards() const { return _numberOfShards; }
+std::pair<bool, bool> ShardingInfo::makeSatellite() {
+  _replicationFactor = 0;
+  _writeConcern = 0;
+  _numberOfShards = 1;
+  _avoidServers.clear();
+  // Return note booleans: (isError, isASatellite)
+  return std::make_pair(false, true);
+}
+
+size_t ShardingInfo::numberOfShards() const noexcept { return _numberOfShards; }
 
 void ShardingInfo::numberOfShards(size_t numberOfShards) {
   // the only allowed value is "0", because the only allowed
-  // caller of this method is VirtualSmartEdgeCollection, which
+  // caller of this method is VirtualClusterSmartEdgeCollection, which
   // sets the number of shards to 0
   TRI_ASSERT(numberOfShards == 0);
   _numberOfShards = numberOfShards;
 }
 
-bool ShardingInfo::usesDefaultShardKeys() const {
+bool ShardingInfo::usesDefaultShardKeys() const noexcept {
   return _shardingStrategy->usesDefaultShardKeys();
 }
 
-std::vector<std::string> const& ShardingInfo::shardKeys() const {
+std::vector<std::string> const& ShardingInfo::shardKeys() const noexcept {
   TRI_ASSERT(!_shardKeys.empty());
   return _shardKeys;
 }
@@ -456,7 +482,8 @@ std::shared_ptr<std::vector<ShardID>> ShardingInfo::shardListAsShardID() const {
 }
 
 // return a filtered list of the collection's shards
-std::shared_ptr<ShardMap> ShardingInfo::shardIds(std::unordered_set<std::string> const& includedShards) const {
+std::shared_ptr<ShardMap> ShardingInfo::shardIds(
+    std::unordered_set<std::string> const& includedShards) const {
   if (includedShards.empty()) {
     return _shardIds;
   }
@@ -481,14 +508,14 @@ void ShardingInfo::setShardMap(std::shared_ptr<ShardMap> const& map) {
 ErrorCode ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice,
                                             bool docComplete, ShardID& shardID,
                                             bool& usesDefaultShardKeys,
-                                            VPackStringRef const& key) {
+                                            std::string_view key) {
   return _shardingStrategy->getResponsibleShard(slice, docComplete, shardID,
                                                 usesDefaultShardKeys, key);
 }
 
-Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Slice slice,
-                                                        application_features::ApplicationServer const& server,
-                                                        bool enforceReplicationFactor) {
+Result ShardingInfo::validateShardsAndReplicationFactor(
+    arangodb::velocypack::Slice slice, ArangodServer const& server,
+    bool enforceReplicationFactor) {
   if (slice.isObject()) {
     auto& cl = server.getFeature<ClusterFeature>();
 
@@ -496,58 +523,77 @@ Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Sl
     if (numberOfShardsSlice.isNumber()) {
       uint32_t const maxNumberOfShards = cl.maxNumberOfShards();
       uint32_t numberOfShards = numberOfShardsSlice.getNumber<uint32_t>();
-      if (maxNumberOfShards > 0 &&
-          numberOfShards > maxNumberOfShards) {
-        return Result(TRI_ERROR_CLUSTER_TOO_MANY_SHARDS, 
-                      std::string("too many shards. maximum number of shards is ") + std::to_string(maxNumberOfShards));
+      if (maxNumberOfShards > 0 && numberOfShards > maxNumberOfShards) {
+        return Result(
+            TRI_ERROR_CLUSTER_TOO_MANY_SHARDS,
+            std::string("too many shards. maximum number of shards is ") +
+                std::to_string(maxNumberOfShards));
       }
 
-      TRI_ASSERT((cl.forceOneShard() && numberOfShards <= 1) || !cl.forceOneShard()); 
+      TRI_ASSERT((cl.forceOneShard() && numberOfShards <= 1) ||
+                 !cl.forceOneShard());
     }
-          
+
     auto writeConcernSlice = slice.get(StaticStrings::WriteConcern);
-    auto minReplicationFactorSlice = slice.get(StaticStrings::MinReplicationFactor);
-          
+    auto minReplicationFactorSlice =
+        slice.get(StaticStrings::MinReplicationFactor);
+
     if (writeConcernSlice.isNumber() && minReplicationFactorSlice.isNumber()) {
       // both attributes set. now check if they have different values
-      if (basics::VelocyPackHelper::compare(writeConcernSlice, minReplicationFactorSlice, false) != 0) {
-        return Result(TRI_ERROR_BAD_PARAMETER, "got ambiguous values for writeConcern and minReplicationFactor");
+      if (basics::VelocyPackHelper::compare(
+              writeConcernSlice, minReplicationFactorSlice, false) != 0) {
+        return Result(
+            TRI_ERROR_BAD_PARAMETER,
+            "got ambiguous values for writeConcern and minReplicationFactor");
       }
     }
 
     if (enforceReplicationFactor) {
       auto enforceSlice = slice.get("enforceReplicationFactor");
       if (!enforceSlice.isBool() || enforceSlice.getBool()) {
-        auto replicationFactorSlice = slice.get(StaticStrings::ReplicationFactor);
+        auto replicationFactorSlice =
+            slice.get(StaticStrings::ReplicationFactor);
         if (replicationFactorSlice.isNumber()) {
-          int64_t replicationFactorProbe = replicationFactorSlice.getNumber<int64_t>();
+          int64_t replicationFactorProbe =
+              replicationFactorSlice.getNumber<int64_t>();
           if (replicationFactorProbe == 0) {
-            // TODO: Which configuration for satellites are valid regarding minRepl and writeConcern
-            // valid for creating a SatelliteCollection
+            // TODO: Which configuration for satellites are valid regarding
+            // minRepl and writeConcern valid for creating a SatelliteCollection
             return Result();
           }
           if (replicationFactorProbe < 0) {
-            return Result(TRI_ERROR_BAD_PARAMETER, "invalid value for replicationFactor");
+            return Result(TRI_ERROR_BAD_PARAMETER,
+                          "invalid value for replicationFactor");
           }
 
           uint32_t const minReplicationFactor = cl.minReplicationFactor();
           uint32_t const maxReplicationFactor = cl.maxReplicationFactor();
-          uint32_t replicationFactor = replicationFactorSlice.getNumber<uint32_t>();
+          uint32_t replicationFactor =
+              replicationFactorSlice.getNumber<uint32_t>();
 
-          // make sure the replicationFactor value is between the configured min and max values
+          // make sure the replicationFactor value is between the configured min
+          // and max values
           if (replicationFactor > maxReplicationFactor &&
               maxReplicationFactor > 0) {
-            return Result(TRI_ERROR_BAD_PARAMETER,
-                          std::string("replicationFactor must not be higher than maximum allowed replicationFactor (") + std::to_string(maxReplicationFactor) + ")");
+            return Result(
+                TRI_ERROR_BAD_PARAMETER,
+                std::string("replicationFactor must not be higher than "
+                            "maximum allowed replicationFactor (") +
+                    std::to_string(maxReplicationFactor) + ")");
           } else if (replicationFactor < minReplicationFactor &&
-              minReplicationFactor > 0) {
-            return Result(TRI_ERROR_BAD_PARAMETER,
-                          std::string("replicationFactor must not be lower than minimum allowed replicationFactor (") + std::to_string(minReplicationFactor) + ")");
+                     minReplicationFactor > 0) {
+            return Result(
+                TRI_ERROR_BAD_PARAMETER,
+                std::string("replicationFactor must not be lower than "
+                            "minimum allowed replicationFactor (") +
+                    std::to_string(minReplicationFactor) + ")");
           }
-        
-          // make sure we have enough servers available for the replication factor
+
+          // make sure we have enough servers available for the replication
+          // factor
           if (ServerState::instance()->isCoordinator() &&
-              replicationFactor > cl.clusterInfo().getCurrentDBServers().size()) { 
+              replicationFactor >
+                  cl.clusterInfo().getCurrentDBServers().size()) {
             return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
           }
         }
@@ -561,11 +607,20 @@ Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Sl
           if (writeConcernSlice.isNumber()) {
             int64_t writeConcern = writeConcernSlice.getNumber<int64_t>();
             if (writeConcern <= 0) {
-              return Result(TRI_ERROR_BAD_PARAMETER, "invalid value for writeConcern");
+              return Result(TRI_ERROR_BAD_PARAMETER,
+                            "invalid value for writeConcern");
             }
             if (ServerState::instance()->isCoordinator() &&
-                static_cast<size_t>(writeConcern) > cl.clusterInfo().getCurrentDBServers().size()) { 
+                static_cast<size_t>(writeConcern) >
+                    cl.clusterInfo().getCurrentDBServers().size()) {
               return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+            }
+
+            if (replicationFactorSlice.isNumber() &&
+                writeConcern > replicationFactorSlice.getNumber<int64_t>()) {
+              return Result(
+                  TRI_ERROR_BAD_PARAMETER,
+                  "writeConcern must not be higher than replicationFactor");
             }
           }
         }
@@ -578,11 +633,14 @@ Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Sl
 
 void ShardingInfo::sortShardNamesNumerically(std::vector<ShardID>& list) {
   // We need to sort numerically, so s99 is before s100:
-  std::sort(list.begin(), list.end(), [](ShardID const& lhs, ShardID const& rhs) {
-    TRI_ASSERT(lhs.size() > 1 && lhs[0] == 's');
-    uint64_t l = basics::StringUtils::uint64(lhs.c_str() + 1, lhs.size() - 1);
-    TRI_ASSERT(rhs.size() > 1 && rhs[0] == 's');
-    uint64_t r = basics::StringUtils::uint64(rhs.c_str() + 1, rhs.size() - 1);
-    return l < r;
-  });
+  std::sort(list.begin(), list.end(),
+            [](ShardID const& lhs, ShardID const& rhs) {
+              TRI_ASSERT(lhs.size() > 1 && lhs[0] == 's');
+              uint64_t l =
+                  basics::StringUtils::uint64(lhs.c_str() + 1, lhs.size() - 1);
+              TRI_ASSERT(rhs.size() > 1 && rhs[0] == 's');
+              uint64_t r =
+                  basics::StringUtils::uint64(rhs.c_str() + 1, rhs.size() - 1);
+              return l < r;
+            });
 }

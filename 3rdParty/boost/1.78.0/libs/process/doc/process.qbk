@@ -1,0 +1,21 @@
+[library Boost.Process
+    [quickbook 1.5]
+    [authors [Morgenstern, Klemens David]]
+    [copyright 2006, 2007, 2008, 2009, 2010, 2011, 2012 Julio M. Merino Vidal, Ilya Sokolov, Felipe Tanus, Jeff Flinn, Boris Schaeling, 2016 Klemens D. Morgenstern]
+    [id process]
+    [dirname process]
+    [license
+        Distributed under the Boost Software License, Version 1.0.
+        (See accompanying file LICENSE_1_0.txt or copy at
+        http://www.boost.org/LICENSE_1_0.txt)
+    ]
+]
+
+[include introduction.qbk]
+[include concepts.qbk]
+[include tutorial.qbk]
+[include design.qbk]
+[include extend.qbk]
+[include faq.qbk]
+[xinclude autodoc.xml]
+[include acknowledgements.qbk]

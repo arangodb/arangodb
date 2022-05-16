@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,29 +28,25 @@
 #include "Basics/Locking.h"
 #include "Basics/debugging.h"
 
-#ifdef ARANGODB_SHOW_LOCK_TIME
-#include "Logger/Logger.h"
-#endif
-
 #include <thread>
 
-#define MUTEX_UNLOCKER(obj, lock) \
-  arangodb::basics::MutexUnlocker<typename std::decay<decltype(lock)>::type> obj(&(lock), __FILE__, __LINE__)
+#define MUTEX_UNLOCKER(obj, lock)                                            \
+  arangodb::basics::MutexUnlocker<typename std::decay<decltype(lock)>::type> \
+      obj(&(lock), __FILE__, __LINE__)
 
-namespace arangodb {
-namespace basics {
+namespace arangodb::basics {
 
 /// @brief mutex locker
 /// A MutexUnlocker unlocks a mutex during its lifetime und locks the mutex
 /// when it is destroyed.
-template <class LockType>
+template<class LockType>
 class MutexUnlocker {
   MutexUnlocker(MutexUnlocker const&) = delete;
   MutexUnlocker& operator=(MutexUnlocker const&) = delete;
 
  public:
   /// The constructor unlocks the mutex, the destructor locks the mutex.
-  MutexUnlocker(LockType* mutex, char const* file, int line)
+  MutexUnlocker(LockType* mutex, char const* file, int line) noexcept
       : _mutex(mutex), _file(file), _line(line), _isLocked(true) {
     unlock();
   }
@@ -62,17 +58,17 @@ class MutexUnlocker {
     }
   }
 
-  bool isLocked() const { return _isLocked; }
+  bool isLocked() const noexcept { return _isLocked; }
 
   /// @brief acquire the mutex, blocking
-  void lock() {
+  void lock() noexcept {
     TRI_ASSERT(!_isLocked);
     _mutex->lock();
     _isLocked = true;
   }
 
   /// @brief unlocks the mutex if we own it
-  bool unlock() {
+  bool unlock() noexcept {
     if (_isLocked) {
       _isLocked = false;
       _mutex->unlock();
@@ -94,7 +90,4 @@ class MutexUnlocker {
   /// @brief whether or not the mutex is locked
   bool _isLocked;
 };
-
-}  // namespace basics
-}  // namespace arangodb
-
+}  // namespace arangodb::basics

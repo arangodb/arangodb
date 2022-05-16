@@ -1,14 +1,40 @@
 module.exports = function (obj) {
-
   var addProperty = function (method, func) {
     String.prototype.__defineGetter__(method, func);
-  }
+  };
 
   var stringPrototypeBlacklist = [
-    '__defineGetter__', '__defineSetter__', '__lookupGetter__', '__lookupSetter__', 'charAt', 'constructor',
-    'hasOwnProperty', 'isPrototypeOf', 'propertyIsEnumerable', 'toLocaleString', 'toString', 'valueOf', 'charCodeAt',
-    'indexOf', 'lastIndexof', 'length', 'localeCompare', 'match', 'replace', 'search', 'slice', 'split', 'substring',
-    'toLocaleLowerCase', 'toLocaleUpperCase', 'toLowerCase', 'toUpperCase', 'trim', 'trimLeft', 'trimRight', 'gsub'
+    '__defineGetter__',
+    '__defineSetter__',
+    '__lookupGetter__',
+    '__lookupSetter__',
+    'charAt',
+    'constructor',
+    'hasOwnProperty',
+    'isPrototypeOf',
+    'propertyIsEnumerable',
+    'toLocaleString',
+    'toString',
+    'valueOf',
+    'charCodeAt',
+    'indexOf',
+    'lastIndexof',
+    'length',
+    'localeCompare',
+    'match',
+    'replace',
+    'search',
+    'slice',
+    'split',
+    'substring',
+    'toLocaleLowerCase',
+    'toLocaleUpperCase',
+    'toLowerCase',
+    'toUpperCase',
+    'trim',
+    'trimLeft',
+    'trimRight',
+    'gsub',
   ];
 
   Object.keys(obj).forEach(function (key) {
@@ -22,5 +48,4 @@ module.exports = function (obj) {
       }
     }
   });
-
-}
+};

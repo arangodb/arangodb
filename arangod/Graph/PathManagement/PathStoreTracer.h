@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,8 @@
 
 #include "Basics/ResourceUsage.h"
 
+#include "Containers/FlatHashMap.h"
+
 #include <unordered_map>
 #include <vector>
 
@@ -44,7 +46,7 @@ namespace graph {
 
 class ValidationResult;
 
-template <class PathStoreImpl>
+template<class PathStoreImpl>
 class PathStoreTracer {
  public:
   using Step = typename PathStoreImpl::Step;
@@ -60,19 +62,24 @@ class PathStoreTracer {
   // returns the index of inserted element
   size_t append(Step step);
 
-  auto get(size_t position) const -> Step;
+  auto getStep(size_t position) const -> Step;
+  auto getStepReference(size_t position) -> Step&;
 
   // @brief returns the current vector size
   size_t size() const;
 
-  template <class PathResultType>
+  template<class PathResultType>
   auto buildPath(Step const& vertex, PathResultType& path) const -> void;
 
-  template <class ProviderType>
-  auto reverseBuildPath(Step const& vertex, PathResult<ProviderType, Step>& path) const
-      -> void;
+  template<class ProviderType>
+  auto reverseBuildPath(Step const& vertex,
+                        PathResult<ProviderType, Step>& path) const -> void;
 
-  auto visitReversePath(Step const& step, std::function<bool(Step const&)> const& visitor) const
+  auto visitReversePath(Step const& step,
+                        std::function<bool(Step const&)> const& visitor) const
+      -> bool;
+
+  auto modifyReversePath(Step& step, std::function<bool(Step&)> const& visitor)
       -> bool;
 
  private:
@@ -80,9 +87,8 @@ class PathStoreTracer {
 
   // Mapping MethodName => Statistics
   // We make this mutable to not violate the captured API
-  mutable std::unordered_map<std::string, TraceEntry> _stats;
+  mutable containers::FlatHashMap<std::string, TraceEntry> _stats;
 };
 
 }  // namespace graph
 }  // namespace arangodb
-

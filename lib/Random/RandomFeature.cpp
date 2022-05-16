@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,11 +34,11 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-RandomFeature::RandomFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Random"),
+RandomFeature::RandomFeature(application_features::ApplicationServer& server,
+                             size_t registration)
+    : ApplicationFeature(server, registration, name()),
       _randomGenerator((uint32_t)RandomGenerator::RandomType::MERSENNE) {
   setOptional(false);
-  startsAfter<LoggerFeature>();
 }
 
 void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -55,8 +55,9 @@ void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "random number generator to use (1 = MERSENNE, 2 = RANDOM, "
       "3 = URANDOM, 4 = COMBINED (not for Windows), 5 = WinCrypt (Windows "
       "only)",
-      new DiscreteValuesParameter<UInt32Parameter>(&_randomGenerator, generators),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      new DiscreteValuesParameter<UInt32Parameter>(&_randomGenerator,
+                                                   generators),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
 void RandomFeature::prepare() {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +24,6 @@
 #include "AgencyCallbackRegistry.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
@@ -40,26 +39,32 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Random/RandomGenerator.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 
-DECLARE_COUNTER(arangodb_agency_callback_registered_total, "Total number of agency callbacks registered");
-DECLARE_GAUGE(arangodb_agency_callback_number, uint64_t, "Current number of agency callbacks registered");
+DECLARE_COUNTER(arangodb_agency_callback_registered_total,
+                "Total number of agency callbacks registered");
+DECLARE_GAUGE(arangodb_agency_callback_number, uint64_t,
+              "Current number of agency callbacks registered");
 
-AgencyCallbackRegistry::AgencyCallbackRegistry(application_features::ApplicationServer& server,
-                                               std::string const& callbackBasePath)
-  : _agency(server), 
-    _callbackBasePath(callbackBasePath),
-    _totalCallbacksRegistered(
-      server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_callback_registered_total{})),
-    _callbacksCount(
-      server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_callback_number{})) {}
+AgencyCallbackRegistry::AgencyCallbackRegistry(
+    ArangodServer& server, std::string const& callbackBasePath)
+    : _agency(server),
+      _callbackBasePath(callbackBasePath),
+      _totalCallbacksRegistered(
+          server.getFeature<metrics::MetricsFeature>().add(
+              arangodb_agency_callback_registered_total{})),
+      _callbacksCount(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_agency_callback_number{})) {}
 
 AgencyCallbackRegistry::~AgencyCallbackRegistry() = default;
 
-Result AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb, bool local) {
+Result AgencyCallbackRegistry::registerCallback(
+    std::shared_ptr<AgencyCallback> cb, bool local) {
   uint64_t id;
   while (true) {
     id = RandomGenerator::interval(std::numeric_limits<uint64_t>::max());
@@ -89,13 +94,13 @@ Result AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> 
   } catch (...) {
     res.reset(TRI_ERROR_FAILED, "unknown exception");
   }
-  
+
   TRI_ASSERT(res.fail());
   res.reset(res.errorNumber(),
             StringUtils::concatT("registering ", (local ? "local " : ""),
                                  "callback failed: ", res.errorMessage()));
   LOG_TOPIC("b88f4", WARN, Logger::CLUSTER) << res.errorMessage();
-  
+
   {
     WRITE_LOCKER(locker, _lock);
     _callbacks.erase(id);
@@ -103,7 +108,8 @@ Result AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> 
   return res;
 }
 
-std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint64_t id) {
+std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(
+    uint64_t id) {
   READ_LOCKER(locker, _lock);
   auto it = _callbacks.find(id);
 
@@ -113,7 +119,8 @@ std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint64_t id)
   return (*it).second;
 }
 
-bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> cb) {
+bool AgencyCallbackRegistry::unregisterCallback(
+    std::shared_ptr<AgencyCallback> cb) {
   bool found = false;
   uint64_t id = 0;
   {
@@ -146,10 +153,11 @@ bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> 
     // we need to release the write lock for the map already, because we are
     // now calling into other methods which may also acquire locks. and we
     // don't want to be vulnerable to priority inversion.
-    
+
     if (found) {
       if (cb->local()) {
-        auto& cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
+        auto& cache =
+            _agency.server().getFeature<ClusterFeature>().agencyCache();
         cache.unregisterCallback(cb->key, id);
       } else {
         _agency.unregisterCallback(cb->key, getEndpointUrl(id));

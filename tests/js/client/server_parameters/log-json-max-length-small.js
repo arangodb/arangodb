@@ -42,7 +42,18 @@ const jsunity = require('jsunity');
 function LoggerSuite() {
   'use strict';
 
+  let oldLogLevel;
+
   return {
+    setUpAll : function() {
+      oldLogLevel = arango.GET("/_admin/log/level").general;
+      arango.PUT("/_admin/log/level", { general: "info" });
+    },
+
+    tearDownAll : function () {
+      // restore previous log level for "general" topic;
+      arango.PUT("/_admin/log/level", { general: oldLogLevel });
+    },
     
     testLogEntries: function() {
       let res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `

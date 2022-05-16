@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,15 +31,9 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 class CollectionNameResolver;
-
-namespace basics {
-class StringBuffer;
-}
 
 namespace velocypack {
 class Builder;
@@ -48,12 +42,18 @@ class Builder;
 namespace transaction {
 class Context;
 class Methods;
-  
+
 namespace helpers {
 /// @brief extract the _key attribute from a slice
-arangodb::velocypack::StringRef extractKeyPart(VPackSlice);
+std::string_view extractKeyPart(VPackSlice);
 
-std::string extractIdString(CollectionNameResolver const*, VPackSlice, VPackSlice const&);
+/** @brief Given a string, returns the substring after the first '/' or
+ *          the whole string if it contains no '/'.
+ */
+std::string_view extractKeyPart(std::string_view);
+
+std::string extractIdString(CollectionNameResolver const*, VPackSlice,
+                            VPackSlice const&);
 
 /// @brief quick access to the _key attribute in a database document
 /// the document must have at least two attributes, and _key is supposed to
@@ -85,39 +85,25 @@ VPackSlice extractToFromDocument(VPackSlice);
 void extractKeyAndRevFromDocument(VPackSlice slice, VPackSlice& keySlice,
                                   RevisionId& revisionId);
 
-velocypack::StringRef extractCollectionFromId(velocypack::StringRef id);
+std::string_view extractCollectionFromId(std::string_view id);
 
 /// @brief extract _rev from a database document
 RevisionId extractRevFromDocument(VPackSlice slice);
 VPackSlice extractRevSliceFromDocument(VPackSlice slice);
 
-OperationResult buildCountResult(OperationOptions const& options,
-                                 std::vector<std::pair<std::string, uint64_t>> const& count,
-                                 transaction::CountType type, uint64_t& total);
+OperationResult buildCountResult(
+    OperationOptions const& options,
+    std::vector<std::pair<std::string, uint64_t>> const& count,
+    transaction::CountType type, uint64_t& total);
 
 /// @brief creates an id string from a custom _id value and the _key string
 std::string makeIdFromCustom(CollectionNameResolver const* resolver,
-                             VPackSlice const& idPart, VPackSlice const& keyPart);
+                             VPackSlice const& idPart,
+                             VPackSlice const& keyPart);
 
 std::string makeIdFromParts(CollectionNameResolver const* resolver,
                             DataSourceId const& cid, VPackSlice const& keyPart);
-};  // namespace helpers
-
-/// @brief basics::StringBuffer leaser
-/// @deprecated rather use StringLeaser for a shared std::string
-class StringBufferLeaser {
- public:
-  explicit StringBufferLeaser(Methods*);
-  explicit StringBufferLeaser(transaction::Context*);
-  ~StringBufferLeaser();
-  arangodb::basics::StringBuffer* stringBuffer() const { return _stringBuffer; }
-  arangodb::basics::StringBuffer* operator->() const { return _stringBuffer; }
-  arangodb::basics::StringBuffer* get() const { return _stringBuffer; }
-
- private:
-  transaction::Context* _transactionContext;
-  arangodb::basics::StringBuffer* _stringBuffer;
-};
+}  // namespace helpers
 
 /// @brief std::string leaser
 class StringLeaser {
@@ -127,6 +113,8 @@ class StringLeaser {
   ~StringLeaser();
   std::string* string() const { return _string; }
   std::string* operator->() const { return _string; }
+  std::string& operator*() { return *_string; }
+  std::string const& operator*() const { return *_string; }
   std::string* get() const { return _string; }
 
  private:
@@ -136,12 +124,24 @@ class StringLeaser {
 
 class BuilderLeaser {
  public:
-  explicit BuilderLeaser(transaction::Methods*);
   explicit BuilderLeaser(transaction::Context*);
+  explicit BuilderLeaser(transaction::Methods*);
   ~BuilderLeaser();
-  inline arangodb::velocypack::Builder* builder() const { return _builder; }
-  inline arangodb::velocypack::Builder* operator->() const { return _builder; }
-  inline arangodb::velocypack::Builder* get() const { return _builder; }
+  inline arangodb::velocypack::Builder* builder() const noexcept {
+    return _builder;
+  }
+  inline arangodb::velocypack::Builder* operator->() const noexcept {
+    return _builder;
+  }
+  inline arangodb::velocypack::Builder& operator*() noexcept {
+    return *_builder;
+  }
+  inline arangodb::velocypack::Builder& operator*() const noexcept {
+    return *_builder;
+  }
+  inline arangodb::velocypack::Builder* get() const noexcept {
+    return _builder;
+  }
   inline arangodb::velocypack::Builder* steal() {
     arangodb::velocypack::Builder* res = _builder;
     _builder = nullptr;
@@ -152,7 +152,6 @@ class BuilderLeaser {
   transaction::Context* _transactionContext;
   arangodb::velocypack::Builder* _builder;
 };
-  
+
 }  // namespace transaction
 }  // namespace arangodb
-

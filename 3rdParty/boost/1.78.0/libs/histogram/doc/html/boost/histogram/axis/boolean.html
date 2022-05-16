@@ -1,0 +1,139 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Class template boolean</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter 1. Boost.Histogram">
+<link rel="up" href="../../../histogram/reference.html#header.boost.histogram.axis.boolean_hpp" title="Header &lt;boost/histogram/axis/boolean.hpp&gt;">
+<link rel="prev" href="../algorithm/sum.html" title="Function template sum">
+<link rel="next" href="category.html" title="Class template category">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../algorithm/sum.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../histogram/reference.html#header.boost.histogram.axis.boolean_hpp"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="category.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.histogram.axis.boolean"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class template boolean</span></h2>
+<p>boost::histogram::axis::boolean — Discrete axis for boolean data. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../../histogram/reference.html#header.boost.histogram.axis.boolean_hpp" title="Header &lt;boost/histogram/axis/boolean.hpp&gt;">boost/histogram/axis/boolean.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> MetaData<span class="special">&gt;</span> 
+<span class="keyword">class</span> <a class="link" href="boolean.html" title="Class template boolean">boolean</a> <span class="special">:</span> <span class="keyword">public</span> boost::histogram::axis::iterator_mixin&lt; boolean&lt; MetaData &gt; &gt;,
+                <span class="keyword">public</span> metadata_base_t&lt; MetaData &gt;
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// <a class="link" href="boolean.html#boost.histogram.axis.booleanconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <span class="keyword">explicit</span> <a class="link" href="boolean.html#idm14113-bb"><span class="identifier">boolean</span></a><span class="special">(</span><span class="identifier">metadata_type</span> <span class="special">=</span> <span class="special">{</span><span class="special">}</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="boolean.html#idm14072-bb">public member functions</a></span>
+  <span class="identifier">index_type</span> <a class="link" href="boolean.html#idm14073-bb"><span class="identifier">index</span></a><span class="special">(</span><span class="identifier">value_type</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">value_type</span> <a class="link" href="boolean.html#idm14078-bb"><span class="identifier">value</span></a><span class="special">(</span><span class="identifier">index_type</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">value_type</span> <a class="link" href="boolean.html#idm14083-bb"><span class="identifier">bin</span></a><span class="special">(</span><span class="identifier">index_type</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">index_type</span> <a class="link" href="boolean.html#idm14088-bb"><span class="identifier">size</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> M<span class="special">&gt;</span> <span class="keyword">bool</span> <a class="link" href="boolean.html#idm14091-bb"><span class="keyword">operator</span><span class="special">==</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="boolean.html" title="Class template boolean">boolean</a><span class="special">&lt;</span> <span class="identifier">M</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> M<span class="special">&gt;</span> <span class="keyword">bool</span> <a class="link" href="boolean.html#idm14098-bb"><span class="keyword">operator</span><span class="special">!=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="boolean.html" title="Class template boolean">boolean</a><span class="special">&lt;</span> <span class="identifier">M</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Archive<span class="special">&gt;</span> <span class="keyword">void</span> <a class="link" href="boolean.html#idm14105-bb"><span class="identifier">serialize</span></a><span class="special">(</span><span class="identifier">Archive</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">unsigned</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="boolean.html#idm14122-bb">public static functions</a></span>
+  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keyword">bool</span> <a class="link" href="boolean.html#idm14123-bb"><span class="identifier">inclusive</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keyword">unsigned</span> <a class="link" href="boolean.html#idm14127-bb"><span class="identifier">options</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idm23943"></a><h2>Description</h2>
+<p>Binning is a pass-though operation with zero cost, making this the fastest possible axis. The axis has no internal state apart from the optional metadata state. The axis has no under- and overflow bins. It cannot grow and cannot be reduced.</p>
+<p>
+</p>
+<div class="refsect2">
+<a name="idm23947"></a><h3>Template Parameters</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> MetaData</pre>
+<p>type to store meta data. </p>
+</li></ol></div>
+</div>
+<div class="refsect2">
+<a name="idm23956"></a><h3>
+<a name="boost.histogram.axis.booleanconstruct-copy-destruct"></a><code class="computeroutput">boolean</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idm14113-bb"></a><span class="identifier">boolean</span><span class="special">(</span><span class="identifier">metadata_type</span> meta <span class="special">=</span> <span class="special">{</span><span class="special">}</span><span class="special">)</span><span class="special">;</span></pre>Construct a boolean axis. <p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">meta</code></span></p></td>
+<td><p>description of the axis. </p></td>
+</tr></tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li></ol></div>
+</div>
+<div class="refsect2">
+<a name="idm23985"></a><h3>
+<a name="idm14072-bb"></a><code class="computeroutput">boolean</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">index_type</span> <a name="idm14073-bb"></a><span class="identifier">index</span><span class="special">(</span><span class="identifier">value_type</span> x<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Return index for value argument. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">value_type</span> <a name="idm14078-bb"></a><span class="identifier">value</span><span class="special">(</span><span class="identifier">index_type</span> i<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Return value for index argument. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">value_type</span> <a name="idm14083-bb"></a><span class="identifier">bin</span><span class="special">(</span><span class="identifier">index_type</span> i<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Return bin for index argument. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">index_type</span> <a name="idm14088-bb"></a><span class="identifier">size</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Returns the number of bins, without over- or underflow. </li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> M<span class="special">&gt;</span> <span class="keyword">bool</span> <a name="idm14091-bb"></a><span class="keyword">operator</span><span class="special">==</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="boolean.html" title="Class template boolean">boolean</a><span class="special">&lt;</span> <span class="identifier">M</span> <span class="special">&gt;</span> <span class="special">&amp;</span> o<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> M<span class="special">&gt;</span> <span class="keyword">bool</span> <a name="idm14098-bb"></a><span class="keyword">operator</span><span class="special">!=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="boolean.html" title="Class template boolean">boolean</a><span class="special">&lt;</span> <span class="identifier">M</span> <span class="special">&gt;</span> <span class="special">&amp;</span> o<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Archive<span class="special">&gt;</span> <span class="keyword">void</span> <a name="idm14105-bb"></a><span class="identifier">serialize</span><span class="special">(</span><span class="identifier">Archive</span> <span class="special">&amp;</span> ar<span class="special">,</span> <span class="keyword">unsigned</span><span class="special">)</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="idm24098"></a><h3>
+<a name="idm14122-bb"></a><code class="computeroutput">boolean</code> public static functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keyword">bool</span> <a name="idm14123-bb"></a><span class="identifier">inclusive</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Whether the axis is inclusive (see <code class="computeroutput"><a class="link" href="traits/is_inclusive.html" title="Struct template is_inclusive">axis::traits::is_inclusive</a></code>).</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keyword">unsigned</span> <a name="idm14127-bb"></a><span class="identifier">options</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Returns the options. </li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Hans
+      Dembinski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../algorithm/sum.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../histogram/reference.html#header.boost.histogram.axis.boolean_hpp"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="category.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

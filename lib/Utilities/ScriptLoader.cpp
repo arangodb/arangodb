@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -89,7 +89,8 @@ std::string ScriptLoader::buildScript(char const** script) {
 /// @brief defines a new named script
 ////////////////////////////////////////////////////////////////////////////////
 
-void ScriptLoader::defineScript(std::string const& name, std::string const& script) {
+void ScriptLoader::defineScript(std::string const& name,
+                                std::string const& script) {
   MUTEX_LOCKER(mutexLocker, _lock);
 
   _scripts[name] = script;
@@ -158,9 +159,11 @@ std::vector<std::string> ScriptLoader::getDirectoryParts() {
     // .........................................................................
 
 #ifdef _WIN32
-    std::vector<std::string> parts = basics::StringUtils::split(_directory, ';');
+    std::vector<std::string> parts =
+        basics::StringUtils::split(_directory, ';');
 #else
-    std::vector<std::string> parts = basics::StringUtils::split(_directory, ":;");
+    std::vector<std::string> parts =
+        basics::StringUtils::split(_directory, ":;");
 #endif
 
     for (size_t i = 0; i < parts.size(); ++i) {

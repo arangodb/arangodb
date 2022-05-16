@@ -1,0 +1,13 @@
+name: arangodb_replication2_replicated_log_number
+introducedIn: "3.9.0"
+help: |
+  Number of replicated logs.
+unit: number
+type: counter
+category: Replication
+complexity: simple
+exposedBy:
+  - dbserver
+  - single
+description: |
+  Number of replicated logs this server is a participant of.

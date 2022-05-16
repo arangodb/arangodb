@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,14 +38,14 @@ class RequestStatistics {
 
   class Item {
    public:
-    Item() : _stat(nullptr) {}
-    explicit Item(RequestStatistics* stat) : _stat(stat) {}
+    constexpr Item() noexcept : _stat(nullptr) {}
+    explicit Item(RequestStatistics* stat) noexcept : _stat(stat) {}
 
     Item(Item const&) = delete;
     Item& operator=(Item const&) = delete;
 
-    Item(Item&& r) : _stat(r._stat) { r._stat = nullptr; }
-    Item& operator=(Item&& r) {
+    Item(Item&& r) noexcept : _stat(r._stat) { r._stat = nullptr; }
+    Item& operator=(Item&& r) noexcept {
       if (&r != this) {
         reset();
         _stat = r._stat;
@@ -56,28 +56,28 @@ class RequestStatistics {
 
     ~Item() { reset(); }
 
-    void reset() {
+    void reset() noexcept {
       if (_stat != nullptr) {
         _stat->release();
         _stat = nullptr;
       }
     }
 
-    operator bool() const { return _stat != nullptr; }
+    operator bool() const noexcept { return _stat != nullptr; }
 
-    void SET_ASYNC() const {
+    void SET_ASYNC() const noexcept {
       if (_stat != nullptr) {
         _stat->_async = true;
       }
     }
 
-    void SET_REQUEST_TYPE(rest::RequestType t) const {
+    void SET_REQUEST_TYPE(rest::RequestType t) const noexcept {
       if (_stat != nullptr) {
         _stat->_requestType = t;
       }
     }
 
-    void SET_READ_START(double start) const {
+    void SET_READ_START(double start) const noexcept {
       if (_stat != nullptr) {
         if (_stat->_readStart == 0.0) {
           _stat->_readStart = start;
@@ -155,15 +155,15 @@ class RequestStatistics {
       }
     }
 
-    double ELAPSED_WHILE_QUEUED() const {
+    double ELAPSED_WHILE_QUEUED() const noexcept {
       if (_stat != nullptr) {
-        return  _stat->_queueEnd - _stat->_queueStart;
+        return _stat->_queueEnd - _stat->_queueStart;
       } else {
         return 0.0;
       }
     }
 
-    void SET_SUPERUSER() const {
+    void SET_SUPERUSER() const noexcept {
       if (_stat != nullptr) {
         _stat->_superuser = true;
       }
@@ -172,10 +172,12 @@ class RequestStatistics {
     std::string timingsCsv() const;
 
    private:
-     RequestStatistics* _stat;
+    RequestStatistics* _stat;
   };
 
-  static Item acquire();
+  RequestStatistics() noexcept { reset(); }
+  static Item acquire() noexcept;
+
   struct Snapshot {
     statistics::Distribution totalTime;
     statistics::Distribution requestTime;
@@ -185,16 +187,15 @@ class RequestStatistics {
     statistics::Distribution bytesReceived;
   };
 
-  static void getSnapshot(Snapshot& snapshot, stats::RequestStatisticsSource source);
+  static void getSnapshot(Snapshot& snapshot,
+                          stats::RequestStatisticsSource source);
 
  private:
   static void process(RequestStatistics*);
 
-  RequestStatistics() { reset(); }
+  void release() noexcept;
 
-  void release();
-
-  void reset() {
+  void reset() noexcept {
     _readStart = 0.0;
     _readEnd = 0.0;
     _queueStart = 0.0;
@@ -208,8 +209,6 @@ class RequestStatistics {
     _sentBytes = 0.0;
     _requestType = rest::RequestType::ILLEGAL;
     _async = false;
-    _released = true;
-    _inQueue = false;
     _superuser = false;
   }
 
@@ -230,9 +229,6 @@ class RequestStatistics {
   rest::RequestType _requestType;
 
   bool _async;
-  bool _released;
-  bool _inQueue;
   bool _superuser;
 };
 }  // namespace arangodb
-

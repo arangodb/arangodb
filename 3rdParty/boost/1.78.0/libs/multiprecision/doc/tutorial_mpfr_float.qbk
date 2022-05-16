@@ -1,0 +1,99 @@
+[/
+  Copyright 2011 - 2020 John Maddock.
+  Copyright 2013 - 2019 Paul A. Bristow.
+  Copyright 2013 Christopher Kormanyos.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:mpfr_float mpfr_float]
+
+`#include <boost/multiprecision/mpfr.hpp>`
+
+   namespace boost{ namespace multiprecision{
+
+   enum mpfr_allocation_type
+   {
+      allocate_stack,
+      allocate_dynamic
+   };
+
+   template <unsigned Digits10, mpfr_allocation_type AllocateType = allocate_dynamic>
+   class mpfr_float_backend;
+
+   typedef number<mpfr_float_backend<50> >    mpfr_float_50;
+   typedef number<mpfr_float_backend<100> >   mpfr_float_100;
+   typedef number<mpfr_float_backend<500> >   mpfr_float_500;
+   typedef number<mpfr_float_backend<1000> >  mpfr_float_1000;
+   typedef number<mpfr_float_backend<0> >     mpfr_float;
+
+   typedef number<mpfr_float_backend<50, allocate_stack> >    static_mpfr_float_50;
+   typedef number<mpfr_float_backend<100, allocate_stack> >   static_mpfr_float_100;
+
+   }} // namespaces
+
+The `mpfr_float_backend` type is used in conjunction with `number`: It acts as a thin wrapper around the [mpfr] `mpfr_t`
+to provide an real-number type that is a drop-in replacement for the native C++ floating-point types, but with
+much greater precision.
+
+Type `mpfr_float_backend` can be used at fixed precision by specifying a non-zero `Digits10` template parameter, or
+at variable precision by setting the template argument to zero.  The typedefs mpfr_float_50, mpfr_float_100,
+mpfr_float_500, mpfr_float_1000 provide arithmetic types at 50, 100, 500 and 1000 decimal digits precision
+respectively.  The typedef mpfr_float provides a variable precision type whose precision can be controlled via the
+`number`s member functions.
+
+In addition the second template parameter lets you choose between dynamic allocation (the default,
+and uses MPFR's normal allocation routines),
+or stack allocation (where all the memory required for the underlying data types is stored
+within `mpfr_float_backend`).  The latter option can result in significantly faster code, at the
+expense of growing the size of `mpfr_float_backend`.  It can only be used at ['fixed precision], and
+should only be used for lower digit counts.  Note that we can not guarantee that using `allocate_stack`
+won't cause any calls to `mpfr`'s allocation routines, as `mpfr` may call these inside its own code.
+The following table gives an idea of the performance tradeoff's at 50 decimal digits
+precision[footnote Compiled with VC++10 and /Ox, with MPFR-3.0.0 and MPIR-2.3.0]:
+
+[table
+[[Type][Bessel function evaluation, relative times]]
+[[`number<mpfr_float_backend<50, allocate_static>, et_on>`][1.0 (5.5s)]]
+[[`number<mpfr_float_backend<50, allocate_static>, et_off>`][1.05 (5.8s)]]
+[[`number<mpfr_float_backend<50, allocate_dynamic>, et_on>`][1.05 (5.8s)]]
+[[`number<mpfr_float_backend<50, allocate_dynamic>, et_off>`][1.16 (6.4s)]]
+]
+
+[note This type only provides `numeric_limits` support when the precision is fixed at compile time.]
+
+As well as the usual conversions from arithmetic and string types, instances of `number<mpfr_float_backend<N> >` are
+copy constructible and assignable from:
+
+* The [gmp] native types `mpf_t`, `mpz_t`, `mpq_t`.
+* The [mpfr] native type `mpfr_t`.
+* The `number` wrappers around those types: `number<mpfr_float_backend<M> >`, `number<mpf_float<M> >`, `number<gmp_int>`, `number<gmp_rational>`.
+
+It's also possible to access the underlying `mpfr_t` via the data() member function of `mpfr_float_backend`.
+
+Things you should know when using this type:
+
+* A default constructed `mpfr_float_backend` is set to zero (['Note that this is [*not] the default [mpfr] behavior]).
+* All operations use round to nearest.
+* No changes are made to [gmp] or [mpfr] global settings, so this type can coexist with existing
+[mpfr] or [gmp] code.
+* The code can equally use [mpir] in place of [gmp] - indeed that is the preferred option on Win32.
+* This backend supports rvalue-references and is move-aware, making instantiations of `number` on this backend move aware.
+* Conversion from a string results in a `std::runtime_error` being thrown if the string can not be interpreted
+as a valid floating-point number.
+* Division by zero results in an infinity.
+* When using the variable precision type `mpfr_float`, then copy construction and assignment ['copies the precision
+of the source variable].  Likewise move construction and assignment.
+* When constructing the variable precision type `mpfr_float` you can specify two arguments to the constructor - the first
+is the value to assign to the variable, the second is an unsigned integer specifying the precision in decimal places.  The
+`assign` member function similarly has a 2-argument overload taking the value to assign and the precision.  You can use this
+to preserve the precision of the target variable using the somewhat arcane: `a.assign(b, a.precision())`, which assigns `b` to `a`
+but preserves the precision of `a`.
+
+[h5 [mpfr] example:]
+
+[mpfr_eg]
+
+[endsect] [/section:mpfr_float mpfr_float]

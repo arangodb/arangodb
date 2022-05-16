@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,15 +30,17 @@ namespace arangodb {
 namespace consensus {
 
 struct MoveShard : public Job {
-  MoveShard(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
-            std::string const& creator, std::string const& database,
-            std::string const& collection, std::string const& shard, std::string const& from,
+  MoveShard(Node const& snapshot, AgentInterface* agent,
+            std::string const& jobId, std::string const& creator,
+            std::string const& database, std::string const& collection,
+            std::string const& shard, std::string const& from,
             std::string const& to, bool isLeader, bool remainsFollower);
 
-  MoveShard(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
-            std::string const& creator, std::string const& database,
-            std::string const& collection, std::string const& shard,
-            std::string const& from, std::string const& to, bool isLeader);
+  MoveShard(Node const& snapshot, AgentInterface* agent,
+            std::string const& jobId, std::string const& creator,
+            std::string const& database, std::string const& collection,
+            std::string const& shard, std::string const& from,
+            std::string const& to, bool isLeader);
 
   MoveShard(Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
             std::string const& jobId);
@@ -47,7 +49,8 @@ struct MoveShard : public Job {
 
   virtual JOB_STATUS status() override final;
   virtual void run(bool&) override final;
-  virtual bool create(std::shared_ptr<VPackBuilder> envelope = nullptr) override final;
+  virtual bool create(
+      std::shared_ptr<VPackBuilder> envelope = nullptr) override final;
   virtual bool start(bool&) override final;
   virtual Result abort(std::string const& reason) override;
   JOB_STATUS pendingLeader();
@@ -67,6 +70,7 @@ struct MoveShard : public Job {
     _parentJobId = std::move(parentId);
     return *this;
   }
+
  private:
   [[nodiscard]] bool isSubJob() const noexcept { return !_parentJobId.empty(); }
   void addMoveShardToServerLock(Builder& ops) const;
@@ -84,4 +88,3 @@ struct MoveShard : public Job {
 };
 }  // namespace consensus
 }  // namespace arangodb
-

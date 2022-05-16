@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,7 +46,7 @@ void ShortestPathFinder::destroyEngines() {
     return;
   }
   NetworkFeature const& nf =
-  _options.query().vocbase().server().getFeature<NetworkFeature>();
+      _options.query().vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   // We have to clean up the engines in Coordinator Case.
   if (pool == nullptr) {
@@ -64,10 +64,11 @@ void ShortestPathFinder::destroyEngines() {
   for (auto const& it : *ch->engines()) {
     incHttpRequests(1);
 
-    auto res = network::sendRequestRetry(pool, "server:" + it.first, fuerte::RestVerb::Delete,
-                                    "/_internal/traverser/" +
-                                        arangodb::basics::StringUtils::itoa(it.second),
-                                    VPackBuffer<uint8_t>(), options)
+    auto res = network::sendRequestRetry(
+                   pool, "server:" + it.first, fuerte::RestVerb::Delete,
+                   "/_internal/traverser/" +
+                       arangodb::basics::StringUtils::itoa(it.second),
+                   VPackBuffer<uint8_t>(), options)
                    .get();
 
     if (res.error != fuerte::Error::NoError) {

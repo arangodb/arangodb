@@ -1,0 +1,4 @@
+[#getting_started_15]
+
+  using exp_parser11 = build_parser< foldl_start_with_parser< sequence<plus_token, int_token>, /* apply this parser repeatedly */ int_token, /* use this parser to get the initial value */ boost::mpl::quote2<sum_items> /* use this function to add a new value to the summary */ > >;
+

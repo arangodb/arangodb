@@ -129,16 +129,17 @@
 #include "linenoise.h"
 #include "ConvertUTF.h"
 
+#include <atomic>
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
 
 using std::string;
 using std::vector;
 using std::unique_ptr;
 using namespace linenoise_ng;
 
-typedef unsigned char char8_t;
+//typedef unsigned char char8_t; -- now part of c++20
 
 static ConversionResult copyString8to32(char32_t* dst, size_t dstSize,
                                         size_t& dstCount, const char* src) {
@@ -544,20 +545,15 @@ struct linenoiseCompletions {
 // make control-characters more readable
 #define ctrlChar(upperCaseASCII) (upperCaseASCII - 0x40)
 
-/**
- * Recompute widths of all characters in a char32_t buffer
- * @param text          input buffer of Unicode characters
- * @param widths        output buffer of character widths
- * @param charCount     number of characters in buffer
- */
 namespace linenoise_ng {
-int mk_wcwidth(char32_t ucs);
+int wcwidth(char32_t ucs);
+int wcswidth(char32_t const* ucs, size_t n);
 }
 
 static void recomputeCharacterWidths(const char32_t* text, char* widths,
                                      int charCount) {
   for (int i = 0; i < charCount; ++i) {
-    widths[i] = mk_wcwidth(text[i]);
+    widths[i] = linenoise_ng::wcwidth(text[i]);
   }
 }
 
@@ -591,17 +587,8 @@ static void calculateScreenPosition(int x, int y, int screenColumns,
   }
 }
 
-/**
- * Calculate a column width using mk_wcswidth()
- * @param buf32  text to calculate
- * @param len    length of text to calculate
- */
-namespace linenoise_ng {
-int mk_wcswidth(const char32_t* pwcs, size_t n);
-}
-
 static int calculateColumnPosition(char32_t* buf32, int len) {
-  int width = mk_wcswidth(reinterpret_cast<const char32_t*>(buf32), len);
+  int width = linenoise_ng::wcswidth(reinterpret_cast<const char32_t*>(buf32), len);
   if (width == -1)
     return len;
   else
@@ -661,7 +648,10 @@ struct PromptInfo : public PromptBase {
         *pOut = c;
         ++pOut;
         ++pIn;
-        ++len;
+        int chars = linenoise_ng::wcwidth(c);
+        if (chars >= 0) {
+          len += chars;
+        } 
         if ('\n' == c || ++x >= promptScreenColumns) {
           x = 0;
           ++promptExtraLines;
@@ -2499,7 +2489,7 @@ static bool isCharacterAlphanumeric(char32_t testChar) {
 }
 
 #ifndef _WIN32
-static bool gotResize = false;
+static std::atomic<bool> gotResize = false;
 #endif
 static int keyType = 0;
 
@@ -2559,10 +2549,9 @@ int InputBuffer::getInputLine(PromptBase& pi) {
       }
 
 #ifndef _WIN32
-      if (c == 0 && gotResize) {
+      if (c >= 0 && gotResize.load() && gotResize.exchange(false)) {
         // caught a window resize event
         // now redraw the prompt and line
-        gotResize = false;
         pi.promptScreenColumns = getScreenColumns();
         dynamicRefresh(pi, buf32, len,
                        pos);  // redraw the original prompt with current input
@@ -3183,7 +3172,7 @@ void linenoisePreloadBuffer(const char* preloadText) {
  */
 char* linenoise(const char* prompt) {
 #ifndef _WIN32
-  gotResize = false;
+  gotResize.store(false);
 #endif
   if (isatty(STDIN_FILENO)) {  // input is from a terminal
     char32_t buf32[LINENOISE_MAX_LINE + 1];
@@ -3356,7 +3345,7 @@ int linenoiseHistorySave(const char* filename) {
 
   for (int j = 0; j < historyLen; ++j) {
     if (history[j][0] != '\0') {
-      fprintf(fp, "%s\n", history[j]);
+      fprintf(fp, "%s\n", (const char*) history[j]);
     }
   }
   fclose(fp);
@@ -3431,7 +3420,7 @@ void linenoisePrintKeyCodes(void) {
 #ifndef _WIN32
 static void WindowSizeChanged(int) {
   // do nothing here but setting this flag
-  gotResize = true;
+  gotResize.store(true);
 }
 #endif
 

@@ -1,0 +1,119 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>result&lt;&gt; - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../tutorial/essential/before.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../tutorial/essential.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../tutorial/essential/result/inspecting.html"><img src="../../images/next.png" alt="Next"></a></div><div id="content">
+
+  <div class="titlepage"><div><div><h1 style="clear: both">result&lt;&gt;</h1></div></div></div>
+<p>We will define a function that converts a <code>std::string</code> to an <code>int</code>. This function can fail for a number of reasons;
+if it does we want to communicate the failure reason.</p>
+
+<div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="n">outcome</span><span class="o">::</span><span class="n">result</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">convert</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">str</span><span class="p">)</span> <span class="k">noexcept</span><span class="p">;</span>
+</code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/using_result.cpp#L42" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<p>Template alias <a href="../../reference/aliases/result.html" class="api-reference"><code>result&lt;T, E = varies, NoValuePolicy = policy::default_policy&lt;T, E, void&gt;&gt;</code></a>
+
+has three template parameters, but the last two have default values. The first
+(<code>T</code>) represents the type of the object returned from the function upon success.
+The second (<code>EC</code>) is the type of object containing information about the reason
+for failure when the function fails. A result object stores either a <code>T</code> or an
+<code>EC</code> at any given moment, and is therefore conceptually similar to <code>variant&lt;T, EC&gt;</code>.
+<code>EC</code> is defaulted to <code>std::error_code</code> in standalone Outcome, or to <code>boost::system::error_code</code>
+in Boost.Outcome<sup class="footnote-ref" id="fnref:1"><a href="#fn:1">1</a></sup>. The third parameter (<code>NoValuePolicy</code>) is called a
+no-value policy. We will cover it later.</p>
+
+<p>If both <code>T</code> and <code>EC</code> are <a href="https://en.cppreference.com/w/cpp/named_req/TriviallyCopyable">trivially copyable</a>, <code>result&lt;T, EC, NVP&gt;</code> is also trivially copyable.
+Triviality, complexity and constexpr-ness of each operation (construction, copy construction, assignment,
+destruction etc) is always the intersection of the corresponding operation in <code>T</code> and <code>EC</code>,
+so for example if both <code>T</code> and <code>EC</code> are <a href="https://en.cppreference.com/w/cpp/named_req/LiteralType">literal types</a>, so will be <code>result&lt;T, EC, NVP&gt;</code>.
+Additionally, if both <code>T</code> and <code>EC</code> have <a href="https://en.cppreference.com/w/cpp/named_req/StandardLayoutType">standard layout</a>, <code>result&lt;T, EC, NVP&gt;</code> has standard layout;
+thus if both <code>T</code> and <code>EC</code> are C-compatible, so will <code>result&lt;T, EC, NVP&gt;</code> be C-compatible.</p>
+
+<p>Now, we will define an enumeration describing different failure situations during conversion.</p>
+
+<div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="k">enum</span> <span class="k">class</span><span class="err"> </span><span class="nc">ConversionErrc</span>
+<span class="p">{</span>
+  <span class="n">Success</span>     <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="c1">// 0 should not represent an error
+</span><span class="c1"></span>  <span class="n">EmptyString</span> <span class="o">=</span> <span class="mi">1</span><span class="p">,</span> <span class="c1">// (for rationale, see tutorial on error codes)
+</span><span class="c1"></span>  <span class="n">IllegalChar</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span>
+  <span class="n">TooLong</span>     <span class="o">=</span> <span class="mi">3</span><span class="p">,</span>
+<span class="p">};</span>
+
+<span class="c1">// all boilerplate necessary to plug ConversionErrc
+</span><span class="c1">// into std::error_code framework
+</span><span class="c1"></span></code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/using_result.cpp#L46" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<p>Assume we have plugged it into <code>std::error_code</code> framework, as described in <a href="../../motivation/plug_error_code.html">this section</a>.</p>
+
+<p>One notable effect of such plugging is that <code>ConversionErrc</code> is now convertible to <code>std::error_code</code>.
+Now we can implement function <code>convert</code> as follows:</p>
+
+<div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="n">outcome</span><span class="o">::</span><span class="n">result</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">convert</span><span class="p">(</span><span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&amp;</span> <span class="n">str</span><span class="p">)</span> <span class="k">noexcept</span>
+<span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">str</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">ConversionErrc</span><span class="o">::</span><span class="n">EmptyString</span><span class="p">;</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">std</span><span class="o">::</span><span class="n">all_of</span><span class="p">(</span><span class="n">str</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span class="n">str</span><span class="p">.</span><span class="n">end</span><span class="p">(),</span> <span class="o">::</span><span class="n">isdigit</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">ConversionErrc</span><span class="o">::</span><span class="n">IllegalChar</span><span class="p">;</span>
+
+  <span class="k">if</span> <span class="p">(</span><span class="n">str</span><span class="p">.</span><span class="n">length</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">9</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ConversionErrc</span><span class="o">::</span><span class="n">TooLong</span><span class="p">;</span>
+
+  <span class="k">return</span> <span class="nf">atoi</span><span class="p">(</span><span class="n">str</span><span class="p">.</span><span class="n">c_str</span><span class="p">());</span>
+<span class="p">}</span>
+</code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/using_result.cpp#L65" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<p><code>result&lt;T, EC&gt;</code> is convertible from any <code>T2</code> convertible to <code>T</code> as well as any <code>EC2</code> convertible to <code>EC</code>,
+provided that there is no constructability possible in either direction between <code>T</code> and <code>EC</code>. If there is,
+all implicit conversion is disabled, and you will need to use one of the tagged constructors:</p>
+
+<div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="n">outcome</span><span class="o">::</span><span class="n">result</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">r</span> <span class="p">{</span><span class="n">outcome</span><span class="o">::</span><span class="n">in_place_type</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">error_code</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">ConversionErrc</span><span class="o">::</span><span class="n">EmptyString</span><span class="p">};</span>
+<span class="n">outcome</span><span class="o">::</span><span class="n">result</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">s</span> <span class="p">{</span><span class="n">outcome</span><span class="o">::</span><span class="n">in_place_type</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span><span class="p">,</span> <span class="mi">1</span><span class="p">};</span>
+</code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/using_result.cpp#L115" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<p>Or use helper functions:</p>
+
+<div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="n">outcome</span><span class="o">::</span><span class="n">result</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">r</span> <span class="o">=</span> <span class="n">outcome</span><span class="o">::</span><span class="n">failure</span><span class="p">(</span><span class="n">ConversionErrc</span><span class="o">::</span><span class="n">EmptyString</span><span class="p">);</span>
+<span class="n">outcome</span><span class="o">::</span><span class="n">result</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">s</span> <span class="o">=</span> <span class="n">outcome</span><span class="o">::</span><span class="n">success</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+</code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/using_result.cpp#L123" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<div class="notices note" style="background: url('../../images/note.png') top left no-repeat padding-box padding-box;">
+<div class="notices heading">note</div>
+<div class="notices message"><p>The functions <a href="../../reference/functions/failure.html" class="api-reference"><code>auto failure(T &amp;&amp;, &hellip;)</code></a>
+ and <a href="../../reference/functions/success.html" class="api-reference"><code>auto success(T &amp;&amp;, &hellip;)</code></a>
+ return special
+types implicitly convertible to failed or successful <code>result</code> (and <code>outcome</code>).</p>
+</div>
+</div>
+
+<div class="footnotes">
+
+<hr />
+
+<ol>
+<li id="fn:1">You can mandate a choice using <code>std_result&lt;T&gt;</code> or <code>boost_result&lt;T&gt;</code>.
+ <a class="footnote-return" href="#fnref:1"><sup>[return]</sup></a></li>
+</ol>
+</div>
+
+
+
+        </div><p><small>Last revised: February 23, 2021 at 17:37:27 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../tutorial/essential/before.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../tutorial/essential.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../tutorial/essential/result/inspecting.html"><img src="../../images/next.png" alt="Next"></a></div></body>
+</html>

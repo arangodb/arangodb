@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
+#include "Containers/FlatHashSet.h"
 
 namespace arangodb {
 namespace options {
@@ -47,10 +48,8 @@ class ApplicationFeature {
   ApplicationFeature(ApplicationFeature const&) = delete;
   ApplicationFeature& operator=(ApplicationFeature const&) = delete;
 
-  ApplicationFeature(ApplicationServer& server, std::string const& name);
+  virtual ~ApplicationFeature() = default;
 
-  virtual ~ApplicationFeature();
-  
   enum class State {
     UNINITIALIZED,
     INITIALIZED,
@@ -65,7 +64,7 @@ class ApplicationFeature {
   ApplicationServer& server() const { return _server; }
 
   // return the feature's name
-  std::string const& name() const { return _name; }
+  std::string_view name() const noexcept { return _name; }
 
   bool isOptional() const { return _optional; }
   bool isRequired() const { return !_optional; }
@@ -89,36 +88,31 @@ class ApplicationFeature {
   // enable or disable a feature
   void setEnabled(bool value) {
     if (!value && !isOptional()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "cannot disable non-optional feature '" +
-                                         name() + "'");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          std::string{"cannot disable non-optional feature '"}
+              .append(name())
+              .append("'"));
     }
     _enabled = value;
   }
 
   // names of features required to be enabled for this feature to be enabled
-  std::vector<std::type_index> const& requires() const { return _requires; }
-
-  // register whether the feature requires elevated privileges
-  void requiresElevatedPrivileges(bool value) {
-    _requiresElevatedPrivileges = value;
-  }
-
-  // test whether the feature requires elevated privileges
-  bool requiresElevatedPrivileges() const {
-    return _requiresElevatedPrivileges;
-  }
+  std::vector<size_t> const& dependsOn() const { return _requires; }
 
   // whether the feature starts before another
-  template <typename T>
+  template<typename T, typename Server>
   bool doesStartBefore() const {
-    return doesStartBefore(std::type_index(typeid(T)));
+    static_assert(std::is_base_of_v<ApplicationFeature, T>);
+    static_assert(std::is_base_of_v<ApplicationServer, Server>);
+
+    return doesStartBefore(Server::template id<T>());
   }
 
   // whether the feature starts after another
-  template <typename T>
+  template<typename T, typename Server>
   bool doesStartAfter() const {
-    return !doesStartBefore(std::type_index(typeid(T)));
+    return !doesStartBefore<T, Server>();
   }
 
   // add the feature's options to the global list of options. this method will
@@ -127,7 +121,8 @@ class ApplicationFeature {
 
   // load options from somewhere. this method will only be called for enabled
   // features
-  virtual void loadOptions(std::shared_ptr<options::ProgramOptions>, char const* binaryPath);
+  virtual void loadOptions(std::shared_ptr<options::ProgramOptions>,
+                           char const* binaryPath);
 
   // validate the feature's options. this method will only be called for active
   // features, after the ApplicationServer has determined which features should
@@ -148,6 +143,9 @@ class ApplicationFeature {
   // start the feature
   virtual void start();
 
+  // notify the feature about a soft shutdown request
+  virtual void initiateSoftShutdown();
+
   // notify the feature about a shutdown request
   virtual void beginShutdown();
 
@@ -158,96 +156,99 @@ class ApplicationFeature {
   virtual void unprepare();
 
   // return startup dependencies for feature
-  std::unordered_set<std::type_index> const& startsAfter() const {
-    return _startsAfter;
-  }
+  auto const& startsAfter() const { return _startsAfter; }
 
   // return startup dependencies for feature
-  std::unordered_set<std::type_index> const& startsBefore() const {
-    return _startsBefore;
-  }
+  auto const& startsBefore() const { return _startsBefore; }
 
-  std::type_index registration() const;
-  void setRegistration(std::type_index registration);
+  size_t registration() const { return _registration; }
 
  protected:
+  ApplicationFeature(ApplicationServer& server, size_t registration,
+                     std::string_view name);
+
+  template<typename Server, typename Impl>
+  ApplicationFeature(Server& server, const Impl&)
+      : ApplicationFeature{server, Server::template id<Impl>(), Impl::name()} {}
+
   void setOptional() { setOptional(true); }
 
   // make the feature optional (or not)
   void setOptional(bool value) { _optional = value; }
 
   // note that this feature requires another to be present
-  void requires(std::type_index other) { _requires.emplace_back(other); }
+  void dependsOn(size_t other) { _requires.emplace_back(other); }
 
   // register a start dependency upon another feature
-  template <typename T>
+  template<typename T, typename Server>
   void startsAfter() {
-    startsAfter(std::type_index(typeid(T)));
+    startsAfter(Server::template id<T>());
   }
 
-  // register a start dependency upon another feature by typeid
-  void startsAfter(std::type_index type);
+  void startsAfter(size_t type);
 
   // register a start dependency upon another feature
-  template <typename T>
+  template<typename T, typename Server>
   void startsBefore() {
-    startsBefore(std::type_index(typeid(T)));
+    startsBefore(Server::template id<T>());
   }
 
-  void startsBefore(std::type_index type);
+  void startsBefore(size_t type);
 
   // determine all direct and indirect ancestors of a feature
-  std::unordered_set<std::type_index> ancestors() const;
+  auto const& ancestors() const {
+    TRI_ASSERT(_ancestorsDetermined);
+    return _ancestors;
+  }
 
-  template <typename T>
+  template<typename T, typename Server>
   void onlyEnabledWith() {
-    _onlyEnabledWith.emplace(std::type_index(typeid(T)));
+    _onlyEnabledWith.emplace(Server::template id<T>());
   }
 
   // return the list of other features that this feature depends on
-  std::unordered_set<std::type_index> const& onlyEnabledWith() const {
-    return _onlyEnabledWith;
-  }
+  auto const& onlyEnabledWith() const { return _onlyEnabledWith; }
 
  private:
   // whether the feature starts before another
-  bool doesStartBefore(std::type_index type) const;
+  bool doesStartBefore(size_t type) const;
 
   void addAncestorToAllInPath(
-      std::vector<std::pair<size_t, std::reference_wrapper<ApplicationFeature>>>& path,
-      std::type_index ancestorType);
+      std::vector<
+          std::pair<size_t, std::reference_wrapper<ApplicationFeature>>>& path,
+      size_t ancestorType);
 
   // set a feature's state. this method should be called by the
   // application server only
   void state(State state) { _state = state; }
 
   // determine all direct and indirect ancestors of a feature
-  void determineAncestors(std::type_index as);
+  void determineAncestors(size_t as);
 
   // pointer to application server
   ApplicationServer& _server;
 
   // type registration for lookup within the ApplicationServer
-  std::type_index _registration;
+  size_t _registration;
 
   // name of feature
-  std::string const _name;
+  std::string_view _name;
 
   // names of other features required to be enabled if this feature
   // is enabled
-  std::vector<std::type_index> _requires;
+  std::vector<size_t> _requires;
 
   // a list of start dependencies for the feature
-  std::unordered_set<std::type_index> _startsAfter;
+  containers::FlatHashSet<size_t> _startsAfter;
 
   // a list of start dependencies for the feature
-  std::unordered_set<std::type_index> _startsBefore;
+  containers::FlatHashSet<size_t> _startsBefore;
 
   // list of direct and indirect ancestors of the feature
-  std::unordered_set<std::type_index> _ancestors;
+  containers::FlatHashSet<size_t> _ancestors;
 
   // enable this feature only if the following other features are enabled
-  std::unordered_set<std::type_index> _onlyEnabledWith;
+  containers::FlatHashSet<size_t> _onlyEnabledWith;
 
   // state of feature
   State _state;
@@ -258,12 +259,61 @@ class ApplicationFeature {
   // whether or not the feature is optional
   bool _optional;
 
-  // whether or not the feature requires elevated privileges
-  bool _requiresElevatedPrivileges;
-
   bool _ancestorsDetermined;
+};
+
+template<typename ServerT>
+class ApplicationFeatureT : public ApplicationFeature {
+ public:
+  using Server = ServerT;
+
+  Server& server() const noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* p = dynamic_cast<Server*>(&ApplicationFeature::server());
+    TRI_ASSERT(p);
+    return *p;
+#else
+    return static_cast<Server&>(ApplicationFeature::server());
+#endif
+  }
+
+  // register a start dependency upon another feature
+  template<typename T>
+  void startsAfter() {
+    ApplicationFeature::startsAfter<T, Server>();
+  }
+
+  // register a start dependency upon another feature
+  template<typename T>
+  void startsBefore() {
+    ApplicationFeature::startsBefore<T, Server>();
+  }
+
+  template<typename T>
+  void onlyEnabledWith() {
+    ApplicationFeature::onlyEnabledWith<T, Server>();
+  }
+
+  template<typename T>
+  bool doesStartBefore() const {
+    return ApplicationFeature::doesStartBefore<T, Server>();
+  }
+
+  template<typename T>
+  bool doesStartAfter() const {
+    return ApplicationFeature::doesStartAfter<T, Server>();
+  }
+
+ protected:
+  template<typename Impl>
+  ApplicationFeatureT(Server& server, const Impl&)
+      : ApplicationFeatureT(server, Server::template id<Impl>(), Impl::name()) {
+  }
+
+  ApplicationFeatureT(Server& server, size_t registration,
+                      std::string_view name)
+      : ApplicationFeature{server, registration, name} {}
 };
 
 }  // namespace application_features
 }  // namespace arangodb
-

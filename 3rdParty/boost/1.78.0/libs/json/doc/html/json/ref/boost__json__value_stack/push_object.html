@@ -1,0 +1,149 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>value_stack::push_object</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter 1. Boost.JSON">
+<link rel="up" href="../boost__json__value_stack.html" title="value_stack">
+<link rel="prev" href="push_array.html" title="value_stack::push_array">
+<link rel="next" href="push_chars.html" title="value_stack::push_chars">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="push_array.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__json__value_stack.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="push_chars.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="json.ref.boost__json__value_stack.push_object"></a><a class="link" href="push_object.html" title="value_stack::push_object">value_stack::push_object</a>
+</h5></div></div></div>
+<p>
+          <a class="indexterm" name="idm56196"></a>
+        </p>
+<p>
+          Push an object formed by popping <code class="computeroutput"><span class="identifier">n</span></code>
+          key/value pairs from the stack.
+        </p>
+<h6>
+<a name="json.ref.boost__json__value_stack.push_object.h0"></a>
+          <span class="phrase"><a name="json.ref.boost__json__value_stack.push_object.synopsis"></a></span><a class="link" href="push_object.html#json.ref.boost__json__value_stack.push_object.synopsis">Synopsis</a>
+        </h6>
+<pre class="programlisting"><span class="keyword">void</span>
+<span class="identifier">push_object</span><span class="special">(</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">n</span><span class="special">);</span>
+</pre>
+<h6>
+<a name="json.ref.boost__json__value_stack.push_object.h1"></a>
+          <span class="phrase"><a name="json.ref.boost__json__value_stack.push_object.description"></a></span><a class="link" href="push_object.html#json.ref.boost__json__value_stack.push_object.description">Description</a>
+        </h6>
+<p>
+          This function pushes an <a class="link" href="../boost__json__object.html" title="object"><code class="computeroutput"><span class="identifier">object</span></code></a> value onto the stack. The
+          object is formed by first popping the top <code class="computeroutput"><span class="identifier">n</span></code>
+          key/value pairs from the stack. If the stack contains fewer than <code class="computeroutput"><span class="identifier">n</span></code> key/value pairs, or if any of the top
+          <code class="computeroutput"><span class="identifier">n</span></code> key/value pairs on the
+          stack does not consist of exactly one key followed by one value, the behavior
+          is undefined.
+        </p>
+<h6>
+<a name="json.ref.boost__json__value_stack.push_object.h2"></a>
+          <span class="phrase"><a name="json.ref.boost__json__value_stack.push_object.remarks"></a></span><a class="link" href="push_object.html#json.ref.boost__json__value_stack.push_object.remarks">Remarks</a>
+        </h6>
+<p>
+          A key/value pair is formed by pushing a key, and then pushing a value.
+        </p>
+<h6>
+<a name="json.ref.boost__json__value_stack.push_object.h3"></a>
+          <span class="phrase"><a name="json.ref.boost__json__value_stack.push_object.example"></a></span><a class="link" href="push_object.html#json.ref.boost__json__value_stack.push_object.example">Example</a>
+        </h6>
+<p>
+          The following code creates an object on the stack with a single element,
+          where key is "x" and value is true:
+        </p>
+<pre class="programlisting"><span class="identifier">value_stack</span> <span class="identifier">st</span><span class="special">;</span>
+
+<span class="comment">// reset must be called first or else the behavior is undefined</span>
+<span class="identifier">st</span><span class="special">.</span><span class="identifier">reset</span><span class="special">();</span>
+
+<span class="comment">// Place a key/value pair onto the stack</span>
+<span class="identifier">st</span><span class="special">.</span><span class="identifier">push_key</span><span class="special">(</span> <span class="string">"x"</span> <span class="special">);</span>
+<span class="identifier">st</span><span class="special">.</span><span class="identifier">push_bool</span><span class="special">(</span> <span class="keyword">true</span> <span class="special">);</span>
+
+<span class="comment">// Replace the key/value pair with an object containing a single element</span>
+<span class="identifier">st</span><span class="special">.</span><span class="identifier">push_object</span><span class="special">(</span> <span class="number">1</span> <span class="special">);</span>
+
+<span class="comment">// Pop the object from the stack and take ownership.</span>
+<span class="identifier">value</span> <span class="identifier">jv</span> <span class="special">=</span> <span class="identifier">st</span><span class="special">.</span><span class="identifier">release</span><span class="special">();</span>
+
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">serialize</span><span class="special">(</span><span class="identifier">jv</span><span class="special">)</span> <span class="special">==</span> <span class="string">"{\"x\",true}"</span> <span class="special">);</span>
+
+<span class="comment">// At this point, reset must be called again to use the stack</span>
+</pre>
+<h6>
+<a name="json.ref.boost__json__value_stack.push_object.h4"></a>
+          <span class="phrase"><a name="json.ref.boost__json__value_stack.push_object.duplicate_keys"></a></span><a class="link" href="push_object.html#json.ref.boost__json__value_stack.push_object.duplicate_keys">Duplicate
+          Keys</a>
+        </h6>
+<p>
+          If there are object elements with duplicate keys; that is, if multiple
+          elements in an object have keys that compare equal, only the last equivalent
+          element will be inserted.
+        </p>
+<h6>
+<a name="json.ref.boost__json__value_stack.push_object.h5"></a>
+          <span class="phrase"><a name="json.ref.boost__json__value_stack.push_object.parameters"></a></span><a class="link" href="push_object.html#json.ref.boost__json__value_stack.push_object.parameters">Parameters</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Name
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">n</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The number of key/value pairs to pop from the top of the stack
+                    to form the array.
+                  </p>
+                </td>
+</tr></tbody>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Vinnie Falco<br>Copyright © 2020 Krystian Stasiowski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="push_array.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__json__value_stack.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="push_chars.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

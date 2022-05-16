@@ -1,7 +1,7 @@
 name: rocksdb_estimate_num_keys
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "rocksdb-estimate-num-keys" - sum over column families
+  Estimated number of RocksDB keys.
 unit: number
 type: gauge
 category: RocksDB

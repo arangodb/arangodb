@@ -1,0 +1,18 @@
+{
+    "key": "tuple",
+    "name": "Tuple",
+    "authors": [
+        "Jaakko Järvi"
+    ],
+    "description": "Ease definition of functions returning multiple values, and more.",
+    "std": [
+        "tr1"
+    ],
+    "category": [
+        "Data"
+    ],
+    "maintainers": [
+        "Jaakko Jarvi <jarvi -at- cs.tamu.edu>"
+    ],
+    "cxxstd": "03"
+}

@@ -63,15 +63,15 @@ function normalize(lang) {
     return MAP[lower] || lower;
 }
 
-function highlight(lang, code) {
-  if(!lang) {
+function highlight(language, code) {
+  if(!language) {
     return code;
   }
-  // Normalize lang
-  lang = normalize(lang);
+  // Normalize language
+  language = normalize(language);
 
   try {
-    return hljs.highlight(lang, code).value;
+    return hljs.highlight(code, {language}).value;
   } catch(e) { }
 
   return code;

@@ -4,7 +4,7 @@
 # General
 # ------------------------------------------------------------------------------
 
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.13)
 message(STATUS "CMake version: ${CMAKE_MAJOR_VERSION}.${CMAKE_MINOR_VERSION}.${CMAKE_PATCH_VERSION}")
 
 if (NOT CMAKE_BUILD_TYPE)
@@ -25,6 +25,13 @@ if (NOT (CMAKE_BUILD_TYPE STREQUAL "Debug"
 endif ()
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
+
+message(STATUS "Building for processor ${CMAKE_SYSTEM_PROCESSOR}")
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "(aarch64.*|AARCH64.*)")
+  set(BUILDING_FOR_ARM64 ON)
+else()
+  set(BUILDING_FOR_ARM64 OFF)
+endif()
 
 if (APPLE)
   if (NOT CMAKE_OSX_DEPLOYMENT_TARGET OR "${CMAKE_OSX_DEPLOYMENT_TARGET}" STREQUAL "")
@@ -53,6 +60,8 @@ option(USE_FAIL_ON_WARNINGS "treat warnings as errors (MSVC and MacOS only)" ON)
 option(USE_STRICT_OPENSSL_VERSION "use strictly required OpenSSL version (from ./VERSIONS file)" OFF)
 
 option(USE_MINIMAL_DEBUGINFO "use minimal debug symbols for builds containing debug information" OFF)
+
+find_package(Git 1.5.3 REQUIRED)
 
 # don't use standalone boost asio
 # use this when asio is included outside of Boost
@@ -88,7 +97,7 @@ option(USE_MINIMAL_DEBUGINFO "use minimal debug symbols for builds containing de
 # ARANGODB_RPM_REVISION
 
 set(ARANGODB_VERSION_MAJOR "3")
-set(ARANGODB_VERSION_MINOR "9")
+set(ARANGODB_VERSION_MINOR "10")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
@@ -271,6 +280,16 @@ endif ()
 # required for clang completion in editors - must be set after creating project
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+if (USE_FAIL_ON_WARNINGS
+    AND CMAKE_GENERATOR MATCHES "^Visual Studio"
+    AND CMAKE_GENERATOR_TOOLSET STREQUAL "ClangCL")
+  message(WARNING [[
+    clang-cl is used with USE_FAIL_ON_WARNINGS (i.e. /WX).
+    The build will probably fail, because system header includes aren't passed
+    as system header includes to clang-cl through the VS toolchain.
+  ]])
+endif()
+
 # Static executables:
 option(STATIC_EXECUTABLES "produce static executables" OFF)
 if (STATIC_EXECUTABLES)
@@ -399,9 +418,9 @@ else ()
   set(HAVE_ARANGODB_BUILD_REPOSITORY "0")
 endif()
 
-if (DEFINED GIT_EXE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/enterprise/.git")
+if (DEFINED GIT_EXE AND USE_ENTERPRISE AND IS_DIRECTORY "${CMAKE_SOURCE_DIR}/enterprise/.git")
   execute_process(
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/enterprise
 
     COMMAND ${GIT_EXE} describe --all --tags --long --dirty=-dirty
     OUTPUT_VARIABLE GIT_OUTPUT)
@@ -526,6 +545,14 @@ find_package(PythonInterp 3 EXACT REQUIRED)
 get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
 set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
+execute_process(
+    COMMAND ${PYTHON_EXECUTABLE} -c "from shutil import which"
+    RESULT_VARIABLE EXIT_CODE
+    OUTPUT_QUIET
+    )
+if (NOT "${EXIT_CODE}" EQUAL "0")
+  message(FATAL_ERROR "python shutil.which package is required! ")
+endif()
 
 # FIXME the build containers seem to have a
 # /usr/bin/ch(mod|own) to prevent the search
@@ -559,36 +586,36 @@ add_definitions("-DARANGODB_BITS=${BITS}")
 ## COMPILER FEATURES
 ################################################################################
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   set(CMAKE_COMPILER_IS_CLANG 1)
-elseif (CMAKE_CXX_COMPILER_ID MATCHES "AppleClang")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
   set(CMAKE_COMPILER_IS_CLANG 1)
 endif ()
 
-if (WINDOWS)
-  set(BASE_FLAGS     "/D WIN32 /D _WINDOWS /W3 /MP"      CACHE STRING "base flags")
-  set(BASE_C_FLAGS   ""                                  CACHE STRING "base C flags")
-  set(BASE_CXX_FLAGS "/GR /EHsc /Zc:__cplusplus"         CACHE STRING "base C++flags")
-else ()
-  set(BASE_FLAGS     ""                                  CACHE STRING "base flags")
-  set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}   $ENV{CFLAGS}"   CACHE STRING "base C flags")
-  set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{CXXFLAGS}" CACHE STRING "base C++ flags")
-  set(BASE_LD_FLAGS                     "$ENV{LDFLAGS}"  CACHE STRING "base linker flags")
-  set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base libraries")
+set(BASE_FLAGS     ""                                  CACHE STRING "base flags")
+set(BASE_C_FLAGS   "${CMAKE_C_FLAGS}   $ENV{CFLAGS}"   CACHE STRING "base C flags")
+set(BASE_CXX_FLAGS "${CMAKE_CXX_FLAGS} $ENV{CXXFLAGS}" CACHE STRING "base C++ flags")
+set(BASE_LD_FLAGS                     "$ENV{LDFLAGS}"  CACHE STRING "base linker flags")
+set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base libraries")
+
+if (MSVC)
+  set(BASE_FLAGS     "${BASE_FLAGS} /D WIN32 /D _WINDOWS /W3 /MP")
+  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} /GR /EHsc /Zc:__cplusplus")
+  # Increase the reserved stack size for all threads to 4MB
+  # Note: this is only _reserved_ memory, not necessarily _committed_ memory
+  set(BASE_LD_FLAGS  "${BASE_LD_FLAGS} /STACK:4194304")
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10.0")
     message(WARNING "ArangoDB requires g++ 10.0 or newer, building with older compiler versions is unsupported")
-  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "10.9.9")
-    message(WARNING "ArangoDB doesn't support g++ 11.0 yet, building with newer compiler versions is unsupported")
+  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "11.9.9")
+    message(WARNING "ArangoDB doesn't support g++ 12.0 yet, building with newer compiler versions is unsupported")
   endif()
   set(BASE_C_FLAGS "${BASE_C_FLAGS}")
 endif ()
 
-if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG OR APPLE)
-  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std=c++17")
-elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+if(MSVC)
   # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
   if (MSVC_VERSION VERSION_LESS 1915)
     message(FATAL_ERROR "ArangoDB doesn't support MSVC less than 2017 update 15.8!")
@@ -601,10 +628,9 @@ elseif(CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   elseif (MSVC_VERSION VERSION_GREATER_EQUAL 1920 AND MSVC_VERSION VERSION_LESS 1924)
     message(FATAL_ERROR "ArangoDB requires at least MSVC 2019 update 16.4!")
   endif()
-  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -std:c++17") 
 endif()
 
-if (CMAKE_COMPILER_IS_CLANG)
+if (CMAKE_COMPILER_IS_CLANG AND NOT MSVC) # exclude clang-cl
   if (APPLE)
     if (NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET} OR ENV{MACOSX_DEPLOYMENT_TARGET} STREQUAL "")
       set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -stdlib=libc++")
@@ -622,9 +648,20 @@ if (CMAKE_COMPILER_IS_CLANG)
   endif ()
 endif ()
 
-# need c++17
+# need c++20
 # XXX this should really be set on a per target level using cmake compile_features capabilties
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
+# turn off compiler language extensions (e.g. don't use -std=gnu++20, but
+# -std=c++20).
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+if(MSVC AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # we need to exclude clang-cl
+  # We need to use c++latest instead of c++20 because <format>, <ranges>, and the formatting part of <chrono> will
+  # remain restricted to /std:c++latest due to WG21's upcoming changes.
+  # For more details on this see https://github.com/microsoft/STL/issues/1814#issuecomment-845572895")
+  set(CMAKE_CXX20_STANDARD_COMPILE_OPTION "-std:c++latest")
+  set(CMAKE_CXX20_EXTENSION_COMPILE_OPTION "-std:c++latest")
+endif ()
 
 # need threads
 find_package(Threads REQUIRED)
@@ -641,6 +678,11 @@ if (MSVC)
   set(CMAKE_EXE_LINKER_FLAGS
     "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /SAFESEH:NO /MACHINE:x64 /ignore:4099 ${BASE_LD_FLAGS}"
   )
+  # We currently need to disable ICF because unfortunately we have some code
+  # that depends on unique addresses for functions or read-only data members.
+  set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL     "/DEBUG /OPT:REF /OPT:NOICF")
+  set(CMAKE_EXE_LINKER_FLAGS_RELEASE        "/OPT:REF /OPT:NOICF")
+  set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "/DEBUG /OPT:REF /OPT:NOICF")
 else ()
   set(CMAKE_EXE_LINKER_FLAGS
     "${CMAKE_EXE_LINKER_FLAGS} ${BASE_LD_FLAGS}"
@@ -669,27 +711,11 @@ if (APPLE)
 endif ()
 
 ################################################################################
-## INCLUDE DIRECTORIES
-################################################################################
-
-include_directories(${PROJECT_BINARY_DIR})
-include_directories(${PROJECT_BINARY_DIR}/lib)
-
-include_directories(${PROJECT_SOURCE_DIR}/arangod)
-include_directories(${PROJECT_SOURCE_DIR}/lib)
-
-if (CUSTOM_INCLUDES)
-  include_directories(${CUSTOM_INCLUDES})
-endif ()
-
-################################################################################
 ## TARGET ARCHITECTURE
 ################################################################################
 
 set(ARANGODB_SSE42_FLAGS "")
-if (WINDOWS)
-  add_definitions("-DNO_SSE42")
-else ()
+if (NOT WINDOWS)
   include(TargetArch)
 
   target_architecture(CMAKE_TARGET_ARCHITECTURES)
@@ -705,12 +731,10 @@ else ()
 
   include(VcMacros)
 
-  option(USE_OPTIMIZE_FOR_ARCHITECTURE "try to determine CPU architecture" ON)
-
-  if (USE_OPTIMIZE_FOR_ARCHITECTURE)
-    include(OptimizeForArchitecture)
-    OptimizeForArchitecture()
-  endif ()
+  # Detect target architecture properties. This honors
+  # any target architecture set via -DTARGET_ARCHITECTURE=...
+  include(OptimizeForArchitecture)
+  OptimizeForArchitecture()
 
   if (USE_SSE4_2)
     set(ARANGODB_SSE42_FLAGS "-msse4.2")
@@ -727,22 +751,26 @@ set(ARCHITECTURE_OPTIMIZATIONS "\"${Vc_ARCHITECTURE_FLAGS}\"")
 
 # iresearch uses backtrace, so we need to find and link libexecinfo
 # for the case that we are on libmusl and not on glibc
-if (NOT MSVC)
+if (NOT WIN32)
   find_package(Backtrace)
 endif()
 
-set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
+if (Backtrace_LIBRARY)
+  set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
+else()
+  set(BT_LIBS "" CACHE PATH "Debug Helper libraries")
+endif()
 
 ################################################################################
 ## ASSEMBLER OPTIMIZATIONS
 ################################################################################
 
 # Allow to prohibit assembler optimization code explicitly
-if (MSVC)
+if (BUILDING_FOR_ARM64)
   SET(ASM_OPTIMIZATIONS_DEFAULT OFF)
-else (MSVC)
+else (BUILDING_FOR_ARM64)
   SET(ASM_OPTIMIZATIONS_DEFAULT ON)
-endif (MSVC)
+endif (BUILDING_FOR_ARM64)
 
 option(ASM_OPTIMIZATIONS "whether hand-optimized assembler code should be used"
   ${ASM_OPTIMIZATIONS_DEFAULT})
@@ -961,23 +989,27 @@ if (MSVC)
 
   set(BASE_FLAGS "/wd4996 ${BASE_FLAGS}")
 
-  set(CMAKE_C_FLAGS                "/MTd"                                              CACHE INTERNAL "default C compiler flags")
-  set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj"         CACHE INTERNAL "C debug flags")
-  set(CMAKE_C_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                                      CACHE INTERNAL "C minimal size flags")
-  set(CMAKE_C_FLAGS_RELEASE        "/MT /O2 /Ob2"                                      CACHE INTERNAL "C release flags")
-  set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                                  CACHE INTERNAL "C release with debug info flags")
+  set(CMAKE_C_FLAGS                ""                                      CACHE INTERNAL "default C compiler flags")
+  set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1"     CACHE INTERNAL "C debug flags")
+  set(CMAKE_C_FLAGS_MINSIZEREL     "/MT /O1"                               CACHE INTERNAL "C minimal size flags")
+  set(CMAKE_C_FLAGS_RELEASE        "/MT /O2"                               CACHE INTERNAL "C release flags")
+  set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT /Zi /O2"                           CACHE INTERNAL "C release with debug info flags")
 
-  set(CMAKE_CXX_FLAGS                "/MTd"                                            CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1 /bigobj"       CACHE INTERNAL "C++ debug flags")
-  set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                                    CACHE INTERNAL "C++ minimal size flags")
-  set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2 /Ob2"                                    CACHE INTERNAL "C++ release flags")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                                CACHE INTERNAL "C++ release with debug info flags")
+  set(CMAKE_CXX_FLAGS                ""                                    CACHE INTERNAL "default C++ compiler flags")
+  set(CMAKE_CXX_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1"   CACHE INTERNAL "C++ debug flags")
+  set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1"                             CACHE INTERNAL "C++ minimal size flags")
+  set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2"                             CACHE INTERNAL "C++ release flags")
+  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2"                         CACHE INTERNAL "C++ release with debug info flags")
 
   if (USE_CLCACHE_MODE)
     set(CMAKE_VS_GLOBALS "TrackFileAccess=false")
     add_definitions(/Z7)
   endif ()
 
+  add_definitions(/bigobj)
+  if (CMAKE_COMPILER_IS_CLANG) # clang-cl
+    set(BASE_FLAGS "-Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
+  endif()
 else () # NOT MSVC
   set(EXTRA_C_FLAGS "")
   set(EXTRA_CXX_FLAGS "")
@@ -986,6 +1018,9 @@ else () # NOT MSVC
     message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
     set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
     set(EXTRA_CXX_FLAGS "-Wsuggest-override -Wnon-virtual-dtor")
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL "11.1.0")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=nonnull")
+    endif()
   elseif (CMAKE_COMPILER_IS_CLANG)
     message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
     set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
@@ -1047,6 +1082,13 @@ else () # NOT MSVC
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C++ release with debug info flags")
+
+  if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+      # On Darwin -fstandalone-debug is enabled by default, so we don't need
+      # to add it for AppleClang.
+      set(CMAKE_CXX_FLAGS_DEBUG             "${CMAKE_CXX_FLAGS_DEBUG} -fstandalone-debug")
+      set(CMAKE_CXX_FLAGS_RELWITHDEBINFO    "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fstandalone-debug")
+  endif ()
 
 endif ()
 
@@ -1151,7 +1193,7 @@ else ()
   find_package(OpenSSL REQUIRED)
 endif ()
 
-if (OPENSSL_FOUND)
+if (OPENSSL_FOUND AND USE_STRICT_OPENSSL_VERSION)
   if (NOT "${OPENSSL_VERSION}" MATCHES "${ARANGODB_REQUIRED_OPENSSL_VERSION}")
     message (FATAL_ERROR "Wrong OpenSSL version was found: ${OPENSSL_VERSION}! Required version: ${MSG_ARANGODB_REQUIRED_OPENSSL_VERSION}!")
   endif ()
@@ -1159,7 +1201,6 @@ endif ()
 
 message(${OPENSSL_INCLUDE_DIR})
 
-include_directories(${OPENSSL_INCLUDE_DIR})
 add_definitions(-DARANGODB_OPENSSL_VERSION=\"${OPENSSL_VERSION}\")
 add_definitions(-DOPENSSL_VERSION_MAJOR=${OPENSSL_VERSION_MAJOR})
 add_definitions(-DOPENSSL_VERSION_MINOR=${OPENSSL_VERSION_MINOR})
@@ -1190,10 +1231,6 @@ endif ()
 ## 3RD PARTY
 ################################################################################
 
-# ------------------------------------------------------------------------------
-# IResearch
-# ------------------------------------------------------------------------------
-
 # 3rdParty exports:
 #
 # V8_VERSION
@@ -1211,32 +1248,22 @@ endif ()
 add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1) #fix random provider
 add_definitions(-DBOOST_ALL_NO_LIB=1) #disable boost autolink on windows
 add_subdirectory(3rdParty)
+link_libraries(
+  absl::flat_hash_set
+  absl::flat_hash_map
+  absl::node_hash_set
+  absl::node_hash_map
+  absl::synchronization
+)
+
 
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
-
-
-################################################################################
-## 3rd Party INCLUDE DIRECTORIES
-################################################################################
-
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/function2)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/include)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/${ARANGO_S2GEOMETRY_VERSION}/src)
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION})
-include_directories(SYSTEM ${PROJECT_SOURCE_DIR}/3rdParty/date/include)
 
 # ------------------------------------------------------------------------------
 # RocksDB
 # ------------------------------------------------------------------------------
 
 add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ARANGO_ROCKSDB_VERSION}\")
-include_directories(${ROCKSDB_INCLUDE_DIR})
-
-set(ROCKSDB_LIBS rocksdb;${SNAPPY_LIB})
 
 add_dependencies(rocksdb snappy)
 
@@ -1254,16 +1281,9 @@ add_definitions("-DVELOCYPACK_XXHASH=1")
 set(V8_LINK_DIRECTORIES "${LINK_DIRECTORIES}" CACHE INTERNAL "" FORCE)
 
 ################################################################################
-## ICU
-################################################################################
-
-include_directories(SYSTEM ${ICU_INCLUDE_DIR})
-
-################################################################################
 ## V8
 ################################################################################
 
-include_directories(SYSTEM ${V8_INCLUDE_DIR})
 add_definitions("-DARANGODB_V8_VERSION=\"${V8_VERSION}\"")
 
 foreach (LINK_DIR ${V8_LINK_DIRECTORIES})
@@ -1274,7 +1294,6 @@ endforeach()
 ## ZLIB
 ################################################################################
 
-include_directories(SYSTEM ${ZLIB_INCLUDE_DIR})
 add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 link_directories("${PROJECT_BINARY_DIR}/bin")
 
@@ -1296,65 +1315,72 @@ if (NOT(SKIP_PACKAGING))
 endif()
 
 ################################################################################
-## ERRORS FILE
+## ERRORS FILES
 ################################################################################
 
-if (USE_MAINTAINER_MODE)
-  # If "make clean" removes these files, afterwards neither "make" nor "cmake" work any more.
-  set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM "On")
+# If "make clean" removes these files, afterwards neither "make" nor "cmake" work any more.
+set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM "On")
 
-  set(ERROR_FILES
-    lib/Basics/voc-errors.h
-    lib/Basics/error-registry.h
-    js/common/bootstrap/errors.js
+set(ERROR_FILES
+  lib/Basics/voc-errors.h
+  lib/Basics/error-registry.h
+  js/common/bootstrap/errors.js
+)
+
+set(ERROR_FILES_GEN)
+set(ERRORS_DAT lib/Basics/errors.dat)
+
+foreach (m IN LISTS ERROR_FILES)
+  get_filename_component(GEN_BASENAME "${m}" NAME)
+  if (GEN_BASENAME STREQUAL "errors.js")
+    # generated errors.js is copied into the source dir
+    set(TARGET_FILENAME ${CMAKE_SOURCE_DIR}/${m})
+  else ()
+    # generated C++ header files are copied into the build dir
+    set(TARGET_FILENAME ${CMAKE_BINARY_DIR}/${m})
+  endif ()
+  add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/${m}
+    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/utils/generateErrorfile.py ${CMAKE_SOURCE_DIR}/${ERRORS_DAT} ${CMAKE_BINARY_DIR}/${GEN_BASENAME}.tmp
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/${GEN_BASENAME}.tmp ${TARGET_FILENAME}
+    COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/${GEN_BASENAME}.tmp
+    DEPENDS ${CMAKE_SOURCE_DIR}/${ERRORS_DAT} ${CMAKE_SOURCE_DIR}/utils/generateErrorfile.py
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT  "Building errors file ${m}"
+    VERBATIM
   )
 
-  set(ERROR_FILES_GEN)
-  set(ERRORS_DAT lib/Basics/errors.dat)
+  list(APPEND ERROR_FILES_GEN ${CMAKE_BINARY_DIR}/${m})
+endforeach ()
 
-  foreach (m IN LISTS ERROR_FILES)
-    add_custom_command(
-      OUTPUT ${CMAKE_SOURCE_DIR}/${m}
-      COMMAND ${PYTHON_EXECUTABLE} ./utils/generateErrorfile.py ./${ERRORS_DAT} ./${m}.tmp
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
-      COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
-      DEPENDS ${CMAKE_SOURCE_DIR}/${ERRORS_DAT} ./utils/generateErrorfile.py
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      COMMENT  "Building errors files ${m}"
-      VERBATIM
-    )
+add_custom_target(errorfiles ALL DEPENDS ${ERROR_FILES_GEN})
+  
+set(EXIT_CODE_FILES
+  lib/Basics/exitcodes.h
+  js/common/bootstrap/exitcodes.js
+  Installation/Windows/Plugins/exitcodes.nsh
+)
 
-    list(APPEND ERROR_FILES_GEN ${CMAKE_SOURCE_DIR}/${m})
-  endforeach ()
+set(EXIT_CODE_FILES_GEN)
+set(EXIT_CODES_DAT lib/Basics/exitcodes.dat)
 
-  add_custom_target(errorfiles ALL DEPENDS ${ERROR_FILES_GEN})
-
-  set(EXIT_CODE_FILES
-    lib/Basics/exitcodes.h
-    js/common/bootstrap/exitcodes.js
-    Installation/Windows/Plugins/exitcodes.nsh
+foreach (m IN LISTS EXIT_CODE_FILES)
+  get_filename_component(GEN_BASENAME "${m}" NAME)
+  add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/${m}
+    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/utils/generateExitCodesFiles.py ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT} ${CMAKE_BINARY_DIR}/${GEN_BASENAME}.tmp
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/${GEN_BASENAME}.tmp ${CMAKE_BINARY_DIR}/${m}
+    COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/${GEN_BASENAME}.tmp
+    DEPENDS ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT} ${CMAKE_SOURCE_DIR}/utils/generateExitCodesFiles.py
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT  "Building exitcode file ${m}"
+    VERBATIM
   )
 
-  set(EXIT_CODE_FILES_GEN)
-  set(EXIT_CODES_DAT lib/Basics/exitcodes.dat)
+  list(APPEND EXIT_CODE_FILES_GEN ${CMAKE_BINARY_DIR}/${m})
+endforeach ()
 
-  foreach (m IN LISTS EXIT_CODE_FILES)
-    add_custom_command(
-      OUTPUT ${CMAKE_SOURCE_DIR}/${m}
-      COMMAND ${PYTHON_EXECUTABLE} ./utils/generateExitCodesFiles.py ./${EXIT_CODES_DAT} ./${m}.tmp
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
-      COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
-      DEPENDS ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT} ./utils/generateExitCodesFiles.py
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      COMMENT  "Building exitcode files ${m}"
-      VERBATIM
-    )
-
-    list(APPEND EXIT_CODE_FILES_GEN ${CMAKE_SOURCE_DIR}/${m})
-  endforeach ()
-
-  add_custom_target(exitcodefiles ALL DEPENDS ${EXIT_CODE_FILES_GEN})
-endif ()
+add_custom_target(exitcodefiles ALL DEPENDS ${EXIT_CODE_FILES_GEN})
 
 ################################################################################
 ## SUB-PROJECTS
@@ -1372,7 +1398,7 @@ list(INSERT SYSTEM_LIBRARIES 0
 )
 
 add_subdirectory(lib)
-add_subdirectory(arangosh)
+add_subdirectory(client-tools)
 add_subdirectory(arangod)
 
 
@@ -1450,15 +1476,3 @@ message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
 
 add_custom_target(arangodb
         DEPENDS arangod arangosh arangodump arangoexport arangoimport arangorestore)
-
-################################################################################
-## node modules
-################################################################################
-
-file(READ ${CMAKE_CURRENT_SOURCE_DIR}/js/node/package.json PACKAGE_JSON)
-string(REGEX REPLACE "[ \t]*\"eslint\"[^,]*," "" OUT_PACKAGE_JSON ${PACKAGE_JSON})
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/js/node/package.json-no-eslint ${OUT_PACKAGE_JSON})
-
-file(READ ${CMAKE_CURRENT_SOURCE_DIR}/js/node/package-lock.json PACKAGE_LOCK_JSON)
-string(REGEX REPLACE "\n    \"eslint\": {.*\n    },\n\    \"expect.js\"" "\n    \"expect.js\"" OUT_PACKAGE_LOCK_JSON ${PACKAGE_LOCK_JSON})
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/js/node/package-lock.json-no-eslint ${OUT_PACKAGE_LOCK_JSON})

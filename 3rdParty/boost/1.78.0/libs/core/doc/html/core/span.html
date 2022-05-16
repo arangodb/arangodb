@@ -1,0 +1,991 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>span</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Core">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Core">
+<link rel="prev" href="scoped_enum.html" title="scoped_enum">
+<link rel="next" href="swap.html" title="swap">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="scoped_enum.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="swap.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="core.span"></a><a class="link" href="span.html" title="span">span</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="span.html#core.span.overview">Overview</a></span></dt>
+<dt><span class="section"><a href="span.html#core.span.examples">Examples</a></span></dt>
+<dt><span class="section"><a href="span.html#core.span.reference">Reference</a></span></dt>
+</dl></div>
+<div class="simplesect">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="idm11026"></a>Authors</h3></div></div></div>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+          Glen Fernandes
+        </li></ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="core.span.overview"></a><a class="link" href="span.html#core.span.overview" title="Overview">Overview</a>
+</h3></div></div></div>
+<p>
+        This header &lt;boost/core/span.hpp&gt; provides class template <code class="computeroutput"><span class="identifier">span</span></code>, which is a view over a sequence of
+        objects. It implements the C++20 standard library <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">span</span></code>
+        facility. This implementation supports C++11 and higher.
+      </p>
+<p>
+        In addition to referencing the sequence of objects, the span knows the count
+        of objects. There are two kinds of spans:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Dynamic size (<code class="computeroutput"><span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>
+            or <code class="computeroutput"><span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">dynamic_extent</span><span class="special">&gt;</span></code>)
+          </li>
+<li class="listitem">
+            Static size (<code class="computeroutput"><span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">N</span><span class="special">&gt;</span></code>)
+          </li>
+</ul></div>
+<p>
+        Dynamic size spans have a count that can be a value known at run time. Static
+        size spans have a count that must be known at compile time.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="core.span.examples"></a><a class="link" href="span.html#core.span.examples" title="Examples">Examples</a>
+</h3></div></div></div>
+<p>
+        The following snippet shows a function to compute a SHA1 hash whose parameters
+        and return type use spans.
+      </p>
+<pre class="programlisting"><span class="keyword">auto</span> <span class="identifier">sha1</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">span</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="keyword">unsigned</span> <span class="keyword">char</span><span class="special">&gt;</span> <span class="identifier">input</span><span class="special">,</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">span</span><span class="special">&lt;</span><span class="keyword">unsigned</span> <span class="keyword">char</span><span class="special">,</span> <span class="identifier">SHA_DIGEST_LENGTH</span><span class="special">&gt;</span> <span class="identifier">ouput</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">SHA_CTX</span> <span class="identifier">context</span><span class="special">;</span>
+    <span class="identifier">SHA1_Init</span><span class="special">(&amp;</span><span class="identifier">context</span><span class="special">);</span>
+    <span class="identifier">SHA1_Update</span><span class="special">(&amp;</span><span class="identifier">context</span><span class="special">,</span> <span class="identifier">input</span><span class="special">.</span><span class="identifier">data</span><span class="special">(),</span> <span class="identifier">input</span><span class="special">.</span><span class="identifier">size</span><span class="special">());</span>
+    <span class="identifier">SHA1_Final</span><span class="special">(</span><span class="identifier">output</span><span class="special">.</span><span class="identifier">data</span><span class="special">(),</span> <span class="special">&amp;</span><span class="identifier">context</span><span class="special">);</span>
+    <span class="keyword">return</span> <span class="identifier">output</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="core.span.reference"></a><a class="link" href="span.html#core.span.reference" title="Reference">Reference</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+
+<span class="keyword">constexpr</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">dynamic_extent</span> <span class="special">=</span> <span class="special">-</span><span class="number">1</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">E</span> <span class="special">=</span> <span class="identifier">dynamic_extent</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">span</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">typedef</span> <span class="identifier">T</span> <span class="identifier">element_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">remove_cv_t</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span> <span class="identifier">value_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">size_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">ptrdiff_t</span> <span class="identifier">difference_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">T</span><span class="special">*</span> <span class="identifier">pointer</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="keyword">const</span> <span class="identifier">T</span><span class="special">*</span> <span class="identifier">const_pointer</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">reference</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="keyword">const</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">const_reference</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">T</span><span class="special">*</span> <span class="identifier">iterator</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="keyword">const</span> <span class="identifier">T</span><span class="special">*</span> <span class="identifier">const_iterator</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">reverse_iterator</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">*&gt;</span> <span class="identifier">reverse_iterator</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">reverse_iterator</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="identifier">T</span><span class="special">*&gt;</span> <span class="identifier">const_reverse_iterator</span><span class="special">;</span>
+
+    <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">extent</span> <span class="special">=</span> <span class="identifier">E</span><span class="special">;</span>
+
+    <span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">explicit</span><span class="special">(</span><span class="identifier">E</span> <span class="special">!=</span> <span class="identifier">dynamic_extent</span><span class="special">)</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">I</span><span class="special">&gt;</span>
+    <span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">(</span><span class="identifier">I</span><span class="special">*</span> <span class="identifier">f</span><span class="special">,</span> <span class="identifier">size_type</span> <span class="identifier">c</span><span class="special">);</span>
+
+    <span class="keyword">explicit</span><span class="special">(</span><span class="identifier">E</span> <span class="special">!=</span> <span class="identifier">dynamic_extent</span><span class="special">)</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">I</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">L</span><span class="special">&gt;</span>
+    <span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">(</span><span class="identifier">I</span><span class="special">*</span> <span class="identifier">f</span><span class="special">,</span> <span class="identifier">L</span><span class="special">*</span> <span class="identifier">l</span><span class="special">);</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">N</span><span class="special">&gt;</span>
+    <span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">(</span><span class="identifier">type_identity_t</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span> <span class="special">(&amp;</span><span class="identifier">a</span><span class="special">)[</span><span class="identifier">N</span><span class="special">]);</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">U</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">N</span><span class="special">&gt;</span>
+    <span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">array</span><span class="special">&lt;</span><span class="identifier">U</span><span class="special">,</span> <span class="identifier">N</span><span class="special">&gt;&amp;</span> <span class="identifier">a</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">U</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">N</span><span class="special">&gt;</span>
+    <span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">array</span><span class="special">&lt;</span><span class="identifier">U</span><span class="special">,</span> <span class="identifier">N</span><span class="special">&gt;&amp;</span> <span class="identifier">a</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">explicit</span><span class="special">(</span><span class="identifier">E</span> <span class="special">!=</span> <span class="identifier">dynamic_extent</span><span class="special">)</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">R</span><span class="special">&gt;</span>
+    <span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">(</span><span class="identifier">R</span><span class="special">&amp;&amp;</span> <span class="identifier">r</span><span class="special">);</span>
+
+    <span class="keyword">explicit</span><span class="special">(</span><span class="identifier">E</span> <span class="special">!=</span> <span class="identifier">dynamic_extent</span> <span class="special">&amp;&amp;</span> <span class="identifier">N</span> <span class="special">==</span> <span class="identifier">dynamic_extent</span><span class="special">)</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">U</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">N</span><span class="special">&gt;</span>
+    <span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">U</span><span class="special">,</span> <span class="identifier">N</span><span class="special">&gt;&amp;</span> <span class="identifier">s</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">C</span><span class="special">&gt;</span>
+    <span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">C</span><span class="special">&gt;</span> <span class="identifier">first</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">C</span><span class="special">&gt;</span>
+    <span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">C</span><span class="special">&gt;</span> <span class="identifier">last</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">O</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">C</span> <span class="special">=</span> <span class="identifier">dynamic_extent</span><span class="special">&gt;</span>
+    <span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">see</span> <span class="identifier">below</span><span class="special">&gt;</span> <span class="identifier">subspan</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+
+    <span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">dynamic_extent</span><span class="special">&gt;</span> <span class="identifier">first</span><span class="special">(</span><span class="identifier">size_type</span> <span class="identifier">c</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+    <span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">dynamic_extent</span><span class="special">&gt;</span> <span class="identifier">last</span><span class="special">(</span><span class="identifier">size_type</span> <span class="identifier">c</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+    <span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">dynamic_extent</span><span class="special">&gt;</span> <span class="identifier">subspan</span><span class="special">(</span><span class="identifier">size_type</span> <span class="identifier">o</span><span class="special">,</span>
+        <span class="identifier">size_type</span> <span class="identifier">c</span> <span class="special">=</span> <span class="identifier">dynamic_extent</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+    <span class="keyword">constexpr</span> <span class="identifier">size_type</span> <span class="identifier">size</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+    <span class="keyword">constexpr</span> <span class="identifier">size_type</span> <span class="identifier">size_bytes</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+    <span class="keyword">constexpr</span> <span class="keyword">bool</span> <span class="identifier">empty</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">constexpr</span> <span class="identifier">reference</span> <span class="keyword">operator</span><span class="special">[](</span><span class="identifier">size_type</span> <span class="identifier">i</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+    <span class="keyword">constexpr</span> <span class="identifier">reference</span> <span class="identifier">front</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+    <span class="keyword">constexpr</span> <span class="identifier">reference</span> <span class="identifier">back</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+    <span class="keyword">constexpr</span> <span class="identifier">pointer</span> <span class="identifier">data</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">constexpr</span> <span class="identifier">iterator</span> <span class="identifier">begin</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+    <span class="keyword">constexpr</span> <span class="identifier">iterator</span> <span class="identifier">end</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+    <span class="keyword">constexpr</span> <span class="identifier">reverse_iterator</span> <span class="identifier">rbegin</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+    <span class="keyword">constexpr</span> <span class="identifier">reverse_iterator</span> <span class="identifier">rend</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+    <span class="keyword">constexpr</span> <span class="identifier">const_iterator</span> <span class="identifier">cbegin</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+    <span class="keyword">constexpr</span> <span class="identifier">const_iterator</span> <span class="identifier">cend</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+    <span class="keyword">constexpr</span> <span class="identifier">const_reverse_iterator</span> <span class="identifier">crbegin</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+    <span class="keyword">constexpr</span> <span class="identifier">const_reverse_iterator</span> <span class="identifier">crend</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">friend</span> <span class="keyword">constexpr</span> <span class="identifier">iterator</span> <span class="identifier">begin</span><span class="special">(</span><span class="identifier">span</span> <span class="identifier">s</span><span class="special">)</span> <span class="keyword">noexcept</span> <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">s</span><span class="special">.</span><span class="identifier">begin</span><span class="special">();</span>
+    <span class="special">}</span>
+
+    <span class="keyword">friend</span> <span class="keyword">constexpr</span> <span class="identifier">iterator</span> <span class="identifier">end</span><span class="special">(</span><span class="identifier">span</span> <span class="identifier">s</span><span class="special">)</span> <span class="keyword">noexcept</span> <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">s</span><span class="special">.</span><span class="identifier">end</span><span class="special">();</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">I</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">L</span><span class="special">&gt;</span>
+<span class="identifier">span</span><span class="special">(</span><span class="identifier">I</span><span class="special">*,</span> <span class="identifier">L</span><span class="special">)</span> <span class="special">-&gt;</span> <span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">I</span><span class="special">&gt;;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">N</span><span class="special">&gt;</span>
+<span class="identifier">span</span><span class="special">(</span><span class="identifier">T</span><span class="special">(&amp;)[</span><span class="identifier">N</span><span class="special">])</span> <span class="special">-&gt;</span> <span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">N</span><span class="special">&gt;;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">N</span><span class="special">&gt;</span>
+<span class="identifier">span</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">array</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">N</span><span class="special">&gt;&amp;)</span> <span class="special">-&gt;</span> <span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">N</span><span class="special">&gt;;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">N</span><span class="special">&gt;</span>
+<span class="identifier">span</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">array</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">N</span><span class="special">&gt;&amp;)</span> <span class="special">-&gt;</span> <span class="identifier">span</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="identifier">T</span><span class="special">,</span> <span class="identifier">N</span><span class="special">&gt;;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">R</span><span class="special">&gt;</span>
+<span class="identifier">span</span><span class="special">(</span><span class="identifier">R</span><span class="special">&amp;&amp;)</span> <span class="special">-&gt;</span> <span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">remove_pointer_t</span><span class="special">&lt;</span><span class="keyword">decltype</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">declval</span><span class="special">&lt;</span><span class="identifier">R</span><span class="special">&amp;&gt;().</span><span class="identifier">data</span><span class="special">())&gt;</span> <span class="special">&gt;;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">E</span><span class="special">&gt;</span>
+<span class="identifier">span</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">byte</span><span class="special">,</span> <span class="identifier">E</span> <span class="special">==</span> <span class="identifier">dynamic_extent</span> <span class="special">?</span> <span class="identifier">dynamic_extent</span> <span class="special">:</span> <span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">T</span><span class="special">)</span> <span class="special">*</span> <span class="identifier">E</span><span class="special">&gt;</span>
+<span class="identifier">as_bytes</span><span class="special">(</span><span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">E</span><span class="special">&gt;</span> <span class="identifier">s</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">E</span><span class="special">&gt;</span>
+<span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">byte</span><span class="special">,</span> <span class="identifier">E</span> <span class="special">==</span> <span class="identifier">dynamic_extent</span> <span class="special">?</span> <span class="identifier">dynamic_extent</span> <span class="special">:</span> <span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">T</span><span class="special">)</span> <span class="special">*</span> <span class="identifier">E</span><span class="special">&gt;</span>
+<span class="identifier">as_writable_bytes</span><span class="special">(</span><span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">E</span><span class="special">&gt;</span> <span class="identifier">s</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+<span class="special">}</span> <span class="comment">/* boost */</span>
+</pre>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="core.span.reference.constructors"></a><a class="link" href="span.html#core.span.reference.constructors" title="Constructors">Constructors</a>
+</h4></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term"><code class="computeroutput"><span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Constraints</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">E</span> <span class="special">==</span>
+                      <span class="identifier">dynamic_extent</span> <span class="special">||</span>
+                      <span class="identifier">E</span> <span class="special">==</span>
+                      <span class="number">0</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>.
+                    </p></dd>
+<dt><span class="term">Postconditions</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">size</span><span class="special">()</span>
+                      <span class="special">==</span> <span class="number">0</span>
+                      <span class="special">&amp;&amp;</span> <span class="identifier">data</span><span class="special">()</span> <span class="special">==</span>
+                      <span class="keyword">nullptr</span></code>.
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">explicit</span><span class="special">(</span><span class="identifier">E</span> <span class="special">!=</span> <span class="identifier">dynamic_extent</span><span class="special">)</span>
+            <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">I</span><span class="special">&gt;</span> <span class="keyword">constexpr</span>
+            <span class="identifier">span</span><span class="special">(</span><span class="identifier">I</span><span class="special">*</span> <span class="identifier">f</span><span class="special">,</span> <span class="identifier">size_type</span> <span class="identifier">c</span><span class="special">);</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Constraints</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">is_convertible_v</span><span class="special">&lt;</span><span class="identifier">I</span><span class="special">(*)[],</span> <span class="identifier">T</span><span class="special">(*)[]&gt;</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>.
+                    </p></dd>
+<dt><span class="term">Preconditions</span></dt>
+<dd><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                          <code class="computeroutput"><span class="special">[</span><span class="identifier">f</span><span class="special">,</span> <span class="identifier">f</span>
+                          <span class="special">+</span> <span class="identifier">c</span><span class="special">)</span></code> is a valid range.
+                        </li>
+<li class="listitem">
+                          If <code class="computeroutput"><span class="identifier">E</span></code> is
+                          not equal to <code class="computeroutput"><span class="identifier">dynamic_extent</span></code>,
+                          then <code class="computeroutput"><span class="identifier">c</span></code>
+                          is equal to <code class="computeroutput"><span class="identifier">E</span></code>.
+                        </li>
+</ul></div></dd>
+<dt><span class="term">Effects</span></dt>
+<dd>
+                      Constructs a <code class="computeroutput"><span class="identifier">span</span></code>
+                      with data <code class="computeroutput"><span class="identifier">f</span></code>
+                      and size <code class="computeroutput"><span class="identifier">c</span></code>.
+                    </dd>
+<dt><span class="term">Throws</span></dt>
+<dd><p>
+                      Nothing.
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">explicit</span><span class="special">(</span><span class="identifier">E</span> <span class="special">!=</span> <span class="identifier">dynamic_extent</span><span class="special">)</span>
+            <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">I</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">L</span><span class="special">&gt;</span> <span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">(</span><span class="identifier">I</span><span class="special">*</span> <span class="identifier">f</span><span class="special">,</span> <span class="identifier">L</span><span class="special">*</span> <span class="identifier">l</span><span class="special">);</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Constraints</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">is_convertible_v</span><span class="special">&lt;</span><span class="identifier">I</span><span class="special">(*)[],</span> <span class="identifier">T</span><span class="special">(*)[]&gt;</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>.
+                    </p></dd>
+<dt><span class="term">Preconditions</span></dt>
+<dd><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                          If <code class="computeroutput"><span class="identifier">E</span></code> is
+                          not equal to <code class="computeroutput"><span class="identifier">dynamic_extent</span></code>,
+                          then <code class="computeroutput"><span class="identifier">l</span> <span class="special">-</span> <span class="identifier">f</span></code>
+                          is equal to <code class="computeroutput"><span class="identifier">E</span></code>.
+                        </li>
+<li class="listitem">
+                          <code class="computeroutput"><span class="special">[</span><span class="identifier">f</span><span class="special">,</span> <span class="identifier">l</span><span class="special">)</span></code> is a valid range.
+                        </li>
+</ul></div></dd>
+<dt><span class="term">Effects</span></dt>
+<dd>
+                      Constructs a <code class="computeroutput"><span class="identifier">span</span></code>
+                      with data <code class="computeroutput"><span class="identifier">f</span></code>
+                      and size <code class="computeroutput"><span class="identifier">l</span> <span class="special">-</span> <span class="identifier">f</span></code>.
+                    </dd>
+<dt><span class="term">Throws</span></dt>
+<dd><p>
+                      Nothing.
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">N</span><span class="special">&gt;</span> <span class="keyword">constexpr</span>
+            <span class="identifier">span</span><span class="special">(</span><span class="identifier">type_identity_t</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span> <span class="special">(&amp;</span><span class="identifier">a</span><span class="special">)[</span><span class="identifier">N</span><span class="special">]);</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Constraints</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">E</span> <span class="special">==</span>
+                      <span class="identifier">dynamic_extent</span> <span class="special">||</span>
+                      <span class="identifier">E</span> <span class="special">==</span>
+                      <span class="identifier">N</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>.
+                    </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      Constructs a <code class="computeroutput"><span class="identifier">span</span></code>
+                      that is a view over the supplied array.
+                    </p></dd>
+<dt><span class="term">Postconditions</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">size</span><span class="special">()</span>
+                      <span class="special">==</span> <span class="identifier">N</span>
+                      <span class="special">&amp;&amp;</span> <span class="identifier">data</span><span class="special">()</span> <span class="special">==</span>
+                      <span class="special">&amp;</span><span class="identifier">a</span><span class="special">[</span><span class="number">0</span><span class="special">]</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>.
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">U</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+            <span class="identifier">N</span><span class="special">&gt;</span>
+            <span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">array</span><span class="special">&lt;</span><span class="identifier">U</span><span class="special">,</span> <span class="identifier">N</span><span class="special">&gt;&amp;</span> <span class="identifier">a</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Constraints</span></dt>
+<dd><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                          <code class="computeroutput"><span class="identifier">E</span> <span class="special">==</span>
+                          <span class="identifier">dynamic_extent</span> <span class="special">||</span> <span class="identifier">E</span>
+                          <span class="special">==</span> <span class="identifier">N</span></code>
+                          is <code class="computeroutput"><span class="keyword">true</span></code>, and
+                        </li>
+<li class="listitem">
+                          <code class="computeroutput"><span class="identifier">U</span><span class="special">(*)[]</span></code>
+                          is convertible to <code class="computeroutput"><span class="identifier">T</span><span class="special">(*)[]</span></code>.
+                        </li>
+</ul></div></dd>
+<dt><span class="term">Effects</span></dt>
+<dd>
+                      Constructs a <code class="computeroutput"><span class="identifier">span</span></code>
+                      that is a view over the supplied array.
+                    </dd>
+<dt><span class="term">Postconditions</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">size</span><span class="special">()</span>
+                      <span class="special">==</span> <span class="identifier">N</span>
+                      <span class="special">&amp;&amp;</span> <span class="identifier">data</span><span class="special">()</span> <span class="special">==</span>
+                      <span class="identifier">a</span><span class="special">.</span><span class="identifier">data</span><span class="special">()</span></code>
+                      is <code class="computeroutput"><span class="keyword">true</span></code>.
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">U</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+            <span class="identifier">N</span><span class="special">&gt;</span>
+            <span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">array</span><span class="special">&lt;</span><span class="identifier">U</span><span class="special">,</span> <span class="identifier">N</span><span class="special">&gt;&amp;</span>
+            <span class="identifier">a</span><span class="special">)</span>
+            <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Constraints</span></dt>
+<dd><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                          <code class="computeroutput"><span class="identifier">E</span> <span class="special">==</span>
+                          <span class="identifier">dynamic_extent</span> <span class="special">||</span> <span class="identifier">E</span>
+                          <span class="special">==</span> <span class="identifier">N</span></code>
+                          is <code class="computeroutput"><span class="keyword">true</span></code>, and
+                        </li>
+<li class="listitem">
+                          <code class="computeroutput"><span class="identifier">U</span><span class="special">(*)[]</span></code>
+                          is convertible to <code class="computeroutput"><span class="identifier">T</span><span class="special">(*)[]</span></code>.
+                        </li>
+</ul></div></dd>
+<dt><span class="term">Effects</span></dt>
+<dd>
+                      Constructs a <code class="computeroutput"><span class="identifier">span</span></code>
+                      that is a view over the supplied array.
+                    </dd>
+<dt><span class="term">Postconditions</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">size</span><span class="special">()</span>
+                      <span class="special">==</span> <span class="identifier">N</span>
+                      <span class="special">&amp;&amp;</span> <span class="identifier">data</span><span class="special">()</span> <span class="special">==</span>
+                      <span class="identifier">a</span><span class="special">.</span><span class="identifier">data</span><span class="special">()</span></code>
+                      is <code class="computeroutput"><span class="keyword">true</span></code>.
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">explicit</span><span class="special">(</span><span class="identifier">E</span> <span class="special">!=</span> <span class="identifier">dynamic_extent</span><span class="special">)</span>
+            <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">R</span><span class="special">&gt;</span> <span class="keyword">constexpr</span>
+            <span class="identifier">span</span><span class="special">(</span><span class="identifier">R</span><span class="special">&amp;&amp;</span>
+            <span class="identifier">r</span><span class="special">);</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Constraints</span></dt>
+<dd><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                          <code class="computeroutput"><span class="identifier">is_lvalue_reference_v</span><span class="special">&lt;</span><span class="identifier">R</span><span class="special">&gt;</span> <span class="special">||</span>
+                          <span class="identifier">is_const_v</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>
+                          is <code class="computeroutput"><span class="keyword">true</span></code>
+                        </li>
+<li class="listitem">
+                          <code class="computeroutput"><span class="identifier">remove_cvref_t</span><span class="special">&lt;</span><span class="identifier">R</span><span class="special">&gt;</span></code> is not a specialization
+                          of <code class="computeroutput"><span class="identifier">span</span></code>,
+                        </li>
+<li class="listitem">
+                          <code class="computeroutput"><span class="identifier">remove_cvref_t</span><span class="special">&lt;</span><span class="identifier">R</span><span class="special">&gt;</span></code> is not a specialization
+                          of <code class="computeroutput"><span class="identifier">array</span></code>,
+                        </li>
+<li class="listitem">
+                          <code class="computeroutput"><span class="identifier">is_array_v</span><span class="special">&lt;</span><span class="identifier">remove_cvref_t</span><span class="special">&lt;</span><span class="identifier">R</span><span class="special">&gt;&gt;</span></code> is <code class="computeroutput"><span class="keyword">false</span></code>,
+                        </li>
+<li class="listitem">
+                          <code class="computeroutput"><span class="identifier">r</span><span class="special">.</span><span class="identifier">data</span><span class="special">()</span></code>
+                          is well-formed and <code class="computeroutput"><span class="identifier">is_convertible_v</span><span class="special">&lt;</span><span class="identifier">remove_pointer_t</span><span class="special">&lt;</span><span class="keyword">decltype</span><span class="special">(</span><span class="identifier">declval</span><span class="special">&lt;</span><span class="identifier">R</span><span class="special">&amp;&gt;().</span><span class="identifier">data</span><span class="special">())&gt;(*)[],</span> <span class="identifier">T</span><span class="special">(*)[]&gt;</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>, and
+                        </li>
+<li class="listitem">
+                          <code class="computeroutput"><span class="identifier">r</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span></code>
+                          is well-formed and <code class="computeroutput"><span class="identifier">is_convertible_v</span><span class="special">&lt;</span><span class="keyword">decltype</span><span class="special">(</span><span class="identifier">declval</span><span class="special">&lt;</span><span class="identifier">R</span><span class="special">&amp;&gt;().</span><span class="identifier">size</span><span class="special">()),</span> <span class="identifier">size_t</span><span class="special">&gt;</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>.
+                        </li>
+</ul></div></dd>
+<dt><span class="term">Effects</span></dt>
+<dd>
+                      Constructs a <code class="computeroutput"><span class="identifier">span</span></code>
+                      with data <code class="computeroutput"><span class="identifier">r</span><span class="special">.</span><span class="identifier">data</span><span class="special">()</span></code> and size <code class="computeroutput"><span class="identifier">r</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span></code>.
+                    </dd>
+<dt><span class="term">Throws</span></dt>
+<dd><p>
+                      What and when r.data() and r.size() throw.
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">explicit</span><span class="special">(</span><span class="identifier">E</span> <span class="special">!=</span> <span class="identifier">dynamic_extent</span> <span class="special">&amp;&amp;</span>
+            <span class="identifier">N</span> <span class="special">==</span>
+            <span class="identifier">dynamic_extent</span><span class="special">)</span>
+            <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">U</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+            <span class="identifier">N</span><span class="special">&gt;</span>
+            <span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">U</span><span class="special">,</span> <span class="identifier">N</span><span class="special">&gt;&amp;</span>
+            <span class="identifier">s</span><span class="special">)</span>
+            <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Constraints</span></dt>
+<dd><div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                          <code class="computeroutput"><span class="identifier">E</span> <span class="special">==</span>
+                          <span class="identifier">dynamic_extent</span> <span class="special">||</span> <span class="identifier">N</span>
+                          <span class="special">==</span> <span class="identifier">dynamic_extent</span>
+                          <span class="special">||</span> <span class="identifier">E</span>
+                          <span class="special">==</span> <span class="identifier">N</span></code>
+                          is <code class="computeroutput"><span class="keyword">true</span></code>, and
+                        </li>
+<li class="listitem">
+                          <code class="computeroutput"><span class="identifier">is_convertible_v</span><span class="special">&lt;</span><span class="identifier">U</span><span class="special">(*)[],</span> <span class="identifier">T</span><span class="special">(*)[]&gt;</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>.
+                        </li>
+</ul></div></dd>
+<dt><span class="term">Preconditions</span></dt>
+<dd>
+                      If <code class="computeroutput"><span class="identifier">E</span></code> is not
+                      equal to <code class="computeroutput"><span class="identifier">dynamic_extent</span></code>,
+                      then <code class="computeroutput"><span class="identifier">s</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span></code>
+                      is equal to <code class="computeroutput"><span class="identifier">E</span></code>.
+                    </dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      Constructs a <code class="computeroutput"><span class="identifier">span</span></code>
+                      that is a view over the range <code class="computeroutput"><span class="special">[</span><span class="identifier">s</span><span class="special">.</span><span class="identifier">data</span><span class="special">(),</span>
+                      <span class="identifier">s</span><span class="special">.</span><span class="identifier">data</span><span class="special">()</span>
+                      <span class="special">+</span> <span class="identifier">s</span><span class="special">.</span><span class="identifier">size</span><span class="special">())</span></code>.
+                    </p></dd>
+<dt><span class="term">Postconditions</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">size</span><span class="special">()</span>
+                      <span class="special">==</span> <span class="identifier">s</span><span class="special">.</span><span class="identifier">size</span><span class="special">()</span> <span class="special">&amp;&amp;</span>
+                      <span class="identifier">data</span><span class="special">()</span>
+                      <span class="special">==</span> <span class="identifier">s</span><span class="special">.</span><span class="identifier">data</span><span class="special">()</span></code>.
+                    </p></dd>
+</dl>
+</div></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="core.span.reference.subviews"></a><a class="link" href="span.html#core.span.reference.subviews" title="Subviews">Subviews</a>
+</h4></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term"><code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">C</span><span class="special">&gt;</span> <span class="keyword">constexpr</span>
+            <span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">C</span><span class="special">&gt;</span> <span class="identifier">first</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Mandates</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">C</span> <span class="special">&lt;=</span>
+                      <span class="identifier">E</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>.
+                    </p></dd>
+<dt><span class="term">Preconditions</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">C</span> <span class="special">&lt;=</span>
+                      <span class="identifier">size</span><span class="special">()</span></code>
+                      is <code class="computeroutput"><span class="keyword">true</span></code>.
+                    </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      Equivalent to <code class="computeroutput"><span class="keyword">return</span>
+                      <span class="identifier">R</span><span class="special">{</span><span class="identifier">data</span><span class="special">(),</span>
+                      <span class="identifier">C</span><span class="special">};</span></code>
+                      where <code class="computeroutput"><span class="identifier">R</span></code> is
+                      the return type.
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">C</span><span class="special">&gt;</span> <span class="keyword">constexpr</span>
+            <span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">C</span><span class="special">&gt;</span> <span class="identifier">last</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Mandates</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">C</span> <span class="special">&lt;=</span>
+                      <span class="identifier">E</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>.
+                    </p></dd>
+<dt><span class="term">Preconditions</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">C</span> <span class="special">&lt;=</span>
+                      <span class="identifier">size</span><span class="special">()</span></code>
+                      is <code class="computeroutput"><span class="keyword">true</span></code>.
+                    </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      Equivalent to <code class="computeroutput"><span class="keyword">return</span>
+                      <span class="identifier">R</span><span class="special">{</span><span class="identifier">data</span><span class="special">()</span>
+                      <span class="special">+</span> <span class="special">(</span><span class="identifier">size</span><span class="special">()</span>
+                      <span class="special">-</span> <span class="identifier">C</span><span class="special">),</span> <span class="identifier">C</span><span class="special">};</span></code> where <code class="computeroutput"><span class="identifier">R</span></code>
+                      is the return type.
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">O</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+            <span class="identifier">C</span> <span class="special">=</span>
+            <span class="identifier">dynamic_extent</span><span class="special">&gt;</span>
+            <span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">see</span> <span class="identifier">below</span><span class="special">&gt;</span>
+            <span class="identifier">subspan</span><span class="special">()</span>
+            <span class="keyword">const</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Mandates</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">O</span> <span class="special">&lt;=</span>
+                      <span class="identifier">E</span> <span class="special">&amp;&amp;</span>
+                      <span class="special">(</span><span class="identifier">C</span>
+                      <span class="special">==</span> <span class="identifier">dynamic_extent</span>
+                      <span class="special">||</span> <span class="identifier">C</span>
+                      <span class="special">&lt;=</span> <span class="identifier">E</span>
+                      <span class="special">-</span> <span class="identifier">O</span><span class="special">)</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>.
+                    </p></dd>
+<dt><span class="term">Preconditions</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">O</span> <span class="special">&lt;=</span>
+                      <span class="identifier">size</span><span class="special">()</span>
+                      <span class="special">&amp;&amp;</span> <span class="special">(</span><span class="identifier">C</span> <span class="special">==</span>
+                      <span class="identifier">dynamic_extent</span> <span class="special">||</span>
+                      <span class="identifier">C</span> <span class="special">&lt;=</span>
+                      <span class="identifier">size</span><span class="special">()</span>
+                      <span class="special">-</span> <span class="identifier">O</span><span class="special">)</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>.
+                    </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      Equivalent to <code class="computeroutput"><span class="keyword">return</span>
+                      <span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span>
+                      <span class="identifier">see</span> <span class="identifier">below</span><span class="special">&gt;(</span><span class="identifier">data</span><span class="special">()</span> <span class="special">+</span>
+                      <span class="identifier">O</span><span class="special">,</span>
+                      <span class="identifier">C</span> <span class="special">!=</span>
+                      <span class="identifier">dynamic_extent</span> <span class="special">?</span>
+                      <span class="identifier">C</span> <span class="special">:</span>
+                      <span class="identifier">size</span><span class="special">()</span>
+                      <span class="special">-</span> <span class="identifier">O</span><span class="special">);</span></code>.
+                    </p></dd>
+<dt><span class="term">Remarks</span></dt>
+<dd><p>
+                      The second template argument of the returned span type is:
+                      <code class="computeroutput"><span class="identifier">C</span> <span class="special">!=</span>
+                      <span class="identifier">dynamic_extent</span> <span class="special">?</span>
+                      <span class="identifier">C</span> <span class="special">:</span>
+                      <span class="special">(</span><span class="identifier">E</span>
+                      <span class="special">!=</span> <span class="identifier">dynamic_extent</span>
+                      <span class="special">?</span> <span class="identifier">E</span>
+                      <span class="special">-</span> <span class="identifier">O</span>
+                      <span class="special">:</span> <span class="identifier">dynamic_extent</span><span class="special">)</span></code>
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">dynamic_extent</span><span class="special">&gt;</span> <span class="identifier">first</span><span class="special">(</span><span class="identifier">size_type</span>
+            <span class="identifier">c</span><span class="special">)</span>
+            <span class="keyword">const</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Preconditions</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">c</span> <span class="special">&lt;=</span>
+                      <span class="identifier">size</span><span class="special">()</span></code>
+                      is <code class="computeroutput"><span class="keyword">true</span></code>.
+                    </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      Equivalent to: <code class="computeroutput"><span class="keyword">return</span>
+                      <span class="special">{</span><span class="identifier">data</span><span class="special">(),</span> <span class="identifier">c</span><span class="special">};</span></code>
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">dynamic_extent</span><span class="special">&gt;</span> <span class="identifier">last</span><span class="special">(</span><span class="identifier">size_type</span>
+            <span class="identifier">c</span><span class="special">)</span>
+            <span class="keyword">const</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Preconditions</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">c</span> <span class="special">&lt;=</span>
+                      <span class="identifier">size</span><span class="special">()</span></code>
+                      is <code class="computeroutput"><span class="keyword">true</span></code>.
+                    </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      Equivalent to: <code class="computeroutput"><span class="keyword">return</span>
+                      <span class="special">{</span><span class="identifier">data</span><span class="special">()</span> <span class="special">+</span>
+                      <span class="special">(</span><span class="identifier">size</span><span class="special">()</span> <span class="special">-</span>
+                      <span class="identifier">c</span><span class="special">),</span>
+                      <span class="identifier">c</span><span class="special">};</span></code>
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">constexpr</span> <span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">dynamic_extent</span><span class="special">&gt;</span> <span class="identifier">subspan</span><span class="special">(</span><span class="identifier">size_type</span>
+            <span class="identifier">o</span><span class="special">,</span>
+            <span class="identifier">size_type</span> <span class="identifier">c</span>
+            <span class="special">=</span> <span class="identifier">dynamic_extent</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Preconditions</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">o</span> <span class="special">&lt;=</span>
+                      <span class="identifier">size</span><span class="special">()</span>
+                      <span class="special">&amp;&amp;</span> <span class="special">(</span><span class="identifier">c</span> <span class="special">==</span>
+                      <span class="identifier">dynamic_extent</span> <span class="special">||</span>
+                      <span class="identifier">o</span> <span class="special">+</span>
+                      <span class="identifier">c</span> <span class="special">&lt;=</span>
+                      <span class="identifier">size</span><span class="special">())</span></code>
+                      is <code class="computeroutput"><span class="keyword">true</span></code>.
+                    </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      Equivalent to: <code class="computeroutput"><span class="keyword">return</span>
+                      <span class="special">{</span><span class="identifier">data</span><span class="special">()</span> <span class="special">+</span>
+                      <span class="identifier">o</span><span class="special">,</span>
+                      <span class="identifier">c</span> <span class="special">==</span>
+                      <span class="identifier">dynamic_extent</span> <span class="special">?</span>
+                      <span class="identifier">size</span><span class="special">()</span>
+                      <span class="special">-</span> <span class="identifier">o</span>
+                      <span class="special">:</span> <span class="identifier">c</span><span class="special">};</span></code>
+                    </p></dd>
+</dl>
+</div></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="core.span.reference.observers"></a><a class="link" href="span.html#core.span.reference.observers" title="Observers">Observers</a>
+</h4></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term"><code class="computeroutput"><span class="keyword">constexpr</span> <span class="identifier">size_type</span>
+            <span class="identifier">size</span><span class="special">()</span>
+            <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                      The number of elements in the span.
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">constexpr</span> <span class="identifier">size_type</span>
+            <span class="identifier">size_bytes</span><span class="special">()</span>
+            <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      Equivalent to: <code class="computeroutput"><span class="keyword">return</span>
+                      <span class="identifier">size</span><span class="special">()</span>
+                      <span class="special">*</span> <span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">T</span><span class="special">);</span></code>
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">constexpr</span> <span class="keyword">bool</span>
+            <span class="identifier">empty</span><span class="special">()</span>
+            <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      Equivalent to: <code class="computeroutput"><span class="keyword">return</span>
+                      <span class="identifier">size</span><span class="special">()</span>
+                      <span class="special">==</span> <span class="number">0</span><span class="special">;</span></code>
+                    </p></dd>
+</dl>
+</div></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="core.span.reference.element_access"></a><a class="link" href="span.html#core.span.reference.element_access" title="Element access">Element access</a>
+</h4></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term"><code class="computeroutput"><span class="keyword">constexpr</span> <span class="identifier">reference</span>
+            <span class="keyword">operator</span><span class="special">[](</span><span class="identifier">size_type</span> <span class="identifier">i</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Preconditions</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">i</span> <span class="special">&lt;</span>
+                      <span class="identifier">size</span><span class="special">()</span></code>
+                      is <code class="computeroutput"><span class="keyword">true</span></code>.
+                    </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      Equivalent to: <code class="computeroutput"><span class="keyword">return</span>
+                      <span class="special">*(</span><span class="identifier">data</span><span class="special">()</span> <span class="special">+</span>
+                      <span class="identifier">i</span><span class="special">);</span></code>
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">constexpr</span> <span class="identifier">reference</span>
+            <span class="identifier">front</span><span class="special">()</span>
+            <span class="keyword">const</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Preconditions</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">empty</span><span class="special">()</span></code>
+                      is <code class="computeroutput"><span class="keyword">false</span></code>.
+                    </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      Equivalent to: <code class="computeroutput"><span class="keyword">return</span>
+                      <span class="special">*</span><span class="identifier">data</span><span class="special">();</span></code>
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">constexpr</span> <span class="identifier">reference</span>
+            <span class="identifier">back</span><span class="special">()</span>
+            <span class="keyword">const</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Preconditions</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">empty</span><span class="special">()</span></code>
+                      is <code class="computeroutput"><span class="keyword">false</span></code>.
+                    </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      Equivalent to: <code class="computeroutput"><span class="keyword">return</span>
+                      <span class="special">*(</span><span class="identifier">data</span><span class="special">()</span> <span class="special">+</span>
+                      <span class="special">(</span><span class="identifier">size</span><span class="special">()</span> <span class="special">-</span>
+                      <span class="number">1</span><span class="special">);</span></code>
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">constexpr</span> <span class="identifier">pointer</span>
+            <span class="identifier">data</span><span class="special">()</span>
+            <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                      A pointer to the first element in the span.
+                    </p></dd>
+</dl>
+</div></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="core.span.reference.iterator_support"></a><a class="link" href="span.html#core.span.reference.iterator_support" title="Iterator support">Iterator support</a>
+</h4></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term"><code class="computeroutput"><span class="keyword">constexpr</span> <span class="identifier">iterator</span>
+            <span class="identifier">begin</span><span class="special">()</span>
+            <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                      A constant iterator referring to the first element in the span.
+                      If <code class="computeroutput"><span class="identifier">empty</span><span class="special">()</span></code>,
+                      then it returns the same value as <code class="computeroutput"><span class="identifier">cend</span><span class="special">()</span></code>.
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">constexpr</span> <span class="identifier">iterator</span>
+            <span class="identifier">end</span><span class="special">()</span>
+            <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                      A constant iterator which is the past-the-end value.
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">constexpr</span> <span class="identifier">reverse_iterator</span>
+            <span class="identifier">rbegin</span><span class="special">()</span>
+            <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      Equivalent to: <code class="computeroutput"><span class="keyword">return</span>
+                      <span class="identifier">reverse_iterator</span><span class="special">(</span><span class="identifier">end</span><span class="special">());</span></code>
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">constexpr</span> <span class="identifier">reverse_iterator</span>
+            <span class="identifier">rend</span><span class="special">()</span>
+            <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      Equivalent to: <code class="computeroutput"><span class="keyword">return</span>
+                      <span class="identifier">reverse_iterator</span><span class="special">(</span><span class="identifier">begin</span><span class="special">());</span></code>
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">constexpr</span> <span class="identifier">const_iterator</span>
+            <span class="identifier">cbegin</span><span class="special">()</span>
+            <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                      A constant iterator referring to the first element in the span.
+                      If <code class="computeroutput"><span class="identifier">empty</span><span class="special">()</span></code>,
+                      then it returns the same value as <code class="computeroutput"><span class="identifier">cend</span><span class="special">()</span></code>.
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">constexpr</span> <span class="identifier">const_iterator</span>
+            <span class="identifier">cend</span><span class="special">()</span>
+            <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                      A constant iterator which is the past-the-end value.
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">constexpr</span> <span class="identifier">const_reverse_iterator</span>
+            <span class="identifier">crbegin</span><span class="special">()</span>
+            <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      Equivalent to: <code class="computeroutput"><span class="keyword">return</span>
+                      <span class="identifier">const_reverse_iterator</span><span class="special">(</span><span class="identifier">cend</span><span class="special">());</span></code>
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">constexpr</span> <span class="identifier">const_reverse_iterator</span>
+            <span class="identifier">crend</span><span class="special">()</span>
+            <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      Equivalent to: <code class="computeroutput"><span class="keyword">return</span>
+                      <span class="identifier">const_reverse_iterator</span><span class="special">(</span><span class="identifier">cbegin</span><span class="special">());</span></code>
+                    </p></dd>
+</dl>
+</div></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="core.span.reference.views_of_object_representation"></a><a class="link" href="span.html#core.span.reference.views_of_object_representation" title="Views of object representation">Views
+        of object representation</a>
+</h4></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term"><code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+            <span class="identifier">E</span><span class="special">&gt;</span>
+            <span class="identifier">span</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">byte</span><span class="special">,</span> <span class="identifier">E</span> <span class="special">==</span> <span class="identifier">dynamic_extent</span>
+            <span class="special">?</span> <span class="identifier">dynamic_extent</span>
+            <span class="special">:</span> <span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">T</span><span class="special">)</span> <span class="special">*</span> <span class="identifier">E</span><span class="special">&gt;</span> <span class="identifier">as_bytes</span><span class="special">(</span><span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">E</span><span class="special">&gt;</span> <span class="identifier">s</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      Equivalent to: <code class="computeroutput"><span class="keyword">return</span>
+                      <span class="special">{</span><span class="keyword">reinterpret_cast</span><span class="special">&lt;</span><span class="keyword">const</span>
+                      <span class="identifier">byte</span><span class="special">*&gt;(</span><span class="identifier">s</span><span class="special">.</span><span class="identifier">data</span><span class="special">()),</span>
+                      <span class="identifier">s</span><span class="special">.</span><span class="identifier">size_bytes</span><span class="special">()};</span></code>.
+                    </p></dd>
+</dl>
+</div></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+            <span class="identifier">E</span><span class="special">&gt;</span>
+            <span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">byte</span><span class="special">,</span> <span class="identifier">E</span> <span class="special">==</span> <span class="identifier">dynamic_extent</span> <span class="special">?</span>
+            <span class="identifier">dynamic_extent</span> <span class="special">:</span>
+            <span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">T</span><span class="special">)</span> <span class="special">*</span> <span class="identifier">E</span><span class="special">&gt;</span> <span class="identifier">as_writable_bytes</span><span class="special">(</span><span class="identifier">span</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">E</span><span class="special">&gt;</span> <span class="identifier">s</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Constraints</span></dt>
+<dd><p>
+                      <code class="computeroutput"><span class="identifier">is_const_v</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code> is <code class="computeroutput"><span class="keyword">false</span></code>.
+                    </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                      Equivalent to: <code class="computeroutput"><span class="keyword">return</span>
+                      <span class="identifier">R</span><span class="special">{</span><span class="keyword">reinterpret_cast</span><span class="special">&lt;</span><span class="identifier">byte</span><span class="special">*&gt;(</span><span class="identifier">s</span><span class="special">.</span><span class="identifier">data</span><span class="special">()),</span>
+                      <span class="identifier">s</span><span class="special">.</span><span class="identifier">size_bytes</span><span class="special">()};</span></code>
+                      where <code class="computeroutput"><span class="identifier">R</span></code> is
+                      the return type.
+                    </p></dd>
+</dl>
+</div></dd>
+</dl>
+</div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2014 Peter Dimov<br>Copyright © 2014 Glen Fernandes<br>Copyright © 2014 Andrey Semashev<p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="scoped_enum.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="swap.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

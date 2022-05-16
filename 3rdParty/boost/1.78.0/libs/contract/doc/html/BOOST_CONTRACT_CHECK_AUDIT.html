@@ -1,0 +1,88 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Macro BOOST_CONTRACT_CHECK_AUDIT</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Chapter 1. Boost.Contract 1.0.0">
+<link rel="up" href="reference.html#header.boost.contract.core.check_macro_hpp" title="Header &lt;boost/contract/core/check_macro.hpp&gt;">
+<link rel="prev" href="BOOST_CONTRACT_CHECK.html" title="Macro BOOST_CONTRACT_CHECK">
+<link rel="next" href="BOOST_CONTRACT_CHECK_AXIOM.html" title="Macro BOOST_CONTRACT_CHECK_AXIOM">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="BOOST_CONTRACT_CHECK.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="reference.html#header.boost.contract.core.check_macro_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="BOOST_CONTRACT_CHECK_AXIOM.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="BOOST_CONTRACT_CHECK_AUDIT"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Macro BOOST_CONTRACT_CHECK_AUDIT</span></h2>
+<p>BOOST_CONTRACT_CHECK_AUDIT — Preferred way to assert implementation check conditions that are computationally expensive, at least compared to the computational cost of executing the function body. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="reference.html#header.boost.contract.core.check_macro_hpp" title="Header &lt;boost/contract/core/check_macro.hpp&gt;">boost/contract/core/check_macro.hpp</a>&gt;
+
+</span>BOOST_CONTRACT_CHECK_AUDIT(cond)</pre></div>
+<div class="refsect1">
+<a name="idm36822"></a><h2>Description</h2>
+<p>The specified condition will always be compiled and validated syntactically, but it will not be checked at run-time unless  <code class="computeroutput"><a class="link" href="BOOST_CONTRACT_AUDITS.html" title="Macro BOOST_CONTRACT_AUDITS">BOOST_CONTRACT_AUDITS</a></code> is defined (undefined by default). This macro is defined by code equivalent to:</p>
+<pre class="programlisting"><span class="preprocessor">#ifdef</span> <span class="identifier">BOOST_CONTRACT_AUDITS</span>
+    <span class="preprocessor">#define</span> <span class="identifier">BOOST_CONTRACT_CHECK_AUDIT</span><span class="special">(</span><span class="identifier">cond</span><span class="special">)</span> \
+        <span class="identifier">BOOST_CONTRACT_CHECK</span><span class="special">(</span><span class="identifier">cond</span><span class="special">)</span>
+<span class="preprocessor">#else</span>
+    <span class="preprocessor">#define</span> <span class="identifier">BOOST_CONTRACT_CHECK_AUDIT</span><span class="special">(</span><span class="identifier">cond</span><span class="special">)</span> \
+        <span class="identifier">BOOST_CONTRACT_CHECK</span><span class="special">(</span><span class="keyword">true</span> <span class="special">||</span> <span class="identifier">cond</span><span class="special">)</span>
+<span class="preprocessor">#endif</span>
+</pre>
+<p> <code class="computeroutput"><a class="link" href="BOOST_CONTRACT_CHECK.html" title="Macro BOOST_CONTRACT_CHECK">BOOST_CONTRACT_CHECK</a></code>, <code class="computeroutput"><a class="link" href="BOOST_CONTRACT_CHECK_AUDIT.html" title="Macro BOOST_CONTRACT_CHECK_AUDIT">BOOST_CONTRACT_CHECK_AUDIT</a></code>, and  <code class="computeroutput"><a class="link" href="BOOST_CONTRACT_CHECK_AXIOM.html" title="Macro BOOST_CONTRACT_CHECK_AXIOM">BOOST_CONTRACT_CHECK_AXIOM</a></code> are the three assertion levels predefined by this library for implementation checks. If there is a need, programmers are free to implement their own assertion levels defining macros similar to the one above.</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p> <a class="link" href="boost_contract/extras.html#boost_contract.extras.assertion_levels" title="Assertion Levels"> Assertion Levels</a></p>
+<p>
+</p>
+<p>
+
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">cond</code></span></p></td>
+<td><p>Boolean condition to check within implementation code (function body, etc.). (This is not a variadic macro parameter so any comma it might contain must be protected by round parenthesis and <code class="computeroutput">BOOST_CONTRACT_CHECK_AUDIT((cond))</code> will always work.) </p></td>
+</tr></tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2008-2019 Lorenzo Caminiti<p>
+        Distributed under the Boost Software License, Version 1.0 (see accompanying
+        file LICENSE_1_0.txt or a copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="BOOST_CONTRACT_CHECK.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="reference.html#header.boost.contract.core.check_macro_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="BOOST_CONTRACT_CHECK_AXIOM.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,15 +45,14 @@
 #include <rocksdb/status.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
 
 #include <initializer_list>
 
 namespace arangodb {
 namespace rocksutils {
 
-void checkIteratorStatus(rocksdb::Iterator const* iterator) {
-  auto s = iterator->status();
+void checkIteratorStatus(rocksdb::Iterator const& iterator) {
+  auto s = iterator.status();
   if (!s.ok()) {
     THROW_ARANGO_EXCEPTION(arangodb::rocksutils::convertStatus(s));
   }
@@ -83,14 +82,17 @@ std::size_t countKeys(rocksdb::DB* db, rocksdb::ColumnFamilyHandle* cf) {
 
 /// @brief iterate over all keys in range and count them
 std::size_t countKeyRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
-                          bool prefix_same_as_start) {
+                          rocksdb::Snapshot const* snapshot,
+                          bool prefixSameAsStart) {
+  // note: snapshot may be a nullptr!
   rocksdb::Slice lower(bounds.start());
   rocksdb::Slice upper(bounds.end());
 
   rocksdb::ReadOptions readOptions;
-  readOptions.prefix_same_as_start = prefix_same_as_start;
+  readOptions.snapshot = snapshot;
+  readOptions.prefix_same_as_start = prefixSameAsStart;
   readOptions.iterate_upper_bound = &upper;
-  readOptions.total_order_seek = !prefix_same_as_start;
+  readOptions.total_order_seek = !prefixSameAsStart;
   readOptions.verify_checksums = false;
   readOptions.fill_cache = false;
 
@@ -108,14 +110,17 @@ std::size_t countKeyRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
 }
 
 /// @brief whether or not the specified range has keys
-bool hasKeys(rocksdb::DB* db, RocksDBKeyBounds const& bounds, bool prefix_same_as_start) {
+bool hasKeys(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
+             rocksdb::Snapshot const* snapshot, bool prefixSameAsStart) {
+  // note: snapshot may be a nullptr!
   rocksdb::Slice lower(bounds.start());
   rocksdb::Slice upper(bounds.end());
 
   rocksdb::ReadOptions readOptions;
-  readOptions.prefix_same_as_start = prefix_same_as_start;
+  readOptions.snapshot = snapshot;
+  readOptions.prefix_same_as_start = prefixSameAsStart;
   readOptions.iterate_upper_bound = &upper;
-  readOptions.total_order_seek = !prefix_same_as_start;
+  readOptions.total_order_seek = !prefixSameAsStart;
   readOptions.verify_checksums = false;
   readOptions.fill_cache = false;
 
@@ -131,8 +136,9 @@ bool hasKeys(rocksdb::DB* db, RocksDBKeyBounds const& bounds, bool prefix_same_a
 /// Should mainly be used to implement the drop() call
 Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
                         bool prefixSameAsStart, bool useRangeDelete) {
-  LOG_TOPIC("95aeb", DEBUG, Logger::ENGINES) << "removing large range: " << bounds;
-  
+  LOG_TOPIC("95aeb", DEBUG, Logger::ENGINES)
+      << "removing large range: " << bounds;
+
   rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
   rocksdb::DB* bDB = db->GetRootDB();
   TRI_ASSERT(bDB != nullptr);
@@ -189,7 +195,8 @@ Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
       ++counter;
       batch.Delete(cf, it->key());
       if (counter >= 1000) {
-        LOG_TOPIC("8a358", DEBUG, Logger::ENGINES) << "intermediate delete write";
+        LOG_TOPIC("8a358", DEBUG, Logger::ENGINES)
+            << "intermediate delete write";
         // Persist deletes all 1000 documents
         rocksdb::Status status = bDB->Write(wo, &batch);
         if (!status.ok()) {
@@ -235,21 +242,33 @@ Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
   }
 }
 
-Result compactAll(rocksdb::DB* db, bool changeLevel, bool compactBottomMostLevel) {
+Result compactAll(rocksdb::DB* db, bool changeLevel,
+                  bool compactBottomMostLevel, std::atomic<bool>* canceled) {
   rocksdb::CompactRangeOptions options;
+  options.canceled = canceled;
   options.change_level = changeLevel;
-  options.bottommost_level_compaction = compactBottomMostLevel ?
-      rocksdb::BottommostLevelCompaction::kForceOptimized : 
-      rocksdb::BottommostLevelCompaction::kIfHaveCompactionFilter;
+  options.bottommost_level_compaction =
+      compactBottomMostLevel
+          ? rocksdb::BottommostLevelCompaction::kForceOptimized
+          : rocksdb::BottommostLevelCompaction::kIfHaveCompactionFilter;
 
   std::initializer_list<rocksdb::ColumnFamilyHandle*> const cfs = {
-      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
-      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
-      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex),
-      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::EdgeIndex),
-      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::VPackIndex),
-      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex),
-      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::FulltextIndex),
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::Definitions),
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::Documents),
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::PrimaryIndex),
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::EdgeIndex),
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::VPackIndex),
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::GeoIndex),
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::FulltextIndex),
+      RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::ReplicatedLogs),
   };
 
   LOG_TOPIC("d8a5d", INFO, arangodb::Logger::ENGINES)
@@ -261,7 +280,8 @@ Result compactAll(rocksdb::DB* db, bool changeLevel, bool compactBottomMostLevel
     if (!s.ok()) {
       Result res = rocksutils::convertStatus(s);
       LOG_TOPIC("e46a3", WARN, arangodb::Logger::ENGINES)
-        << "compaction of entire RocksDB database key range failed: " << res.errorMessage();
+          << "compaction of entire RocksDB database key range failed: "
+          << res.errorMessage();
       return res;
     }
   }

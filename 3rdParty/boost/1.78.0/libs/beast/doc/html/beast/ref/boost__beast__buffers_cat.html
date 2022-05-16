@@ -1,0 +1,127 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>buffers_cat</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Beast">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__beast__buffers_front.html" title="buffers_front">
+<link rel="next" href="boost__beast__buffer_bytes.html" title="buffer_bytes">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__buffers_front.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__buffer_bytes.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="beast.ref.boost__beast__buffers_cat"></a><a class="link" href="boost__beast__buffers_cat.html" title="buffers_cat">buffers_cat</a>
+</h4></div></div></div>
+<p>
+        <a class="indexterm" name="idm73600"></a>
+      </p>
+<p>
+        Concatenate 1 or more buffer sequences.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__buffers_cat.h0"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__buffers_cat.synopsis"></a></span><a class="link" href="boost__beast__buffers_cat.html#beast.ref.boost__beast__buffers_cat.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="../../../../../../boost/beast/core/buffers_cat.hpp" target="_top">boost/beast/core/buffers_cat.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span><span class="special">...</span> <a class="link" href="../concepts/BufferSequence.html" title="BufferSequence"><span class="emphasis"><em>BufferSequence</em></span></a><span class="special">&gt;</span>
+<span class="identifier">buffers_cat_view</span><span class="special">&lt;</span> <span class="identifier">BufferSequence</span><span class="special">...</span> <span class="special">&gt;</span>
+<span class="identifier">buffers_cat</span><span class="special">(</span>
+    <span class="identifier">BufferSequence</span> <span class="keyword">const</span><span class="special">&amp;...</span> <span class="identifier">buffers</span><span class="special">);</span>
+</pre>
+<h5>
+<a name="beast.ref.boost__beast__buffers_cat.h1"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__buffers_cat.description"></a></span><a class="link" href="boost__beast__buffers_cat.html#beast.ref.boost__beast__buffers_cat.description">Description</a>
+      </h5>
+<p>
+        This function returns a constant or mutable buffer sequence which, when iterated,
+        efficiently concatenates the input buffer sequences. Copies of the arguments
+        passed will be made; however, the returned object does not take ownership
+        of the underlying memory. The application is still responsible for managing
+        the lifetime of the referenced memory.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__buffers_cat.h2"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__buffers_cat.parameters"></a></span><a class="link" href="boost__beast__buffers_cat.html#beast.ref.boost__beast__buffers_cat.parameters">Parameters</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">buffers</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  The list of buffer sequences to concatenate.
+                </p>
+              </td>
+</tr></tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__buffers_cat.h3"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__buffers_cat.return_value"></a></span><a class="link" href="boost__beast__buffers_cat.html#beast.ref.boost__beast__buffers_cat.return_value">Return
+        Value</a>
+      </h5>
+<p>
+        A new buffer sequence that represents the concatenation of the input buffer
+        sequences. This buffer sequence will be a <span class="emphasis"><em>MutableBufferSequence</em></span>
+        if each of the passed buffer sequences is also a <span class="emphasis"><em>MutableBufferSequence</em></span>;
+        otherwise the returned buffer sequence will be a <span class="emphasis"><em>ConstBufferSequence</em></span>.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__buffers_cat.h4"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__buffers_cat.see_also"></a></span><a class="link" href="boost__beast__buffers_cat.html#beast.ref.boost__beast__buffers_cat.see_also">See
+        Also</a>
+      </h5>
+<p>
+        <a class="link" href="boost__beast__buffers_cat_view.html" title="buffers_cat_view"><code class="computeroutput"><span class="identifier">buffers_cat_view</span></code></a>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__buffers_front.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__buffer_bytes.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

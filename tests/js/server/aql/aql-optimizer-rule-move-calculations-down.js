@@ -664,10 +664,15 @@ function optimizerRuleTestSuite () {
         expected.push("test" + i + "-" + i);
       }
 
-      var query =
-        "FOR i IN 0..99 LET result = (UPDATE {_key: CONCAT('test', TO_STRING(i))} WITH {updated: true} IN " +
-        cn +
-        " RETURN CONCAT(NEW._key, '-', NEW.value)) LIMIT 10 RETURN result[0]";
+      var query = `
+        FOR i IN 0..99
+          LET result = (
+            UPDATE {_key: CONCAT('test', TO_STRING(i))} WITH {updated: true} IN ${cn}
+            RETURN CONCAT(NEW._key, '-', NEW.value)
+          )
+          LIMIT 10
+          RETURN result[0]
+      `;
       var planDisabled = AQL_EXPLAIN(query, {}, paramDisabled);
       var planEnabled = AQL_EXPLAIN(query, {}, paramEnabled);
 

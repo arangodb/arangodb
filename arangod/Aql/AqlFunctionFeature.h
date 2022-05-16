@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/Function.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 
@@ -34,9 +35,11 @@ class Builder;
 
 namespace aql {
 
-class AqlFunctionFeature final : public application_features::ApplicationFeature {
+class AqlFunctionFeature final : public ArangodFeature {
  public:
-  explicit AqlFunctionFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "AQLFunctions"; }
+
+  explicit AqlFunctionFeature(Server& server);
 
   void prepare() override final;
 
@@ -69,4 +72,3 @@ class AqlFunctionFeature final : public application_features::ApplicationFeature
 
 }  // namespace aql
 }  // namespace arangodb
-

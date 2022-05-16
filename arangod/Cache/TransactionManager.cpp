@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <memory>
 
 #include "Cache/TransactionManager.h"
 
@@ -32,11 +33,10 @@
 
 namespace arangodb::cache {
 
-TransactionManager::TransactionManager()
-    : _state({{0,0,0}, 0}) {}
+TransactionManager::TransactionManager() : _state({{0, 0, 0}, 0}) {}
 
 Transaction* TransactionManager::begin(bool readOnly) {
-  Transaction* tx = new Transaction(readOnly);
+  auto tx = std::make_unique<Transaction>(readOnly);
 
   State newState;
   if (readOnly) {
@@ -49,7 +49,8 @@ Transaction* TransactionManager::begin(bool readOnly) {
         tx->sensitive = true;
         newState.counters.openSensitive++;
       }
-    } while (!_state.compare_exchange_strong(state, newState, std::memory_order_acq_rel, std::memory_order_relaxed));
+    } while (!_state.compare_exchange_strong(
+        state, newState, std::memory_order_acq_rel, std::memory_order_relaxed));
   } else {
     tx->sensitive = true;
     State state = _state.load(std::memory_order_relaxed);
@@ -63,10 +64,11 @@ Transaction* TransactionManager::begin(bool readOnly) {
       } else {
         newState.counters.openSensitive++;
       }
-    } while (!_state.compare_exchange_strong(state, newState, std::memory_order_acq_rel, std::memory_order_relaxed));
+    } while (!_state.compare_exchange_strong(
+        state, newState, std::memory_order_acq_rel, std::memory_order_relaxed));
   }
   tx->term = newState.term;
-  return tx;
+  return tx.release();
 }
 
 void TransactionManager::end(Transaction* tx) noexcept {
@@ -75,7 +77,8 @@ void TransactionManager::end(Transaction* tx) noexcept {
   State state = _state.load(std::memory_order_relaxed);
   State newState;
   do {
-    if (((state.term & static_cast<uint64_t>(1)) > 0) && (state.term > tx->term)) {
+    if (((state.term & static_cast<uint64_t>(1)) > 0) &&
+        (state.term > tx->term)) {
       tx->sensitive = true;
     }
 
@@ -89,11 +92,14 @@ void TransactionManager::end(Transaction* tx) noexcept {
     if (tx->sensitive && (--newState.counters.openSensitive == 0)) {
       newState.term++;
     }
-  } while (!_state.compare_exchange_strong(state, newState, std::memory_order_acq_rel, std::memory_order_relaxed));
+  } while (!_state.compare_exchange_strong(
+      state, newState, std::memory_order_acq_rel, std::memory_order_relaxed));
 
   delete tx;
 }
 
-uint64_t TransactionManager::term() { return _state.load(std::memory_order_acquire).term; }
+uint64_t TransactionManager::term() const noexcept {
+  return _state.load(std::memory_order_acquire).term;
+}
 
 }  // namespace arangodb::cache

@@ -1,0 +1,648 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>buffer (with strategies)</title>
+<link rel="stylesheet" href="../../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../../index.html" title="Chapter 1. Geometry">
+<link rel="up" href="../buffer.html" title="buffer">
+<link rel="prev" href="buffer_4.html" title="buffer">
+<link rel="next" href="return_buffer.html" title="return_buffer">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="buffer_4.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../buffer.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="return_buffer.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies"></a><a class="link" href="buffer_7_with_strategies.html" title="buffer (with strategies)">buffer
+          (with strategies)</a>
+</h5></div></div></div>
+<p>
+            <a class="indexterm" name="idm25049"></a>
+Calculates the buffer of a geometry.
+          </p>
+<h6>
+<a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.h0"></a>
+            <span class="phrase"><a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.description"></a></span><a class="link" href="buffer_7_with_strategies.html#geometry.reference.algorithms.buffer.buffer_7_with_strategies.description">Description</a>
+          </h6>
+<p>
+            The free function buffer calculates the buffer (a polygon being the spatial
+            point set collection within a specified maximum distance from a geometry)
+            of a geometry.
+          </p>
+<h6>
+<a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.h1"></a>
+            <span class="phrase"><a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.synopsis"></a></span><a class="link" href="buffer_7_with_strategies.html#geometry.reference.algorithms.buffer.buffer_7_with_strategies.synopsis">Synopsis</a>
+          </h6>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">GeometryIn</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">MultiPolygon</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">DistanceStrategy</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">SideStrategy</span><span class="special">,</span>
+         <span class="keyword">typename</span> <span class="identifier">JoinStrategy</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">EndStrategy</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">PointStrategy</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">buffer</span><span class="special">(</span><span class="identifier">GeometryIn</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">geometry_in</span><span class="special">,</span> <span class="identifier">MultiPolygon</span> <span class="special">&amp;</span> <span class="identifier">geometry_out</span><span class="special">,</span> <span class="identifier">DistanceStrategy</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">distance_strategy</span><span class="special">,</span>
+            <span class="identifier">SideStrategy</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">side_strategy</span><span class="special">,</span> <span class="identifier">JoinStrategy</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">join_strategy</span><span class="special">,</span> <span class="identifier">EndStrategy</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">end_strategy</span><span class="special">,</span>
+            <span class="identifier">PointStrategy</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">point_strategy</span><span class="special">)</span></pre>
+<p>
+          </p>
+<h6>
+<a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.h2"></a>
+            <span class="phrase"><a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.parameters"></a></span><a class="link" href="buffer_7_with_strategies.html#geometry.reference.algorithms.buffer.buffer_7_with_strategies.parameters">Parameters</a>
+          </h6>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                    <p>
+                      Type
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      Concept
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      Name
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      Description
+                    </p>
+                  </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                    <p>
+                      GeometryIn const &amp;
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      Any type fulfilling a Geometry Concept
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      geometry_in
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      A model of the specified concept
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      MultiPolygon &amp;
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      A type fulfilling the MultiPolygon Concept
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      geometry_out
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      output multi polygon (or std:: collection of polygons), will
+                      contain a buffered version of the input geometry
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      DistanceStrategy const &amp;
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      A strategy defining distance (or radius)
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      distance_strategy
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      The distance strategy to be used
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      SideStrategy const &amp;
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      A strategy defining creation along sides
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      side_strategy
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      The side strategy to be used
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      JoinStrategy const &amp;
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      A strategy defining creation around convex corners
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      join_strategy
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      The join strategy to be used
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      EndStrategy const &amp;
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      A strategy defining creation at linestring ends
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      end_strategy
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      The end strategy to be used
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      PointStrategy const &amp;
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      A strategy defining creation around points
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      point_strategy
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      The point strategy to be used
+                    </p>
+                  </td>
+</tr>
+</tbody>
+</table></div>
+<h6>
+<a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.h3"></a>
+            <span class="phrase"><a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.header"></a></span><a class="link" href="buffer_7_with_strategies.html#geometry.reference.algorithms.buffer.buffer_7_with_strategies.header">Header</a>
+          </h6>
+<p>
+            Either
+          </p>
+<p>
+            <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">geometry</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+          </p>
+<p>
+            Or
+          </p>
+<p>
+            <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">geometry</span><span class="special">/</span><span class="identifier">algorithms</span><span class="special">/</span><span class="identifier">buffer</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+          </p>
+<h6>
+<a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.h4"></a>
+            <span class="phrase"><a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.strategies"></a></span><a class="link" href="buffer_7_with_strategies.html#geometry.reference.algorithms.buffer.buffer_7_with_strategies.strategies">Strategies</a>
+          </h6>
+<p>
+            The 5 strategies give the user control to the generated buffer
+          </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                convex corners can be rounded or sharp
+              </li>
+<li class="listitem">
+                line-ends can be rounded or flat
+              </li>
+<li class="listitem">
+                distance can be symmetric or assymetric, and positive or negative
+              </li>
+<li class="listitem">
+                around points the shape can be circular or square
+              </li>
+<li class="listitem">
+                the sides can be controlled (currently there is only one option provided)
+              </li>
+</ul></div>
+<p>
+            By specifying a negative distance for the distance_strategy, for the
+            (multi) polygon case, the polygon will be smaller (also known as deflate).
+            The distance cannot be 0.
+          </p>
+<p>
+            The next figure shows where in the generated buffer the strategies have
+            effect
+          </p>
+<p>
+            <span class="inlinemediaobject"><img src="../../../../img/algorithms/buffer_strategies.png" alt="buffer_strategies"></span>
+          </p>
+<h6>
+<a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.h5"></a>
+            <span class="phrase"><a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.conformance"></a></span><a class="link" href="buffer_7_with_strategies.html#geometry.reference.algorithms.buffer.buffer_7_with_strategies.conformance">Conformance</a>
+          </h6>
+<p>
+            The function buffer implements function Buffer from the <a href="http://www.opengeospatial.org/standards/sfa" target="_top">OGC
+            Simple Feature Specification</a>.
+          </p>
+<p>
+            It is conformant if used with the following combination of strategies:
+            <a class="link" href="../../strategies/strategy_buffer_join_round.html" title="strategy::buffer::join_round">join_round</a>,
+            <a class="link" href="../../strategies/strategy_buffer_end_round.html" title="strategy::buffer::end_round">end_round</a>,
+            <a class="link" href="../../strategies/strategy_buffer_distance_symmetric.html" title="strategy::buffer::distance_symmetric">distance_symmetric</a>,
+            <a class="link" href="../../strategies/strategy_buffer_point_circle.html" title="strategy::buffer::point_circle">point_circle</a>,
+            side_straight
+          </p>
+<h6>
+<a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.h6"></a>
+            <span class="phrase"><a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.supported_geometries"></a></span><a class="link" href="buffer_7_with_strategies.html#geometry.reference.algorithms.buffer.buffer_7_with_strategies.supported_geometries">Supported
+            geometries</a>
+          </h6>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  </th>
+<th>
+                    <p>
+                      2D Cartesian
+                    </p>
+                  </th>
+<th>
+                    <p>
+                      Geographic
+                    </p>
+                  </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                    <p>
+                      Point
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <span class="inlinemediaobject"><img src="../../../../img/ok.png" alt="ok"></span>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <span class="inlinemediaobject"><img src="../../../../img/ok.png" alt="ok"></span>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      Segment
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <span class="inlinemediaobject"><img src="../../../../img/nyi.png" alt="nyi"></span>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <span class="inlinemediaobject"><img src="../../../../img/nyi.png" alt="nyi"></span>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      Box
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <span class="inlinemediaobject"><img src="../../../../img/nyi.png" alt="nyi"></span>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <span class="inlinemediaobject"><img src="../../../../img/nyi.png" alt="nyi"></span>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      Linestring
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <span class="inlinemediaobject"><img src="../../../../img/ok.png" alt="ok"></span>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <span class="inlinemediaobject"><img src="../../../../img/nyi.png" alt="nyi"></span>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      Ring
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <span class="inlinemediaobject"><img src="../../../../img/ok.png" alt="ok"></span>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <span class="inlinemediaobject"><img src="../../../../img/nyi.png" alt="nyi"></span>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      Polygon
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <span class="inlinemediaobject"><img src="../../../../img/ok.png" alt="ok"></span>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <span class="inlinemediaobject"><img src="../../../../img/nyi.png" alt="nyi"></span>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      MultiPoint
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <span class="inlinemediaobject"><img src="../../../../img/ok.png" alt="ok"></span>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <span class="inlinemediaobject"><img src="../../../../img/nyi.png" alt="nyi"></span>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      MultiLinestring
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <span class="inlinemediaobject"><img src="../../../../img/ok.png" alt="ok"></span>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <span class="inlinemediaobject"><img src="../../../../img/nyi.png" alt="nyi"></span>
+                    </p>
+                  </td>
+</tr>
+<tr>
+<td>
+                    <p>
+                      MultiPolygon
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <span class="inlinemediaobject"><img src="../../../../img/ok.png" alt="ok"></span>
+                    </p>
+                  </td>
+<td>
+                    <p>
+                      <span class="inlinemediaobject"><img src="../../../../img/nyi.png" alt="nyi"></span>
+                    </p>
+                  </td>
+</tr>
+</tbody>
+</table></div>
+<h6>
+<a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.h7"></a>
+            <span class="phrase"><a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.examples"></a></span><a class="link" href="buffer_7_with_strategies.html#geometry.reference.algorithms.buffer.buffer_7_with_strategies.examples">Examples</a>
+          </h6>
+<p>
+            Shows how the buffer algorithm can be used to create a buffer of a linestring,
+            a multi point, a multi polygon
+          </p>
+<p>
+</p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">geometry</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">geometry</span><span class="special">/</span><span class="identifier">geometries</span><span class="special">/</span><span class="identifier">point_xy</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">geometry</span><span class="special">/</span><span class="identifier">geometries</span><span class="special">/</span><span class="identifier">geometries</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="keyword">double</span> <span class="identifier">coordinate_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">d2</span><span class="special">::</span><span class="identifier">point_xy</span><span class="special">&lt;</span><span class="identifier">coordinate_type</span><span class="special">&gt;</span> <span class="identifier">point</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">polygon</span><span class="special">&lt;</span><span class="identifier">point</span><span class="special">&gt;</span> <span class="identifier">polygon</span><span class="special">;</span>
+
+    <span class="comment">// Declare strategies</span>
+    <span class="keyword">const</span> <span class="keyword">double</span> <span class="identifier">buffer_distance</span> <span class="special">=</span> <span class="number">1.0</span><span class="special">;</span>
+    <span class="keyword">const</span> <span class="keyword">int</span> <span class="identifier">points_per_circle</span> <span class="special">=</span> <span class="number">36</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">strategy</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">::</span><span class="identifier">distance_symmetric</span><span class="special">&lt;</span><span class="identifier">coordinate_type</span><span class="special">&gt;</span> <span class="identifier">distance_strategy</span><span class="special">(</span><span class="identifier">buffer_distance</span><span class="special">);</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">strategy</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">::</span><span class="identifier">join_round</span> <span class="identifier">join_strategy</span><span class="special">(</span><span class="identifier">points_per_circle</span><span class="special">);</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">strategy</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">::</span><span class="identifier">end_round</span> <span class="identifier">end_strategy</span><span class="special">(</span><span class="identifier">points_per_circle</span><span class="special">);</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">strategy</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">::</span><span class="identifier">point_circle</span> <span class="identifier">circle_strategy</span><span class="special">(</span><span class="identifier">points_per_circle</span><span class="special">);</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">strategy</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">::</span><span class="identifier">side_straight</span> <span class="identifier">side_strategy</span><span class="special">;</span>
+
+    <span class="comment">// Declare output</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">multi_polygon</span><span class="special">&lt;</span><span class="identifier">polygon</span><span class="special">&gt;</span> <span class="identifier">result</span><span class="special">;</span>
+
+    <span class="comment">// Declare/fill a linestring</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">linestring</span><span class="special">&lt;</span><span class="identifier">point</span><span class="special">&gt;</span> <span class="identifier">ls</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">read_wkt</span><span class="special">(</span><span class="string">"LINESTRING(0 0,4 5,7 4,10 6)"</span><span class="special">,</span> <span class="identifier">ls</span><span class="special">);</span>
+
+    <span class="comment">// Create the buffer of a linestring</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">(</span><span class="identifier">ls</span><span class="special">,</span> <span class="identifier">result</span><span class="special">,</span>
+                <span class="identifier">distance_strategy</span><span class="special">,</span> <span class="identifier">side_strategy</span><span class="special">,</span>
+                <span class="identifier">join_strategy</span><span class="special">,</span> <span class="identifier">end_strategy</span><span class="special">,</span> <span class="identifier">circle_strategy</span><span class="special">);</span>
+
+
+    <span class="comment">// Declare/fill a multi point</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">multi_point</span><span class="special">&lt;</span><span class="identifier">point</span><span class="special">&gt;</span> <span class="identifier">mp</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">read_wkt</span><span class="special">(</span><span class="string">"MULTIPOINT((3 3),(4 4),(6 2))"</span><span class="special">,</span> <span class="identifier">mp</span><span class="special">);</span>
+
+    <span class="comment">// Create the buffer of a multi point</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">(</span><span class="identifier">mp</span><span class="special">,</span> <span class="identifier">result</span><span class="special">,</span>
+                <span class="identifier">distance_strategy</span><span class="special">,</span> <span class="identifier">side_strategy</span><span class="special">,</span>
+                <span class="identifier">join_strategy</span><span class="special">,</span> <span class="identifier">end_strategy</span><span class="special">,</span> <span class="identifier">circle_strategy</span><span class="special">);</span>
+
+
+    <span class="comment">// Declare/fill a multi_polygon</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">multi_polygon</span><span class="special">&lt;</span><span class="identifier">polygon</span><span class="special">&gt;</span> <span class="identifier">mpol</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">read_wkt</span><span class="special">(</span><span class="string">"MULTIPOLYGON(((0 1,2 5,5 3,0 1)),((1 1,5 2,5 0,1 1)))"</span><span class="special">,</span> <span class="identifier">mpol</span><span class="special">);</span>
+
+    <span class="comment">// Create the buffer of a multi polygon</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">(</span><span class="identifier">mpol</span><span class="special">,</span> <span class="identifier">result</span><span class="special">,</span>
+                <span class="identifier">distance_strategy</span><span class="special">,</span> <span class="identifier">side_strategy</span><span class="special">,</span>
+                <span class="identifier">join_strategy</span><span class="special">,</span> <span class="identifier">end_strategy</span><span class="special">,</span> <span class="identifier">circle_strategy</span><span class="special">);</span>
+
+
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+          </p>
+<h6>
+<a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.h8"></a>
+            <span class="phrase"><a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.the_linestring_case"></a></span><a class="link" href="buffer_7_with_strategies.html#geometry.reference.algorithms.buffer.buffer_7_with_strategies.the_linestring_case">The
+            linestring case</a>
+          </h6>
+<p>
+            <span class="inlinemediaobject"><img src="../../../../img/algorithms/buffer_linestring.png" alt="buffer_linestring"></span>
+          </p>
+<h6>
+<a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.h9"></a>
+            <span class="phrase"><a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.the_multi_point_case"></a></span><a class="link" href="buffer_7_with_strategies.html#geometry.reference.algorithms.buffer.buffer_7_with_strategies.the_multi_point_case">The
+            multi_point case</a>
+          </h6>
+<p>
+            <span class="inlinemediaobject"><img src="../../../../img/algorithms/buffer_multi_point.png" alt="buffer_multi_point"></span>
+          </p>
+<h6>
+<a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.h10"></a>
+            <span class="phrase"><a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.the_multi_polygon_case"></a></span><a class="link" href="buffer_7_with_strategies.html#geometry.reference.algorithms.buffer.buffer_7_with_strategies.the_multi_polygon_case">The
+            multi_polygon case</a>
+          </h6>
+<p>
+            <span class="inlinemediaobject"><img src="../../../../img/algorithms/buffer_multi_polygon.png" alt="buffer_multi_polygon"></span>
+          </p>
+<h6>
+<a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.h11"></a>
+            <span class="phrase"><a name="geometry.reference.algorithms.buffer.buffer_7_with_strategies.available_strategies"></a></span><a class="link" href="buffer_7_with_strategies.html#geometry.reference.algorithms.buffer.buffer_7_with_strategies.available_strategies">Available
+            Strategies</a>
+          </h6>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                JoinStrategy: <a class="link" href="../../strategies/strategy_buffer_join_round.html" title="strategy::buffer::join_round">join_round
+                (cartesian)</a>
+              </li>
+<li class="listitem">
+                JoinStrategy: <a class="link" href="../../strategies/strategy_buffer_join_miter.html" title="strategy::buffer::join_miter">join_miter
+                (cartesian)</a>
+              </li>
+<li class="listitem">
+                EndStrategy: <a class="link" href="../../strategies/strategy_buffer_end_round.html" title="strategy::buffer::end_round">end_round
+                (cartesian)</a>
+              </li>
+<li class="listitem">
+                EndStrategy: <a class="link" href="../../strategies/strategy_buffer_end_flat.html" title="strategy::buffer::end_flat">end_flat
+                (cartesian)</a>
+              </li>
+<li class="listitem">
+                DistanceStrategy: <a class="link" href="../../strategies/strategy_buffer_distance_symmetric.html" title="strategy::buffer::distance_symmetric">distance_symmetric</a>
+              </li>
+<li class="listitem">
+                DistanceStrategy: <a class="link" href="../../strategies/strategy_buffer_distance_asymmetric.html" title="strategy::buffer::distance_asymmetric">distance_asymmetric</a>
+              </li>
+<li class="listitem">
+                PointStrategy: <a class="link" href="../../strategies/strategy_buffer_point_circle.html" title="strategy::buffer::point_circle">point_circle
+                (cartesian)</a>
+              </li>
+<li class="listitem">
+                PointStrategy: <a class="link" href="../../strategies/strategy_buffer_point_square.html" title="strategy::buffer::point_square">point_square
+                (cartesian)</a>
+              </li>
+<li class="listitem">
+                PointStrategy: <a class="link" href="../../strategies/strategy_buffer_geographic_point_circle.html" title="strategy::buffer::geographic_point_circle">geographic_point_circle
+                (geographic)</a>
+              </li>
+<li class="listitem">
+                SideStrategy: <a class="link" href="../../strategies/strategy_buffer_side_straight.html" title="strategy::buffer::side_straight">side_straight
+                (cartesian)</a>
+              </li>
+</ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2009-2021 Barend Gehrels,
+      Bruno Lalande, Mateusz Loskot, Adam Wulkiewicz, Oracle and/or its affiliates<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="buffer_4.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../buffer.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="return_buffer.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

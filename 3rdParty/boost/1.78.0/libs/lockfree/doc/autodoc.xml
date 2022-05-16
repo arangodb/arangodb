@@ -1,0 +1,603 @@
+<?xml version="1.0" standalone="yes"?>
+<library-reference><header name="boost/lockfree/lockfree_forward.hpp">
+</header>
+<header name="boost/lockfree/policies.hpp">
+<namespace name="boost">
+<namespace name="lockfree">
+<struct name="allocator"><template>
+      <template-type-parameter name="Alloc"/>
+    </template><inherit access="public">boost::parameter::template_keyword&lt; tag::allocator, Alloc &gt;</inherit><description><para>Defines the <emphasis role="bold">allocator</emphasis> type of a data structure. </para></description></struct><struct name="capacity"><template>
+      <template-nontype-parameter name="Size"><type>size_t</type></template-nontype-parameter>
+    </template><inherit access="public">boost::parameter::template_keyword&lt; tag::capacity, boost::mpl::size_t&lt; Size &gt; &gt;</inherit><description><para>Sets the <emphasis role="bold">capacity</emphasis> of a data structure at compile-time.</para><para>This implies that a data structure is bounded and fixed-sized. </para></description></struct><struct name="fixed_sized"><template>
+      <template-nontype-parameter name="IsFixedSized"><type>bool</type></template-nontype-parameter>
+    </template><inherit access="public">boost::parameter::template_keyword&lt; tag::fixed_sized, boost::mpl::bool_&lt; IsFixedSized &gt; &gt;</inherit><description><para>Configures a data structure as <emphasis role="bold">fixed-sized</emphasis>.</para><para>The internal nodes are stored inside an array and they are addressed by array indexing. This limits the possible size of the queue to the number of elements that can be addressed by the index type (usually 2**16-2), but on platforms that lack double-width compare-and-exchange instructions, this is the best way to achieve lock-freedom. This implies that a data structure is bounded. </para></description></struct></namespace>
+</namespace>
+</header>
+<header name="boost/lockfree/queue.hpp">
+<namespace name="boost">
+<namespace name="lockfree">
+<class name="queue"><template>
+      <template-type-parameter name="T"/>
+      <template-nontype-parameter name="Options"><type>typename ...</type></template-nontype-parameter>
+    </template><description><para>The queue class provides a multi-writer/multi-reader queue, pushing and popping is lock-free, construction/destruction has to be synchronized. It uses a freelist for memory management, freed nodes are pushed to the freelist and not returned to the OS before the queue is destroyed.</para><para><emphasis role="bold">Policies:</emphasis> <itemizedlist>
+<listitem><para><classname alt="boost::lockfree::fixed_sized">boost::lockfree::fixed_sized</classname>, defaults to <computeroutput>boost::lockfree::fixed_sized&lt;false&gt;</computeroutput> <sbr/>
+ Can be used to completely disable dynamic memory allocations during push in order to ensure lockfree behavior. <sbr/>
+ If the data structure is configured as fixed-sized, the internal nodes are stored inside an array and they are addressed by array indexing. This limits the possible size of the queue to the number of elements that can be addressed by the index type (usually 2**16-2), but on platforms that lack double-width compare-and-exchange instructions, this is the best way to achieve lock-freedom.</para>
+</listitem><listitem><para><classname alt="boost::lockfree::capacity">boost::lockfree::capacity</classname>, optional <sbr/>
+ If this template argument is passed to the options, the size of the queue is set at compile-time.<sbr/>
+ This option implies <computeroutput>fixed_sized&lt;true&gt;</computeroutput> </para>
+</listitem><listitem><para><classname alt="boost::lockfree::allocator">boost::lockfree::allocator</classname>, defaults to <computeroutput><classname alt="boost::lockfree::allocator">boost::lockfree::allocator</classname>&lt;std::allocator&lt;void&gt;&gt;</computeroutput> <sbr/>
+ Specifies the allocator that is used for the internal freelist</para>
+</listitem></itemizedlist>
+</para><para><emphasis role="bold">Requirements:</emphasis> <itemizedlist>
+<listitem><para>T must have a copy constructor</para>
+</listitem><listitem><para>T must have a trivial assignment operator</para>
+</listitem><listitem><para>T must have a trivial destructor </para>
+</listitem></itemizedlist>
+</para></description><typedef name="value_type"><type>T</type></typedef>
+<typedef name="allocator"><type>implementation_defined::allocator</type></typedef>
+<typedef name="size_type"><type>implementation_defined::size_type</type></typedef>
+<method-group name="public member functions">
+<method name="is_lock_free" cv="const"><type>bool</type><parameter name=""><paramtype>void</paramtype></parameter><description><para>
+<warning><para>It only checks, if the queue head and tail nodes and the freelist can be modified in a lock-free manner. On most platforms, the whole implementation is lock-free, if this is true. Using c++0x-style atomics, there is no possibility to provide a completely accurate implementation, because one would need to test every internal node, which is impossible if further nodes will be allocated from the operating system. </para>
+</warning>
+</para></description><returns><para>true, if implementation is lock-free.</para>
+</returns></method>
+<method name="reserve"><type>void</type><parameter name="n"><paramtype>size_type</paramtype></parameter></method>
+<method name="reserve_unsafe"><type>void</type><parameter name="n"><paramtype>size_type</paramtype></parameter></method>
+<method name="empty" cv="const"><type>bool</type><parameter name=""><paramtype>void</paramtype></parameter><description><para>Check if the queue is empty</para><para>
+<note><para>The result is only accurate, if no other thread modifies the queue. Therefore it is rarely practical to use this value in program logic. </para>
+</note>
+</para></description><returns><para>true, if the queue is empty, false otherwise </para>
+</returns></method>
+<method name="push"><type>bool</type><parameter name="t"><paramtype>T const &amp;</paramtype></parameter><description><para>Pushes object t to the queue.</para><para>
+
+<note><para>Thread-safe. If internal memory pool is exhausted and the memory pool is not fixed-sized, a new node will be allocated from the OS. This may not be lock-free. </para>
+</note>
+</para></description><postconditions><para>object will be pushed to the queue, if internal node can be allocated </para>
+</postconditions><returns><para>true, if the push operation is successful.</para>
+</returns></method>
+<method name="bounded_push"><type>bool</type><parameter name="t"><paramtype>T const &amp;</paramtype></parameter><description><para>Pushes object t to the queue.</para><para>
+
+<note><para>Thread-safe and non-blocking. If internal memory pool is exhausted, operation will fail </para>
+</note>
+
+</para></description><postconditions><para>object will be pushed to the queue, if internal node can be allocated </para>
+</postconditions><returns><para>true, if the push operation is successful.</para>
+</returns><throws><simpara><classname>if</classname> memory allocator throws </simpara></throws></method>
+<method name="unsynchronized_push"><type>bool</type><parameter name="t"><paramtype>T const &amp;</paramtype></parameter><description><para>Pushes object t to the queue.</para><para>
+
+<note><para>Not Thread-safe. If internal memory pool is exhausted and the memory pool is not fixed-sized, a new node will be allocated from the OS. This may not be lock-free. </para>
+</note>
+
+</para></description><postconditions><para>object will be pushed to the queue, if internal node can be allocated </para>
+</postconditions><returns><para>true, if the push operation is successful.</para>
+</returns><throws><simpara><classname>if</classname> memory allocator throws </simpara></throws></method>
+<method name="pop"><type>bool</type><parameter name="ret"><paramtype>T &amp;</paramtype></parameter><description><para>Pops object from queue.</para><para>
+
+<note><para>Thread-safe and non-blocking </para>
+</note>
+</para></description><postconditions><para>if pop operation is successful, object will be copied to ret. </para>
+</postconditions><returns><para>true, if the pop operation is successful, false if queue was empty.</para>
+</returns></method>
+<method name="pop"><type>bool</type><template>
+          <template-type-parameter name="U"/>
+        </template><parameter name="ret"><paramtype>U &amp;</paramtype></parameter><description><para>Pops object from queue.</para><para>
+
+
+<note><para>Thread-safe and non-blocking </para>
+</note>
+</para></description><requires><para>type U must be constructible by T and copyable, or T must be convertible to U </para>
+</requires><postconditions><para>if pop operation is successful, object will be copied to ret. </para>
+</postconditions><returns><para>true, if the pop operation is successful, false if queue was empty.</para>
+</returns></method>
+<method name="unsynchronized_pop"><type>bool</type><parameter name="ret"><paramtype>T &amp;</paramtype></parameter><description><para>Pops object from queue.</para><para>
+
+<note><para>Not thread-safe, but non-blocking </para>
+</note>
+</para></description><postconditions><para>if pop operation is successful, object will be copied to ret. </para>
+</postconditions><returns><para>true, if the pop operation is successful, false if queue was empty.</para>
+</returns></method>
+<method name="unsynchronized_pop"><type>bool</type><template>
+          <template-type-parameter name="U"/>
+        </template><parameter name="ret"><paramtype>U &amp;</paramtype></parameter><description><para>Pops object from queue.</para><para>
+
+
+<note><para>Not thread-safe, but non-blocking </para>
+</note>
+</para></description><requires><para>type U must be constructible by T and copyable, or T must be convertible to U </para>
+</requires><postconditions><para>if pop operation is successful, object will be copied to ret. </para>
+</postconditions><returns><para>true, if the pop operation is successful, false if queue was empty.</para>
+</returns></method>
+<method name="consume_one"><type>bool</type><template>
+          <template-type-parameter name="Functor"/>
+        </template><parameter name="f"><paramtype>Functor &amp;</paramtype></parameter><description><para>consumes one element via a functor</para><para>pops one element from the queue and applies the functor on this object</para><para>
+<note><para>Thread-safe and non-blocking, if functor is thread-safe and non-blocking </para>
+</note>
+</para></description><returns><para>true, if one element was consumed</para>
+</returns></method>
+<method name="consume_one"><type>bool</type><template>
+          <template-type-parameter name="Functor"/>
+        </template><parameter name="f"><paramtype>Functor const &amp;</paramtype></parameter><description><para>consumes one element via a functor</para><para>pops one element from the queue and applies the functor on this object</para><para>
+<note><para>Thread-safe and non-blocking, if functor is thread-safe and non-blocking </para>
+</note>
+</para></description><returns><para>true, if one element was consumed</para>
+</returns></method>
+<method name="consume_all"><type>size_t</type><template>
+          <template-type-parameter name="Functor"/>
+        </template><parameter name="f"><paramtype>Functor &amp;</paramtype></parameter><description><para>consumes all elements via a functor</para><para>sequentially pops all elements from the queue and applies the functor on each object</para><para>
+<note><para>Thread-safe and non-blocking, if functor is thread-safe and non-blocking </para>
+</note>
+</para></description><returns><para>number of elements that are consumed</para>
+</returns></method>
+<method name="consume_all"><type>size_t</type><template>
+          <template-type-parameter name="Functor"/>
+        </template><parameter name="f"><paramtype>Functor const &amp;</paramtype></parameter><description><para>consumes all elements via a functor</para><para>sequentially pops all elements from the queue and applies the functor on each object</para><para>
+<note><para>Thread-safe and non-blocking, if functor is thread-safe and non-blocking </para>
+</note>
+</para></description><returns><para>number of elements that are consumed</para>
+</returns></method>
+</method-group>
+<constructor><parameter name=""><paramtype>void</paramtype></parameter><description><para>Construct a fixed-sized queue</para><para>
+</para></description><requires><para>Must specify a capacity&lt;&gt; argument </para>
+</requires></constructor>
+<constructor specifiers="explicit"><template>
+          <template-type-parameter name="U"/>
+        </template><parameter name="alloc"><paramtype>typename boost::allocator_rebind&lt; node_allocator, U &gt;::type const &amp;</paramtype></parameter><description><para>Construct a fixed-sized queue with a custom allocator</para><para>
+</para></description><requires><para>Must specify a capacity&lt;&gt; argument </para>
+</requires></constructor>
+<constructor specifiers="explicit"><parameter name="alloc"><paramtype>allocator const &amp;</paramtype></parameter><description><para>Construct a fixed-sized queue with a custom allocator</para><para>
+</para></description><requires><para>Must specify a capacity&lt;&gt; argument </para>
+</requires></constructor>
+<constructor specifiers="explicit"><parameter name="n"><paramtype>size_type</paramtype></parameter><description><para>Construct a variable-sized queue</para><para>Allocate n nodes initially for the freelist</para><para>
+</para></description><requires><para>Must <emphasis role="bold">not</emphasis> specify a capacity&lt;&gt; argument </para>
+</requires></constructor>
+<constructor><template>
+          <template-type-parameter name="U"/>
+        </template><parameter name="n"><paramtype>size_type</paramtype></parameter><parameter name="alloc"><paramtype>typename boost::allocator_rebind&lt; node_allocator, U &gt;::type const &amp;</paramtype></parameter><description><para>Construct a variable-sized queue with a custom allocator</para><para>Allocate n nodes initially for the freelist</para><para>
+</para></description><requires><para>Must <emphasis role="bold">not</emphasis> specify a capacity&lt;&gt; argument </para>
+</requires></constructor>
+<destructor><parameter name=""><paramtype>void</paramtype></parameter><description><para>Destroys queue, free all nodes from freelist. </para></description></destructor>
+</class></namespace>
+</namespace>
+</header>
+<header name="boost/lockfree/spsc_queue.hpp">
+<namespace name="boost">
+<namespace name="lockfree">
+<class name="spsc_queue"><template>
+      <template-type-parameter name="T"/>
+      <template-type-parameter name="A0"/>
+      <template-type-parameter name="A1"/>
+    </template><description><para>The <classname alt="boost::lockfree::spsc_queue">spsc_queue</classname> class provides a single-writer/single-reader fifo queue, pushing and popping is wait-free.</para><para><emphasis role="bold">Policies:</emphasis> <itemizedlist>
+<listitem><para><computeroutput>boost::lockfree::capacity&lt;&gt;</computeroutput>, optional <sbr/>
+ If this template argument is passed to the options, the size of the ringbuffer is set at compile-time.</para>
+</listitem><listitem><para><computeroutput>boost::lockfree::allocator&lt;&gt;</computeroutput>, defaults to <computeroutput><classname alt="boost::lockfree::allocator">boost::lockfree::allocator</classname>&lt;std::allocator&lt;T&gt;&gt;</computeroutput> <sbr/>
+ Specifies the allocator that is used to allocate the ringbuffer. This option is only valid, if the ringbuffer is configured to be sized at run-time</para>
+</listitem></itemizedlist>
+</para><para><emphasis role="bold">Requirements:</emphasis> <itemizedlist>
+<listitem><para>T must have a default constructor</para>
+</listitem><listitem><para>T must be copyable </para>
+</listitem></itemizedlist>
+</para></description><struct name="implementation_defined"><template>
+      <template-type-parameter name="T"/>
+      <template-nontype-parameter name="Options"><type>typename ...</type></template-nontype-parameter>
+    </template><typedef name="allocator"><type>allocator_arg</type></typedef>
+<typedef name="size_type"><type>std::size_t</type></typedef>
+</struct><typedef name="value_type"><type>T</type></typedef>
+<typedef name="allocator"><type>implementation_defined::allocator</type></typedef>
+<typedef name="size_type"><type>implementation_defined::size_type</type></typedef>
+<method-group name="public member functions">
+<method name="push"><type>bool</type><parameter name="t"><paramtype>T const &amp;</paramtype></parameter><description><para>Pushes object t to the ringbuffer.</para><para>
+
+
+<note><para>Thread-safe and wait-free </para>
+</note>
+</para></description><requires><para>only one thread is allowed to push data to the <classname alt="boost::lockfree::spsc_queue">spsc_queue</classname> </para>
+</requires><postconditions><para>object will be pushed to the <classname alt="boost::lockfree::spsc_queue">spsc_queue</classname>, unless it is full. </para>
+</postconditions><returns><para>true, if the push operation is successful.</para>
+</returns></method>
+<method name="pop"><type>bool</type><description><para>Pops one object from ringbuffer.</para><para>
+
+
+<note><para>Thread-safe and wait-free </para>
+</note>
+</para></description><requires><para>only one thread is allowed to pop data to the <classname alt="boost::lockfree::spsc_queue">spsc_queue</classname> </para>
+</requires><postconditions><para>if ringbuffer is not empty, object will be discarded. </para>
+</postconditions><returns><para>true, if the pop operation is successful, false if ringbuffer was empty.</para>
+</returns></method>
+<method name="pop"><type>boost::enable_if&lt; typename is_convertible&lt; T, U &gt;::type, bool &gt;::type</type><template>
+          <template-type-parameter name="U"/>
+        </template><parameter name="ret"><paramtype>U &amp;</paramtype></parameter><description><para>Pops one object from ringbuffer.</para><para>
+
+
+<note><para>Thread-safe and wait-free </para>
+</note>
+</para></description><requires><para>only one thread is allowed to pop data to the <classname alt="boost::lockfree::spsc_queue">spsc_queue</classname> </para>
+</requires><postconditions><para>if ringbuffer is not empty, object will be copied to ret. </para>
+</postconditions><returns><para>true, if the pop operation is successful, false if ringbuffer was empty.</para>
+</returns></method>
+<method name="push"><type>size_type</type><parameter name="t"><paramtype>T const *</paramtype></parameter><parameter name="size"><paramtype>size_type</paramtype></parameter><description><para>Pushes as many objects from the array t as there is space.</para><para>
+
+<note><para>Thread-safe and wait-free </para>
+</note>
+</para></description><requires><para>only one thread is allowed to push data to the <classname alt="boost::lockfree::spsc_queue">spsc_queue</classname> </para>
+</requires><returns><para>number of pushed items</para>
+</returns></method>
+<method name="push"><type>size_type</type><template>
+          <template-nontype-parameter name="size"><type>size_type</type></template-nontype-parameter>
+        </template><parameter name="t"><paramtype>T const (&amp;)</paramtype></parameter><description><para>Pushes as many objects from the array t as there is space available.</para><para>
+
+<note><para>Thread-safe and wait-free </para>
+</note>
+</para></description><requires><para>only one thread is allowed to push data to the <classname alt="boost::lockfree::spsc_queue">spsc_queue</classname> </para>
+</requires><returns><para>number of pushed items</para>
+</returns></method>
+<method name="push"><type>ConstIterator</type><template>
+          <template-type-parameter name="ConstIterator"/>
+        </template><parameter name="begin"><paramtype>ConstIterator</paramtype></parameter><parameter name="end"><paramtype>ConstIterator</paramtype></parameter><description><para>Pushes as many objects from the range [begin, end) as there is space .</para><para>
+
+<note><para>Thread-safe and wait-free </para>
+</note>
+</para></description><requires><para>only one thread is allowed to push data to the <classname alt="boost::lockfree::spsc_queue">spsc_queue</classname> </para>
+</requires><returns><para>iterator to the first element, which has not been pushed</para>
+</returns></method>
+<method name="pop"><type>size_type</type><parameter name="ret"><paramtype>T *</paramtype></parameter><parameter name="size"><paramtype>size_type</paramtype></parameter><description><para>Pops a maximum of size objects from ringbuffer.</para><para>
+
+<note><para>Thread-safe and wait-free </para>
+</note>
+</para></description><requires><para>only one thread is allowed to pop data to the <classname alt="boost::lockfree::spsc_queue">spsc_queue</classname> </para>
+</requires><returns><para>number of popped items</para>
+</returns></method>
+<method name="pop"><type>size_type</type><template>
+          <template-nontype-parameter name="size"><type>size_type</type></template-nontype-parameter>
+        </template><parameter name="ret"><paramtype>T(&amp;)</paramtype></parameter><description><para>Pops a maximum of size objects from <classname alt="boost::lockfree::spsc_queue">spsc_queue</classname>.</para><para>
+
+<note><para>Thread-safe and wait-free </para>
+</note>
+</para></description><requires><para>only one thread is allowed to pop data to the <classname alt="boost::lockfree::spsc_queue">spsc_queue</classname> </para>
+</requires><returns><para>number of popped items</para>
+</returns></method>
+<method name="pop"><type>boost::disable_if&lt; typename is_convertible&lt; T, OutputIterator &gt;::type, size_type &gt;::type</type><template>
+          <template-type-parameter name="OutputIterator"/>
+        </template><parameter name="it"><paramtype>OutputIterator</paramtype></parameter><description><para>Pops objects to the output iterator it</para><para>
+
+<note><para>Thread-safe and wait-free </para>
+</note>
+</para></description><requires><para>only one thread is allowed to pop data to the <classname alt="boost::lockfree::spsc_queue">spsc_queue</classname> </para>
+</requires><returns><para>number of popped items</para>
+</returns></method>
+<method name="consume_one"><type>bool</type><template>
+          <template-type-parameter name="Functor"/>
+        </template><parameter name="f"><paramtype>Functor &amp;</paramtype></parameter><description><para>consumes one element via a functor</para><para>pops one element from the queue and applies the functor on this object</para><para>
+<note><para>Thread-safe and non-blocking, if functor is thread-safe and non-blocking </para>
+</note>
+</para></description><returns><para>true, if one element was consumed</para>
+</returns></method>
+<method name="consume_one"><type>bool</type><template>
+          <template-type-parameter name="Functor"/>
+        </template><parameter name="f"><paramtype>Functor const &amp;</paramtype></parameter><description><para>consumes one element via a functor</para><para>pops one element from the queue and applies the functor on this object</para><para>
+<note><para>Thread-safe and non-blocking, if functor is thread-safe and non-blocking </para>
+</note>
+</para></description><returns><para>true, if one element was consumed</para>
+</returns></method>
+<method name="consume_all"><type>size_type</type><template>
+          <template-type-parameter name="Functor"/>
+        </template><parameter name="f"><paramtype>Functor &amp;</paramtype></parameter><description><para>consumes all elements via a functor</para><para>sequentially pops all elements from the queue and applies the functor on each object</para><para>
+<note><para>Thread-safe and non-blocking, if functor is thread-safe and non-blocking </para>
+</note>
+</para></description><returns><para>number of elements that are consumed</para>
+</returns></method>
+<method name="consume_all"><type>size_type</type><template>
+          <template-type-parameter name="Functor"/>
+        </template><parameter name="f"><paramtype>Functor const &amp;</paramtype></parameter><description><para>consumes all elements via a functor</para><para>sequentially pops all elements from the queue and applies the functor on each object</para><para>
+<note><para>Thread-safe and non-blocking, if functor is thread-safe and non-blocking </para>
+</note>
+</para></description><returns><para>number of elements that are consumed</para>
+</returns></method>
+<method name="read_available" cv="const"><type>size_type</type><description><para>get number of elements that are available for read</para><para>
+<note><para>Thread-safe and wait-free, should only be called from the consumer thread </para>
+</note>
+</para></description><returns><para>number of available elements that can be popped from the <classname alt="boost::lockfree::spsc_queue">spsc_queue</classname></para>
+</returns></method>
+<method name="write_available" cv="const"><type>size_type</type><description><para>get write space to write elements</para><para>
+<note><para>Thread-safe and wait-free, should only be called from the producer thread </para>
+</note>
+</para></description><returns><para>number of elements that can be pushed to the <classname alt="boost::lockfree::spsc_queue">spsc_queue</classname></para>
+</returns></method>
+<method name="front" cv="const"><type>const T &amp;</type><description><para>get reference to element in the front of the queue</para><para>Availability of front element can be checked using read_available().</para><para>
+
+
+<note><para>Thread-safe and wait-free </para>
+</note>
+</para></description><requires><para>only a consuming thread is allowed to check front element </para>
+</requires><requires><para>read_available() &gt; 0. If ringbuffer is empty, it's undefined behaviour to invoke this method. </para>
+</requires><returns><para>reference to the first element in the queue</para>
+</returns></method>
+<method name="front"><type>T &amp;</type><description><para>get reference to element in the front of the queue</para><para>Availability of front element can be checked using read_available().</para><para>
+
+
+<note><para>Thread-safe and wait-free </para>
+</note>
+</para></description><requires><para>only a consuming thread is allowed to check front element </para>
+</requires><requires><para>read_available() &gt; 0. If ringbuffer is empty, it's undefined behaviour to invoke this method. </para>
+</requires><returns><para>reference to the first element in the queue</para>
+</returns></method>
+<method name="reset"><type>void</type><parameter name=""><paramtype>void</paramtype></parameter><description><para>reset the ringbuffer</para><para><note><para>Not thread-safe </para>
+</note>
+</para></description></method>
+</method-group>
+<constructor><parameter name=""><paramtype>void</paramtype></parameter><description><para>Constructs a <classname alt="boost::lockfree::spsc_queue">spsc_queue</classname></para><para>
+</para></description><requires><para><classname alt="boost::lockfree::spsc_queue">spsc_queue</classname> must be configured to be sized at compile-time </para>
+</requires></constructor>
+<constructor specifiers="explicit"><template>
+          <template-type-parameter name="U"/>
+        </template><parameter name=""><paramtype>typename boost::allocator_rebind&lt; allocator, U &gt;::type const &amp;</paramtype></parameter><description><para>Constructs a <classname alt="boost::lockfree::spsc_queue">spsc_queue</classname> with a custom allocator</para><para>
+<note><para>This is just for API compatibility: an allocator isn't actually needed </para>
+</note>
+</para></description><requires><para><classname alt="boost::lockfree::spsc_queue">spsc_queue</classname> must be configured to be sized at compile-time</para>
+</requires></constructor>
+<constructor specifiers="explicit"><parameter name=""><paramtype>allocator const &amp;</paramtype></parameter><description><para>Constructs a <classname alt="boost::lockfree::spsc_queue">spsc_queue</classname> with a custom allocator</para><para>
+<note><para>This is just for API compatibility: an allocator isn't actually needed </para>
+</note>
+</para></description><requires><para><classname alt="boost::lockfree::spsc_queue">spsc_queue</classname> must be configured to be sized at compile-time</para>
+</requires></constructor>
+<constructor specifiers="explicit"><parameter name="element_count"><paramtype>size_type</paramtype></parameter><description><para>Constructs a <classname alt="boost::lockfree::spsc_queue">spsc_queue</classname> for element_count elements</para><para>
+</para></description><requires><para><classname alt="boost::lockfree::spsc_queue">spsc_queue</classname> must be configured to be sized at run-time </para>
+</requires></constructor>
+<constructor><template>
+          <template-type-parameter name="U"/>
+        </template><parameter name="element_count"><paramtype>size_type</paramtype></parameter><parameter name="alloc"><paramtype>typename boost::allocator_rebind&lt; allocator, U &gt;::type const &amp;</paramtype></parameter><description><para>Constructs a <classname alt="boost::lockfree::spsc_queue">spsc_queue</classname> for element_count elements with a custom allocator</para><para>
+</para></description><requires><para><classname alt="boost::lockfree::spsc_queue">spsc_queue</classname> must be configured to be sized at run-time </para>
+</requires></constructor>
+<constructor><parameter name="element_count"><paramtype>size_type</paramtype></parameter><parameter name="alloc"><paramtype>allocator_arg const &amp;</paramtype></parameter><description><para>Constructs a <classname alt="boost::lockfree::spsc_queue">spsc_queue</classname> for element_count elements with a custom allocator</para><para>
+</para></description><requires><para><classname alt="boost::lockfree::spsc_queue">spsc_queue</classname> must be configured to be sized at run-time </para>
+</requires></constructor>
+</class></namespace>
+</namespace>
+</header>
+<header name="boost/lockfree/stack.hpp">
+<namespace name="boost">
+<namespace name="lockfree">
+<class name="stack"><template>
+      <template-type-parameter name="T"/>
+      <template-type-parameter name="A0"/>
+      <template-type-parameter name="A1"/>
+      <template-type-parameter name="A2"/>
+    </template><description><para>The stack class provides a multi-writer/multi-reader stack, pushing and popping is lock-free, construction/destruction has to be synchronized. It uses a freelist for memory management, freed nodes are pushed to the freelist and not returned to the OS before the stack is destroyed.</para><para><emphasis role="bold">Policies:</emphasis> </para><para><itemizedlist>
+<listitem><para><computeroutput>boost::lockfree::fixed_sized&lt;&gt;</computeroutput>, defaults to <computeroutput>boost::lockfree::fixed_sized&lt;false&gt;</computeroutput> <sbr/>
+ Can be used to completely disable dynamic memory allocations during push in order to ensure lockfree behavior.<sbr/>
+ If the data structure is configured as fixed-sized, the internal nodes are stored inside an array and they are addressed by array indexing. This limits the possible size of the stack to the number of elements that can be addressed by the index type (usually 2**16-2), but on platforms that lack double-width compare-and-exchange instructions, this is the best way to achieve lock-freedom.</para>
+</listitem><listitem><para><computeroutput>boost::lockfree::capacity&lt;&gt;</computeroutput>, optional <sbr/>
+ If this template argument is passed to the options, the size of the stack is set at compile-time. <sbr/>
+ It this option implies <computeroutput>fixed_sized&lt;true&gt;</computeroutput> </para>
+</listitem><listitem><para><computeroutput>boost::lockfree::allocator&lt;&gt;</computeroutput>, defaults to <computeroutput><classname alt="boost::lockfree::allocator">boost::lockfree::allocator</classname>&lt;std::allocator&lt;void&gt;&gt;</computeroutput> <sbr/>
+ Specifies the allocator that is used for the internal freelist</para>
+</listitem></itemizedlist>
+</para><para><emphasis role="bold">Requirements:</emphasis> <itemizedlist>
+<listitem><para>T must have a copy constructor </para>
+</listitem></itemizedlist>
+</para></description><struct name="implementation_defined"><template>
+      <template-type-parameter name="T"/>
+      <template-nontype-parameter name="Options"><type>typename ...</type></template-nontype-parameter>
+    </template><typedef name="allocator"><type>node_allocator</type></typedef>
+<typedef name="size_type"><type>std::size_t</type></typedef>
+</struct><struct name="node"><template>
+      <template-type-parameter name="T"/>
+      <template-nontype-parameter name="Options"><type>typename ...</type></template-nontype-parameter>
+    </template><typedef name="handle_t"><type><emphasis>unspecified</emphasis></type></typedef>
+<data-member name="next"><type>handle_t</type></data-member>
+<data-member name="v"><type>const T</type></data-member>
+<method-group name="public member functions">
+</method-group>
+<constructor><parameter name="val"><paramtype>T const &amp;</paramtype></parameter></constructor>
+</struct><method-group name="private member functions">
+<method name="BOOST_STATIC_ASSERT"><type/><parameter name=""><paramtype>boost::is_copy_constructible&lt; T &gt;::value</paramtype></parameter></method>
+<method name="BOOST_STATIC_ASSERT"><type/><parameter name=""><paramtype>(mpl::if_c&lt; has_capacity, mpl::bool_&lt; <classname>capacity</classname> - 1&lt; boost::integer_traits&lt; boost::uint16_t &gt;::const_max &gt;, mpl::true_ &gt;::type::value)</paramtype></parameter></method>
+<method name="BOOST_DELETED_FUNCTION"><type/><parameter name=""><paramtype><classname>stack</classname>(<classname>stack</classname> const &amp;)</paramtype></parameter></method>
+<method name="is_lock_free" cv="const"><type>bool</type><parameter name=""><paramtype>void</paramtype></parameter><description><para>
+<warning><para>It only checks, if the top stack node and the freelist can be modified in a lock-free manner. On most platforms, the whole implementation is lock-free, if this is true. Using c++0x-style atomics, there is no possibility to provide a completely accurate implementation, because one would need to test every internal node, which is impossible if further nodes will be allocated from the operating system. </para>
+</warning>
+</para></description><returns><para>true, if implementation is lock-free.</para>
+</returns></method>
+<method name="reserve"><type>void</type><parameter name="n"><paramtype>size_type</paramtype></parameter><description><para>Allocate n nodes for freelist</para><para>
+<note><para>thread-safe, may block if memory allocator blocks </para>
+</note>
+</para></description><requires><para>only valid if no capacity&lt;&gt; argument given </para>
+</requires></method>
+<method name="reserve_unsafe"><type>void</type><parameter name="n"><paramtype>size_type</paramtype></parameter><description><para>Allocate n nodes for freelist</para><para>
+<note><para>not thread-safe, may block if memory allocator blocks </para>
+</note>
+</para></description><requires><para>only valid if no capacity&lt;&gt; argument given </para>
+</requires></method>
+<method name="initialize"><type>void</type><parameter name=""><paramtype>void</paramtype></parameter></method>
+<method name="link_nodes_atomic"><type>void</type><parameter name="new_top_node"><paramtype>node *</paramtype></parameter><parameter name="end_node"><paramtype>node *</paramtype></parameter></method>
+<method name="link_nodes_unsafe"><type>void</type><parameter name="new_top_node"><paramtype>node *</paramtype></parameter><parameter name="end_node"><paramtype>node *</paramtype></parameter></method>
+<method name="prepare_node_list"><type>tuple&lt; node *, node * &gt;</type><template>
+          <template-nontype-parameter name="Threadsafe"><type>bool</type></template-nontype-parameter>
+          <template-nontype-parameter name="Bounded"><type>bool</type></template-nontype-parameter>
+          <template-type-parameter name="ConstIterator"/>
+        </template><parameter name="begin"><paramtype>ConstIterator</paramtype></parameter><parameter name="end"><paramtype>ConstIterator</paramtype></parameter><parameter name="ret"><paramtype>ConstIterator &amp;</paramtype></parameter></method>
+<method name="do_push"><type>bool</type><template>
+          <template-nontype-parameter name="Bounded"><type>bool</type></template-nontype-parameter>
+        </template><parameter name="v"><paramtype>T const &amp;</paramtype></parameter></method>
+<method name="do_push"><type>ConstIterator</type><template>
+          <template-nontype-parameter name="Bounded"><type>bool</type></template-nontype-parameter>
+          <template-type-parameter name="ConstIterator"/>
+        </template><parameter name="begin"><paramtype>ConstIterator</paramtype></parameter><parameter name="end"><paramtype>ConstIterator</paramtype></parameter></method>
+</method-group>
+<constructor><parameter name=""><paramtype>void</paramtype></parameter><description><para>Construct a fixed-sized stack</para><para>
+</para></description><requires><para>Must specify a capacity&lt;&gt; argument </para>
+</requires></constructor>
+<constructor specifiers="explicit"><template>
+          <template-type-parameter name="U"/>
+        </template><parameter name="alloc"><paramtype>typename boost::allocator_rebind&lt; node_allocator, U &gt;::type const &amp;</paramtype></parameter><description><para>Construct a fixed-sized stack with a custom allocator</para><para>
+</para></description><requires><para>Must specify a capacity&lt;&gt; argument </para>
+</requires></constructor>
+<constructor specifiers="explicit"><parameter name="alloc"><paramtype>allocator const &amp;</paramtype></parameter><description><para>Construct a fixed-sized stack with a custom allocator</para><para>
+</para></description><requires><para>Must specify a capacity&lt;&gt; argument </para>
+</requires></constructor>
+<constructor specifiers="explicit"><parameter name="n"><paramtype>size_type</paramtype></parameter><description><para>Construct a variable-sized stack</para><para>Allocate n nodes initially for the freelist</para><para>
+</para></description><requires><para>Must <emphasis role="bold">not</emphasis> specify a capacity&lt;&gt; argument </para>
+</requires></constructor>
+<constructor><template>
+          <template-type-parameter name="U"/>
+        </template><parameter name="n"><paramtype>size_type</paramtype></parameter><parameter name="alloc"><paramtype>typename boost::allocator_rebind&lt; node_allocator, U &gt;::type const &amp;</paramtype></parameter><description><para>Construct a variable-sized stack with a custom allocator</para><para>Allocate n nodes initially for the freelist</para><para>
+</para></description><requires><para>Must <emphasis role="bold">not</emphasis> specify a capacity&lt;&gt; argument </para>
+</requires></constructor>
+<destructor><parameter name=""><paramtype>void</paramtype></parameter><description><para>Destroys stack, free all nodes from freelist.</para><para><note><para>not thread-safe </para>
+</note>
+</para></description></destructor>
+<method-group name="public member functions">
+<method name="push"><type>bool</type><parameter name="v"><paramtype>T const &amp;</paramtype></parameter><description><para>Pushes object t to the stack.</para><para>
+
+<note><para>Thread-safe. If internal memory pool is exhausted and the memory pool is not fixed-sized, a new node will be allocated from the OS. This may not be lock-free. </para>
+</note>
+
+</para></description><postconditions><para>object will be pushed to the stack, if internal node can be allocated </para>
+</postconditions><returns><para>true, if the push operation is successful.</para>
+</returns><throws><simpara><classname>if</classname> memory allocator throws </simpara></throws></method>
+<method name="bounded_push"><type>bool</type><parameter name="v"><paramtype>T const &amp;</paramtype></parameter><description><para>Pushes object t to the stack.</para><para>
+
+<note><para>Thread-safe and non-blocking. If internal memory pool is exhausted, the push operation will fail </para>
+</note>
+</para></description><postconditions><para>object will be pushed to the stack, if internal node can be allocated </para>
+</postconditions><returns><para>true, if the push operation is successful.</para>
+</returns></method>
+<method name="push"><type>ConstIterator</type><template>
+          <template-type-parameter name="ConstIterator"/>
+        </template><parameter name="begin"><paramtype>ConstIterator</paramtype></parameter><parameter name="end"><paramtype>ConstIterator</paramtype></parameter><description><para>Pushes as many objects from the range [begin, end) as freelist node can be allocated.</para><para>
+<note><para>Operation is applied atomically </para>
+</note>
+<note><para>Thread-safe. If internal memory pool is exhausted and the memory pool is not fixed-sized, a new node will be allocated from the OS. This may not be lock-free. </para>
+</note>
+
+</para></description><returns><para>iterator to the first element, which has not been pushed</para>
+</returns><throws><simpara><classname>if</classname> memory allocator throws </simpara></throws></method>
+<method name="bounded_push"><type>ConstIterator</type><template>
+          <template-type-parameter name="ConstIterator"/>
+        </template><parameter name="begin"><paramtype>ConstIterator</paramtype></parameter><parameter name="end"><paramtype>ConstIterator</paramtype></parameter><description><para>Pushes as many objects from the range [begin, end) as freelist node can be allocated.</para><para>
+<note><para>Operation is applied atomically </para>
+</note>
+<note><para>Thread-safe and non-blocking. If internal memory pool is exhausted, the push operation will fail </para>
+</note>
+
+</para></description><returns><para>iterator to the first element, which has not been pushed</para>
+</returns><throws><simpara><classname>if</classname> memory allocator throws </simpara></throws></method>
+<method name="unsynchronized_push"><type>bool</type><parameter name="v"><paramtype>T const &amp;</paramtype></parameter><description><para>Pushes object t to the stack.</para><para>
+
+<note><para>Not thread-safe. If internal memory pool is exhausted and the memory pool is not fixed-sized, a new node will be allocated from the OS. This may not be lock-free. </para>
+</note>
+
+</para></description><postconditions><para>object will be pushed to the stack, if internal node can be allocated </para>
+</postconditions><returns><para>true, if the push operation is successful.</para>
+</returns><throws><simpara><classname>if</classname> memory allocator throws </simpara></throws></method>
+<method name="unsynchronized_push"><type>ConstIterator</type><template>
+          <template-type-parameter name="ConstIterator"/>
+        </template><parameter name="begin"><paramtype>ConstIterator</paramtype></parameter><parameter name="end"><paramtype>ConstIterator</paramtype></parameter><description><para>Pushes as many objects from the range [begin, end) as freelist node can be allocated.</para><para>
+<note><para>Not thread-safe. If internal memory pool is exhausted and the memory pool is not fixed-sized, a new node will be allocated from the OS. This may not be lock-free. </para>
+</note>
+
+</para></description><returns><para>iterator to the first element, which has not been pushed</para>
+</returns><throws><simpara><classname>if</classname> memory allocator throws </simpara></throws></method>
+<method name="pop"><type>bool</type><parameter name="ret"><paramtype>T &amp;</paramtype></parameter><description><para>Pops object from stack.</para><para>
+
+<note><para>Thread-safe and non-blocking </para>
+</note>
+</para></description><postconditions><para>if pop operation is successful, object will be copied to ret. </para>
+</postconditions><returns><para>true, if the pop operation is successful, false if stack was empty.</para>
+</returns></method>
+<method name="pop"><type>bool</type><template>
+          <template-type-parameter name="U"/>
+        </template><parameter name="ret"><paramtype>U &amp;</paramtype></parameter><description><para>Pops object from stack.</para><para>
+
+
+<note><para>Thread-safe and non-blocking </para>
+</note>
+</para></description><requires><para>type T must be convertible to U </para>
+</requires><postconditions><para>if pop operation is successful, object will be copied to ret. </para>
+</postconditions><returns><para>true, if the pop operation is successful, false if stack was empty.</para>
+</returns></method>
+<method name="unsynchronized_pop"><type>bool</type><parameter name="ret"><paramtype>T &amp;</paramtype></parameter><description><para>Pops object from stack.</para><para>
+
+<note><para>Not thread-safe, but non-blocking </para>
+</note>
+</para></description><postconditions><para>if pop operation is successful, object will be copied to ret. </para>
+</postconditions><returns><para>true, if the pop operation is successful, false if stack was empty.</para>
+</returns></method>
+<method name="unsynchronized_pop"><type>bool</type><template>
+          <template-type-parameter name="U"/>
+        </template><parameter name="ret"><paramtype>U &amp;</paramtype></parameter><description><para>Pops object from stack.</para><para>
+
+
+<note><para>Not thread-safe, but non-blocking </para>
+</note>
+</para></description><requires><para>type T must be convertible to U </para>
+</requires><postconditions><para>if pop operation is successful, object will be copied to ret. </para>
+</postconditions><returns><para>true, if the pop operation is successful, false if stack was empty.</para>
+</returns></method>
+<method name="consume_one"><type>bool</type><template>
+          <template-type-parameter name="Functor"/>
+        </template><parameter name="f"><paramtype>Functor &amp;</paramtype></parameter><description><para>consumes one element via a functor</para><para>pops one element from the stack and applies the functor on this object</para><para>
+<note><para>Thread-safe and non-blocking, if functor is thread-safe and non-blocking </para>
+</note>
+</para></description><returns><para>true, if one element was consumed</para>
+</returns></method>
+<method name="consume_one"><type>bool</type><template>
+          <template-type-parameter name="Functor"/>
+        </template><parameter name="f"><paramtype>Functor const &amp;</paramtype></parameter><description><para>consumes one element via a functor</para><para>pops one element from the stack and applies the functor on this object</para><para>
+<note><para>Thread-safe and non-blocking, if functor is thread-safe and non-blocking </para>
+</note>
+</para></description><returns><para>true, if one element was consumed</para>
+</returns></method>
+<method name="consume_all"><type>size_t</type><template>
+          <template-type-parameter name="Functor"/>
+        </template><parameter name="f"><paramtype>Functor &amp;</paramtype></parameter><description><para>consumes all elements via a functor</para><para>sequentially pops all elements from the stack and applies the functor on each object</para><para>
+<note><para>Thread-safe and non-blocking, if functor is thread-safe and non-blocking </para>
+</note>
+</para></description><returns><para>number of elements that are consumed</para>
+</returns></method>
+<method name="consume_all"><type>size_t</type><template>
+          <template-type-parameter name="Functor"/>
+        </template><parameter name="f"><paramtype>Functor const &amp;</paramtype></parameter><description><para>consumes all elements via a functor</para><para>sequentially pops all elements from the stack and applies the functor on each object</para><para>
+<note><para>Thread-safe and non-blocking, if functor is thread-safe and non-blocking </para>
+</note>
+</para></description><returns><para>number of elements that are consumed</para>
+</returns></method>
+<method name="consume_all_atomic"><type>size_t</type><template>
+          <template-type-parameter name="Functor"/>
+        </template><parameter name="f"><paramtype>Functor &amp;</paramtype></parameter><description><para>consumes all elements via a functor</para><para>atomically pops all elements from the stack and applies the functor on each object</para><para>
+<note><para>Thread-safe and non-blocking, if functor is thread-safe and non-blocking </para>
+</note>
+</para></description><returns><para>number of elements that are consumed</para>
+</returns></method>
+<method name="consume_all_atomic"><type>size_t</type><template>
+          <template-type-parameter name="Functor"/>
+        </template><parameter name="f"><paramtype>Functor const &amp;</paramtype></parameter><description><para>consumes all elements via a functor</para><para>atomically pops all elements from the stack and applies the functor on each object</para><para>
+<note><para>Thread-safe and non-blocking, if functor is thread-safe and non-blocking </para>
+</note>
+</para></description><returns><para>number of elements that are consumed</para>
+</returns></method>
+<method name="consume_all_atomic_reversed"><type>size_t</type><template>
+          <template-type-parameter name="Functor"/>
+        </template><parameter name="f"><paramtype>Functor &amp;</paramtype></parameter><description><para>consumes all elements via a functor</para><para>atomically pops all elements from the stack and applies the functor on each object in reversed order</para><para>
+<note><para>Thread-safe and non-blocking, if functor is thread-safe and non-blocking </para>
+</note>
+</para></description><returns><para>number of elements that are consumed</para>
+</returns></method>
+<method name="consume_all_atomic_reversed"><type>size_t</type><template>
+          <template-type-parameter name="Functor"/>
+        </template><parameter name="f"><paramtype>Functor const &amp;</paramtype></parameter><description><para>consumes all elements via a functor</para><para>atomically pops all elements from the stack and applies the functor on each object in reversed order</para><para>
+<note><para>Thread-safe and non-blocking, if functor is thread-safe and non-blocking </para>
+</note>
+</para></description><returns><para>number of elements that are consumed</para>
+</returns></method>
+<method name="empty" cv="const"><type>bool</type><parameter name=""><paramtype>void</paramtype></parameter><description><para>
+<note><para>It only guarantees that at some point during the execution of the function the stack has been empty. It is rarely practical to use this value in program logic, because the stack can be modified by other threads. </para>
+</note>
+</para></description><returns><para>true, if stack is empty.</para>
+</returns></method>
+</method-group>
+</class></namespace>
+</namespace>
+</header>
+</library-reference>

@@ -1,7 +1,7 @@
 name: rocksdb_num_immutable_mem_table
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "num-immutable-mem-table" - sum over column families
+  Number of unflushed immutable RocksDB memtables.
 unit: number
 type: gauge
 category: RocksDB

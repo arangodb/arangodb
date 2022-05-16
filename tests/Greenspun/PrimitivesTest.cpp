@@ -4,7 +4,6 @@
 #include "Greenspun/Primitives.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
-#include "velocypack/velocypack-aliases.h"
 
 #include "gtest/gtest.h"
 
@@ -1422,7 +1421,8 @@ TEST_F(GreenspunTest, reduce_dict_init_dicts) {
     FAIL() << res.error().toString();
   }
   ASSERT_TRUE(res.ok());
-  ASSERT_EQ(result.slice().toJson(), R"json({"a":2,"b":4,"c":6,"d":4,"e":5})json");
+  ASSERT_EQ(result.slice().toJson(),
+            R"json({"a":2,"b":4,"c":6,"d":4,"e":5})json");
 }
 
 TEST_F(GreenspunTest, sort) {
@@ -1937,7 +1937,7 @@ TEST_F(GreenspunTest, rand_range) {
 }
 
 #ifdef AIR_PRIMITIVE_TESTS_MAIN
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

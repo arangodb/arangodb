@@ -30,7 +30,9 @@
 
 let jsunity = require("jsunity");
 let db = require("@arangodb").db;
-let isCluster = require("internal").isCluster();
+const internal = require('internal');
+let isCluster = internal.isCluster();
+
 
 function lateDocumentMaterializationRuleTestSuite () {
   const ruleName = "late-document-materialization";
@@ -41,6 +43,7 @@ function lateDocumentMaterializationRuleTestSuite () {
   const primaryIndexCollectionName = "UnitTestsPrimCollection";
   const edgeIndexCollectionName = "UnitTestsEdgeCollection";
   const severalIndexesCollectionName = "UnitTestsSeveralIndexesCollection";
+  const withIndexCollectionName = "UnitTestsWithIndexCollection";
   const projectionsCoveredByIndexCollectionName = "ProjectionsCoveredByIndexCollection";
   const prefixIndexCollectionName = "PrefixIndexCollection";
   let collectionNames = [];
@@ -342,20 +345,15 @@ function lateDocumentMaterializationRuleTestSuite () {
                     "LET e = SUM(FOR c IN " + collectionNames[(i + 1) % numOfCollectionIndexes] + " LET p = CONCAT(c.obj.b, c.obj.a) RETURN p) " +
                     "SORT CONCAT(a, e) LIMIT 10 RETURN d";
         let plan = AQL_EXPLAIN(query).plan;
-        if (!isCluster) {
-          assertNotEqual(-1, plan.rules.indexOf(ruleName));
-          let result = AQL_EXECUTE(query);
-          assertEqual(2, result.json.length);
-          let expectedKeys = new Set(['c0', 'c2']);
-          result.json.forEach(function(doc) {
-            assertTrue(expectedKeys.has(doc._key));
-            expectedKeys.delete(doc._key);
-          });
-          assertEqual(0, expectedKeys.size);
-        } else {
-          // on cluster this will not be applied as remote node placed before sort node
-          assertEqual(-1, plan.rules.indexOf(ruleName));
-        }
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        let result = AQL_EXECUTE(query);
+        assertEqual(2, result.json.length);
+        let expectedKeys = new Set(['c0', 'c2']);
+        result.json.forEach(function(doc) {
+          assertTrue(expectedKeys.has(doc._key));
+          expectedKeys.delete(doc._key);
+        });
+        assertEqual(0, expectedKeys.size);
       }
     },
     testQueryResultsWithCalculation() {
@@ -607,7 +605,100 @@ function lateDocumentMaterializationRuleTestSuite () {
       let result = AQL_EXECUTE(query);
       assertEqual(1, result.json.length);
       assertEqual(result.json[0]._key, 'c0');
-    }
+    },
+    testConstrainedSortOnDbServer() {
+      let query = "FOR d IN " + prefixIndexCollectionName  + " FILTER d.obj.b == {sb: 'b_val_0'} " +
+                  "SORT d.obj.b LIMIT 10 RETURN {key: d._key, value:  d.some_value_from_doc}";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      let materializeNodeFound = false;
+      let nodeDependency = null;
+      plan.nodes.forEach(function(node) {
+        if (node.type === "MaterializeNode") {
+          assertFalse(materializeNodeFound);
+          assertEqual(nodeDependency.type, isCluster ? "SortNode" : "LimitNode");
+          materializeNodeFound = true;
+        }
+        nodeDependency = node;
+      });
+      assertTrue(materializeNodeFound);
+      let result = AQL_EXECUTE(query);
+      assertEqual(1, result.json.length);
+      let expected = new Set(['c0']);
+      result.json.forEach(function(doc) {
+        assertTrue(expected.has(doc.key));
+        expected.delete(doc.key);
+      });
+      assertEqual(0, expected.size);
+    },
+
+    testIssue14819: function () {
+      let query = "FOR doc IN UNION((FOR doc IN " + severalIndexesCollectionName + " FILTER doc.a >= 1 && doc.a <= 10 COLLECT dt = DATE_FORMAT(DATE_TRUNC(doc.a, 'day'), '%yyyy-%mm-%dd') AGGREGATE sum = SUM(doc.b) LIMIT 1000000 RETURN { dt, sum }), []) LIMIT 1000000 RETURN doc";
+      let plans = AQL_EXPLAIN(query, null, { allPlans: true }).plans; 
+      assertEqual(2, plans.length);
+      // preferred plan without late materialization
+      let plan = plans[0];
+      assertEqual(-1, plan.rules.indexOf(ruleName));
+      // other plan, with late materialization
+      plan = plans[1];
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      let result = AQL_EXECUTE(query).json;
+      assertEqual(0, result.length);
+    },
+
+    // fullCount was too low
+    testRegressionBts611() {
+      const _ = require('lodash');
+      try {
+        const col = db._create(withIndexCollectionName, {numberOfShards: 9});
+        col.ensureIndex({type: "persistent", fields: ["value", "x"]});
+        col.insert(_.range(0, 1000).map(i => ({value: i, x: Math.random()})));
+        const query = `
+          FOR doc IN ${withIndexCollectionName}
+            FILTER doc.value >= 500
+            SORT doc.x
+            LIMIT @limit
+            RETURN doc
+        `;
+        const options = { fullCount: true };
+        let result;
+
+        result = AQL_EXECUTE(query, {limit: 1000}, options);
+        assertEqual(500, result.json.length);
+        assertEqual(500, result.stats.fullCount);
+
+        result = AQL_EXECUTE(query, {limit: 1}, options);
+        assertEqual(1, result.json.length);
+        assertEqual(500, result.stats.fullCount);
+        
+        if (!internal.debugCanUseFailAt()) {
+          return;
+        }
+        internal.debugClearFailAt();
+        internal.debugSetFailAt('MaterializeExecutor::all_fail');
+        result = AQL_EXECUTE(query, {limit: 100}, options);
+        assertEqual(0, result.json.length);
+        assertEqual(500, result.stats.fullCount);
+        
+        internal.debugClearFailAt();
+        internal.debugSetFailAt('MaterializeExecutor::only_one');
+        result = AQL_EXECUTE(query, {limit: 100}, options);
+        if (isCluster) {
+          // for cluster it depends on db servers number as each materializer will issue only one document
+          // to not bother with accurate number  - let's check it is not all 100
+          // we anyway want to check it just not breaks in case of materialization failure
+          assertTrue(result.json.length < 100);
+        } else {
+          assertEqual(1, result.json.length);
+        }
+        assertEqual(500, result.stats.fullCount);
+        
+      } finally {
+        db._drop(withIndexCollectionName);
+        internal.debugClearFailAt();
+      }
+    },
+
   };
 }
 

@@ -1,0 +1,50 @@
+#  Boost.CRC library documentation Jamfile
+#  (Copied from the documentation Jamfile for Boost.Move)
+#
+#  Copyright Daryle Walker 2011. 
+#  Distributed under the Boost Software License, Version 1.0.
+#  (See the accompanying file LICENSE_1_0.txt or a copy at
+#   http://www.boost.org/LICENSE_1_0.txt)
+#
+# See http://www.boost.org/libs/crc for documentation.
+
+
+import doxygen ;
+import quickbook ;
+
+doxygen autodoc
+   :
+      [ glob ../../../boost/crc.hpp ]
+   :
+   <doxygen:param>HIDE_UNDOC_MEMBERS=YES
+   <doxygen:param>HIDE_UNDOC_MEMBERS=YES
+   <doxygen:param>HIDE_UNDOC_CLASSES=YES
+   <doxygen:param>EXTRACT_PRIVATE=NO
+   <doxygen:param>ENABLE_PREPROCESSING=YES
+   <doxygen:param>MACRO_EXPANSION=YES
+   <doxygen:param>"PREDEFINED=\"BOOST_CRC_DOXYGEN_INVOKED\""
+   ;
+
+xml crc : crc.qbk ;
+
+boostbook standalone
+   :
+      crc
+   :
+        <xsl:param>boost.root=../../../..
+        <xsl:param>boost.libraries=../../../../libs/libraries.htm
+        <xsl:param>generate.section.toc.level=3
+        <xsl:param>chunk.first.sections=1
+        <dependency>autodoc
+   ;
+
+###############################################################################
+alias boostdoc
+    : crc
+    :
+    : <dependency>autodoc
+    : ;
+explicit boostdoc ;
+alias boostrelease ;
+explicit boostrelease ;
+   

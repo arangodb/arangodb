@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,20 +28,18 @@
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-#include "VocBase/KeyGenerator.h"
 
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::traverser;
 using namespace arangodb::graph;
 
-bool Traverser::VertexGetter::getVertex(VPackSlice edge,
-                                        arangodb::traverser::EnumeratedPath& path) {
+bool Traverser::VertexGetter::getVertex(
+    VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
   // getSingleVertex will populate s and register the underlying character data
   // if the vertex is found.
-  arangodb::velocypack::StringRef s;
+  std::string_view s;
   if (!getSingleVertex(edge, path.lastVertex(), path.numVertices(), s)) {
     return false;
   }
@@ -51,9 +49,9 @@ bool Traverser::VertexGetter::getVertex(VPackSlice edge,
 }
 
 bool Traverser::VertexGetter::getSingleVertex(arangodb::velocypack::Slice edge,
-                                              arangodb::velocypack::StringRef cmp,
+                                              std::string_view cmp,
                                               uint64_t depth,
-                                              arangodb::velocypack::StringRef& result) {
+                                              std::string_view& result) {
   VPackSlice resSlice = edge;
   if (!resSlice.isString()) {
     resSlice = transaction::helpers::extractFromFromDocument(edge);
@@ -63,7 +61,7 @@ bool Traverser::VertexGetter::getSingleVertex(arangodb::velocypack::Slice edge,
   }
   TRI_ASSERT(resSlice.isString());
 
-  arangodb::velocypack::StringRef s(resSlice);
+  std::string_view s(resSlice.stringView());
   if (!_traverser->vertexMatchesConditions(s, depth)) {
     return false;
   }
@@ -72,16 +70,26 @@ bool Traverser::VertexGetter::getSingleVertex(arangodb::velocypack::Slice edge,
   return true;
 }
 
-void Traverser::VertexGetter::reset(arangodb::velocypack::StringRef const&) {}
+void Traverser::VertexGetter::reset(std::string_view) {}
 
-bool Traverser::VertexGetter::getVertex(arangodb::velocypack::StringRef vertex, size_t depth) {
+// nothing to do
+void Traverser::VertexGetter::clear() {}
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+bool Traverser::VertexGetter::pointsIntoTraverserCache() const noexcept {
+  return false;
+}
+#endif
+
+bool Traverser::VertexGetter::getVertex(std::string_view vertex, size_t depth) {
   return _traverser->vertexMatchesConditions(vertex, depth);
 }
 
-bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
+bool Traverser::UniqueVertexGetter::getVertex(
+    VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
   // getSingleVertex will populate s and register the underlying character data
   // if the vertex is found.
-  arangodb::velocypack::StringRef s;
+  std::string_view s;
   if (!getSingleVertex(edge, path.lastVertex(), path.numVertices(), s)) {
     return false;
   }
@@ -90,14 +98,15 @@ bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge, arangodb::travers
   return true;
 }
 
-bool Traverser::UniqueVertexGetter::getVertex(arangodb::velocypack::StringRef vertex, size_t depth) {
+bool Traverser::UniqueVertexGetter::getVertex(std::string_view vertex,
+                                              size_t depth) {
   if (_returnedVertices.find(vertex) != _returnedVertices.end()) {
     // This vertex is not unique.
-    _traverser->traverserCache()->increaseFilterCounter();
+    _traverser->traverserCache()->incrFiltered();
     return false;
   }
 
-  if(!_traverser->vertexMatchesConditions(vertex, depth)) {
+  if (!_traverser->vertexMatchesConditions(vertex, depth)) {
     return false;
   }
 
@@ -105,10 +114,9 @@ bool Traverser::UniqueVertexGetter::getVertex(arangodb::velocypack::StringRef ve
   return true;
 }
 
-bool Traverser::UniqueVertexGetter::getSingleVertex(arangodb::velocypack::Slice edge,
-                                                    arangodb::velocypack::StringRef cmp,
-                                                    uint64_t depth,
-                                                    arangodb::velocypack::StringRef& result) {
+bool Traverser::UniqueVertexGetter::getSingleVertex(
+    arangodb::velocypack::Slice edge, std::string_view cmp, uint64_t depth,
+    std::string_view& result) {
   VPackSlice resSlice = edge;
   if (!resSlice.isString()) {
     resSlice = transaction::helpers::extractFromFromDocument(edge);
@@ -118,12 +126,12 @@ bool Traverser::UniqueVertexGetter::getSingleVertex(arangodb::velocypack::Slice 
     TRI_ASSERT(resSlice.isString());
   }
 
-  arangodb::velocypack::StringRef s(resSlice);
+  std::string_view s(resSlice.stringView());
 
   // First check if we visited it. If not, then mark
   if (_returnedVertices.find(s) != _returnedVertices.end()) {
     // This vertex is not unique.
-    _traverser->traverserCache()->increaseFilterCounter();
+    _traverser->traverserCache()->incrFiltered();
     return false;
   }
 
@@ -136,16 +144,27 @@ bool Traverser::UniqueVertexGetter::getSingleVertex(arangodb::velocypack::Slice 
   return true;
 }
 
-void Traverser::UniqueVertexGetter::reset(arangodb::velocypack::StringRef const& startVertex) {
+void Traverser::UniqueVertexGetter::clear() {
+  // we must make sure that we clear _returnedVertices, not only for
+  // correctness, but also because it may point into memory that is
+  // going to be freed after this call.
+  _returnedVertices.clear();
+}
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+bool Traverser::UniqueVertexGetter::pointsIntoTraverserCache() const noexcept {
+  return !_returnedVertices.empty();
+}
+#endif
+
+void Traverser::UniqueVertexGetter::reset(std::string_view startVertex) {
   _returnedVertices.clear();
   // The startVertex always counts as visited!
   _returnedVertices.emplace(startVertex);
 }
 
 Traverser::Traverser(arangodb::traverser::TraverserOptions* opts)
-    : _trx(opts->trx()),
-      _done(true),
-      _opts(opts) {
+    : _trx(opts->trx()), _done(true), _opts(opts) {
   if (opts->uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
     _vertexGetter = std::make_unique<UniqueVertexGetter>(this);
   } else {
@@ -156,12 +175,13 @@ Traverser::Traverser(arangodb::traverser::TraverserOptions* opts)
 Traverser::~Traverser() = default;
 
 bool arangodb::traverser::Traverser::edgeMatchesConditions(VPackSlice e,
-                                                           arangodb::velocypack::StringRef vid,
-                                                           uint64_t depth, size_t cursorId) {
+                                                           std::string_view vid,
+                                                           uint64_t depth,
+                                                           size_t cursorId) {
   return _opts->evaluateEdgeExpression(e, vid, depth, cursorId);
 }
 
-bool arangodb::traverser::Traverser::vertexMatchesConditions(arangodb::velocypack::StringRef v,
+bool arangodb::traverser::Traverser::vertexMatchesConditions(std::string_view v,
                                                              uint64_t depth) {
   if (_opts->vertexHasFilter(depth)) {
     // We always need to destroy this vertex
@@ -187,14 +207,16 @@ TraverserCache* arangodb::traverser::Traverser::traverserCache() {
   return _opts->cache();
 }
 
-size_t arangodb::traverser::Traverser::getAndResetFilteredPaths() {
-  return traverserCache()->getAndResetFilteredDocuments();
-}
-
-size_t arangodb::traverser::Traverser::getAndResetReadDocuments() {
+std::uint64_t
+arangodb::traverser::Traverser::getAndResetReadDocuments() noexcept {
   return traverserCache()->getAndResetInsertedDocuments();
 }
 
-size_t arangodb::traverser::Traverser::getAndResetHttpRequests() {
+std::uint64_t arangodb::traverser::Traverser::getAndResetFiltered() noexcept {
+  return traverserCache()->getAndResetFiltered();
+}
+
+std::uint64_t
+arangodb::traverser::Traverser::getAndResetHttpRequests() noexcept {
   return _enumerator->getAndResetHttpRequests();
 }

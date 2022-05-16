@@ -1,0 +1,31 @@
+name: rocksdb_read_only
+introducedIn: "3.8.1"
+help: |
+  RocksDB metric "background-errors".
+unit: number
+type: gauge
+category: RocksDB
+complexity: simple
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric indicates whether RocksDB currently is in read-only
+  mode, due to a background error. If RocksDB is in read-only mode,
+  this metric will have a value of "1". When in read-only mode, all
+  writes into RocksDB will fail. When RocksDB is in normal operations
+  mode, this metric will have a value of "0".
+troubleshoot: |
+  If this value is non-zero, it means that all write operations in
+  RocksDB will fail until the RocksDB background error is resolved.
+  The arangod server logfile should show more details about the exact
+  errors that are happening, so logs should be inspected first.
+  RocksDB can set a background error when some I/O operation fails. 
+  This is often due to disk space usage issues, so often either freeing 
+  disk space or increasing the disk capacity will help.
+  Under some conditions, RocksDB can automatically resume from the 
+  background error and go back into normal operations. However, if the
+  background error happens during certain RocksDB operations, it cannot
+  resume operations automatically, so the instance will need a manual
+  restart after the error condition is removed.

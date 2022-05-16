@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,17 +27,19 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Containers/HashSet.h"
+#include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
+#include "RocksDBEngine/Methods/RocksDBBatchedWithIndexMethods.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
@@ -48,7 +50,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;
@@ -78,17 +79,27 @@ struct BuilderCookie : public arangodb::TransactionState::Cookie {
 };
 }  // namespace
 
-RocksDBBuilderIndex::RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex> const& wp)
+RocksDBBuilderIndex::RocksDBBuilderIndex(
+    std::shared_ptr<arangodb::RocksDBIndex> wp, uint64_t numDocsHint)
     : RocksDBIndex(wp->id(), wp->collection(), wp->name(), wp->fields(),
                    wp->unique(), wp->sparse(), wp->columnFamily(),
-                   wp->objectId(), /*useCache*/ false),
-      _wrapped(wp) {
+                   wp->objectId(), /*useCache*/ false,
+                   /*cacheManager*/ nullptr,
+                   /*engine*/
+                   wp->collection()
+                       .vocbase()
+                       .server()
+                       .getFeature<EngineSelectorFeature>()
+                       .engine<RocksDBEngine>()),
+      _wrapped(std::move(wp)),
+      _numDocsHint(numDocsHint),
+      _docsProcessed(0) {
   TRI_ASSERT(_wrapped);
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBBuilderIndex::toVelocyPack(VPackBuilder& builder,
-                                       std::underlying_type<Serialize>::type flags) const {
+void RocksDBBuilderIndex::toVelocyPack(
+    VPackBuilder& builder, std::underlying_type<Serialize>::type flags) const {
   VPackBuilder inner;
   _wrapped->toVelocyPack(inner, flags);
   TRI_ASSERT(inner.slice().isObject());
@@ -97,11 +108,14 @@ void RocksDBBuilderIndex::toVelocyPack(VPackBuilder& builder,
   if (Index::hasFlag(flags, Index::Serialize::Internals)) {
     builder.add("_inprogress", VPackValue(true));
   }
+  builder.add("documentsProcessed",
+              VPackValue(_docsProcessed.load(std::memory_order_relaxed)));
   builder.close();
 }
 
 /// insert index elements into the specified write batch.
-Result RocksDBBuilderIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
+Result RocksDBBuilderIndex::insert(transaction::Methods& trx,
+                                   RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
                                    arangodb::velocypack::Slice slice,
                                    OperationOptions const& /*options*/,
@@ -120,14 +134,16 @@ Result RocksDBBuilderIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
   // do not track document more than once
   if (ctx->tracked.find(documentId.id()) == ctx->tracked.end()) {
     ctx->tracked.insert(documentId.id());
-    RocksDBLogValue val = RocksDBLogValue::TrackedDocumentInsert(documentId, slice);
+    RocksDBLogValue val =
+        RocksDBLogValue::TrackedDocumentInsert(documentId, slice);
     mthd->PutLogData(val.slice());
   }
   return Result();  // do nothing
 }
 
 /// remove index elements and put it in the specified write batch.
-Result RocksDBBuilderIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
+Result RocksDBBuilderIndex::remove(transaction::Methods& trx,
+                                   RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
                                    arangodb::velocypack::Slice slice) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -144,16 +160,19 @@ Result RocksDBBuilderIndex::remove(transaction::Methods& trx, RocksDBMethods* mt
   // do not track document more than once
   if (ctx->tracked.find(documentId.id()) == ctx->tracked.end()) {
     ctx->tracked.insert(documentId.id());
-    RocksDBLogValue val = RocksDBLogValue::TrackedDocumentRemove(documentId, slice);
+    RocksDBLogValue val =
+        RocksDBLogValue::TrackedDocumentRemove(documentId, slice);
     mthd->PutLogData(val.slice());
   }
   return Result();  // do nothing
 }
 
 // fast mode assuming exclusive access locked from outside
-template <typename WriteBatchType, typename MethodsType, bool foreground>
-static arangodb::Result fillIndex(rocksdb::DB* rootDB, RocksDBIndex& ridx,
-                                  WriteBatchType& batch, rocksdb::Snapshot const* snap) {
+template<bool foreground>
+static arangodb::Result fillIndex(
+    rocksdb::DB* rootDB, RocksDBIndex& ridx, RocksDBMethods& batched,
+    rocksdb::WriteBatchBase& batch, rocksdb::Snapshot const* snap,
+    std::function<void(uint64_t)> const& reportProgress) {
   // fillindex can be non transactional, we just need to clean up
   TRI_ASSERT(rootDB != nullptr);
 
@@ -171,13 +190,15 @@ static arangodb::Result fillIndex(rocksdb::DB* rootDB, RocksDBIndex& ridx,
   ro.prefix_same_as_start = true;
   ro.iterate_upper_bound = &upper;
 
-  rocksdb::ColumnFamilyHandle* docCF =
-      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents);
+  rocksdb::ColumnFamilyHandle* docCF = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Documents);
   std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
 
-  auto mode = snap == nullptr ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE;
+  auto mode =
+      snap == nullptr ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE;
   LogicalCollection& coll = ridx.collection();
-  ::BuilderTrx trx(transaction::StandaloneContext::Create(coll.vocbase()), coll, mode);
+  ::BuilderTrx trx(transaction::StandaloneContext::Create(coll.vocbase()), coll,
+                   mode);
   if (mode == AccessMode::Type::EXCLUSIVE) {
     trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
   }
@@ -190,13 +211,12 @@ static arangodb::Result fillIndex(rocksdb::DB* rootDB, RocksDBIndex& ridx,
   TRI_IF_FAILURE("RocksDBBuilderIndex::fillIndex") { FATAL_ERROR_EXIT(); }
 
   uint64_t numDocsWritten = 0;
-  auto state = RocksDBTransactionState::toState(&trx);
   RocksDBTransactionCollection* trxColl = trx.resolveTrxCollection();
-  // write batch will be reset every x documents
-  MethodsType batched(state, &batch);
-  
+
   auto commitLambda = [&] {
-    if (batch.GetWriteBatch()->Count() > 0) {
+    auto docsInBatch = batch.GetWriteBatch()->Count();
+
+    if (docsInBatch > 0) {
       s = rootDB->Write(wo, batch.GetWriteBatch());
       if (!s.ok()) {
         res = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
@@ -221,41 +241,46 @@ static arangodb::Result fillIndex(rocksdb::DB* rootDB, RocksDBIndex& ridx,
           }
         } else {
           uint64_t seq = rootDB->GetLatestSequenceNumber();
-          // since cuckoo estimator uses a map with seq as key we need to 
+          // since cuckoo estimator uses a map with seq as key we need to
           estimator->bufferUpdates(seq, std::move(it->second.inserts),
                                    std::move(it->second.removals));
         }
       }
     }
+
+    reportProgress(docsInBatch);
   };
 
   OperationOptions options;
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
-    if (ridx.collection().vocbase().server().isStopping()) {
-      res.reset(TRI_ERROR_SHUTTING_DOWN);
-      break;
-    }
 
-    res = ridx.insert(trx, &batched, RocksDBKey::documentId(it->key()),
-                      VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data())),
-                      options, /*performChecks*/ true);
+    res = ridx.insert(
+        trx, &batched, RocksDBKey::documentId(it->key()),
+        VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data())),
+        options, /*performChecks*/ true);
     if (res.fail()) {
       break;
     }
     numDocsWritten++;
 
-    if (numDocsWritten % 200 == 0) {  // commit buffered writes
+    if (numDocsWritten % 1024 == 0) {  // commit buffered writes
       commitLambda();
       // cppcheck-suppress identicalConditionAfterEarlyExit
       if (res.fail()) {
+        break;
+      }
+
+      if (ridx.collection().vocbase().server().isStopping()) {
+        res.reset(TRI_ERROR_SHUTTING_DOWN);
         break;
       }
     }
   }
 
   if (!it->status().ok() && res.ok()) {
-    res = rocksutils::convertStatus(it->status(), rocksutils::StatusHint::index);
+    res =
+        rocksutils::convertStatus(it->status(), rocksutils::StatusHint::index);
   }
 
   if (res.ok()) {
@@ -283,23 +308,39 @@ arangodb::Result RocksDBBuilderIndex::fillIndexForeground() {
 
   const rocksdb::Snapshot* snap = nullptr;
 
+  auto reportProgress = [this](uint64_t docsProcessed) {
+    _docsProcessed.fetch_add(docsProcessed, std::memory_order_relaxed);
+  };
+
+  // reserve some space in WriteBatch
+  size_t batchSize = 1024 * 1024;
+  if (_numDocsHint >= 1024) {
+    batchSize = 4 * 1024 * 1024;
+  }
+  if (_numDocsHint >= 8192) {
+    batchSize = 32 * 1024 * 1024;
+  }
+
   Result res;
-  auto& selector = _collection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& selector =
+      _collection.vocbase().server().getFeature<EngineSelectorFeature>();
   auto& engine = selector.engine<RocksDBEngine>();
   rocksdb::DB* db = engine.db()->GetRootDB();
   if (this->unique()) {
     const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
     // unique index. we need to keep track of all our changes because we need to
     // avoid duplicate index keys. must therefore use a WriteBatchWithIndex
-    rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
-    res = ::fillIndex<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods, true>(
-        db, *internal, batch, snap);
+    rocksdb::WriteBatchWithIndex batch(cmp, batchSize);
+    RocksDBBatchedWithIndexMethods methods(engine.db(), &batch);
+    res =
+        ::fillIndex<true>(db, *internal, methods, batch, snap, reportProgress);
   } else {
     // non-unique index. all index keys will be unique anyway because they
     // contain the document id we can therefore get away with a cheap WriteBatch
-    rocksdb::WriteBatch batch(32 * 1024 * 1024);
-    res = ::fillIndex<rocksdb::WriteBatch, RocksDBBatchedMethods, true>(db, *internal,
-                                                                        batch, snap);
+    rocksdb::WriteBatch batch(batchSize);
+    RocksDBBatchedMethods methods(&batch);
+    res =
+        ::fillIndex<true>(db, *internal, methods, batch, snap, reportProgress);
   }
 
   return res;
@@ -307,9 +348,9 @@ arangodb::Result RocksDBBuilderIndex::fillIndexForeground() {
 
 namespace {
 
-template <typename MethodsType>
 struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
-  ReplayHandler(uint64_t oid, RocksDBIndex& idx, transaction::Methods& trx, MethodsType* methods)
+  ReplayHandler(uint64_t oid, RocksDBIndex& idx, transaction::Methods& trx,
+                RocksDBMethods* methods)
       : _objectId(oid), _index(idx), _trx(trx), _methods(methods) {}
 
   bool Continue() override {
@@ -319,11 +360,9 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
     return tmpRes.ok();
   }
 
-  uint64_t numInserted = 0;
-  uint64_t numRemoved = 0;
-  Result tmpRes;
-
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
+    TRI_ASSERT(_currentSequence <= startSequence);
+
     // starting new write batch
     _startSequence = startSequence;
     _currentSequence = startSequence;
@@ -342,7 +381,8 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
       case RocksDBLogType::TrackedDocumentInsert:
         if (_lastObjectID == _objectId) {
           auto pair = RocksDBLogValue::trackedDocument(blob);
-          tmpRes = _index.insert(_trx, _methods, pair.first, pair.second, _options, /*performChecks*/ true);
+          tmpRes = _index.insert(_trx, _methods, pair.first, pair.second,
+                                 _options, /*performChecks*/ true);
           numInserted++;
         }
         break;
@@ -364,12 +404,13 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
   rocksdb::Status PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
                         rocksdb::Slice const& value) override {
     incTick();
-    if (column_family_id ==
-        RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions)
-            ->GetID()) {
+    if (column_family_id == RocksDBColumnFamilyManager::get(
+                                RocksDBColumnFamilyManager::Family::Definitions)
+                                ->GetID()) {
       _lastObjectID = 0;
     } else if (column_family_id ==
-               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+               RocksDBColumnFamilyManager::get(
+                   RocksDBColumnFamilyManager::Family::Documents)
                    ->GetID()) {
       _lastObjectID = RocksDBKey::objectId(key);
     }
@@ -377,35 +418,40 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
     return rocksdb::Status();
   }
 
-  rocksdb::Status DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
+  rocksdb::Status DeleteCF(uint32_t column_family_id,
+                           const rocksdb::Slice& key) override {
     incTick();
-    if (column_family_id ==
-        RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions)
-            ->GetID()) {
+    if (column_family_id == RocksDBColumnFamilyManager::get(
+                                RocksDBColumnFamilyManager::Family::Definitions)
+                                ->GetID()) {
       _lastObjectID = 0;
     } else if (column_family_id ==
-               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+               RocksDBColumnFamilyManager::get(
+                   RocksDBColumnFamilyManager::Family::Documents)
                    ->GetID()) {
       _lastObjectID = RocksDBKey::objectId(key);
     }
     return rocksdb::Status();
   }
 
-  rocksdb::Status SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
+  rocksdb::Status SingleDeleteCF(uint32_t column_family_id,
+                                 const rocksdb::Slice& key) override {
     incTick();
-    if (column_family_id ==
-        RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions)
-            ->GetID()) {
+    if (column_family_id == RocksDBColumnFamilyManager::get(
+                                RocksDBColumnFamilyManager::Family::Definitions)
+                                ->GetID()) {
       _lastObjectID = 0;
     } else if (column_family_id ==
-               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+               RocksDBColumnFamilyManager::get(
+                   RocksDBColumnFamilyManager::Family::Documents)
                    ->GetID()) {
       _lastObjectID = RocksDBKey::objectId(key);
     }
     return rocksdb::Status();
   }
 
-  rocksdb::Status DeleteRangeCF(uint32_t column_family_id, const rocksdb::Slice& begin_key,
+  rocksdb::Status DeleteRangeCF(uint32_t column_family_id,
+                                const rocksdb::Slice& begin_key,
                                 const rocksdb::Slice& end_key) override {
     incTick();  // drop and truncate may use this
     if (column_family_id == _index.columnFamily()->GetID() &&
@@ -414,6 +460,34 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
       _index.afterTruncate(_currentSequence, &_trx);
     }
     return rocksdb::Status();  // make WAL iterator happy
+  }
+
+  rocksdb::Status MarkBeginPrepare(bool = false) override {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument(
+        "MarkBeginPrepare() handler not defined.");
+  }
+
+  rocksdb::Status MarkEndPrepare(rocksdb::Slice const& /*xid*/) override {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument(
+        "MarkEndPrepare() handler not defined.");
+  }
+
+  rocksdb::Status MarkNoop(bool /*empty_batch*/) override {
+    return rocksdb::Status::OK();
+  }
+
+  rocksdb::Status MarkRollback(rocksdb::Slice const& /*xid*/) override {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument(
+        "MarkRollbackPrepare() handler not defined.");
+  }
+
+  rocksdb::Status MarkCommit(rocksdb::Slice const& /*xid*/) override {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument(
+        "MarkCommit() handler not defined.");
   }
 
  private:
@@ -428,27 +502,33 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
     }
   }
 
+ public:
+  uint64_t numInserted = 0;
+  uint64_t numRemoved = 0;
+  Result tmpRes;
+
  private:
   const uint64_t _objectId;  /// collection objectID
   RocksDBIndex& _index;      /// the index to use
   transaction::Methods& _trx;
-  MethodsType* _methods;  /// methods to fill
+  RocksDBMethods* _methods;  /// methods to fill
   OperationOptions const _options;
 
-  rocksdb::SequenceNumber _startSequence;
-  rocksdb::SequenceNumber _currentSequence;
-  rocksdb::SequenceNumber _lastWrittenSequence;
+  rocksdb::SequenceNumber _startSequence = 0;
+  rocksdb::SequenceNumber _currentSequence = 0;
   bool _startOfBatch = false;
   uint64_t _lastObjectID = 0;
 };
 
-template <typename WriteBatchType, typename MethodsType>
-Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, WriteBatchType& wb,
-               AccessMode::Type mode, rocksdb::SequenceNumber startingFrom,
+Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, RocksDBMethods& batched,
+               rocksdb::WriteBatchBase& wb, AccessMode::Type mode,
+               rocksdb::SequenceNumber startingFrom,
                rocksdb::SequenceNumber& lastScannedTick, uint64_t& numScanned,
-               bool haveExclusiveAccess) {
+               bool haveExclusiveAccess,
+               std::function<void(uint64_t)> const& reportProgress) {
   LogicalCollection& coll = ridx.collection();
-  ::BuilderTrx trx(transaction::StandaloneContext::Create(coll.vocbase()), coll, mode);
+  ::BuilderTrx trx(transaction::StandaloneContext::Create(coll.vocbase()), coll,
+                   mode);
   if (mode == AccessMode::Type::EXCLUSIVE) {
     trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
   }
@@ -457,16 +537,13 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, WriteBatchType& wb,
     return res;
   }
 
-  auto state = RocksDBTransactionState::toState(&trx);
   RocksDBTransactionCollection* trxColl = trx.resolveTrxCollection();
-  RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
+  RocksDBCollection* rcoll =
+      static_cast<RocksDBCollection*>(coll.getPhysical());
 
   TRI_ASSERT(rootDB != nullptr);
 
-  // write batch will be reset every x documents
-  MethodsType batched(state, &wb);
-
-  ReplayHandler<MethodsType> replay(rcoll->objectId(), ridx, trx, &batched);
+  ReplayHandler replay(rcoll->objectId(), ridx, trx, &batched);
 
   std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
   // no need verifying the WAL contents
@@ -477,7 +554,9 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, WriteBatchType& wb,
   }
 
   auto commitLambda = [&](rocksdb::SequenceNumber seq) {
-    if (wb.GetWriteBatch()->Count() > 0) {
+    auto docsInBatch = wb.GetWriteBatch()->Count();
+
+    if (docsInBatch > 0) {
       rocksdb::WriteOptions wo;
       rocksdb::Status s = rootDB->Write(wo, wb.GetWriteBatch());
       if (!s.ok()) {
@@ -497,9 +576,12 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, WriteBatchType& wb,
                                  std::move(it->second.removals));
       }
     }
+
+    reportProgress(docsInBatch);
   };
 
-  LOG_TOPIC("fa362", DEBUG, Logger::ENGINES) << "Scanning from " << startingFrom;
+  LOG_TOPIC("fa362", DEBUG, Logger::ENGINES)
+      << "Scanning from " << startingFrom;
 
   for (; iterator->Valid(); iterator->Next()) {
     rocksdb::BatchResult batch = iterator->GetBatch();
@@ -531,8 +613,8 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, WriteBatchType& wb,
   // indicates a write to another collection, or a write to this collection if
   // we are not in exclusive mode, in which case we will call catchup again
   if (!s.ok() && res.ok() && !s.IsTryAgain()) {
-    LOG_TOPIC("8e3a4", WARN, Logger::ENGINES) << "iterator error '" <<
-      s.ToString() << "'";
+    LOG_TOPIC("8e3a4", WARN, Logger::ENGINES)
+        << "iterator error '" << s.ToString() << "'";
     res = rocksutils::convertStatus(s);
   }
 
@@ -541,9 +623,10 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, WriteBatchType& wb,
     res = trx.commit();  // important for iresearch
   }
 
-  LOG_TOPIC("5796c", DEBUG, Logger::ENGINES) << "WAL REPLAYED insertions: " << replay.numInserted
-                                    << "; deletions: " << replay.numRemoved
-                                    << "; lastScannedTick " << lastScannedTick;
+  LOG_TOPIC("5796c", DEBUG, Logger::ENGINES)
+      << "WAL REPLAYED insertions: " << replay.numInserted
+      << "; deletions: " << replay.numRemoved << "; lastScannedTick "
+      << lastScannedTick;
 
   return res;
 }
@@ -574,17 +657,23 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
   RocksDBIndex* internal = _wrapped.get();
   TRI_ASSERT(internal != nullptr);
 
-  RocksDBEngine& engine =
-      _collection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  RocksDBEngine& engine = _collection.vocbase()
+                              .server()
+                              .getFeature<EngineSelectorFeature>()
+                              .engine<RocksDBEngine>();
   rocksdb::DB* rootDB = engine.db()->GetRootDB();
   rocksdb::Snapshot const* snap = rootDB->GetSnapshot();
-  auto scope = scopeGuard([&] {
+  auto scope = scopeGuard([&]() noexcept {
     if (snap) {
       rootDB->ReleaseSnapshot(snap);
     }
   });
   locker.unlock();
-  
+
+  auto reportProgress = [this](uint64_t docsProcessed) {
+    _docsProcessed.fetch_add(docsProcessed, std::memory_order_relaxed);
+  };
+
   // Step 1. Capture with snapshot
   rocksdb::DB* db = engine.db()->GetRootDB();
   if (internal->unique()) {
@@ -592,16 +681,18 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     // unique index. we need to keep track of all our changes because we need to
     // avoid duplicate index keys. must therefore use a WriteBatchWithIndex
     rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
-    res = ::fillIndex<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods, false>(
-        db, *internal, batch, snap);
+    RocksDBBatchedWithIndexMethods methods(engine.db(), &batch);
+    res =
+        ::fillIndex<false>(db, *internal, methods, batch, snap, reportProgress);
   } else {
     // non-unique index. all index keys will be unique anyway because they
     // contain the document id we can therefore get away with a cheap WriteBatch
     rocksdb::WriteBatch batch(32 * 1024 * 1024);
-    res = ::fillIndex<rocksdb::WriteBatch, RocksDBBatchedMethods, false>(db, *internal,
-                                                                         batch, snap);
+    RocksDBBatchedMethods methods(&batch);
+    res =
+        ::fillIndex<false>(db, *internal, methods, batch, snap, reportProgress);
   }
-  
+
   if (res.fail()) {
     return res;
   }
@@ -616,27 +707,28 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     lastScanned = 0;
     numScanned = 0;
     if (internal->unique()) {
-      const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
+      const rocksdb::Comparator* cmp =
+          internal->columnFamily()->GetComparator();
       // unique index. we need to keep track of all our changes because we need
       // to avoid duplicate index keys. must therefore use a WriteBatchWithIndex
       rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
-      res = ::catchup<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods>(
-          db, *internal, batch, AccessMode::Type::WRITE, scanFrom, lastScanned,
-          numScanned, false);
+      RocksDBBatchedWithIndexMethods methods(engine.db(), &batch);
+      res = ::catchup(db, *internal, methods, batch, AccessMode::Type::WRITE,
+                      scanFrom, lastScanned, numScanned, false, reportProgress);
     } else {
       // non-unique index. all index keys will be unique anyway because they
-      // contain the document id we can therefore get away with a cheap WriteBatch
+      // contain the document id we can therefore get away with a cheap
+      // WriteBatch
       rocksdb::WriteBatch batch(32 * 1024 * 1024);
-      res = ::catchup<rocksdb::WriteBatch, RocksDBBatchedMethods>(db, *internal, batch,
-                                                                  AccessMode::Type::WRITE,
-                                                                  scanFrom, lastScanned,
-                                                                  numScanned, false);
+      RocksDBBatchedMethods methods(&batch);
+      res = ::catchup(db, *internal, methods, batch, AccessMode::Type::WRITE,
+                      scanFrom, lastScanned, numScanned, false, reportProgress);
     }
 
     if (res.fail() && !res.is(TRI_ERROR_ARANGO_TRY_AGAIN)) {
       return res;
     }
-    
+
     scanFrom = lastScanned;
   } while (maxCatchups-- > 0 && numScanned > 5000);
 
@@ -645,24 +737,23 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
   }
 
   // Step 3. Scan the WAL for documents with a lock
-  
+
   scanFrom = lastScanned;
   if (internal->unique()) {
     const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
     // unique index. we need to keep track of all our changes because we need to
     // avoid duplicate index keys. must therefore use a WriteBatchWithIndex
     rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
-    res = ::catchup<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods>(
-        db, *internal, batch, AccessMode::Type::EXCLUSIVE, scanFrom,
-        lastScanned, numScanned, true);
+    RocksDBBatchedWithIndexMethods methods(engine.db(), &batch);
+    res = ::catchup(db, *internal, methods, batch, AccessMode::Type::EXCLUSIVE,
+                    scanFrom, lastScanned, numScanned, true, reportProgress);
   } else {
     // non-unique index. all index keys will be unique anyway because they
     // contain the document id we can therefore get away with a cheap WriteBatch
     rocksdb::WriteBatch batch(32 * 1024 * 1024);
-    res = ::catchup<rocksdb::WriteBatch, RocksDBBatchedMethods>(db, *internal, batch,
-                                                                AccessMode::Type::EXCLUSIVE,
-                                                                scanFrom, lastScanned,
-                                                                numScanned, true);
+    RocksDBBatchedMethods methods(&batch);
+    res = ::catchup(db, *internal, methods, batch, AccessMode::Type::EXCLUSIVE,
+                    scanFrom, lastScanned, numScanned, true, reportProgress);
   }
 
   return res;

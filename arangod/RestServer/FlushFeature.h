@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,15 +25,19 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/ReadWriteLock.h"
-#include "Utils/FlushThread.h"
+#include "RestServer/arangod.h"
 #include "VocBase/voc-types.h"
 
-#include <list>
+#include <cstdint>
+#include <memory>
+#include <mutex>
+#include <tuple>
+#include <vector>
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class FlushThread;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct FlushSubscription
@@ -45,48 +49,37 @@ struct FlushSubscription {
   virtual TRI_voc_tick_t tick() const = 0;
 };
 
-class FlushFeature final : public application_features::ApplicationFeature {
+class FlushFeature final : public ArangodFeature {
  public:
-  /// @brief handle a 'Flush' marker during recovery
-  /// @param vocbase the vocbase the marker applies to
-  /// @param slice the originally stored marker body
-  /// @return success
-  typedef std::function<Result(TRI_vocbase_t const& vocbase, velocypack::Slice const& slice)> FlushRecoveryCallback;
+  static constexpr std::string_view name() noexcept { return "Flush"; }
 
-  explicit FlushFeature(application_features::ApplicationServer& server);
+  explicit FlushFeature(Server& server);
 
-  void collectOptions(std::shared_ptr<options::ProgramOptions> options) override;
+  ~FlushFeature();
+
+  void collectOptions(
+      std::shared_ptr<options::ProgramOptions> options) override;
 
   /// @brief register a flush subscription that will ensure replay of all WAL
   ///        entries after the latter of registration or the last successful
   ///        token commit
   /// @param subscription to register
-  void registerFlushSubscription(const std::shared_ptr<FlushSubscription>& subscription);
+  void registerFlushSubscription(
+      const std::shared_ptr<FlushSubscription>& subscription);
 
   /// @brief release all ticks not used by the flush subscriptions
-  /// @param 'count' a number of released subscriptions
-  /// @param 'tick' released tick
-  arangodb::Result releaseUnusedTicks(size_t& count, TRI_voc_tick_t& tick);
+  /// returns number of active flush subscriptions removed, the number of stale
+  /// flush scriptions removed, and the tick value up to which the storage
+  /// engine could release ticks. if no active or stale flush subscriptions were
+  /// found, the returned tick value is 0.
+  std::tuple<size_t, size_t, TRI_voc_tick_t> releaseUnusedTicks();
 
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void prepare() override;
-  void start() override;
-  void beginShutdown() override;
   void stop() override;
-  void unprepare() override { }
-
-  static bool isRunning() { return _isRunning.load(); }
 
  private:
-  static std::atomic<bool> _isRunning;
-
-  uint64_t _flushInterval;
-  std::unique_ptr<FlushThread> _flushThread;
-  basics::ReadWriteLock _threadLock;
-  std::list<std::weak_ptr<FlushSubscription>> _flushSubscriptions;
   std::mutex _flushSubscriptionsMutex;
+  std::vector<std::weak_ptr<FlushSubscription>> _flushSubscriptions;
   bool _stopped;
 };
 
 }  // namespace arangodb
-

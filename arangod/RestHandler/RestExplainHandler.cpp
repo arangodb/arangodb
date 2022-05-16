@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,8 +34,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestExplainHandler::RestExplainHandler(application_features::ApplicationServer& server,
-                                       GeneralRequest* request, GeneralResponse* response)
+RestExplainHandler::RestExplainHandler(ArangodServer& server,
+                                       GeneralRequest* request,
+                                       GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestExplainHandler::execute() {
@@ -47,7 +48,9 @@ RestStatus RestExplainHandler::execute() {
     case rest::RequestType::POST:
       explainQuery();
       break;
-    default: { generateNotImplemented("Unsupported method"); }
+    default: {
+      generateNotImplemented("Unsupported method");
+    }
   }
 
   // this handler is done
@@ -103,9 +106,11 @@ void RestExplainHandler::explainQuery() {
 
   auto bindBuilder = std::make_shared<VPackBuilder>(bindSlice);
 
-  arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase), aql::QueryString(queryString),
-                             bindBuilder, optionsSlice);
-  auto queryResult = query.explain();
+  auto query = arangodb::aql::Query::create(
+      transaction::StandaloneContext::Create(_vocbase),
+      aql::QueryString(queryString), std::move(bindBuilder),
+      aql::QueryOptions(optionsSlice));
+  auto queryResult = query->explain();
 
   if (queryResult.result.fail()) {
     generateError(queryResult.result);
@@ -115,7 +120,7 @@ void RestExplainHandler::explainQuery() {
   VPackBuilder result;
   result.openObject();
 
-  if (query.queryOptions().allPlans) {
+  if (query->queryOptions().allPlans) {
     result.add("plans", queryResult.data->slice());
   } else {
     result.add("plan", queryResult.data->slice());
@@ -133,7 +138,8 @@ void RestExplainHandler::explainQuery() {
   }
 
   result.add(StaticStrings::Error, VPackValue(false));
-  result.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));
+  result.add(StaticStrings::Code,
+             VPackValue(static_cast<int>(ResponseCode::OK)));
   result.close();
 
   generateResult(rest::ResponseCode::OK, result.slice());

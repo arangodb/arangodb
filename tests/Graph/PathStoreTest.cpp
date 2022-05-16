@@ -47,7 +47,8 @@ class Step : public arangodb::graph::BaseStep<Step> {
   bool _isLooseEnd;
 
  public:
-  Step(size_t id, double weight, size_t previous, bool isLooseEnd) : arangodb::graph::BaseStep<Step>{previous} {
+  Step(size_t id, double weight, size_t previous, bool isLooseEnd)
+      : arangodb::graph::BaseStep<Step>{previous} {
     _id = id;
     _weight = weight;
     _isLooseEnd = isLooseEnd;  // TODO: needed here?

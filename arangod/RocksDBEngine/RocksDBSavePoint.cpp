@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,27 +22,36 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBSavePoint.h"
+#include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Transaction/Methods.h"
 
 namespace arangodb {
 
-RocksDBSavePoint::RocksDBSavePoint(transaction::Methods* trx,
+RocksDBSavePoint::RocksDBSavePoint(DataSourceId collectionId,
+                                   RocksDBTransactionState& state,
                                    TRI_voc_document_operation_e operationType)
-    : _trx(trx),
+    : _state(state),
+      _rocksMethods(*state.rocksdbMethods(collectionId)),
+      _collectionId(collectionId),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _numCommitsAtStart(0),
+#endif
       _operationType(operationType),
-      _handled(_trx->isSingleOperationTransaction()) {
-  TRI_ASSERT(trx != nullptr);
+      _handled(state.isSingleOperation()),
+      _tainted(false) {
   if (!_handled) {
-    auto mthds = RocksDBTransactionState::toMethods(_trx);
     // only create a savepoint when necessary
-    mthds->SetSavePoint();
+    _rocksMethods.SetSavePoint();
   }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _numCommitsAtStart = _state.numCommits();
+#endif
 }
 
 RocksDBSavePoint::~RocksDBSavePoint() {
@@ -61,45 +70,72 @@ RocksDBSavePoint::~RocksDBSavePoint() {
   }
 }
 
-void RocksDBSavePoint::cancel() {
-  // unconditionally cancel the savepoint
-  if (!_handled) {
-    auto mthds = RocksDBTransactionState::toMethods(_trx);
-    mthds->PopSavePoint();
-  
-    // this will prevent the rollback call in the destructor
-    _handled = true;
-  }
+void RocksDBSavePoint::prepareOperation(RevisionId rid) {
+  TRI_ASSERT(!_tainted);
+
+  _state.prepareOperation(_collectionId, rid, _operationType);
 }
 
-void RocksDBSavePoint::finish(bool hasPerformedIntermediateCommit) {
-  if (!_handled && !hasPerformedIntermediateCommit) {
-    // pop the savepoint from the transaction in order to
-    // save some memory for transactions with many operations
-    // this is only safe to do when we have a created a savepoint
-    // when creating the guard, and when there hasn't been an
-    // intermediate commit in the transaction
-    // when there has been an intermediate commit, we must
-    // leave the savepoint alone, because it belonged to another
-    // transaction, and the current transaction will not have any
-    // savepoint
-    auto mthds = RocksDBTransactionState::toMethods(_trx);
-    mthds->PopSavePoint();
+/// @brief acknowledges the current savepoint, so there
+/// will be no rollback when the destructor is called
+Result RocksDBSavePoint::finish(RevisionId rid) {
+  Result res = basics::catchToResult([&]() -> Result {
+    return _state.addOperation(_collectionId, rid, _operationType);
+  });
+
+  if (!_handled) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_numCommitsAtStart == _state.numCommits());
+#endif
+
+    if (res.ok()) {
+      // pop the savepoint from the transaction in order to
+      // save some memory for transactions with many operations
+      // this is only safe to do when we have a created a savepoint
+      // when creating the guard, and when there hasn't been an
+      // intermediate commit in the transaction
+      // when there has been an intermediate commit, we must
+      // leave the savepoint alone, because it belonged to another
+      // transaction, and the current transaction will not have any
+      // savepoint
+      _state.rocksdbMethods(_collectionId)->PopSavePoint();
+
+      // this will prevent the rollback call in the destructor
+      _handled = true;
+    } else {
+      TRI_ASSERT(res.fail());
+    }
   }
 
-  // this will prevent the rollback call in the destructor
-  _handled = true;
+  return res;
 }
 
 void RocksDBSavePoint::rollback() {
   TRI_ASSERT(!_handled);
-  auto mthds = RocksDBTransactionState::toMethods(_trx);
-  mthds->RollbackToSavePoint();
 
-  auto state = RocksDBTransactionState::toState(_trx);
-  state->rollbackOperation(_operationType);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(_numCommitsAtStart == _state.numCommits());
+#endif
+
+  rocksdb::Status s;
+  if (_tainted) {
+    // we have written at least one Put or Delete operation after
+    // we created the savepoint. because that has modified the
+    // WBWI, we need to do a full rebuild
+    s = _rocksMethods.RollbackToSavePoint();
+  } else {
+    // we have written only LogData values since we created the
+    // savepoint. we can get away by rolling back the WBWI's
+    // underlying WriteBatch only. this is a lot faster (simple
+    // std::string::resize instead of a full rebuild of the WBWI
+    // from the WriteBatch)
+    s = _rocksMethods.RollbackToWriteBatchSavePoint();
+  }
+  TRI_ASSERT(s.ok());
+
+  _rocksMethods.rollbackOperation(_operationType);
 
   _handled = true;  // in order to not roll back again by accident
 }
 
-} // namespace
+}  // namespace arangodb

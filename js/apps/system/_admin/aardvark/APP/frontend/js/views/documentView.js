@@ -188,12 +188,12 @@
         }
         return;
       }
-      var navigateTo = $(e.target).attr('documentLink');
-      var test = (navigateTo.split('%').length - 1) % 3;
 
-      if (decodeURIComponent(navigateTo) !== navigateTo && test !== 0) {
-        navigateTo = decodeURIComponent(navigateTo);
-      }
+      var navigateTo = $(e.target).attr('documentLink');
+      var parts = navigateTo.split('/');
+      // part 0 is always "collection", part 1 is the collection name
+      // and part 2 is the document key
+      navigateTo = [ parts[0], parts[1], parts[2] ].join('/');
 
       if (navigateTo) {
         window.App.navigate(navigateTo, {trigger: true});
@@ -252,22 +252,25 @@
       // hide edit icon and show action items
       this.toggleEditIcons(type);
       this.addEdgeEditInputBox(type);
+      $('#input-edit-' + type).focus();
     },
 
     addEdgeEditInputBox: function (type) {
       var model = this.collection.first();
-      let edgeId;
+      let edgeId = $('#document-' + type).text();
 
-      if (type === 'from') {
-        edgeId = model.get('_from');
-      } else {
-        edgeId = model.get('_to');
+      if (!edgeId) {
+        if (type === 'from') {
+          edgeId = model.get('_from');
+        } else {
+          edgeId = model.get('_to');
+        }
       }
 
       // hide text & insert input
       $('#document-' + type).hide();
       $('#document-' + type).after(
-        `<input type="text" id="input-edit-${type}" value=${arangoHelper.escapeHtml(edgeId)} placeholder="${arangoHelper.escapeHtml(edgeId)}">`
+        `<input type="text" id="input-edit-${type}" value="${arangoHelper.escapeHtml(edgeId)}" placeholder="${arangoHelper.escapeHtml(edgeId)}">`
       );
     },
 
@@ -275,18 +278,13 @@
       var model = this.collection.first();
       this.setEditMode(type, false);
 
-
       let newValue = $(`#input-edit-${type}`).val();
       let changed = false;
       if (type === 'from') {
         // if value got changed
-        if (newValue !== model.get('_from')) {
-          changed = true;
-        }
+        changed = (newValue !== model.get('_from'));
       } else {
-        if (newValue !== model.get('_to')) {
-          changed = true;
-        }
+        changed = (newValue !== model.get('_to'));
       }
       if (changed) {
         $('#document-' + type).html(arangoHelper.escapeHtml(newValue));
@@ -476,14 +474,13 @@
             $('#document-from').removeClass('unsaved');
             $('#document-to').removeClass('unsaved');
             // also update DOM attr
-            $('#document-from').attr('documentlink', 'collection/' + arangoHelper.escapeHtml(newFrom));
-            $('#document-to').attr('documentlink', 'collection/' + arangoHelper.escapeHtml(newTo));
+            $('#document-from').attr('documentlink', createDocumentLink(newFrom));
+            $('#document-to').attr('documentlink', createDocumentLink(newTo));
             this.disableSaveButton();
 
-            if (self.customView) {
-              if (self.customSaveFunction) {
-                self.customSaveFunction(data);
-              }
+            if (self.customView &&
+                self.customSaveFunction) {
+              self.customSaveFunction(data);
             }
           }
         }.bind(this);
@@ -538,15 +535,10 @@
     breadcrumb: function () {
       var name = window.location.hash.split('/');
       $('#subNavigationBar .breadcrumb').html(
-        '<a href="#collection/' + name[1] + '/documents/1">Collection: ' + (name[1].length > 64 ? name[1].substr(0, 64) + "..." : name[1]) + '</a>' +
+        '<a href="#collection/' + name[1] + '/documents/1">Collection: ' + _.escape(name[1].length > 64 ? name[1].substr(0, 64) + "..." : name[1]) + '</a>' +
         '<i class="fa fa-chevron-right"></i>' +
-        this.type.charAt(0).toUpperCase() + this.type.slice(1) + ': ' + name[2]
+        this.type.charAt(0).toUpperCase() + this.type.slice(1) + ': ' + _.escape(decodeURIComponent(name[2]))
       );
     },
-
-    escaped: function (value) {
-      return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    }
   });
 }());

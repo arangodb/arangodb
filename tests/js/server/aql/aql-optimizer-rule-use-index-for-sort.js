@@ -128,8 +128,8 @@ function optimizerRuleTestSuite() {
       }
       skiplist.insert(docs);
 
-      skiplist.ensureSkiplist("a", "b");
-      skiplist.ensureSkiplist("d");
+      skiplist.ensureIndex({ type: "skiplist", fields: ["a", "b"] });
+      skiplist.ensureIndex({ type: "skiplist", fields: ["d"] });
       skiplist.ensureIndex({ type: "hash", fields: [ "c" ], unique: false });
 
       internal.db._drop(colNameOther);
@@ -144,8 +144,8 @@ function optimizerRuleTestSuite() {
       }
       skiplist2.insert(docs);
  
-      skiplist2.ensureSkiplist("f", "g");
-      skiplist2.ensureSkiplist("i");
+      skiplist2.ensureIndex({ type: "skiplist", fields: ["f", "g"] });
+      skiplist2.ensureIndex({ type: "skiplist", fields: ["i"] });
       skiplist2.ensureIndex({ type: "hash", fields: [ "h" ], unique: false });
     },
 

@@ -67,12 +67,18 @@ function promtoolSuite () {
         let command = promtoolPath + ' check metrics < "' + input + '" > "' + output + '" 2>&1';
         // pipe contents of temp file into promtool
         let actualRc = internal.executeExternalAndWait('sh', ['-c', command]);
-        assertTrue(actualRc.hasOwnProperty('exit'));
-        assertEqual(0, actualRc.exit);
+        let promtoolResult = "";
+        try {
+          promtoolResult = fs.readFileSync(output).toString();
+        } catch (err) {
+          promtoolResult = String(err);
+        }
 
-        let promtoolResult = fs.readFileSync(output).toString();
+        assertTrue(actualRc.hasOwnProperty('exit'));
+        assertEqual(0, actualRc.exit, promtoolResult);
+
         // no errors found means an empty result file
-        assertEqual('', promtoolResult);
+        assertEqual('', promtoolResult, promtoolResult);
       } finally {
         // remove temp files
         toRemove.forEach((f) => {

@@ -33,6 +33,7 @@ let jsunity = require("jsunity");
 let arangodb = require("@arangodb");
 let db = arangodb.db;
 let tasks = require("@arangodb/tasks");
+const {debugClearFailAt, debugSetFailAt, debugCanUseFailAt} = require('internal');
 
 function IndexUsageSuite () {
   const cnData = "UnitTestsCollection"; // used for test data
@@ -56,6 +57,9 @@ function IndexUsageSuite () {
     tearDown : function () {
       db._drop(cnData);
       db._drop(cnComm);
+      if (debugCanUseFailAt()) {
+        debugClearFailAt();
+      }
     },
 
     testIndexUsage : function () {
@@ -66,7 +70,7 @@ function IndexUsageSuite () {
           let comm = db[params.cnComm];
           let errors = require("@arangodb").errors;
           comm.insert({ _key: "runner1", value: 0 });
-              
+
           while (!comm.exists("runner2")) {
             require("internal").sleep(0.02);
           }
@@ -80,8 +84,9 @@ function IndexUsageSuite () {
               comm.update("runner1", { value: ++success });
             } catch (err) {
               // if the index that was picked for the query is dropped in the meantime,
-              // we will get the following error back
-              assertEqual(err.errorNum, errors.ERROR_QUERY_BAD_JSON_PLAN.code);
+              // we will get one of the following errors back
+              assertTrue(err.errorNum === errors.ERROR_QUERY_BAD_JSON_PLAN.code || 
+                         err.errorNum === errors.ERROR_ARANGO_INDEX_NOT_FOUND.code);
             }
           } while (time() - start < 10.0);
         },
@@ -122,6 +127,55 @@ function IndexUsageSuite () {
       assertTrue(success > 0, success);
     },
 
+    testPrimaryIndexLookupConsistency : function () {
+      if (debugCanUseFailAt()) {
+        debugSetFailAt("RocksDBCollection::read-delay");
+
+        const task = tasks.register({
+          command: function(params) {
+            require('jsunity').jsUnity.attachAssertions();
+            const {db, time} = require("internal");
+            const comm = db[params.cnComm];
+            comm.insert({ _key: "runner1", value: 0 });
+
+            while (!comm.exists("runner2")) {
+              require("internal").sleep(0.02);
+            }
+
+            const start = time();
+            // this tasks keeps updating document "runner1"
+            let cnt = 0;
+            do {
+              comm.update("runner1", { value: ++cnt });
+            } while (time() - start < 10.0);
+          },
+          params: { cnComm, cnData }
+        });
+
+        const comm = db[cnComm];
+        comm.insert({ _key: "runner2" });
+        while (!comm.exists("runner1")) {
+          require("internal").sleep(0.02);
+        }
+
+        let time = require("internal").time;
+        let start = time();
+        // this task keeps reading document "runner1"
+        do {
+          assertTrue(comm.exists("runner1"));
+        } while (time() - start < 10.0);
+
+        while (true) {
+          try {
+            tasks.get(task);
+            require("internal").wait(0.25, false);
+          } catch (err) {
+            // "task not found" means the task is finished
+            break;
+          }
+        }
+      }
+    },
   };
 }
 

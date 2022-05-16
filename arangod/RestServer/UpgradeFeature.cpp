@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,28 +24,20 @@
 #include "UpgradeFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/DaemonFeature.h"
-#include "ApplicationFeatures/GreetingsFeature.h"
-#include "ApplicationFeatures/HttpEndpointProvider.h"
-#include "ApplicationFeatures/SupervisorFeature.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
-#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
-#include "FeaturePhases/AqlFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Pregel/PregelFeature.h"
 #include "Replication/ReplicationFeature.h"
-#include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/RestartAction.h"
@@ -58,9 +50,9 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-UpgradeFeature::UpgradeFeature(application_features::ApplicationServer& server,
-                               int* result, std::vector<std::type_index> const& nonServerFeatures)
-    : ApplicationFeature(server, "Upgrade"),
+UpgradeFeature::UpgradeFeature(Server& server, int* result,
+                               std::span<const size_t> nonServerFeatures)
+    : ArangodFeature{server, *this},
       _upgrade(false),
       _upgradeCheck(true),
       _result(result),
@@ -80,9 +72,10 @@ void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "perform a database upgrade if necessary",
                      new BooleanParameter(&_upgrade));
 
-  options->addOption("--database.upgrade-check", "skip a database upgrade",
-                     new BooleanParameter(&_upgradeCheck),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption(
+      "--database.upgrade-check", "skip a database upgrade",
+      new BooleanParameter(&_upgradeCheck),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
 #ifndef _WIN32
@@ -119,36 +112,40 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
            "'--database.upgrade-check false'";
     FATAL_ERROR_EXIT();
   }
-  
+
   if (!_upgrade) {
     LOG_TOPIC("ed226", TRACE, arangodb::Logger::FIXME)
         << "executing upgrade check: not disabling server features";
     return;
   }
-    
+
   LOG_TOPIC("23525", INFO, arangodb::Logger::FIXME)
-        << "executing upgrade procedure: disabling server features";
+      << "executing upgrade procedure: disabling server features";
 
   // if we run the upgrade, we need to disable a few features that may get
   // in the way...
   if (ServerState::instance()->isCoordinator()) {
-    std::vector<std::type_index> otherFeaturesToDisable = {
-        std::type_index(typeid(DaemonFeature)),
-        std::type_index(typeid(GreetingsFeature)),
-        std::type_index(typeid(pregel::PregelFeature)),
-        std::type_index(typeid(SupervisorFeature))
+    auto disableDaemonAndSupervisor = [&]() {
+      if constexpr (Server::contains<DaemonFeature>()) {
+        server().forceDisableFeatures(std::array{Server::id<DaemonFeature>()});
+      }
+      if constexpr (Server::contains<SupervisorFeature>()) {
+        server().forceDisableFeatures(
+            std::array{Server::id<SupervisorFeature>()});
+      }
     };
-    server().forceDisableFeatures(otherFeaturesToDisable);
+
+    server().forceDisableFeatures(std::array{
+        Server::id<GreetingsFeature>(), Server::id<pregel::PregelFeature>()});
+    disableDaemonAndSupervisor();
   } else {
     server().forceDisableFeatures(_nonServerFeatures);
-    std::vector<std::type_index> otherFeaturesToDisable = {
-        std::type_index(typeid(BootstrapFeature)),
-        std::type_index(typeid(HttpEndpointProvider))
-    };
-    server().forceDisableFeatures(otherFeaturesToDisable);
+    server().forceDisableFeatures(std::array{
+        Server::id<BootstrapFeature>(), Server::id<HttpEndpointProvider>()});
   }
 
-  ReplicationFeature& replicationFeature = server().getFeature<ReplicationFeature>();
+  ReplicationFeature& replicationFeature =
+      server().getFeature<ReplicationFeature>();
   replicationFeature.disableReplicationApplier();
 
   DatabaseFeature& database = server().getFeature<DatabaseFeature>();
@@ -167,7 +164,7 @@ void UpgradeFeature::prepare() {
 
 void UpgradeFeature::start() {
   auto& init = server().getFeature<InitDatabaseFeature>();
-    
+
   // upgrade the database
   if (_upgradeCheck) {
     if (!ServerState::instance()->isCoordinator()) {
@@ -175,11 +172,11 @@ void UpgradeFeature::start() {
       upgradeLocalDatabase();
     }
 
-    auth::UserManager* um = server().getFeature<AuthenticationFeature>().userManager();
+    auth::UserManager* um =
+        server().getFeature<AuthenticationFeature>().userManager();
 
     if (um != nullptr) {
-      if (!ServerState::instance()->isCoordinator() &&
-          !init.restoreAdmin() && 
+      if (!ServerState::instance()->isCoordinator() && !init.restoreAdmin() &&
           !init.defaultPassword().empty()) {
         // this method sets the root password in case on non-coordinators.
         // on coordinators, we cannot execute it here, because the _users
@@ -187,10 +184,16 @@ void UpgradeFeature::start() {
         // for coordinators, the default password will be installed by the
         // BootstrapFeature later.
         Result res = catchToResult([&]() {
-          return um->updateUser("root", [&](auth::User& user) {
+          Result res = um->updateUser("root", [&](auth::User& user) {
             user.updatePassword(init.defaultPassword());
             return TRI_ERROR_NO_ERROR;
           });
+          if (res.is(TRI_ERROR_USER_NOT_FOUND)) {
+            VPackSlice extras = VPackSlice::noneSlice();
+            res = um->storeUser(false, "root", init.defaultPassword(), true,
+                                extras);
+          }
+          return res;
         });
         if (res.fail()) {
           LOG_TOPIC("ce6bf", ERR, arangodb::Logger::FIXME)
@@ -201,7 +204,7 @@ void UpgradeFeature::start() {
     }
 
     // change admin user
-    if (init.restoreAdmin() && 
+    if (init.restoreAdmin() &&
         ServerState::instance()->isSingleServerOrCoordinator()) {
       Result res = um->removeAllUsers();
       if (res.fail()) {
@@ -214,7 +217,8 @@ void UpgradeFeature::start() {
       VPackSlice extras = VPackSlice::noneSlice();
       res = um->storeUser(true, "root", init.defaultPassword(), true, extras);
       if (res.fail() && res.errorNumber() == TRI_ERROR_USER_NOT_FOUND) {
-        res = um->storeUser(false, "root", init.defaultPassword(), true, extras);
+        res =
+            um->storeUser(false, "root", init.defaultPassword(), true, extras);
       }
 
       if (res.fail()) {
@@ -229,7 +233,6 @@ void UpgradeFeature::start() {
       arangodb::Logger::FIXME.setLogLevel(oldLevel);
       *_result = EXIT_SUCCESS;
     }
-
   }
 
   // and force shutdown
@@ -240,11 +243,12 @@ void UpgradeFeature::start() {
 
     if (!ServerState::instance()->isCoordinator() || !_upgrade) {
       LOG_TOPIC("7da27", INFO, arangodb::Logger::STARTUP)
-          << "server will now shut down due to upgrade, database initialization "
+          << "server will now shut down due to upgrade, database "
+             "initialization "
              "or admin restoration.";
 
-      // in the non-coordinator case, we are already done now and will shut down.
-      // in the coordinator case, the actual upgrade is performed by the 
+      // in the non-coordinator case, we are already done now and will shut
+      // down. in the coordinator case, the actual upgrade is performed by the
       // ClusterUpgradeFeature, which is way later in the startup sequence.
       server().beginShutdown();
     }
@@ -252,7 +256,8 @@ void UpgradeFeature::start() {
 }
 
 void UpgradeFeature::upgradeLocalDatabase() {
-  LOG_TOPIC("05dff", TRACE, arangodb::Logger::FIXME) << "starting database init/upgrade";
+  LOG_TOPIC("05dff", TRACE, arangodb::Logger::FIXME)
+      << "starting database init/upgrade";
 
   DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
 
@@ -262,7 +267,8 @@ void UpgradeFeature::upgradeLocalDatabase() {
     TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
     TRI_ASSERT(vocbase != nullptr);
 
-    auto res = methods::Upgrade::startup(*vocbase, _upgrade, ignoreDatafileErrors);
+    auto res =
+        methods::Upgrade::startup(*vocbase, _upgrade, ignoreDatafileErrors);
 
     if (res.fail()) {
       char const* typeName = "initialization";
@@ -289,11 +295,13 @@ void UpgradeFeature::upgradeLocalDatabase() {
 
   if (_upgrade) {
     *_result = EXIT_SUCCESS;
-    LOG_TOPIC("0de5e", INFO, arangodb::Logger::FIXME) << "database upgrade passed";
+    LOG_TOPIC("0de5e", INFO, arangodb::Logger::FIXME)
+        << "database upgrade passed";
   }
 
   // and return from the context
-  LOG_TOPIC("01a03", TRACE, arangodb::Logger::FIXME) << "finished database init/upgrade";
+  LOG_TOPIC("01a03", TRACE, arangodb::Logger::FIXME)
+      << "finished database init/upgrade";
 }
 
 }  // namespace arangodb

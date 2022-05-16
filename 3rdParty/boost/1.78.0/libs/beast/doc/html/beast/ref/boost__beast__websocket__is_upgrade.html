@@ -1,0 +1,136 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>websocket::is_upgrade</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Beast">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__beast__websocket__seed_prng.html" title="websocket::seed_prng">
+<link rel="next" href="boost__beast__zlib__kind.html" title="zlib::kind">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__websocket__seed_prng.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__zlib__kind.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="beast.ref.boost__beast__websocket__is_upgrade"></a><a class="link" href="boost__beast__websocket__is_upgrade.html" title="websocket::is_upgrade">websocket::is_upgrade</a>
+</h4></div></div></div>
+<p>
+        <a class="indexterm" name="idm90634"></a>
+      </p>
+<p>
+        Returns <code class="computeroutput"><span class="keyword">true</span></code> if the specified
+        HTTP request is a WebSocket Upgrade.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__websocket__is_upgrade.h0"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__websocket__is_upgrade.synopsis"></a></span><a class="link" href="boost__beast__websocket__is_upgrade.html#beast.ref.boost__beast__websocket__is_upgrade.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="../../../../../../boost/beast/websocket/rfc6455.hpp" target="_top">boost/beast/websocket/rfc6455.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <a href="https://en.cppreference.com/w/cpp/named_req/Allocator" target="_top"><span class="emphasis"><em>Allocator</em></span></a><span class="special">&gt;</span>
+<span class="keyword">bool</span>
+<span class="identifier">is_upgrade</span><span class="special">(</span>
+    <span class="identifier">beast</span><span class="special">::</span><span class="identifier">http</span><span class="special">::</span><span class="identifier">header</span><span class="special">&lt;</span> <span class="keyword">true</span><span class="special">,</span> <span class="identifier">http</span><span class="special">::</span><span class="identifier">basic_fields</span><span class="special">&lt;</span> <span class="identifier">Allocator</span> <span class="special">&gt;&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">req</span><span class="special">);</span>
+</pre>
+<h5>
+<a name="beast.ref.boost__beast__websocket__is_upgrade.h1"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__websocket__is_upgrade.description"></a></span><a class="link" href="boost__beast__websocket__is_upgrade.html#beast.ref.boost__beast__websocket__is_upgrade.description">Description</a>
+      </h5>
+<p>
+        This function returns <code class="computeroutput"><span class="keyword">true</span></code> when
+        the passed HTTP Request indicates a WebSocket Upgrade. It does not validate
+        the contents of the fields: it just trivially accepts requests which could
+        only possibly be a valid or invalid WebSocket Upgrade message. Callers who
+        wish to manually read HTTP requests in their server implementation can use
+        this function to determine if the request should be routed to an instance
+        of <a class="link" href="boost__beast__websocket__stream.html" title="websocket::stream"><code class="computeroutput"><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span></code></a>.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__websocket__is_upgrade.h2"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__websocket__is_upgrade.example"></a></span><a class="link" href="boost__beast__websocket__is_upgrade.html#beast.ref.boost__beast__websocket__is_upgrade.example">Example</a>
+      </h5>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">handle_connection</span><span class="special">(</span><span class="identifier">net</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span><span class="special">&amp;</span> <span class="identifier">sock</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">::</span><span class="identifier">flat_buffer</span> <span class="identifier">buffer</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">::</span><span class="identifier">http</span><span class="special">::</span><span class="identifier">request</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">::</span><span class="identifier">http</span><span class="special">::</span><span class="identifier">string_body</span><span class="special">&gt;</span> <span class="identifier">req</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">::</span><span class="identifier">http</span><span class="special">::</span><span class="identifier">read</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">buffer</span><span class="special">,</span> <span class="identifier">req</span><span class="special">);</span>
+    <span class="keyword">if</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">::</span><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">is_upgrade</span><span class="special">(</span><span class="identifier">req</span><span class="special">))</span>
+    <span class="special">{</span>
+        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">::</span><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span><span class="special">&lt;</span><span class="keyword">decltype</span><span class="special">(</span><span class="identifier">sock</span><span class="special">)&gt;</span> <span class="identifier">ws</span><span class="special">{</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(</span><span class="identifier">sock</span><span class="special">)};</span>
+        <span class="identifier">ws</span><span class="special">.</span><span class="identifier">accept</span><span class="special">(</span><span class="identifier">req</span><span class="special">);</span>
+    <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<h5>
+<a name="beast.ref.boost__beast__websocket__is_upgrade.h3"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__websocket__is_upgrade.parameters"></a></span><a class="link" href="boost__beast__websocket__is_upgrade.html#beast.ref.boost__beast__websocket__is_upgrade.parameters">Parameters</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">req</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  The HTTP Request object to check.
+                </p>
+              </td>
+</tr></tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__websocket__is_upgrade.h4"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__websocket__is_upgrade.return_value"></a></span><a class="link" href="boost__beast__websocket__is_upgrade.html#beast.ref.boost__beast__websocket__is_upgrade.return_value">Return
+        Value</a>
+      </h5>
+<p>
+        <code class="computeroutput"><span class="keyword">true</span></code> if the request is a WebSocket
+        Upgrade.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__websocket__seed_prng.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__zlib__kind.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

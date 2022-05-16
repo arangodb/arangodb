@@ -1,0 +1,279 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\..\..\boost\container\adaptive_pool.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\allocator.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\allocator_traits.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\container_fwd.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\deque.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\adaptive_node_pool.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\adaptive_node_pool_impl.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\addressof.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\advanced_insert_int.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\algorithm.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\allocation_type.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\allocator_version_traits.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\alloc_helpers.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\alloc_lib.h" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\auto_link.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\block_list.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\block_slist.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\compare_functors.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\config_begin.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\config_end.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\construct_in_place.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\container_or_allocator_rebind.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\container_rebind.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\copy_move_algo.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\destroyers.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\dispatch_uses_allocator.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\dlmalloc.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\flat_tree.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\function_detector.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\guards_dended.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\hash_table.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\is_container.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\is_contiguous_container.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\is_sorted.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\iterator.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\iterators.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\iterator_to_raw_pointer.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\math_functions.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\minimal_char_traits_header.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\min_max.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\mpl.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\multiallocation_chain.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\mutex.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\next_capacity.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\node_alloc_holder.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\node_pool.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\node_pool_impl.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\pair.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\pair_key_mapped_of_value.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\placement_new.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\pool_common.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\pool_common_alloc.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\pool_resource.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\singleton.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\std_fwd.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\thread_mutex.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\transform_iterator.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\tree.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\type_traits.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\value_functors.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\value_init.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\variadic_templates_tools.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\version_type.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\detail\workaround.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\devector.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\flat_map.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\flat_set.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\hash_map.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\hash_set.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\list.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\map.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\new_allocator.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\node_allocator.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\node_handle.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\options.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\pmr\deque.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\pmr\devector.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\pmr\flat_map.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\pmr\flat_set.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\pmr\global_resource.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\pmr\list.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\pmr\map.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\pmr\memory_resource.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\pmr\monotonic_buffer_resource.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\pmr\polymorphic_allocator.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\pmr\pool_options.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\pmr\resource_adaptor.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\pmr\set.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\pmr\slist.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\pmr\small_vector.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\pmr\stable_vector.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\pmr\string.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\pmr\synchronized_pool_resource.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\pmr\unsynchronized_pool_resource.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\pmr\vector.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\scoped_allocator.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\scoped_allocator_fwd.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\set.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\slist.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\small_vector.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\stable_vector.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\static_vector.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\string.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\throw_exception.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\uses_allocator.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\uses_allocator_fwd.hpp" />
+    <ClInclude Include="..\..\..\..\boost\container\vector.hpp" />
+    <ClInclude Include="..\..\test\allocator_argument_tester.hpp" />
+    <ClInclude Include="..\..\test\check_equal_containers.hpp" />
+    <ClInclude Include="..\..\test\comparison_test.hpp" />
+    <ClInclude Include="..\..\test\container_common_tests.hpp" />
+    <ClInclude Include="..\..\test\default_init_test.hpp" />
+    <ClInclude Include="..\..\test\derived_from_memory_resource.hpp" />
+    <ClInclude Include="..\..\test\dummy_test_allocator.hpp" />
+    <ClInclude Include="..\..\test\emplace_test.hpp" />
+    <ClInclude Include="..\..\test\expand_bwd_test_allocator.hpp" />
+    <ClInclude Include="..\..\test\expand_bwd_test_template.hpp" />
+    <ClInclude Include="..\..\test\input_from_forward_iterator.hpp" />
+    <ClInclude Include="..\..\test\input_iterator.hpp" />
+    <ClInclude Include="..\..\test\insert_test.hpp" />
+    <ClInclude Include="..\..\test\list_test.hpp" />
+    <ClInclude Include="..\..\test\map_test.hpp" />
+    <ClInclude Include="..\..\test\memory_resource_logger.hpp" />
+    <ClInclude Include="..\..\test\movable_int.hpp" />
+    <ClInclude Include="..\..\test\pool_resource_test.hpp" />
+    <ClInclude Include="..\..\test\print_container.hpp" />
+    <ClInclude Include="..\..\test\propagate_allocator_test.hpp" />
+    <ClInclude Include="..\..\test\propagation_test_allocator.hpp" />
+    <ClInclude Include="..\..\test\set_test.hpp" />
+    <ClInclude Include="..\..\test\static_vector_test.hpp" />
+    <ClInclude Include="..\..\test\test_elem.hpp" />
+    <ClInclude Include="..\..\test\test_util.hpp" />
+    <ClInclude Include="..\..\test\vector_test.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\doc\container.qbk" />
+    <None Include="..\..\doc\index.idx" />
+    <None Include="..\..\doc\Jamfile.v2" />
+    <None Include="..\..\test\Jamfile.v2" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectName>_containerlib</ProjectName>
+    <ProjectGuid>{FF56BAF1-32EC-4B22-B6BD-95A3A67C3135}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <PlatformToolset>v142</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>15.0.27625.0</_ProjectFileVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>../../Bin/Win32\</OutDir>
+    <IntDir>Debug\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>../../Bin/Win32\</OutDir>
+    <IntDir>Release\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>../../../..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <PrecompiledHeader />
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Lib>
+      <OutputFile>$(OutDir)d.lib</OutputFile>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>../../../..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Lib>
+      <OutputFile>$(OutDir)d.lib</OutputFile>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>../../../..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <PrecompiledHeader />
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat />
+    </ClCompile>
+    <Lib>
+      <OutputFile>$(OutDir)container.lib</OutputFile>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>../../../..;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>
+      </DebugInformationFormat>
+    </ClCompile>
+    <Lib>
+      <OutputFile>$(OutDir)container.lib</OutputFile>
+    </Lib>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

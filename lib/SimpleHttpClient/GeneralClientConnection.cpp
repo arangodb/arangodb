@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -71,16 +71,16 @@ using namespace arangodb::httpclient;
 /// @brief creates a new client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralClientConnection::GeneralClientConnection(application_features::ApplicationServer& server,
-                                                 Endpoint* endpoint, double requestTimeout,
-                                                 double connectTimeout, size_t connectRetries)
-    : _server(server),
-      _endpoint(endpoint),
-      _freeEndpointOnDestruction(false),
+GeneralClientConnection::GeneralClientConnection(
+    application_features::CommunicationFeaturePhase& comm, Endpoint* endpoint,
+    double requestTimeout, double connectTimeout, size_t connectRetries)
+    : _endpoint(endpoint),
+      _comm(comm),
       _requestTimeout(requestTimeout),
       _connectTimeout(connectTimeout),
       _connectRetries(connectRetries),
       _numConnectRetries(0),
+      _freeEndpointOnDestruction(false),
       _isConnected(false),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _read(0),
@@ -90,17 +90,17 @@ GeneralClientConnection::GeneralClientConnection(application_features::Applicati
   TRI_invalidatesocket(&_socket);
 }
 
-GeneralClientConnection::GeneralClientConnection(application_features::ApplicationServer& server,
-                                                 std::unique_ptr<Endpoint>& endpoint,
-                                                 double requestTimeout,
-                                                 double connectTimeout, size_t connectRetries)
-    : _server(server),
-      _endpoint(endpoint.release()),
-      _freeEndpointOnDestruction(true),
+GeneralClientConnection::GeneralClientConnection(
+    application_features::CommunicationFeaturePhase& comm,
+    std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
+    double connectTimeout, size_t connectRetries)
+    : _endpoint(endpoint.release()),
+      _comm(comm),
       _requestTimeout(requestTimeout),
       _connectTimeout(connectTimeout),
       _connectRetries(connectRetries),
       _numConnectRetries(0),
+      _freeEndpointOnDestruction(true),
       _isConnected(false),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _read(0),
@@ -125,12 +125,14 @@ GeneralClientConnection::~GeneralClientConnection() {
 ////////////////////////////////////////////////////////////////////////////////
 
 GeneralClientConnection* GeneralClientConnection::factory(
-    application_features::ApplicationServer& server, Endpoint* endpoint, double requestTimeout,
-    double connectTimeout, size_t numRetries, uint64_t sslProtocol) {
+    application_features::CommunicationFeaturePhase& comm, Endpoint* endpoint,
+    double requestTimeout, double connectTimeout, size_t numRetries,
+    uint64_t sslProtocol) {
   if (endpoint->encryption() == Endpoint::EncryptionType::NONE) {
-    return new ClientConnection(server, endpoint, requestTimeout, connectTimeout, numRetries);
+    return new ClientConnection(comm, endpoint, requestTimeout, connectTimeout,
+                                numRetries);
   } else if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    return new SslClientConnection(server, endpoint, requestTimeout,
+    return new SslClientConnection(comm, endpoint, requestTimeout,
                                    connectTimeout, numRetries, sslProtocol);
   }
 
@@ -138,20 +140,22 @@ GeneralClientConnection* GeneralClientConnection::factory(
 }
 
 GeneralClientConnection* GeneralClientConnection::factory(
-    application_features::ApplicationServer& server,
+    application_features::CommunicationFeaturePhase& comm,
     std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
     double connectTimeout, size_t numRetries, uint64_t sslProtocol) {
   if (endpoint->encryption() == Endpoint::EncryptionType::NONE) {
-    return new ClientConnection(server, endpoint, requestTimeout, connectTimeout, numRetries);
+    return new ClientConnection(comm, endpoint, requestTimeout, connectTimeout,
+                                numRetries);
   } else if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    return new SslClientConnection(server, endpoint, requestTimeout,
+    return new SslClientConnection(comm, endpoint, requestTimeout,
                                    connectTimeout, numRetries, sslProtocol);
   }
 
   return nullptr;
 }
-  
-void GeneralClientConnection::repurpose(double connectTimeout, double requestTimeout,
+
+void GeneralClientConnection::repurpose(double connectTimeout,
+                                        double requestTimeout,
                                         size_t connectRetries) {
   _requestTimeout = requestTimeout;
   _connectTimeout = connectTimeout;
@@ -200,7 +204,8 @@ void GeneralClientConnection::disconnect() {
 /// @brief prepare connection for read/write I/O
 ////////////////////////////////////////////////////////////////////////////////
 
-bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool isWrite) {
+bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout,
+                                      bool isWrite) {
   // wait for at most 0.5 seconds for poll/select to complete
   // if it takes longer, break each poll/select into smaller chunks so we can
   // interrupt the whole process if it takes too long in total
@@ -208,8 +213,6 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
   auto const fd = TRI_get_fd_or_handle_of_socket(socket);
   double start = TRI_microtime();
   int res;
-
-  auto& comm = server().getFeature<application_features::CommunicationFeaturePhase>();
 
 #ifdef TRI_HAVE_POLL_H
   // Here we have poll, on all other platforms we use select
@@ -248,7 +251,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
     }
 
     if (res == 0) {
-      if (isInterrupted() || !comm.getCommAllowed()) {
+      if (isInterrupted() || !_comm.getCommAllowed()) {
         _errorDetails = std::string("command locally aborted");
         TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
         return false;
@@ -330,7 +333,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
       timeout = timeout - (end - start);
       start = end;
     } else if (res == 0) {
-      if (isInterrupted() || !comm.getCommAllowed()) {
+      if (isInterrupted() || !_comm.getCommAllowed()) {
         _errorDetails = std::string("command locally aborted");
         TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
         return false;
@@ -347,7 +350,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
 #endif
 
   if (res > 0) {
-    if (isInterrupted() || !comm.getCommAllowed()) {
+    if (isInterrupted() || !_comm.getCommAllowed()) {
       _errorDetails = std::string("command locally aborted");
       TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
       return false;
@@ -388,7 +391,8 @@ bool GeneralClientConnection::checkSocket() {
 
   TRI_ASSERT(TRI_isvalidsocket(_socket));
 
-  int res = TRI_getsockopt(_socket, SOL_SOCKET, SO_ERROR, (void*)&so_error, &len);
+  int res =
+      TRI_getsockopt(_socket, SOL_SOCKET, SO_ERROR, (void*)&so_error, &len);
 
   if (res != 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -460,6 +464,7 @@ bool GeneralClientConnection::handleRead(double timeout, StringBuffer& buffer,
   return false;
 }
 
-application_features::ApplicationServer& GeneralClientConnection::server() const {
-  return _server;
+application_features::ApplicationServer& GeneralClientConnection::server()
+    const {
+  return _comm.server();
 }

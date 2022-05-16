@@ -1,0 +1,25 @@
+[/
+    Copyright (c) 2016-2019 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section:websocket_autobahn_testsuite WebSocket (Autobahn|Testsuite)]
+
+The
+[@https://github.com/crossbario/autobahn-testsuite Autobahn WebSockets Testsuite]
+provides a fully automated test suite to
+verify client and server implementations of The WebSocket Protocol
+for specification conformance and implementation robustness.
+The test suite will check an implementation by doing basic
+WebSocket conversations, extensive protocol compliance
+verification and performance and limits testing.
+Autobahn|Testsuite is used across the industry and
+contains over 500 test cases.
+
+[@https://vinniefalco.github.io/BeastAssets/reports/autobahn/index.html [*Autobahn|Testsuite WebSocket Results]]
+
+[endsect]

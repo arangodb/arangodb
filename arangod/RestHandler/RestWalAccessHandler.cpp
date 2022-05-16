@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
@@ -52,7 +53,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -63,7 +63,8 @@ struct MyTypeHandler final : public VPackCustomTypeHandler {
 
   ~MyTypeHandler() = default;
 
-  void dump(VPackSlice const& value, VPackDumper* dumper, VPackSlice const& base) override final {
+  void dump(VPackSlice const& value, VPackDumper* dumper,
+            VPackSlice const& base) override final {
     dumper->appendString(toString(value, nullptr, base));
   }
 
@@ -75,9 +76,32 @@ struct MyTypeHandler final : public VPackCustomTypeHandler {
   CollectionNameResolver resolver;
 };
 
-RestWalAccessHandler::RestWalAccessHandler(application_features::ApplicationServer& server,
-                                           GeneralRequest* request, GeneralResponse* response)
+RestWalAccessHandler::RestWalAccessHandler(ArangodServer& server,
+                                           GeneralRequest* request,
+                                           GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
+
+RequestLane RestWalAccessHandler::lane() const {
+  std::vector<std::string> suffixes = _request->decodedSuffixes();
+  if (ServerState::instance()->isDBServer()) {
+    // If we are on a datqbase server this API can only be called internally.
+    // Hence, we can give it a different priority. We do not want to do
+    // this on a SingleServer as it is not necessary there.
+    if (!suffixes.empty() && suffixes[0] == "tail") {
+      // We are in wal tailing API.
+      // Let us check if we are in a hard-locked environment.
+      if (_request->parsedValue("withHardLock", false)) {
+        // We have the QueryParameter usingHardLock set to something that
+        // evaluates to true. We need to push this onto HIGH priority lanes in
+        // order to unlock the hardlock we have accuired
+        return RequestLane::CLUSTER_INTERNAL;
+      } else {
+        return RequestLane::SERVER_REPLICATION_CATCHUP;
+      }
+    }
+  }
+  return RequestLane::SERVER_REPLICATION;
+}
 
 bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
   // determine start and end tick
@@ -112,7 +136,8 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
       auto c = _vocbase.lookupCollection(value2);
 
       if (c == nullptr) {
-        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+        generateError(rest::ResponseCode::NOT_FOUND,
+                      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
         return false;
       }
 
@@ -121,7 +146,8 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
     }
   }
 
-  filter.includeSystem = _request->parsedValue("includeSystem", filter.includeSystem);
+  filter.includeSystem =
+      _request->parsedValue("includeSystem", filter.includeSystem);
   filter.includeFoxxQueues = _request->parsedValue("includeFoxxQueues", false);
 
   // grab list of transactions from the body value
@@ -158,7 +184,8 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
 
 RestStatus RestWalAccessHandler::execute() {
   if (ServerState::instance()->isCoordinator()) {
-    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_CLUSTER_UNSUPPORTED,
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED,
+                  TRI_ERROR_CLUSTER_UNSUPPORTED,
                   "'/_api/wal' is not yet supported in a cluster");
     return RestStatus::DONE;
   }
@@ -170,8 +197,9 @@ RestStatus RestWalAccessHandler::execute() {
 
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
-    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expected GET /_api/wal/[tail|range|lastTick|open-transactions]>");
+    generateError(
+        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expected GET /_api/wal/[tail|range|lastTick|open-transactions]>");
     return RestStatus::DONE;
   }
 
@@ -182,10 +210,13 @@ RestStatus RestWalAccessHandler::execute() {
 
   if (suffixes[0] == "range" && _request->requestType() == RequestType::GET) {
     handleCommandTickRange(wal);
-  } else if (suffixes[0] == "lastTick" && _request->requestType() == RequestType::GET) {
+  } else if (suffixes[0] == "lastTick" &&
+             _request->requestType() == RequestType::GET) {
     handleCommandLastTick(wal);
-  } else if (suffixes[0] == "tail" && (_request->requestType() == RequestType::GET ||
-                                       _request->requestType() == RequestType::PUT)) {
+  } else if (suffixes[0] == "tail" &&
+             (_request->requestType() == RequestType::GET ||
+              _request->requestType() == RequestType::PUT ||
+              _request->requestType() == RequestType::DELETE_REQ)) {
     handleCommandTail(wal);
   } else if (suffixes[0] == "open-transactions" &&
              _request->requestType() == RequestType::GET) {
@@ -213,7 +244,8 @@ void RestWalAccessHandler::handleCommandTickRange(WalAccess const* wal) {
     {  // "server" part
       VPackObjectBuilder server(&result, "server", true);
       server->add("version", VPackValue(ARANGODB_VERSION));
-      server->add("serverId", VPackValue(std::to_string(ServerIdFeature::getId().id())));
+      server->add("serverId",
+                  VPackValue(std::to_string(ServerIdFeature::getId().id())));
     }
     result.close();
     generateResult(rest::ResponseCode::OK, result.slice());
@@ -231,31 +263,57 @@ void RestWalAccessHandler::handleCommandLastTick(WalAccess const* wal) {
   {  // "server" part
     VPackObjectBuilder server(&result, "server", true);
     server->add("version", VPackValue(ARANGODB_VERSION));
-    server->add("serverId", VPackValue(std::to_string(ServerIdFeature::getId().id())));
+    server->add("serverId",
+                VPackValue(std::to_string(ServerIdFeature::getId().id())));
   }
   result.close();
   generateResult(rest::ResponseCode::OK, result.slice());
 }
 
 void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
+  // check for serverId
+  ServerId const clientId{StringUtils::uint64(_request->value("serverId"))};
+  SyncerId const syncerId = SyncerId::fromRequest(*_request);
+  std::string const& clientInfo = _request->value("clientInfo");
+
+  if (_request->requestType() == arangodb::rest::RequestType::DELETE_REQ) {
+    // this is a notification that tailing has come to an end, so we
+    // can unregister the client from the list of tracked clients
+    server().getFeature<DatabaseFeature>().enumerateDatabases(
+        [&](TRI_vocbase_t& vocbase) -> void {
+          vocbase.replicationClients().untrack(syncerId, clientId, clientInfo);
+        });
+    generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
+    return;
+  }
+
   // track the number of parallel invocations of the tailing API
   auto& rf = _vocbase.server().getFeature<ReplicationFeature>();
   // this may throw when too many threads are going into tailing
   rf.trackTailingStart();
 
-  auto guard = scopeGuard([&rf]() { rf.trackTailingEnd(); });
+  auto guard = scopeGuard([&rf]() noexcept { rf.trackTailingEnd(); });
 
-  bool const useVst = (_request->transportType() == Endpoint::TransportType::VST);
+  bool const useVst =
+      (_request->transportType() == Endpoint::TransportType::VST);
 
   WalAccess::Filter filter;
   if (!parseFilter(filter)) {
     return;
   }
 
-  // check for serverId
-  ServerId const clientId{StringUtils::uint64(_request->value("serverId"))};
-  SyncerId const syncerId = SyncerId::fromRequest(*_request);
-  std::string const clientInfo = _request->value("clientInfo");
+  if (_request->parsedValue("trackOnly", false)) {
+    // only track this client as a future WAL tailer, so that we do not purge
+    // the WAL files it will need for tailing soon
+    server().getFeature<DatabaseFeature>().enumerateDatabases(
+        [&](TRI_vocbase_t& vocbase) -> void {
+          vocbase.replicationClients().track(
+              syncerId, clientId, clientInfo, filter.tickStart,
+              replutils::BatchInfo::DefaultTimeoutForTailing);
+        });
+    generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
+    return;
+  }
 
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
@@ -271,28 +329,29 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   std::map<TRI_voc_tick_t, std::unique_ptr<MyTypeHandler>> handlers;
   VPackOptions opts = VPackOptions::Defaults;
   auto prepOpts = [&handlers, &opts](TRI_vocbase_t& vocbase) -> void {
-    auto it = handlers.try_emplace(
-      vocbase.id(),
-      arangodb::lazyConstruct([&]{
-       return std::make_unique<MyTypeHandler>(vocbase);
-      })
-    ).first;
+    auto it =
+        handlers
+            .try_emplace(vocbase.id(), arangodb::lazyConstruct([&] {
+                           return std::make_unique<MyTypeHandler>(vocbase);
+                         }))
+            .first;
     opts.customTypeHandler = it->second.get();
   };
 
   size_t length = 0;
 
   if (useVst) {
-    result = wal->tail(filter, chunkSize,
-                       [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
-                         length++;
+    result =
+        wal->tail(filter, chunkSize,
+                  [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
+                    length++;
 
-                         if (vocbase != nullptr) {  // database drop has no vocbase
-                           prepOpts(*vocbase);
-                         }
+                    if (vocbase != nullptr) {  // database drop has no vocbase
+                      prepOpts(*vocbase);
+                    }
 
-                         _response->addPayload(marker, &opts, true);
-                       });
+                    _response->addPayload(marker, &opts, true);
+                  });
   } else {
     HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
     TRI_ASSERT(httpResponse);
@@ -304,19 +363,20 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
     // note: we need the CustomTypeHandler here
     VPackDumper dumper(&adapter, &opts);
-    result = wal->tail(filter, chunkSize,
-                       [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
-                         length++;
+    result =
+        wal->tail(filter, chunkSize,
+                  [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
+                    length++;
 
-                         if (vocbase != nullptr) {  // database drop has no vocbase
-                           prepOpts(*vocbase);
-                         }
+                    if (vocbase != nullptr) {  // database drop has no vocbase
+                      prepOpts(*vocbase);
+                    }
 
-                         dumper.dump(marker);
-                         buffer.appendChar('\n');
-                         // LOG_TOPIC("cda47", INFO, Logger::REPLICATION) <<
-                         // marker.toJson(&opts);
-                       });
+                    dumper.dump(marker);
+                    buffer.appendChar('\n');
+                    // LOG_TOPIC("cda47", INFO, Logger::REPLICATION) <<
+                    // marker.toJson(&opts);
+                  });
   }
 
   if (result.fail()) {
@@ -356,13 +416,17 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     _response->setResponseCode(rest::ResponseCode::NO_CONTENT);
   }
 
-  server().getFeature<DatabaseFeature>().enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
-    vocbase.replicationClients().track(syncerId, clientId, clientInfo, filter.tickStart,
-                                       replutils::BatchInfo::DefaultTimeout);
-  });
+  server().getFeature<DatabaseFeature>().enumerateDatabases(
+      [&](TRI_vocbase_t& vocbase) -> void {
+        vocbase.replicationClients().track(
+            syncerId, clientId, clientInfo, filter.tickStart,
+            replutils::BatchInfo::DefaultTimeoutForTailing);
+      });
 }
 
-void RestWalAccessHandler::handleCommandDetermineOpenTransactions(WalAccess const* wal) {
+/// @brief deprecated. remove in future version
+void RestWalAccessHandler::handleCommandDetermineOpenTransactions(
+    WalAccess const* wal) {
   // determine start and end tick
 
   std::pair<TRI_voc_tick_t, TRI_voc_tick_t> minMax;
@@ -399,21 +463,15 @@ void RestWalAccessHandler::handleCommandDetermineOpenTransactions(WalAccess cons
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   builder.openArray();
-  WalAccessResult r = wal->openTransactions(filter, [&](TransactionId, TransactionId tid) {
-    builder.add(VPackValue(std::to_string(tid.id())));
-  });
   builder.close();
 
   _response->setContentType(rest::ContentType::DUMP);
   if (res.fail()) {
     generateError(res);
   } else {
-    auto cc = r.lastIncludedTick() != 0 ? ResponseCode::OK : ResponseCode::NO_CONTENT;
-    generateResult(cc, std::move(buffer));
+    generateResult(ResponseCode::NO_CONTENT, std::move(buffer));
 
-    _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent,
-                           r.fromTickIncluded() ? "true" : "false");
-    _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
-                           StringUtils::itoa(r.lastIncludedTick()));
+    _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent, "true");
+    _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded, "0");
   }
 }

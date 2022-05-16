@@ -114,7 +114,7 @@ std::string to_string(RestVerb type) {
   return "undefined";
 }
 
-RestVerb from_string(std::string const& type) {
+RestVerb from_string(std::string_view type) {
   if (type == "DELETE") {
     return RestVerb::Delete;
   } else if (type == "GET") {
@@ -132,6 +132,10 @@ RestVerb from_string(std::string const& type) {
   }
 
   return RestVerb::Illegal;
+}
+
+RestVerb from_string(std::string const& type) {
+  return from_string(std::string_view(type.data(), type.size()));
 }
 
 MessageType intToMessageType(int integral) {
@@ -214,7 +218,7 @@ const std::string fu_content_type_dump("application/x-arango-dump");
 const std::string fu_content_type_batchpart("application/x-arango-batchpart");
 const std::string fu_content_type_formdata("multipart/form-data");
 
-ContentType to_ContentType(std::string const& val) {
+ContentType to_ContentType(std::string_view val) {
   if (val.empty()) {
     return ContentType::Unset;
   } else if (val.compare(0, fu_content_type_unset.size(),
@@ -285,7 +289,7 @@ const std::string fu_content_encoding_identity("identity");
 const std::string fu_content_encoding_deflate("deflate");
 const std::string fu_content_encoding_gzip("gzip");
 
-ContentEncoding to_ContentEncoding(std::string const& val) {
+ContentEncoding to_ContentEncoding(std::string_view val) {
   if (val.empty()) {
     return ContentEncoding::Identity;
   } else if (val.compare(0, fu_content_encoding_gzip.size(),
@@ -298,7 +302,7 @@ ContentEncoding to_ContentEncoding(std::string const& val) {
                          fu_content_encoding_identity) == 0) {
     return ContentEncoding::Identity;
   }
-  return ContentEncoding::Identity;
+  return ContentEncoding::Custom;
 }
 
 std::string to_string(ContentEncoding type) {
@@ -307,6 +311,10 @@ std::string to_string(ContentEncoding type) {
       return fu_content_encoding_deflate;
     case ContentEncoding::Gzip:
       return fu_content_encoding_gzip;
+    case ContentEncoding::Custom:
+      throw std::logic_error(
+          "custom content encoding could take different "
+          "values and is therefore not convertible to string");
     case ContentEncoding::Identity:
     default:
       return fu_content_encoding_identity;

@@ -1,0 +1,80 @@
+[/
+  Copyright 2011 - 2020 John Maddock.
+  Copyright 2013 - 2019 Paul A. Bristow.
+  Copyright 2013 Christopher Kormanyos.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:mpc_complex mpc_complex]
+
+`#include <boost/multiprecision/mpc.hpp>`
+
+   namespace boost{ namespace multiprecision{
+
+   template <unsigned Digits10>
+   class mpc_complex_backend;
+
+   typedef number<mpc_complex_backend<50> >    mpc_complex_50;
+   typedef number<mpc_complex_backend<100> >   mpc_complex_100;
+   typedef number<mpc_complex_backend<500> >   mpc_complex_500;
+   typedef number<mpc_complex_backend<1000> >  mpc_complex_1000;
+   typedef number<mpc_complex_backend<0> >     mpc_complex;
+
+   }} // namespaces
+
+The `mpc_complex_backend` type is used in conjunction with `number`: It acts as a thin wrapper around the [mpc] `mpc_t`
+to provide an real-number type that is a drop-in replacement for `std::complex`, but with
+much greater precision.
+
+Type `mpc_complex_backend` can be used at fixed precision by specifying a non-zero `Digits10` template parameter, or
+at variable precision by setting the template argument to zero.  The typedefs mpc_complex_50, mpc_complex_100,
+mpc_complex_500, mpc_complex_1000 provide complex types at 50, 100, 500 and 1000 decimal digits precision
+respectively.  The typedef mpc_complex provides a variable precision type whose precision can be controlled via the
+`number`s member functions.
+
+The `mpc` backend should allow use of the same syntax as the C++ standard library complex type.
+When using this backend, remember to link with the flags `-lmpc -lmpfr -lgmp`.
+
+As well as the usual conversions from arithmetic and string types, instances of `number<mpc_complex_backend<N> >` are
+copy constructible and assignable from:
+
+* The [gmp] native types `mpf_t`, `mpz_t`, `mpq_t`.
+* The [mpfr] native type `mpfr_t`.
+* The [mpc] native type `mpc_t`.
+* The `number` wrappers around those types: `number<mpfr_float_backend<M> >`, `number<mpf_float<M> >`, `number<gmp_int>`, `number<gmp_rational>`.
+
+It's also possible to access the underlying `mpc_t` via the `data()` member function of `mpfr_float_backend`.
+
+Things you should know when using this type:
+
+* A default constructed `mpc_complex_backend` is set to zero (['Note that this is [*not] the default [mpc] behavior]).
+* All operations use round to nearest.
+* No changes are made to [mpc], [gmp] or [mpfr] global settings, so this type can coexist with existing
+[mpc], [mpfr] or [gmp] code.
+* The code can equally use [mpir] in place of [gmp] - indeed that is the preferred option on Win32.
+* This backend supports rvalue-references and is move-aware, making instantiations of `number` on this backend move aware.
+* Conversion from a string results in a `std::runtime_error` being thrown if the string can not be interpreted
+as a valid complex number.
+* Division by zero results in a complex-infinity.
+* Unlike `std::complex`, you can not use `reinterpret_cast` to treat this type as an array of the underlying floating point type.
+* Unlike `std::complex`, there are no literals for imaginary values.
+* When using the variable precision type `mpc_complex`, then copy construction and assignment ['copies the precision
+of the source variable].  Likewise move construction and assignment.
+* When constructing the variable precision type `mpc_complex` you can specify two arguments to the constructor - the first
+is the value to assign to the variable, the second is an unsigned integer specifying the precision in decimal places.  The
+`assign` member function similarly has a 2-argument overload taking the value to assign and the precision.  You can use this
+to preserve the precision of the target variable using the somewhat arcane: `a.assign(b, a.precision())`, which assigns `b` to `a`
+but preserves the precision of `a`.
+
+[h5 [mpc] example:]
+
+[mpc_eg]
+
+Which produces the output (for the multiprecision type):
+
+[mpc_out]
+
+[endsect] [/section:mpc_complex mpc_complex]

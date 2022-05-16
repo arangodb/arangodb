@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,6 @@
 #include "GeneralServer/GeneralCommTask.h"
 
 #include <llhttp.h>
-#include <velocypack/StringRef.h>
 #include <memory>
 
 namespace arangodb {
@@ -38,10 +37,11 @@ class StringBuffer;
 
 namespace rest {
 
-template <SocketType T>
+template<SocketType T>
 class HttpCommTask final : public GeneralCommTask<T> {
  public:
-  HttpCommTask(GeneralServer& server, ConnectionInfo, std::unique_ptr<AsioSocket<T>> so);
+  HttpCommTask(GeneralServer& server, ConnectionInfo,
+               std::unique_ptr<AsioSocket<T>> so);
   ~HttpCommTask() noexcept;
 
   void start() override;
@@ -53,7 +53,8 @@ class HttpCommTask final : public GeneralCommTask<T> {
   void sendResponse(std::unique_ptr<GeneralResponse> response,
                     RequestStatistics::Item stat) override;
 
-  std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode, uint64_t messageId) override;
+  std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
+                                                  uint64_t messageId) override;
 
  private:
   static int on_message_began(llhttp_t* p);
@@ -86,6 +87,7 @@ class HttpCommTask final : public GeneralCommTask<T> {
   std::string _lastHeaderField;
   std::string _lastHeaderValue;
   std::string _origin;  // value of the HTTP origin header the client sent
+  std::string _url;
   std::unique_ptr<HttpRequest> _request;
   std::unique_ptr<basics::StringBuffer> _response;
   bool _lastHeaderWasValue;
@@ -96,4 +98,3 @@ class HttpCommTask final : public GeneralCommTask<T> {
 };
 }  // namespace rest
 }  // namespace arangodb
-

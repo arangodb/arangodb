@@ -1,0 +1,756 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>websocket::ping_data</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Beast">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__beast__websocket__reason_string.html" title="websocket::reason_string">
+<link rel="next" href="boost__beast__websocket__teardown.html" title="websocket::teardown">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__websocket__reason_string.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__websocket__teardown.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="beast.ref.boost__beast__websocket__ping_data"></a><a class="link" href="boost__beast__websocket__ping_data.html" title="websocket::ping_data">websocket::ping_data</a>
+</h4></div></div></div>
+<p>
+        <a class="indexterm" name="idm89460"></a>
+      </p>
+<p>
+        The type representing the payload of ping and pong messages.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__websocket__ping_data.h0"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__websocket__ping_data.synopsis"></a></span><a class="link" href="boost__beast__websocket__ping_data.html#beast.ref.boost__beast__websocket__ping_data.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="../../../../../../boost/beast/websocket/rfc6455.hpp" target="_top">boost/beast/websocket/rfc6455.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">using</span> <span class="identifier">ping_data</span> <span class="special">=</span> <span class="identifier">static_string</span><span class="special">&lt;</span> <span class="number">125</span><span class="special">,</span> <span class="keyword">char</span> <span class="special">&gt;;</span>
+</pre>
+<h5>
+<a name="beast.ref.boost__beast__websocket__ping_data.h1"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__websocket__ping_data.types"></a></span><a class="link" href="boost__beast__websocket__ping_data.html#beast.ref.boost__beast__websocket__ping_data.types">Types</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/const_iterator.html" title="static_string::const_iterator">const_iterator</a></strong></span>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/const_pointer.html" title="static_string::const_pointer">const_pointer</a></strong></span>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/const_reference.html" title="static_string::const_reference">const_reference</a></strong></span>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/const_reverse_iterator.html" title="static_string::const_reverse_iterator">const_reverse_iterator</a></strong></span>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/difference_type.html" title="static_string::difference_type">difference_type</a></strong></span>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/iterator.html" title="static_string::iterator">iterator</a></strong></span>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/pointer.html" title="static_string::pointer">pointer</a></strong></span>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/reference.html" title="static_string::reference">reference</a></strong></span>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/reverse_iterator.html" title="static_string::reverse_iterator">reverse_iterator</a></strong></span>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/size_type.html" title="static_string::size_type">size_type</a></strong></span>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/string_view_type.html" title="static_string::string_view_type">string_view_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type of <code class="computeroutput"><span class="identifier">string_view</span></code>
+                  returned by the interface.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/traits_type.html" title="static_string::traits_type">traits_type</a></strong></span>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/value_type.html" title="static_string::value_type">value_type</a></strong></span>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__websocket__ping_data.h2"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__websocket__ping_data.member_functions"></a></span><a class="link" href="boost__beast__websocket__ping_data.html#beast.ref.boost__beast__websocket__ping_data.member_functions">Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/append.html" title="static_string::append">append</a></strong></span>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/assign.html" title="static_string::assign">assign</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Assign <code class="computeroutput"><span class="identifier">count</span></code> copies
+                  of <code class="computeroutput"><span class="identifier">ch</span></code>. <br>
+                  <span class="silver">—</span><br> Assign from another <a class="link" href="boost__beast__static_string.html" title="static_string"><code class="computeroutput"><span class="identifier">static_string</span></code></a><br>
+                  <span class="silver">—</span><br> Assign <code class="computeroutput"><span class="identifier">count</span></code>
+                  characterss starting at <code class="computeroutput"><span class="identifier">npos</span></code>
+                  from <code class="computeroutput"><span class="identifier">other</span></code>. <br>
+                  <span class="silver">—</span><br> Assign the first <code class="computeroutput"><span class="identifier">count</span></code> characters of <code class="computeroutput"><span class="identifier">s</span></code>, including nulls. <br> <span class="silver">—</span><br> Assign a null terminated string.
+                  <br> <span class="silver">—</span><br> Assign from an
+                  iterator range of characters. <br> <span class="silver">—</span><br>
+                  Assign from initializer list. <br> <span class="silver">—</span><br>
+                  Assign from <code class="computeroutput"><span class="identifier">string_view_type</span></code>.
+                  <br> <span class="silver">—</span><br> Assign from any
+                  object convertible to <code class="computeroutput"><span class="identifier">string_view_type</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/at.html" title="static_string::at">at</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Access specified character with bounds checking.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/back.html" title="static_string::back">back</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Accesses the last character.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/begin.html" title="static_string::begin">begin</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns an iterator to the beginning.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/c_str.html" title="static_string::c_str">c_str</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns a non-modifiable standard C character array version of
+                  the string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/capacity.html" title="static_string::capacity">capacity</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the number of characters that can be held in currently
+                  allocated storage.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/cbegin.html" title="static_string::cbegin">cbegin</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns an iterator to the beginning.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/cend.html" title="static_string::cend">cend</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns an iterator to the end.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/clear.html" title="static_string::clear">clear</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Clears the contents.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/compare.html" title="static_string::compare">compare</a></strong></span>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/copy.html" title="static_string::copy">copy</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Copy a substring (pos, pos+count) to character string pointed to
+                  by <code class="computeroutput"><span class="identifier">dest</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/crbegin.html" title="static_string::crbegin">crbegin</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns a reverse iterator to the beginning.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/crend.html" title="static_string::crend">crend</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns a reverse iterator to the end.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/data.html" title="static_string::data">data</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns a pointer to the first character of a string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/empty.html" title="static_string::empty">empty</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if the
+                  string is empty.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/end.html" title="static_string::end">end</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns an iterator to the end.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/erase.html" title="static_string::erase">erase</a></strong></span>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/front.html" title="static_string::front">front</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Accesses the first character.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/insert.html" title="static_string::insert">insert</a></strong></span>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/length.html" title="static_string::length">length</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the number of characters, excluding the null terminator.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/max_size.html" title="static_string::max_size">max_size</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the maximum number of characters that can be stored, excluding
+                  the null terminator.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/operator_string_view_type.html" title="static_string::operator string_view_type">operator
+                  string_view_type</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Convert a static string to a <code class="computeroutput"><span class="identifier">string_view_type</span></code>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/operator_plus__eq_.html" title="static_string::operator+=">operator+=</a></strong></span>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/operator_eq_.html" title="static_string::operator=">operator=</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Copy assignment. <br> <span class="silver">—</span><br>
+                  Assign from null-terminated string. <br> <span class="silver">—</span><br>
+                  Assign from single character. <br> <span class="silver">—</span><br>
+                  Assign from initializer list. <br> <span class="silver">—</span><br>
+                  Assign from <code class="computeroutput"><span class="identifier">string_view_type</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/operator_lb__rb_.html" title="static_string::operator[]">operator[]</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Access specified character.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/pop_back.html" title="static_string::pop_back">pop_back</a></strong></span>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/push_back.html" title="static_string::push_back">push_back</a></strong></span>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/rbegin.html" title="static_string::rbegin">rbegin</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns a reverse iterator to the beginning.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/rend.html" title="static_string::rend">rend</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns a reverse iterator to the end.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/reserve.html" title="static_string::reserve">reserve</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Reserves storage.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/resize.html" title="static_string::resize">resize</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Changes the number of characters stored.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/shrink_to_fit.html" title="static_string::shrink_to_fit">shrink_to_fit</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Reduces memory usage by freeing unused memory.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/size.html" title="static_string::size">size</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the number of characters, excluding the null terminator.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/static_string.html" title="static_string::static_string">static_string</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Default constructor (empty string). <br> <span class="silver">—</span><br>
+                  Construct with count copies of character <code class="computeroutput"><span class="identifier">ch</span></code>.
+                  <br> <span class="silver">—</span><br> Construct with
+                  a substring (pos, other.size()) of <code class="computeroutput"><span class="identifier">other</span></code>.
+                  <br> <span class="silver">—</span><br> Construct with
+                  a substring (pos, count) of <code class="computeroutput"><span class="identifier">other</span></code>.
+                  <br> <span class="silver">—</span><br> Construct with
+                  the first <code class="computeroutput"><span class="identifier">count</span></code>
+                  characters of <code class="computeroutput"><span class="identifier">s</span></code>,
+                  including nulls. <br> <span class="silver">—</span><br>
+                  Construct from a null terminated string. <br> <span class="silver">—</span><br>
+                  Construct from a range of characters. <br> <span class="silver">—</span><br>
+                  Copy constructor. <br> <span class="silver">—</span><br>
+                  Construct from an initializer list. <br> <span class="silver">—</span><br>
+                  Construct from a <code class="computeroutput"><span class="identifier">string_view</span></code><br>
+                  <span class="silver">—</span><br> Construct from any object
+                  convertible to <code class="computeroutput"><span class="identifier">string_view_type</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/substr.html" title="static_string::substr">substr</a></strong></span>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/swap.html" title="static_string::swap">swap</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Exchange the contents of this string with another.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__websocket__ping_data.h3"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__websocket__ping_data.static_members"></a></span><a class="link" href="boost__beast__websocket__ping_data.html#beast.ref.boost__beast__websocket__ping_data.static_members">Static
+        Members</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/max_size_n.html" title="static_string::max_size_n">max_size_n</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  Maximum size of the string excluding the null terminator.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <span class="bold"><strong><a class="link" href="boost__beast__static_string/npos.html" title="static_string::npos">npos</a></strong></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  A special index.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+        These objects behave like <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code>
+        except that the storage is not dynamically allocated but rather fixed in
+        size. These strings offer performance advantages when a protocol imposes
+        a natural small upper limit on the size of a value.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__websocket__ping_data.h4"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__websocket__ping_data.remarks"></a></span><a class="link" href="boost__beast__websocket__ping_data.html#beast.ref.boost__beast__websocket__ping_data.remarks">Remarks</a>
+      </h5>
+<p>
+        The stored string is always null-terminated.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__websocket__ping_data.h5"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__websocket__ping_data.see_also"></a></span><a class="link" href="boost__beast__websocket__ping_data.html#beast.ref.boost__beast__websocket__ping_data.see_also">See Also</a>
+      </h5>
+<p>
+        <a class="link" href="boost__beast__to_static_string.html" title="to_static_string"><code class="computeroutput"><span class="identifier">to_static_string</span></code></a>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__websocket__reason_string.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__websocket__teardown.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -50,15 +50,15 @@ function runSetup () {
       'lazy',
       'dog',
     'xxxxxxxxxxx' ] });
-  c.ensureHashIndex('value1');
-  c.ensureSkiplist('value2');
+  c.ensureIndex({ type: "hash", fields: ["value1"] });
+  c.ensureIndex({ type: "skiplist", fields: ["value2"] });
 
   db._drop('UnitTestsRecovery2');
   c = db._create('UnitTestsRecovery2', {
     waitForSync: false,
   });
   c.save({ value1: { 'some': 'rubbish' } });
-  c.ensureSkiplist('value1');
+  c.ensureIndex({ type: "skiplist", fields: ["value1"] });
 
   db._drop('UnitTestsRecovery3');
   c = db._createEdgeCollection('UnitTestsRecovery3', {
@@ -66,13 +66,13 @@ function runSetup () {
   });
 
   c.save('UnitTestsRecovery1/foo', 'UnitTestsRecovery2/bar', { value1: { 'some': 'rubbish' } });
-  c.ensureUniqueSkiplist('value1');
+  c.ensureIndex({ type: "skiplist", fields: ["value1"], unique: true });
 
   db._drop('_UnitTestsRecovery4');
   c = db._create('_UnitTestsRecovery4', { isSystem: true });
 
   c.save({ value42: 42 });
-  c.ensureUniqueConstraint('value42');
+  c.ensureIndex({ type: "hash", fields: ["value42"], unique: true });
   c.save({ _key: 'crashme' }, true);
   
   internal.debugTerminate('crashing server');

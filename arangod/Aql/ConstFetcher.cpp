@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +29,6 @@
 #include "Aql/SkipResult.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
-#include "Containers/SmallVector.h"
 
 #include <algorithm>
 
@@ -44,17 +43,18 @@ ConstFetcher::ConstFetcher(DependencyProxy& executionBlock)
 auto ConstFetcher::execute(AqlCallStack& stack)
     -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange> {
   // We only peek the call here, as we do not take over ownership.
-  // We can replace this by pop again if all executors also only take a reference to the stack.
+  // We can replace this by pop again if all executors also only take a
+  // reference to the stack.
   auto call = stack.peek();
   if (_blockForPassThrough == nullptr) {
     SkipResult skipped = _skipped;
     _skipped.reset();
     // we are done, nothing to move arround here.
-    return {ExecutionState::DONE, skipped, AqlItemBlockInputRange{ExecutorState::DONE}};
+    return {ExecutionState::DONE, skipped,
+            AqlItemBlockInputRange{MainQueryState::DONE}};
   }
 
-  arangodb::containers::SmallVector<std::pair<size_t, size_t>>::allocator_type::arena_type arena;
-  arangodb::containers::SmallVector<std::pair<size_t, size_t>> sliceIndexes{arena};
+  containers::SmallVector<std::pair<size_t, size_t>, 4> sliceIndexes;
 
   sliceIndexes.emplace_back(_rowIndex, _blockForPassThrough->numRows());
 
@@ -63,11 +63,13 @@ auto ConstFetcher::execute(AqlCallStack& stack)
   // to is one after the last data row to be returned
 
   if (_blockForPassThrough->hasShadowRows()) {
-    auto [shadowRowsBegin, shadowRowsEnd] = _blockForPassThrough->getShadowRowIndexesFrom(_rowIndex);
+    auto [shadowRowsBegin, shadowRowsEnd] =
+        _blockForPassThrough->getShadowRowIndexesFrom(_rowIndex);
     if (shadowRowsBegin != shadowRowsEnd) {
       size_t fromShadowRow = *shadowRowsBegin;
       size_t toShadowRow = *shadowRowsBegin + 1;
-      for (++shadowRowsBegin; shadowRowsBegin != shadowRowsEnd; ++shadowRowsBegin) {
+      for (++shadowRowsBegin; shadowRowsBegin != shadowRowsEnd;
+           ++shadowRowsBegin) {
         if (*shadowRowsBegin == toShadowRow) {
           ShadowAqlItemRow srow{_blockForPassThrough, toShadowRow};
           TRI_ASSERT(srow.isInitialized());
@@ -82,9 +84,10 @@ auto ConstFetcher::execute(AqlCallStack& stack)
         }
       }
       TRI_ASSERT(fromShadowRow < toShadowRow);
+      TRI_ASSERT(sliceIndexes.size() == 1);
       // We cannot go past the first shadowRow
-      sliceIndexes.emplace_back(fromShadowRow, toShadowRow);
       sliceIndexes[0].second = fromShadowRow;
+      sliceIndexes.emplace_back(fromShadowRow, toShadowRow);
     }
   }
   // Number of data rows we have left
@@ -109,7 +112,7 @@ auto ConstFetcher::execute(AqlCallStack& stack)
     }
     {
       // Produce the next rows
-      // Adjost from and rowsLeft
+      // Adjust to and rowsLeft
       // Note: canProduce can be 0
       size_t canProduce = (std::min)(call.getLimit(), rowsLeft);
       to = from + canProduce;
@@ -161,7 +164,8 @@ auto ConstFetcher::execute(AqlCallStack& stack)
     _skipped.reset();
     skipped.didSkip(call.getSkipCount());
     return {ExecutionState::DONE, skipped,
-            DataRange{ExecutorState::DONE, call.getSkipCount(), std::move(_blockForPassThrough), 0}};
+            DataRange{MainQueryState::DONE, call.getSkipCount(),
+                      std::move(_blockForPassThrough), 0}};
   }
 
   SharedAqlItemBlockPtr resultBlock = _blockForPassThrough;
@@ -178,10 +182,12 @@ auto ConstFetcher::execute(AqlCallStack& stack)
     sliceIndexes.erase(sliceIndexes.begin());
   }
 
-  ExecutionState resState =
-      _blockForPassThrough == nullptr ? ExecutionState::DONE : ExecutionState::HASMORE;
-  ExecutorState rangeState =
-      _blockForPassThrough == nullptr ? ExecutorState::DONE : ExecutorState::HASMORE;
+  ExecutionState resState = _blockForPassThrough == nullptr
+                                ? ExecutionState::DONE
+                                : ExecutionState::HASMORE;
+  MainQueryState rangeState = _blockForPassThrough == nullptr
+                                  ? MainQueryState::DONE
+                                  : MainQueryState::HASMORE;
 
   SkipResult skipped = _skipped;
   _skipped.reset();
@@ -194,11 +200,14 @@ auto ConstFetcher::execute(AqlCallStack& stack)
 
   // Slowest path need to slice, this unfortunately requires copy of data
   resultBlock = resultBlock->slice(sliceIndexes);
-  return {resState, skipped, DataRange{rangeState, call.getSkipCount(), std::move(resultBlock), 0}};
+  return {
+      resState, skipped,
+      DataRange{rangeState, call.getSkipCount(), std::move(resultBlock), 0}};
 }
 
-void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block, SkipResult skipped) {
-  // If this assert triggers, we have injected a block adn skip pair
+void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block,
+                               SkipResult skipped) {
+  // If this assert triggers, we have injected a block and skip pair
   // that has not yet been fetched.
   TRI_ASSERT(_skipped.nothingSkipped());
   _currentBlock = block;
@@ -206,7 +215,7 @@ void ConstFetcher::injectBlock(SharedAqlItemBlockPtr block, SkipResult skipped) 
   _blockForPassThrough = std::move(block);
   _rowIndex = 0;
 }
-  
+
 void ConstFetcher::setDistributeId(std::string const&) {
   // This is not implemented for this fetcher
   TRI_ASSERT(false);
@@ -224,8 +233,8 @@ auto ConstFetcher::numRowsLeft() const noexcept -> size_t {
   return _currentBlock->numRows() - _rowIndex;
 }
 
-auto ConstFetcher::canUseFullBlock(arangodb::containers::SmallVector<std::pair<size_t, size_t>> const& ranges) const
-    noexcept -> bool {
+auto ConstFetcher::canUseFullBlock(
+    std::span<std::pair<size_t, size_t> const> ranges) const noexcept -> bool {
   TRI_ASSERT(!ranges.empty());
   if (ranges.front().first != 0) {
     // We do not start at the first index.

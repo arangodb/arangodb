@@ -1,0 +1,31 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>const error_type &amp;error() const &amp; - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../../reference/types/basic_outcome/error_lvalue.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../reference/types/basic_outcome.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../reference/types/basic_outcome/error_rvalue.html"><img src="../../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both"><code>const error_type &amp;error() const &amp;</code></h1></div></div></div>
+  <p>Wide contract const lvalue reference observer of the stored error. <code>NoValuePolicy::wide_error_check()</code> is first invoked, then the reference to the error is returned. As a valid default constructed error is always present, no undefined behaviour occurs if <code>NoValuePolicy::wide_error_check()</code> returns.</p>
+
+<p>Note that if <code>error_type</code> is <code>void</code>, only a <code>const</code> overload returning <code>void</code> is present.</p>
+
+<p><em>Requires</em>: Always available.</p>
+
+<p><em>Complexity</em>: Depends on <code>NoValuePolicy::wide_error_check()</code>.</p>
+
+<p><em>Guarantees</em>: None.</p>
+
+
+        </div><p><small>Last revised: February 12, 2019 at 16:36:24 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../reference/types/basic_outcome/error_lvalue.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../reference/types/basic_outcome.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../reference/types/basic_outcome/error_rvalue.html"><img src="../../../images/next.png" alt="Next"></a></div></body>
+</html>

@@ -11,15 +11,9 @@ set(CPACK_PLUGIN_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Windows/Plugins"
 set(CPACK_PACKAGE_INSTALL_REGISTRY_KEY "${CPACK_PACKAGE_NAME} ${CPACK_PACKAGE_VERSION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
 # want @ in @only nsis template:
 set(CPACK_ROOTDIR "@ROOTDIR@")
-if (CMAKE_CL_64)
-  # this needs to remain a $string for the template:
-  SET(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
-  SET(BITS 64)
-else ()
-  SET(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES")
-  SET(BITS 32)
-endif ()
-
+# this needs to remain a $string for the template:
+SET(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
+SET(BITS 64)
 
 # icon paths 
 set (ICON_PATH "${W_INSTALL_FILES}/Icons/")

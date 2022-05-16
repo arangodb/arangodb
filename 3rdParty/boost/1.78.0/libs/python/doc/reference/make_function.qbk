@@ -1,0 +1,83 @@
+[section boost/python/make_function.hpp]
+[section Introduction]
+make_function() and make_constructor() are the functions used internally by def() and class_<>::def() to produce Python callable objects which wrap C++ functions and member functions.
+[endsect]
+[section Functions]
+``
+template <class F>
+object make_function(F f)
+
+template <class F, class Policies>
+object make_function(F f, Policies const& policies)
+
+template <class F, class Policies, class KeywordsOrSignature>
+object make_function(F f, Policies const& policies, KeywordsOrSignature const& ks)
+
+template <class F, class Policies, class Keywords, class Signature>
+object make_function(F f, Policies const& policies, Keywords const& kw, Signature const& sig)
+``
+[variablelist
+[[Requires][F is a function pointer or member function pointer type. If policies are supplied, it must be a model of CallPolicies. If kewords are supplied, it must be the result of a keyword-expression specifying no more arguments than the arity of f.]]
+[[Effects][Creates a Python callable object which, when called from Python, converts its arguments to C++ and calls f. If F is a pointer-to-member-function type, the target object of the function call (*this) will be taken from the first Python argument, and subsequent Python arguments will be used as the arguments to f.
+
+* If policies are supplied, it will be applied to the function as described here.
+* If keywords are supplied, the keywords will be applied in order to the final arguments of the resulting function.
+* If Signature is supplied, it should be an instance of an MPL front-extensible sequence representing the function's return type followed by its argument types. Pass a Signature when wrapping function object types whose signatures can't be deduced, or when you wish to override the types which will be passed to the wrapped function. ]]
+[[Returns][An instance of object which holds the new Python callable object.]]
+[[Caveats][An argument of pointer type may be 0 if None is passed from Python. An argument type which is a constant reference may refer to a temporary which was created from the Python object for just the duration of the call to the wrapped function, for example a std::vector conjured up by the conversion process from a Python list. Use a non-const reference argument when a persistent lvalue is required. ]]
+]
+``
+template <class F>
+object make_constructor(F f)
+
+template <class F, class Policies>
+object make_constructor(F f, Policies const& policies)
+
+template <class F, class Policies, class KeywordsOrSignature>
+object make_constructor(F f, Policies const& policies, KeywordsOrSignature const& ks)
+
+template <class F, class Policies, class Keywords, class Signature>
+object make_constructor(F f, Policies const& policies, Keywords const& kw, Signature const& sig)
+``
+[variablelist
+[[Requires][F is a function pointer type. If policies are supplied, it must be a model of CallPolicies. If kewords are supplied, it must be the result of a keyword-expression specifying no more arguments than the arity of f.]]
+[[Effects][Creates a Python callable object which, when called from Python, converts its arguments to C++ and calls f.]]
+[[Returns][An instance of object which holds the new Python callable object.]]
+]
+
+[endsect]
+[section Example]
+C++ function exposed below returns a callable object wrapping one of two functions.
+``
+#include <boost/python/make_function.hpp>
+#include <boost/python/module.hpp>
+
+char const* foo() { return "foo"; }
+char const* bar() { return "bar"; }
+
+using namespace boost::python;
+object choose_function(bool selector)
+{
+    if (selector)
+        return boost::python::make_function(foo);
+    else
+        return boost::python::make_function(bar);
+}
+
+BOOST_PYTHON_MODULE(make_function_test)
+{
+    def("choose_function", choose_function);
+}
+``
+It can be used this way in Python:
+``
+>>> from make_function_test import *
+>>> f = choose_function(1)
+>>> g = choose_function(0)
+>>> f()
+'foo'
+>>> g()
+'bar'
+``
+[endsect]
+[endsect]

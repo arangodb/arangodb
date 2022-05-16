@@ -1,0 +1,116 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Programming</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Sort">
+<link rel="up" href="../parallel_stable_sort.html" title="3.3.- Parallel_stable_sort">
+<link rel="prev" href="../parallel_stable_sort.html" title="3.3.- Parallel_stable_sort">
+<link rel="next" href="../linux_parallel.html" title="3.4- Linux Benchmarks">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../parallel_stable_sort.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../parallel_stable_sort.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../linux_parallel.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="sort.parallel.parallel_stable_sort.parallel_programming"></a><a class="link" href="parallel_programming.html" title="Programming">Programming</a>
+</h4></div></div></div>
+<div class="blockquote"><blockquote class="blockquote">
+<h5>
+<a name="sort.parallel.parallel_stable_sort.parallel_programming.h0"></a>
+            <span class="phrase"><a name="sort.parallel.parallel_stable_sort.parallel_programming.thread_specification"></a></span><a class="link" href="parallel_programming.html#sort.parallel.parallel_stable_sort.parallel_programming.thread_specification"><span class="underline">Thread specification</span></a>
+          </h5>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+              This algorithm has an integer parameter indicating the <span class="bold"><strong>number
+              of threads</strong></span> to use in the sorting process, which always is
+              the last value in the call.
+            </p>
+<p>
+              The default value (if left unspecified) is the number of HW threads
+              of the machine where the program is running provided by std::thread::hardware_concurrency().
+              If the number is 1 or 0, the algorithm runs with only 1 thread.
+            </p>
+<p>
+              The number of threads is not a fixed number, but is calculated in each
+              execution. The number of threads passed can be greater than the number
+              of hardware threads on the machine. We can pass 100 threads in a machine
+              with 4 HW threads, and in the same mode we can pass a function as (std::thread::hardware_concurrency()
+              / 4 ). If this value is 0, the program is executed with 1 thread.
+            </p>
+</blockquote></div>
+<h5>
+<a name="sort.parallel.parallel_stable_sort.parallel_programming.h1"></a>
+            <span class="phrase"><a name="sort.parallel.parallel_stable_sort.parallel_programming.programming"></a></span><a class="link" href="parallel_programming.html#sort.parallel.parallel_stable_sort.parallel_programming.programming"><span class="underline">Programming</span></a>
+          </h5>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+              You only need to include the file boost/sort/sort.hpp to use this code.
+            </p>
+<p>
+              This algorithm run in the namespace boost::sort.
+            </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">sort</span><span class="special">/</span><span class="identifier">sort</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">iter_t</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">parallel_stable_sort</span> <span class="special">(</span><span class="identifier">iter_t</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">iter_t</span> <span class="identifier">last</span><span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">iter_t</span><span class="special">,</span>  <span class="keyword">typename</span> <span class="identifier">compare</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">parallel_stable_sort</span> <span class="special">(</span><span class="identifier">iter_t</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">iter_t</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">compare</span> <span class="identifier">comp</span><span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">iter_t</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">parallel_stable_sort</span> <span class="special">(</span><span class="identifier">iter_t</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">iter_t</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">uint32_t</span> <span class="identifier">num_thread</span><span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">iter_t</span><span class="special">,</span>  <span class="keyword">typename</span> <span class="identifier">compare</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">parallel_stable_sort</span> <span class="special">(</span><span class="identifier">iter_t</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">iter_t</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">compare</span> <span class="identifier">comp</span><span class="special">,</span> <span class="identifier">uint32_t</span> <span class="identifier">num_thread</span><span class="special">);</span>
+</pre>
+<p>
+              This algorithm needs a <span class="bold"><strong>C++11 compliant compiler</strong></span>,
+              and doesn't need any other code or library. Correct operation is not
+              guaranteed with older compilers.
+            </p>
+<p>
+              If the number of threads is unspecified, this uses the result of std::thread::hardware_concurrency().
+            </p>
+<p>
+              This algorithm uses a <span class="bold"><strong>comparison object</strong></span>,
+              in the same way as the standard library sort algorithms. If not defined,
+              the comparison object is std::less, which uses the &lt; operator internally.
+            </p>
+<p>
+              This algorithm is <span class="bold"><strong>exception safe</strong></span>,
+              meaning that, the exceptions generated by the algorithm guarantee the
+              integrity of the objects to sort, but not their relative order. If
+              the exception is generated inside the objects (in the move or in the
+              copy constructor.. ) the results can be unpredictable.
+            </p>
+</blockquote></div>
+</blockquote></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2014-2017 Steven
+      Ross, Francisco Tapia, Orson Peters<p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../parallel_stable_sort.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../parallel_stable_sort.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../linux_parallel.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

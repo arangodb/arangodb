@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,11 +29,6 @@
 #include "Basics/Locking.h"
 #include "Basics/debugging.h"
 
-#ifdef ARANGODB_SHOW_LOCK_TIME
-#include "Basics/system-functions.h"
-#include "Logger/LogMacros.h"
-#endif
-
 #include <thread>
 
 /// @brief construct locker with file and line information
@@ -51,15 +46,15 @@
 
 #define CONDITIONAL_READ_LOCKER(obj, lock, condition)                          \
   arangodb::basics::ReadLocker<typename std::decay<decltype(lock)>::type> obj( \
-      &lock, arangodb::basics::LockerType::BLOCKING, (condition), __FILE__, __LINE__)
+      &lock, arangodb::basics::LockerType::BLOCKING, (condition), __FILE__,    \
+      __LINE__)
 
-namespace arangodb {
-namespace basics {
+namespace arangodb::basics {
 
 /// @brief read locker
 /// A ReadLocker read-locks a read-write lock during its lifetime and unlocks
 /// the lock when it is destroyed.
-template <class LockType>
+template<class LockType>
 class ReadLocker {
   ReadLocker(ReadLocker const&) = delete;
   ReadLocker& operator=(ReadLocker const&) = delete;
@@ -68,22 +63,11 @@ class ReadLocker {
   /// @brief acquires a read-lock
   /// The constructor acquires a read lock, the destructor unlocks the lock.
   ReadLocker(LockType* readWriteLock, LockerType type, bool condition,
-             char const* file, int line)
+             char const* file, int line) noexcept
       : _readWriteLock(readWriteLock),
         _file(file),
         _line(line),
-#ifdef ARANGODB_SHOW_LOCK_TIME
-        _isLocked(false),
-        _time(0.0) {
-#else
         _isLocked(false) {
-#endif
-
-#ifdef ARANGODB_SHOW_LOCK_TIME
-    // fetch current time
-    double t = TRI_microtime();
-#endif
-
     if (condition) {
       if (type == LockerType::BLOCKING) {
         lock();
@@ -95,11 +79,6 @@ class ReadLocker {
         _isLocked = tryLock();
       }
     }
-
-#ifdef ARANGODB_SHOW_LOCK_TIME
-    // add elapsed time to time tracker
-    _time = TRI_microtime() - t;
-#endif
   }
 
   /// @brief releases the read-lock
@@ -107,28 +86,20 @@ class ReadLocker {
     if (_isLocked) {
       _readWriteLock->unlockRead();
     }
-
-#ifdef ARANGODB_SHOW_LOCK_TIME
-    if (_time > TRI_SHOW_LOCK_THRESHOLD) {
-      LOG_TOPIC("8e47e", INFO, arangodb::Logger::PERFORMANCE)
-          << "ReadLocker for lock [" << _readWriteLock << "] " << _file << ":"
-          << _line << " took " << _time << " s";
-    }
-#endif
   }
 
   /// @brief whether or not we acquired the lock
-  bool isLocked() const { return _isLocked; }
+  bool isLocked() const noexcept { return _isLocked; }
 
   /// @brief eventually acquire the read lock
-  void lockEventual() {
+  void lockEventual() noexcept {
     while (!tryLock()) {
       std::this_thread::yield();
     }
     TRI_ASSERT(_isLocked);
   }
 
-  bool tryLock() {
+  bool tryLock() noexcept {
     TRI_ASSERT(!_isLocked);
     if (_readWriteLock->tryLockRead()) {
       _isLocked = true;
@@ -137,14 +108,14 @@ class ReadLocker {
   }
 
   /// @brief acquire the read lock, blocking
-  void lock() {
+  void lock() noexcept {
     TRI_ASSERT(!_isLocked);
     _readWriteLock->lockRead();
     _isLocked = true;
   }
 
   /// @brief unlocks the lock if we own it
-  bool unlock() {
+  bool unlock() noexcept {
     if (_isLocked) {
       _readWriteLock->unlockRead();
       _isLocked = false;
@@ -154,7 +125,7 @@ class ReadLocker {
   }
 
   /// @brief steals the lock, but does not unlock it
-  bool steal() {
+  bool steal() noexcept {
     if (_isLocked) {
       _isLocked = false;
       return true;
@@ -174,13 +145,6 @@ class ReadLocker {
 
   /// @brief whether or not we acquired the lock
   bool _isLocked;
-
-#ifdef ARANGODB_SHOW_LOCK_TIME
-  /// @brief lock time
-  double _time;
-#endif
 };
 
-}  // namespace basics
-}  // namespace arangodb
-
+}  // namespace arangodb::basics

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/RegisterId.h"
 #include "Basics/debugging.h"
+#include "Cluster/ClusterTypes.h"
 
 #include <Containers/HashSetFwd.h>
 
@@ -41,15 +42,16 @@ namespace boost {
 namespace container {
 template<class T>
 class new_allocator;
-template <class Key, class Compare, class AllocatorOrContainer>
+template<class Key, class Compare, class AllocatorOrContainer>
 class flat_set;
-}
+}  // namespace container
 }  // namespace boost
 
 namespace arangodb {
 
 namespace containers {
-template <class Key, class Compare = std::less<Key>, class AllocatorOrContainer = boost::container::new_allocator<Key> >
+template<class Key, class Compare = std::less<Key>,
+         class AllocatorOrContainer = boost::container::new_allocator<Key>>
 using flat_set = boost::container::flat_set<Key, Compare, AllocatorOrContainer>;
 }
 
@@ -59,22 +61,29 @@ struct Collection;
 /// @brief type for variable ids
 typedef uint32_t VariableId;
 
-
 /// @brief type of a query id
 typedef uint64_t QueryId;
 typedef uint64_t EngineId;
 
 // Map RemoteID->ServerID->[SnippetId]
-using MapRemoteToSnippet =
-    std::unordered_map<ExecutionNodeId, std::unordered_map<std::string, std::vector<std::string>>>;
+using MapRemoteToSnippet = std::unordered_map<
+    ExecutionNodeId, std::unordered_map<std::string, std::vector<std::string>>>;
 
 // Enable/Disable block passthrough in fetchers
 enum class BlockPassthrough { Disable, Enable };
 
 class ExecutionEngine;
+
 // list of snippets on coordinators
 using SnippetList = std::vector<std::unique_ptr<ExecutionEngine>>;
-using ServerQueryIdList = std::vector<std::pair<std::string, QueryId>>;
+
+struct ServerQueryIdEntry {
+  std::string server;
+  QueryId queryId;
+  RebootId rebootId;
+};
+
+using ServerQueryIdList = std::vector<ServerQueryIdEntry>;
 
 using AqlCollectionMap = std::map<std::string, aql::Collection*, std::less<>>;
 
@@ -98,10 +107,6 @@ class BaseEngine;
 using GraphEngineList = std::vector<std::unique_ptr<BaseEngine>>;
 }  // namespace traverser
 
-enum class ExplainRegisterPlan {
-  No = 0,
-  Yes
-};
+enum class ExplainRegisterPlan { No = 0, Yes };
 
 }  // namespace arangodb
-

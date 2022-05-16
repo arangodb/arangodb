@@ -1,0 +1,144 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>flat_stream::async_write_some</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter 1. Boost.Beast">
+<link rel="up" href="../boost__beast__flat_stream.html" title="flat_stream">
+<link rel="prev" href="write_some/overload2.html" title="flat_stream::write_some (2 of 2 overloads)">
+<link rel="next" href="../boost__beast__test__handler.html" title="test::handler">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="write_some/overload2.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__beast__flat_stream.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../boost__beast__test__handler.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="beast.ref.boost__beast__flat_stream.async_write_some"></a><a class="link" href="async_write_some.html" title="flat_stream::async_write_some">flat_stream::async_write_some</a>
+</h5></div></div></div>
+<p>
+          <a class="indexterm" name="idm30188"></a>
+        </p>
+<p>
+          Start an asynchronous write.
+        </p>
+<h6>
+<a name="beast.ref.boost__beast__flat_stream.async_write_some.h0"></a>
+          <span class="phrase"><a name="beast.ref.boost__beast__flat_stream.async_write_some.synopsis"></a></span><a class="link" href="async_write_some.html#beast.ref.boost__beast__flat_stream.async_write_some.synopsis">Synopsis</a>
+        </h6>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <a href="../../../../../../../doc/html/boost_asio/reference/ConstBufferSequence.html" target="_top"><span class="emphasis"><em>ConstBufferSequence</em></span></a><span class="special">,</span>
+    <span class="keyword">class</span> <a href="../../../../../../../doc/html/boost_asio/reference/WriteHandler.html" target="_top"><span class="emphasis"><em>WriteHandler</em></span></a> <span class="special">=</span> <span class="identifier">net</span><span class="special">::</span><span class="identifier">default_completion_token_t</span><span class="special">&lt;</span><a class="link" href="executor_type.html" title="flat_stream::executor_type">executor_type</a><span class="special">&gt;&gt;</span>
+<a href="../../../../../../../doc/html/boost_asio/reference/asynchronous_operations.html#boost_asio.reference.asynchronous_operations.automatic_deduction_of_initiating_function_return_type" target="_top"><span class="emphasis"><em>DEDUCED</em></span></a>
+<span class="identifier">async_write_some</span><span class="special">(</span>
+    <span class="identifier">ConstBufferSequence</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">buffers</span><span class="special">,</span>
+    <span class="identifier">WriteHandler</span><span class="special">&amp;&amp;</span> <span class="identifier">handler</span> <span class="special">=</span> <span class="identifier">net</span><span class="special">::</span><span class="identifier">default_completion_token_t</span><span class="special">&lt;</span> <a class="link" href="executor_type.html" title="flat_stream::executor_type">executor_type</a> <span class="special">&gt;{});</span>
+</pre>
+<h6>
+<a name="beast.ref.boost__beast__flat_stream.async_write_some.h1"></a>
+          <span class="phrase"><a name="beast.ref.boost__beast__flat_stream.async_write_some.description"></a></span><a class="link" href="async_write_some.html#beast.ref.boost__beast__flat_stream.async_write_some.description">Description</a>
+        </h6>
+<p>
+          This function is used to asynchronously write one or more bytes of data
+          to the stream. The function call always returns immediately.
+        </p>
+<h6>
+<a name="beast.ref.boost__beast__flat_stream.async_write_some.h2"></a>
+          <span class="phrase"><a name="beast.ref.boost__beast__flat_stream.async_write_some.parameters"></a></span><a class="link" href="async_write_some.html#beast.ref.boost__beast__flat_stream.async_write_some.parameters">Parameters</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Name
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">buffers</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The data to be written to the stream. Although the buffers object
+                    may be copied as necessary, ownership of the underlying buffers
+                    is retained by the caller, which must guarantee that they remain
+                    valid until the handler is called.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">handler</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The completion handler to invoke when the operation completes.
+                    The implementation takes ownership of the handler by performing
+                    a decay-copy. The equivalent function signature of the handler
+                    must be:
+                  </p>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="keyword">void</span> <span class="identifier">handler</span><span class="special">(</span>
+    <span class="identifier">error_code</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">,</span>           <span class="comment">// Result of operation.</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">bytes_transferred</span>   <span class="comment">// Number of bytes written.</span>
+<span class="special">);</span>
+</pre>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+          Regardless of whether the asynchronous operation completes immediately
+          or not, the handler will not be invoked from within this function. Invocation
+          of the handler will be performed in a manner equivalent to using <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">post</span></code>.
+        </p>
+<h6>
+<a name="beast.ref.boost__beast__flat_stream.async_write_some.h3"></a>
+          <span class="phrase"><a name="beast.ref.boost__beast__flat_stream.async_write_some.remarks"></a></span><a class="link" href="async_write_some.html#beast.ref.boost__beast__flat_stream.async_write_some.remarks">Remarks</a>
+        </h6>
+<p>
+          The <code class="computeroutput"><span class="identifier">async_write_some</span></code> operation
+          may not transmit all of the data to the peer. Consider using the function
+          <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">async_write</span></code> if you need to ensure that
+          all data is written before the asynchronous operation completes.
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="write_some/overload2.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost__beast__flat_stream.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../boost__beast__test__handler.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

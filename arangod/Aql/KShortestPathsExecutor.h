@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,13 +50,13 @@ class TraverserCache;
 
 namespace aql {
 
-template <BlockPassthrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 class OutputAqlItemRow;
 class TraversalStats;
 class QueryContext;
 
-template <class FinderType>
+template<class FinderType>
 class KShortestPathsExecutorInfos {
   using InputVertex = GraphNode::InputVertex;
 
@@ -74,7 +74,7 @@ class KShortestPathsExecutorInfos {
   [[nodiscard]] auto finder() const -> FinderType&;
 
   aql::QueryContext& query() noexcept;
-  
+
   /**
    * @brief test if we use a register or a constant input
    *
@@ -127,12 +127,13 @@ class KShortestPathsExecutorInfos {
 /**
  * @brief Implementation of ShortestPath Node
  */
-template <class FinderType>
+template<class FinderType>
 class KShortestPathsExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -152,14 +153,16 @@ class KShortestPathsExecutor {
    *
    * @return ExecutionState and no error.
    */
-  [[nodiscard]] auto shutdown(int errorCode) -> std::pair<ExecutionState, Result>;
+  [[nodiscard]] auto shutdown(int errorCode)
+      -> std::pair<ExecutionState, Result>;
 
   /**
    * @brief produce the next Row of Aql Values.
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input,
+                                 OutputAqlItemRow& output)
       -> std::tuple<ExecutorState, Stats, AqlCall>;
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
@@ -176,7 +179,8 @@ class KShortestPathsExecutor {
   /**
    * @brief get the id of an input vertex
    */
-  [[nodiscard]] auto getVertexId(InputVertex const& vertex, InputAqlItemRow& row,
+  [[nodiscard]] auto getVertexId(InputVertex const& vertex,
+                                 InputAqlItemRow& row,
                                  arangodb::velocypack::Builder& builder,
                                  arangodb::velocypack::Slice& id) -> bool;
 
@@ -197,4 +201,3 @@ class KShortestPathsExecutor {
 };
 }  // namespace aql
 }  // namespace arangodb
-

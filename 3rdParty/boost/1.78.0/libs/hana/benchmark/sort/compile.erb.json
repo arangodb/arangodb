@@ -1,0 +1,31 @@
+<%
+  hana = [0, 1, 2, 5, 10, 20, 50, 100]
+%>
+
+{
+  "title": {
+    "text": "Compile-time behavior of sort"
+  },
+  "series": [
+    {
+      "name": "hana::tuple::sorted",
+      "data": <%= time_compilation('compile.hana.tuple.sorted.erb.cpp', hana) %>
+    },
+    {
+      "name": "hana::tuple::reversed",
+      "data": <%= time_compilation('compile.hana.tuple.reversed.erb.cpp', hana) %>
+    },
+    {
+      "name": "hana::tuple::rand",
+      "data": <%= time_compilation('compile.hana.tuple.rand.erb.cpp', hana) %>
+    },
+    {
+      "name": "hana::tuple::sorted_but_first",
+      "data": <%= time_compilation('compile.hana.tuple.sorted_but_first.erb.cpp', hana) %>
+    },
+    {
+      "name": "hana::tuple::sorted_but_last",
+      "data": <%= time_compilation('compile.hana.tuple.sorted_but_last.erb.cpp', hana) %>
+    }
+  ]
+}

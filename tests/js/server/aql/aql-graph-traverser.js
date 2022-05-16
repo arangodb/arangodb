@@ -31,7 +31,7 @@
 'use strict';
 
 const jsunity = require('jsunity');
-const {assertEqual, assertTrue, fail} = jsunity.jsUnity.assertions;
+const {assertEqual, assertTrue, assertFalse, fail} = jsunity.jsUnity.assertions;
 
 const internal = require('internal');
 const db = internal.db;
@@ -1838,7 +1838,12 @@ function complexInternaSuite() {
       vc.save({_key: '1'});
       vc2.save({_key: '1'});
       ec.save(vn + '/1', vn2 + '/1', {});
-      var query = `WITH ${vn2}
+
+      // [GraphRefactor] Note: Eventually related to #GORDO-1361
+      // Currently we always load the start vertex, even if it might not be required.
+      // Therefore, "WITH ${vn}" have been added here. This can be improved, after we
+      // are capable of handling the issue: #GORDO-1360.
+      var query = `WITH ${vn}, ${vn2}
       FOR x IN OUTBOUND @startId @@eCol
       RETURN x`;
       var bindVars = {
@@ -2412,6 +2417,511 @@ function complexFilteringSuite() {
       }
     },
 
+    testStorePruneConditionVertexInVariable: function () {
+      let condition = "v.value == 75";
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} SORT pruneCondition RETURN pruneCondition`;
+      let query2 = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} SORT ${condition} RETURN ${condition}`;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let query1result = db._query(query, bindVars).toArray();
+      let query2result = db._query(query2, bindVars).toArray();
+      assertTrue(_.isEqual(query1result, query2result));
+    },
+
+    testStorePruneConditionVertexInVariableUnusedExplain: function () {
+      let condition = "v.value == 75";
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} RETURN 1`;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let queryResult = db._query(query, bindVars).toArray();
+      assertEqual(queryResult.length, 4);
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; 
+      let foundExtraLet = false;
+      queryExplain.forEach((node) => { 
+        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+          foundExtraLet = true;
+          return;
+        }
+      });
+      assertFalse(foundExtraLet);
+    },
+   
+    testStorePruneConditionVertexInVariableFilter: function () {
+      let condition = "v.value == 75";
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER pruneCondition RETURN {value: v.value, key: v._key}`;
+      let query2 = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} FILTER ${condition} RETURN {value: v.value, key: v._key}`;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let query1result = db._query(query, bindVars).toArray();
+      let query2result = db._query(query2, bindVars).toArray();
+      assertEqual(query1result.length, 1);
+      assertEqual(query2result.length, 1);
+      assertTrue(_.isEqual(query1result, query2result));
+      assertEqual(query1result[query1result.length - 1].value, 75);
+      assertEqual(query2result[query2result.length - 1].value, 75);
+      assertEqual(query1result[query1result.length - 1].key, "D");
+      assertEqual(query2result[query2result.length - 1].key, "D");
+    },
+   
+    testStorePruneConditionVertexInVariableFilterWithOptions: function () {
+      let condition = "v.value == 75";
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} OPTIONS {bfs: true} FILTER pruneCondition RETURN {value: v.value, key: v._key}`;
+      let query2 = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} OPTIONS {bfs: true} FILTER ${condition} RETURN {value: v.value, key: v._key}`;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let query1result = db._query(query, bindVars).toArray();
+      let query2result = db._query(query2, bindVars).toArray();
+      assertEqual(query1result.length, 1);
+      assertEqual(query2result.length, 1);
+      assertTrue(_.isEqual(query1result, query2result));
+      assertEqual(query1result[query1result.length - 1].value, 75);
+      assertEqual(query2result[query2result.length - 1].value, 75);
+      assertEqual(query1result[query1result.length - 1].key, "D");
+      assertEqual(query2result[query2result.length - 1].key, "D");
+    },
+ 
+    testStorePruneConditionVertexInVariableFilterLogicalOr: function () {
+      const condition = "v.value == 75 || v.value == 25";
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER pruneCondition SORT v._key RETURN {value: v.value, key: v._key}`;
+      let query2 = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} FILTER ${condition} SORT v._key RETURN {value: v.value, key: v._key}`;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let query1result = db._query(query, bindVars).toArray();
+      let query2result = db._query(query2, bindVars).toArray();
+      assertEqual(query1result.length, 2);
+      assertEqual(query2result.length, 2);
+      assertTrue(_.isEqual(query1result, query2result));
+      assertEqual(query1result[0].value, 25);
+      assertEqual(query1result[0].key, "B");
+      assertEqual(query1result[1].value, 75);
+      assertEqual(query1result[1].key, "D");
+    },
+
+    testReferToPruneVariableInPruneCondition: function () {
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = v.value == 75 && pruneCondition RETURN 1`;
+      try {
+        let bindVars = {
+          '@eCol': en,
+          'start': vertex.A
+        };
+        db._query(query, bindVars);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+      }
+    },
+
+    testReassignVariableInPruneConditionLet: function () {
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = v.value == 75 LET pruneCondition = v._key == 'B' RETURN 1`;
+      try {
+        let bindVars = {
+          '@eCol': en,
+          'start': vertex.A
+        };
+        db._query(query, bindVars);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_QUERY_VARIABLE_REDECLARED.code);
+      }
+    },
+
+    testReassignVariableInPruneCondition: function () {
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE p = v.value == 75 RETURN 1`;
+      try {
+        let bindVars = {
+          '@eCol': en,
+          'start': vertex.A
+        };
+        db._query(query, bindVars);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_QUERY_VARIABLE_REDECLARED.code);
+      }
+    },
+
+    testReassignOtherVariableInPruneCondition: function () {
+      let query = `WITH ${vn} FOR other IN 1..3 FOR v, e, p IN 1..10 OUTBOUND @start @@eCol  PRUNE other = true RETURN 1`;
+      try {
+        let bindVars = {
+          '@eCol': en,
+          'start': vertex.A
+        };
+        db._query(query, bindVars);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_QUERY_VARIABLE_REDECLARED.code);
+      }
+    },
+
+
+   testReassignVariableInPruneConditionInAnotherTraversal: function () {
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = v.value == 75 FOR v2, e2, p2 IN 1..10 OUTBOUND v @@ecol PRUNE pruneCondition = v2.value == 25 RETURN 1 `;
+      try {
+        let bindVars = {
+          '@eCol': en,
+          'start': vertex.A
+        };
+        db._query(query, bindVars);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_QUERY_VARIABLE_REDECLARED.code);
+      }
+    },
+
+    testAssignVariableInPruneConditionWithSubquery: function () {
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = (FOR other IN 1..2 RETURN other) RETURN 1  `;
+      try {
+        let bindVars = {
+          '@eCol': en,
+          'start': vertex.A
+        };
+        db._query(query, bindVars);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+      }
+    },
+
+    
+    testUseVariableInPruneConditionInTraversal: function () {
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = v._key == 'G' FILTER pruneCondition FOR v2, e2, p2 IN 1..10 INBOUND v @@eCol 
+      FILTER  pruneCondition SORT v2._key RETURN {outerVertex: v._key, innerVertex: v2._key}  `;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let queryResult = db._query(query, bindVars).toArray();
+      assertEqual(queryResult.length, 2);
+      assertEqual(queryResult[0].outerVertex, 'G');
+      assertEqual(queryResult[1].outerVertex, 'G');
+      assertEqual(queryResult[0].innerVertex, 'A');
+      assertEqual(queryResult[1].innerVertex, 'D');
+    },
+
+    testUseVariableInPruneConditionInSubquery: function () {
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = v._key == 'G' LET subquery = (FOR v2 IN  p.vertices FILTER pruneCondition RETURN v2._key) SORT v._key RETURN {subquery: subquery, vertex: v._key}  `;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let queryResult = db._query(query, bindVars).toArray();
+      assertEqual(queryResult.length, 6); //B, C, D, E, F, G
+      queryResult.forEach((result, index) => {
+        if(index < 5) {
+          assertTrue(result["subquery"].length === 0);
+        }
+        else {
+          assertEqual(result["subquery"].length, 3);
+          assertEqual(result["subquery"][0],'A');
+          assertEqual(result["subquery"][1],'D');
+          assertEqual(result["subquery"][2],'G');
+        }
+      });
+    },
+
+    testUseVariableInPruneConditionAsArrayElement: function () {
+      let query = `WITH ${vn} LET newArray = [] FOR v,e,p IN 1..2 OUTBOUND @start @@eCol  PRUNE pruneCondition = v._key == 'G' FILTER e.right == true SORT v._key RETURN  PUSH (newArray, pruneCondition) `;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let queryResult = db._query(query, bindVars).toArray();
+      assertEqual(queryResult.length, 3);
+      assertFalse(queryResult[0][0]); //D
+      assertFalse(queryResult[1][0]); //E
+      assertTrue(queryResult[2][0]);  //G
+    },
+
+   testUseVariableInPruneConditionInFilterNot: function () {
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = v._key == 'G' FILTER NOT pruneCondition SORT v._key RETURN {vertex: v._key} `;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let queryResult = db._query(query, bindVars).toArray();
+      assertEqual(queryResult.length, 5);
+      assertEqual(queryResult[0].vertex, 'B');
+      assertEqual(queryResult[1].vertex, 'C');
+      assertEqual(queryResult[2].vertex, 'D');
+      assertEqual(queryResult[3].vertex, 'E');
+      assertEqual(queryResult[4].vertex, 'F');
+   },
+
+    testUseVariableInPruneConditionInPathFilter: function () {
+      const condition = "v._key == 'F'";
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER e.left == true SORT v._key RETURN {subquery: (FOR v2, e2, p2 IN 1..10 INBOUND v @@eCol FILTER p2.edges[*].left ALL == pruneCondition RETURN e2), vertex: v._key, pruneCondition: pruneCondition}`; 
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let queryResult = db._query(query, bindVars).toArray();
+      assertEqual(queryResult.length, 3);
+      assertEqual(queryResult[0].vertex, 'B');
+      assertTrue(queryResult[0].subquery.length === 0);
+      assertEqual(queryResult[1].vertex, 'C');
+      assertTrue(queryResult[1].subquery.length === 0);
+      assertEqual(queryResult[2].vertex, 'F');
+      assertTrue(queryResult[2].subquery.length === 2);
+      assertEqual(queryResult[2]["subquery"][0]._from, `${vn}/B`);
+      assertEqual(queryResult[2]["subquery"][0]._to, `${vn}/F`);
+      assertEqual(queryResult[2]["subquery"][1]._from, `${vn}/A`);
+      assertEqual(queryResult[2]["subquery"][1]._to, `${vn}/B`);
+    },
+
+     testUseVariableInPruneConditionWithCollect: function () {
+      const condition = "v._key == 'F'";
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER NOT pruneCondition COLLECT tmp = v._key RETURN {variable: pruneCondition} `;
+      try {
+        let bindVars = {
+          '@eCol': en,
+          'start': vertex.A
+        };
+        db._query(query, bindVars);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+      }
+    },
+
+    testUseVariableInPruneConditionWithCollectAfterChange: function () {
+      const condition = "v._key == 'F'";
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER NOT pruneCondition COLLECT tmp = v._key LET v = {vertex: 'A'} RETURN {variable: pruneCondition} `;
+      try {
+        let bindVars = {
+          '@eCol': en,
+          'start': vertex.A
+        };
+        db._query(query, bindVars);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+      }
+    },
+
+    testStorePruneConditionEdgeInVariable: function () {
+      const condition = "e.left == true";
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} SORT v._key RETURN {key: v._key, from: e._from, to: e._to}`;
+      let query2 = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} SORT v._key RETURN {key: v._key, from: e._from, to: e._to}`;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let query1result = db._query(query, bindVars).toArray();
+      let query2result = db._query(query2, bindVars).toArray();
+      assertEqual(query1result.length, 4);
+      assertEqual(query2result.length, 4);
+      assertTrue(_.isEqual(query1result, query2result));
+    },
+
+    testStorePruneConditionEdgeInVariableFilter: function () {
+      const condition = "e.right == true";
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER ${condition} RETURN {from: e._from, to: e._to}`;
+      let query2 = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} FILTER ${condition} RETURN {from: e._from, to: e._to}`;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let query1result = db._query(query, bindVars).toArray();
+      let query2result = db._query(query2, bindVars).toArray();
+      assertEqual(query1result.length, 1);
+      assertEqual(query2result.length, 1);
+      assertTrue(_.isEqual(query1result, query2result));
+      assertEqual(query1result[0].from, `${vn}\/A`);
+      assertEqual(query1result[0].to, `${vn}\/D`);
+    },
+
+    testStorePruneConditionPathInVariable: function () {
+      const condition = "p.edges[0].right == true";
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} SORT v._key RETURN {key: v._key}`;
+      let query2 = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} SORT v._key RETURN {key: v._key}`;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let query1result = db._query(query, bindVars).toArray();
+      let query2result = db._query(query2, bindVars).toArray();
+      assertEqual(query1result.length, 4);
+      assertEqual(query2result.length, 4);
+      assertTrue(_.isEqual(query1result, query2result));
+    },
+
+    testStorePruneConditionPathInVariableFilter: function () {
+      const condition = "e.right == true";
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol  PRUNE pruneCondition = ${condition} FILTER ${condition} RETURN {key: v._key}`;
+      let query2 = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @@eCol PRUNE ${condition} FILTER ${condition} RETURN {key: v._key}`;
+      let bindVars = {
+        '@eCol': en,
+        'start': vertex.A
+      };
+      let query1result = db._query(query, bindVars).toArray();
+      let query2result = db._query(query2, bindVars).toArray();
+      assertEqual(query1result.length, 1);
+      assertEqual(query2result.length, 1);
+      assertTrue(_.isEqual(query1result, query2result));
+      assertEqual(query1result[0].key, 'D');
+    },
+
+    testStorePruneConditionVertexInVariableExplainLogicalOr: function () {
+      const condition = "v.value == 75 || v.value == 25";
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} FILTER pruneCondition RETURN 1`;
+      let bindVars = {
+        'eCol': en,
+        'start': vertex.A
+      };
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
+      let foundExtraLet = false;
+      queryExplain.forEach((node) => { 
+        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+          foundExtraLet = true;
+        }
+        if(node.type === "FilterNode") {
+          assertEqual(node["inVariable"]["name"], "pruneCondition");
+        }
+      });
+      assertTrue(foundExtraLet);
+    },
+
+    testStorePruneConditionVertexInVariableExplainLogicalOrWithOptions: function () {
+      const condition = "v.value == 75 || v.value == 25";
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} OPTIONS {bfs: true} FILTER pruneCondition RETURN 1`;
+      let bindVars = {
+        'eCol': en,
+        'start': vertex.A
+      };
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
+      let foundExtraLet = false;
+      queryExplain.forEach((node) => { 
+        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+          foundExtraLet = true;
+        }
+        if(node.type === "FilterNode") {
+          assertEqual(node["inVariable"]["name"], "pruneCondition");
+        }
+        if(node.type === "TraversalNode") {
+          assertEqual(node["options"]["order"], "bfs");
+        }
+      });
+      assertTrue(foundExtraLet);
+    },
+
+    testStorePruneConditionEdgeInVariableExplain: function () {
+      const condition = "e.right == true";
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
+      let bindVars = {
+        'eCol': en,
+        'start': vertex.A
+      };
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
+      let foundExtraLet = false;
+      queryExplain.forEach((node) => { 
+        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+          foundExtraLet = true;
+        }
+        if(node.type === "FilterNode") {
+          assertEqual(node["inVariable"]["name"], "pruneCondition");
+        }
+      });
+      assertTrue(foundExtraLet);
+    },
+
+    testStorePruneConditionEdgeInVariableExplainWithOptions: function () {
+      const condition = "e.right == true";
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} OPTIONS {bfs: true} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
+      let bindVars = {
+        'eCol': en,
+        'start': vertex.A
+      };
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
+      let foundExtraLet = false;
+      queryExplain.forEach((node) => { 
+        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+          foundExtraLet = true;
+        }
+        if(node.type === "FilterNode") {
+          assertEqual(node["inVariable"]["name"], "pruneCondition");
+        }
+        if(node.type === "TraversalNode") {
+          assertEqual(node["options"]["order"], "bfs");
+        }
+      });
+      assertTrue(foundExtraLet);
+    },
+
+    testStorePruneConditionPathInVariableExplain: function () {
+      // note: using NOOPT(...) here to disable the optimization that pulls
+      // certain FILTER conditions into the traversal
+      const condition = "NOOPT(p.edges[0].right) == true";
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
+      let bindVars = {
+        'eCol': en,
+        'start': vertex.A
+      };
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
+      let foundExtraLet = false;
+      queryExplain.forEach((node) => { 
+        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+          foundExtraLet = true;
+        }
+        if(node.type === "FilterNode") {
+          assertEqual(node["inVariable"]["name"], "pruneCondition");
+        }
+      });
+      assertTrue(foundExtraLet);
+    },
+
+    testStorePruneConditionPathInVariableExplainOptimized: function () {
+      const condition = "p.edges[0].right == true";
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
+      let bindVars = {
+        'eCol': en,
+        'start': vertex.A
+      };
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
+      let foundExtraLet = false;
+      queryExplain.forEach((node) => { 
+        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+          foundExtraLet = true;
+          return;
+        }
+      });
+      assertFalse(foundExtraLet);
+    },
+
+    testStorePruneConditionPathInVariableExplainWithOptions: function () {
+      // note: using NOOPT(...) here to disable the optimization that pulls
+      // certain FILTER conditions into the traversal
+      const condition = "NOOPT(p.edges[0].right) == true";
+      let query = `WITH ${vn} FOR v,e,p IN 1..10 OUTBOUND @start @eCol PRUNE pruneCondition = ${condition} OPTIONS {bfs: true} FILTER pruneCondition RETURN {from: e._from, to: e._to}`;
+      let bindVars = {
+        'eCol': en,
+        'start': vertex.A
+      };
+      let queryExplain = AQL_EXPLAIN(query, bindVars).plan.nodes; //check for extra LET
+      let foundExtraLet = false;
+      queryExplain.forEach((node) => { 
+        if(node.type === "CalculationNode" && node["outVariable"]["name"] === "pruneCondition") {
+          foundExtraLet = true;
+        }
+        if(node.type === "FilterNode") {
+          assertEqual(node["inVariable"]["name"], "pruneCondition");
+        }
+        if(node.type === "TraversalNode") {
+          assertEqual(node["options"]["order"], "bfs");
+        }
+      });
+      assertTrue(foundExtraLet);
+    },
+
     testVertexEarlyPruneHighDepth: function () {
       var query = `WITH ${vn}
       FOR v, e, p IN 100 OUTBOUND @start @@eCol
@@ -2425,11 +2935,18 @@ function complexFilteringSuite() {
       assertEqual(cursor.count(), 0);
       var stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
-      // 1 Primary (Tri1)
-      // 1 Edge (Tri1->Tri2)
-      // 1 Primary (Tri2)
 
-      assertEqual(stats.scannedIndex, 1);
+      if (isCluster) {
+        // Note: In the cluster case, we're currently pre-fetching. Therefore, our scannedIndex result
+        // mismatches in comparison to the SingleServer variant.
+        // 1 Primary (Tri1)
+        // 1 Edge (Tri1->Tri2)
+        // 1 Primary (Tri2)
+        assertEqual(stats.scannedIndex, 3);
+      } else {
+        // one edge and one vertex lookup
+        assertEqual(stats.scannedIndex, 2);
+      }
 
       assertEqual(stats.filtered, 1);
     },
@@ -2467,7 +2984,14 @@ function complexFilteringSuite() {
       assertEqual(stats.scannedFull, 0);
       // The lookup will be using the primary Index.
       // It will find 0 elements.
-      assertEqual(stats.scannedIndex, 0);
+      if (isCluster) {
+        // Note: In the cluster case, we're currently pre-fetching. Therefore, our scannedIndex result
+        // mismatches in comparison to the SingleServer variant.
+        assertEqual(stats.scannedIndex, 1);
+      } else {
+        assertEqual(stats.scannedIndex, 0);
+      }
+
       assertEqual(stats.filtered, 0);
     },
 
@@ -2513,7 +3037,7 @@ function complexFilteringSuite() {
         // 2 Primary lookup B,D
         // 2 Edge Lookups (2 B) (0 D)
         // 2 Primary Lookups (C, F)
-        assertTrue(stats.scannedIndex <= 5);
+        assertTrue(stats.scannedIndex <= 11);
       } else {
         // 2 Edge Lookups (A)
         // 2 Primary (B, D) for Filtering
@@ -2556,7 +3080,7 @@ function complexFilteringSuite() {
         // 1 Primary lookup A
         // 2 Primary lookup B,D
         // 4 Primary Lookups (C, F, E, G)
-        assertTrue(stats.scannedIndex <= 7);
+        assertTrue(stats.scannedIndex <= 13);
       } else {
         // 2 Edge Lookups (A)
         // 4 Edge Lookups (2 B) (2 D)
@@ -2600,7 +3124,7 @@ function complexFilteringSuite() {
         // 2 Primary lookup B,D
         // 2 Edge Lookups (0 B) (2 D)
         // 2 Primary Lookups (E, G)
-        assertTrue(stats.scannedIndex <= 5);
+        assertTrue(stats.scannedIndex <= 11);
       } else {
         // 2 Edge Lookups (A)
         // 2 Primary Lookups for Eval (B, D)
@@ -2641,7 +3165,7 @@ function complexFilteringSuite() {
         // 1 Primary (B)
         // 2 Edge
         // 2 Primary (C,F)
-        assertTrue(stats.scannedIndex <= 4);
+        assertTrue(stats.scannedIndex <= 8);
       } else {
         // 2 Edge Lookups (A)
         // 2 Edge Lookups (B)
@@ -2684,7 +3208,7 @@ function complexFilteringSuite() {
         // they may be inserted in the vertexToFetch list, which
         // lazy loads all vertices in it.
         if (stats.scannedIndex !== 8) {
-          assertTrue(stats.scannedIndex <= 5);
+          assertTrue(stats.scannedIndex <= 11);
         }
       } else {
         // 2 Edge Lookups (A)
@@ -2739,7 +3263,7 @@ function complexFilteringSuite() {
           // 2 Primary lookup B,D
           // 2 Edge Lookups (2 B) (0 D)
           // 2 Primary Lookups (C, F)
-          assertTrue(stats.scannedIndex <= 5, stats.scannedIndex);
+          assertTrue(stats.scannedIndex <= 11, stats.scannedIndex);
         } else {
           // Cluster uses a lookup cache.
           // Pointless in single-server mode
@@ -2797,7 +3321,7 @@ function complexFilteringSuite() {
           // 2 Primary lookup B,D
           // 2 Edge Lookups (2 B) (0 D)
           // 2 Primary Lookups (C, F)
-          assertTrue(stats.scannedIndex <= 5);
+          assertTrue(stats.scannedIndex <= 11);
         } else {
           // Cluster uses a lookup cache.
           // Pointless in single-server mode
@@ -2847,7 +3371,7 @@ function complexFilteringSuite() {
         // 2 Primary lookup B,D
         // 2 Edge Lookups (2 B) (0 D)
         // 2 Primary Lookups (C, F)
-        assertTrue(stats.scannedIndex <= 7);
+        assertTrue(stats.scannedIndex <= 13, stats.scannedIndex);
       } else {
         // 2 Edge Lookups (A)
         // 2 Primary (B, D) for Filtering
@@ -3301,6 +3825,44 @@ function subQuerySuite() {
       cleanup();
     },
 
+    testUniqueVertexGetterMemoryIssue: function () {
+      // test case: UniqueVertexGetter keeps track of which vertices
+      // were already visited. the vertex id tracked pointed to memory
+      // which was allocated only temporarily and that became invalid
+      // once TraverserCache::clear() got called.
+      let query = `WITH ${vn} FOR i IN 1..3 FOR v, e, p IN 1..3 OUTBOUND '${vertex.A}' ${en} OPTIONS { uniqueVertices: 'global', bfs: true } SORT v._key RETURN v._key`;
+      let result = db._query(query).toArray();
+      assertEqual([ 
+        "B", "B", "B", 
+        "B1", "B1", "B1", 
+        "B2", "B2", "B2", 
+        "B3", "B3", "B3", 
+        "B4", "B4", "B4", 
+        "B5", "B5", "B5", 
+        "C", "C", "C", 
+        "C1", "C1", "C1", 
+        "C2", "C2", "C2", 
+        "C3", "C3", "C3", 
+        "C4", "C4", "C4", 
+        "C5", "C5", "C5", 
+        "D", "D", "D", 
+        "D1", "D1", "D1", 
+        "D2", "D2", "D2", 
+        "D3", "D3", "D3", 
+        "D4", "D4", "D4", 
+        "D5", "D5", "D5" 
+      ], result);
+      
+      // while we are here, try a different query as well
+      query = `WITH ${vn} FOR i IN 1..3 LET sub = (FOR v, e, p IN 1..3 OUTBOUND '${vertex.A}' ${en} OPTIONS { uniqueVertices: 'global', bfs: true } SORT v._key RETURN v._key) RETURN sub`;
+      result = db._query(query).toArray();
+      assertEqual([ 
+        [ "B", "B1", "B2", "B3", "B4", "B5", "C", "C1", "C2", "C3", "C4", "C5", "D", "D1", "D2", "D3", "D4", "D5" ], 
+        [ "B", "B1", "B2", "B3", "B4", "B5", "C", "C1", "C2", "C3", "C4", "C5", "D", "D1", "D2", "D3", "D4", "D5" ], 
+        [ "B", "B1", "B2", "B3", "B4", "B5", "C", "C1", "C2", "C3", "C4", "C5", "D", "D1", "D2", "D3", "D4", "D5" ] 
+      ], result);
+    },
+
     // The test is that the traversal in subquery has more then LIMIT many
     // results. In case of a bug the cursor of the traversal is reused for the second
     // iteration as well and does not reset.
@@ -3619,7 +4181,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 5);
+        assertTrue(stats.scannedIndex <= 11, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -3664,7 +4226,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 4);
+        assertTrue(stats.scannedIndex <= 8, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
@@ -3693,7 +4255,7 @@ function optimizeQuantifierSuite() {
       stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 4);
+        assertTrue(stats.scannedIndex <= 8, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
@@ -3723,7 +4285,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 5);
+        assertTrue(stats.scannedIndex <= 11, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -3768,7 +4330,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 4);
+        assertTrue(stats.scannedIndex <= 8, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
@@ -3796,7 +4358,7 @@ function optimizeQuantifierSuite() {
       stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 4);
+        assertTrue(stats.scannedIndex <= 8);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 8);
@@ -3827,7 +4389,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 5);
+        assertTrue(stats.scannedIndex <= 11, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -3858,7 +4420,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 3);
+        assertTrue(stats.scannedIndex <= 7, stats.scannedIndex);
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 7);
@@ -3889,7 +4451,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 5);
+        assertTrue(stats.scannedIndex <= 11, stats.scannedIndex);
       } else {
         // With traverser-read-cache
         // assertEqual(stats.scannedIndex, 9);
@@ -3921,7 +4483,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 3);
+        assertTrue(stats.scannedIndex <= 7, stats.scannedIndex);
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 7);
@@ -3953,7 +4515,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 5);
+        assertTrue(stats.scannedIndex <= 11, stats.scannedIndex);
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 9);
@@ -3985,7 +4547,7 @@ function optimizeQuantifierSuite() {
       let stats = cursor.getExtra().stats;
       assertEqual(stats.scannedFull, 0);
       if (isCluster) {
-        assertTrue(stats.scannedIndex <= 3);
+        assertTrue(stats.scannedIndex <= 7, stats.scannedIndex);
       } else {
         // With activated traverser-read-cache:
         // assertEqual(stats.scannedIndex, 7);
@@ -4570,20 +5132,39 @@ function unusedVariableSuite() {
     },
 
     testCountSubquery: function () {
-      const queries = [
-        [ 'RETURN COUNT(FOR v IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
-        [ 'RETURN COUNT(FOR v IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
-        [ 'RETURN COUNT(FOR v IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
-        [ 'RETURN COUNT(FOR v,e IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
-        [ 'RETURN COUNT(FOR v,e IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
-        [ 'RETURN COUNT(FOR v,e IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
-        [ 'RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
-        [ 'RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
-        [ 'RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
-        [ 'RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN v)', 1],
-        [ 'RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN v)', 100],
-        [ 'RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN v)', 1000],
-      ];
+      let queries = [];
+      if (isCluster) {
+        // [GraphRefactor] Note: Related to #GORDO-1360
+        queries = [
+          [ `WITH ${gn}v RETURN COUNT(FOR v IN 1..1 OUTBOUND @start @@edges RETURN 1)`, 1],
+          [ `WITH ${gn}v RETURN COUNT(FOR v IN 1..100 OUTBOUND @start @@edges RETURN 1)`, 100],
+          [ `WITH ${gn}v RETURN COUNT(FOR v IN 1..1000 OUTBOUND @start @@edges RETURN 1)`, 1000],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e IN 1..1 OUTBOUND @start @@edges RETURN 1)`, 1],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e IN 1..100 OUTBOUND @start @@edges RETURN 1)`, 100],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e IN 1..1000 OUTBOUND @start @@edges RETURN 1)`, 1000],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN 1)`, 1],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN 1)`, 100],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN 1)`, 1000],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN v)`, 1],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN v)`, 100],
+          [ `WITH ${gn}v RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN v)`, 1000],
+        ];
+      } else {
+        queries = [
+          [ 'RETURN COUNT(FOR v IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
+          [ 'RETURN COUNT(FOR v IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
+          [ 'RETURN COUNT(FOR v IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
+          [ 'RETURN COUNT(FOR v,e IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
+          [ 'RETURN COUNT(FOR v,e IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
+          [ 'RETURN COUNT(FOR v,e IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
+          [ 'RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN 1)', 1],
+          [ 'RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN 1)', 100],
+          [ 'RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN 1)', 1000],
+          [ 'RETURN COUNT(FOR v,e,p IN 1..1 OUTBOUND @start @@edges RETURN v)', 1],
+          [ 'RETURN COUNT(FOR v,e,p IN 1..100 OUTBOUND @start @@edges RETURN v)', 100],
+          [ 'RETURN COUNT(FOR v,e,p IN 1..1000 OUTBOUND @start @@edges RETURN v)', 1000],
+        ]; 
+      }
 
       queries.forEach(function (query) {
         const r = db._query(query[0], {"start": gn + 'v/test0', "@edges": gn+'e'});

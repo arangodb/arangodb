@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +32,8 @@ namespace aql {
 enum class SerializationFormat {
   // Format used in 3.5 and early. Not containing shadow rows
   CLASSIC = 0,
-  // Use a hidden register for shadow rows. In classic versions all entries would be off by one.
+  // Use a hidden register for shadow rows. In classic versions all entries
+  // would be off by one.
   SHADOWROWS = 1
 };
 

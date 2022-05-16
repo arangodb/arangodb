@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,8 +25,7 @@
 
 #include <iosfwd>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 enum class ExecutionState {
   // done with this block, definitely no more results
@@ -43,13 +42,31 @@ enum class ExecutionState {
 };
 
 enum class ExecutorState {
-  // done with this block, definitely no more results
+  // done with this subquery, no more results to be expected
   DONE,
   // (potentially) more results available. this may "lie" and
   // report that there are more results when in fact there are
   // none (background: to accurately determine that there are
   // more results we may need to execute expensive operations
-  // on the preceeding blocks, which we want to avoid)
+  // on the preceding blocks, which we want to avoid)
+  HASMORE
+};
+
+//@ brief Like the Executor state but for the Global State of the query
+// The values on this enum are on purpose identical to the ExecutorState,
+// as they can actually only get into the same States. How ever
+// they are used in different situations, and we want compilers help
+// to ensure we have not accidentally mixed them up.
+enum class MainQueryState {
+  // done with the main query. As soon as we reached DONE
+  // state here, we cannot switch back to HASMORE. On upstream
+  // All pieces of the query have been completed.
+  DONE,
+  // (potentially) more results available. this may "lie" and
+  // report that there are more results when in fact there are
+  // none (background: to accurately determine that there are
+  // more results we may need to execute expensive operations
+  // on the preceding blocks, which we want to avoid)
   HASMORE
 };
 
@@ -57,5 +74,4 @@ std::ostream& operator<<(std::ostream& ostream, ExecutionState state);
 
 std::ostream& operator<<(std::ostream& ostream, ExecutorState state);
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

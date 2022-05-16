@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,9 +32,11 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/cpu-relax.h"
+#include "Cache/BinaryKeyHasher.h"
 #include "Cache/CachedValue.h"
+#include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
-#include "Indexes/SortedIndexAttributeMatcher.h"
+#include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -42,8 +44,8 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
-#include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -58,8 +60,6 @@
 #include <rocksdb/utilities/write_batch_with_index.h>
 
 #include <velocypack/Iterator.h>
-#include <velocypack/StringRef.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <cmath>
 
@@ -68,11 +68,14 @@ using namespace arangodb::basics;
 
 namespace {
 constexpr bool EdgeIndexFillBlockCache = false;
-}
+
+using EdgeIndexCacheType = cache::TransactionalCache<cache::BinaryKeyHasher>;
+}  // namespace
 
 RocksDBEdgeIndexWarmupTask::RocksDBEdgeIndexWarmupTask(
-    std::shared_ptr<basics::LocalTaskQueue> const& queue, RocksDBEdgeIndex* index,
-    transaction::Methods* trx, rocksdb::Slice const& lower, rocksdb::Slice const& upper)
+    std::shared_ptr<basics::LocalTaskQueue> const& queue,
+    RocksDBEdgeIndex* index, transaction::Methods* trx,
+    rocksdb::Slice const& lower, rocksdb::Slice const& upper)
     : LocalTask(queue),
       _index(index),
       _trx(trx),
@@ -85,71 +88,84 @@ void RocksDBEdgeIndexWarmupTask::run() {
 
 namespace arangodb {
 class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
+  // used for covering edge index lookups.
+  // holds both the indexed attribute (_from/_to) and the opposite
+  // attribute (_to/_from). Avoids copying the data and is thus
+  // just an efficient, non-owning container for the _from/_to values
+  // of a single edge during covering edge index lookups-
+  class EdgeCoveringData final : public IndexIteratorCoveringData {
+   public:
+    explicit EdgeCoveringData(VPackSlice indexAttribute,
+                              VPackSlice otherAttribute)
+        : _indexAttribute(indexAttribute), _otherAttribute(otherAttribute) {}
+
+    VPackSlice at(size_t i) const override {
+      TRI_ASSERT(i <= 1);
+      return i == 0 ? _indexAttribute : _otherAttribute;
+    }
+
+    VPackSlice value() const override {
+      // we are assuming this API will never be called, as we are returning
+      // isArray() -> true
+      TRI_ASSERT(false);
+      return VPackSlice::noneSlice();
+    }
+
+    bool isArray() const noexcept override { return true; }
+
+    velocypack::ValueLength length() const override { return 2; }
+
+   private:
+    // the indexed attribute (_from/_to)
+    VPackSlice _indexAttribute;
+    // the opposite attribute (_to/_from)
+    VPackSlice _otherAttribute;
+  };
+
  public:
-  RocksDBEdgeIndexLookupIterator(LogicalCollection* collection, transaction::Methods* trx,
+  RocksDBEdgeIndexLookupIterator(LogicalCollection* collection,
+                                 transaction::Methods* trx,
                                  arangodb::RocksDBEdgeIndex const* index,
-                                 std::unique_ptr<VPackBuilder> keys,
-                                 std::shared_ptr<cache::Cache> cache)
-      : IndexIterator(collection, trx),
+                                 VPackBuilder&& keys,
+                                 std::shared_ptr<cache::Cache> cache,
+                                 ReadOwnWrites readOwnWrites)
+      : IndexIterator(collection, trx, readOwnWrites),
         _index(index),
-        _cache(std::move(cache)),
+        _cache(std::static_pointer_cast<EdgeIndexCacheType>(std::move(cache))),
         _keys(std::move(keys)),
-        _keysIterator(_keys->slice()),
+        _keysIterator(_keys.slice()),
         _bounds(RocksDBKeyBounds::EdgeIndex(0)),
         _builderIterator(VPackArrayIterator::Empty{}),
         _lastKey(VPackSlice::nullSlice()) {
-    TRI_ASSERT(_keys != nullptr);
-    TRI_ASSERT(_keys->slice().isArray());
+    TRI_ASSERT(_keys.slice().isArray());
+
+    TRI_ASSERT(_cache == nullptr || _cache->hasherName() == "BinaryKeyHasher");
   }
 
-  ~RocksDBEdgeIndexLookupIterator() {
-    if (_keys != nullptr) {
-      // return the VPackBuilder to the transaction context
-      _trx->transactionContextPtr()->returnBuilder(_keys.release());
-    }
+  std::string_view typeName() const noexcept final {
+    return "edge-index-iterator";
   }
-
-  char const* typeName() const override { return "edge-index-iterator"; }
-
-  bool hasExtra() const override { return true; }
-
-  /// @brief we provide a method to provide the index attribute values
-  /// while scanning the index
-  bool hasCovering() const override { return true; }
 
   // calls cb(documentId)
-  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override {
-    return nextImplementation([&cb](LocalDocumentId docId,
-                                    VPackSlice /*fromTo*/) {
-      cb(docId);
-    }, limit);
+  bool nextImpl(LocalDocumentIdCallback const& cb, uint64_t limit) override {
+    return nextImplementation(
+        [&cb](LocalDocumentId docId, VPackSlice /*fromTo*/) { cb(docId); },
+        limit);
   }
 
   // calls cb(documentId, [_from, _to]) or cb(documentId, [_to, _from])
-  bool nextCoveringImpl(DocumentCallback const& cb, size_t limit) override {
-    transaction::BuilderLeaser coveringBuilder(_trx);
-    return nextImplementation([&](LocalDocumentId docId,
-                                  VPackSlice fromTo) {
-      TRI_ASSERT(_lastKey.isString());
-      TRI_ASSERT(fromTo.isString());
-      coveringBuilder->clear();
-      coveringBuilder->openArray(/*unindexed*/true);
-      coveringBuilder->add(_lastKey);
-      coveringBuilder->add(fromTo);
-      coveringBuilder->close();
-      cb(docId, coveringBuilder->slice());
-    }, limit);
+  bool nextCoveringImpl(CoveringCallback const& cb, uint64_t limit) override {
+    return nextImplementation(
+        [&](LocalDocumentId docId, VPackSlice fromTo) {
+          TRI_ASSERT(_lastKey.isString());
+          TRI_ASSERT(fromTo.isString());
+          auto data = EdgeCoveringData(_lastKey, fromTo);
+          cb(docId, data);
+        },
+        limit);
   }
 
-  // calls cb(documentId, _from) or (documentId, _to)
-  bool nextExtraImpl(ExtraCallback const& cb, size_t limit) override {
-    return nextImplementation([&cb](LocalDocumentId docId,
-                                    VPackSlice fromTo) {
-      cb(docId, fromTo);
-    }, limit);
-  }
-
-  void resetImpl() override {
+  void resetImpl() final {
     resetInplaceMemory();
     _keysIterator.reset();
     _lastKey = VPackSlice::nullSlice();
@@ -160,7 +176,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   bool canRearm() const override { return true; }
 
   /// @brief rearm the index iterator
-  bool rearmImpl(arangodb::aql::AstNode const* node, arangodb::aql::Variable const* variable,
+  bool rearmImpl(arangodb::aql::AstNode const* node,
+                 arangodb::aql::Variable const* variable,
                  IndexIteratorOptions const& opts) override {
     TRI_ASSERT(!_index->isSorted() || opts.sorted);
 
@@ -171,22 +188,21 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
     TRI_ASSERT(aap.attribute->stringEquals(_index->_directionAttr));
 
-    _keys->clear();
-    TRI_ASSERT(_keys->isEmpty());
+    _keys.clear();
+    TRI_ASSERT(_keys.isEmpty());
 
     if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       // a.b == value
-      _index->fillLookupValue(*_keys, aap.value);
-      _keysIterator = VPackArrayIterator(_keys->slice());
-      reset();
+      _index->fillLookupValue(_keys, aap.value);
+      _keysIterator = VPackArrayIterator(_keys.slice());
       return true;
     }
 
-    if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN && aap.value->isArray()) {
+    if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+        aap.value->isArray()) {
       // a.b IN values
-      _index->fillInLookupValues(_trx, *_keys, aap.value);
-      _keysIterator = VPackArrayIterator(_keys->slice());
-      reset();
+      _index->fillInLookupValues(_trx, _keys, aap.value);
+      _keysIterator = VPackArrayIterator(_keys.slice());
       return true;
     }
 
@@ -195,12 +211,11 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   }
 
  private:
-
   void resetInplaceMemory() { _builder.clear(); }
-  
+
   /// internal retrieval loop
-  template <typename F>
-  inline bool nextImplementation(F&& cb, size_t limit) {
+  template<typename F>
+  inline bool nextImplementation(F&& cb, uint64_t limit) {
     TRI_ASSERT(_trx->state()->isRunning());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -217,7 +232,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
         // We still have unreturned edges in out memory.
         // Just plainly return those.
         TRI_ASSERT(_builderIterator.value().isNumber());
-        LocalDocumentId docId{_builderIterator.value().getNumericValue<uint64_t>()};
+        LocalDocumentId docId{
+            _builderIterator.value().getNumericValue<uint64_t>()};
         _builderIterator.next();
         TRI_ASSERT(_builderIterator.valid());
         // For now we store the complete opposite _from/_to value
@@ -242,54 +258,50 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       // We have exhausted local memory. Now fill it again:
       _lastKey = _keysIterator.value();
       TRI_ASSERT(_lastKey.isString());
-      arangodb::velocypack::StringRef fromTo(_lastKey);
+      std::string_view fromTo = _lastKey.stringView();
 
       bool needRocksLookup = true;
       if (_cache) {
-        for (size_t attempts = 0; attempts < 10; ++attempts) {
-          // Try to read from cache
-          auto finding = _cache->find(fromTo.data(), static_cast<uint32_t>(fromTo.size()));
-          if (finding.found()) {
-            needRocksLookup = false;
-            // We got sth. in the cache
-            VPackSlice cachedData(finding.value()->value());
-            TRI_ASSERT(cachedData.isArray());
-            if (cachedData.length() / 2 < limit) {
-              // Directly return it, no need to copy
-              _builderIterator = VPackArrayIterator(cachedData);
-              while (_builderIterator.valid()) {
-                TRI_ASSERT(_builderIterator.value().isNumber());
-                LocalDocumentId docId{_builderIterator.value().getNumericValue<uint64_t>()};
+        // Try to read from cache
+        auto finding =
+            _cache->find(fromTo.data(), static_cast<uint32_t>(fromTo.size()));
+        if (finding.found()) {
+          incrCacheHits();
+          needRocksLookup = false;
+          // We got sth. in the cache
+          VPackSlice cachedData(finding.value()->value());
+          TRI_ASSERT(cachedData.isArray());
+          if (cachedData.length() / 2 < limit) {
+            // Directly return it, no need to copy
+            _builderIterator = VPackArrayIterator(cachedData);
+            while (_builderIterator.valid()) {
+              TRI_ASSERT(_builderIterator.value().isNumber());
+              LocalDocumentId docId{
+                  _builderIterator.value().getNumericValue<uint64_t>()};
 
-                _builderIterator.next();
+              _builderIterator.next();
 
-                TRI_ASSERT(_builderIterator.valid());
-                TRI_ASSERT(_builderIterator.value().isString());
-                std::forward<F>(cb)(docId, _builderIterator.value());
+              TRI_ASSERT(_builderIterator.valid());
+              TRI_ASSERT(_builderIterator.value().isString());
+              std::forward<F>(cb)(docId, _builderIterator.value());
 
-                _builderIterator.next();
-                limit--;
-              }
-              _builderIterator = VPackArrayIterator(VPackArrayIterator::Empty{});
-            } else {
-              // We need to copy it.
-              // And then we just get back to beginning of the loop
-              _builder.clear();
-              _builder.add(cachedData);
-              TRI_ASSERT(_builder.slice().isArray());
-              _builderIterator = VPackArrayIterator(_builder.slice());
-              // Do not set limit
+              _builderIterator.next();
+              limit--;
             }
-            break;
-          }  // finding found
-          if (finding.result().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
-            // We really have not found an entry.
-            // Otherwise we do not know yet
-            break;
+            _builderIterator = VPackArrayIterator(VPackArrayIterator::Empty{});
+          } else {
+            // We need to copy it.
+            // And then we just get back to beginning of the loop
+            _builder.clear();
+            _builder.add(cachedData);
+            TRI_ASSERT(_builder.slice().isArray());
+            _builderIterator = VPackArrayIterator(_builder.slice());
+            // Do not set limit
           }
-          cpu_relax();
-        }  // attempts
-      }    // if (_cache)
+        } else {
+          incrCacheMisses();
+        }
+      }  // if (_cache)
 
       if (needRocksLookup) {
         lookupInRocksDB(fromTo);
@@ -301,37 +313,40 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     return _builderIterator.valid() || _keysIterator.valid();
   }
 
-  void lookupInRocksDB(VPackStringRef fromTo) {
+  void lookupInRocksDB(std::string_view fromTo) {
     // Bad (slow) case: read from RocksDB
-    
-    auto* mthds = RocksDBTransactionState::toMethods(_trx);
-    // intentional copy of the options
-    rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
-    ro.fill_cache = EdgeIndexFillBlockCache;
-    
+
+    auto* mthds = RocksDBTransactionState::toMethods(_trx, _collection->id());
+
     // create iterator only on demand, so we save the allocation in case
     // the reads can be satisfied from the cache
-    
-    // unfortunately we *must* create a new RocksDB iterator here for each edge lookup.
-    // the problem is that if we don't and reuse an existing RocksDB iterator, it will not
-    // work properly with different prefixes.
-    // this will be problematic if we do an edge lookup from an inner loop, e.g.
+
+    // unfortunately we *must* create a new RocksDB iterator here for each edge
+    // lookup. the problem is that if we don't and reuse an existing RocksDB
+    // iterator, it will not work properly with different prefixes. this will be
+    // problematic if we do an edge lookup from an inner loop, e.g.
     //
     //   FOR doc IN ...
-    //     FOR edge IN edgeCollection FILTER edge._to == doc._id 
+    //     FOR edge IN edgeCollection FILTER edge._to == doc._id
     //     ...
     //
-    // in this setup, we do rearm the RocksDBEdgeIndexLookupIterator to look up multiple
-    // times, with different _to values. However, if we reuse the same RocksDB iterator
-    // for this, it may or may not find all the edges. Even calling `Seek` using  a new
-    // bound does not fix this. It seems to have to do with the Iterator preserving some
-    // state when there is a prefix extractor in place.
+    // in this setup, we do rearm the RocksDBEdgeIndexLookupIterator to look up
+    // multiple times, with different _to values. However, if we reuse the same
+    // RocksDB iterator for this, it may or may not find all the edges. Even
+    // calling `Seek` using  a new bound does not fix this. It seems to have to
+    // do with the Iterator preserving some state when there is a prefix
+    // extractor in place.
     //
-    // in order to safely return all existing edges, we need to recreate a new RocksDB
-    // iterator every time we look for an edge. the performance hit is mitigated by that
-    // edge lookups are normally using the in-memory edge cache, so we only hit this
-    // method when connections are not yet in the cache.
-    std::unique_ptr<rocksdb::Iterator> iterator = mthds->NewIterator(ro, _index->columnFamily());
+    // in order to safely return all existing edges, we need to recreate a new
+    // RocksDB iterator every time we look for an edge. the performance hit is
+    // mitigated by that edge lookups are normally using the in-memory edge
+    // cache, so we only hit this method when connections are not yet in the
+    // cache.
+    std::unique_ptr<rocksdb::Iterator> iterator =
+        mthds->NewIterator(_index->columnFamily(), [this](ReadOptions& ro) {
+          ro.fill_cache = EdgeIndexFillBlockCache;
+          ro.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes;
+        });
 
     TRI_ASSERT(iterator != nullptr);
 
@@ -348,32 +363,22 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
       // adding documentId and _from or _to value
       _builder.add(VPackValue(docId.id()));
-      VPackStringRef vertexId = RocksDBValue::vertexId(iterator->value());
-      _builder.add(VPackValuePair(vertexId.data(), vertexId.size(), VPackValueType::String));
+      std::string_view vertexId = RocksDBValue::vertexId(iterator->value());
+      _builder.add(VPackValue(vertexId));
     }
     _builder.close();
 
     // validate that Iterator is in a good shape and hasn't failed
-    arangodb::rocksutils::checkIteratorStatus(iterator.get());
+    rocksutils::checkIteratorStatus(*iterator);
 
-    cache::Cache* cc = _cache.get();
-    if (cc != nullptr) {
+    if (_cache != nullptr) {
       // TODO Add cache retry on next call
       // Now we have something in _inplaceMemory.
       // It may be an empty array or a filled one, never mind, we cache both
-      size_t attempts = 0;
-      cache::Cache::Inserter inserter(*cc, fromTo.data(),
-                                      static_cast<uint32_t>(fromTo.size()),
-                                      _builder.slice().start(),
-                                      static_cast<uint64_t>(_builder.slice().byteSize()),
-                                      [&attempts](Result const& res) -> bool {
-                                        return res.is(TRI_ERROR_LOCK_TIMEOUT) &&
-                                               ++attempts <= 10;
-                                      });
-      if (!inserter.status.fail()) {
-        LOG_TOPIC("c1809", DEBUG, arangodb::Logger::CACHE)
-            << "Failed to cache: " << fromTo.toString();
-        }
+      cache::Cache::SimpleInserter<EdgeIndexCacheType>{
+          static_cast<EdgeIndexCacheType&>(*_cache), fromTo.data(),
+          static_cast<uint32_t>(fromTo.size()), _builder.slice().start(),
+          static_cast<uint64_t>(_builder.slice().byteSize())};
     }
     TRI_ASSERT(_builder.slice().isArray());
     _builderIterator = VPackArrayIterator(_builder.slice());
@@ -381,8 +386,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
   RocksDBEdgeIndex const* _index;
 
-  std::shared_ptr<cache::Cache> _cache;
-  std::unique_ptr<arangodb::velocypack::Builder> _keys;
+  std::shared_ptr<EdgeIndexCacheType> _cache;
+  arangodb::velocypack::Builder _keys;
   arangodb::velocypack::ArrayIterator _keysIterator;
 
   RocksDBKeyBounds _bounds;
@@ -397,38 +402,55 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
 // ============================= Index ====================================
 
-uint64_t RocksDBEdgeIndex::HashForKey(const rocksdb::Slice& key) {
-  std::hash<arangodb::velocypack::StringRef> hasher{};
+uint64_t RocksDBEdgeIndex::HashForKey(rocksdb::Slice const& key) {
+  std::hash<std::string_view> hasher{};
   // NOTE: This function needs to use the same hashing on the
   // indexed VPack as the initial inserter does
-  arangodb::velocypack::StringRef tmp = RocksDBKey::vertexId(key);
+  std::string_view tmp = RocksDBKey::vertexId(key);
   // cppcheck-suppress uninitvar
   return static_cast<uint64_t>(hasher(tmp));
 }
 
-RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, arangodb::LogicalCollection& collection,
-                                   arangodb::velocypack::Slice const& info,
+RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid,
+                                   arangodb::LogicalCollection& collection,
+                                   arangodb::velocypack::Slice info,
                                    std::string const& attr)
-    : RocksDBIndex(iid, collection,
-                   ((attr == StaticStrings::FromString) ? StaticStrings::IndexNameEdgeFrom
-                                                        : StaticStrings::IndexNameEdgeTo),
-                   std::vector<std::vector<AttributeName>>({{AttributeName(attr, false)}}),
-                   false, false,
-                   RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::EdgeIndex),
-                   basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
-                   !ServerState::instance()->isCoordinator() &&
-                       collection.vocbase()
-                           .server()
-                           .getFeature<EngineSelectorFeature>()
-                           .engine<RocksDBEngine>()
-                           .useEdgeCache() /*useCache*/),
+    : RocksDBIndex(
+          iid, collection,
+          ((attr == StaticStrings::FromString)
+               ? StaticStrings::IndexNameEdgeFrom
+               : StaticStrings::IndexNameEdgeTo),
+          std::vector<std::vector<AttributeName>>(
+              {{AttributeName(attr, false)}}),
+          /*unique*/ false, /*sparse*/ false,
+          RocksDBColumnFamilyManager::get(
+              RocksDBColumnFamilyManager::Family::EdgeIndex),
+          basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
+          !ServerState::instance()->isCoordinator() &&
+              collection.vocbase()
+                  .server()
+                  .getFeature<EngineSelectorFeature>()
+                  .engine<RocksDBEngine>()
+                  .useEdgeCache() /*useCache*/,
+          /*cacheManager*/
+          collection.vocbase()
+              .server()
+              .getFeature<CacheManagerFeature>()
+              .manager(),
+          /*engine*/
+          collection.vocbase()
+              .server()
+              .getFeature<EngineSelectorFeature>()
+              .engine<RocksDBEngine>()),
       _directionAttr(attr),
       _isFromIndex(attr == StaticStrings::FromString),
       _estimator(nullptr),
       _coveredFields({{AttributeName(attr, false)},
-                      {AttributeName((_isFromIndex ? StaticStrings::ToString : StaticStrings::FromString),
+                      {AttributeName((_isFromIndex ? StaticStrings::ToString
+                                                   : StaticStrings::FromString),
                                      false)}}) {
-  TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::EdgeIndex));
+  TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(
+                        RocksDBColumnFamilyManager::Family::EdgeIndex));
 
   if (!ServerState::instance()->isCoordinator() && !collection.isAStub()) {
     // We activate the estimator only on DBServers
@@ -438,22 +460,27 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, arangodb::LogicalCollection& col
   // edge indexes are always created with ID 1 or 2
   TRI_ASSERT(iid.isEdge());
   TRI_ASSERT(objectId() != 0);
+
+  if (_cacheEnabled) {
+    setupCache();
+  }
 }
 
 RocksDBEdgeIndex::~RocksDBEdgeIndex() = default;
 
-std::vector<std::vector<arangodb::basics::AttributeName>> const& RocksDBEdgeIndex::coveredFields() const {
+std::vector<std::vector<arangodb::basics::AttributeName>> const&
+RocksDBEdgeIndex::coveredFields() const {
   TRI_ASSERT(_coveredFields.size() == 2);  // _from/_to or _to/_from
   return _coveredFields;
 }
 
 /// @brief return a selectivity estimate for the index
-double RocksDBEdgeIndex::selectivityEstimate(arangodb::velocypack::StringRef const& attribute) const {
+double RocksDBEdgeIndex::selectivityEstimate(std::string_view attribute) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_unique) {
     return 1.0;
   }
-  if (!attribute.empty() && attribute.compare(_directionAttr)) {
+  if (!attribute.empty() && attribute != _directionAttr) {
     return 0.0;
   }
   if (_estimator == nullptr) {
@@ -464,8 +491,8 @@ double RocksDBEdgeIndex::selectivityEstimate(arangodb::velocypack::StringRef con
 }
 
 /// @brief return a VelocyPack representation of the index
-void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder,
-                                    std::underlying_type<Serialize>::type flags) const {
+void RocksDBEdgeIndex::toVelocyPack(
+    VPackBuilder& builder, std::underlying_type<Serialize>::type flags) const {
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
   builder.close();
@@ -473,14 +500,14 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder,
 
 Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                 LocalDocumentId const& documentId,
-                                velocypack::Slice doc, OperationOptions const& /*options*/,
+                                velocypack::Slice doc,
+                                OperationOptions const& /*options*/,
                                 bool /*performChecks*/) {
-  Result res;
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());
-  auto fromToRef = arangodb::velocypack::StringRef(fromTo);
-  RocksDBKeyLeaser key(&trx);
+  std::string_view fromToRef = fromTo.stringView();
 
+  RocksDBKeyLeaser key(&trx);
   key->constructEdgeIndexValue(objectId(), fromToRef, documentId);
   TRI_ASSERT(key->containsLocalDocumentId(documentId));
 
@@ -488,18 +515,19 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                           ? transaction::helpers::extractToFromDocument(doc)
                           : transaction::helpers::extractFromFromDocument(doc);
   TRI_ASSERT(toFrom.isString());
-  RocksDBValue value = RocksDBValue::EdgeIndexValue(VPackStringRef(toFrom));
+  RocksDBValue value = RocksDBValue::EdgeIndexValue(toFrom.stringView());
 
   // always invalidate cache entry for all edges with same _from / _to
   invalidateCacheEntry(fromToRef);
 
-  // acquire rocksdb transaction
+  Result res;
   rocksdb::Status s = mthd->PutUntracked(_cf, key.ref(), value.string());
 
   if (s.ok()) {
-    std::hash<arangodb::velocypack::StringRef> hasher;
+    std::hash<std::string_view> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
-    RocksDBTransactionState::toState(&trx)->trackIndexInsert(_collection.id(), id(), hash);
+    RocksDBTransactionState::toState(&trx)->trackIndexInsert(_collection.id(),
+                                                             id(), hash);
   } else {
     res.reset(rocksutils::convertStatus(s));
     addErrorMsg(res);
@@ -511,29 +539,30 @@ Result RocksDBEdgeIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
 Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
                                 LocalDocumentId const& documentId,
                                 velocypack::Slice doc) {
-  Result res;
-
-  // VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
-  auto fromToRef = arangodb::velocypack::StringRef(fromTo);
+  std::string_view fromToRef = fromTo.stringView();
   TRI_ASSERT(fromTo.isString());
+
   RocksDBKeyLeaser key(&trx);
   key->constructEdgeIndexValue(objectId(), fromToRef, documentId);
+
   VPackSlice toFrom = _isFromIndex
                           ? transaction::helpers::extractToFromDocument(doc)
                           : transaction::helpers::extractFromFromDocument(doc);
   TRI_ASSERT(toFrom.isString());
-  RocksDBValue value =
-      RocksDBValue::EdgeIndexValue(arangodb::velocypack::StringRef(toFrom));
+  RocksDBValue value = RocksDBValue::EdgeIndexValue(toFrom.stringView());
 
   // always invalidate cache entry for all edges with same _from / _to
   invalidateCacheEntry(fromToRef);
 
+  Result res;
   rocksdb::Status s = mthd->Delete(_cf, key.ref());
+
   if (s.ok()) {
-    std::hash<arangodb::velocypack::StringRef> hasher;
+    std::hash<std::string_view> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
-    RocksDBTransactionState::toState(&trx)->trackIndexRemove(_collection.id(), id(), hash);
+    RocksDBTransactionState::toState(&trx)->trackIndexRemove(_collection.id(),
+                                                             id(), hash);
   } else {
     res.reset(rocksutils::convertStatus(s));
     addErrorMsg(res);
@@ -545,15 +574,17 @@ Result RocksDBEdgeIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
 /// @brief checks whether the index supports the condition
 Index::FilterCosts RocksDBEdgeIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-    arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
-    size_t itemsInIndex) const {
-  return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
+    arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference, size_t itemsInIndex) const {
+  SimpleAttributeEqualityMatcher matcher(this->_fields);
+  return matcher.matchOne(this, node, reference, itemsInIndex);
 }
 
 /// @brief creates an IndexIterator for the given Condition
 std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
+    arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts,
+    ReadOwnWrites readOwnWrites, int) {
   TRI_ASSERT(!isSorted() || opts.sorted);
 
   TRI_ASSERT(node != nullptr);
@@ -563,13 +594,20 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
 
   TRI_ASSERT(aap.attribute->stringEquals(_directionAttr));
 
+  TRI_ASSERT(aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
+             aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN);
+
   if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
-    return createEqIterator(trx, aap.attribute, aap.value, opts.enableCache);
-  } else if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    return createEqIterator(trx, aap.attribute, aap.value, opts.useCache,
+                            readOwnWrites);
+  }
+  if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    // "in"-checks never needs to observe own writes
+    TRI_ASSERT(readOwnWrites == ReadOwnWrites::no);
     // a.b IN values
     if (aap.value->isArray()) {
-      return createInIterator(trx, aap.attribute, aap.value, opts.enableCache);
+      return createInIterator(trx, aap.attribute, aap.value, opts.useCache);
     }
 
     // a.b IN non-array
@@ -582,8 +620,10 @@ std::unique_ptr<IndexIterator> RocksDBEdgeIndex::iteratorForCondition(
 
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* RocksDBEdgeIndex::specializeCondition(
-    arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference) const {
-  return SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
+    arangodb::aql::AstNode* node,
+    arangodb::aql::Variable const* reference) const {
+  SimpleAttributeEqualityMatcher matcher(this->_fields);
+  return matcher.specializeOne(this, node, reference);
 }
 
 static std::string FindMedian(rocksdb::Iterator* it, std::string const& start,
@@ -604,7 +644,8 @@ static std::string FindMedian(rocksdb::Iterator* it, std::string const& start,
   do {
     median = it->key().ToString();
     it->Next();
-  } while (it->Valid() && RocksDBKey::vertexId(it->key()) == RocksDBKey::vertexId(median));
+  } while (it->Valid() &&
+           RocksDBKey::vertexId(it->key()) == RocksDBKey::vertexId(median));
   if (!it->Valid()) {
     return end;
   }
@@ -613,7 +654,7 @@ static std::string FindMedian(rocksdb::Iterator* it, std::string const& start,
 
 void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
                               std::shared_ptr<basics::LocalTaskQueue> queue) {
-  if (!useCache()) {
+  if (!hasCache()) {
     return;
   }
 
@@ -621,7 +662,7 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   RocksDBTransactionState::toState(trx)->prepareForParallelReads();
 
   auto rocksColl = toRocksDBCollection(_collection);
-  auto* mthds = RocksDBTransactionState::toMethods(trx);
+  auto* mthds = RocksDBTransactionState::toMethods(trx, _collection.id());
   auto bounds = RocksDBKeyBounds::EdgeIndex(objectId());
 
   uint64_t expectedCount = rocksColl->meta().numberDocuments();
@@ -630,32 +671,30 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   // Prepare the cache to be resized for this amount of objects to be inserted.
   _cache->sizeHint(expectedCount);
   if (expectedCount < 100000) {
-    LOG_TOPIC("ac653", DEBUG, Logger::ENGINES) << "Skipping the multithreaded loading";
-    auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(queue, this, trx,
-                                                             bounds.start(),
-                                                             bounds.end());
+    LOG_TOPIC("ac653", DEBUG, Logger::ENGINES)
+        << "Skipping the multithreaded loading";
+    auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(
+        queue, this, trx, bounds.start(), bounds.end());
     queue->enqueue(task);
     return;
   }
 
   // try to find the right bounds
   rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
-  ro.prefix_same_as_start = false;  // key-prefix includes edge (i.e. "collection/vertex")
+  ro.prefix_same_as_start =
+      false;  // key-prefix includes edge (i.e. "collection/vertex")
   ro.total_order_seek = true;  // otherwise full-index-scan does not work
   ro.verify_checksums = false;
   ro.fill_cache = EdgeIndexFillBlockCache;
 
-  auto& selector = _collection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-  std::unique_ptr<rocksdb::Iterator> it(engine.db()->NewIterator(ro, _cf));
+  std::unique_ptr<rocksdb::Iterator> it(_engine.db()->NewIterator(ro, _cf));
   // get the first and last actual key
   it->Seek(bounds.start());
   if (!it->Valid()) {
     LOG_TOPIC("7b7dc", DEBUG, Logger::ENGINES)
         << "Cannot use multithreaded edge index warmup";
-    auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(queue, this, trx,
-                                                             bounds.start(),
-                                                             bounds.end());
+    auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(
+        queue, this, trx, bounds.start(), bounds.end());
     queue->enqueue(task);
     return;
   }
@@ -664,9 +703,8 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   if (!it->Valid()) {
     LOG_TOPIC("24334", DEBUG, Logger::ENGINES)
         << "Cannot use multithreaded edge index warmup";
-    auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(queue, this, trx,
-                                                             bounds.start(),
-                                                             bounds.end());
+    auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(
+        queue, this, trx, bounds.start(), bounds.end());
     queue->enqueue(task);
     return;
   }
@@ -677,9 +715,8 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   if (q3 == lastKey) {
     LOG_TOPIC("14caa", DEBUG, Logger::ENGINES)
         << "Cannot use multithreaded edge index warmup";
-    auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(queue, this, trx,
-                                                             bounds.start(),
-                                                             bounds.end());
+    auto task = std::make_shared<RocksDBEdgeIndexWarmupTask>(
+        queue, this, trx, bounds.start(), bounds.end());
     queue->enqueue(task);
     return;
   }
@@ -687,13 +724,16 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   q2 = FindMedian(it.get(), q1, q3);
   q4 = FindMedian(it.get(), q3, q5);
 
-  auto task1 = std::make_shared<RocksDBEdgeIndexWarmupTask>(queue, this, trx, q1, q2);
+  auto task1 =
+      std::make_shared<RocksDBEdgeIndexWarmupTask>(queue, this, trx, q1, q2);
   queue->enqueue(task1);
 
-  auto task2 = std::make_shared<RocksDBEdgeIndexWarmupTask>(queue, this, trx, q2, q3);
+  auto task2 =
+      std::make_shared<RocksDBEdgeIndexWarmupTask>(queue, this, trx, q2, q3);
   queue->enqueue(task2);
 
-  auto task3 = std::make_shared<RocksDBEdgeIndexWarmupTask>(queue, this, trx, q3, q4);
+  auto task3 =
+      std::make_shared<RocksDBEdgeIndexWarmupTask>(queue, this, trx, q3, q4);
   queue->enqueue(task3);
 
   auto task4 = std::make_shared<RocksDBEdgeIndexWarmupTask>(queue, this, trx,
@@ -701,7 +741,8 @@ void RocksDBEdgeIndex::warmup(transaction::Methods* trx,
   queue->enqueue(task4);
 }
 
-void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice const& lower,
+void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
+                                      rocksdb::Slice const& lower,
                                       rocksdb::Slice const& upper) {
   auto rocksColl = toRocksDBCollection(_collection);
   bool needsInsert = false;
@@ -709,7 +750,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
   VPackBuilder builder;
 
   // intentional copy of the read options
-  auto* mthds = RocksDBTransactionState::toMethods(trx);
+  auto* mthds = RocksDBTransactionState::toMethods(trx, _collection.id());
   rocksdb::Slice const end = upper;
   rocksdb::ReadOptions options = mthds->iteratorReadOptions();
   options.iterate_upper_bound = &end;    // safe to use on rocksb::DB directly
@@ -717,9 +758,8 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
   options.total_order_seek = true;  // otherwise full-index-scan does not work
   options.verify_checksums = false;
   options.fill_cache = EdgeIndexFillBlockCache;
-  auto& selector = _collection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-  std::unique_ptr<rocksdb::Iterator> it(engine.db()->NewIterator(options, _cf));
+  std::unique_ptr<rocksdb::Iterator> it(
+      _engine.db()->NewIterator(options, _cf));
 
   ManagedDocumentResult mdr;
 
@@ -732,11 +772,11 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
     n++;
 
     rocksdb::Slice key = it->key();
-    arangodb::velocypack::StringRef v = RocksDBKey::vertexId(key);
+    std::string_view v = RocksDBKey::vertexId(key);
     if (previous.empty()) {
       // First call.
       builder.clear();
-      previous = v.toString();
+      previous = v;
       bool shouldTry = true;
       while (shouldTry) {
         auto finding = cc->find(previous.data(), (uint32_t)previous.size());
@@ -744,7 +784,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
           shouldTry = false;
           needsInsert = false;
         } else if (  // shouldTry if failed lookup was just a lock timeout
-            finding.result().errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
+            finding.result() != TRI_ERROR_LOCK_TIMEOUT) {
           shouldTry = false;
           needsInsert = true;
           builder.openArray(true);
@@ -758,20 +798,15 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
         // Store what we have.
         builder.close();
 
-        size_t attempts = 0;
-        cache::Cache::Inserter inserter(*cc, previous.data(),
-                                        static_cast<uint32_t>(previous.size()),
-                                        builder.slice().start(),
-                                        static_cast<uint64_t>(builder.slice().byteSize()),
-                                        [&attempts](Result const& res) -> bool {
-                                          return res.is(TRI_ERROR_LOCK_TIMEOUT) &&
-                                                 ++attempts <= 10;
-                                        });
+        cache::Cache::SimpleInserter<EdgeIndexCacheType>{
+            static_cast<EdgeIndexCacheType&>(*cc), previous.data(),
+            static_cast<uint32_t>(previous.size()), builder.slice().start(),
+            static_cast<uint64_t>(builder.slice().byteSize())};
 
         builder.clear();
       }
       // Need to store
-      previous = v.toString();
+      previous = v;
       auto finding = cc->find(previous.data(), (uint32_t)previous.size());
       if (finding.found()) {
         needsInsert = false;
@@ -782,7 +817,8 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
     }
     if (needsInsert) {
       LocalDocumentId const docId = RocksDBKey::edgeDocumentId(key);
-      if (!rocksColl->readDocument(trx, docId, mdr)) {
+      // warmup does not need to observe own writes
+      if (!rocksColl->readDocument(trx, docId, mdr, ReadOwnWrites::no)) {
         // Data Inconsistency. revision id without a document...
         TRI_ASSERT(false);
         continue;
@@ -791,8 +827,8 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
       builder.add(VPackValue(docId.id()));
       VPackSlice doc(mdr.vpack());
       VPackSlice toFrom =
-      _isFromIndex ? transaction::helpers::extractToFromDocument(doc)
-                   : transaction::helpers::extractFromFromDocument(doc);
+          _isFromIndex ? transaction::helpers::extractToFromDocument(doc)
+                       : transaction::helpers::extractFromFromDocument(doc);
       TRI_ASSERT(toFrom.isString());
       builder.add(toFrom);
     }
@@ -802,15 +838,10 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
     // We still have something to store
     builder.close();
 
-    size_t attempts = 0;
-    cache::Cache::Inserter inserter(*cc, previous.data(),
-                                    static_cast<uint32_t>(previous.size()),
-                                    builder.slice().start(),
-                                    static_cast<uint64_t>(builder.slice().byteSize()),
-                                    [&attempts](Result const& res) -> bool {
-                                      return res.is(TRI_ERROR_LOCK_TIMEOUT) &&
-                                             ++attempts <= 10;
-                                    });
+    cache::Cache::SimpleInserter<EdgeIndexCacheType>{
+        static_cast<EdgeIndexCacheType&>(*cc), previous.data(),
+        static_cast<uint32_t>(previous.size()), builder.slice().start(),
+        static_cast<uint64_t>(builder.slice().byteSize())};
   }
   LOG_TOPIC("99a29", DEBUG, Logger::ENGINES) << "loaded n: " << n;
 }
@@ -820,35 +851,31 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
 /// @brief create the iterator
 std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createEqIterator(
     transaction::Methods* trx, arangodb::aql::AstNode const* attrNode,
-    arangodb::aql::AstNode const* valNode, bool useCache) const {
-  // lease builder, but immediately pass it to the unique_ptr so we don't leak
-  transaction::BuilderLeaser builder(trx);
-  std::unique_ptr<VPackBuilder> keys(builder.steal());
-
-  fillLookupValue(*keys, valNode);
-  return std::make_unique<RocksDBEdgeIndexLookupIterator>(&_collection, trx,
-                                                          this, std::move(keys),
-                                                          useCache ? _cache : nullptr);
+    arangodb::aql::AstNode const* valNode, bool useCache,
+    ReadOwnWrites readOwnWrites) const {
+  VPackBuilder keys;
+  fillLookupValue(keys, valNode);
+  return std::make_unique<RocksDBEdgeIndexLookupIterator>(
+      &_collection, trx, this, std::move(keys), useCache ? _cache : nullptr,
+      readOwnWrites);
 }
 
 /// @brief create the iterator
 std::unique_ptr<IndexIterator> RocksDBEdgeIndex::createInIterator(
     transaction::Methods* trx, arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode, bool useCache) const {
-  // lease builder, but immediately pass it to the unique_ptr so we don't leak
-  transaction::BuilderLeaser builder(trx);
-  std::unique_ptr<VPackBuilder> keys(builder.steal());
-
-  fillInLookupValues(trx, *(keys.get()), valNode);
-  return std::make_unique<RocksDBEdgeIndexLookupIterator>(&_collection, trx,
-                                                          this, std::move(keys),
-                                                          useCache ? _cache : nullptr);
+  VPackBuilder keys;
+  fillInLookupValues(trx, keys, valNode);
+  // "in"-checks never need to observe own writes.
+  return std::make_unique<RocksDBEdgeIndexLookupIterator>(
+      &_collection, trx, this, std::move(keys), useCache ? _cache : nullptr,
+      ReadOwnWrites::no);
 }
 
-void RocksDBEdgeIndex::fillLookupValue(VPackBuilder& keys,
-                                       arangodb::aql::AstNode const* value) const {
+void RocksDBEdgeIndex::fillLookupValue(
+    VPackBuilder& keys, arangodb::aql::AstNode const* value) const {
   TRI_ASSERT(keys.isEmpty());
-  keys.openArray(/*unindexed*/true);
+  keys.openArray(/*unindexed*/ true);
   handleValNode(&keys, value);
   TRI_IF_FAILURE("EdgeIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -856,13 +883,14 @@ void RocksDBEdgeIndex::fillLookupValue(VPackBuilder& keys,
   keys.close();
 }
 
-void RocksDBEdgeIndex::fillInLookupValues(transaction::Methods* trx, VPackBuilder& keys,
-                                          arangodb::aql::AstNode const* values) const {
+void RocksDBEdgeIndex::fillInLookupValues(
+    transaction::Methods* trx, VPackBuilder& keys,
+    arangodb::aql::AstNode const* values) const {
   TRI_ASSERT(values != nullptr);
   TRI_ASSERT(values->type == arangodb::aql::NODE_TYPE_ARRAY);
   TRI_ASSERT(keys.isEmpty());
 
-  keys.openArray(/*unindexed*/true);
+  keys.openArray(/*unindexed*/ true);
   size_t const n = values->numMembers();
   for (size_t i = 0; i < n; ++i) {
     handleValNode(&keys, values->getMemberUnchecked(i));
@@ -878,8 +906,8 @@ void RocksDBEdgeIndex::fillInLookupValues(transaction::Methods* trx, VPackBuilde
 }
 
 /// @brief add a single value node to the iterator's keys
-void RocksDBEdgeIndex::handleValNode(VPackBuilder* keys,
-                                     arangodb::aql::AstNode const* valNode) const {
+void RocksDBEdgeIndex::handleValNode(
+    VPackBuilder* keys, arangodb::aql::AstNode const* valNode) const {
   if (!valNode->isStringValue() || valNode->getStringLength() == 0) {
     return;
   }
@@ -894,12 +922,10 @@ void RocksDBEdgeIndex::handleValNode(VPackBuilder* keys,
 
 void RocksDBEdgeIndex::afterTruncate(TRI_voc_tick_t tick,
                                      arangodb::transaction::Methods* trx) {
-  if (unique() || _estimator == nullptr) {
-    // the edge index is never unique - however, this extra check will not do any harm
-    return;
+  TRI_ASSERT(!unique());
+  if (_estimator != nullptr) {
+    _estimator->bufferTruncate(tick);
   }
-  TRI_ASSERT(_estimator != nullptr);
-  _estimator->bufferTruncate(tick);
   RocksDBIndex::afterTruncate(tick, trx);
 }
 
@@ -907,8 +933,10 @@ RocksDBCuckooIndexEstimatorType* RocksDBEdgeIndex::estimator() {
   return _estimator.get();
 }
 
-void RocksDBEdgeIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType> est) {
-  TRI_ASSERT(_estimator == nullptr || _estimator->appliedSeq() <= est->appliedSeq());
+void RocksDBEdgeIndex::setEstimator(
+    std::unique_ptr<RocksDBCuckooIndexEstimatorType> est) {
+  TRI_ASSERT(_estimator == nullptr ||
+             _estimator->appliedSeq() <= est->appliedSeq());
   _estimator = std::move(est);
 }
 
@@ -919,9 +947,7 @@ void RocksDBEdgeIndex::recalculateEstimates() {
   TRI_ASSERT(_estimator != nullptr);
   _estimator->clear();
 
-  auto& selector = _collection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-  rocksdb::TransactionDB* db = engine.db();
+  rocksdb::TransactionDB* db = _engine.db();
   rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
 
   auto bounds = RocksDBKeyBounds::EdgeIndex(objectId());
@@ -936,7 +962,7 @@ void RocksDBEdgeIndex::recalculateEstimates() {
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(bounds.end()) < 1);
     uint64_t hash = RocksDBEdgeIndex::HashForKey(it->key());
-    //cppcheck-suppress uninitvar ; doesn't understand above call
+    // cppcheck-suppress uninitvar ; doesn't understand above call
     _estimator->insert(hash);
   }
   _estimator->setAppliedSeq(seq);

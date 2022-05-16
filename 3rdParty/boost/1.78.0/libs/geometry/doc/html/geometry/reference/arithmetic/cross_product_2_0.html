@@ -1,0 +1,229 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>cross_product</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter 1. Geometry">
+<link rel="up" href="../arithmetic.html" title="Arithmetic">
+<link rel="prev" href="cross_product_2.html" title="cross_product">
+<link rel="next" href="divide_point.html" title="divide_point">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="cross_product_2.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../arithmetic.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="divide_point.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="geometry.reference.arithmetic.cross_product_2_0"></a><a class="link" href="cross_product_2_0.html" title="cross_product">cross_product</a>
+</h4></div></div></div>
+<p>
+          <a class="indexterm" name="idm65003"></a>
+Computes the cross product of two vectors.
+        </p>
+<h6>
+<a name="geometry.reference.arithmetic.cross_product_2.h5"></a>
+          <span class="phrase"><a name="geometry.reference.arithmetic.cross_product_2.description0"></a></span><a class="link" href="cross_product_2_0.html#geometry.reference.arithmetic.cross_product_2.description0">Description</a>
+        </h6>
+<p>
+          All vectors should have the same dimension, 3 or 2.
+        </p>
+<h6>
+<a name="geometry.reference.arithmetic.cross_product_2.h6"></a>
+          <span class="phrase"><a name="geometry.reference.arithmetic.cross_product_2.synopsis0"></a></span><a class="link" href="cross_product_2_0.html#geometry.reference.arithmetic.cross_product_2.synopsis0">Synopsis</a>
+        </h6>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">P</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">enable_if_t</span><span class="special">&lt;</span> <span class="identifier">dimension</span><span class="special">&lt;</span> <span class="identifier">P</span> <span class="special">&gt;::</span><span class="identifier">value</span> <span class="special">!=</span><span class="number">3</span><span class="special">||!</span> <span class="identifier">traits</span><span class="special">::</span><span class="identifier">make</span><span class="special">&lt;</span> <span class="identifier">P</span> <span class="special">&gt;::</span><span class="identifier">is_specialized</span><span class="special">,</span> <span class="keyword">int</span> <span class="special">&gt;&gt;</span>
+<span class="identifier">P</span> <span class="identifier">cross_product</span><span class="special">(</span><span class="identifier">P</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">p1</span><span class="special">,</span> <span class="identifier">P</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">p2</span><span class="special">)</span></pre>
+<p>
+        </p>
+<h6>
+<a name="geometry.reference.arithmetic.cross_product_2.h7"></a>
+          <span class="phrase"><a name="geometry.reference.arithmetic.cross_product_2.parameters0"></a></span><a class="link" href="cross_product_2_0.html#geometry.reference.arithmetic.cross_product_2.parameters0">Parameters</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Type
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Concept
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Name
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    std::enable_if_t&lt; dimension&lt; P &gt;::value !=3||! traits::make&lt;
+                    P &gt;::is_specialized, int &gt;
+                  </p>
+                </td>
+<td>
+                </td>
+<td>
+                  <p>
+                    -
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Must be specified
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    P const &amp;
+                  </p>
+                </td>
+<td>
+                </td>
+<td>
+                  <p>
+                    p1
+                  </p>
+                </td>
+<td>
+                  <p>
+                    first vector
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    P const &amp;
+                  </p>
+                </td>
+<td>
+                </td>
+<td>
+                  <p>
+                    p2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    second vector
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<h6>
+<a name="geometry.reference.arithmetic.cross_product_2.h8"></a>
+          <span class="phrase"><a name="geometry.reference.arithmetic.cross_product_2.returns0"></a></span><a class="link" href="cross_product_2_0.html#geometry.reference.arithmetic.cross_product_2.returns0">Returns</a>
+        </h6>
+<p>
+          the cross product vector
+        </p>
+<h6>
+<a name="geometry.reference.arithmetic.cross_product_2.h9"></a>
+          <span class="phrase"><a name="geometry.reference.arithmetic.cross_product_2.header0"></a></span><a class="link" href="cross_product_2_0.html#geometry.reference.arithmetic.cross_product_2.header0">Header</a>
+        </h6>
+<p>
+          <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">geometry</span><span class="special">/</span><span class="identifier">arithmetic</span><span class="special">/</span><span class="identifier">cross_product</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+        </p>
+<h6>
+<a name="geometry.reference.arithmetic.cross_product_2.h10"></a>
+          <span class="phrase"><a name="geometry.reference.arithmetic.cross_product_2.examples"></a></span><a class="link" href="cross_product_2_0.html#geometry.reference.arithmetic.cross_product_2.examples">Examples</a>
+        </h6>
+<p>
+          Calculate the cross product of two points
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">geometry</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">geometry</span><span class="special">/</span><span class="identifier">arithmetic</span><span class="special">/</span><span class="identifier">cross_product</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">bg</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">geometry</span><span class="special">;</span> <a class="co" name="geometry.reference.arithmetic.cross_product_2.c0" href="cross_product_2_0.html#geometry.reference.arithmetic.cross_product_2.c1"><img src="../../../../../../../doc/src/images/callouts/1.png" alt="1" border="0"></a>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+     <span class="comment">//Example 1 2D Vector</span>
+
+     <span class="identifier">bg</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">point</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">,</span> <span class="number">2</span><span class="special">,</span> <span class="identifier">bg</span><span class="special">::</span><span class="identifier">cs</span><span class="special">::</span><span class="identifier">cartesian</span><span class="special">&gt;</span> <span class="identifier">p1</span><span class="special">(</span><span class="number">7.0</span><span class="special">,</span> <span class="number">2.0</span><span class="special">);</span>
+     <span class="identifier">bg</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">point</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">,</span> <span class="number">2</span><span class="special">,</span> <span class="identifier">bg</span><span class="special">::</span><span class="identifier">cs</span><span class="special">::</span><span class="identifier">cartesian</span><span class="special">&gt;</span> <span class="identifier">p2</span><span class="special">(</span><span class="number">4.0</span><span class="special">,</span> <span class="number">5.0</span><span class="special">);</span>
+
+     <span class="identifier">bg</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">point</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">,</span> <span class="number">2</span><span class="special">,</span> <span class="identifier">bg</span><span class="special">::</span><span class="identifier">cs</span><span class="special">::</span><span class="identifier">cartesian</span><span class="special">&gt;</span> <span class="identifier">r1</span><span class="special">;</span>
+
+     <span class="identifier">r1</span> <span class="special">=</span> <span class="identifier">bg</span><span class="special">::</span><span class="identifier">cross_product</span><span class="special">(</span><span class="identifier">p1</span><span class="special">,</span><span class="identifier">p2</span><span class="special">);</span>
+
+     <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Cross Product 1: "</span><span class="special">&lt;&lt;</span> <span class="identifier">r1</span><span class="special">.</span><span class="identifier">get</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>  <span class="comment">//Note that the second point (r1.get&lt;1&gt;) would be undefined in this case</span>
+
+     <span class="comment">//Example 2 - 3D Vector </span>
+
+     <span class="identifier">bg</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">point</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">,</span> <span class="number">3</span><span class="special">,</span> <span class="identifier">bg</span><span class="special">::</span><span class="identifier">cs</span><span class="special">::</span><span class="identifier">cartesian</span><span class="special">&gt;</span> <span class="identifier">p3</span><span class="special">(</span><span class="number">4.0</span><span class="special">,</span> <span class="number">6.0</span><span class="special">,</span> <span class="number">5.0</span><span class="special">);</span>
+     <span class="identifier">bg</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">point</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">,</span> <span class="number">3</span><span class="special">,</span> <span class="identifier">bg</span><span class="special">::</span><span class="identifier">cs</span><span class="special">::</span><span class="identifier">cartesian</span><span class="special">&gt;</span> <span class="identifier">p4</span><span class="special">(</span><span class="number">7.0</span><span class="special">,</span> <span class="number">2.0</span><span class="special">,</span> <span class="number">3.0</span><span class="special">);</span>
+
+     <span class="identifier">bg</span><span class="special">::</span><span class="identifier">model</span><span class="special">::</span><span class="identifier">point</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">,</span> <span class="number">3</span><span class="special">,</span> <span class="identifier">bg</span><span class="special">::</span><span class="identifier">cs</span><span class="special">::</span><span class="identifier">cartesian</span><span class="special">&gt;</span> <span class="identifier">r2</span><span class="special">;</span>
+
+     <span class="identifier">r2</span> <span class="special">=</span> <span class="identifier">bg</span><span class="special">::</span><span class="identifier">cross_product</span><span class="special">(</span><span class="identifier">p3</span><span class="special">,</span><span class="identifier">p4</span><span class="special">);</span>
+
+     <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Cross Product 2: ("</span><span class="special">&lt;&lt;</span> <span class="identifier">r2</span><span class="special">.</span><span class="identifier">get</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;()</span> <span class="special">&lt;&lt;</span><span class="string">","</span><span class="special">&lt;&lt;</span> <span class="identifier">r2</span><span class="special">.</span><span class="identifier">get</span><span class="special">&lt;</span><span class="number">1</span><span class="special">&gt;()</span> <span class="special">&lt;&lt;</span><span class="string">","</span><span class="special">&lt;&lt;</span> <span class="identifier">r2</span><span class="special">.</span><span class="identifier">get</span><span class="special">&lt;</span><span class="number">2</span><span class="special">&gt;()</span> <span class="special">&lt;&lt;</span> <span class="string">")"</span><span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+     <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        </p>
+<div class="calloutlist"><table border="0" summary="Callout list"><tr>
+<td width="5%" valign="top" align="left"><p><a name="geometry.reference.arithmetic.cross_product_2.c1"></a><a href="#geometry.reference.arithmetic.cross_product_2.c0"><img src="../../../../../../../doc/src/images/callouts/1.png" alt="1" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+              Convenient namespace alias
+            </p></td>
+</tr></table></div>
+<p>
+          Output:
+        </p>
+<pre class="programlisting">Cross Product 1: 27
+Cross Product 2: (8,23,-34)
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2009-2021 Barend Gehrels,
+      Bruno Lalande, Mateusz Loskot, Adam Wulkiewicz, Oracle and/or its affiliates<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="cross_product_2.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../arithmetic.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="divide_point.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

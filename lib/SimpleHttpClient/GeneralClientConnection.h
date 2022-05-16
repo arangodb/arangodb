@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,7 +34,8 @@
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
-}
+class CommunicationFeaturePhase;
+}  // namespace application_features
 namespace basics {
 class StringBuffer;
 }
@@ -57,19 +58,12 @@ class GeneralClientConnection {
   GeneralClientConnection& operator=(GeneralClientConnection const&);
 
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates a new client connection
-  //////////////////////////////////////////////////////////////////////////////
-
-  GeneralClientConnection(application_features::ApplicationServer&,
+  GeneralClientConnection(application_features::CommunicationFeaturePhase&,
                           Endpoint* endpoint, double, double, size_t);
 
-  GeneralClientConnection(application_features::ApplicationServer&,
-                          std::unique_ptr<Endpoint>& endpoint, double, double, size_t);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief destroys a client connection
-  //////////////////////////////////////////////////////////////////////////////
+  GeneralClientConnection(application_features::CommunicationFeaturePhase&,
+                          std::unique_ptr<Endpoint>& endpoint, double, double,
+                          size_t);
 
   virtual ~GeneralClientConnection();
 
@@ -78,14 +72,15 @@ class GeneralClientConnection {
   /// @brief create a new connection from an endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  static GeneralClientConnection* factory(application_features::ApplicationServer& server,
-                                          Endpoint*, double requestTimeout, double connectTimeout,
-                                          size_t numRetries, uint64_t sslProtocol);
+  static GeneralClientConnection* factory(
+      application_features::CommunicationFeaturePhase& comm, Endpoint*,
+      double requestTimeout, double connectTimeout, size_t numRetries,
+      uint64_t sslProtocol);
 
-  static GeneralClientConnection* factory(application_features::ApplicationServer& server,
-                                          std::unique_ptr<Endpoint>&,
-                                          double requestTimeout, double connectTimeout,
-                                          size_t numRetries, uint64_t sslProtocol);
+  static GeneralClientConnection* factory(
+      application_features::CommunicationFeaturePhase& comm,
+      std::unique_ptr<Endpoint>&, double requestTimeout, double connectTimeout,
+      size_t numRetries, uint64_t sslProtocol);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the endpoint
@@ -144,7 +139,8 @@ class GeneralClientConnection {
   /// @brief read data from endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  bool handleRead(double, arangodb::basics::StringBuffer&, bool& connectionClosed);
+  bool handleRead(double, arangodb::basics::StringBuffer&,
+                  bool& connectionClosed);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the endpoint
@@ -173,6 +169,10 @@ class GeneralClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   application_features::ApplicationServer& server() const;
+
+  application_features::CommunicationFeaturePhase& comm() const {
+    return _comm;
+  }
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -209,7 +209,8 @@ class GeneralClientConnection {
   /// @brief read data from the connection
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual bool readClientConnection(arangodb::basics::StringBuffer&, bool& porgress) = 0;
+  virtual bool readClientConnection(arangodb::basics::StringBuffer&,
+                                    bool& porgress) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return whether the connection is readable
@@ -218,12 +219,6 @@ class GeneralClientConnection {
   virtual bool readable() = 0;
 
  protected:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the underlying application server
-  //////////////////////////////////////////////////////////////////////////////
-
-  application_features::ApplicationServer& _server;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying socket
   //////////////////////////////////////////////////////////////////////////////
@@ -241,7 +236,11 @@ class GeneralClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   Endpoint* _endpoint;
-  bool _freeEndpointOnDestruction;
+
+  // reference to communication feature phase (populated only once for
+  // the entire lifetime of the SimpleHttpClient, as the repeated feature
+  // lookup may be expensive otherwise)
+  application_features::CommunicationFeaturePhase& _comm;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief request timeout (in seconds)
@@ -267,6 +266,8 @@ class GeneralClientConnection {
 
   size_t _numConnectRetries;
 
+  bool _freeEndpointOnDestruction;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether we're connected
   //////////////////////////////////////////////////////////////////////////////
@@ -286,4 +287,3 @@ class GeneralClientConnection {
 };
 }  // namespace httpclient
 }  // namespace arangodb
-

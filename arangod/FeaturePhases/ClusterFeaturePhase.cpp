@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,28 +22,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterFeaturePhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
-#include "ApplicationFeatures/V8PlatformFeature.h"
-#include "Cluster/ClusterFeature.h"
-#include "Cluster/MaintenanceFeature.h"
-#include "Cluster/ReplicationTimeoutFeature.h"
-#include "FeaturePhases/DatabaseFeaturePhase.h"
+namespace arangodb::application_features {
 
-namespace arangodb {
-namespace application_features {
-
-ClusterFeaturePhase::ClusterFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "ClusterPhase") {
+ClusterFeaturePhase::ClusterFeaturePhase(ArangodServer& server)
+    : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
-  startsAfter<DatabaseFeaturePhase>();
+  startsAfter<DatabaseFeaturePhase, ArangodServer>();
 
-  startsAfter<ClusterFeature>();
-  startsAfter<MaintenanceFeature>();
-  startsAfter<ReplicationTimeoutFeature>();
+  startsAfter<ClusterFeature, ArangodServer>();
+  startsAfter<MaintenanceFeature, ArangodServer>();
+  startsAfter<ReplicationTimeoutFeature, ArangodServer>();
+  startsAfter<ReplicatedLogFeature, ArangodServer>();
 
   // use before here since platform feature is in lib
-  startsBefore<V8PlatformFeature>();
+  startsBefore<V8PlatformFeature, ArangodServer>();
 }
 
-}  // namespace application_features
-}  // namespace arangodb
+}  // namespace arangodb::application_features

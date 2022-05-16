@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,12 +34,14 @@ class CalculationNodeVarFinder final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   Variable const* _lookingFor;
 
-  ::arangodb::containers::SmallVector<ExecutionNode*>& _out;
+  containers::SmallVector<ExecutionNode*, 8>& _out;
 
   VarSet _currentUsedVars;
 
  public:
-  CalculationNodeVarFinder(Variable const* var, ::arangodb::containers::SmallVector<ExecutionNode*>& out) noexcept;
+  CalculationNodeVarFinder(
+      Variable const* var,
+      containers::SmallVector<ExecutionNode*, 8>& out) noexcept;
 
   bool before(ExecutionNode*) override final;
 };
@@ -63,4 +65,3 @@ class CalculationNodeVarExistenceFinder final
 };
 }  // namespace aql
 }  // namespace arangodb
-

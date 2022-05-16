@@ -1,0 +1,435 @@
+////
+Copyright 2020, 2021 Peter Dimov
+Distributed under the Boost Software License, Version 1.0.
+https://www.boost.org/LICENSE_1_0.txt
+////
+
+[#reference]
+# Reference
+:idprefix: ref_
+
+## <boost/lambda2/lambda2.hpp>
+
+### Synopsis
+
+```
+namespace boost {
+namespace lambda2 {
+
+// placeholders
+
+template<int I> struct lambda2_arg;
+
+inline constexpr lambda2_arg<1> _1{};
+inline constexpr lambda2_arg<2> _2{};
+inline constexpr lambda2_arg<3> _3{};
+inline constexpr lambda2_arg<4> _4{};
+inline constexpr lambda2_arg<5> _5{};
+inline constexpr lambda2_arg<6> _6{};
+inline constexpr lambda2_arg<7> _7{};
+inline constexpr lambda2_arg<8> _8{};
+inline constexpr lambda2_arg<9> _9{};
+
+// arithmetic operators
+
+template<class A, class B> auto operator+( A && a, B && b );
+template<class A, class B> auto operator-( A && a, B && b );
+template<class A, class B> auto operator*( A && a, B && b );
+template<class A, class B> auto operator/( A && a, B && b );
+template<class A, class B> auto operator%( A && a, B && b );
+template<class A> auto operator-( A && a );
+
+// relational operators
+
+template<class A, class B> auto operator==( A && a, B && b );
+template<class A, class B> auto operator!=( A && a, B && b );
+template<class A, class B> auto operator>( A && a, B && b );
+template<class A, class B> auto operator<( A && a, B && b );
+template<class A, class B> auto operator>=( A && a, B && b );
+template<class A, class B> auto operator<=( A && a, B && b );
+
+// logical operators
+
+template<class A, class B> auto operator&&( A && a, B && b );
+template<class A, class B> auto operator||( A && a, B && b );
+template<class A> auto operator!( A && a );
+
+// bitwise operators
+
+template<class A, class B> auto operator&( A && a, B && b );
+template<class A, class B> auto operator|( A && a, B && b );
+template<class A, class B> auto operator^( A && a, B && b );
+template<class A> auto operator~( A && a );
+
+template<class A, class B> auto operator<<( A && a, B && b );
+template<class A, class B> auto operator>>( A && a, B && b );
+
+// additional unary operators
+
+template<class A> auto operator+( A && a );
+template<class A> auto operator*( A && a );
+template<class A> auto operator++( A && a );
+template<class A> auto operator--( A && a );
+template<class A> auto operator++( A && a, int );
+template<class A> auto operator--( A && a, int );
+
+// compound assignment operators
+
+template<class A, class B> auto operator+=( A && a, B && b );
+template<class A, class B> auto operator-=( A && a, B && b );
+template<class A, class B> auto operator*=( A && a, B && b );
+template<class A, class B> auto operator/=( A && a, B && b );
+template<class A, class B> auto operator%=( A && a, B && b );
+template<class A, class B> auto operator&=( A && a, B && b );
+template<class A, class B> auto operator|=( A && a, B && b );
+template<class A, class B> auto operator^=( A && a, B && b );
+template<class A, class B> auto operator<<=( A && a, B && b );
+template<class A, class B> auto operator>>=( A && a, B && b );
+
+// additional binary operators
+
+template<class A, class B> auto operator->*( A && a, B && b );
+
+// projections
+
+inline constexpr /unspecified/ first{};
+inline constexpr /unspecified/ second{};
+
+} // namespace lambda2
+} // namespace boost
+```
+
+### Placeholders
+
+```
+template<int I> struct lambda2_arg
+{
+    template<class... A> decltype(auto) operator()( A&&... a ) const noexcept;
+    template<class T> auto operator[]( T&& t ) const;
+};
+```
+
+`lambda2_arg<I>` is the type of the library-provided placeholders `_I`. The
+standard customization point `std::is_placeholder` is specialized for it,
+enabling the use of Lambda2's placeholders with `std::bind`.
+
+The placeholders define `operator()`, which permits their direct use as
+function objects. E.g. `_1(x, y)` returns `x`.
+
+`operator[]` is also defined to allow expressions like `_1[x]` or `_1[_2]`.
+
+```
+template<class... A> decltype(auto) operator()( A&&... a ) const noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: `std::get<std::size_t{I-1}>( std::tuple<A&&...>( std::forward<A>(a)... ) );`
+
+```
+template<class T> auto operator[]( T&& t ) const;
+```
+[none]
+* {blank}
++
+Returns: :: `std::bind( fn, *this, std::forward<T>(t) );`, where `fn` is
+  a function object such that `fn(x, y)` returns `x[y]`.
+
+### Common Requirements
+
+All operators defined in the subsequent sections only participate in
+overload resolution if at least one of their operands is such that for
+its unqualified type `T`, the expression
+`std::is_placeholder<T>::value || std::is_bind_expression<T>::value`
+is `true`.
+
+### Arithmetic Operators
+
+```
+template<class A, class B> auto operator+( A && a, B && b );
+```
+[none]
+* {blank}
++
+Returns: :: `std::bind( std::plus<>(), std::forward<A>(a), std::forward<B>(b) );`
+
+```
+template<class A, class B> auto operator-( A && a, B && b );
+```
+[none]
+* {blank}
++
+Returns: :: `std::bind( std::minus<>(), std::forward<A>(a), std::forward<B>(b) );`
+
+```
+template<class A, class B> auto operator*( A && a, B && b );
+```
+[none]
+* {blank}
++
+Returns: :: `std::bind( std::multiplies<>(), std::forward<A>(a), std::forward<B>(b) );`
+
+```
+template<class A, class B> auto operator/( A && a, B && b );
+```
+[none]
+* {blank}
++
+Returns: :: `std::bind( std::divides<>(), std::forward<A>(a), std::forward<B>(b) );`
+
+```
+template<class A, class B> auto operator%( A && a, B && b );
+```
+[none]
+* {blank}
++
+Returns: :: `std::bind( std::modulus<>(), std::forward<A>(a), std::forward<B>(b) );`
+
+```
+template<class A> auto operator-( A && a );
+```
+[none]
+* {blank}
++
+Returns: ::
+  `std::bind( std::negate<>(), std::forward<A>(a) );`
+
+### Relational Operators
+
+```
+template<class A, class B> auto operator==( A && a, B && b );
+```
+[none]
+* {blank}
++
+Returns: :: `std::bind( std::equal_to<>(), std::forward<A>(a), std::forward<B>(b) );`
+
+```
+template<class A, class B> auto operator!=( A && a, B && b );
+```
+[none]
+* {blank}
++
+Returns: :: `std::bind( std::not_equal_to<>(), std::forward<A>(a), std::forward<B>(b) );`
+
+```
+template<class A, class B> auto operator>( A && a, B && b );
+```
+[none]
+* {blank}
++
+Returns: :: `std::bind( std::greater<>(), std::forward<A>(a), std::forward<B>(b) );`
+
+```
+template<class A, class B> auto operator<( A && a, B && b );
+```
+[none]
+* {blank}
++
+Returns: :: `std::bind( std::less<>(), std::forward<A>(a), std::forward<B>(b) );`
+
+```
+template<class A, class B> auto operator>=( A && a, B && b );
+```
+[none]
+* {blank}
++
+Returns: :: `std::bind( std::greater_equal<>(), std::forward<A>(a), std::forward<B>(b) );`
+
+```
+template<class A, class B> auto operator<=( A && a, B && b );
+```
+[none]
+* {blank}
++
+Returns: ::
+  `std::bind( std::less_equal<>(), std::forward<A>(a), std::forward<B>(b) );`
+
+### Logical Operators
+
+```
+template<class A, class B> auto operator&&( A && a, B && b );
+```
+[none]
+* {blank}
++
+Returns: :: `std::bind( std::logical_and<>(), std::forward<A>(a), std::forward<B>(b) );`
+
+```
+template<class A, class B> auto operator||( A && a, B && b );
+```
+[none]
+* {blank}
++
+Returns: :: `std::bind( std::logical_or<>(), std::forward<A>(a), std::forward<B>(b) );`
+
+```
+template<class A> auto operator!( A && a );
+```
+[none]
+* {blank}
++
+Returns: ::
+  `std::bind( std::logical_not<>(), std::forward<A>(a) );`
+
+### Bitwise Operators
+
+```
+template<class A, class B> auto operator&( A && a, B && b );
+```
+[none]
+* {blank}
++
+Returns: :: `std::bind( std::bit_and<>(), std::forward<A>(a), std::forward<B>(b) );`
+
+```
+template<class A, class B> auto operator|( A && a, B && b );
+```
+[none]
+* {blank}
++
+Returns: :: `std::bind( std::bit_or<>(), std::forward<A>(a), std::forward<B>(b) );`
+
+```
+template<class A, class B> auto operator^( A && a, B && b );
+```
+[none]
+* {blank}
++
+Returns: :: `std::bind( std::bit_xor<>(), std::forward<A>(a), std::forward<B>(b) );`
+
+```
+template<class A> auto operator~( A && a );
+```
+[none]
+* {blank}
++
+Returns: ::
+  `std::bind( std::bit_not<>(), std::forward<A>(a) );`
+
+```
+template<class A, class B> auto operator<<( A && a, B && b );
+```
+[none]
+* {blank}
++
+Returns: :: `std::bind( fn, std::forward<A>(a), std::forward<B>(b) );`,
+  where `fn` is a function object such that `fn(x, y)` returns `x << y`.
+
+```
+template<class A, class B> auto operator>>( A && a, B && b );
+```
+[none]
+* {blank}
++
+Returns: :: `std::bind( fn, std::forward<A>(a), std::forward<B>(b) );`,
+  where `fn` is a function object such that `fn(x, y)` returns `x >> y`.
+
+### Additional Unary Operators
+
+```
+template<class A> auto operator+( A && a );
+```
+[none]
+* {blank}
++
+Returns: ::
+  `std::bind( fn, std::forward<A>(a) );`, where `fn` is a function object
+  such that `fn(x)` returns `+x`.
+
+```
+template<class A> auto operator*( A && a );
+```
+[none]
+* {blank}
++
+Returns: ::
+  `std::bind( fn, std::forward<A>(a) );`, where `fn` is a function object
+  such that `fn(x)` returns `*x`.
+
+```
+template<class A> auto operator++( A && a );
+```
+[none]
+* {blank}
++
+Returns: ::
+  `std::bind( fn, std::forward<A>(a) );`, where `fn` is a function object
+  such that `fn(x)` returns `++x`.
+
+```
+template<class A> auto operator--( A && a );
+```
+[none]
+* {blank}
++
+Returns: ::
+  `std::bind( fn, std::forward<A>(a) );`, where `fn` is a function object
+  such that `fn(x)` returns `--x`.
+
+```
+template<class A> auto operator++( A && a, int );
+```
+[none]
+* {blank}
++
+Returns: ::
+  `std::bind( fn, std::forward<A>(a) );`, where `fn` is a function object
+  such that `fn(x)` returns `x++`.
+
+```
+template<class A> auto operator--( A && a, int );
+```
+[none]
+* {blank}
++
+Returns: ::
+  `std::bind( fn, std::forward<A>(a) );`, where `fn` is a function object
+  such that `fn(x)` returns `x--`.
+
+### Compound Assignment Operators
+
+```
+template<class A, class B> auto operator@=( A && a, B && b );
+```
+[none]
+* {blank}
++
+Returns: :: `std::bind( fn, std::forward<A>(a), std::forward<B>(b) );`,
+  where `fn` is a function object such that `fn(x, y)` returns `x @= y`.
+
+### Additional Binary Operators
+
+```
+template<class A, class B> auto operator->*( A && a, B && b );
+```
+[none]
+* {blank}
++
+Returns: :: `std::bind( std::forward<B>(b), std::forward<A>(a) );`
+Notes: :: This operator is intended to be used with "projection" function
+  objects such as member pointers or member functions taking zero arguments,
+  as in `_1\->*&X::m` or `_1\->*&X::f`.
+
+### Projections
+
+```
+inline constexpr /unspecified/ first{};
+```
+
+A function object such that `first(x)` returns `std::get<0>(x)`.
+
+```
+inline constexpr /unspecified/ second{};
+```
+
+A function object such that `second(x)` returns `std::get<1>(x)`.
+
+.Using first and second to print out a map
+```
+void print( std::map<int, std::string> const & m )
+{
+    using namespace boost::lambda2;
+    std::for_each( m.begin(), m.end(), std::cout << _1->*first << ": " << _1->*second << '\n' );
+}
+```

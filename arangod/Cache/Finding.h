@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,11 +23,10 @@
 
 #pragma once
 
-#include "Basics/Result.h"
+#include "Basics/ErrorCode.h"
 #include "Cache/CachedValue.h"
 
-namespace arangodb {
-namespace cache {
+namespace arangodb::cache {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief A helper class for managing CachedValue lifecycles.
@@ -40,40 +39,40 @@ namespace cache {
 ////////////////////////////////////////////////////////////////////////////////
 class Finding {
  public:
-  Finding();
-  explicit Finding(CachedValue* v);
-  explicit Finding(CachedValue* v, Result const& r);
+  Finding() noexcept;
+  explicit Finding(CachedValue* v) noexcept;
+  explicit Finding(CachedValue* v, ::ErrorCode r) noexcept;
   Finding(Finding const& other) = delete;
-  Finding(Finding&& other);
+  Finding(Finding&& other) noexcept;
   Finding& operator=(Finding const& other) = delete;
-  Finding& operator=(Finding&& other);
+  Finding& operator=(Finding&& other) noexcept;
   ~Finding();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Changes the underlying CachedValue pointer.
   //////////////////////////////////////////////////////////////////////////////
-  void reset(CachedValue* v);
+  void reset(CachedValue* v) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Sets the underlying CachedValue pointer. Assumes that the Finding
   /// is currently empty
   //////////////////////////////////////////////////////////////////////////////
-  void set(CachedValue* v);
+  void set(CachedValue* v) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Sets the error Result object.
+  /// @brief Sets the error code.
   //////////////////////////////////////////////////////////////////////////////
-  void reportError(Result const& r);
+  void reportError(::ErrorCode r) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Specifies whether the value was found. If not, value is nullptr.
   //////////////////////////////////////////////////////////////////////////////
-  bool found() const;
+  bool found() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the underlying value pointer.
   //////////////////////////////////////////////////////////////////////////////
-  CachedValue const* value() const;
+  CachedValue const* value() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Creates a copy of the underlying value and returns a pointer.
@@ -83,18 +82,16 @@ class Finding {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Releases the finding.
   //////////////////////////////////////////////////////////////////////////////
-  void release();
+  void release() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the status result object associated with the lookup.
   /////////////////////////////////////////////////////////////////////////////
-  Result const& result() const;
+  ::ErrorCode result() const noexcept;
 
  private:
   CachedValue* _value;
-  Result _result;
+  ::ErrorCode _result;
 };
 
-};  // end namespace cache
-};  // end namespace arangodb
-
+}  // end namespace arangodb::cache

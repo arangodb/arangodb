@@ -1,0 +1,23 @@
+[#whitespace_expected]
+[section whitespace_expected]
+
+[h1 Synopsis]
+
+  namespace error
+  {
+    struct whitespace_expected;
+  }
+
+This is a [link parsing_error_message parsing error message].
+
+[h1 Description]
+
+Class representing the error that a whitespace character was expected at a
+specific location.
+
+[h1 Header]
+
+  #include <boost/metaparse/error/whitespace_expected.hpp>
+
+[endsect]
+

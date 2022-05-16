@@ -10,6 +10,7 @@
     <li class="navbar-spacer big"></li>
     <!-- <li id="dbSelect" class="dropdown databases-menu disabled"></li> -->
     <li class="collections-menu"><a id="collections" class="tab" href="#collections"><i class="fa fa-folder"></i>Collections</a></li>
+    <li class="analyzers-menu"><a id="analyzers" class="tab" href="#analyzers"><i class="fa fa-cog"></i>Analyzers</a></li>
     <li class="views-menu"><a id="views" class="tab" href="#views"><i class="fa fa-eye"></i>Views</a></li>
     <li class="queries-menu"><a id="queries" class="tab" href="#queries"><i class="fa fa-bolt"></i>Queries</a></li>
     <li class="graphs-menu"><a id="graphs" class="tab" href="#graphs"><i class="fa fa-sitemap"></i>Graphs</a></li>
@@ -20,7 +21,7 @@
     <% } %>
     <% if (currentDB.get('isSystem')) { %>
       <% if (!readOnly) { %>
-        <li class="users-menu"><a id="users" class="tab" href="#manage"><i class="fa fa-users"></i>Users</a></li>
+        <li class="users-menu"><a id="users" class="tab" href="#users"><i class="fa fa-users"></i>Users</a></li>
       <% } %>
     <% } %>
     <!--
@@ -45,52 +46,6 @@
     <li class="support-menu"><a id="support" class="tab" href="#support"><i class="fa fa-support"></i>Support</a></li>
     <li class="helpus-menu"><a id="helpus" class="tab" href="#helpus"><i class="fa fa-heart"></i>Help Us</a></li>
     <li class="enterprise-menu" style="display: none; cursor: pointer"><a id="enterprise" class="tab" target="_blank"><i class="fa fa-external-link-square"></i>Get enterprise</a></li>
-    <!--
-    <li class="navbar-spacer big"></li>
-    <li class="dropdown tools-menu" id="toolsDropdown">
-      <a href="#" class="tab" id="tools">Tools <b class="caret"></b></a>
-      <ul class="link-dropdown-menu" id="tools_dropdown">
-        <li class="dropdown-header">Tools</li>
-        <li class="dropdown-item">
-          <a id="shell" class="tab" href="#shell">JS Shell</a>
-        </li>
-
-        <% if (!isCluster) { %>
-          <li class="dropdown-item">
-            <a id="logs" class="tab" href="#logs">Logs</a>
-          </li>
-        <% } %>
-
-        <li class="dropdown-item">
-          <a id="userManagement" class="tab" href="#userManagement">User Management</a>
-        </li>
-        <li class="dropdown-item">
-          <a id="queryManagement" class="tab" href="#queryManagement">Query Management</a>
-        </li>
-        <li class="dropdown-item">
-          <a id="workMonitor" class="tab" href="#workMonitor">Work Monitor</a>
-        </li>
-      </ul>
-    </li>
-    <li class="dropdown" id="linkDropdown">
-      <a href="#" class="tab" id="links">Links <b class="caret"></b></a>
-      <ul class="link-dropdown-menu" id="link_dropdown">
-        <li class="dropdown-header">Documentation</li>
-        <li class="dropdown-item"><a href="/_db/<%= currentDB.get('name') %>/_admin/aardvark/api/index.html?collapsed" target="_blank">API Documentation</a></li>
-        <li class="dropdown-item"><a href="https://www.arangodb.com/docs/stable/programs-arangosh.html"
-                                     target="_blank">JS Shell Documentation</a></li>
-        <li class="dropdown-item"><a href="https://www.arangodb.com/docs/stable/aql/" target="_blank">AQL
-          Documentation</a></li>
-        <li class="dropdown-item"><a href="https://www.arangodb.com/docs/stable/" target="_blank">General
-          Documentation</a></li>
-        <li class="divider"></li>
-        <li class="dropdown-header">ArangoDB</li>
-        <li class="dropdown-item"><a href="https://github.com/arangodb/arangodb" target="_blank">GitHub
-          Repository</a></li>
-        <li class="dropdown-item"><a href="https://www.arangodb.com" target="_blank">ArangoDB.com</a></li>
-      </ul>
-    </li>
-  -->
   </ul>
 
 

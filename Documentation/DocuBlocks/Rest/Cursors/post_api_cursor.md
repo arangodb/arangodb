@@ -74,6 +74,14 @@ not already in there, thus leaving more room for the actual hot set.
 @RESTSTRUCT{maxPlans,post_api_cursor_opts,integer,optional,int64}
 Limits the maximum number of plans that are created by the AQL query optimizer.
 
+@RESTSTRUCT{maxNodesPerCallstack,post_api_cursor_opts,integer,optional,int64}
+The number of execution nodes in the query plan after that stack splitting is
+performed to avoid a potential stack overflow. Defaults to the configured value
+of the startup option `--query.max-nodes-per-callstack`.
+
+This option is only useful for testing and debugging and normally does not need
+any adjustment.
+
 @RESTSTRUCT{maxWarningCount,post_api_cursor_opts,integer,optional,int64}
 Limits the maximum number of warnings a query will return. The number of warnings
 a query will return is limited to 10 by default, but that number can be increased
@@ -147,15 +155,15 @@ The query has to be executed within the given runtime or it will be killed.
 The value is specified in seconds. The default value is *0.0* (no timeout).
 
 @RESTSTRUCT{maxTransactionSize,post_api_cursor_opts,integer,optional,int64}
-Transaction size limit in bytes. Honored by the RocksDB storage engine only.
+Transaction size limit in bytes.
 
 @RESTSTRUCT{intermediateCommitSize,post_api_cursor_opts,integer,optional,int64}
 Maximum total size of operations after which an intermediate commit is performed
-automatically. Honored by the RocksDB storage engine only.
+automatically.
 
 @RESTSTRUCT{intermediateCommitCount,post_api_cursor_opts,integer,optional,int64}
 Maximum number of operations after which an intermediate commit is performed
-automatically. Honored by the RocksDB storage engine only.
+automatically.
 
 @RESTSTRUCT{skipInaccessibleCollections,post_api_cursor_opts,boolean,optional,}
 AQL queries (especially graph traversals) will treat collection to which a user has no access rights as if these collections were empty. Instead of returning a forbidden access error, your queries will execute normally. This is intended to help with certain use-cases: A graph contains several collections and different users execute AQL queries on that graph. You can now naturally limit the accessible results by changing the access rights of users on collections. This feature is only available in the Enterprise Edition.
@@ -190,12 +198,83 @@ available if the query was executed with the *count* attribute set)
 @RESTREPLYBODY{id,string,required,string}
 id of temporary cursor created on the server (optional, see above)
 
-@RESTREPLYBODY{extra,object,optional,}
-an optional JSON object with extra information about the query result
-contained in its *stats* sub-attribute. For data-modification queries, the
-*extra.stats* sub-attribute will contain the number of modified documents and
-the number of documents that could not be modified
-due to an error (if *ignoreErrors* query option is specified)
+@RESTREPLYBODY{extra,object,optional,post_api_cursor_extra}
+An optional JSON object with extra information about the query result.
+
+@RESTSTRUCT{stats,post_api_cursor_extra,object,required,post_api_cursor_extra_stats}
+An object with query statistics.
+
+@RESTSTRUCT{writesExecuted,post_api_cursor_extra_stats,number,required,}
+The total number of data-modification operations successfully executed.
+
+@RESTSTRUCT{writesIgnored,post_api_cursor_extra_stats,number,required,}
+The total number of data-modification operations that were unsuccessful,
+but have been ignored because of query option `ignoreErrors`.
+
+@RESTSTRUCT{scannedFull,post_api_cursor_extra_stats,number,required,}
+The total number of documents iterated over when scanning a collection 
+without an index. Documents scanned by subqueries will be included in the result, but
+operations triggered by built-in or user-defined AQL functions will not.
+
+@RESTSTRUCT{scannedIndex,post_api_cursor_extra_stats,number,required,}
+The total number of documents iterated over when scanning a collection using
+an index. Documents scanned by subqueries will be included in the result, but operations
+triggered by built-in or user-defined AQL functions will not.
+
+@RESTSTRUCT{cursorsCreated,post_api_cursor_extra_stats,number,required,}
+The total number of cursor objects created during query execution. Cursor
+objects are created for index lookups.
+
+@RESTSTRUCT{cursorsRearmed,post_api_cursor_extra_stats,number,required,}
+The total number of times an existing cursor object was repurposed.
+Repurposing an existing cursor object is normally more efficient compared to destroying an
+existing cursor object and creating a new one from scratch.
+
+@RESTSTRUCT{cacheHits,post_api_cursor_extra_stats,number,required,}
+The total number of index entries read from in-memory caches for indexes
+of type edge or persistent. This value will only be non-zero when reading from indexes
+that have an in-memory cache enabled, and when the query allows using the in-memory
+cache (i.e. using equality lookups on all index attributes).
+
+@RESTSTRUCT{cacheMisses,post_api_cursor_extra_stats,number,required,}
+The total number of cache read attempts for index entries that could not
+be served from in-memory caches for indexes of type edge or persistent. This value will
+only be non-zero when reading from indexes that have an in-memory cache enabled, the
+query allows using the in-memory cache (i.e. using equality lookups on all index attributes)
+and the looked up values are not present in the cache.
+
+@RESTSTRUCT{filtered,post_api_cursor_extra_stats,number,required,}
+The total number of documents that were removed after executing a filter condition
+in a `FilterNode` or another node that post-filters data. 
+Note that `IndexNode`s can also filter documents by selecting only the required index range 
+from a collection, and the `filtered` value only indicates how much filtering was done by a
+post filter in the `IndexNode` itself or following `FilterNode`s. 
+`EnumerateCollectionNode`s and `TraversalNode`s can also apply filter conditions and can
+reported the number of filtered documents.
+
+@RESTSTRUCT{fullCount,post_api_cursor_extra_stats,number,optional,}
+The total number of documents that matched the search condition if the query's
+final top-level `LIMIT` statement were not present.
+This attribute may only be returned if the `fullCount` option was set when starting the 
+query and will only contain a sensible value if the query contained a `LIMIT` operation on
+the top level.
+
+@RESTSTRUCT{peakMemoryUsage,post_api_cursor_extra_stats,number,required,}
+The maximum memory usage of the query while it was running. In a cluster,
+the memory accounting is done per shard, and the memory usage reported is the peak
+memory usage value from the individual shards.
+Note that to keep things lightweight, the per-query memory usage is tracked on a relatively 
+high level, not including any memory allocator overhead nor any memory used for temporary
+results calculations (e.g. memory allocated/deallocated inside AQL expressions and function 
+calls).
+
+@RESTSTRUCT{nodes,post_api_cursor_extra_stats,number,optional,}
+When the query was executed with the `profile` option set to at least `2`,
+then this value contains runtime statistics per query execution node. This field contains the
+node id (in `id`), the number of calls to this node (`calls`), and the number of items returned
+by this node (`items`). Items are the temporary results returned at this stage. You can correlate
+this statistics with the `plan` returned in `extra`. For a human readable output you can execute
+`db._profileQuery(<query>, <bind-vars>)` in arangosh.
 
 @RESTREPLYBODY{cached,boolean,required,}
 a boolean flag indicating whether the query result was served
@@ -234,6 +313,16 @@ accessed in the query.
 
 @RESTRETURNCODE{405}
 The server will respond with *HTTP 405* if an unsupported HTTP method is used.
+
+@RESTRETURNCODE{410}
+The server will respond with *HTTP 410* if a server which processes the query
+or is the leader for a shard which is used in the query stops responding, but 
+the connection has not been closed.
+
+@RESTRETURNCODE{503}
+The server will respond with *HTTP 503* if a server which processes the query
+or is the leader for a shard which is used in the query is down, either for 
+going through a restart, a failure or connectivity issues.
 
 @EXAMPLES
 

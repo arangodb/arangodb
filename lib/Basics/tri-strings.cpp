@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,7 +68,8 @@ static void DecodeUnicodeEscape(char** dst, char const* src) {
 /// @brief decodes a unicode surrogate pair
 ////////////////////////////////////////////////////////////////////////////////
 
-static void DecodeSurrogatePair(char** dst, char const* src1, char const* src2) {
+static void DecodeSurrogatePair(char** dst, char const* src1,
+                                char const* src2) {
   int i1;
   int i2;
   int i3;
@@ -191,22 +192,6 @@ char* TRI_UpperAsciiString(char const* value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests if strings are equal
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_EqualString(char const* left, char const* right) {
-  return strcmp(left, right) == 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests if strings are equal
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_EqualString(char const* left, char const* right, size_t n) {
-  return strncmp(left, right, n) == 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief tests if ASCII strings are equal ignoring case
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -220,14 +205,6 @@ bool TRI_CaseEqualString(char const* left, char const* right) {
 
 bool TRI_CaseEqualString(char const* left, char const* right, size_t n) {
   return strncasecmp(left, right, n) == 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests if second string is prefix of the first
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_IsPrefixString(char const* full, char const* prefix) {
-  return strncmp(full, prefix, strlen(prefix)) == 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,8 +225,9 @@ char* TRI_IsContainedMemory(char const* full, size_t fullLength,
   char const* end = full + fullLength - partLength;
 
   for (char const* p = full; p <= end; ++p) {
-    if (*p == *part && memcmp(static_cast<void const*>(p),
-                              static_cast<void const*>(part), partLength) == 0) {
+    if (*p == *part &&
+        memcmp(static_cast<void const*>(p), static_cast<void const*>(part),
+               partLength) == 0) {
       return const_cast<char*>(p);
     }
   }
@@ -285,14 +263,15 @@ void TRI_CopyString(char* dst, char const* src, size_t length) {
 /// @brief frees a string
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeString(char* value) { TRI_Free(value); }
+void TRI_FreeString(char* value) noexcept { TRI_Free(value); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sha256 of a string
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_SHA256String(char const* source, size_t sourceLen, size_t* dstLen) {
-  unsigned char* dst = static_cast<unsigned char*>(TRI_Allocate(SHA256_DIGEST_LENGTH));
+  unsigned char* dst =
+      static_cast<unsigned char*>(TRI_Allocate(SHA256_DIGEST_LENGTH));
   if (dst == nullptr) {
     return nullptr;
   }
@@ -304,73 +283,11 @@ char* TRI_SHA256String(char const* source, size_t sourceLen, size_t* dstLen) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief escapes special characters using C escapes
-/// the target buffer must have been allocated already and big enough to hold
-/// the result of at most (4 * inLength) + 2 bytes!
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_EscapeControlsCString(char const* in, size_t inLength, char* out,
-                                size_t* outLength, bool appendNewline) {
-  if (out == nullptr) {
-    return nullptr;
-  }
-
-  char* qtr = out;
-  char const* ptr;
-  char const* end;
-
-  for (ptr = in, end = ptr + inLength; ptr < end; ptr++, qtr++) {
-    uint8_t n;
-
-    switch (*ptr) {
-      case '\n':
-        *qtr++ = '\\';
-        *qtr = 'n';
-        break;
-
-      case '\r':
-        *qtr++ = '\\';
-        *qtr = 'r';
-        break;
-
-      case '\t':
-        *qtr++ = '\\';
-        *qtr = 't';
-        break;
-
-      default:
-        n = (uint8_t)(*ptr);
-
-        if (n < 32) {
-          uint8_t n1 = n >> 4;
-          uint8_t n2 = n & 0x0F;
-
-          *qtr++ = '\\';
-          *qtr++ = 'x';
-          *qtr++ = (n1 < 10) ? ('0' + n1) : ('A' + n1 - 10);
-          *qtr = (n2 < 10) ? ('0' + n2) : ('A' + n2 - 10);
-        } else {
-          *qtr = *ptr;
-        }
-
-        break;
-    }
-  }
-
-  if (appendNewline) {
-    *qtr++ = '\n';
-  }
-
-  *qtr = '\0';
-  *outLength = static_cast<size_t>(qtr - out);
-  return out;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief unescapes unicode escape sequences
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UnescapeUtf8String(char const* in, size_t inLength, size_t* outLength, bool normalize) {
+char* TRI_UnescapeUtf8String(char const* in, size_t inLength, size_t* outLength,
+                             bool normalize) {
   char* buffer = static_cast<char*>(TRI_Allocate(inLength + 1));
 
   if (buffer == nullptr) {
@@ -401,7 +318,8 @@ char* TRI_UnescapeUtf8String(char const* in, size_t inLength, size_t* outLength,
 /// returns the length of the unescaped string
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_UnescapeUtf8StringInPlace(char* buffer, char const* in, size_t inLength) {
+size_t TRI_UnescapeUtf8StringInPlace(char* buffer, char const* in,
+                                     size_t inLength) {
   char* qtr = buffer;
   char const* ptr;
   char const* end;

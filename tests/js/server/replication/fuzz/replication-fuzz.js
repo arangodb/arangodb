@@ -180,6 +180,15 @@ function ReplicationSuite() {
       
       db._useDatabase("_system");
       db._dropDatabase(cn);
+      db._databases().filter((name) => name !== '_system').forEach((name) => {
+        db._dropDatabase(name);
+      });
+      
+      connectToLeader();
+      db._useDatabase("_system");
+      db._databases().filter((name) => name !== '_system').forEach((name) => {
+        db._dropDatabase(name);
+      });
     },
     
     testFuzz: function() {

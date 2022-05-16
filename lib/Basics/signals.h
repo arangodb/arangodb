@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,33 +23,26 @@
 
 #pragma once
 
-namespace arangodb {
-namespace signals {
+#include <string_view>
 
-enum class SignalType {
-  term,
-  core,
-  cont,
-  ign,
-  logrotate,
-  stop,
-  user
-};
+namespace arangodb::signals {
+
+enum class SignalType { term, core, cont, ign, logrotate, stop, user };
 
 /// @brief find out what impact a signal will have to the process we send it.
 #ifndef _WIN32
-SignalType signalType(int signal);
+SignalType signalType(int signal) noexcept;
 #endif
 
 /// @brief whether or not the signal is deadly
-bool isDeadly(int signal);
+bool isDeadly(int signal) noexcept;
 
 /// @brief return the name for a signal
-char const* name(int signal);
+std::string_view name(int signal) noexcept;
 
 void maskAllSignals();
+void maskAllSignalsServer();
+void maskAllSignalsClient();
 void unmaskAllSignals();
-  
-}  // namespace signals
-}  // namespace arangodb
 
+}  // namespace arangodb::signals

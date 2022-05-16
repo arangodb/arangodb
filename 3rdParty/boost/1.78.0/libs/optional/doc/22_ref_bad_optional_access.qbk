@@ -1,0 +1,40 @@
+[/
+    Boost.Optional
+
+    Copyright (c) 2003-2007 Fernando Luis Cacciola Carballal
+    Copyright (c) 2015 Andrzej Krzemienski
+
+    Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or copy at
+    http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section Header <boost/optional/bad_optional_access.hpp>]
+
+[section Synopsis]
+```
+namespace boost {
+
+class bad_optional_access : public std::logic_error
+{
+public:
+    bad_optional_access(); ``[link reference_bad_optional_access_constructor __GO_TO__]``
+};
+    
+} // namespace boost
+```
+[endsect]
+
+[section Detailed semantics]
+
+__SPACE__
+
+[#reference_bad_optional_access_constructor]
+
+`bad_optional_access();`
+
+* [*Effect:] Constructs an object of class `bad_optional_access`.
+* [*Postconditions:] `what()` returns an implementation-defined NTBS.
+
+[endsect]
+[endsect]

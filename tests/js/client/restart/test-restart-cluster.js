@@ -41,7 +41,7 @@ function testSuite() {
   const jwtSecret = 'haxxmann';
 
   let getServers = function (role) {
-    return global.instanceInfo.arangods.filter((instance) => instance.role === role);
+    return global.obj.instanceInfo.arangods.filter((instance) => instance.role === role);
   };
 
   let waitForAlive = function (timeout, baseurl, data) {
@@ -86,26 +86,45 @@ function testSuite() {
   };
 
   return {
+    tearDownAll : function() {
+      // Need to restart without authentication for other tests to succeed:
+      let coordinators = getServers('coordinator');
+      let coordinator = coordinators[0];
+      let instanceInfo = global.obj.instanceInfo;
+      let newInstanceInfo = {
+        arangods: [ coordinator ],
+        endpoint: instanceInfo.endpoint,
+      };
+      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, global.obj.options, false); 
+      coordinator.pid = null;
+      console.warn("Cleaning up and restarting coordinator without authentication...", coordinator);
+      let extraOptions = {
+        "server.authentication": "false"
+      };
+      pu.reStartInstance(global.obj.options, instanceInfo, extraOptions);
+      let aliveStatus = waitForAlive(30, coordinator.url, {});
+      assertEqual(200, aliveStatus);
+    },
+
     testRestartCoordinatorNormal : function() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
-      let instanceInfo = global.instanceInfo;
+      let instanceInfo = global.obj.instanceInfo;
 
       let newInstanceInfo = {
         arangods: [ coordinator ],
         endpoint: instanceInfo.endpoint,
       };
 
-      let options = global.testOptions;
-      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, options, false); 
+      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, global.obj.options, false); 
       coordinator.pid = null;
       assertTrue(shutdownStatus);
 
       let extraOptions = {
         "server.jwt-secret": jwtSecret
       };
-      pu.reStartInstance(options, instanceInfo, extraOptions);
+      pu.reStartInstance(global.obj.options, instanceInfo, extraOptions);
         
       waitForAlive(30, coordinator.url, {});
     },
@@ -119,14 +138,13 @@ function testSuite() {
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
-      let instanceInfo = global.instanceInfo;
+      let instanceInfo = global.obj.instanceInfo;
       let newInstanceInfo = {
         arangods: [ coordinator ],
         endpoint: instanceInfo.endpoint,
       };
 
-      let options = global.testOptions;
-      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, options, false); 
+      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, global.obj.options, false); 
       coordinator.pid = null;
       assertTrue(shutdownStatus);
 
@@ -143,7 +161,7 @@ function testSuite() {
         coordinator.pid = null;
         // we need this so that testing.js will not loop trying to contact the coordinator
         coordinator.suspended = true; 
-        pu.reStartInstance(options, instanceInfo, extraOptions);
+        pu.reStartInstance(global.obj.options, instanceInfo, extraOptions);
        
         // we expect this to run into a timeout
         let aliveStatus = waitForAlive(20, coordinator.url, {});
@@ -168,14 +186,13 @@ function testSuite() {
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
-      let instanceInfo = global.instanceInfo;
+      let instanceInfo = global.obj.instanceInfo;
       let newInstanceInfo = {
         arangods: [ coordinator ],
         endpoint: instanceInfo.endpoint,
       };
 
-      let options = global.testOptions;
-      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, options, false); 
+      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, global.obj.options, false); 
       coordinator.pid = null;
       assertTrue(shutdownStatus);
 
@@ -192,7 +209,7 @@ function testSuite() {
 
         coordinator.pid = null;
         coordinator.suspended = true; 
-        pu.reStartInstance(options, instanceInfo, extraOptions);
+        pu.reStartInstance(global.obj.options, instanceInfo, extraOptions);
         
         let jwt = crypto.jwtEncode(jwtSecret, {
           "preferred_username": "",
@@ -217,14 +234,13 @@ function testSuite() {
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
-      let instanceInfo = global.instanceInfo;
+      let instanceInfo = global.obj.instanceInfo;
       let newInstanceInfo = {
         arangods: [ coordinator ],
         endpoint: instanceInfo.endpoint,
       };
 
-      let options = global.testOptions;
-      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, options, false); 
+      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, global.obj.options, false); 
       coordinator.pid = null;
       assertTrue(shutdownStatus);
 
@@ -241,7 +257,7 @@ function testSuite() {
 
         coordinator.pid = null;
         coordinator.suspended = true; 
-        pu.reStartInstance(options, instanceInfo, extraOptions);
+        pu.reStartInstance(global.obj.options, instanceInfo, extraOptions);
         
         let jwt = crypto.jwtEncode(jwtSecret, {
           "preferred_username": "root",

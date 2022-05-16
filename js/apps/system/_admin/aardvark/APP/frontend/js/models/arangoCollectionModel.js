@@ -35,7 +35,7 @@
       $.ajax({
         type: 'GET',
         cache: false,
-        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/shards?details=true'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/shards?details=true'),
         contentType: 'application/json',
         processData: false,
         success: function (data) {
@@ -50,7 +50,7 @@
       $.ajax({
         type: 'GET',
         cache: false,
-        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/figures'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/figures'),
         contentType: 'application/json',
         processData: false,
         success: function (data) {
@@ -63,21 +63,35 @@
     },
     getFiguresCombined: function (callback, isCluster) {
       var self = this;
-      var shardsCallback = function (error, data) {
+      var propertiesCallback = function (error, data) {
         if (error) {
           callback(true);
+        } else {
+          var figures = data;
+          self.getProperties(function (error, data) {
+            if (error) {
+              callback(true, figures);
+            } else {
+              callback(false, Object.assign(figures, { properties: data }));
+            }
+          });
+        }
+      };
+      var shardsCallback = function (error, data) {
+        if (error) {
+          propertiesCallback(true);
         } else {
           var figures = data;
           if (isCluster) {
             self.getShards(function (error, data) {
               if (error) {
-                callback(true);
+                propertiesCallback(true, data);
               } else {
-                callback(false, Object.assign(figures, { shards: data.shards }));
+                propertiesCallback(false, Object.assign(figures, { shards: data.shards }));
               }
             });
           } else {
-            callback(false, figures);
+            propertiesCallback(false, figures);
           }
         }
       };
@@ -91,7 +105,7 @@
       $.ajax({
         type: 'GET',
         cache: false,
-        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/count?details=true'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/count?details=true'),
         contentType: 'application/json',
         processData: false,
         success: function (data) {
@@ -107,7 +121,7 @@
       $.ajax({
         type: 'GET',
         cache: false,
-        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/revision'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/revision'),
         contentType: 'application/json',
         processData: false,
         success: function (data) {
@@ -125,7 +139,7 @@
       $.ajax({
         type: 'GET',
         cache: false,
-        url: arangoHelper.databaseUrl('/_api/index/?collection=' + this.get('id')),
+        url: arangoHelper.databaseUrl('/_api/index/?collection=' + encodeURIComponent(this.get('id'))),
         contentType: 'application/json',
         processData: false,
         success: function (data) {
@@ -143,7 +157,7 @@
       $.ajax({
         cache: false,
         type: 'POST',
-        url: arangoHelper.databaseUrl('/_api/index?collection=' + self.get('id')),
+        url: arangoHelper.databaseUrl('/_api/index?collection=' + encodeURIComponent(self.get('id'))),
         headers: {
           'x-arango-async': 'store'
         },
@@ -175,7 +189,7 @@
       $.ajax({
         cache: false,
         type: 'DELETE',
-        url: arangoHelper.databaseUrl('/_api/index/' + this.get('name') + '/' + encodeURIComponent(id)),
+        url: arangoHelper.databaseUrl('/_api/index/' + encodeURIComponent(this.get('name')) + '/' + encodeURIComponent(id)),
         headers: {
           'x-arango-async': 'store'
         },
@@ -204,7 +218,7 @@
       $.ajax({
         cache: false,
         type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/truncate'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/truncate'),
         success: function () {
           arangoHelper.arangoNotification('Collection truncated.');
         },
@@ -218,7 +232,7 @@
       $.ajax({
         cache: false,
         type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/loadIndexesIntoMemory'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/loadIndexesIntoMemory'),
         success: function () {
           arangoHelper.arangoNotification('Loading indexes into memory.');
         },
@@ -232,7 +246,7 @@
       $.ajax({
         cache: false,
         type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/load'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/load'),
         success: function () {
           callback(false);
         },
@@ -247,7 +261,7 @@
       $.ajax({
         cache: false,
         type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/unload?flush=true'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/unload?flush=true'),
         success: function () {
           callback(false);
         },
@@ -264,7 +278,7 @@
       $.ajax({
         cache: false,
         type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/rename'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/rename'),
         data: JSON.stringify({ name: name }),
         contentType: 'application/json',
         processData: false,
@@ -278,8 +292,7 @@
       });
     },
 
-    changeCollection: function (wfs, replicationFactor, writeConcern, callback) {
-      var result = false;
+    changeCollection: function (wfs, replicationFactor, writeConcern, cacheEnabled, callback) {
       if (wfs === 'true') {
         wfs = true;
       } else if (wfs === 'false') {
@@ -288,6 +301,15 @@
       var data = {
         waitForSync: wfs
       };
+
+      if (cacheEnabled === 'true' || cacheEnabled === true) {
+        cacheEnabled = true;
+      } else {
+        cacheEnabled = false;
+      }
+      if (cacheEnabled !== null && cacheEnabled !== undefined) {
+        data.cacheEnabled = cacheEnabled;
+      }
 
       if (replicationFactor) {
         data.replicationFactor = parseInt(replicationFactor, 10);
@@ -300,7 +322,7 @@
       $.ajax({
         cache: false,
         type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/properties'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/properties'),
         data: JSON.stringify(data),
         contentType: 'application/json',
         processData: false,
@@ -311,7 +333,6 @@
           callback(true, data);
         }
       });
-      return result;
     },
 
     changeValidation: function (validation, callback) {
@@ -327,7 +348,7 @@
       $.ajax({
         cache: false,
         type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/properties'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('id')) + '/properties'),
         data: JSON.stringify(data),
         contentType: 'application/json',
         processData: false,

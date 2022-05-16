@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,6 +32,7 @@
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 #include "Rest/CommonDefines.h"
+#include "RestServer/arangod.h"
 
 #ifdef USE_ENTERPRISE
 #include "Auth/Handler.h"
@@ -45,7 +46,7 @@ namespace aql {
 class QueryRegistry;
 }
 namespace basics {
-template <typename T>
+template<typename T>
 class ReadLocker;
 }
 
@@ -61,9 +62,9 @@ typedef std::unordered_map<std::string, auth::User> UserMap;
 /// exist on coordinators and single servers.
 class UserManager {
  public:
-  explicit UserManager(application_features::ApplicationServer&);
+  explicit UserManager(ArangodServer&);
 #ifdef USE_ENTERPRISE
-  explicit UserManager(application_features::ApplicationServer&,
+  explicit UserManager(ArangodServer&,
                        std::unique_ptr<arangodb::auth::Handler>);
 #endif
   ~UserManager() = default;
@@ -79,7 +80,7 @@ class UserManager {
 
   /// @brief reload user cache and token caches
   void triggerLocalReload() {
-    _globalVersion.fetch_add(1, std::memory_order_release);
+    _internalVersion.store(0, std::memory_order_release);
   }
 
   /// @brief used for caching
@@ -99,8 +100,9 @@ class UserManager {
 
   velocypack::Builder allUsers();
   /// Add user from arangodb, do not use for LDAP  users
-  Result storeUser(bool replace, std::string const& user, std::string const& pass,
-                   bool active, velocypack::Slice extras);
+  Result storeUser(bool replace, std::string const& user,
+                   std::string const& pass, bool active,
+                   velocypack::Slice extras);
 
   /// Enumerate list of all users
   Result enumerateUsers(std::function<bool(auth::User&)>&&,
@@ -130,10 +132,13 @@ class UserManager {
 #endif
 
   auth::Level databaseAuthLevel(std::string const& username,
-                                std::string const& dbname, bool configured = false);
-  auth::Level collectionAuthLevel(std::string const& username, std::string const& dbname,
-                                  std::string const& coll, bool configured = false);
-  
+                                std::string const& dbname,
+                                bool configured = false);
+  auth::Level collectionAuthLevel(std::string const& username,
+                                  std::string const& dbname,
+                                  std::string const& coll,
+                                  bool configured = false);
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   /// Overwrite internally cached permissions, only use
   /// for testing purposes
@@ -163,7 +168,7 @@ class UserManager {
 
  private:
   /// underlying application server
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
 
   /// Protected the sync process from db, always lock
   /// before locking _userCacheLock
@@ -185,4 +190,3 @@ class UserManager {
 };
 }  // namespace auth
 }  // namespace arangodb
-

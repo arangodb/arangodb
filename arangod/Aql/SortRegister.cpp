@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +40,8 @@ namespace aql {
 SortRegister::SortRegister(RegisterId reg, SortElement const& element) noexcept
     : attributePath(element.attributePath), reg(reg), asc(element.ascending) {}
 
-void SortRegister::fill(ExecutionPlan const& /*execPlan*/, RegisterPlan const& regPlan,
+void SortRegister::fill(ExecutionPlan const& /*execPlan*/,
+                        RegisterPlan const& regPlan,
                         std::vector<SortElement> const& elements,
                         std::vector<SortRegister>& sortRegisters) {
   sortRegisters.reserve(elements.size());

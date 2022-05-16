@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,25 +24,49 @@
 #pragma once
 
 #include "Basics/Common.h"
-#include "RestServer/Metrics.h"
+#include "RestServer/arangod.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include <string_view>
 
 namespace arangodb {
 
-class ReplicationTimeoutFeature : public application_features::ApplicationFeature {
+class ReplicationTimeoutFeature : public ArangodFeature {
  public:
-  explicit ReplicationTimeoutFeature(application_features::ApplicationServer& server);
+  static const std::string_view name() noexcept { return "ReplicationTimeout"; }
+
+  explicit ReplicationTimeoutFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
-  static double timeoutFactor;
-  static double timeoutPer4k;
-  static double lowerLimit;
-  static double upperLimit;
+  double timeoutFactor() const noexcept { return _timeoutFactor; }
+  double timeoutPer4k() const noexcept { return _timeoutPer4k; }
+  double lowerLimit() const noexcept { return _lowerLimit; }
+  double upperLimit() const noexcept { return _upperLimit; }
+
+  double shardSynchronizationAttemptTimeout() const noexcept {
+    return _shardSynchronizationAttemptTimeout;
+  }
+
+ private:
+  // these limits configure the timeouts for synchronous replication (all in
+  // seconds)
+  double _timeoutFactor;
+  double _timeoutPer4k;
+  // mininum wait time for sync replication (default: 900 seconds)
+  double _lowerLimit;
+  // maxinum wait time for sync replication (default: 3600 seconds)
+  double _upperLimit;
+
+  // timeout (in seconds) for shard synchronization attempts.
+  // if the timeout is reached, this does will not count as a synchronization
+  // failure. instead, the synchronization will be retried shortly after. the
+  // rationale for setting a timeout here is that splitting the synchronization
+  // of a large collection in one go would require the leader to keep its WAL
+  // files for the synchronization snapshot for a very long time. breaking up
+  // the synchronization into smaller pieces will allow the leader to release
+  // the snapshots earlier, which mitigates potential WAL file pileups.
+  double _shardSynchronizationAttemptTimeout;
 };
 
 }  // namespace arangodb
-

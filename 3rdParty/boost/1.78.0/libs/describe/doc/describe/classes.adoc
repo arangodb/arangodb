@@ -1,0 +1,189 @@
+////
+Copyright 2020, 2021 Peter Dimov
+Distributed under the Boost Software License, Version 1.0.
+https://www.boost.org/LICENSE_1_0.txt
+////
+
+[#classes]
+# Describing Class Types
+:idprefix: classes_
+
+## Class Types with Public Members
+
+If you have a `struct`
+
+```
+struct X
+{
+    int m1;
+    int m2;
+};
+```
+
+use the `BOOST_DESCRIBE_STRUCT` macro to describe it:
+
+```
+BOOST_DESCRIBE_STRUCT(X, (), (m1, m2))
+```
+
+`BOOST_DESCRIBE_STRUCT` is defined in `<boost/describe/class.hpp>` and should
+be placed in the same namespace as the `struct`.
+
+It takes three arguments: the `struct` name, a list of base classes
+(empty in our example), and a list of (public) members by name (this includes
+both data members and member functions.)
+
+Since `BOOST_DESCRIBE_STRUCT` is placed outside the type, it's non-intrisive,
+does not require access to the definition, and can therefore be used to describe
+third-party types or types defined in system headers.
+
+## Class Types with Protected or Private Members
+
+To describe a class type, use the `BOOST_DESCRIBE_CLASS` macro instead, placing
+it _inside the class_. This gives the macro access to the protected and private
+members, but is intrusive and requires access to the definition.
+
+```
+class Y: private X
+{
+public:
+
+    int m3;
+
+protected:
+
+    int m4;
+
+private:
+
+    int m5;
+
+public:
+
+    int f() const;
+
+private:
+
+    BOOST_DESCRIBE_CLASS(Y, (X), (m3, f), (m4), (m5))
+};
+```
+
+It takes three member lists, for the public, protected, and private members.
+
+## Retrieving Class Properties
+
+Once a type `T` is annotated, its properties can be retrieved via
+`describe_bases<T, M>` and `describe_members<T, M>` (`M` is a bitmask of
+modifiers such as `mod_public | mod_static | mod_function`).
+
+These primitives are defined in namespace `boost::describe`, in the headers
+`<boost/describe/bases.hpp>` and `<boost/describe/members.hpp>`, respectively.
+
+`describe_bases` takes the following possible modifiers: `mod_public`,
+`mod_protected`, `mod_private`, or a bitwise-or combination of them. The
+presence of `mod_public` includes the public bases in the result, its absence
+excludes them. The other two modifiers work similarly.
+
+`describe_members` takes a bitwise-or combination of the following possible
+modifiers: `mod_public`, `mod_protected`, `mod_private`, `mod_static`,
+`mod_function`, `mod_any_member`, `mod_inherited`, `mod_hidden`.
+
+The access modifiers work the same as with `describe_bases`.
+
+(For types annotated with `BOOST_DESCRIBE_STRUCT`, the protected and private
+member lists will be empty.)
+
+When `mod_static` is present, the static members are returned, otherwise
+the nonstatic members are returned.
+
+When `mod_function` is present, the member functions are returned, otherwise
+the data members are returned.
+
+When `mod_any_member` is present, `mod_static` and `mod_function` are ignored
+and all members are returned regardless of kind.
+
+When `mod_inherited` is present, members of base classes are also returned.
+
+When `mod_hidden` is present, hidden inherited members are included. A member
+of a base class is hidden when a derived class has a member of the same name.
+
+For the above class `Y`, `describe_bases<Y, mod_any_access>` will return a
+type list `L<D1>` containing a single base descriptor `D1` describing `X`:
+
+```
+struct D1
+{
+    using type = X;
+    static constexpr unsigned modifiers = mod_private;
+};
+```
+
+`describe_members<Y, mod_private>` will return a type list `L<D2>` containing
+the descriptor of the data member `Y::m5`:
+
+```
+struct D2
+{
+    static constexpr int Y::* pointer = &Y::m5;
+    static constexpr char const * name = "m5";
+    static constexpr unsigned modifiers = mod_private;
+};
+```
+
+For an example of how to use the base and data member descriptors, see
+<<example_print_function>>.
+
+For an example of how to use member function descriptors, see
+<<example_json_rpc>>.
+
+## Overloaded Member Functions
+
+To describe an overloaded member function, you will need to resort to
+a more complicated syntax, as simply listing its name (say, `f`) will make
+the library attempt to form a member pointer with `&X::f`, which would fail
+because it's not clear to which `f` this expression refers.
+
+To disambiguate, precede the function name with the type of the function, in
+parentheses, as shown in the following example:
+
+```
+struct X
+{
+    int f();
+    int f() const;
+    void f( int x );
+};
+
+BOOST_DESCRIBE_STRUCT(X, (), (
+    (int ()) f,
+    (int () const) f,
+    (void (int)) f
+))
+```
+
+The type of the function is the same as its declaration, without the name.
+
+Be sure to retain the space between the parenthesized function type and its name,
+because omitting it will compile happily on GCC and Clang but will lead to
+inscrutable errors on MSVC due to its nonstandard preprocessor.
+
+Pay attention to the proper placement of the parentheses, because a mistake there
+will also lead to hard to decipher compiler errors, on all compilers.
+
+The same technique also works with `BOOST_DESCRIBE_CLASS`, and with static member
+functions:
+
+```
+class Y
+{
+public:
+
+    static void f( int x );
+    static void f( int x, int y );
+
+    BOOST_DESCRIBE_CLASS(Y, (), ((void (int)) f, (void (int, int)) f), (), ())
+};
+```
+
+The case where a member function and a static member function have the same name
+and the same function type is currently not supported.

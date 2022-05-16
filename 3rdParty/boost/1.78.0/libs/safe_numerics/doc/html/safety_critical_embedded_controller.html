@@ -1,0 +1,1138 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Safety Critical Embedded Controller</title>
+<link rel="stylesheet" href="boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Safe Numerics">
+<link rel="up" href="case_studies.html" title="Case Studies">
+<link rel="prev" href="composition_with_other_libraries.html" title="Composition with Other Libraries">
+<link rel="next" href="notes.html" title="Background">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img href="index.html" height="164px" src="pre-boost.jpg" alt="Library Documentation Index"></td>
+<td><h2>Safe Numerics</h2></td>
+</tr></table>
+<div class="spirit-nav">
+<a accesskey="p" href="composition_with_other_libraries.html"><img src="images/prev.png" alt="Prev"></a><a accesskey="u" href="case_studies.html"><img src="images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="images/home.png" alt="Home"></a><a accesskey="n" href="notes.html"><img src="images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="safe_numerics.safety_critical_embedded_controller"></a>Safety Critical Embedded Controller</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="safety_critical_embedded_controller.html#idm462687067936">How a Stepper Motor Works</a></span></dt>
+<dt><span class="section"><a href="safety_critical_embedded_controller.html#idm462687055776">Updating the Code</a></span></dt>
+<dt><span class="section"><a href="safety_critical_embedded_controller.html#idm462687039504">Refactor for Testing</a></span></dt>
+<dt><span class="section"><a href="safety_critical_embedded_controller.html#idm462687030752">Compiling on the Desktop</a></span></dt>
+<dt><span class="section"><a href="safety_critical_embedded_controller.html#idm462686500272">Trapping Errors at Compile Time</a></span></dt>
+<dt><span class="section"><a href="safety_critical_embedded_controller.html#idm462685378640">Summary</a></span></dt>
+</dl></div>
+<p>Suppose we are given the task of creating stepper motor driver
+  software to drive a robotic hand to be used in robotic micro surgery. The
+  processor that has been selected by the engineers is the <a href="http://www.microchip.com/wwwproducts/en/PIC18F2520" target="_top">PIC18F2520</a>
+  manufactured by <a href="http://www.microchip.com" target="_top">Microchip
+  Corporation</a>. This processor has 32KB of program memory. On a
+  processor this small, it's common to use a mixture of 8, 16, and 32 bit data
+  types in order to minimize memory footprint and program run time. The type
+  <code class="computeroutput">int</code> has 16 bits. It's programmed in C. Since this program is
+  going to be running life critical function, it must be demonstrably correct.
+  This implies that it needs to be verifiable and testable. Since the target
+  micro processor is inconvenient for accomplishing these goals, we will build
+  and test the code on the desktop.</p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm462687067936"></a>How a Stepper Motor Works</h4></div></div></div>
+<div class="figure">
+<a name="idm462687067296"></a><p class="title"><b>Figure 1. Stepper Motor</b></p>
+<div class="figure-contents"><div class="mediaobject" align="left"><table border="0" summary="manufactured viewport for HTML img" style="cellpadding: 0; cellspacing: 0;" width="50%"><tr><td align="left"><img src="StepperMotor.gif" align="left" width="216" alt="Stepper Motor"></td></tr></table></div></div>
+</div>
+<br class="figure-break"><p>A stepper motor controller emits a pulse which causes the motor to
+    move one step. It seems simple, but in practice it turns out to be quite
+    intricate to get right as one has to time the pulses individually to
+    smoothly accelerate the rotation of the motor from a standing start until
+    it reaches the some maximum velocity. Failure to do this will either limit
+    the stepper motor to very low speed or result in skipped steps when the
+    motor is under load. Similarly, a loaded motor must be slowly decelerated
+    down to a stop.</p>
+<div class="figure">
+<a name="idm462687062976"></a><p class="title"><b>Figure 2. Motion Profile</b></p>
+<div class="figure-contents"><div class="mediaobject"><table border="0" summary="manufactured viewport for HTML img" style="cellpadding: 0; cellspacing: 0;" width="100%"><tr><td><img src="stepper_profile.png" width="100%" alt="Motion Profile"></td></tr></table></div></div>
+</div>
+<p><br class="figure-break"></p>
+<p>This implies the the width of the pulses must decrease as the motor
+    accelerates. That is the pulse with has to be computed while the motor is
+    in motion. This is illustrated in the above drawing. A program to
+    accomplish this might look something like the following:</p>
+<div class="literallayout"><p>setup registers and step to zero position<br>
+<br>
+specify target position<br>
+set initial time to interrupt<br>
+enable interrupts<br>
+<br>
+On interrupt<br>
+    if at target position<br>
+        disable interrupts and return<br>
+    calculate width of next step<br>
+    change current winding according to motor direction<br>
+    set delay time to next interrupt to width of next step</p></div>
+<p>Already, this is turning it to a much more complex project than it
+    first seemed. Searching around the net, we find a popular <a href="../../example/stepper-motor.pdf" target="_top">article</a> on the operation of
+    stepper motors using simple micro controllers. The algorithm is very well
+    explained and it includes complete <a href="../../example/motor.c" target="_top">code
+    we can test</a>. The engineers are still debugging the prototype
+    boards and hope to have them ready before the product actually ships. But
+    this doesn't have to keep us from working on our code.</p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm462687055776"></a>Updating the Code</h4></div></div></div>
+<p>Inspecting this <a href="../../example/motor.c" target="_top">code</a>, we
+    find that it is written in a dialect of C rather than C itself. At the
+    time this code was written, conforming versions of the C compiler were not
+    available for PIC processors. We want to compile this code on the <a href="http://ww1.microchip.com/downloads/en/DeviceDoc/50002053G.pdf" target="_top">Microchip
+    XC8 compiler</a> which, for the most part, is standards conforming. So
+    we made the following minimal changes:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>Factor into <a href="../../example/motor1.c" target="_top">motor1.c</a> which contains the
+          motor driving code and <a href="../../example/motor_test1.c" target="_top">motor_test1.c</a> which tests
+          that code.</p></li>
+<li class="listitem"><p>Include header <code class="computeroutput">&lt;xc.h&gt;</code> which contains
+          constants for the <a href="http://www.microchip.com/wwwproducts/en/PIC18F2520" target="_top">PIC18F2520</a>
+          processor</p></li>
+<li class="listitem"><p>Include header <code class="computeroutput">&lt;stdint.h&gt;</code> to include
+          standard Fixed width integer types.</p></li>
+<li class="listitem"><p>Include header <code class="computeroutput">&lt;stdbool.h&gt;</code> to include
+          keywords true and false in a C program.</p></li>
+<li class="listitem"><p>The original has some anomalies in the names of types. For
+          example, int16 is assumed to be unsigned. This is an artifact of the
+          original C compiler being used. So type names in the code were
+          altered to standard ones while retaining the intent of the original
+          code.</p></li>
+<li class="listitem"><p>Add in missing <code class="computeroutput">make16</code> function.</p></li>
+<li class="listitem"><p>Format code to personal taste.</p></li>
+<li class="listitem"><p>Replaced enable_interrupts and disable_interrupts functions
+          with appropriate PIC commands.</p></li>
+</ul></div>
+<p>The resulting program can be checked to be identical to the original
+    but compiles on with the Microchip XC8 compiler. Given a development
+    board, we could hook it up to a stepper motor, download and boot the code
+    and verify that the motor rotates 5 revolutions in each direction with
+    smooth acceleration and deceleration. We don't have such a board yet, but
+    the engineers have promised a working board real soon now.</p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm462687039504"></a>Refactor for Testing</h4></div></div></div>
+<p>In order to develop our test suite and execute the same code on the
+    desktop and the target system we factor out the shared code as a separate
+    module which will used in both environments without change. The shared
+    module <a href="../../example/motor2.c" target="_top"><code class="computeroutput"><a href="../../example/motor1.c" target="_top">motor2.c</a></code></a> contains the
+    algorithm for handling the interrupts in such a way as to create the
+    smooth acceleration we require.</p>
+<div class="literallayout"><p>    <a href="../../example/motor2.c" target="_top"><code class="computeroutput"><a href="../../example/motor_test2.c" target="_top">motor_test2.c</a></code></a>        <a href="../../example/motor2.c" target="_top"><code class="computeroutput"><a href="../../example/example92.cpp" target="_top">example92.cpp</a></code></a><br>
+<br>
+    #include ...         #include ...<br>
+    PIC typedefs ...     desktop types ...<br>
+            \               /<br>
+             \             /<br>
+            #include <a href="../../example/motor2.c" target="_top"><code class="computeroutput"><a href="../../example/motor2.c" target="_top">motor2.c</a></code></a><br>
+             /             \<br>
+            /               \<br>
+    PIC test code        desktop test code</p></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm462687030752"></a>Compiling on the Desktop</h4></div></div></div>
+<p>Using the target environment to run tests is often very difficult or
+    impossible due to limited resources. So software unit testing for embedded
+    systems is very problematic and often skipped. The C language on our
+    desktop is the same used by the <a href="http://www.microchip.com/wwwproducts/en/PIC18F2520" target="_top">PIC18F2520</a>.
+    So now we can also run and debug the code on our desktop machine. Once our
+    code passes all our tests, we can download the code to the embedded
+    hardware and run the code natively. Here is a program we use on the
+    desktop to do that:</p>
+<pre class="programlisting"><span class="comment">//////////////////////////////////////////////////////////////////</span>
+<span class="comment">// example92.cpp</span>
+<span class="comment">//</span>
+<span class="comment">// Copyright (c) 2015 Robert Ramey</span>
+<span class="comment">//</span>
+<span class="comment">// Distributed under the Boost Software License, Version 1.0. (See</span>
+<span class="comment">// accompanying file LICENSE_1_0.txt or copy at</span>
+<span class="comment">// http://www.boost.org/LICENSE_1_0.txt)</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+
+<span class="comment">// *************************** </span>
+<span class="comment">// 1. include headers to support safe integers</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">safe_numerics</span><span class="special">/</span><span class="identifier">cpp</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">safe_numerics</span><span class="special">/</span><span class="identifier">exception</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">safe_numerics</span><span class="special">/</span><span class="identifier">safe_integer</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="comment">// *************************** </span>
+<span class="comment">// 2. specify a promotion policy to support proper emulation of </span>
+<span class="comment">// PIC types on the desktop</span>
+<span class="keyword">using</span> <span class="identifier">pic16_promotion</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">::</span><span class="identifier">cpp</span><span class="special">&lt;</span>
+    <span class="number">8</span><span class="special">,</span>  <span class="comment">// char      8 bits</span>
+    <span class="number">16</span><span class="special">,</span> <span class="comment">// short     16 bits</span>
+    <span class="number">16</span><span class="special">,</span> <span class="comment">// int       16 bits</span>
+    <span class="number">16</span><span class="special">,</span> <span class="comment">// long      16 bits</span>
+    <span class="number">32</span>  <span class="comment">// long long 32 bits</span>
+<span class="special">&gt;</span><span class="special">;</span>
+
+<span class="comment">// 1st step=50ms; max speed=120rpm (based on 1MHz timer, 1.8deg steps)</span>
+<span class="preprocessor">#define</span> <span class="identifier">C0</span>    <span class="special">(</span><span class="number">50000</span> <span class="special">&lt;&lt;</span> <span class="number">8</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">C_MIN</span>  <span class="special">(</span><span class="number">2500</span> <span class="special">&lt;&lt;</span> <span class="number">8</span><span class="special">)</span>
+
+<span class="identifier">static_assert</span><span class="special">(</span><span class="identifier">C0</span> <span class="special">&lt;</span> <span class="number">0xffffff</span><span class="special">,</span> <span class="string">"Largest step too long"</span><span class="special">)</span><span class="special">;</span>
+<span class="identifier">static_assert</span><span class="special">(</span><span class="identifier">C_MIN</span> <span class="special">&gt;</span> <span class="number">0</span><span class="special">,</span> <span class="string">"Smallest step must be greater than zero"</span><span class="special">)</span><span class="special">;</span>
+<span class="identifier">static_assert</span><span class="special">(</span><span class="identifier">C_MIN</span> <span class="special">&lt;</span> <span class="identifier">C0</span><span class="special">,</span> <span class="string">"Smallest step must be smaller than largest step"</span><span class="special">)</span><span class="special">;</span>
+
+<span class="comment">// *************************** </span>
+<span class="comment">// 3. define PIC integer type names to be safe integer types of he same size.</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="comment">// T is char, int, etc data type</span>
+<span class="keyword">using</span> <span class="identifier">safe_t</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">::</span><span class="identifier">safe</span><span class="special">&lt;</span>
+    <span class="identifier">T</span><span class="special">,</span>
+    <span class="identifier">pic16_promotion</span>
+<span class="special">&gt;</span><span class="special">;</span>
+
+<span class="comment">// alias original program's integer types to corresponding PIC safe types</span>
+<span class="comment">// In conjunction with the promotion policy above, this will permit us to </span>
+<span class="comment">// guarantee that the resulting program will be free of arithmetic errors </span>
+<span class="comment">// introduced by C expression syntax and type promotion with no runtime penalty</span>
+
+<span class="keyword">typedef</span> <span class="identifier">safe_t</span><span class="special">&lt;</span><span class="identifier">int8_t</span><span class="special">&gt;</span> <span class="identifier">int8</span><span class="special">;</span>
+<span class="keyword">typedef</span> <span class="identifier">safe_t</span><span class="special">&lt;</span><span class="identifier">int16_t</span><span class="special">&gt;</span> <span class="identifier">int16</span><span class="special">;</span>
+<span class="keyword">typedef</span> <span class="identifier">safe_t</span><span class="special">&lt;</span><span class="identifier">int32_t</span><span class="special">&gt;</span> <span class="identifier">int32</span><span class="special">;</span>
+<span class="keyword">typedef</span> <span class="identifier">safe_t</span><span class="special">&lt;</span><span class="identifier">uint8_t</span><span class="special">&gt;</span> <span class="identifier">uint8</span><span class="special">;</span>
+<span class="keyword">typedef</span> <span class="identifier">safe_t</span><span class="special">&lt;</span><span class="identifier">uint16_t</span><span class="special">&gt;</span> <span class="identifier">uint16</span><span class="special">;</span>
+<span class="keyword">typedef</span> <span class="identifier">safe_t</span><span class="special">&lt;</span><span class="identifier">uint32_t</span><span class="special">&gt;</span> <span class="identifier">uint32</span><span class="special">;</span>
+
+<span class="comment">// *************************** </span>
+<span class="comment">// 4. emulate PIC features on the desktop</span>
+
+<span class="comment">// filter out special keyword used only by XC8 compiler</span>
+<span class="preprocessor">#define</span> <span class="identifier">__interrupt</span>
+<span class="comment">// filter out XC8 enable/disable global interrupts</span>
+<span class="preprocessor">#define</span> <span class="identifier">ei</span><span class="special">(</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">di</span><span class="special">(</span><span class="special">)</span>
+
+<span class="comment">// emulate PIC special registers</span>
+<span class="identifier">uint8</span> <span class="identifier">RCON</span><span class="special">;</span>
+<span class="identifier">uint8</span> <span class="identifier">INTCON</span><span class="special">;</span>
+<span class="identifier">uint8</span> <span class="identifier">CCP1IE</span><span class="special">;</span>
+<span class="identifier">uint8</span> <span class="identifier">CCP2IE</span><span class="special">;</span>
+<span class="identifier">uint8</span> <span class="identifier">PORTC</span><span class="special">;</span>
+<span class="identifier">uint8</span> <span class="identifier">TRISC</span><span class="special">;</span>
+<span class="identifier">uint8</span> <span class="identifier">T3CON</span><span class="special">;</span>
+<span class="identifier">uint8</span> <span class="identifier">T1CON</span><span class="special">;</span>
+
+<span class="identifier">uint8</span> <span class="identifier">CCPR2H</span><span class="special">;</span>
+<span class="identifier">uint8</span> <span class="identifier">CCPR2L</span><span class="special">;</span>
+<span class="identifier">uint8</span> <span class="identifier">CCPR1H</span><span class="special">;</span>
+<span class="identifier">uint8</span> <span class="identifier">CCPR1L</span><span class="special">;</span>
+<span class="identifier">uint8</span> <span class="identifier">CCP1CON</span><span class="special">;</span>
+<span class="identifier">uint8</span> <span class="identifier">CCP2CON</span><span class="special">;</span>
+<span class="identifier">uint8</span> <span class="identifier">TMR1H</span><span class="special">;</span>
+<span class="identifier">uint8</span> <span class="identifier">TMR1L</span><span class="special">;</span>
+
+<span class="comment">// create type used to map PIC bit names to</span>
+<span class="comment">// correct bit in PIC register</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">int8_t</span> <span class="identifier">N</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">bit</span> <span class="special">{</span>
+    <span class="identifier">T</span> <span class="special">&amp;</span> <span class="identifier">m_word</span><span class="special">;</span>
+    <span class="keyword">constexpr</span> <span class="keyword">explicit</span> <span class="identifier">bit</span><span class="special">(</span><span class="identifier">T</span> <span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">)</span> <span class="special">:</span>
+        <span class="identifier">m_word</span><span class="special">(</span><span class="identifier">rhs</span><span class="special">)</span>
+    <span class="special">{</span><span class="special">}</span>
+    <span class="keyword">constexpr</span> <span class="identifier">bit</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">b</span><span class="special">)</span><span class="special">{</span>
+        <span class="keyword">if</span><span class="special">(</span><span class="identifier">b</span> <span class="special">!=</span> <span class="number">0</span><span class="special">)</span>
+            <span class="identifier">m_word</span> <span class="special">|=</span> <span class="special">(</span><span class="number">1</span> <span class="special">&lt;&lt;</span> <span class="identifier">N</span><span class="special">)</span><span class="special">;</span>
+        <span class="keyword">else</span>
+            <span class="identifier">m_word</span> <span class="special">&amp;=</span> <span class="special">~</span><span class="special">(</span><span class="number">1</span> <span class="special">&lt;&lt;</span> <span class="identifier">N</span><span class="special">)</span><span class="special">;</span>
+        <span class="keyword">return</span> <span class="special">*</span><span class="keyword">this</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">constexpr</span> <span class="keyword">operator</span> <span class="keyword">int</span> <span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">m_word</span> <span class="special">&gt;&gt;</span> <span class="identifier">N</span> <span class="special">&amp;</span> <span class="number">1</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">}</span><span class="special">;</span>
+
+<span class="comment">// define bits for T1CON register</span>
+<span class="keyword">struct</span>  <span class="special">{</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">uint8</span><span class="special">,</span> <span class="number">7</span><span class="special">&gt;</span> <span class="identifier">RD16</span><span class="special">{</span><span class="identifier">T1CON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">uint8</span><span class="special">,</span> <span class="number">5</span><span class="special">&gt;</span> <span class="identifier">T1CKPS1</span><span class="special">{</span><span class="identifier">T1CON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">uint8</span><span class="special">,</span> <span class="number">4</span><span class="special">&gt;</span> <span class="identifier">T1CKPS0</span><span class="special">{</span><span class="identifier">T1CON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">uint8</span><span class="special">,</span> <span class="number">3</span><span class="special">&gt;</span> <span class="identifier">T1OSCEN</span><span class="special">{</span><span class="identifier">T1CON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">uint8</span><span class="special">,</span> <span class="number">2</span><span class="special">&gt;</span> <span class="identifier">T1SYNC</span><span class="special">{</span><span class="identifier">T1CON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">uint8</span><span class="special">,</span> <span class="number">1</span><span class="special">&gt;</span> <span class="identifier">TMR1CS</span><span class="special">{</span><span class="identifier">T1CON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">uint8</span><span class="special">,</span> <span class="number">0</span><span class="special">&gt;</span> <span class="identifier">TMR1ON</span><span class="special">{</span><span class="identifier">T1CON</span><span class="special">}</span><span class="special">;</span>
+<span class="special">}</span> <span class="identifier">T1CONbits</span><span class="special">;</span>
+
+<span class="comment">// define bits for T1CON register</span>
+<span class="keyword">struct</span>  <span class="special">{</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">uint8</span><span class="special">,</span> <span class="number">7</span><span class="special">&gt;</span> <span class="identifier">GEI</span><span class="special">{</span><span class="identifier">INTCON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">uint8</span><span class="special">,</span> <span class="number">5</span><span class="special">&gt;</span> <span class="identifier">PEIE</span><span class="special">{</span><span class="identifier">INTCON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">uint8</span><span class="special">,</span> <span class="number">4</span><span class="special">&gt;</span> <span class="identifier">TMR0IE</span><span class="special">{</span><span class="identifier">INTCON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">uint8</span><span class="special">,</span> <span class="number">3</span><span class="special">&gt;</span> <span class="identifier">RBIE</span><span class="special">{</span><span class="identifier">INTCON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">uint8</span><span class="special">,</span> <span class="number">2</span><span class="special">&gt;</span> <span class="identifier">TMR0IF</span><span class="special">{</span><span class="identifier">INTCON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">uint8</span><span class="special">,</span> <span class="number">1</span><span class="special">&gt;</span> <span class="identifier">INT0IF</span><span class="special">{</span><span class="identifier">INTCON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">uint8</span><span class="special">,</span> <span class="number">0</span><span class="special">&gt;</span> <span class="identifier">RBIF</span><span class="special">{</span><span class="identifier">INTCON</span><span class="special">}</span><span class="special">;</span>
+<span class="special">}</span> <span class="identifier">INTCONbits</span><span class="special">;</span>
+
+<span class="comment">// ***************************</span>
+<span class="comment">// 5. include the environment independent code we want to test</span>
+<span class="preprocessor">#include</span> <span class="string">"motor2.c"</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">chrono</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">thread</span><span class="special">&gt;</span>
+
+<span class="comment">// round 24.8 format to microseconds</span>
+<span class="identifier">int32</span> <span class="identifier">to_microseconds</span><span class="special">(</span><span class="identifier">uint32</span> <span class="identifier">t</span><span class="special">)</span><span class="special">{</span>
+    <span class="keyword">return</span> <span class="special">(</span><span class="identifier">t</span> <span class="special">+</span> <span class="number">128</span><span class="special">)</span> <span class="special">/</span> <span class="number">256</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">using</span> <span class="identifier">result_t</span> <span class="special">=</span> <span class="identifier">uint8_t</span><span class="special">;</span>
+<span class="keyword">const</span> <span class="identifier">result_t</span> <span class="identifier">success</span> <span class="special">=</span> <span class="number">1</span><span class="special">;</span>
+<span class="keyword">const</span> <span class="identifier">result_t</span> <span class="identifier">fail</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+
+<span class="comment">// move motor to the indicated target position in steps</span>
+<span class="identifier">result_t</span> <span class="identifier">test</span><span class="special">(</span><span class="identifier">int32</span> <span class="identifier">m</span><span class="special">)</span><span class="special">{</span>
+    <span class="keyword">try</span> <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"move motor to "</span> <span class="special">&lt;&lt;</span> <span class="identifier">m</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+        <span class="identifier">motor_run</span><span class="special">(</span><span class="identifier">m</span><span class="special">)</span><span class="special">;</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span>
+        <span class="special">&lt;&lt;</span> <span class="string">"step #"</span> <span class="special">&lt;&lt;</span> <span class="char">' '</span>
+        <span class="special">&lt;&lt;</span> <span class="string">"delay(us)(24.8)"</span> <span class="special">&lt;&lt;</span> <span class="char">' '</span>
+        <span class="special">&lt;&lt;</span> <span class="string">"delay(us)"</span> <span class="special">&lt;&lt;</span> <span class="char">' '</span>
+        <span class="special">&lt;&lt;</span> <span class="string">"CCPR"</span> <span class="special">&lt;&lt;</span> <span class="char">' '</span>
+        <span class="special">&lt;&lt;</span> <span class="string">"motor position"</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+        <span class="keyword">do</span><span class="special">{</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">this_thread</span><span class="special">::</span><span class="identifier">sleep_for</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">microseconds</span><span class="special">(</span><span class="identifier">to_microseconds</span><span class="special">(</span><span class="identifier">c</span><span class="special">)</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+            <span class="identifier">uint32</span> <span class="identifier">last_c</span> <span class="special">=</span> <span class="identifier">c</span><span class="special">;</span>
+            <span class="identifier">uint32</span> <span class="identifier">last_ccpr</span> <span class="special">=</span> <span class="identifier">ccpr</span><span class="special">;</span>
+            <span class="identifier">isr_motor_step</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span>
+            <span class="special">&lt;&lt;</span> <span class="identifier">step_no</span> <span class="special">&lt;&lt;</span> <span class="char">' '</span>
+            <span class="special">&lt;&lt;</span> <span class="identifier">last_c</span> <span class="special">&lt;&lt;</span> <span class="char">' '</span>
+            <span class="special">&lt;&lt;</span> <span class="identifier">to_microseconds</span><span class="special">(</span><span class="identifier">last_c</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="char">' '</span>
+            <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">hex</span> <span class="special">&lt;&lt;</span> <span class="identifier">last_ccpr</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">dec</span> <span class="special">&lt;&lt;</span> <span class="char">' '</span>
+            <span class="special">&lt;&lt;</span> <span class="identifier">motor_pos</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+        <span class="special">}</span><span class="keyword">while</span><span class="special">(</span><span class="identifier">run_flg</span><span class="special">)</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">catch</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span> <span class="special">&amp;</span> <span class="identifier">e</span><span class="special">)</span><span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">e</span><span class="special">.</span><span class="identifier">what</span><span class="special">(</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+        <span class="keyword">return</span> <span class="identifier">fail</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">return</span> <span class="identifier">success</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">(</span><span class="special">)</span><span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"start test\n"</span><span class="special">;</span>
+    <span class="identifier">result_t</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">success</span><span class="special">;</span>
+    <span class="keyword">try</span><span class="special">{</span>
+        <span class="identifier">initialize</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+        <span class="comment">// move motor to position 1000</span>
+        <span class="identifier">result</span> <span class="special">&amp;=</span> <span class="identifier">test</span><span class="special">(</span><span class="number">1000</span><span class="special">)</span><span class="special">;</span>
+        <span class="comment">// move motor to position 200</span>
+        <span class="identifier">result</span> <span class="special">&amp;=</span> <span class="identifier">test</span><span class="special">(</span><span class="number">200</span><span class="special">)</span><span class="special">;</span>
+        <span class="comment">// move motor to position 200 again! Should result in no movement.</span>
+        <span class="identifier">result</span> <span class="special">&amp;=</span> <span class="identifier">test</span><span class="special">(</span><span class="number">200</span><span class="special">)</span><span class="special">;</span>
+        <span class="comment">// move back to position 0</span>
+        <span class="identifier">result</span> <span class="special">&amp;=</span> <span class="identifier">test</span><span class="special">(</span><span class="number">0</span><span class="special">)</span><span class="special">;</span>
+        <span class="comment">// ***************************</span>
+        <span class="comment">// 6. error detected here!  data types can't handle enough</span>
+        <span class="comment">// steps to move the carriage from end to end! Suppress this</span>
+        <span class="comment">// test for now.</span>
+        <span class="comment">// move motor to position 50000.</span>
+<span class="comment">//        result &amp;= test(50000);</span>
+        <span class="comment">// move motor back to position 0.</span>
+        <span class="identifier">result</span> <span class="special">&amp;=</span> <span class="identifier">test</span><span class="special">(</span><span class="number">0</span><span class="special">)</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">catch</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span> <span class="special">&amp;</span> <span class="identifier">e</span><span class="special">)</span><span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">e</span><span class="special">.</span><span class="identifier">what</span><span class="special">(</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+        <span class="keyword">return</span> <span class="number">1</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">catch</span><span class="special">(</span><span class="special">...</span><span class="special">)</span><span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"test interrupted\n"</span><span class="special">;</span>
+        <span class="keyword">return</span> <span class="identifier">EXIT_FAILURE</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"end test\n"</span><span class="special">;</span>
+    <span class="keyword">return</span> <span class="identifier">result</span> <span class="special">==</span> <span class="identifier">success</span> <span class="special">?</span> <span class="identifier">EXIT_SUCCESS</span> <span class="special">:</span> <span class="identifier">EXIT_FAILURE</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>Here are the essential features of the desktop version of the test
+    program.</p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><p>Include headers required to support safe integers.</p></li>
+<li class="listitem">
+<p>Specify a <a class="link" href="promotion_policy.html" title="PromotionPolicy&lt;PP&gt;">promotion policy</a> to
+          support proper emulation of PIC types on the desktop.</p>
+<p>The C language standard doesn't specify sizes for primitive
+          data types like <code class="computeroutput">int</code>. They can and do differ between
+          environments. Hence, the characterization of C/C++ as "portable"
+          languages is not strictly true. Here we choose aliases for data
+          types so that they can be defined to be the same in both
+          environments. But this is not enough to emulate the <a href="http://www.microchip.com/wwwproducts/en/PIC18F2520" target="_top">PIC18F2520</a>
+          on the desktop. The problem is that compilers implicitly convert
+          arguments of C expressions to some common type before performing
+          arithmetic operations. Often, this common type is the native
+          <code class="computeroutput">int</code> and the size of this native type is different in
+          the desktop and embedded environment. Thus, many arithmetic results
+          would be different in the two environments.</p>
+<p>But now we can specify our own implicit promotion rules for
+          test programs on the development platform that are identical to
+          those on the target environment! So unit testing executed in the
+          development environment can now provide results relevant to the
+          target environment.</p>
+</li>
+<li class="listitem">
+<p>Define PIC integer type aliases to be safe integer types of he
+          same size.</p>
+<p>Code tested in the development environment will use safe
+          numerics to detect errors. We need these aliases to permit the code
+          in <a href="../../example/motor2.c" target="_top">motor2.c</a> to be tested
+          in the desktop environment. The same code run in the target system
+          without change.</p>
+</li>
+<li class="listitem">
+<p>Emulate PIC features on the desktop.</p>
+<p>The PIC processor, in common with most micro controllers these
+          days, includes a myriad of special purpose peripherals to handle
+          things like interrupts, USB, timers, SPI bus, I^2C bus, etc.. These
+          peripherals are configured using special 8 bit words in reserved
+          memory locations. Configuration consists of setting particular bits
+          in these words. To facilitate configuration operations, the XC8
+          compiler includes a special syntax for setting and accessing bits in
+          these locations. One of our goals is to permit the testing of the
+          identical code with our desktop C++ compiler as will run on the
+          micro controller. To realize this goal, we create some C++ code
+          which implements the XC8 C syntax for setting bits in particular
+          memory locations.</p>
+</li>
+<li class="listitem"><p>include <a href="../../example/motor1.c" target="_top">motor1.c</a></p></li>
+<li class="listitem"><p>Add test to verify that the motor will be able to keep track
+          of a position from 0 to 50000 steps. This will be needed to maintain
+          the position of out linear stage across a range from 0 to 500
+          mm.</p></li>
+</ol></div>
+<p>Our first attempt to run this program fails by throwing an exception
+    from <a href="../../example/motor1.c" target="_top">motor1.c</a> indicating that
+    the code attempts to left shift a negative number at the
+    statements:</p>
+<pre class="programlisting"><span class="identifier">denom</span> <span class="special">=</span> <span class="special">(</span><span class="special">(</span><span class="identifier">step_no</span> <span class="special">-</span> <span class="identifier">move</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="number">2</span><span class="special">)</span> <span class="special">+</span> <span class="number">1</span><span class="special">;</span></pre>
+<p>According to the C/C++ standards this is implementation defined
+    behavior. But in practice with all modern platforms (as far as I know),
+    this will be equivalent to a multiplication by 4. Clearly the intent of
+    the original author is to "micro optimize" the operation by substituting a
+    cheap left shift for a potentially expensive integer multiplication. But
+    on all modern compilers, this substitution will be performed automatically
+    by the compiler's optimizer. So we have two alternatives here:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+<p>Just ignore the issue.</p>
+<p>This will work when the code is run on the PIC. But, in order to
+        permit testing on the desktop, we need to inhibit the error detection
+        in that environment. With safe numerics, error handling is determined
+        by specifying an <a class="link" href="exception_policy.html" title="ExceptionPolicy&lt;EP&gt;">exception policy</a>. In
+        this example, we've used the default exception policy which traps
+        implementation defined behavior. To ignore this kind of behavior we
+        could define our own custom <a class="link" href="exception_policy.html" title="ExceptionPolicy&lt;EP&gt;">exception
+        policy</a>.</p>
+</li>
+<li class="listitem"><p>change the <code class="computeroutput">&lt;&lt; 2</code> to <code class="computeroutput">* 4</code>. This
+        will produce the intended result in an unambiguous, portable way. For
+        all known compilers, this change should not affect runtime performance
+        in any way. It will result in unambiguously portable code.</p></li>
+<li class="listitem"><p>Alter the code so that the expression in question is never
+        negative. Depending on sizes of the operands and the size of the
+        native integer, this expression might return convert the operands to
+        int or result in an invalid result.</p></li>
+</ul></div>
+<p>Of these alternatives, the third seems the more definitive fix so
+    we'll choose that one. We also decide to make a couple of minor changes to
+    simplify the code and make mapping of the algorithm in the article to the
+    code more transparent. With these changes, our test program runs to the
+    end with no errors or exceptions. In addition, I made a minor change which
+    simplifies the handling of floating point values in format of 24.8. This
+    results in <a href="../../example/motor2.c" target="_top">motor2.c</a> which
+    makes the above changes. It should be easy to see that these two versions
+    are otherwise identical.</p>
+<p>Finally our range test fails. In order to handle the full range we
+    need, we'll have to change some data types used for holding step count and
+    position. We won't do that here as it would make our example too complex.
+    We'll deal with this on the next version.</p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm462686500272"></a>Trapping Errors at Compile Time</h4></div></div></div>
+<p>We can test the same code we're going to load into our target system
+    on the desktop. We could build and execute a complete unit test suite. We
+    could capture the output and graph it. We have the ability to make are
+    code much more likely to be bug free. But:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>This system detects errors and exceptions on the test machine -
+        but it fails to address and detect such problems on the target system.
+        Since the target system is compiles only C code, we can't use the
+        exception/error facilities of this library at runtime.</p></li>
+<li class="listitem"><p><a href="https://en.wikiquote.org/wiki/Edsger_W._Dijkstra" target="_top">Testing shows
+        the presence, not the absence of bugs</a>. Can we not prove that
+        all integer arithmetic is correct?</p></li>
+<li class="listitem"><p>For at least some operations on safe integers there is runtime
+        cost in checking for errors. In this example, this is not really a
+        problem as the safe integer code is not included when the code is run
+        on the target - it's only a C compiler after all. But more generally,
+        using safe integers might incur an undesired runtime cost.</p></li>
+</ul></div>
+<p>Can we catch all potential problems at compiler time and therefore
+    eliminate all runtime cost?</p>
+<p>Our first attempt consists of simply changing default exception
+    policy from the default runtime checking to the compile time trapping one.
+    Then we redefine the aliases for the types used by the PIC to use this
+    exception policy.</p>
+<pre class="programlisting"><span class="comment">// generate compile time errors if operation could fail </span>
+<span class="keyword">using</span> <span class="identifier">trap_policy</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">numeric</span><span class="special">::</span><span class="identifier">loose_trap_policy</span><span class="special">;</span>
+<span class="special">...</span>
+<span class="keyword">typedef</span> <span class="identifier">safe_t</span><span class="special">&lt;</span><span class="identifier">int8_t</span><span class="special">,</span> <span class="identifier">trap_policy</span><span class="special">&gt;</span> <span class="identifier">int8</span><span class="special">;</span>
+<span class="special">...</span>
+</pre>
+<p>When we compile now, any expressions which could possibly fail will
+    be flagged as syntax errors. This occurs 11 times when compiling the
+    <a href="../../example/motor2.c" target="_top">motor2.c</a> program. This is
+    fewer than one might expect. To understand why, consider the following
+    example:</p>
+<pre class="programlisting"><span class="identifier">safe</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">int8_t</span><span class="special">&gt;</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">y</span><span class="special">;</span>
+<span class="special">...</span>
+<span class="identifier">safe</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">int16_t</span><span class="special">&gt;</span> <span class="identifier">z</span> <span class="special">=</span> <span class="identifier">x</span> <span class="special">+</span> <span class="identifier">y</span><span class="special">;</span>
+</pre>
+<p>C promotion rules and arithmetic are such that the z will
+    always contain an arithmetically correct result regardless of what values
+    are assigned to x and y. Hence there is no need for any kind of checking
+    of the arithmetic or result. The Safe Numerics library uses compile time
+    range arithmetic, C++ template multiprogramming and other techniques to
+    restrict invocation of checking code to only those operations which could
+    possible fail. So the above code incurs no runtime overhead.</p>
+<p>Now we have 11 cases to consider. Our goal is to modify the program
+    so that this number of cases is reduced - hopefully to zero. Initially I
+    wanted to just make a few tweaks in the versions of
+    <code class="computeroutput">example92.c</code>, <code class="computeroutput">motor2.c</code> and
+    <code class="computeroutput">motor_test2.c</code> above without actually having to understand the
+    code. It turns out that one needs to carefully consider what various types
+    and variables are used for. This can be a good thing or a bad thing
+    depending on one's circumstances, goals and personality. The programs
+    above evolved into <a href="../../example/example93.c" target="_top"><code class="computeroutput">example93.c</code></a>,
+    <code class="computeroutput"><a href="../../example/motor3.c" target="_top">motor3.c</a></code> and
+    <a href="../../example/motor_test3.c" target="_top"><code class="computeroutput">motor_test3.c</code></a>.
+    First we'll look at <code class="computeroutput">example93.c</code>:</p>
+<pre class="programlisting"><span class="comment">//////////////////////////////////////////////////////////////////</span>
+<span class="comment">// example93.cpp</span>
+<span class="comment">//</span>
+<span class="comment">// Copyright (c) 2015 Robert Ramey</span>
+<span class="comment">//</span>
+<span class="comment">// Distributed under the Boost Software License, Version 1.0. (See</span>
+<span class="comment">// accompanying file LICENSE_1_0.txt or copy at</span>
+<span class="comment">// http://www.boost.org/LICENSE_1_0.txt)</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+
+<span class="comment">// include headers to support safe integers</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">safe_numerics</span><span class="special">/</span><span class="identifier">cpp</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">safe_numerics</span><span class="special">/</span><span class="identifier">exception</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">safe_numerics</span><span class="special">/</span><span class="identifier">safe_integer</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">safe_numerics</span><span class="special">/</span><span class="identifier">safe_integer_range</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">safe_numerics</span><span class="special">/</span><span class="identifier">safe_integer_literal</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="comment">// use same type promotion as used by the pic compiler</span>
+<span class="comment">// target compiler XC8 supports:</span>
+<span class="keyword">using</span> <span class="identifier">pic16_promotion</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">::</span><span class="identifier">cpp</span><span class="special">&lt;</span>
+    <span class="number">8</span><span class="special">,</span>  <span class="comment">// char      8 bits</span>
+    <span class="number">16</span><span class="special">,</span> <span class="comment">// short     16 bits</span>
+    <span class="number">16</span><span class="special">,</span> <span class="comment">// int       16 bits</span>
+    <span class="number">16</span><span class="special">,</span> <span class="comment">// long      16 bits</span>
+    <span class="number">32</span>  <span class="comment">// long long 32 bits</span>
+<span class="special">&gt;</span><span class="special">;</span>
+
+<span class="comment">// ***************************</span>
+<span class="comment">// 1. Specify exception policies so we will generate a</span>
+<span class="comment">// compile time error whenever an operation MIGHT fail.</span>
+
+<span class="comment">// ***************************</span>
+<span class="comment">// generate runtime errors if operation could fail</span>
+<span class="keyword">using</span> <span class="identifier">exception_policy</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">::</span><span class="identifier">default_exception_policy</span><span class="special">;</span>
+
+<span class="comment">// generate compile time errors if operation could fail</span>
+<span class="keyword">using</span> <span class="identifier">trap_policy</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">::</span><span class="identifier">loose_trap_policy</span><span class="special">;</span>
+
+<span class="comment">// ***************************</span>
+<span class="comment">// 2. Create a macro named literal an integral value</span>
+<span class="comment">// that can be evaluated at compile time.</span>
+<span class="preprocessor">#define</span> <span class="identifier">literal</span><span class="special">(</span><span class="identifier">n</span><span class="special">)</span> <span class="identifier">make_safe_literal</span><span class="special">(</span><span class="identifier">n</span><span class="special">,</span> <span class="identifier">pic16_promotion</span><span class="special">,</span> <span class="keyword">void</span><span class="special">)</span>
+
+<span class="comment">// For min speed of 2 mm / sec (24.8 format)</span>
+<span class="comment">// sec / step = sec / 2 mm * 2 mm / rotation * rotation / 200 steps</span>
+<span class="preprocessor">#define</span> <span class="identifier">C0</span>      <span class="identifier">literal</span><span class="special">(</span><span class="number">5000</span> <span class="special">&lt;&lt;</span> <span class="number">8</span><span class="special">)</span>
+
+<span class="comment">// For max speed of 400 mm / sec</span>
+<span class="comment">// sec / step = sec / 400 mm * 2 mm / rotation * rotation / 200 steps</span>
+<span class="preprocessor">#define</span> <span class="identifier">C_MIN</span>   <span class="identifier">literal</span><span class="special">(</span><span class="number">25</span> <span class="special">&lt;&lt;</span> <span class="number">8</span><span class="special">)</span>
+
+<span class="identifier">static_assert</span><span class="special">(</span>
+    <span class="identifier">C0</span> <span class="special">&lt;</span> <span class="identifier">make_safe_literal</span><span class="special">(</span><span class="number">0xffffff</span><span class="special">,</span> <span class="identifier">pic16_promotion</span><span class="special">,</span><span class="identifier">trap_policy</span><span class="special">)</span><span class="special">,</span>
+    <span class="string">"Largest step too long"</span>
+<span class="special">)</span><span class="special">;</span>
+<span class="identifier">static_assert</span><span class="special">(</span>
+    <span class="identifier">C_MIN</span> <span class="special">&gt;</span> <span class="identifier">make_safe_literal</span><span class="special">(</span><span class="number">0</span><span class="special">,</span> <span class="identifier">pic16_promotion</span><span class="special">,</span><span class="identifier">trap_policy</span><span class="special">)</span><span class="special">,</span>
+    <span class="string">"Smallest step must be greater than zero"</span>
+<span class="special">)</span><span class="special">;</span>
+
+<span class="comment">// ***************************</span>
+<span class="comment">// 3. Create special ranged types for the motor program</span>
+<span class="comment">// These wiil guarantee that values are in the expected</span>
+<span class="comment">// ranges and permit compile time determination of when</span>
+<span class="comment">// exceptional conditions might occur.</span>
+
+<span class="keyword">using</span> <span class="identifier">pic_register_t</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">::</span><span class="identifier">safe</span><span class="special">&lt;</span>
+    <span class="identifier">uint8_t</span><span class="special">,</span>
+    <span class="identifier">pic16_promotion</span><span class="special">,</span>
+    <span class="identifier">trap_policy</span> <span class="comment">// use for compiling and running tests</span>
+<span class="special">&gt;</span><span class="special">;</span>
+
+<span class="comment">// note: the maximum value of step_t would be:</span>
+<span class="comment">// 50000 = 500 mm / 2 mm/rotation * 200 steps/rotation.</span>
+<span class="comment">// But in one expression the value of number of steps * 4 is</span>
+<span class="comment">// used.  To prevent introduction of error, permit this</span>
+<span class="comment">// type to hold the larger value.</span>
+<span class="keyword">using</span> <span class="identifier">step_t</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">::</span><span class="identifier">safe_unsigned_range</span><span class="special">&lt;</span>
+    <span class="number">0</span><span class="special">,</span>
+    <span class="number">200000</span><span class="special">,</span>
+    <span class="identifier">pic16_promotion</span><span class="special">,</span>
+    <span class="identifier">exception_policy</span>
+<span class="special">&gt;</span><span class="special">;</span>
+
+<span class="comment">// position</span>
+<span class="keyword">using</span> <span class="identifier">position_t</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">::</span><span class="identifier">safe_unsigned_range</span><span class="special">&lt;</span>
+    <span class="number">0</span><span class="special">,</span>
+    <span class="number">50000</span><span class="special">,</span> <span class="comment">// 500 mm / 2 mm/rotation * 200 steps/rotation</span>
+    <span class="identifier">pic16_promotion</span><span class="special">,</span>
+    <span class="identifier">exception_policy</span>
+<span class="special">&gt;</span><span class="special">;</span>
+
+<span class="comment">// next end of step timer value in format 24.8</span>
+<span class="comment">// where the .8 is the number of bits in the fractional part.</span>
+<span class="keyword">using</span> <span class="identifier">ccpr_t</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">::</span><span class="identifier">safe</span><span class="special">&lt;</span>
+    <span class="identifier">uint32_t</span><span class="special">,</span>
+    <span class="identifier">pic16_promotion</span><span class="special">,</span>
+    <span class="identifier">exception_policy</span>
+<span class="special">&gt;</span><span class="special">;</span>
+
+<span class="comment">// pulse length in format 24.8</span>
+<span class="comment">// note: this value is constrainted to be a positive value. But</span>
+<span class="comment">// we still need to make it a signed type. We get an arithmetic</span>
+<span class="comment">// error when moving to a negative step number.</span>
+<span class="keyword">using</span> <span class="identifier">c_t</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">::</span><span class="identifier">safe_unsigned_range</span><span class="special">&lt;</span>
+    <span class="identifier">C_MIN</span><span class="special">,</span>
+    <span class="identifier">C0</span><span class="special">,</span>
+    <span class="identifier">pic16_promotion</span><span class="special">,</span>
+    <span class="identifier">exception_policy</span>
+<span class="special">&gt;</span><span class="special">;</span>
+
+<span class="comment">// 32 bit unsigned integer used for temporary purposes</span>
+<span class="keyword">using</span> <span class="identifier">temp_t</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">::</span><span class="identifier">safe_unsigned_range</span><span class="special">&lt;</span>
+    <span class="number">0</span><span class="special">,</span> <span class="number">0xffffffff</span><span class="special">,</span>
+    <span class="identifier">pic16_promotion</span><span class="special">,</span>
+    <span class="identifier">exception_policy</span>
+<span class="special">&gt;</span><span class="special">;</span>
+
+<span class="comment">// index into phase table</span>
+<span class="comment">// note: The legal values are 0-3.  So why must this be a signed</span>
+<span class="comment">// type?  Turns out that expressions like phase_ix + d</span>
+<span class="comment">// will convert both operands to unsigned.  This in turn will</span>
+<span class="comment">// create an exception.  So leave it signed even though the</span>
+<span class="comment">// value is greater than zero.</span>
+<span class="keyword">using</span> <span class="identifier">phase_ix_t</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">::</span><span class="identifier">safe_signed_range</span><span class="special">&lt;</span>
+    <span class="number">0</span><span class="special">,</span>
+    <span class="number">3</span><span class="special">,</span>
+    <span class="identifier">pic16_promotion</span><span class="special">,</span>
+    <span class="identifier">trap_policy</span>
+<span class="special">&gt;</span><span class="special">;</span>
+
+<span class="comment">// settings for control value output</span>
+
+<span class="keyword">using</span> <span class="identifier">phase_t</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">::</span><span class="identifier">safe</span><span class="special">&lt;</span>
+    <span class="identifier">uint16_t</span><span class="special">,</span>
+    <span class="identifier">pic16_promotion</span><span class="special">,</span>
+    <span class="identifier">trap_policy</span>
+<span class="special">&gt;</span><span class="special">;</span>
+
+<span class="comment">// direction of rotation</span>
+<span class="keyword">using</span> <span class="identifier">direction_t</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">::</span><span class="identifier">safe_signed_range</span><span class="special">&lt;</span>
+    <span class="special">-</span><span class="number">1</span><span class="special">,</span>
+    <span class="special">+</span><span class="number">1</span><span class="special">,</span>
+    <span class="identifier">pic16_promotion</span><span class="special">,</span>
+    <span class="identifier">trap_policy</span>
+<span class="special">&gt;</span><span class="special">;</span>
+
+<span class="comment">// some number of microseconds</span>
+<span class="keyword">using</span> <span class="identifier">microseconds</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">::</span><span class="identifier">safe</span><span class="special">&lt;</span>
+    <span class="identifier">uint32_t</span><span class="special">,</span>
+    <span class="identifier">pic16_promotion</span><span class="special">,</span>
+    <span class="identifier">trap_policy</span>
+<span class="special">&gt;</span><span class="special">;</span>
+
+<span class="comment">// *************************** </span>
+<span class="comment">// emulate PIC features on the desktop</span>
+
+<span class="comment">// filter out special keyword used only by XC8 compiler</span>
+<span class="preprocessor">#define</span> <span class="identifier">__interrupt</span>
+<span class="comment">// filter out XC8 enable/disable global interrupts</span>
+<span class="preprocessor">#define</span> <span class="identifier">ei</span><span class="special">(</span><span class="special">)</span>
+<span class="preprocessor">#define</span> <span class="identifier">di</span><span class="special">(</span><span class="special">)</span>
+
+<span class="comment">// emulate PIC special registers</span>
+<span class="identifier">pic_register_t</span> <span class="identifier">RCON</span><span class="special">;</span>
+<span class="identifier">pic_register_t</span> <span class="identifier">INTCON</span><span class="special">;</span>
+<span class="identifier">pic_register_t</span> <span class="identifier">CCP1IE</span><span class="special">;</span>
+<span class="identifier">pic_register_t</span> <span class="identifier">CCP2IE</span><span class="special">;</span>
+<span class="identifier">pic_register_t</span> <span class="identifier">PORTC</span><span class="special">;</span>
+<span class="identifier">pic_register_t</span> <span class="identifier">TRISC</span><span class="special">;</span>
+<span class="identifier">pic_register_t</span> <span class="identifier">T3CON</span><span class="special">;</span>
+<span class="identifier">pic_register_t</span> <span class="identifier">T1CON</span><span class="special">;</span>
+
+<span class="identifier">pic_register_t</span> <span class="identifier">CCPR2H</span><span class="special">;</span>
+<span class="identifier">pic_register_t</span> <span class="identifier">CCPR2L</span><span class="special">;</span>
+<span class="identifier">pic_register_t</span> <span class="identifier">CCPR1H</span><span class="special">;</span>
+<span class="identifier">pic_register_t</span> <span class="identifier">CCPR1L</span><span class="special">;</span>
+<span class="identifier">pic_register_t</span> <span class="identifier">CCP1CON</span><span class="special">;</span>
+<span class="identifier">pic_register_t</span> <span class="identifier">CCP2CON</span><span class="special">;</span>
+<span class="identifier">pic_register_t</span> <span class="identifier">TMR1H</span><span class="special">;</span>
+<span class="identifier">pic_register_t</span> <span class="identifier">TMR1L</span><span class="special">;</span>
+
+<span class="comment">// ***************************</span>
+<span class="comment">// special checked type for bits - values restricted to 0 or 1</span>
+<span class="keyword">using</span> <span class="identifier">safe_bit_t</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">::</span><span class="identifier">safe_unsigned_range</span><span class="special">&lt;</span>
+    <span class="number">0</span><span class="special">,</span>
+    <span class="number">1</span><span class="special">,</span>
+    <span class="identifier">pic16_promotion</span><span class="special">,</span>
+    <span class="identifier">trap_policy</span>
+<span class="special">&gt;</span><span class="special">;</span>
+
+<span class="comment">// create type used to map PIC bit names to</span>
+<span class="comment">// correct bit in PIC register</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">int8_t</span> <span class="identifier">N</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">bit</span> <span class="special">{</span>
+    <span class="identifier">T</span> <span class="identifier">m_word</span><span class="special">;</span>
+    <span class="keyword">constexpr</span> <span class="keyword">explicit</span> <span class="identifier">bit</span><span class="special">(</span><span class="identifier">T</span> <span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">)</span> <span class="special">:</span>
+        <span class="identifier">m_word</span><span class="special">(</span><span class="identifier">rhs</span><span class="special">)</span>
+    <span class="special">{</span><span class="special">}</span>
+    <span class="comment">// special functions for assignment of literal</span>
+    <span class="keyword">constexpr</span> <span class="identifier">bit</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">decltype</span><span class="special">(</span><span class="identifier">literal</span><span class="special">(</span><span class="number">1</span><span class="special">)</span><span class="special">)</span><span class="special">)</span><span class="special">{</span>
+        <span class="identifier">m_word</span> <span class="special">|=</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">1</span> <span class="special">&lt;&lt;</span> <span class="identifier">N</span><span class="special">)</span><span class="special">;</span>
+        <span class="keyword">return</span> <span class="special">*</span><span class="keyword">this</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">constexpr</span> <span class="identifier">bit</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">decltype</span><span class="special">(</span><span class="identifier">literal</span><span class="special">(</span><span class="number">0</span><span class="special">)</span><span class="special">)</span><span class="special">)</span><span class="special">{</span>
+        <span class="identifier">m_word</span> <span class="special">&amp;=</span> <span class="special">~</span><span class="identifier">literal</span><span class="special">(</span><span class="number">1</span> <span class="special">&lt;&lt;</span> <span class="identifier">N</span><span class="special">)</span><span class="special">;</span>
+        <span class="keyword">return</span> <span class="special">*</span><span class="keyword">this</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="comment">// operator to convert to 0 or 1</span>
+    <span class="keyword">constexpr</span> <span class="keyword">operator</span> <span class="identifier">safe_bit_t</span> <span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">m_word</span> <span class="special">&gt;&gt;</span> <span class="identifier">literal</span><span class="special">(</span><span class="identifier">N</span><span class="special">)</span> <span class="special">&amp;</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">1</span><span class="special">)</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">}</span><span class="special">;</span>
+
+<span class="comment">// define bits for T1CON register</span>
+<span class="keyword">struct</span>  <span class="special">{</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">pic_register_t</span><span class="special">,</span> <span class="number">7</span><span class="special">&gt;</span> <span class="identifier">RD16</span><span class="special">{</span><span class="identifier">T1CON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">pic_register_t</span><span class="special">,</span> <span class="number">5</span><span class="special">&gt;</span> <span class="identifier">T1CKPS1</span><span class="special">{</span><span class="identifier">T1CON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">pic_register_t</span><span class="special">,</span> <span class="number">4</span><span class="special">&gt;</span> <span class="identifier">T1CKPS0</span><span class="special">{</span><span class="identifier">T1CON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">pic_register_t</span><span class="special">,</span> <span class="number">3</span><span class="special">&gt;</span> <span class="identifier">T1OSCEN</span><span class="special">{</span><span class="identifier">T1CON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">pic_register_t</span><span class="special">,</span> <span class="number">2</span><span class="special">&gt;</span> <span class="identifier">T1SYNC</span><span class="special">{</span><span class="identifier">T1CON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">pic_register_t</span><span class="special">,</span> <span class="number">1</span><span class="special">&gt;</span> <span class="identifier">TMR1CS</span><span class="special">{</span><span class="identifier">T1CON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">pic_register_t</span><span class="special">,</span> <span class="number">0</span><span class="special">&gt;</span> <span class="identifier">TMR1ON</span><span class="special">{</span><span class="identifier">T1CON</span><span class="special">}</span><span class="special">;</span>
+<span class="special">}</span> <span class="identifier">T1CONbits</span><span class="special">;</span>
+
+<span class="comment">// define bits for T1CON register</span>
+<span class="keyword">struct</span>  <span class="special">{</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">pic_register_t</span><span class="special">,</span> <span class="number">7</span><span class="special">&gt;</span> <span class="identifier">GEI</span><span class="special">{</span><span class="identifier">INTCON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">pic_register_t</span><span class="special">,</span> <span class="number">5</span><span class="special">&gt;</span> <span class="identifier">PEIE</span><span class="special">{</span><span class="identifier">INTCON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">pic_register_t</span><span class="special">,</span> <span class="number">4</span><span class="special">&gt;</span> <span class="identifier">TMR0IE</span><span class="special">{</span><span class="identifier">INTCON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">pic_register_t</span><span class="special">,</span> <span class="number">3</span><span class="special">&gt;</span> <span class="identifier">RBIE</span><span class="special">{</span><span class="identifier">INTCON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">pic_register_t</span><span class="special">,</span> <span class="number">2</span><span class="special">&gt;</span> <span class="identifier">TMR0IF</span><span class="special">{</span><span class="identifier">INTCON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">pic_register_t</span><span class="special">,</span> <span class="number">1</span><span class="special">&gt;</span> <span class="identifier">INT0IF</span><span class="special">{</span><span class="identifier">INTCON</span><span class="special">}</span><span class="special">;</span>
+    <span class="identifier">bit</span><span class="special">&lt;</span><span class="identifier">pic_register_t</span><span class="special">,</span> <span class="number">0</span><span class="special">&gt;</span> <span class="identifier">RBIF</span><span class="special">{</span><span class="identifier">INTCON</span><span class="special">}</span><span class="special">;</span>
+<span class="special">}</span> <span class="identifier">INTCONbits</span><span class="special">;</span>
+
+<span class="preprocessor">#include</span> <span class="string">"motor3.c"</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">chrono</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">thread</span><span class="special">&gt;</span>
+
+<span class="comment">// round 24.8 format to microseconds</span>
+<span class="identifier">microseconds</span> <span class="identifier">to_microseconds</span><span class="special">(</span><span class="identifier">ccpr_t</span> <span class="identifier">t</span><span class="special">)</span><span class="special">{</span>
+    <span class="keyword">return</span> <span class="special">(</span><span class="identifier">t</span> <span class="special">+</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">128</span><span class="special">)</span><span class="special">)</span> <span class="special">/</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">256</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">using</span> <span class="identifier">result_t</span> <span class="special">=</span> <span class="identifier">uint8_t</span><span class="special">;</span>
+<span class="keyword">const</span> <span class="identifier">result_t</span> <span class="identifier">success</span> <span class="special">=</span> <span class="number">1</span><span class="special">;</span>
+<span class="keyword">const</span> <span class="identifier">result_t</span> <span class="identifier">fail</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+
+<span class="comment">// move motor to the indicated target position in steps</span>
+<span class="identifier">result_t</span> <span class="identifier">test</span><span class="special">(</span><span class="identifier">position_t</span> <span class="identifier">new_position</span><span class="special">)</span><span class="special">{</span>
+    <span class="keyword">try</span> <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"move motor to "</span> <span class="special">&lt;&lt;</span> <span class="identifier">new_position</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+        <span class="identifier">motor_run</span><span class="special">(</span><span class="identifier">new_position</span><span class="special">)</span><span class="special">;</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span>
+        <span class="special">&lt;&lt;</span> <span class="string">"step #"</span> <span class="special">&lt;&lt;</span> <span class="char">' '</span>
+        <span class="special">&lt;&lt;</span> <span class="string">"delay(us)(24.8)"</span> <span class="special">&lt;&lt;</span> <span class="char">' '</span>
+        <span class="special">&lt;&lt;</span> <span class="string">"delay(us)"</span> <span class="special">&lt;&lt;</span> <span class="char">' '</span>
+        <span class="special">&lt;&lt;</span> <span class="string">"CCPR"</span> <span class="special">&lt;&lt;</span> <span class="char">' '</span>
+        <span class="special">&lt;&lt;</span> <span class="string">"motor position"</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+        <span class="keyword">while</span><span class="special">(</span><span class="identifier">busy</span><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">{</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">this_thread</span><span class="special">::</span><span class="identifier">sleep_for</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">microseconds</span><span class="special">(</span><span class="identifier">to_microseconds</span><span class="special">(</span><span class="identifier">c</span><span class="special">)</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+            <span class="identifier">c_t</span> <span class="identifier">last_c</span> <span class="special">=</span> <span class="identifier">c</span><span class="special">;</span>
+            <span class="identifier">ccpr_t</span> <span class="identifier">last_ccpr</span> <span class="special">=</span> <span class="identifier">ccpr</span><span class="special">;</span>
+            <span class="identifier">isr_motor_step</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span> <span class="special">&lt;&lt;</span> <span class="char">' '</span>
+            <span class="special">&lt;&lt;</span> <span class="identifier">last_c</span> <span class="special">&lt;&lt;</span> <span class="char">' '</span>
+            <span class="special">&lt;&lt;</span> <span class="identifier">to_microseconds</span><span class="special">(</span><span class="identifier">last_c</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="char">' '</span>
+            <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">hex</span> <span class="special">&lt;&lt;</span> <span class="identifier">last_ccpr</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">dec</span> <span class="special">&lt;&lt;</span> <span class="char">' '</span>
+            <span class="special">&lt;&lt;</span> <span class="identifier">motor_position</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+        <span class="special">}</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">catch</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span> <span class="special">&amp;</span> <span class="identifier">e</span><span class="special">)</span><span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">e</span><span class="special">.</span><span class="identifier">what</span><span class="special">(</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+        <span class="keyword">return</span> <span class="identifier">fail</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">return</span> <span class="identifier">success</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">(</span><span class="special">)</span><span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"start test\n"</span><span class="special">;</span>
+    <span class="identifier">result_t</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">success</span><span class="special">;</span>
+    <span class="keyword">try</span> <span class="special">{</span>
+        <span class="identifier">initialize</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+        <span class="comment">// move motor to position 1000</span>
+        <span class="identifier">result</span> <span class="special">&amp;=</span> <span class="identifier">test</span><span class="special">(</span><span class="identifier">literal</span><span class="special">(</span><span class="number">9000</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+        <span class="comment">// move to the left before zero position</span>
+        <span class="comment">// fails to compile !</span>
+        <span class="comment">// result &amp;= ! test(-10);</span>
+        <span class="comment">// move motor to position 200</span>
+        <span class="identifier">result</span> <span class="special">&amp;=</span> <span class="identifier">test</span><span class="special">(</span><span class="identifier">literal</span><span class="special">(</span><span class="number">200</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+        <span class="comment">// move motor to position 200 again! Should result in no movement.</span>
+        <span class="identifier">result</span> <span class="special">&amp;=</span> <span class="identifier">test</span><span class="special">(</span><span class="identifier">literal</span><span class="special">(</span><span class="number">200</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+        <span class="comment">// move motor to position 50000.</span>
+        <span class="identifier">result</span> <span class="special">&amp;=</span> <span class="identifier">test</span><span class="special">(</span><span class="identifier">literal</span><span class="special">(</span><span class="number">50000</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+        <span class="comment">// move motor back to position 0.</span>
+        <span class="identifier">result</span> <span class="special">&amp;=</span> <span class="identifier">test</span><span class="special">(</span><span class="identifier">literal</span><span class="special">(</span><span class="number">0</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">catch</span><span class="special">(</span><span class="special">...</span><span class="special">)</span><span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"test interrupted\n"</span><span class="special">;</span>
+        <span class="keyword">return</span> <span class="identifier">EXIT_FAILURE</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"end test\n"</span><span class="special">;</span>
+    <span class="keyword">return</span> <span class="identifier">result</span> <span class="special">==</span> <span class="identifier">success</span> <span class="special">?</span> <span class="identifier">EXIT_SUCCESS</span> <span class="special">:</span> <span class="identifier">EXIT_FAILURE</span><span class="special">;</span>
+<span class="special">}</span> 
+</pre>
+<p>Here are the changes we've made int the desktop test
+    program</p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><p>Specify exception policies so we can generate a compile time
+          error whenever an operation MIGHT fail. We've aliased this policy
+          with the name <code class="computeroutput">trap_policy</code>. The default policy of which
+          throws a runtime exception when an error is countered is aliased as
+          <code class="computeroutput">exception_policy</code>. When creating safe types, we'll now
+          specify which type of checking, compile time or runtime, we want
+          done.</p></li>
+<li class="listitem">
+<p>Create a macro named "literal" an integral value that can be
+          evaluated at compile time.</p>
+<p>"literal" values are instances of safe numeric types which are
+          determined at compile time. They are <code class="computeroutput">constexpr</code> values.
+          When used along with other instances of safe numeric types, the
+          compiler can calculate the range of the result and verify whether or
+          not it can be contained in the result type. To create "literal"
+          types we use the macro <code class="computeroutput"><a class="link" href="safe_literal.html#safe_numerics.safe_literal.make_safe_literal" title="make_safe_literal(n, PP, EP)">make_safe_literal</a>(n,
+          p, e)</code> where n is the value, p is the <a class="link" href="promotion_policy.html" title="PromotionPolicy&lt;PP&gt;">promotion policy</a> and
+          e is the <a class="link" href="exception_policy.html" title="ExceptionPolicy&lt;EP&gt;">exception
+          policy</a>.</p>
+<p>When all the values in an expression are safe numeric values,
+          the compiler can calculate the narrowest range of the result. If all
+          the values in this range can be represented by the result type, then
+          it can be guaranteed that an invalid result cannot be produced at
+          runtime and no runtime checking is required.</p>
+<p>Make sure that all literal values are x are replaced with the
+          macro invocation "literal(x)".</p>
+<p>It's unfortunate that the "literal" macro is required as it
+          clutters the code. The good news is that is some future version of
+          C++, expansion of <code class="computeroutput">constexpr</code> facilities may result in
+          elimination of this requirement.</p>
+</li>
+<li class="listitem">
+<p>Create special types for the motor program. These will
+          guarantee that values are in the expected ranges and permit compile
+          time determination of when exceptional conditions might occur. In
+          this example we create a special type c_t to the width of the pulse
+          applied to the motor. Engineering constraints (motor load inertia)
+          limit this value to the range of C0 to C_MIN. So we create a type
+          with those limits. By using limits no larger than necessary, we
+          supply enough information for the compiler to determine that the
+          result of a calculation cannot fall outside the range of the result
+          type. So less runtime checking is required. In addition, we get
+          extra verification at compile time that values are in reasonable
+          ranges for the quantity being modeled.</p>
+<p>We call these types "strong types".</p>
+</li>
+</ol></div>
+<p>And we've made changes consistent with the above to <a href="../../example/motor3.c" target="_top">motor3.c</a> as well</p>
+<pre class="programlisting"><span class="comment">/*
+ * david austin
+ * http://www.embedded.com/design/mcus-processors-and-socs/4006438/Generate-stepper-motor-speed-profiles-in-real-time
+ * DECEMBER 30, 2004
+ *
+ * Demo program for stepper motor control with linear ramps
+ * Hardware: PIC18F252, L6219
+ *
+ * Copyright (c) 2015 Robert Ramey
+ *
+ * Distributed under the Boost Software License, Version 1.0. (See
+ * accompanying file LICENSE_1_0.txt or copy at
+ * http://www.boost.org/LICENSE_1_0.txt)
+ */</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">assert</span><span class="special">.</span><span class="identifier">h</span><span class="special">&gt;</span>
+
+<span class="comment">// ramp state-machine states</span>
+<span class="keyword">enum</span> <span class="identifier">ramp_state</span> <span class="special">{</span>
+    <span class="identifier">ramp_idle</span> <span class="special">=</span> <span class="number">0</span><span class="special">,</span>
+    <span class="identifier">ramp_up</span> <span class="special">=</span> <span class="number">1</span><span class="special">,</span>
+    <span class="identifier">ramp_const</span> <span class="special">=</span> <span class="number">2</span><span class="special">,</span>
+    <span class="identifier">ramp_down</span> <span class="special">=</span> <span class="number">3</span><span class="special">,</span>
+<span class="special">}</span><span class="special">;</span>
+
+<span class="comment">// ***************************</span>
+<span class="comment">// 1. Define state variables using custom strong types</span>
+
+<span class="comment">// initial setup</span>
+<span class="keyword">enum</span> <span class="identifier">ramp_state</span> <span class="identifier">ramp_sts</span><span class="special">;</span>
+<span class="identifier">position_t</span> <span class="identifier">motor_position</span><span class="special">;</span>
+<span class="identifier">position_t</span> <span class="identifier">m</span><span class="special">;</span>           <span class="comment">// target position</span>
+<span class="identifier">position_t</span> <span class="identifier">m2</span><span class="special">;</span>          <span class="comment">// midpoint or point where acceleration changes</span>
+<span class="identifier">direction_t</span> <span class="identifier">d</span><span class="special">;</span>          <span class="comment">// direction of traval -1 or +1</span>
+
+<span class="comment">// curent state along travel</span>
+<span class="identifier">step_t</span> <span class="identifier">i</span><span class="special">;</span>               <span class="comment">// step number</span>
+<span class="identifier">c_t</span> <span class="identifier">c</span><span class="special">;</span>                  <span class="comment">// 24.8 fixed point delay count increment</span>
+<span class="identifier">ccpr_t</span> <span class="identifier">ccpr</span><span class="special">;</span>            <span class="comment">// 24.8 fixed point delay count</span>
+<span class="identifier">phase_ix_t</span> <span class="identifier">phase_ix</span><span class="special">;</span>    <span class="comment">// motor phase index</span>
+
+<span class="comment">// ***************************</span>
+<span class="comment">// 2. Surround all literal values with the "literal" keyword</span>
+
+<span class="comment">// Config data to make CCP1&amp;2 generate quadrature sequence on PHASE pins</span>
+<span class="comment">// Action on CCP match: 8=set+irq; 9=clear+irq</span>
+<span class="identifier">phase_t</span> <span class="keyword">const</span> <span class="identifier">ccpPhase</span><span class="special">[</span><span class="special">]</span> <span class="special">=</span> <span class="special">{</span>
+    <span class="identifier">literal</span><span class="special">(</span><span class="number">0x909</span><span class="special">)</span><span class="special">,</span>
+    <span class="identifier">literal</span><span class="special">(</span><span class="number">0x908</span><span class="special">)</span><span class="special">,</span>
+    <span class="identifier">literal</span><span class="special">(</span><span class="number">0x808</span><span class="special">)</span><span class="special">,</span>
+    <span class="identifier">literal</span><span class="special">(</span><span class="number">0x809</span><span class="special">)</span>
+<span class="special">}</span><span class="special">;</span> <span class="comment">// 00,01,11,10</span>
+
+<span class="keyword">void</span> <span class="identifier">current_on</span><span class="special">(</span><span class="special">)</span><span class="special">{</span><span class="comment">/* code as needed */</span><span class="special">}</span>  <span class="comment">// motor drive current</span>
+<span class="keyword">void</span> <span class="identifier">current_off</span><span class="special">(</span><span class="special">)</span><span class="special">{</span><span class="comment">/* code as needed */</span><span class="special">}</span> <span class="comment">// reduce to holding value</span>
+
+<span class="comment">// ***************************</span>
+<span class="comment">// 3. Refactor code to make it easier to understand</span>
+<span class="comment">// and relate to the documentation</span>
+
+<span class="keyword">bool</span> <span class="identifier">busy</span><span class="special">(</span><span class="special">)</span><span class="special">{</span>
+    <span class="keyword">return</span> <span class="identifier">ramp_idle</span> <span class="special">!=</span> <span class="identifier">ramp_sts</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="comment">// set outputs to energize motor coils</span>
+<span class="keyword">void</span> <span class="identifier">update</span><span class="special">(</span><span class="identifier">ccpr_t</span> <span class="identifier">ccpr_arg</span><span class="special">,</span> <span class="identifier">phase_ix_t</span> <span class="identifier">phase_ix_arg</span><span class="special">)</span><span class="special">{</span>
+    <span class="comment">// energize correct windings</span>
+    <span class="keyword">const</span> <span class="identifier">phase_t</span> <span class="identifier">phase</span> <span class="special">=</span> <span class="identifier">ccpPhase</span><span class="special">[</span><span class="identifier">phase_ix_arg</span><span class="special">]</span><span class="special">;</span>
+    <span class="identifier">CCP1CON</span> <span class="special">=</span> <span class="identifier">phase</span> <span class="special">&amp;</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">0xff</span><span class="special">)</span><span class="special">;</span> <span class="comment">// set CCP action on next match</span>
+    <span class="identifier">CCP2CON</span> <span class="special">=</span> <span class="identifier">phase</span> <span class="special">&gt;&gt;</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">8</span><span class="special">)</span><span class="special">;</span>
+    <span class="comment">// timer value at next CCP match</span>
+    <span class="identifier">CCPR1H</span> <span class="special">=</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">0xff</span><span class="special">)</span> <span class="special">&amp;</span> <span class="special">(</span><span class="identifier">ccpr_arg</span> <span class="special">&gt;&gt;</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">8</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">CCPR1L</span> <span class="special">=</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">0xff</span><span class="special">)</span> <span class="special">&amp;</span> <span class="identifier">ccpr_arg</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="comment">// compiler-specific ISR declaration</span>
+<span class="comment">// ***************************</span>
+<span class="comment">// 4. Rewrite interrupt handler in a way which mirrors the orginal</span>
+<span class="comment">// description of the algorithm and minimizes usage of state variable,</span>
+<span class="comment">// accumulated values, etc.</span>
+<span class="keyword">void</span> <span class="identifier">__interrupt</span> <span class="identifier">isr_motor_step</span><span class="special">(</span><span class="keyword">void</span><span class="special">)</span> <span class="special">{</span> <span class="comment">// CCP1 match -&gt; step pulse + IRQ</span>
+    <span class="comment">// *** possible exception</span>
+    <span class="comment">// motor_position += d;</span>
+    <span class="comment">// use the following to avoid mixing exception policies which is an error</span>
+    <span class="keyword">if</span><span class="special">(</span><span class="identifier">d</span> <span class="special">&lt;</span> <span class="number">0</span><span class="special">)</span>
+        <span class="special">--</span><span class="identifier">motor_position</span><span class="special">;</span>
+    <span class="keyword">else</span>
+        <span class="special">++</span><span class="identifier">motor_position</span><span class="special">;</span>
+    <span class="comment">// *** possible exception</span>
+    <span class="special">++</span><span class="identifier">i</span><span class="special">;</span>
+    <span class="comment">// calculate next difference in time</span>
+    <span class="keyword">for</span><span class="special">(</span><span class="special">;</span><span class="special">;</span><span class="special">)</span><span class="special">{</span>
+        <span class="keyword">switch</span> <span class="special">(</span><span class="identifier">ramp_sts</span><span class="special">)</span> <span class="special">{</span>
+            <span class="keyword">case</span> <span class="identifier">ramp_up</span><span class="special">:</span> <span class="comment">// acceleration</span>
+                <span class="keyword">if</span> <span class="special">(</span><span class="identifier">i</span> <span class="special">==</span> <span class="identifier">m2</span><span class="special">)</span> <span class="special">{</span>
+                    <span class="identifier">ramp_sts</span> <span class="special">=</span> <span class="identifier">ramp_down</span><span class="special">;</span>
+                    <span class="keyword">continue</span><span class="special">;</span>
+                <span class="special">}</span>
+                <span class="comment">// equation 13</span>
+                <span class="comment">// *** possible negative overflow on update of c</span>
+                <span class="identifier">c</span> <span class="special">-=</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">2</span><span class="special">)</span> <span class="special">*</span> <span class="identifier">c</span> <span class="special">/</span> <span class="special">(</span><span class="identifier">literal</span><span class="special">(</span><span class="number">4</span><span class="special">)</span> <span class="special">*</span> <span class="identifier">i</span> <span class="special">+</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">1</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+                <span class="keyword">if</span><span class="special">(</span><span class="identifier">c</span> <span class="special">&lt;</span> <span class="identifier">C_MIN</span><span class="special">)</span><span class="special">{</span>
+                    <span class="identifier">c</span> <span class="special">=</span> <span class="identifier">C_MIN</span><span class="special">;</span>
+                    <span class="identifier">ramp_sts</span> <span class="special">=</span> <span class="identifier">ramp_const</span><span class="special">;</span>
+                    <span class="comment">// *** possible exception</span>
+                    <span class="identifier">m2</span> <span class="special">=</span> <span class="identifier">m</span> <span class="special">-</span> <span class="identifier">i</span><span class="special">;</span> <span class="comment">// new inflection point</span>
+                    <span class="keyword">continue</span><span class="special">;</span>
+                <span class="special">}</span>
+                <span class="keyword">break</span><span class="special">;</span>
+            <span class="keyword">case</span> <span class="identifier">ramp_const</span><span class="special">:</span> <span class="comment">// constant speed</span>
+                <span class="keyword">if</span><span class="special">(</span><span class="identifier">i</span> <span class="special">&gt;</span> <span class="identifier">m2</span><span class="special">)</span> <span class="special">{</span>
+                    <span class="identifier">ramp_sts</span> <span class="special">=</span> <span class="identifier">ramp_down</span><span class="special">;</span>
+                    <span class="keyword">continue</span><span class="special">;</span>
+                <span class="special">}</span>
+                <span class="keyword">break</span><span class="special">;</span>
+            <span class="keyword">case</span> <span class="identifier">ramp_down</span><span class="special">:</span> <span class="comment">// deceleration</span>
+                <span class="keyword">if</span> <span class="special">(</span><span class="identifier">i</span> <span class="special">==</span> <span class="identifier">m</span><span class="special">)</span> <span class="special">{</span>
+                    <span class="identifier">ramp_sts</span> <span class="special">=</span> <span class="identifier">ramp_idle</span><span class="special">;</span>
+                    <span class="identifier">current_off</span><span class="special">(</span><span class="special">)</span><span class="special">;</span> <span class="comment">// reduce motor current to holding value</span>
+                    <span class="identifier">CCP1IE</span> <span class="special">=</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">0</span><span class="special">)</span><span class="special">;</span> <span class="comment">// disable_interrupts(INT_CCP1);</span>
+                    <span class="keyword">return</span><span class="special">;</span>
+                <span class="special">}</span>
+                <span class="comment">// equation 14</span>
+                <span class="comment">// *** possible positive overflow on update of c</span>
+                <span class="comment">// note: re-arrange expression to avoid negative result</span>
+                <span class="comment">// from difference of two unsigned values</span>
+                <span class="special">{</span>
+                    <span class="comment">// testing discovered that this can overflow.  It's not easy to</span>
+                    <span class="comment">// avoid so we'll use a temporary unsigned variable 32 bits wide</span>
+                    <span class="keyword">const</span> <span class="identifier">temp_t</span> <span class="identifier">x</span> <span class="special">=</span> <span class="identifier">c</span> <span class="special">+</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">2</span><span class="special">)</span> <span class="special">*</span> <span class="identifier">c</span> <span class="special">/</span> <span class="special">(</span><span class="identifier">literal</span><span class="special">(</span><span class="number">4</span><span class="special">)</span> <span class="special">*</span> <span class="special">(</span><span class="identifier">m</span> <span class="special">-</span> <span class="identifier">i</span><span class="special">)</span> <span class="special">-</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">1</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+                    <span class="identifier">c</span> <span class="special">=</span> <span class="identifier">x</span> <span class="special">&gt;</span> <span class="identifier">C0</span> <span class="special">?</span> <span class="identifier">C0</span> <span class="special">:</span> <span class="identifier">x</span><span class="special">;</span>
+                <span class="special">}</span>
+                <span class="keyword">break</span><span class="special">;</span>
+            <span class="keyword">default</span><span class="special">:</span>
+                <span class="comment">// should never arrive here!</span>
+                <span class="identifier">assert</span><span class="special">(</span><span class="keyword">false</span><span class="special">)</span><span class="special">;</span>
+        <span class="special">}</span> <span class="comment">// switch (ramp_sts)</span>
+        <span class="keyword">break</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="identifier">assert</span><span class="special">(</span><span class="identifier">c</span> <span class="special">&lt;=</span> <span class="identifier">C0</span> <span class="special">&amp;&amp;</span> <span class="identifier">c</span> <span class="special">&gt;=</span> <span class="identifier">C_MIN</span><span class="special">)</span><span class="special">;</span>
+    <span class="comment">// *** possible exception</span>
+    <span class="identifier">ccpr</span> <span class="special">=</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">0xffffff</span><span class="special">)</span> <span class="special">&amp;</span> <span class="special">(</span><span class="identifier">ccpr</span> <span class="special">+</span> <span class="identifier">c</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">phase_ix</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">phase_ix</span> <span class="special">+</span> <span class="identifier">d</span><span class="special">)</span> <span class="special">&amp;</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">3</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">update</span><span class="special">(</span><span class="identifier">ccpr</span><span class="special">,</span> <span class="identifier">phase_ix</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span> <span class="comment">// isr_motor_step()</span>
+
+<span class="comment">// set up to drive motor to pos_new (absolute step#)</span>
+<span class="keyword">void</span> <span class="identifier">motor_run</span><span class="special">(</span><span class="identifier">position_t</span> <span class="identifier">new_position</span><span class="special">)</span> <span class="special">{</span>
+    <span class="keyword">if</span><span class="special">(</span><span class="identifier">new_position</span> <span class="special">&gt;</span> <span class="identifier">motor_position</span><span class="special">)</span><span class="special">{</span>
+        <span class="identifier">d</span> <span class="special">=</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">1</span><span class="special">)</span><span class="special">;</span>
+        <span class="comment">// *** possible exception</span>
+        <span class="identifier">m</span> <span class="special">=</span> <span class="identifier">new_position</span> <span class="special">-</span> <span class="identifier">motor_position</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">else</span>
+    <span class="keyword">if</span><span class="special">(</span><span class="identifier">motor_position</span> <span class="special">&gt;</span> <span class="identifier">new_position</span><span class="special">)</span><span class="special">{</span>
+        <span class="identifier">d</span> <span class="special">=</span> <span class="identifier">literal</span><span class="special">(</span><span class="special">-</span><span class="number">1</span><span class="special">)</span><span class="special">;</span>
+        <span class="comment">// *** possible exception</span>
+        <span class="identifier">m</span> <span class="special">=</span> <span class="identifier">motor_position</span> <span class="special">-</span> <span class="identifier">new_position</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">else</span><span class="special">{</span>
+        <span class="identifier">d</span> <span class="special">=</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">0</span><span class="special">)</span><span class="special">;</span>
+        <span class="identifier">m</span> <span class="special">=</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">0</span><span class="special">)</span><span class="special">;</span>
+        <span class="identifier">ramp_sts</span> <span class="special">=</span> <span class="identifier">ramp_idle</span><span class="special">;</span> <span class="comment">// start ramp state-machine</span>
+        <span class="keyword">return</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="identifier">i</span> <span class="special">=</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">0</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">m2</span> <span class="special">=</span> <span class="identifier">m</span> <span class="special">/</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">2</span><span class="special">)</span><span class="special">;</span>
+
+    <span class="identifier">ramp_sts</span> <span class="special">=</span> <span class="identifier">ramp_up</span><span class="special">;</span> <span class="comment">// start ramp state-machine</span>
+
+    <span class="identifier">T1CONbits</span><span class="special">.</span><span class="identifier">TMR1ON</span> <span class="special">=</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">0</span><span class="special">)</span><span class="special">;</span> <span class="comment">// stop timer1;</span>
+
+    <span class="identifier">current_on</span><span class="special">(</span><span class="special">)</span><span class="special">;</span> <span class="comment">// current in motor windings</span>
+
+    <span class="identifier">c</span> <span class="special">=</span> <span class="identifier">C0</span><span class="special">;</span>
+    <span class="identifier">ccpr</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">TMR1H</span> <span class="special">&lt;&lt;</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">8</span><span class="special">)</span> <span class="special">|</span> <span class="identifier">TMR1L</span><span class="special">)</span> <span class="special">+</span> <span class="identifier">C0</span> <span class="special">+</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">1000</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">phase_ix</span> <span class="special">=</span> <span class="identifier">d</span> <span class="special">&amp;</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">3</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">update</span><span class="special">(</span><span class="identifier">ccpr</span><span class="special">,</span> <span class="identifier">phase_ix</span><span class="special">)</span><span class="special">;</span>
+
+    <span class="identifier">CCP1IE</span> <span class="special">=</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">1</span><span class="special">)</span><span class="special">;</span> <span class="comment">// enable_interrupts(INT_CCP1);</span>
+    <span class="identifier">T1CONbits</span><span class="special">.</span><span class="identifier">TMR1ON</span> <span class="special">=</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">1</span><span class="special">)</span><span class="special">;</span> <span class="comment">// restart timer1;</span>
+<span class="special">}</span> <span class="comment">// motor_run()</span>
+
+<span class="keyword">void</span> <span class="identifier">initialize</span><span class="special">(</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">di</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>                <span class="comment">// disable_interrupts(GLOBAL);</span>
+    <span class="identifier">motor_position</span> <span class="special">=</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">0</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">CCP1IE</span> <span class="special">=</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">0</span><span class="special">)</span><span class="special">;</span> <span class="comment">// disable_interrupts(INT_CCP1);</span>
+    <span class="identifier">CCP2IE</span> <span class="special">=</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">0</span><span class="special">)</span><span class="special">;</span> <span class="comment">// disable_interrupts(INT_CCP2);</span>
+    <span class="identifier">PORTC</span> <span class="special">=</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">0</span><span class="special">)</span><span class="special">;</span>  <span class="comment">// output_c(0);</span>
+    <span class="identifier">TRISC</span> <span class="special">=</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">0</span><span class="special">)</span><span class="special">;</span>  <span class="comment">// set_tris_c(0);</span>
+    <span class="identifier">T3CON</span> <span class="special">=</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">0</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">T1CON</span> <span class="special">=</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">0x35</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">INTCONbits</span><span class="special">.</span><span class="identifier">PEIE</span> <span class="special">=</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">1</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">INTCONbits</span><span class="special">.</span><span class="identifier">RBIF</span> <span class="special">=</span> <span class="identifier">literal</span><span class="special">(</span><span class="number">0</span><span class="special">)</span><span class="special">;</span>
+    <span class="identifier">ei</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>                <span class="comment">// enable_interrupts(GLOBAL);</span>
+<span class="special">}</span> <span class="comment">// initialize()</span>
+</pre>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><p>Define variables using strong types</p></li>
+<li class="listitem"><p>Surround all literal values with the "literal" keyword</p></li>
+<li class="listitem"><p>Re-factor code to make it easier to understand and compare
+          with the algorithm as described in the original <a href="../../example/stepper-motor.pdf" target="_top">article</a>.</p></li>
+<li class="listitem"><p>Rewrite interrupt handler in a way which mirrors the original
+          description of the algorithm and minimizes usage of state variable,
+          accumulated values, etc.</p></li>
+<li class="listitem"><p>Distinguish all the statements which might invoke a runtime
+          exception with a comment. There are 12 such instances.</p></li>
+</ol></div>
+<p>Finally we make a couple minor changes in <a href="../../example/motor_test3.c" target="_top">motor_test3.c</a> to verify that we
+    can compile the exact same version of motor3.c on the PIC as well as on
+    the desktop.</p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm462685378640"></a>Summary</h4></div></div></div>
+<p>The intent of this case study is to show that the Safe Numerics
+    Library can be an essential tool in validating the correctness of C/C++
+    programs in all environments - including the most restricted.</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>We started with a program written for a tiny micro controller
+          for controlling the acceleration and deceleration of a stepper
+          motor. The algorithm for doing this is very non-trivial and
+          difficult prove that it is correct.</p></li>
+<li class="listitem"><p>We used the type promotion policies of the Safe Numerics
+          Library to test and validate this algorithm on the desk top. The
+          tested code is also compiled for the target micro controller.</p></li>
+<li class="listitem"><p>We used <span class="emphasis"><em>strong typing</em></span> features of Safe
+          Numerics to check that all types hold the values expected and invoke
+          no invalid implicit conversions. Again the tested code is compiled
+          for the target processor.</p></li>
+</ul></div>
+<p>What we failed to do is to create a version of the program which
+    uses the type system to prove that no results can be invalid. I turns out
+    that states such as</p>
+<pre class="programlisting"><span class="special">++</span><span class="identifier">i</span><span class="special">;</span>
+<span class="identifier">c</span> <span class="special">=</span> <span class="identifier">f</span><span class="special">(</span><span class="identifier">c</span><span class="special">)</span><span class="special">;</span></pre>
+<p>can't be proved not to overflow with this system. So we're left with
+    having to depend upon exhaustive testing. It's not what we hoped, but it's
+    the best we can do.</p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2012-2018 Robert Ramey<p><a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">Subject to Boost
+      Software License</a></p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="composition_with_other_libraries.html"><img src="images/prev.png" alt="Prev"></a><a accesskey="u" href="case_studies.html"><img src="images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="images/home.png" alt="Home"></a><a accesskey="n" href="notes.html"><img src="images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

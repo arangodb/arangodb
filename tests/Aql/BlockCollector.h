@@ -21,8 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_BLOCK_COLLECTOR_H
-#define ARANGOD_AQL_BLOCK_COLLECTOR_H 1
+#pragma once
 
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
@@ -62,5 +61,3 @@ class BlockCollector {
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

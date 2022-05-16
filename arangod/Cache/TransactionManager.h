@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,11 +26,9 @@
 #include <atomic>
 #include <cstdint>
 
-#include "Basics/ReadWriteSpinLock.h"
 #include "Cache/Transaction.h"
 
-namespace arangodb {
-namespace cache {
+namespace arangodb::cache {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Manage global cache transactions.
@@ -66,7 +64,7 @@ class TransactionManager {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return the current window identifier.
   //////////////////////////////////////////////////////////////////////////////
-  std::uint64_t term();
+  std::uint64_t term() const noexcept;
 
  private:
   /// In a previous version of the code, we maintained four separate uint64
@@ -94,6 +92,4 @@ class TransactionManager {
   std::atomic<State> _state;
 };
 
-};  // end namespace cache
-};  // end namespace arangodb
-
+};  // end namespace arangodb::cache

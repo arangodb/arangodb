@@ -64,7 +64,7 @@
       $.ajax({
         cache: false,
         type: 'DELETE',
-        url: arangoHelper.databaseUrl('/_api/view/' + self.get('name')),
+        url: arangoHelper.databaseUrl('/_api/view/' + encodeURIComponent(self.get('name'))),
         headers: {
           'x-arango-async': 'store'
         },
@@ -93,7 +93,7 @@
       $.ajax({
         cache: false,
         type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/view/' + self.get('name') + '/rename'),
+        url: arangoHelper.databaseUrl('/_api/view/' + encodeURIComponent(self.get('name')) + '/rename'),
         data: JSON.stringify({ name: name }),
         contentType: 'application/json',
         processData: false,

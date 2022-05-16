@@ -22,12 +22,12 @@ returned.
 If the *index-id* is unknown, then an *HTTP 404* is returned.
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestIndexDeleteUniqueSkiplist}
+@EXAMPLE_ARANGOSH_RUN{RestIndexDeleteUniquePersistent}
     var cn = "products";
     db._drop(cn);
     db._create(cn);
 
-    var url = "/_api/index/" + db.products.ensureSkiplist("a","b").id;
+    var url = "/_api/index/" + db.products.ensureIndex({ type: "persistent", fields: ["a", "b"] }).id;
 
     var response = logCurlRequest('DELETE', url);
 

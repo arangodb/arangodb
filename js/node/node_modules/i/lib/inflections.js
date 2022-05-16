@@ -49,24 +49,42 @@ Inflections.prototype.singular = function (rule, replacement) {
 //
 //     irregular 'octopus', 'octopi'
 //     irregular 'person', 'people'
-Inflections.prototype.irregular =  function (singular, plural, fullMatchRequired) {
+Inflections.prototype.irregular = function (singular, plural, fullMatchRequired) {
   this.uncountables = util.array.del(this.uncountables, singular);
   this.uncountables = util.array.del(this.uncountables, plural);
-  var prefix = "";
+  var prefix = '';
   if (fullMatchRequired) {
-    prefix = "^";
+    prefix = '^';
   }
   if (singular[0].toUpperCase() == plural[0].toUpperCase()) {
-    this.plural(new RegExp("(" + prefix + singular[0] + ")" + singular.slice(1) + "$", "i"), '$1' + plural.slice(1));
-    this.plural(new RegExp("(" + prefix + plural[0] + ")" + plural.slice(1) + "$", "i"), '$1' + plural.slice(1));
-    this.singular(new RegExp("(" + prefix + plural[0] + ")" + plural.slice(1) + "$", "i"), '$1' + singular.slice(1));
+    this.plural(new RegExp('(' + prefix + singular[0] + ')' + singular.slice(1) + '$', 'i'), '$1' + plural.slice(1));
+    this.plural(new RegExp('(' + prefix + plural[0] + ')' + plural.slice(1) + '$', 'i'), '$1' + plural.slice(1));
+    this.singular(new RegExp('(' + prefix + plural[0] + ')' + plural.slice(1) + '$', 'i'), '$1' + singular.slice(1));
   } else {
-    this.plural(new RegExp(prefix + (singular[0].toUpperCase()) + singular.slice(1) + "$"), plural[0].toUpperCase() + plural.slice(1));
-    this.plural(new RegExp(prefix + (singular[0].toLowerCase()) + singular.slice(1) + "$"), plural[0].toLowerCase() + plural.slice(1));
-    this.plural(new RegExp(prefix + (plural[0].toUpperCase()) + plural.slice(1) + "$"), plural[0].toUpperCase() + plural.slice(1));
-    this.plural(new RegExp(prefix + (plural[0].toLowerCase()) + plural.slice(1) + "$"), plural[0].toLowerCase() + plural.slice(1));
-    this.singular(new RegExp(prefix + (plural[0].toUpperCase()) + plural.slice(1) + "$"), singular[0].toUpperCase() + singular.slice(1));
-    this.singular(new RegExp(prefix + (plural[0].toLowerCase()) + plural.slice(1) + "$"), singular[0].toLowerCase() + singular.slice(1));
+    this.plural(
+      new RegExp(prefix + singular[0].toUpperCase() + singular.slice(1) + '$'),
+      plural[0].toUpperCase() + plural.slice(1)
+    );
+    this.plural(
+      new RegExp(prefix + singular[0].toLowerCase() + singular.slice(1) + '$'),
+      plural[0].toLowerCase() + plural.slice(1)
+    );
+    this.plural(
+      new RegExp(prefix + plural[0].toUpperCase() + plural.slice(1) + '$'),
+      plural[0].toUpperCase() + plural.slice(1)
+    );
+    this.plural(
+      new RegExp(prefix + plural[0].toLowerCase() + plural.slice(1) + '$'),
+      plural[0].toLowerCase() + plural.slice(1)
+    );
+    this.singular(
+      new RegExp(prefix + plural[0].toUpperCase() + plural.slice(1) + '$'),
+      singular[0].toUpperCase() + singular.slice(1)
+    );
+    this.singular(
+      new RegExp(prefix + plural[0].toLowerCase() + plural.slice(1) + '$'),
+      singular[0].toLowerCase() + singular.slice(1)
+    );
   }
 };
 
@@ -78,7 +96,7 @@ Inflections.prototype.irregular =  function (singular, plural, fullMatchRequired
 //     human "legacy_col_person_name", "Name"
 Inflections.prototype.human = function (rule, replacement) {
   this.humans.unshift([rule, replacement]);
-}
+};
 
 // Add uncountable words that shouldn't be attempted inflected.
 //
@@ -86,7 +104,7 @@ Inflections.prototype.human = function (rule, replacement) {
 //     uncountable ["money", "information"]
 Inflections.prototype.uncountable = function (words) {
   this.uncountables = this.uncountables.concat(words);
-}
+};
 
 // Clears the loaded inflections within a given scope (default is _'all'_).
 // Give the scope as a symbol of the inflection type, the options are: _'plurals'_,
@@ -105,7 +123,7 @@ Inflections.prototype.clear = function (scope) {
     default:
       this[scope] = [];
   }
-}
+};
 
 // Clears the loaded inflections and initializes them to [default](../inflections.html)
 Inflections.prototype.default = function () {

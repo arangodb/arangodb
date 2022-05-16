@@ -4,8 +4,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the geo index
 ///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -37,23 +35,15 @@ var internal = require("internal");
 
 function GeoIndexCreationSuite() {
   'use strict';
-  var cn = "UnitTestsCollectionGeo";
-  var collection = null;
+  const cn = "UnitTestsCollectionGeo";
+  let collection = null;
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       internal.db._drop(cn);
@@ -94,7 +84,7 @@ function GeoIndexCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdates : function () {
-      collection.ensureGeoIndex("coordinates", true);
+      collection.ensureIndex({ type: "geo", fields: ["coordinates"], geoJson: true });
 
       [
         { _key: "a", coordinates : [ 138.46782, 36.199674 ] },
@@ -159,7 +149,7 @@ function GeoIndexCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreationIndexLocationList : function () {
-      var idx = collection.ensureGeoIndex("loc");
+      var idx = collection.ensureIndex({ type: "geo", fields: ["loc"] });
       var id = idx.id;
 
       assertNotEqual(0, id);
@@ -168,7 +158,7 @@ function GeoIndexCreationSuite() {
       assertEqual(["loc"], idx.fields);
       assertTrue(idx.isNewlyCreated);
 
-      idx = collection.ensureGeoIndex("loc");
+      idx = collection.ensureIndex({ type: "geo", fields: ["loc"] });
 
       assertEqual(id, idx.id);
       assertEqual("geo", idx.type);
@@ -176,7 +166,7 @@ function GeoIndexCreationSuite() {
       assertEqual(["loc"], idx.fields);
       assertFalse(idx.isNewlyCreated);
 
-      idx = collection.ensureGeoIndex("loc", true);
+      idx = collection.ensureIndex({ type: "geo", fields: ["loc"], geoJson: true });
 
       assertNotEqual(id, idx.id);
       assertEqual("geo", idx.type);
@@ -186,7 +176,7 @@ function GeoIndexCreationSuite() {
 
       collection.unload();
 
-      idx = collection.ensureGeoIndex("loc", true);
+      idx = collection.ensureIndex({ type: "geo", fields: ["loc"], geoJson: true });
 
       assertNotEqual(id, idx.id);
       assertEqual("geo", idx.type);
@@ -200,7 +190,7 @@ function GeoIndexCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreationIndexLocationListGeo : function () {
-      var idx = collection.ensureGeoIndex("loc", true);
+      var idx = collection.ensureIndex({ type: "geo", fields: ["loc"], geoJson: true });
       var id = idx.id;
 
       assertNotEqual(0, id);
@@ -209,7 +199,7 @@ function GeoIndexCreationSuite() {
       assertEqual(["loc"], idx.fields);
       assertTrue(idx.isNewlyCreated);
 
-      idx = collection.ensureGeoIndex("loc", true);
+      idx = collection.ensureIndex({ type: "geo", fields: ["loc"], geoJson: true });
 
       assertEqual(id, idx.id);
       assertEqual("geo", idx.type);
@@ -217,7 +207,7 @@ function GeoIndexCreationSuite() {
       assertEqual(["loc"], idx.fields);
       assertFalse(idx.isNewlyCreated);
 
-      idx = collection.ensureGeoIndex("loc", false);
+      idx = collection.ensureIndex({ type: "geo", fields: ["loc"], geoJson: false });
 
       assertNotEqual(id, idx.id);
       assertEqual("geo", idx.type);
@@ -227,7 +217,7 @@ function GeoIndexCreationSuite() {
 
       collection.unload();
 
-      idx = collection.ensureGeoIndex("loc", false);
+      idx = collection.ensureIndex({ type: "geo", fields: ["loc"], geoJson: false });
 
       assertNotEqual(id, idx.id);
       assertEqual("geo", idx.type);
@@ -241,7 +231,7 @@ function GeoIndexCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreationIndexLocationAttributes : function () {
-      var idx = collection.ensureGeoIndex("lat", "lon");
+      var idx = collection.ensureIndex({ type: "geo", fields: ["lat", "lon"] });
       var id = idx.id;
 
       assertNotEqual(0, id);
@@ -249,7 +239,7 @@ function GeoIndexCreationSuite() {
       assertEqual(["lat", "lon"], idx.fields);
       assertTrue(idx.isNewlyCreated);
 
-      idx = collection.ensureGeoIndex("lat", "lon");
+      idx = collection.ensureIndex({ type: "geo", fields: ["lat", "lon"] });
 
       assertEqual(id, idx.id);
       assertEqual("geo", idx.type);
@@ -258,7 +248,7 @@ function GeoIndexCreationSuite() {
 
       collection.unload();
 
-      idx = collection.ensureGeoIndex("lat", "lon");
+      idx = collection.ensureIndex({ type: "geo", fields: ["lat", "lon"] });
 
       assertEqual(id, idx.id);
       assertEqual("geo", idx.type);
@@ -266,256 +256,8 @@ function GeoIndexCreationSuite() {
       assertFalse(idx.isNewlyCreated);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: constraint creation (list)
-////////////////////////////////////////////////////////////////////////////////
-
-    testCreationConstraintLocationList : function () {
-      var idx = collection.ensureGeoConstraint("loc", false);
-      var id = idx.id;
-
-      assertNotEqual(0, id);
-      assertEqual("geo", idx.type);
-      assertTrue(idx.sparse);
-      assertFalse(idx.geoJson);
-      assertEqual(["loc"], idx.fields);
-      assertTrue(idx.isNewlyCreated);
-
-      idx = collection.ensureGeoConstraint("loc", false);
-
-      assertEqual(id, idx.id);
-      assertEqual("geo", idx.type);
-      assertTrue(idx.sparse);
-      assertFalse(idx.geoJson);
-      assertEqual(["loc"], idx.fields);
-      assertFalse(idx.isNewlyCreated);
-
-      idx = collection.ensureGeoConstraint("loc", true, false);
-
-      assertNotEqual(id, idx.id);
-      assertEqual("geo", idx.type);
-      assertTrue(idx.sparse);
-      assertTrue(idx.geoJson);
-      assertEqual(["loc"], idx.fields);
-      assertTrue(idx.isNewlyCreated);
-
-      collection.unload();
-
-      idx = collection.ensureGeoConstraint("loc", true, false);
-
-      assertNotEqual(id, idx.id);
-      assertEqual("geo", idx.type);
-      assertTrue(idx.sparse);
-      assertTrue(idx.geoJson);
-      assertEqual(["loc"], idx.fields);
-      assertFalse(idx.isNewlyCreated);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: constraint creation (list, geo-json)
-////////////////////////////////////////////////////////////////////////////////
-
-    testCreationConstraintLocationListGeo : function () {
-      var idx = collection.ensureGeoConstraint("loc", true, false);
-      var id = idx.id;
-
-      assertNotEqual(0, id);
-      assertEqual("geo", idx.type);
-      assertTrue(idx.sparse);
-      assertTrue(idx.geoJson);
-      assertEqual(["loc"], idx.fields);
-      assertTrue(idx.isNewlyCreated);
-
-      idx = collection.ensureGeoConstraint("loc", true, false);
-
-      assertEqual(id, idx.id);
-      assertEqual("geo", idx.type);
-      assertTrue(idx.sparse);
-      assertTrue(idx.geoJson);
-      assertEqual(["loc"], idx.fields);
-      assertFalse(idx.isNewlyCreated);
-
-      idx = collection.ensureGeoConstraint("loc", false, false);
-
-      assertNotEqual(id, idx.id);
-      assertEqual("geo", idx.type);
-      assertTrue(idx.sparse);
-      assertFalse(idx.geoJson);
-      assertEqual(["loc"], idx.fields);
-      assertTrue(idx.isNewlyCreated);
-
-      collection.unload();
-
-      idx = collection.ensureGeoConstraint("loc", false, false);
-
-      assertNotEqual(id, idx.id);
-      assertEqual("geo", idx.type);
-      assertTrue(idx.sparse);
-      assertFalse(idx.geoJson);
-      assertEqual(["loc"], idx.fields);
-      assertFalse(idx.isNewlyCreated);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: constraint creation (attributes)
-////////////////////////////////////////////////////////////////////////////////
-
-    testCreationConstraintLocationAttributes : function () {
-      var idx = collection.ensureGeoConstraint("lat", "lon", false);
-      var id = idx.id;
-
-      assertNotEqual(0, id);
-      assertEqual("geo", idx.type);
-      assertTrue(idx.sparse);
-      assertEqual(["lat", "lon"], idx.fields);
-      assertTrue(idx.isNewlyCreated);
-
-      idx = collection.ensureGeoConstraint("lat", "lon", false);
-
-      assertEqual(id, idx.id);
-      assertEqual("geo", idx.type);
-      assertTrue(idx.sparse);
-      assertEqual(["lat", "lon"], idx.fields);
-      assertFalse(idx.isNewlyCreated);
-
-      collection.unload();
-
-      idx = collection.ensureGeoConstraint("lat", "lon", false);
-
-      assertEqual(id, idx.id);
-      assertEqual("geo", idx.type);
-      assertTrue(idx.sparse);
-      assertEqual(["lat", "lon"], idx.fields);
-      assertFalse(idx.isNewlyCreated);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: constraint creation (list)
-////////////////////////////////////////////////////////////////////////////////
-
-    testCreationConstraintNullLocationList : function () {
-      var idx = collection.ensureGeoConstraint("loc", true);
-      var id = idx.id;
-
-      assertNotEqual(0, id);
-      assertEqual("geo", idx.type);
-      assertTrue(idx.sparse);
-      assertTrue(idx.geoJson);
-      assertEqual(["loc"], idx.fields);
-      assertTrue(idx.isNewlyCreated);
-
-      idx = collection.ensureGeoConstraint("loc", true);
-
-      assertEqual(id, idx.id);
-      assertEqual("geo", idx.type);
-      assertTrue(idx.sparse);
-      assertTrue(idx.geoJson);
-      assertEqual(["loc"], idx.fields);
-      assertFalse(idx.isNewlyCreated);
-
-      collection.unload();
-
-      idx = collection.ensureGeoConstraint("loc", false);
-
-      assertNotEqual(id, idx.id);
-      assertEqual("geo", idx.type);
-      assertTrue(idx.sparse);
-      assertFalse(idx.geoJson);
-      assertEqual(["loc"], idx.fields);
-      assertTrue(idx.isNewlyCreated);
-
-      collection.unload();
-
-      idx = collection.ensureGeoConstraint("loc", false);
-
-      assertNotEqual(id, idx.id);
-      assertEqual("geo", idx.type);
-      assertTrue(idx.sparse);
-      assertFalse(idx.geoJson);
-      assertEqual(["loc"], idx.fields);
-      assertFalse(idx.isNewlyCreated);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: constraint creation (list, geo-json)
-////////////////////////////////////////////////////////////////////////////////
-
-    testCreationConstraintNullLocationListGeo : function () {
-      var idx = collection.ensureGeoConstraint("loc", true, true);
-      var id = idx.id;
-
-      assertNotEqual(0, id);
-      assertEqual("geo", idx.type);
-      assertTrue(idx.sparse);
-      assertTrue(idx.geoJson);
-      assertEqual(["loc"], idx.fields);
-      assertTrue(idx.isNewlyCreated);
-
-      idx = collection.ensureGeoConstraint("loc", true, true);
-
-      assertEqual(id, idx.id);
-      assertEqual("geo", idx.type);
-      assertTrue(idx.sparse);
-      assertTrue(idx.geoJson);
-      assertEqual(["loc"], idx.fields);
-      assertFalse(idx.isNewlyCreated);
-
-      idx = collection.ensureGeoConstraint("loc", false, true);
-
-      assertNotEqual(id, idx.id);
-      assertEqual("geo", idx.type);
-      assertTrue(idx.sparse);
-      assertFalse(idx.geoJson);
-      assertEqual(["loc"], idx.fields);
-      assertTrue(idx.isNewlyCreated);
-
-      collection.unload();
-
-      idx = collection.ensureGeoConstraint("loc", false, true);
-
-      assertNotEqual(id, idx.id);
-      assertEqual("geo", idx.type);
-      assertTrue(idx.sparse);
-      assertFalse(idx.geoJson);
-      assertEqual(["loc"], idx.fields);
-      assertFalse(idx.isNewlyCreated);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: constraint creation (attributes)
-////////////////////////////////////////////////////////////////////////////////
-
-    testCreationConstraintNullLocationAttributes : function () {
-      var idx = collection.ensureGeoConstraint("lat", "lon", true);
-      var id = idx.id;
-
-      assertNotEqual(0, id);
-      assertEqual("geo", idx.type);
-      assertTrue(idx.sparse);
-      assertEqual(["lat", "lon"], idx.fields);
-      assertTrue(idx.isNewlyCreated);
-
-      idx = collection.ensureGeoConstraint("lat", "lon", true);
-
-      assertEqual(id, idx.id);
-      assertEqual("geo", idx.type);
-      assertTrue(idx.sparse);
-      assertEqual(["lat", "lon"], idx.fields);
-      assertFalse(idx.isNewlyCreated);
-
-      collection.unload();
-
-      idx = collection.ensureGeoConstraint("lat", "lon", true);
-
-      assertEqual(id, idx.id);
-      assertEqual("geo", idx.type);
-      assertTrue(idx.sparse);
-      assertEqual(["lat", "lon"], idx.fields);
-      assertFalse(idx.isNewlyCreated);
-    }
   };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: Simple Queries
@@ -523,35 +265,26 @@ function GeoIndexCreationSuite() {
 
 function GeoIndexErrorHandlingSuite() {
   'use strict';
-  var cn = "UnitTestsCollectionGeo";
-  var collection = null;
+  const cn = "UnitTestsCollectionGeo";
+  let collection = null;
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+    setUp : function () {
+      internal.db._drop(cn);
+      collection = internal.db._create(cn);
+    },
 
-  setUp : function () {
-    internal.db._drop(cn);
-    collection = internal.db._create(cn, { waitForSync : false });
-  },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-  tearDown : function () {
-    collection.drop();
-    internal.wait(0.0);
-  },
+    tearDown : function () {
+      collection.drop();
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: error handling index
 ////////////////////////////////////////////////////////////////////////////////
 
     testErrorHandlingIndexList : function () {
-      collection.ensureGeoIndex("loc");
+      collection.ensureIndex({ type: "geo", fields: ["loc"] });
 
       var d1 = collection.save({ a : 1 });
       var d2 = collection.save({ loc : null });
@@ -586,45 +319,39 @@ function GeoIndexErrorHandlingSuite() {
 
 function GeoIndexSimpleQueriesSuite() {
   'use strict';
-  var cn = "UnitTestsCollectionGeo";
-  var collection = null;
+  const cn = "UnitTestsCollectionGeo";
+  let collection = null;
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+    setUp : function () {
+      internal.db._drop(cn);
+      collection = internal.db._create(cn);
 
-  setUp : function () {
-    internal.db._drop(cn);
-    collection = internal.db._create(cn, { waitForSync : false });
-
-    for (var i = -90;  i <= 90;  i += 10) {
-      for (var j = -180; j <= 180;  j+= 10) {
-        collection.save({
-          name : "Name/" + i + "/" + j,
-              vloc : [ i, j ],
-              gloc : [ j, i ],
-              aloc : { latitude : i, longitude : j }
-          });
+      let docs = [];
+      for (let i = -90;  i <= 90;  i += 10) {
+        for (let j = -180; j <= 180;  j+= 10) {
+          docs.push({
+            name : "Name/" + i + "/" + j,
+                vloc : [ i, j ],
+                gloc : [ j, i ],
+                aloc : { latitude : i, longitude : j }
+            });
+        }
       }
-    }
-  },
+      collection.insert(docs);
+    },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-  tearDown : function () {
-    collection.drop();
-  },
+    tearDown : function () {
+      collection.drop();
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: near query (list)
 ////////////////////////////////////////////////////////////////////////////////
 
     testNearLocationList : function () {
-      collection.ensureGeoIndex("vloc");
+      collection.ensureIndex({ type: "geo", fields: ["vloc"] });
 
       assertEqual(collection.count(), 703);
 
@@ -648,7 +375,7 @@ function GeoIndexSimpleQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNearLocationListGeo : function () {
-      collection.ensureGeoIndex("gloc", true);
+      collection.ensureIndex({ type: "geo", fields: ["gloc"], geoJson: true });
 
       assertEqual(collection.count(), 703);
 
@@ -672,7 +399,7 @@ function GeoIndexSimpleQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNearLocationAttributes : function () {
-      collection.ensureGeoIndex("aloc.latitude", "aloc.longitude");
+      collection.ensureIndex({ type: "geo", fields: ["aloc.latitude", "aloc.longitude"] });
 
       assertEqual(collection.count(), 703);
 
@@ -696,7 +423,7 @@ function GeoIndexSimpleQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNearLocationDistance : function () {
-      collection.ensureGeoIndex("vloc");
+      collection.ensureIndex({ type: "geo", fields: ["vloc"] });
 
       assertEqual(collection.count(), 703);
 
@@ -712,7 +439,7 @@ function GeoIndexSimpleQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNearLocationNamedDistance : function () {
-      collection.ensureGeoIndex("vloc");
+      collection.ensureIndex({ type: "geo", fields: ["vloc"] });
 
       assertEqual(collection.count(), 703);
 
@@ -728,7 +455,7 @@ function GeoIndexSimpleQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testWithinLocationList : function () {
-      collection.ensureGeoIndex("vloc");
+      collection.ensureIndex({ type: "geo", fields: ["vloc"] });
 
       assertEqual(collection.count(), 703);
 
@@ -752,7 +479,7 @@ function GeoIndexSimpleQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testWithinLocationListGeo : function () {
-      collection.ensureGeoIndex("gloc", true);
+      collection.ensureIndex({ type: "geo", fields: ["gloc"], geoJson: true });
 
       assertEqual(collection.count(), 703);
 
@@ -776,7 +503,7 @@ function GeoIndexSimpleQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testWithinLocationAttributes : function () {
-      collection.ensureGeoIndex("aloc.latitude", "aloc.longitude");
+      collection.ensureIndex({ type: "geo", fields: ["aloc.latitude", "aloc.longitude"] });
 
       assertEqual(collection.count(), 703);
 
@@ -800,7 +527,7 @@ function GeoIndexSimpleQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testWithinLocationDistance : function () {
-      collection.ensureGeoIndex("vloc");
+      collection.ensureIndex({ type: "geo", fields: ["vloc"] });
 
       assertEqual(collection.count(), 703);
 
@@ -816,7 +543,7 @@ function GeoIndexSimpleQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testWithinLocationNamedDistance : function () {
-      collection.ensureGeoIndex("vloc");
+      collection.ensureIndex({ type: "geo", fields: ["vloc"] });
 
       assertEqual(collection.count(), 703);
 
@@ -833,8 +560,8 @@ function GeoIndexSimpleQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSelectGeoIndex : function () {
-      collection.ensureGeoIndex("vloc");
-      collection.ensureGeoIndex("gloc", true);
+      collection.ensureIndex({ type: "geo", fields: ["vloc"] });
+      collection.ensureIndex({ type: "geo", fields: ["gloc"], geoJson: true });
 
       assertEqual(collection.count(), 703);
 
@@ -854,7 +581,7 @@ function GeoIndexSimpleQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testWithinRectangleFlat : function () {
-      collection.ensureGeoIndex("lat", "lon");
+      collection.ensureIndex({ type: "geo", fields: ["lat", "lon"] });
       var doc = collection.save({ location: [ 50, 50 ] });
       doc = collection.save({ lat: 2, lon: 2 });
 
@@ -876,7 +603,7 @@ function GeoIndexSimpleQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testWithinRectangleFlatNoDocs : function () {
-      collection.ensureGeoIndex("lat", "lon");
+      collection.ensureIndex({ type: "geo", fields: ["lat", "lon"] });
       collection.save({ location: { lat: 2, lon: 2 } });
       collection.save({ lat: "2222", lon: "2222" });
       collection.save({ lat: 2, lon: "2222" });
@@ -902,7 +629,7 @@ function GeoIndexSimpleQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testWithinRectangleSingleFlat : function () {
-      collection.ensureGeoIndex("location");
+      collection.ensureIndex({ type: "geo", fields: ["location"] });
       var doc = collection.save({ location: [ 50, 50 ] });
       doc = collection.save({ location: [ 2, 2 ] });
 
@@ -924,7 +651,7 @@ function GeoIndexSimpleQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testWithinRectangleSingleFlatNoDocs : function () {
-      collection.ensureGeoIndex("location");
+      collection.ensureIndex({ type: "geo", fields: ["location"] });
       collection.save({ location: { lat: 2, lon: 2 } });
       collection.save({ location: "2222" });
       collection.save({ location: 2 });
@@ -946,7 +673,7 @@ function GeoIndexSimpleQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testWithinRectangleNested : function () {
-      collection.ensureGeoIndex("location.lat", "location.lon");
+      collection.ensureIndex({ type: "geo", fields: ["location.lat", "location.lon"] });
       var doc = collection.save({ location: { lat: 50, lon: 50 } });
       doc = collection.save({ location: { lat: 2, lon: 2 } });
 
@@ -968,7 +695,7 @@ function GeoIndexSimpleQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testWithinRectangleNestedNoDocs : function () {
-      collection.ensureGeoIndex("location.lat", "location.lon");
+      collection.ensureIndex({ type: "geo", fields: ["location.lat", "location.lon"] });
       collection.save({ location: { foo: 2, bar: 2 } });
       collection.save({ location: { lat: "2222", lon: "2222" } });
       collection.save({ location: { lat: [ 2, 2 ], lon: [ 2, 2 ] } });
@@ -993,7 +720,7 @@ function GeoIndexSimpleQueriesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSaveAfterTruncateWithoutDocs : function () {
-      collection.ensureGeoIndex("location");
+      collection.ensureIndex({ type: "geo", fields: ["location"] });
       collection.truncate({ compact: false });
       collection.save({location: [1, 1]});
 
@@ -1001,7 +728,7 @@ function GeoIndexSimpleQueriesSuite() {
     },
 
     testSaveAfterTruncateWithDocs : function () {
-      collection.ensureGeoIndex("location");
+      collection.ensureIndex({ type: "geo", fields: ["location"] });
       collection.save({location: [1, 1]});
       collection.truncate({ compact: false });
       collection.save({location: [1, 1]});
@@ -1018,28 +745,19 @@ function GeoIndexSimpleQueriesSuite() {
 
 function SphericalIndexCreationSuite() {
   'use strict';
-  var cn = "UnitTestsCollectionSpherical";
-  var collection = null;
+  const cn = "UnitTestsCollectionSpherical";
+  let collection = null;
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
     setUp : function () {
       internal.db._drop(cn);
-      collection = internal.db._create(cn, { waitForSync : false });
+      collection = internal.db._create(cn);
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       collection.unload();
       collection.drop();
-      internal.wait(0.0);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1049,7 +767,6 @@ function SphericalIndexCreationSuite() {
     testSPIUpdates : function () {
       collection.truncate({ compact: false });
 
-      //collection.ensureGeoIndex("coordinates", true);
       collection.ensureIndex({type: "geo",
                               fields: ["coordinates"],
                               geoJson: true,
@@ -1121,7 +838,6 @@ function SphericalIndexCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSPICreationIndexLocationList : function () {
-      //var idx = collection.ensureGeoIndex("loc");
       let idx = collection.ensureIndex({type: "geo", fields:["loc"], geoJson: false, legacy: false});
       var id = idx.id;
 
@@ -1132,7 +848,6 @@ function SphericalIndexCreationSuite() {
       assertEqual(["loc"], idx.fields);
       assertTrue(idx.isNewlyCreated);
 
-      //idx = collection.ensureGeoIndex("loc");
       idx = collection.ensureIndex({type: "geo", fields:["loc"], geoJson: false, legacy: false});
 
       assertEqual(id, idx.id);
@@ -1142,7 +857,6 @@ function SphericalIndexCreationSuite() {
       assertEqual(["loc"], idx.fields);
       assertFalse(idx.isNewlyCreated);
 
-      //idx = collection.ensureGeoIndex("loc", true);
       idx = collection.ensureIndex({type: "geo", fields:["loc"], geoJson: true, legacy: false});
 
       assertNotEqual(id, idx.id);
@@ -1154,7 +868,6 @@ function SphericalIndexCreationSuite() {
 
       collection.unload();
 
-      //idx = collection.ensureGeoIndex("loc", true);
       idx = collection.ensureIndex({type: "geo", fields:["loc"], geoJson: true, legacy: false});
 
       assertNotEqual(id, idx.id);
@@ -1170,7 +883,6 @@ function SphericalIndexCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSPICreationIndexLocationListGeo : function () {
-      //var idx = collection.ensureGeoIndex("loc", true);
       let idx = collection.ensureIndex({type: "geo", fields:["loc"], geoJson: true, legacy: false});
       var id = idx.id;
 
@@ -1181,7 +893,6 @@ function SphericalIndexCreationSuite() {
       assertEqual(["loc"], idx.fields);
       assertTrue(idx.isNewlyCreated);
 
-      //idx = collection.ensureGeoIndex("loc", true);
       idx = collection.ensureIndex({type: "geo", fields:["loc"], geoJson: true, legacy: false});
 
       assertEqual(id, idx.id);
@@ -1191,7 +902,6 @@ function SphericalIndexCreationSuite() {
       assertEqual(["loc"], idx.fields);
       assertFalse(idx.isNewlyCreated);
 
-      //idx = collection.ensureGeoIndex("loc", false);
       idx = collection.ensureIndex({type: "geo", fields:["loc"], geoJson: false, legacy: false});
 
       assertNotEqual(id, idx.id);
@@ -1203,7 +913,6 @@ function SphericalIndexCreationSuite() {
 
       collection.unload();
 
-      //idx = collection.ensureGeoIndex("loc", false);
       idx = collection.ensureIndex({type: "geo", fields:["loc"], geoJson: false, legacy: false});
 
       assertNotEqual(id, idx.id);
@@ -1219,7 +928,6 @@ function SphericalIndexCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSPICreationIndexLocationAttributes : function () {
-      //var idx = collection.ensureGeoIndex("lat", "lon");
       let idx = collection.ensureIndex({type: "geo", fields:["lat", "lon"], legacy: false});
       var id = idx.id;
 
@@ -1228,7 +936,6 @@ function SphericalIndexCreationSuite() {
       assertEqual(["lat", "lon"], idx.fields);
       assertTrue(idx.isNewlyCreated);
 
-      //idx = collection.ensureGeoIndex("lat", "lon");
       idx = collection.ensureIndex({type: "geo", fields:["lat", "lon"], legacy: false});
 
       assertEqual(id, idx.id);
@@ -1238,7 +945,6 @@ function SphericalIndexCreationSuite() {
 
       collection.unload();
 
-      //idx = collection.ensureGeoIndex("lat", "lon");
       idx = collection.ensureIndex({type: "geo", fields:["lat", "lon"], legacy: false});
 
       assertEqual(id, idx.id);
@@ -1252,7 +958,6 @@ function SphericalIndexCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSPICreationConstraintLocationList : function () {
-      //var idx = collection.ensureGeoConstraint("loc", false);
       let idx = collection.ensureIndex({type: "geo", fields:["loc"], geoJson: false, legacy: false});
       var id = idx.id;
 
@@ -1264,7 +969,6 @@ function SphericalIndexCreationSuite() {
       assertEqual(["loc"], idx.fields);
       assertTrue(idx.isNewlyCreated);
 
-      //idx = collection.ensureGeoConstraint("loc", false);
       idx = collection.ensureIndex({type: "geo", fields:["loc"], geoJson: false, legacy: false});
 
       assertEqual(id, idx.id);
@@ -1277,10 +981,6 @@ function SphericalIndexCreationSuite() {
     }
   };
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(GeoIndexCreationSuite);
 jsunity.run(GeoIndexErrorHandlingSuite);

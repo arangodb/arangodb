@@ -1,0 +1,28 @@
+////
+Copyright 2020 Peter Dimov
+Distributed under the Boost Software License, Version 1.0.
+https://www.boost.org/LICENSE_1_0.txt
+////
+
+# Describe: A {cpp}14 Reflection Library
+Peter Dimov
+:toc: left
+:toclevels: 4
+:idprefix:
+:listing-caption: Code Example
+:docinfo: private-footer
+:source-highlighter: rouge
+:source-language: c++
+
+:leveloffset: +1
+
+include::describe/overview.adoc[]
+include::describe/changes.adoc[]
+include::describe/enums.adoc[]
+include::describe/classes.adoc[]
+include::describe/examples.adoc[]
+include::describe/implementation.adoc[]
+include::describe/reference.adoc[]
+include::describe/copyright.adoc[]
+
+:leveloffset: -1

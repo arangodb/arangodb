@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,19 +23,21 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 #include "Aql/QueryRegistry.h"
-#include "RestServer/Metrics.h"
+#include "Metrics/Fwd.h"
 
 namespace arangodb {
 
-class QueryRegistryFeature final : public application_features::ApplicationFeature {
+class QueryRegistryFeature final : public ArangodFeature {
  public:
+  static constexpr std::string_view name() noexcept { return "QueryRegistry"; }
+
   static aql::QueryRegistry* registry() {
     return QUERY_REGISTRY.load(std::memory_order_acquire);
   }
 
-  explicit QueryRegistryFeature(application_features::ApplicationServer& server);
+  explicit QueryRegistryFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -69,7 +71,9 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   bool smartJoins() const { return _smartJoins; }
   bool parallelizeTraversals() const { return _parallelizeTraversals; }
 #endif
-  bool allowCollectionsInExpressions() const { return _allowCollectionsInExpressions; }
+  bool allowCollectionsInExpressions() const {
+    return _allowCollectionsInExpressions;
+  }
   uint64_t queryGlobalMemoryLimit() const { return _queryGlobalMemoryLimit; }
   uint64_t queryMemoryLimit() const { return _queryMemoryLimit; }
   double queryMaxRuntime() const { return _queryMaxRuntime; }
@@ -96,6 +100,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   uint64_t _queryMemoryLimit;
   double _queryMaxRuntime;
   uint64_t _maxQueryPlans;
+  uint64_t _maxNodesPerCallstack;
   uint64_t _queryCacheMaxResultsCount;
   uint64_t _queryCacheMaxResultsSize;
   uint64_t _queryCacheMaxEntrySize;
@@ -110,17 +115,15 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
 
   std::unique_ptr<aql::QueryRegistry> _queryRegistry;
 
-  Histogram<log_scale_t<double>>& _queryTimes;
-  Histogram<log_scale_t<double>>& _slowQueryTimes;
-  Counter& _totalQueryExecutionTime;
-  Counter& _queriesCounter;
-  Counter& _slowQueriesCounter;
-  Gauge<uint64_t>& _runningQueries;
-  Gauge<uint64_t>& _globalQueryMemoryUsage;
-  Gauge<uint64_t>& _globalQueryMemoryLimit;
-  Counter& _globalQueryMemoryLimitReached; 
-  Counter& _localQueryMemoryLimitReached; 
+  metrics::Histogram<metrics::LogScale<double>>& _queryTimes;
+  metrics::Histogram<metrics::LogScale<double>>& _slowQueryTimes;
+  metrics::Counter& _totalQueryExecutionTime;
+  metrics::Counter& _queriesCounter;
+  metrics::Gauge<uint64_t>& _runningQueries;
+  metrics::Gauge<uint64_t>& _globalQueryMemoryUsage;
+  metrics::Gauge<uint64_t>& _globalQueryMemoryLimit;
+  metrics::Counter& _globalQueryMemoryLimitReached;
+  metrics::Counter& _localQueryMemoryLimitReached;
 };
 
 }  // namespace arangodb
-

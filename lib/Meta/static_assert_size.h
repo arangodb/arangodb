@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,17 +27,17 @@ namespace arangodb {
 namespace meta {
 namespace details {
 
-// This template function allows to statically assert the size of a type, while giving
-// useful error messages about the actual sizes in question.
+// This template function allows to statically assert the size of a type, while
+// giving useful error messages about the actual sizes in question.
 //
-// This is for example useful to make sure methods are checked if someone adds member
-// variables to classes or structs
-template <typename Scrutinee, std::size_t ExpectedSize, std::size_t Size = sizeof(Scrutinee)>
+// This is for example useful to make sure methods are checked if someone adds
+// member variables to classes or structs
+template<typename Scrutinee, std::size_t ExpectedSize,
+         std::size_t Size = sizeof(Scrutinee)>
 void static_assert_size() {
-    static_assert(ExpectedSize == Size, "Type does not have the expected size.");
+  static_assert(ExpectedSize == Size, "Type does not have the expected size.");
 }
 
 }  // namespace details
 }  // namespace meta
 }  // namespace arangodb
-

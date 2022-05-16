@@ -40,7 +40,6 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::tests;
@@ -53,14 +52,15 @@ namespace {}  // namespace
 // - SECTION SINGLEROWFETCHER              -
 // -----------------------------------------
 
-template <::arangodb::aql::BlockPassthrough passBlocksThrough>
+template<::arangodb::aql::BlockPassthrough passBlocksThrough>
 SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(
     AqlItemBlockManager& manager,
-    std::shared_ptr<VPackBuffer<uint8_t>> const& vPackBuffer, bool returnsWaiting)
+    std::shared_ptr<VPackBuffer<uint8_t>> const& vPackBuffer,
+    bool returnsWaiting)
     : SingleRowFetcherHelper(manager, 1, returnsWaiting,
                              vPackBufferToAqlItemBlock(manager, vPackBuffer)) {}
 
-template <::arangodb::aql::BlockPassthrough passBlocksThrough>
+template<::arangodb::aql::BlockPassthrough passBlocksThrough>
 SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(
     ::arangodb::aql::AqlItemBlockManager& manager, size_t const blockSize,
     bool const returnsWaiting, ::arangodb::aql::SharedAqlItemBlockPtr input)
@@ -74,57 +74,16 @@ SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(
   TRI_ASSERT(_blockSize > 0);
 }
 
-template <::arangodb::aql::BlockPassthrough passBlocksThrough>
+template<::arangodb::aql::BlockPassthrough passBlocksThrough>
 SingleRowFetcherHelper<passBlocksThrough>::~SingleRowFetcherHelper() = default;
-
-
-// -----------------------------------------
-// - SECTION ALLROWSFETCHER                -
-// -----------------------------------------
-
-AllRowsFetcherHelper::AllRowsFetcherHelper(std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer,
-                                           bool returnsWaiting)
-    : AllRowsFetcher(),
-      _vPackBuffer(std::move(vPackBuffer)),
-      _nrItems(0),
-      _nrRegs(0),
-      _itemBlockManager(_resourceMonitor, SerializationFormat::SHADOWROWS),
-      _matrix(nullptr) {
-  if (_vPackBuffer != nullptr) {
-    _data = VPackSlice(_vPackBuffer->data());
-  } else {
-    _data = VPackSlice::nullSlice();
-  }
-  if (_data.isArray()) {
-    _nrItems = _data.length();
-  }
-  if (_nrItems > 0) {
-    VPackSlice oneRow = _data.at(0);
-    TRI_ASSERT(oneRow.isArray());
-    _nrRegs = static_cast<arangodb::aql::RegisterCount>(oneRow.length());
-    SharedAqlItemBlockPtr itemBlock{new AqlItemBlock(_itemBlockManager, _nrItems, _nrRegs)};
-    VPackToAqlItemBlock(_data, _nrRegs, *itemBlock);
-    // Add all registers as valid input registers:
-    auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-    for (RegisterId::value_t i = 0; i < _nrRegs; i++) {
-      inputRegisters->emplace(i);
-    }
-    _matrix = std::make_unique<AqlItemMatrix>(_nrRegs);
-    _matrix->addBlock(itemBlock);
-  }
-  if (_matrix == nullptr) {
-    _matrix = std::make_unique<AqlItemMatrix>(_nrRegs);
-  }
-}
-
-AllRowsFetcherHelper::~AllRowsFetcherHelper() = default;
 
 // -----------------------------------------
 // - SECTION CONSTFETCHER              -
 // -----------------------------------------
 
-ConstFetcherHelper::ConstFetcherHelper(AqlItemBlockManager& itemBlockManager,
-                                       std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer)
+ConstFetcherHelper::ConstFetcherHelper(
+    AqlItemBlockManager& itemBlockManager,
+    std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer)
     : ConstFetcher(), _vPackBuffer(std::move(vPackBuffer)) {
   if (_vPackBuffer != nullptr) {
     _data = VPackSlice(_vPackBuffer->data());
@@ -142,7 +101,8 @@ ConstFetcherHelper::ConstFetcherHelper(AqlItemBlockManager& itemBlockManager,
       for (RegisterId::value_t i = 0; i < nrRegs; i++) {
         inputRegisters->emplace(i);
       }
-      SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, nrItems, nrRegs)};
+      SharedAqlItemBlockPtr block{
+          new AqlItemBlock(itemBlockManager, nrItems, nrRegs)};
       VPackToAqlItemBlock(_data, nrRegs, *block);
       SkipResult skipRes{};
       this->injectBlock(block, skipRes);
@@ -152,5 +112,7 @@ ConstFetcherHelper::ConstFetcherHelper(AqlItemBlockManager& itemBlockManager,
 
 ConstFetcherHelper::~ConstFetcherHelper() = default;
 
-template class ::arangodb::tests::aql::SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable>;
-template class ::arangodb::tests::aql::SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable>;
+template class ::arangodb::tests::aql::SingleRowFetcherHelper<
+    ::arangodb::aql::BlockPassthrough::Disable>;
+template class ::arangodb::tests::aql::SingleRowFetcherHelper<
+    ::arangodb::aql::BlockPassthrough::Enable>;

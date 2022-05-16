@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,7 +48,7 @@ namespace detail {
 ///   |                  \                       /                  |
 ///   |                    ---> OnlyCallback ---                    |
 ///   +-------------------------------------------------------------+
-template <typename T>
+template<typename T>
 class SharedState {
   enum class State : uint8_t {
     Start = 1 << 0,
@@ -86,7 +86,7 @@ class SharedState {
 
   /// State will be OnlyResult
   /// Result held will be the `T` constructed from forwarded `args`
-  template <typename... Args>
+  template<typename... Args>
   static SharedState<T>* make(std::in_place_t, Args&&... args) {
     return new SharedState<T>(std::in_place, std::forward<Args>(args)...);
   }
@@ -148,7 +148,7 @@ class SharedState {
   /// If it transitions to Done, synchronously initiates a call to the callback,
   /// and might also synchronously execute that callback (e.g., if there is no
   /// executor or if the executor is inline).
-  template <typename F>
+  template<typename F>
   void setCallback(F&& func) {
     TRI_ASSERT(!hasCallback());
 
@@ -166,7 +166,8 @@ class SharedState {
         [[fallthrough]];
       case State::OnlyResult:
         // acquire is actually correct here
-        if (_state.compare_exchange_strong(state, State::Done, std::memory_order_acquire)) {
+        if (_state.compare_exchange_strong(state, State::Done,
+                                           std::memory_order_acquire)) {
           doCallback();
           return;
         }
@@ -193,14 +194,16 @@ class SharedState {
 
     switch (state) {
       case State::Start:
-        if (_state.compare_exchange_strong(state, State::OnlyResult, std::memory_order_release)) {
+        if (_state.compare_exchange_strong(state, State::OnlyResult,
+                                           std::memory_order_release)) {
           return;
         }
         TRI_ASSERT(state == State::OnlyCallback);  // race with setCallback
         [[fallthrough]];
       case State::OnlyCallback:
         // acquire is actually correct here
-        if (_state.compare_exchange_strong(state, State::Done, std::memory_order_acquire)) {
+        if (_state.compare_exchange_strong(state, State::Done,
+                                           std::memory_order_acquire)) {
           doCallback();
           return;
         }
@@ -233,9 +236,9 @@ class SharedState {
       : _result(std::move(t)), _state(State::OnlyResult), _attached(1) {}
 
   /// use to construct a ready future
-  template <typename... Args>
-  explicit SharedState(std::in_place_t,
-                       Args&&... args) noexcept(std::is_nothrow_constructible<T, Args&&...>::value)
+  template<typename... Args>
+  explicit SharedState(std::in_place_t, Args&&... args) noexcept(
+      std::is_nothrow_constructible<T, Args&&...>::value)
       : _result(std::in_place, std::forward<Args>(args)...),
         _state(State::OnlyResult),
         _attached(1) {}
@@ -262,7 +265,7 @@ class SharedState {
 
     _attached.fetch_add(1);
     // SharedStateScope makes this exception safe
-    SharedStateScope scope(this); // will call detachOne()
+    SharedStateScope scope(this);  // will call detachOne()
     _callback(std::move(_result));
   }
 
@@ -279,4 +282,3 @@ class SharedState {
 }  // namespace detail
 }  // namespace futures
 }  // namespace arangodb
-

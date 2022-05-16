@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,7 +57,8 @@ EndpointList::~EndpointList() {
 /// @brief add a new endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-bool EndpointList::add(std::string const& specification, int backLogSize, bool reuseAddress) {
+bool EndpointList::add(std::string const& specification, int backLogSize,
+                       bool reuseAddress) {
   std::string const key = Endpoint::unifiedForm(specification);
 
   if (key.empty()) {
@@ -127,7 +128,8 @@ std::vector<std::string> EndpointList::all() const {
 /// @brief return all typed endpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<std::string> EndpointList::all(Endpoint::TransportType transport) const {
+std::vector<std::string> EndpointList::all(
+    Endpoint::TransportType transport) const {
   std::vector<std::string> result;
   std::string prefix;
 

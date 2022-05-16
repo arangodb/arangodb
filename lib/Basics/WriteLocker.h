@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,36 +29,34 @@
 #include "Basics/Locking.h"
 #include "Basics/debugging.h"
 
-#ifdef ARANGODB_SHOW_LOCK_TIME
-#include "Basics/system-functions.h"
-#include "Logger/LogMacros.h"
-#endif
-
 #include <thread>
 
 /// @brief construct locker with file and line information
-#define WRITE_LOCKER(obj, lock)                                                 \
-  arangodb::basics::WriteLocker<typename std::decay<decltype(lock)>::type> obj( \
-      &lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
+#define WRITE_LOCKER(obj, lock)                                            \
+  arangodb::basics::WriteLocker<typename std::decay<decltype(lock)>::type> \
+      obj(&lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__,   \
+          __LINE__)
 
-#define WRITE_LOCKER_EVENTUAL(obj, lock)                                        \
-  arangodb::basics::WriteLocker<typename std::decay<decltype(lock)>::type> obj( \
-      &lock, arangodb::basics::LockerType::EVENTUAL, true, __FILE__, __LINE__)
+#define WRITE_LOCKER_EVENTUAL(obj, lock)                                   \
+  arangodb::basics::WriteLocker<typename std::decay<decltype(lock)>::type> \
+      obj(&lock, arangodb::basics::LockerType::EVENTUAL, true, __FILE__,   \
+          __LINE__)
 
-#define TRY_WRITE_LOCKER(obj, lock)                                             \
-  arangodb::basics::WriteLocker<typename std::decay<decltype(lock)>::type> obj( \
-      &lock, arangodb::basics::LockerType::TRY, true, __FILE__, __LINE__)
+#define TRY_WRITE_LOCKER(obj, lock)                                        \
+  arangodb::basics::WriteLocker<typename std::decay<decltype(lock)>::type> \
+      obj(&lock, arangodb::basics::LockerType::TRY, true, __FILE__, __LINE__)
 
-#define CONDITIONAL_WRITE_LOCKER(obj, lock, condition)                          \
-  arangodb::basics::WriteLocker<typename std::decay<decltype(lock)>::type> obj( \
-      &lock, arangodb::basics::LockerType::BLOCKING, (condition), __FILE__, __LINE__)
+#define CONDITIONAL_WRITE_LOCKER(obj, lock, condition)                     \
+  arangodb::basics::WriteLocker<typename std::decay<decltype(lock)>::type> \
+      obj(&lock, arangodb::basics::LockerType::BLOCKING, (condition),      \
+          __FILE__, __LINE__)
 
 namespace arangodb::basics {
 
 /// @brief write locker
 /// A WriteLocker write-locks a read-write lock during its lifetime and unlocks
 /// the lock when it is destroyed.
-template <class LockType>
+template<class LockType>
 class WriteLocker {
  public:
   WriteLocker(WriteLocker const&) = delete;
@@ -71,18 +69,7 @@ class WriteLocker {
       : _readWriteLock(readWriteLock),
         _file(file),
         _line(line),
-#ifdef ARANGODB_SHOW_LOCK_TIME
-        _isLocked(false),
-        _time(0.0) {
-#else
         _isLocked(false) {
-#endif
-
-#ifdef ARANGODB_SHOW_LOCK_TIME
-    // fetch current time
-    double t = TRI_microtime();
-#endif
-
     if (condition) {
       if (type == LockerType::BLOCKING) {
         lock();
@@ -94,11 +81,6 @@ class WriteLocker {
         _isLocked = tryLock();
       }
     }
-
-#ifdef ARANGODB_SHOW_LOCK_TIME
-    // add elapsed time to time tracker
-    _time = TRI_microtime() - t;
-#endif
   }
 
   /// @brief releases the write-lock
@@ -108,14 +90,6 @@ class WriteLocker {
       static_assert(noexcept(_readWriteLock->unlockWrite()));
       _readWriteLock->unlockWrite();
     }
-
-#ifdef ARANGODB_SHOW_LOCK_TIME
-    if (_time > TRI_SHOW_LOCK_THRESHOLD) {
-      LOG_TOPIC("95aa0", INFO, arangodb::Logger::PERFORMANCE)
-          << "WriteLocker for lock [" << _readWriteLock << "] " << _file << ":"
-          << _line << " took " << _time << " s";
-    }
-#endif
   }
 
   /// @brief whether or not we acquired the lock
@@ -175,12 +149,6 @@ class WriteLocker {
 
   /// @brief whether or not the lock was acquired
   bool _isLocked;
-
-#ifdef ARANGODB_SHOW_LOCK_TIME
-  /// @brief lock time
-  double _time;
-#endif
 };
 
 }  // namespace arangodb::basics
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,16 +38,16 @@ struct Quantifier {
   static int64_t constexpr ANY = 3;
 
   /// @brief converts a quantifier string into an int equivalent
-  static int64_t FromString(std::string const& value);
+  static int64_t fromString(std::string const& value);
 
   /// @brief converts a quantifier int value into its string equivalent
-  static std::string Stringify(int64_t value);
+  static std::string stringify(int64_t value);
 
-  static bool IsAllOrNone(AstNode const* quantifier);
+  static bool isAllOrNone(AstNode const* quantifier);
 
   /// @brief determine the min/max number of matches for an array comparison
-  static std::pair<size_t, size_t> RequiredMatches(size_t inputSize, AstNode const* quantifier);
+  static std::pair<size_t, size_t> requiredMatches(size_t inputSize,
+                                                   AstNode const* quantifier);
 };
 }  // namespace aql
 }  // namespace arangodb
-

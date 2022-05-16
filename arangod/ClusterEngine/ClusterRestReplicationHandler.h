@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,8 +31,8 @@ namespace arangodb {
 /// @brief replication request handler
 class ClusterRestReplicationHandler : public RestReplicationHandler {
  public:
-  ClusterRestReplicationHandler(application_features::ApplicationServer&,
-                                GeneralRequest*, GeneralResponse*);
+  ClusterRestReplicationHandler(ArangodServer&, GeneralRequest*,
+                                GeneralResponse*);
   ~ClusterRestReplicationHandler() = default;
 
  public:
@@ -51,9 +51,6 @@ class ClusterRestReplicationHandler : public RestReplicationHandler {
   /// @brief handle a batch command
   void handleCommandBatch() override;
 
-  /// @brief add or remove a WAL logfile barrier
-  void handleCommandBarrier() override;
-
   /// @brief return the inventory (current replication and collection state)
   void handleCommandInventory() override;
 
@@ -71,6 +68,8 @@ class ClusterRestReplicationHandler : public RestReplicationHandler {
 
   /// @brief handle a dump command for a specific collection
   void handleCommandDump() override;
+
+  /// @brief return the revision tree for a given collection, if available
+  void handleCommandRevisionTree() override;
 };
 }  // namespace arangodb
-

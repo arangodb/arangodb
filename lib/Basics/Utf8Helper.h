@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <string_view>
 
 #include <unicode/coll.h>
 #include <unicode/umachine.h>
@@ -41,9 +42,6 @@ class RegexMatcher;
 }
 
 namespace arangodb {
-namespace velocypack {
-class StringRef;
-}
 namespace basics {
 
 #ifdef _WIN32
@@ -51,6 +49,8 @@ std::wstring toWString(std::string const& validUTF8String);
 std::string fromWString(wchar_t const* validUTF16String, std::size_t size);
 std::string fromWString(std::wstring const& validUTF16String);
 #endif
+
+enum class LanguageType { INVALID, DEFAULT, ICU };
 
 class Utf8Helper {
   Utf8Helper(Utf8Helper const&) = delete;
@@ -102,9 +102,26 @@ class Utf8Helper {
   /// @param lang   Lowercase two-letter or three-letter ISO-639 code.
   ///     This parameter can instead be an ICU style C locale (e.g. "en_US")
   /// @param icuDataPointer data file to be loaded by the application
+  /// @param langType type of language. Now supports DEFAULT and ICU only
+  /// collation
   //////////////////////////////////////////////////////////////////////////////
 
-  bool setCollatorLanguage(std::string const& lang, void* icuDataPointer);
+  bool setCollatorLanguage(std::string_view lang, LanguageType langType,
+                           void* icuDataPointer);
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get current collator
+  //////////////////////////////////////////////////////////////////////////////
+
+  icu::Collator* getCollator() const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief set collator
+  //////////////////////////////////////////////////////////////////////////////
+
+  void setCollator(icu::Collator* coll);
+#endif
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get collator language
@@ -146,8 +163,9 @@ class Utf8Helper {
   /// @brief returns the words of a UTF-8 string.
   //////////////////////////////////////////////////////////////////////////////
 
-  bool tokenize(std::set<std::string>& words, arangodb::velocypack::StringRef const& text,
-                size_t minimalWordLength, size_t maximalWordLength, bool lowerCase);
+  bool tokenize(std::set<std::string>& words, std::string_view text,
+                size_t minimalWordLength, size_t maximalWordLength,
+                bool lowerCase);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief builds a regex matcher for the specified pattern
@@ -162,9 +180,9 @@ class Utf8Helper {
   bool matches(icu::RegexMatcher*, char const* pattern, size_t patternLength,
                bool partial, bool& error);
 
-  std::string replace(icu::RegexMatcher*, char const* pattern, size_t patternLength,
-                      char const* replacement, size_t replacementLength,
-                      bool partial, bool& error);
+  std::string replace(icu::RegexMatcher*, char const* pattern,
+                      size_t patternLength, char const* replacement,
+                      size_t replacementLength, bool partial, bool& error);
 
   // append an UTF8 to a string. This will append 1 to 4 bytes.
   static void appendUtf8Character(std::string& result, uint32_t ch) {
@@ -196,27 +214,36 @@ class Utf8Helper {
 /// @brief convert a utf-8 string to a uchar (utf-16)
 ////////////////////////////////////////////////////////////////////////////////
 
-UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, size_t* outLength);
-UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, UChar* buffer, size_t bufferSize,
-                       size_t* outLength);
+UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, size_t* outLength,
+                       UErrorCode* status = nullptr);
+UChar* TRI_Utf8ToUChar(char const* utf8, size_t inLength, UChar* buffer,
+                       size_t bufferSize, size_t* outLength,
+                       UErrorCode* status = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uchar (utf-16) to a utf-8 string
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UCharToUtf8(UChar const* uchar, size_t inLength, size_t* outLength);
+char* TRI_UCharToUtf8(UChar const* uchar, size_t inLength, size_t* outLength,
+                      UErrorCode* status = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize an utf8 string (NFC)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_normalize_utf8_to_NFC(char const* utf8, size_t inLength, size_t* outLength);
+char* TRI_normalize_utf8_to_NFC(char const* utf8, size_t inLength,
+                                size_t* outLength,
+                                UErrorCode* status = nullptr);
+
+std::string normalizeUtf8ToNFC(std::string_view value);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize an utf16 string (NFC) and export it to utf8
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16, size_t inLength, size_t* outLength);
+char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16, size_t inLength,
+                                 size_t* outLength,
+                                 UErrorCode* status = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two utf8 strings
@@ -224,8 +251,8 @@ char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16, size_t inLength, size_t*
 
 static inline int TRI_compare_utf8(char const* left, size_t leftLength,
                                    char const* right, size_t rightLength) {
-  return arangodb::basics::Utf8Helper::DefaultUtf8Helper.compareUtf8(left, leftLength,
-                                                                     right, rightLength);
+  return arangodb::basics::Utf8Helper::DefaultUtf8Helper.compareUtf8(
+      left, leftLength, right, rightLength);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -233,4 +260,3 @@ static inline int TRI_compare_utf8(char const* left, size_t leftLength,
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_tolower_utf8(char const* src, int32_t srcLength, int32_t* dstLength);
-

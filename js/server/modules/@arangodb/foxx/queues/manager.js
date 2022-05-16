@@ -1,3 +1,4 @@
+/*global BigInt, FOXX_QUEUE_VERSION, FOXX_QUEUE_VERSION_BUMP */
 'use strict';
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -222,15 +223,16 @@ exports.manage = function () {
   ensureDefaultQueue();
 
   if (!global.ArangoServerState.isFoxxmaster()) {
+    if (isCluster) {
+      // publish our own queue updates to the agency even if we exit early.
+      // this coordinator, though not the Foxxmaster, could have been used
+      // for inserting new queue jobs
+      FOXX_QUEUE_VERSION_BUMP();
+    }
     return;
   }
 
   if (global.ArangoServerState.getFoxxmasterQueueupdate()) {
-    if (!isCluster) {
-      // On a Foxxmaster change FoxxmasterQueueupdate is set to true
-      // we use this to signify a Leader change to this server
-      foxxManager.healAll(true);
-    }
     // do not call again immediately
     global.ArangoServerState.setFoxxmasterQueueupdate(false);
 
@@ -247,11 +249,28 @@ exports.manage = function () {
       // update, so in the next round the code for the queue update
       // will be run
       global.ArangoServerState.setFoxxmasterQueueupdate(true);
+      if (err.errorNum === errors.ERROR_SHUTTING_DOWN.code) {
+        return;
+      }
       throw err;
     }
   }
 
-  let initialDatabase = db._name();
+  db._useDatabase("_system");
+  
+  let recheckAllQueues = false;
+  let clusterQueueVersion = BigInt("0");
+  if (isCluster) {
+    // check the cluster-wide queue version
+    clusterQueueVersion = BigInt(FOXX_QUEUE_VERSION() || 0);
+    // compare to our locally stored version
+    let localQueueVersion = BigInt(global.KEY_GET('queue-control', 'version') || 0);
+
+    if (clusterQueueVersion > localQueueVersion) {
+      // queue was updated on another coordinator
+      recheckAllQueues = true;
+    }
+  }
 
   db._databases().forEach(function (database) {
     try {
@@ -259,22 +278,29 @@ exports.manage = function () {
       global.KEYSPACE_CREATE('queue-control', 1, true);
       let delayUntil = global.KEY_GET('queue-control', 'delayUntil') || 0;
 
-      if (delayUntil === -1 || delayUntil > Date.now()) {
+      if (!recheckAllQueues &&
+          (delayUntil === -1 || delayUntil > Date.now())) {
         return;
       }
 
       const queues = db._collection('_queues');
       const jobs = db._collection('_jobs');
 
-      if (!queues || !jobs || !queues.count() || !jobs.count()) {
+      if (!queues || !jobs) {
+        // _queues or _jobs collections do not exist
+        global.KEY_SET('queue-control', 'delayUntil', -1);
+      } else if (!recheckAllQueues && (!queues.count() || !jobs.count())) {
+        // _queues or _jobs collections do exist, but are empty
         global.KEY_SET('queue-control', 'delayUntil', -1);
       } else {
+        global.KEY_SET('queue-control', 'delayUntil', 0);
         runInDatabase();
       }
     } catch (e) {
       // it is possible that the underlying database is deleted while we are in here.
       // this is not an error
-      if (e.errorNum !== errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code) {
+      if (e.errorNum !== errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code &&
+          e.errorNum !== errors.ERROR_SHUTTING_DOWN.code) {
         warn("An exception occurred during Foxx queue handling in database '"
               + database + "' "
               + e.message + ": "
@@ -285,10 +311,17 @@ exports.manage = function () {
   });
 
   // switch back into previous database
-  try {
-    db._useDatabase(initialDatabase);
-  } catch (err) {
-    db._useDatabase('_system');
+  db._useDatabase('_system');
+
+  if (isCluster) {
+    if (recheckAllQueues) {
+      // once we have rechecked all queues, we can update our local queue version
+      // to the version we checked for
+      global.KEY_SET('queue-control', 'version', clusterQueueVersion.toString());
+    }
+
+    // publish our own queue updates to the agency
+    FOXX_QUEUE_VERSION_BUMP();
   }
 };
 

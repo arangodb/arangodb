@@ -1,0 +1,304 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Getting Started</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Contract 1.0.0">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Contract 1.0.0">
+<link rel="prev" href="full_table_of_contents.html" title="Full Table of Contents">
+<link rel="next" href="contract_programming_overview.html" title="Contract Programming Overview">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="full_table_of_contents.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="contract_programming_overview.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_contract.getting_started"></a><a class="link" href="getting_started.html" title="Getting Started">Getting Started</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="getting_started.html#boost_contract.getting_started.this_documentation">This
+      Documentation</a></span></dt>
+<dt><span class="section"><a href="getting_started.html#boost_contract.getting_started.compilers_and_platforms">Compilers
+      and Platforms</a></span></dt>
+<dt><span class="section"><a href="getting_started.html#boost_contract.getting_started.code_organization">Code
+      Organization</a></span></dt>
+<dt><span class="section"><a href="getting_started.html#boost_contract.getting_started.build">Build</a></span></dt>
+</dl></div>
+<p>
+      This section shows how to setup and start using this library.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_contract.getting_started.this_documentation"></a><a class="link" href="getting_started.html#boost_contract.getting_started.this_documentation" title="This Documentation">This
+      Documentation</a>
+</h3></div></div></div>
+<p>
+        Programmers should be able to start using this library after reading the
+        <a class="link" href="../index.html#boost_contract.introduction" title="Introduction">Introduction</a>, <a class="link" href="getting_started.html" title="Getting Started">Getting
+        Started</a>, and <a class="link" href="tutorial.html" title="Tutorial">Tutorial</a>.
+        Other sections of this documentation (e.g., <a class="link" href="advanced.html" title="Advanced">Advanced</a>
+        and <a class="link" href="extras.html" title="Extras">Extras</a>) can be consulted
+        at a later point to gain a more in-depth knowledge of the library. <a class="link" href="contract_programming_overview.html" title="Contract Programming Overview">Contract Programming
+        Overview</a> can be skipped by programmers that are already familiar with
+        the contract programming methodology.
+      </p>
+<p>
+        Some of the source code listed in this documentation contains special code
+        comments of the form <code class="computeroutput"><span class="comment">//[...</span></code>
+        and <code class="computeroutput"><span class="comment">//]</span></code>. These mark sections
+        of the code that are automatically extracted from the source code and presented
+        as part of this documentation. <a href="#ftn.boost_contract.getting_started.this_documentation.f0" class="footnote" name="boost_contract.getting_started.this_documentation.f0"><sup class="footnote">[5]</sup></a> It should be noted that the purpose of all examples of this documentation
+        is to illustrate how to use this library and not to show real production
+        code.
+      </p>
+<p>
+        Some footnotes are marked by the word "<span class="bold"><strong>Rationale</strong></span>".
+        These explain some of the decisions made during the design and implementation
+        of this library.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_contract.getting_started.compilers_and_platforms"></a><a class="link" href="getting_started.html#boost_contract.getting_started.compilers_and_platforms" title="Compilers and Platforms">Compilers
+      and Platforms</a>
+</h3></div></div></div>
+<p>
+        In general, this library requires C++ compilers with a sound implementation
+        of SFINAE and other template meta-programming techniques supported by the
+        C++03 standard. It is possible to use this library without C++11 lambda functions
+        but a large amount of boiler-plate code is required to manually program separate
+        functors to specify preconditions, postconditions, etc. (so using this library
+        without C++11 lambda functions is possible but not recommended, see <a class="link" href="extras.html#boost_contract.extras.no_lambda_functions__no_c__11_" title="No Lambda Functions (No C++11)">No Lambda
+        Functions</a>). It is also possible to use this library without variadic
+        macros by manually programming a small amount of boiler-plate code (but most
+        if not all modern C++ compilers support variadic macros even before C++99
+        and C++11 so this should never be needed in practice, see <a class="link" href="extras.html#boost_contract.extras.no_macros__and_no_variadic_macros_" title="No Macros (and No Variadic Macros)">No
+        Macros</a>).
+      </p>
+<p>
+        Some parts of this documentation use the syntax <code class="literal"><span class="emphasis"><em>type-of</em></span>(...)</code>
+        to indicate an operator logically equivalent to C++11 <code class="computeroutput"><span class="keyword">decltype</span><span class="special">(...)</span></code>. However, this library implementation
+        does not actually use type deduction in these cases (because the library
+        internally already knows the types in question) so support for C++11 <code class="computeroutput"><span class="keyword">decltype</span></code> and other type-of implementations
+        are not actually required (that is why <code class="literal"><span class="emphasis"><em>type-of</em></span></code>
+        and not the real <code class="computeroutput"><span class="keyword">decltype</span></code> operator
+        is used in this documentation).
+      </p>
+<p>
+        This library has been developed and tested using:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Visual Studio 2015 on Windows (MSVC <code class="literal">cl</code> version 19.00.24215.1).
+          </li>
+<li class="listitem">
+            GCC version 5.4.0 on Cygwin (with C++11 features enabled <code class="literal">-std=c++11</code>).
+          </li>
+<li class="listitem">
+            Clang version 3.8.1 on Cygwin (with C++11 features enabled <code class="literal">-std=c++11</code>).
+          </li>
+</ul></div>
+<p>
+        For information on other compilers and platforms see the library <a href="http://www.boost.org/development/tests/master/developer/contract.html" target="_top">regression
+        tests</a>. The development and maintenance of this library is hosted
+        on <a href="https://github.com/boostorg/contract" target="_top">GitHub</a>.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_contract.getting_started.code_organization"></a><a class="link" href="getting_started.html#boost_contract.getting_started.code_organization" title="Code Organization">Code
+      Organization</a>
+</h3></div></div></div>
+<p>
+        Let <code class="literal"><span class="emphasis"><em>boost-root</em></span></code> be the directory where
+        Boost source files were installed. This library flies are organized as follows:
+      </p>
+<pre class="programlisting"><span class="emphasis"><em>boost-root</em></span>/libs/contract        # Directory where this library files are.
+    build/                      # Build files (using BJam).
+    doc/                        # Documentation (using Boost.QuickBook).
+    example/                    # Examples (also those listed in this documentation).
+    include/                    # DO NOT USE: Use copies of these files from
+        boost/                  # <span class="emphasis"><em>boost-root</em></span>/boost/ instead:
+            contract.hpp        #   - Include all headers at once.
+            contract_macro.hpp  #   - Include library macro interface.
+            contract/           #   - Header files that can be included one-by-one.
+                core/           #   - Fundamental headers (usually indirectly included by other headers).
+                detail/         #   - Implementation code (should never be included or used directly).
+    src/                        # Library source code to be compiled.
+    test/                       # Tests.
+</pre>
+<p>
+        All headers required by this library can be included at once by:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">contract</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+        Or, by the following when using the library macro interface (see <a class="link" href="extras.html#boost_contract.extras.disable_contract_compilation__macro_interface_" title="Disable Contract Compilation (Macro Interface)">Disable
+        Contract Compilation</a>):
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">contract_macro</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+        Alternatively, all <code class="literal">boost/contract/*.hpp</code> headers are independent
+        from one another and they can be selectively included one-by-one based on
+        the specific functionality of this library being used (but this was measured
+        to not make an appreciable difference in compile-time so <code class="literal">boost/contract.hpp</code>
+        can be included directly in most cases). The <code class="literal">boost/contract/core/*.hpp</code>
+        headers are not independent from other headers and they do not need to be
+        directly included in user code when <code class="literal">boost/contract.hpp</code>
+        or <code class="literal">boost/contract/*.hpp</code> headers are included already.
+      </p>
+<p>
+        All files under <code class="literal">boost/contract/detail/</code>, names in the
+        <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">contract</span><span class="special">::</span><span class="identifier">detail</span></code> namespace, macros starting with
+        <code class="computeroutput"><span class="identifier">BOOST_CONTRACT_DETAIL</span><span class="special">...</span></code>,
+        and all names starting with <code class="computeroutput"><span class="identifier">boost_contract_detail</span><span class="special">...</span></code> (in any namespace, including user-defined
+        namespaces) are part of this library implementation and should never be used
+        directly in user code. Names starting with <code class="computeroutput"><span class="identifier">BOOST_CONTRACT_ERROR</span><span class="special">...</span></code> are used by this library to report some
+        compile-time errors (so spotting these names in compiler error messages might
+        help troubleshooting).
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_contract.getting_started.build"></a><a class="link" href="getting_started.html#boost_contract.getting_started.build" title="Build">Build</a>
+</h3></div></div></div>
+<p>
+        Let <code class="literal"><span class="emphasis"><em>boost-root</em></span></code> be the directory where
+        Boost source files were installed. This library is installed and compiled
+        as part of Boost using BJam.
+      </p>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../../../../../doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top">
+<p>
+          It is strongly recommended to compile and use this library as a shared
+          library (a.k.a., Dynamically Linked Library or DLL) by defining the <code class="computeroutput"><span class="identifier">BOOST_ALL_DYN_LINK</span></code> macro (or at least
+          <code class="computeroutput"><a class="link" href="../BOOST_CONTRACT_DYN_LINK.html" title="Macro BOOST_CONTRACT_DYN_LINK">BOOST_CONTRACT_DYN_LINK</a></code>)
+          when building Boost. When using BJam to build Boost, this can be achieved
+          by the <code class="computeroutput"><span class="identifier">link</span><span class="special">=</span><span class="identifier">shared</span></code> parameter (which is already the
+          default so no extra parameter is actually needed for <code class="computeroutput"><span class="identifier">bjam</span></code>).
+        </p>
+<p>
+          It is also possible to compile and use this library as a static library
+          (by defining the <code class="computeroutput"><a class="link" href="../BOOST_CONTRACT_STATIC_LINK.html" title="Macro BOOST_CONTRACT_STATIC_LINK">BOOST_CONTRACT_STATIC_LINK</a></code>
+          macro) or as a header-only library (by leaving both <code class="computeroutput"><a class="link" href="../BOOST_CONTRACT_DYN_LINK.html" title="Macro BOOST_CONTRACT_DYN_LINK">BOOST_CONTRACT_DYN_LINK</a></code>
+          and <code class="computeroutput"><a class="link" href="../BOOST_CONTRACT_STATIC_LINK.html" title="Macro BOOST_CONTRACT_STATIC_LINK">BOOST_CONTRACT_STATIC_LINK</a></code>
+          undefined). However, this library is not guaranteed to always work correctly
+          in these cases. Specifically, this library might not correctly disable
+          contracts while checking other contracts and call the correct user-defined
+          contract failure handlers unless it is compiled as a shared library when
+          it is used across different program units (different programs, different
+          shared libraries in the same program, etc.).
+        </p>
+</td></tr>
+</table></div>
+<h5>
+<a name="boost_contract.getting_started.build.h0"></a>
+        <span class="phrase"><a name="boost_contract.getting_started.build.linux_based_systems"></a></span><a class="link" href="getting_started.html#boost_contract.getting_started.build.linux_based_systems">Linux-Based
+        Systems</a>
+      </h5>
+<p>
+        For example, to build all Boost libraries including this one (as shared libraries,
+        see also <a href="https://www.boost.org/doc/libs/1_70_0/more/getting_started" target="_top">Boost
+        documentation</a>):
+      </p>
+<pre class="programlisting">$ cd <span class="emphasis"><em>boost-root</em></span>
+$ ./bootstrap.sh
+$ ./bjam
+</pre>
+<p>
+        To compile and run the <a href="../../../example/features/introduction.cpp" target="_top"><code class="literal"><span class="emphasis"><em>boost-root</em></span>/libs/contract/example/features/introduction.cpp</code></a>
+        example:
+      </p>
+<pre class="programlisting">$ cd <span class="emphasis"><em>boost-root</em></span>/libs/contract/example
+$ ../../../bjam features-introduction
+</pre>
+<p>
+        To compile and run all this library's tests (this might take while):
+      </p>
+<pre class="programlisting">$ cd <span class="emphasis"><em>boost-root</em></span>/libs/contract/test
+$ ../../../bjam
+</pre>
+<p>
+        To compile and run code that uses this library but without BJam (similarly
+        for Clang):
+      </p>
+<pre class="programlisting">$ cd /tmp
+$ g++ -std=c++11 -D BOOST_CONTRACT_DYN_LINK -I <span class="emphasis"><em>boost-root</em></span> <span class="emphasis"><em>boost-root</em></span>/stage/lib/<span class="emphasis"><em>system-prefix</em></span>boost_contract.dll <span class="emphasis"><em>boost-root</em></span>/libs/contract/example/features/introduction.cpp -o introduction
+$ export PATH=$PATH:<span class="emphasis"><em>boost-root</em></span>/stage/lib
+$ ./introduction
+</pre>
+<h5>
+<a name="boost_contract.getting_started.build.h1"></a>
+        <span class="phrase"><a name="boost_contract.getting_started.build.windows_based_systems"></a></span><a class="link" href="getting_started.html#boost_contract.getting_started.build.windows_based_systems">Windows-Based
+        Systems</a>
+      </h5>
+<p>
+        For example, to build all Boost libraries including this one (as DLLs, see
+        also <a href="https://www.boost.org/doc/libs/1_70_0/more/getting_started" target="_top">Boost
+        documentation</a>):
+      </p>
+<pre class="programlisting">&gt;cd <span class="emphasis"><em>boost-root</em></span>
+&gt;bootstrap.bat
+&gt;bjam
+</pre>
+<p>
+        To compile and run the <a href="../../../example/features/introduction.cpp" target="_top"><code class="literal"><span class="emphasis"><em>boost-root</em></span>/libs/contract/example/features/introduction.cpp</code></a>
+        example:
+      </p>
+<pre class="programlisting">&gt;cd <span class="emphasis"><em>boost-root</em></span>\libs\contract\example
+&gt;..\..\..\bjam features-introduction
+</pre>
+<p>
+        To compile and run all this library's tests (this might take while):
+      </p>
+<pre class="programlisting">&gt;cd <span class="emphasis"><em>boost-root</em></span>\libs\contract\test
+&gt;..\..\..\bjam
+</pre>
+<p>
+        To compile and run code that uses this library but without BJam:
+      </p>
+<pre class="programlisting">&gt;cd C:\Temp
+&gt;cl /MDd /EHs /std:c++11 /D BOOST_CONTRACT_DYN_LINK /I <span class="emphasis"><em>boost-root</em></span> /link /DLL /LIBPATH:<span class="emphasis"><em>boost-root</em></span>\stage\lib <span class="emphasis"><em>boost-root</em></span>\libs\contract\example\features\introduction.cpp /out:introduction
+&gt;set PATH=%PATH%;<span class="emphasis"><em>boost-root</em></span>/stage/lib
+&gt;introduction
+</pre>
+</div>
+<div class="footnotes">
+<br><hr style="width:100; text-align:left;margin-left: 0">
+<div id="ftn.boost_contract.getting_started.this_documentation.f0" class="footnote"><p><a href="#boost_contract.getting_started.this_documentation.f0" class="para"><sup class="para">[5] </sup></a>
+          <span class="bold"><strong>Rationale:</strong></span> This allows to make sure that
+          most of the example code presented in this documentation is always up-to-date,
+          builds and runs with the latest implementation of the library.
+        </p></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2008-2019 Lorenzo Caminiti<p>
+        Distributed under the Boost Software License, Version 1.0 (see accompanying
+        file LICENSE_1_0.txt or a copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="full_table_of_contents.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="contract_programming_overview.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

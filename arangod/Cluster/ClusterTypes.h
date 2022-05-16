@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,12 +23,11 @@
 
 #pragma once
 
-#include <limits>
-#include <string>
-#include <iosfwd>
-#include <memory>
 #include "velocypack/Builder.h"
-#include "velocypack/velocypack-aliases.h"
+#include <iosfwd>
+#include <limits>
+#include <memory>
+#include <string>
 
 #include "Basics/Result.h"
 
@@ -44,72 +43,79 @@ typedef std::string ServerShortName;  // Short name of a server
 
 class RebootId {
  public:
+  explicit constexpr RebootId() noexcept = delete;
   explicit constexpr RebootId(uint64_t rebootId) noexcept : _value(rebootId) {}
-  uint64_t value() const noexcept { return _value; }
+  [[nodiscard]] uint64_t value() const noexcept { return _value; }
 
-  bool initialized() const noexcept { return value() != 0; }
+  [[nodiscard]] bool initialized() const noexcept { return value() != 0; }
 
-  bool operator==(RebootId other) const noexcept {
+  [[nodiscard]] bool operator==(RebootId other) const noexcept {
     return value() == other.value();
   }
-  bool operator!=(RebootId other) const noexcept {
+  [[nodiscard]] bool operator!=(RebootId other) const noexcept {
     return value() != other.value();
   }
-  bool operator<(RebootId other) const noexcept {
+  [[nodiscard]] bool operator<(RebootId other) const noexcept {
     return value() < other.value();
   }
-  bool operator>(RebootId other) const noexcept {
+  [[nodiscard]] bool operator>(RebootId other) const noexcept {
     return value() > other.value();
   }
-  bool operator<=(RebootId other) const noexcept {
+  [[nodiscard]] bool operator<=(RebootId other) const noexcept {
     return value() <= other.value();
   }
-  bool operator>=(RebootId other) const noexcept {
+  [[nodiscard]] bool operator>=(RebootId other) const noexcept {
     return value() >= other.value();
   }
 
-  static constexpr RebootId max() noexcept {
+  [[nodiscard]] static constexpr RebootId max() noexcept {
     return RebootId{std::numeric_limits<decltype(_value)>::max()};
   }
-  
+
   std::ostream& print(std::ostream& o) const;
 
  private:
-  uint64_t _value;
+  uint64_t _value{};
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, RebootId& x) {
+  if constexpr (Inspector::isLoading) {
+    auto v = uint64_t{0};
+    auto res = f.apply(v);
+    if (res.ok()) {
+      x = RebootId{v};
+    }
+    return res;
+  } else {
+    auto v = x.value();
+    return f.apply(v);
+  }
+}
 
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 struct AnalyzersRevision {
  public:
   using Revision = uint64_t;
   using Ptr = std::shared_ptr<AnalyzersRevision const>;
 
-
   static constexpr Revision LATEST = std::numeric_limits<uint64_t>::max();
   static constexpr Revision MIN = 0;
-  
+
   AnalyzersRevision(AnalyzersRevision const&) = delete;
   AnalyzersRevision& operator=(AnalyzersRevision const&) = delete;
 
-  Revision getRevision() const noexcept {
-    return _revision;
-  }
+  Revision getRevision() const noexcept { return _revision; }
 
-  Revision getBuildingRevision() const noexcept {
-    return _buildingRevision;
-  }
+  Revision getBuildingRevision() const noexcept { return _buildingRevision; }
 
-  ServerID const& getServerID() const noexcept {
-    return _serverID;
-  }
+  ServerID const& getServerID() const noexcept { return _serverID; }
 
-  RebootId const& getRebootID() const noexcept {
-    return _rebootID;
-  }
+  RebootId const& getRebootID() const noexcept { return _rebootID; }
 
   void toVelocyPack(VPackBuilder& builder) const;
 
@@ -119,9 +125,11 @@ struct AnalyzersRevision {
 
  private:
   AnalyzersRevision(Revision revision, Revision buildingRevision,
-    ServerID&& serverID, uint64_t rebootID) noexcept
-    : _revision(revision), _buildingRevision(buildingRevision),
-    _serverID(std::move(serverID)), _rebootID(rebootID) {}
+                    ServerID&& serverID, uint64_t rebootID) noexcept
+      : _revision(revision),
+        _buildingRevision(buildingRevision),
+        _serverID(std::move(serverID)),
+        _rebootID(rebootID) {}
 
   Revision _revision;
   Revision _buildingRevision;
@@ -131,13 +139,14 @@ struct AnalyzersRevision {
 
 /// @brief Analyzers revisions used in query.
 /// Stores current database revision
-/// and _system database revision (analyzers from _system are accessible from other databases)
-/// If at some point we will decide to allow cross-database anayzer usage this could
-/// became more complicated. But for now  we keep it simple - store just two members
+/// and _system database revision (analyzers from _system are accessible from
+/// other databases) If at some point we will decide to allow cross-database
+/// anayzer usage this could became more complicated. But for now  we keep it
+/// simple - store just two members
 struct QueryAnalyzerRevisions {
-  constexpr QueryAnalyzerRevisions(AnalyzersRevision::Revision current, 
+  constexpr QueryAnalyzerRevisions(AnalyzersRevision::Revision current,
                                    AnalyzersRevision::Revision system)
-    : currentDbRevision(current), systemDbRevision(system) {}
+      : currentDbRevision(current), systemDbRevision(system) {}
 
   QueryAnalyzerRevisions() = default;
   QueryAnalyzerRevisions(QueryAnalyzerRevisions const&) = default;
@@ -148,12 +157,12 @@ struct QueryAnalyzerRevisions {
 
   bool isDefault() const noexcept {
     return currentDbRevision == AnalyzersRevision::MIN &&
-      systemDbRevision == AnalyzersRevision::MIN;
+           systemDbRevision == AnalyzersRevision::MIN;
   }
 
   bool operator==(QueryAnalyzerRevisions const& other) const noexcept {
     return currentDbRevision == other.currentDbRevision &&
-      systemDbRevision == other.systemDbRevision;
+           systemDbRevision == other.systemDbRevision;
   }
 
   std::ostream& print(std::ostream& o) const;
@@ -165,16 +174,25 @@ struct QueryAnalyzerRevisions {
   /// @brief Gets analyzers revision to be used with specified database
   /// @param vocbase database name
   /// @return analyzers revision
-  AnalyzersRevision::Revision getVocbaseRevision(std::string_view vocbase) const noexcept;
+  AnalyzersRevision::Revision getVocbaseRevision(
+      std::string_view vocbase) const noexcept;
 
   static QueryAnalyzerRevisions QUERY_LATEST;
 
  private:
-  AnalyzersRevision::Revision currentDbRevision{ AnalyzersRevision::MIN};
-  AnalyzersRevision::Revision systemDbRevision{ AnalyzersRevision::MIN};
+  AnalyzersRevision::Revision currentDbRevision{AnalyzersRevision::MIN};
+  AnalyzersRevision::Revision systemDbRevision{AnalyzersRevision::MIN};
 };
 
 std::ostream& operator<<(std::ostream& o, arangodb::RebootId const& r);
-std::ostream& operator<<(std::ostream& o, arangodb::QueryAnalyzerRevisions const& r);
+std::ostream& operator<<(std::ostream& o,
+                         arangodb::QueryAnalyzerRevisions const& r);
+
+template<>
+struct velocypack::Extractor<arangodb::RebootId> {
+  static auto extract(velocypack::Slice slice) -> RebootId {
+    return RebootId{slice.getNumericValue<std::size_t>()};
+  }
+};
 
 }  // namespace arangodb

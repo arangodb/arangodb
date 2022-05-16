@@ -147,7 +147,7 @@ function explainSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test explain w/ a signle plan vs. all plans
+/// @brief test explain w/ a single plan vs. all plans
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainAllPlansVsSingle : function () {
@@ -198,6 +198,34 @@ function explainSuite () {
         assertTrue(plan.hasOwnProperty("rules"));
         assertTrue(Array.isArray(plan.rules));
       });
+    },
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test callstack split
+////////////////////////////////////////////////////////////////////////////////
+
+    testExplainCallstackSplit : function () {
+      const query = "FOR i IN " + cn + " FOR j IN " + cn + " FILTER i.x == j.x RETURN [i,j]";
+
+      let nodes = AQL_EXPLAIN(query, {}, { maxNodesPerCallstack: 1, verbosePlans: true }).plan.nodes;
+      assertTrue(Array.isArray(nodes));
+
+      nodes.forEach(function(node) {
+        assertTrue(node.hasOwnProperty("isCallstackSplitEnabled"));
+        assertTrue(node.isCallstackSplitEnabled ^ (node.type === "RemoteNode"));
+      });
+      
+      nodes = AQL_EXPLAIN(query, {}, { maxNodesPerCallstack: 2, verbosePlans: true }).plan.nodes;
+      let shouldHaveCallstackSplitEnabled = false;
+      for (let i = nodes.length; i < 0; --i) {
+        const node = nodes[i - 1];
+        assertTrue(node.hasOwnProperty("isCallstackSplitEnabled"));
+        if (node.type === "RemoteNode") {
+          shouldHaveCallstackSplitEnabled = false;
+        }
+        assertEqual(shouldHaveCallstackSplitEnabled, node.isCallstackSplitEnabled);
+        shouldHaveCallstackSplitEnabled = !shouldHaveCallstackSplitEnabled;
+      }
     },
 
   };

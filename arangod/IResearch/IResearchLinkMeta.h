@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,6 @@
 #include "analysis/analyzer.hpp"
 #include "utils/compression.hpp"
 #include "utils/object_pool.hpp"
-#include "utils/range.hpp"
 
 #include "Containers.h"
 #include "IResearchAnalyzerFeature.h"
@@ -42,9 +41,9 @@
 namespace arangodb {
 namespace velocypack {
 
-class Builder;         // forward declarations
-struct ObjectBuilder;  // forward declarations
-class Slice;           // forward declarations
+class Builder;
+struct ObjectBuilder;
+class Slice;
 
 }  // namespace velocypack
 }  // namespace arangodb
@@ -52,9 +51,7 @@ class Slice;           // forward declarations
 namespace arangodb {
 namespace iresearch {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enum of possible ways to store values in the view
-////////////////////////////////////////////////////////////////////////////////
+// Possible ways to store values in the view.
 enum class ValueStorage : uint32_t {
   NONE = 0,  // do not store values in the view
   ID,        // only store value existance
@@ -66,42 +63,46 @@ struct FieldMeta {
   typedef UnorderedRefKeyMap<char, UniqueHeapInstance<FieldMeta>> Fields;
 
   struct Analyzer {
-    Analyzer(); // identity analyzer
-    Analyzer(AnalyzerPool::ptr const& pool,
-             std::string&& shortName) noexcept
-      : _pool(pool),
-        _shortName(std::move(shortName)) {
-    }
+    Analyzer(AnalyzerPool::ptr const& pool)
+        : Analyzer(pool, pool ? std::string{pool->name()} : std::string{}) {}
+    Analyzer(AnalyzerPool::ptr const& pool, std::string&& shortName) noexcept
+        : _pool(pool), _shortName(std::move(shortName)) {}
+
     operator bool() const noexcept { return false == !_pool; }
 
+    AnalyzerPool const* operator->() const noexcept { return _pool.get(); }
+    AnalyzerPool* operator->() noexcept { return _pool.get(); }
+
     AnalyzerPool::ptr _pool;
-    std::string _shortName; // vocbase-independent short analyzer name
+    std::string _shortName;  // vocbase-independent short analyzer name
   };
 
   struct AnalyzerComparer {
     using is_transparent = void;
 
-    bool operator()(AnalyzerPool::ptr const& lhs, AnalyzerPool::ptr const& rhs) const noexcept {
+    bool operator()(AnalyzerPool::ptr const& lhs,
+                    AnalyzerPool::ptr const& rhs) const noexcept {
       return lhs->name() < rhs->name();
     }
 
-    bool operator()(AnalyzerPool::ptr const& lhs, irs::string_ref const& rhs) const noexcept {
+    bool operator()(AnalyzerPool::ptr const& lhs,
+                    irs::string_ref rhs) const noexcept {
       return lhs->name() < rhs;
     }
 
-    bool operator()(irs::string_ref const& lhs, AnalyzerPool::ptr const& rhs) const noexcept {
+    bool operator()(irs::string_ref lhs,
+                    AnalyzerPool::ptr const& rhs) const noexcept {
       return lhs < rhs->name();
     }
   };
 
   struct Mask {
     explicit Mask(bool mask = false) noexcept
-      : _analyzers(mask),
-        _fields(mask),
-        _includeAllFields(mask),
-        _trackListPositions(mask),
-        _storeValues(mask) {
-    }
+        : _analyzers(mask),
+          _fields(mask),
+          _includeAllFields(mask),
+          _trackListPositions(mask),
+          _storeValues(mask) {}
 
     bool _analyzers;
     bool _fields;
@@ -110,12 +111,7 @@ struct FieldMeta {
     bool _storeValues;
   };
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief return default IResearchLinkMeta values
-  ////////////////////////////////////////////////////////////////////////////////
-  static const FieldMeta& DEFAULT();
-
-  FieldMeta();
+  FieldMeta() = default;
   FieldMeta(FieldMeta const&) = default;
   FieldMeta(FieldMeta&&) = default;
 
@@ -140,13 +136,11 @@ struct FieldMeta {
   /// @param mask if set reflects which fields were initialized from JSON
   /// @param referencedAnalyzers analyzers referenced in this link
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(arangodb::application_features::ApplicationServer& server,
-            velocypack::Slice const& slice,
-            std::string& errorField,
-            irs::string_ref const defaultVocbase,
-            FieldMeta const& defaults = DEFAULT(),
-            Mask* mask = nullptr,
-            std::set<AnalyzerPool::ptr, AnalyzerComparer>* referencedAnalyzers = nullptr);
+  bool init(ArangodServer& server, velocypack::Slice const& slice,
+            std::string& errorField, irs::string_ref defaultVocbase,
+            LinkVersion version, FieldMeta const& defaults,
+            std::set<AnalyzerPool::ptr, AnalyzerComparer>& referencedAnalyzers,
+            Mask* mask);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a FieldMeta object
@@ -162,8 +156,7 @@ struct FieldMeta {
   /// @param defaultVocbase fallback vocbase
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::application_features::ApplicationServer& server,
-            arangodb::velocypack::Builder& builder,
+  bool json(ArangodServer& server, velocypack::Builder& builder,
             FieldMeta const* ignoreEqual = nullptr,
             TRI_vocbase_t const* defaultVocbase = nullptr,
             Mask const* mask = nullptr) const;
@@ -173,12 +166,19 @@ struct FieldMeta {
   ////////////////////////////////////////////////////////////////////////////////
   size_t memory() const noexcept;
 
-  std::vector<Analyzer> _analyzers; // analyzers to apply to every field
-  size_t _primitiveOffset;
-  Fields _fields;  // explicit list of fields to be indexed with optional overrides
-  ValueStorage _storeValues{ ValueStorage::NONE };  // how values should be stored inside the view
-  bool _includeAllFields{ false }; // include all fields or only fields listed in '_fields'
-  bool _trackListPositions{ false }; // append relative offset in list to attribute name (as opposed to without offset)
+  // Analyzers to apply to every field.
+  std::vector<Analyzer> _analyzers;
+  // Offset of the first non-primitive analyzer.
+  size_t _primitiveOffset{0};
+  // Explicit list of fields to be indexed with optional overrides.
+  Fields _fields;
+  // How values should be stored inside the view.
+  ValueStorage _storeValues{ValueStorage::NONE};
+  // Include all fields or only fields listed in '_fields'.
+  bool _includeAllFields{false};
+  // Append relative offset in list to attribute name (as opposed to without
+  // offset).
+  bool _trackListPositions{false};
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -187,39 +187,36 @@ struct FieldMeta {
 struct IResearchLinkMeta : public FieldMeta {
   struct Mask : public FieldMeta::Mask {
     explicit Mask(bool mask = false) noexcept
-      : FieldMeta::Mask(mask),
-        _analyzerDefinitions(mask),
-        _sort(mask),
-        _storedValues(mask),
-        _sortCompression(mask),
-        _collectionName(mask) {
-    }
+        : FieldMeta::Mask(mask),
+          _analyzerDefinitions(mask),
+          _sort(mask),
+          _storedValues(mask),
+          _sortCompression(mask),
+          _collectionName(mask),
+          _version(mask) {}
 
     bool _analyzerDefinitions;
     bool _sort;
     bool _storedValues;
     bool _sortCompression;
     bool _collectionName;
+    bool _version;
   };
 
   std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
-  IResearchViewSort _sort; // sort condition associated with the link
-  IResearchViewStoredValues _storedValues; // stored values associated with the link
+  IResearchViewSort _sort;
+  IResearchViewStoredValues _storedValues;
   irs::type_info::type_id _sortCompression{getDefaultCompression()};
+  // The version of the iresearch interface e.g. which how
+  // data is stored in iresearch (default == 0).
+  uint32_t _version;
 
-  /// @brief Linked collection name. Stored here for cluster deployment only.
-  /// For sigle server collection could be renamed so can`t store it here or 
-  /// syncronisation will be needed. For cluster rename is not possible so 
-  /// there is no problem but solved recovery issue - we will be able to index
-  /// _id attribute without doing agency request for collection name
+  // Linked collection name. Stored here for cluster deployment only.
+  // For sigle server collection could be renamed so can`t store it here or
+  // syncronisation will be needed. For cluster rename is not possible so
+  // there is no problem but solved recovery issue - we will be able to index
+  // _id attribute without doing agency request for collection name
   std::string _collectionName;
-
-  // NOTE: if adding fields don't forget to modify the comparison operator !!!
-  // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask !!!
-  // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask constructor !!!
-  // NOTE: if adding fields don't forget to modify the init(...) function !!!
-  // NOTE: if adding fields don't forget to modify the json(...) function !!!
-  // NOTE: if adding fields don't forget to modify the memory() function !!!
 
   IResearchLinkMeta();
   IResearchLinkMeta(IResearchLinkMeta const& other) = default;
@@ -234,31 +231,20 @@ struct IResearchLinkMeta : public FieldMeta {
   }
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief return default IResearchLinkMeta values
-  ////////////////////////////////////////////////////////////////////////////////
-  static const IResearchLinkMeta& DEFAULT();
-
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize IResearchLinkMeta with values from a JSON description
   ///        return success or set 'errorField' to specific field with error
   ///        on failure state is undefined
   /// @param slice definition
-  /// @param readAnalyzerDefinition allow reading analyzer definitions instead
-  ///                               of just name
   /// @param erroField field causing error (out-param)
   /// @param defaultVocbase fallback vocbase for analyzer name normalization
   ///                       nullptr == do not normalize
-  /// @param defaults inherited defaults
+  /// @param defaultVersion fallback version if not present in definition
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(
-      arangodb::application_features::ApplicationServer& server,
-      arangodb::velocypack::Slice const& slice,
-      bool readAnalyzerDefinition,
-      std::string& errorField,
-      irs::string_ref const defaultVocbase = irs::string_ref::NIL,
-      IResearchLinkMeta const& defaults = DEFAULT(),
-      Mask* mask = nullptr);
+  bool init(ArangodServer& server, VPackSlice slice, std::string& errorField,
+            irs::string_ref defaultVocbase = irs::string_ref::NIL,
+            LinkVersion defaultVersion = LinkVersion::MIN,
+            Mask* mask = nullptr);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLinkMeta object
@@ -267,26 +253,29 @@ struct IResearchLinkMeta : public FieldMeta {
   ///        elements are appended to an existing object
   ///        return success or set TRI_set_errno(...) and return false
   /// @param builder output buffer (out-param)
-  /// @param writeAnalyzerDefinition output full analyzer definition instead of just name
+  /// @param writeAnalyzerDefinition output full analyzer definition instead of
+  /// just name
   /// @param ignoreEqual values to ignore if equal
   /// @param defaultVocbase fallback vocbase for analyzer name normalization
   ///                       nullptr == do not normalize
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(
-      arangodb::application_features::ApplicationServer& server,
-      arangodb::velocypack::Builder& builder,
-      bool writeAnalyzerDefinition,
-      IResearchLinkMeta const* ignoreEqual = nullptr,
-      TRI_vocbase_t const* defaultVocbase = nullptr,
-      Mask const* mask = nullptr) const;
+  bool json(ArangodServer& server, velocypack::Builder& builder,
+            bool writeAnalyzerDefinition,
+            IResearchLinkMeta const* ignoreEqual = nullptr,
+            TRI_vocbase_t const* defaultVocbase = nullptr,
+            Mask const* mask = nullptr) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this IResearchLinkMeta
   ////////////////////////////////////////////////////////////////////////////////
   size_t memory() const noexcept;
-};  // IResearchLinkMeta
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief checks if this link will index '_id' attribute
+  ////////////////////////////////////////////////////////////////////////////////
+  bool willIndexIdAttribute() const noexcept;
+};
 
 }  // namespace iresearch
 }  // namespace arangodb
-

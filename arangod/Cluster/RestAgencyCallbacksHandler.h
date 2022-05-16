@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,8 +37,8 @@ namespace rest {
 
 class RestAgencyCallbacksHandler : public RestVocbaseBaseHandler {
  public:
-  RestAgencyCallbacksHandler(application_features::ApplicationServer& server,
-                             GeneralRequest* request, GeneralResponse* response,
+  RestAgencyCallbacksHandler(ArangodServer& server, GeneralRequest* request,
+                             GeneralResponse* response,
                              AgencyCallbackRegistry* agencyCallbackRegistry);
 
  public:
@@ -55,4 +55,3 @@ class RestAgencyCallbacksHandler : public RestVocbaseBaseHandler {
 };
 }  // namespace rest
 }  // namespace arangodb
-

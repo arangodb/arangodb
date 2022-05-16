@@ -1,0 +1,63 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Success or Exception</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Fiber">
+<link rel="up" href="../callbacks.html" title="Integrating Fibers with Asynchronous Callbacks">
+<link rel="prev" href="return_errorcode.html" title="Return Errorcode">
+<link rel="next" href="return_errorcode_or_data.html" title="Return Errorcode or Data">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="return_errorcode.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../callbacks.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="return_errorcode_or_data.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="fiber.callbacks.success_or_exception"></a><a class="link" href="success_or_exception.html" title="Success or Exception">Success or Exception</a>
+</h3></div></div></div>
+<p>
+        A wrapper more aligned with modern C++ practice would use an exception, rather
+        than an <code class="computeroutput"><span class="identifier">errorcode</span></code>, to communicate
+        failure to its caller. This is straightforward to code in terms of <code class="computeroutput"><span class="identifier">write_ec</span><span class="special">()</span></code>:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">write</span><span class="special">(</span> <span class="identifier">AsyncAPI</span> <span class="special">&amp;</span> <span class="identifier">api</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">data</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">AsyncAPI</span><span class="special">::</span><span class="identifier">errorcode</span> <span class="identifier">ec</span> <span class="special">=</span> <span class="identifier">write_ec</span><span class="special">(</span> <span class="identifier">api</span><span class="special">,</span> <span class="identifier">data</span><span class="special">);</span>
+    <span class="keyword">if</span> <span class="special">(</span> <span class="identifier">ec</span><span class="special">)</span> <span class="special">{</span>
+        <span class="keyword">throw</span> <span class="identifier">make_exception</span><span class="special">(</span><span class="string">"write"</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">);</span>
+    <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+      </p>
+<p>
+        The point is that since each fiber has its own stack, you need not repeat
+        messy boilerplate: normal encapsulation works.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2013 Oliver Kowalke<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="return_errorcode.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../callbacks.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="return_errorcode_or_data.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

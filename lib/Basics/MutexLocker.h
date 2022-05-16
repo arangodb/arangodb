@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,36 +28,34 @@
 #include "Basics/Locking.h"
 #include "Basics/debugging.h"
 
-#ifdef ARANGODB_SHOW_LOCK_TIME
-#include "Basics/system-functions.h"
-#include "Logger/LogMacros.h"
-#endif
-
 #include <thread>
 
-#define MUTEX_LOCKER(obj, lock)                                                 \
-  arangodb::basics::MutexLocker<typename std::decay<decltype(lock)>::type> obj( \
-      &(lock), arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
+#define MUTEX_LOCKER(obj, lock)                                            \
+  arangodb::basics::MutexLocker<typename std::decay<decltype(lock)>::type> \
+      obj(&(lock), arangodb::basics::LockerType::BLOCKING, true, __FILE__, \
+          __LINE__)
 
-#define MUTEX_LOCKER_EVENTUAL(obj, lock, t)                                     \
-  arangodb::basics::MutexLocker<typename std::decay<decltype(lock)>::type> obj( \
-      &(lock), arangodb::basics::LockerType::EVENTUAL, true, __FILE__, __LINE__)
+#define MUTEX_LOCKER_EVENTUAL(obj, lock, t)                                \
+  arangodb::basics::MutexLocker<typename std::decay<decltype(lock)>::type> \
+      obj(&(lock), arangodb::basics::LockerType::EVENTUAL, true, __FILE__, \
+          __LINE__)
 
-#define TRY_MUTEX_LOCKER(obj, lock)                                             \
-  arangodb::basics::MutexLocker<typename std::decay<decltype(lock)>::type> obj( \
-      &(lock), arangodb::basics::LockerType::TRY, true, __FILE__, __LINE__)
+#define TRY_MUTEX_LOCKER(obj, lock)                                        \
+  arangodb::basics::MutexLocker<typename std::decay<decltype(lock)>::type> \
+      obj(&(lock), arangodb::basics::LockerType::TRY, true, __FILE__,      \
+          __LINE__)
 
-#define CONDITIONAL_MUTEX_LOCKER(obj, lock, condition)                          \
-  arangodb::basics::MutexLocker<typename std::decay<decltype(lock)>::type> obj( \
-      &(lock), arangodb::basics::LockerType::BLOCKING, (condition), __FILE__, __LINE__)
+#define CONDITIONAL_MUTEX_LOCKER(obj, lock, condition)                     \
+  arangodb::basics::MutexLocker<typename std::decay<decltype(lock)>::type> \
+      obj(&(lock), arangodb::basics::LockerType::BLOCKING, (condition),    \
+          __FILE__, __LINE__)
 
-namespace arangodb {
-namespace basics {
+namespace arangodb::basics {
 
 /// @brief mutex locker
 /// A MutexLocker locks a mutex during its lifetime und unlocks the mutex
 /// when it is destroyed.
-template <class LockType>
+template<class LockType>
 class MutexLocker {
   MutexLocker(MutexLocker const&) = delete;
   MutexLocker& operator=(MutexLocker const&) = delete;
@@ -65,22 +63,9 @@ class MutexLocker {
  public:
   /// @brief acquires a mutex
   /// The constructor acquires the mutex, the destructor unlocks the mutex.
-  MutexLocker(LockType* mutex, LockerType type, bool condition, char const* file, int line)
-      : _mutex(mutex),
-        _file(file),
-        _line(line),
-#ifdef ARANGODB_SHOW_LOCK_TIME
-        _isLocked(false),
-        _time(0.0) {
-#else
-        _isLocked(false) {
-#endif
-
-#ifdef ARANGODB_SHOW_LOCK_TIME
-    // fetch current time
-    double t = TRI_microtime();
-#endif
-
+  MutexLocker(LockType* mutex, LockerType type, bool condition,
+              char const* file, int line) noexcept
+      : _mutex(mutex), _file(file), _line(line), _isLocked(false) {
     if (condition) {
       if (type == LockerType::BLOCKING) {
         lock();
@@ -92,11 +77,6 @@ class MutexLocker {
         _isLocked = tryLock();
       }
     }
-
-#ifdef ARANGODB_SHOW_LOCK_TIME
-    // add elapsed time to time tracker
-    _time = TRI_microtime() - t;
-#endif
   }
 
   /// @brief releases the read-lock
@@ -104,17 +84,9 @@ class MutexLocker {
     if (_isLocked) {
       _mutex->unlock();
     }
-
-#ifdef ARANGODB_SHOW_LOCK_TIME
-    if (_time > TRI_SHOW_LOCK_THRESHOLD) {
-      LOG_TOPIC("bb435", INFO, arangodb::Logger::PERFORMANCE)
-          << "MutexLocker for lock [" << _mutex << "]" << _file << ":" << _line
-          << " took " << _time << " s";
-    }
-#endif
   }
 
-  bool isLocked() const { return _isLocked; }
+  bool isLocked() const noexcept { return _isLocked; }
 
   /// @brief eventually acquire the read lock
   void lockEventual() {
@@ -126,21 +98,21 @@ class MutexLocker {
 
   bool tryLock() {
     TRI_ASSERT(!_isLocked);
-    if (_mutex->tryLock()) {
+    if (_mutex->try_lock()) {
       _isLocked = true;
     }
     return _isLocked;
   }
 
   /// @brief acquire the mutex, blocking
-  void lock() {
+  void lock() noexcept {
     TRI_ASSERT(!_isLocked);
     _mutex->lock();
     _isLocked = true;
   }
 
   /// @brief unlocks the mutex if we own it
-  bool unlock() {
+  bool unlock() noexcept {
     if (_isLocked) {
       _isLocked = false;
       _mutex->unlock();
@@ -150,7 +122,7 @@ class MutexLocker {
   }
 
   /// @brief steals the lock, but does not unlock it
-  bool steal() {
+  bool steal() noexcept {
     if (_isLocked) {
       _isLocked = false;
       return true;
@@ -170,13 +142,6 @@ class MutexLocker {
 
   /// @brief whether or not the mutex is locked
   bool _isLocked;
-
-#ifdef ARANGODB_SHOW_LOCK_TIME
-  /// @brief lock time
-  double _time;
-#endif
 };
 
-}  // namespace basics
-}  // namespace arangodb
-
+}  // namespace arangodb::basics

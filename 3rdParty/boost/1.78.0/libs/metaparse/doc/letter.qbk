@@ -1,0 +1,55 @@
+[#letter]
+[section letter]
+
+[h1 Synopsis]
+
+  struct letter;
+
+This is a [link parser parser].
+
+[h1 Description]
+
+Parser accepting one character in the range `a-z` or `A-Z`. The result of the
+parser is the accepted character.
+
+[h1 Header]
+
+  #include <boost/metaparse/letter.hpp>
+
+[h1 Expression semantics]
+
+The following are equivalent:
+
+  letter
+  
+  accept_when<one_char, util::is_letter<>, error::letter_expected>
+
+[h1 Example]
+
+  #include <boost/metaparse/letter.hpp>
+  #include <boost/metaparse/start.hpp>
+  #include <boost/metaparse/string.hpp>
+  #include <boost/metaparse/is_error.hpp>
+  #include <boost/metaparse/get_result.hpp>
+  
+  using namespace boost::metaparse;
+  
+  static_assert(
+    !is_error<letter::apply<BOOST_METAPARSE_STRING("a"), start>>::type::value,
+    "letter should accept a letter"
+  );
+  
+  static_assert(
+    is_error<letter::apply<BOOST_METAPARSE_STRING("0"), start>>::type::value,
+    "letter should reject a digit"
+  );
+  
+  static_assert(
+    get_result<
+      letter::apply<BOOST_METAPARSE_STRING("z"), start>
+    >::type::value == 'z',
+    "the result of parsing should be the character value"
+  );
+
+[endsect]
+

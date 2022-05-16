@@ -1,0 +1,27 @@
+[#BOOST_METAPARSE_VERSION]
+[section BOOST_METAPARSE_VERSION]
+
+[h1 Synopsis]
+
+  #define BOOST_METAPARSE_VERSION \\ unspecified
+
+This is a macro.
+
+[h1 Description]
+
+Macro containing the version number of Boost.Metaparse.
+
+[h1 Header]
+
+  #include <boost/metaparse/version.hpp>
+
+[h1 Expression semantics]
+
+It has major, minor and release components:
+
+  major   == BOOST_METAPARSE_VERSION / 10000000
+  minor   == (BOOST_METAPARSE_VERSION % 10000000) / 100000
+  release == BOOST_METAPARSE_VERSION % 100000
+
+[endsect]
+

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,16 +34,17 @@ namespace algos {
 /// vertex id along the edges to all vertices of a connected component. The
 /// number of supersteps necessary is equal to the length of the maximum
 /// diameter of all components + 1
-/// doesn't necessarily leads to a correct result on unidirected graphs
-struct WCC : public SimpleAlgorithm<uint64_t, uint64_t, SenderMessage<uint64_t>> {
+struct WCC
+    : public SimpleAlgorithm<WCCValue, uint64_t, SenderMessage<uint64_t>> {
  public:
-  explicit WCC(application_features::ApplicationServer& server, VPackSlice userParams)
+  explicit WCC(application_features::ApplicationServer& server,
+               VPackSlice userParams)
       : SimpleAlgorithm(server, "WCC", userParams) {}
 
   bool supportsAsyncMode() const override { return false; }
   bool supportsCompensation() const override { return false; }
 
-  GraphFormat<uint64_t, uint64_t>* inputFormat() const override;
+  GraphFormat<WCCValue, uint64_t>* inputFormat() const override;
 
   MessageFormat<SenderMessage<uint64_t>>* messageFormat() const override {
     return new SenderMessageFormat<uint64_t>();
@@ -51,7 +52,8 @@ struct WCC : public SimpleAlgorithm<uint64_t, uint64_t, SenderMessage<uint64_t>>
   MessageCombiner<SenderMessage<uint64_t>>* messageCombiner() const override {
     return nullptr;
   }
-  VertexComputation<uint64_t, uint64_t, SenderMessage<uint64_t>>* createComputation(WorkerConfig const*) const override;
+  VertexComputation<WCCValue, uint64_t, SenderMessage<uint64_t>>*
+  createComputation(WorkerConfig const*) const override;
 };
 }  // namespace algos
 }  // namespace pregel

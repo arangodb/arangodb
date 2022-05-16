@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,9 @@
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Section.h"
 
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace arangodb {
 namespace velocypack {
@@ -86,7 +89,8 @@ class ProgramOptions {
   };
 
   // function type for determining the similarity between two strings
-  typedef std::function<int(std::string const&, std::string const&)> SimilarityFuncType;
+  typedef std::function<int(std::string const&, std::string const&)>
+      SimilarityFuncType;
 
   // no need to copy this
   ProgramOptions(ProgramOptions const&) = delete;
@@ -95,8 +99,11 @@ class ProgramOptions {
   ProgramOptions(char const* progname, std::string const& usage,
                  std::string const& more, char const* binaryPath);
 
+  std::string progname() const { return _progname; }
+
   // sets a value translator
-  void setTranslator(std::function<std::string(std::string const&, char const*)> const& translator);
+  void setTranslator(std::function<std::string(std::string const&,
+                                               char const*)> const& translator);
 
   // return a const reference to the processing result
   ProcessingResult const& processingResult() const { return _processingResult; }
@@ -119,14 +126,16 @@ class ProgramOptions {
   // set context for error reporting
   void setContext(std::string const& value) { _context = value; }
 
-  // sets a single old option and its replacement name
+  // sets a single old option and its replacement name.
+  // to be used when an option is renamed to still support the original name
   void addOldOption(std::string const& old, std::string const& replacement);
 
   // adds a section to the options
-  auto addSection(Section const& section) {
+  auto addSection(Section&& section) {
     checkIfSealed();
 
-    auto [it, emplaced] = _sections.try_emplace(section.name, section);
+    auto [it, emplaced] =
+        _sections.try_emplace(section.name, std::move(section));
     if (!emplaced) {
       // section already present. check if we need to update it
       Section& sec = it->second;
@@ -139,31 +148,51 @@ class ProgramOptions {
   }
 
   // adds a (regular) section to the program options
-  auto addSection(std::string const& name, std::string const& description, std::string const& link = "", bool hidden = false, bool obsolete = false) {
+  auto addSection(std::string const& name, std::string const& description,
+                  std::string const& link = "", bool hidden = false,
+                  bool obsolete = false) {
     return addSection(Section(name, description, link, "", hidden, obsolete));
   }
 
   // adds an enterprise-only section to the program options
-  auto addEnterpriseSection(std::string const& name, std::string const& description, std::string const& link = "", bool hidden = false, bool obsolete = false) {
-    return addSection(EnterpriseSection(name, description, link, "", hidden, obsolete));
+  auto addEnterpriseSection(std::string const& name,
+                            std::string const& description,
+                            std::string const& link = "", bool hidden = false,
+                            bool obsolete = false) {
+    return addSection(
+        EnterpriseSection(name, description, link, "", hidden, obsolete));
   }
 
-  // adds an option to the program options
-  Option& addOption(std::string const& name, std::string const& description,
-                    Parameter* parameter,
-                    std::underlying_type<Flags>::type flags = makeFlags(Flags::Default)) {
-    addOption(Option(name, description, parameter, flags));
+  // adds an option to the program options.
+  Option& addOption(
+      std::string const& name, std::string const& description,
+      std::unique_ptr<Parameter> parameter,
+      std::underlying_type<Flags>::type flags = makeFlags(Flags::Default)) {
+    addOption(Option(name, description, std::move(parameter), flags));
     return getOption(name);
   }
 
-  // adds an obsolete and hidden option to the program options
+  // adds an option to the program options. old API!
+  Option& addOption(
+      std::string const& name, std::string const& description,
+      Parameter* parameter,
+      std::underlying_type<Flags>::type flags = makeFlags(Flags::Default)) {
+    addOption(name, description, std::unique_ptr<Parameter>(parameter), flags);
+    return getOption(name);
+  }
+
+  // adds a deprecated option that has no effect to the program options to not
+  // throw an unrecognized startup option error after upgrades until fully
+  // removed. not listed by --help (uncommon option)
   Option& addObsoleteOption(std::string const& name,
-                            std::string const& description, bool requiresValue) {
-    addOption(Option(name, description, new ObsoleteParameter(requiresValue),
-                     makeFlags(Flags::Hidden, Flags::Obsolete)));
+                            std::string const& description,
+                            bool requiresValue) {
+    addOption(Option(name, description,
+                     std::make_unique<ObsoleteParameter>(requiresValue),
+                     makeFlags(Flags::Uncommon, Flags::Obsolete)));
     return getOption(name);
   }
- 
+
   // adds a sub-headline for one option or a group of options
   void addHeadline(std::string const& prefix, std::string const& description);
 
@@ -183,8 +212,9 @@ class ProgramOptions {
   // filters applied to filter out specific options.
   // the filter function is expected to return true
   // for any options that should become part of the result
-  arangodb::velocypack::Builder toVPack(bool onlyTouched, bool detailed,
-                                        std::function<bool(std::string const&)> const& filter) const;
+  arangodb::velocypack::Builder toVelocyPack(
+      bool onlyTouched, bool detailed,
+      std::function<bool(std::string const&)> const& filter) const;
 
   // translate a shorthand option
   std::string translateShorthand(std::string const& name) const;
@@ -210,7 +240,7 @@ class ProgramOptions {
 
   // returns a pointer to an option value, specified by option name
   // returns a nullptr if the option is unknown
-  template <typename T>
+  template<typename T>
   T* get(std::string const& name) {
     auto parts = Option::splitName(name);
     auto it = _sections.find(parts.first);
@@ -249,8 +279,8 @@ class ProgramOptions {
 
  private:
   // adds an option to the list of options
-  void addOption(Option const& option);
-  
+  void addOption(Option&& option);
+
   // modernize an option name
   std::string const& modernize(std::string const& name);
 
@@ -261,7 +291,8 @@ class ProgramOptions {
   void checkIfSealed() const;
 
   // get a list of similar options
-  std::vector<std::string> similar(std::string const& value, int cutOff, size_t maxResults);
+  std::vector<std::string> similar(std::string const& value, int cutOff,
+                                   size_t maxResults);
 
  private:
   // name of binary (i.e. argv[0])
@@ -299,4 +330,3 @@ class ProgramOptions {
 };
 }  // namespace options
 }  // namespace arangodb
-

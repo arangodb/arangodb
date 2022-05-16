@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,12 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ManagedDocumentResult.h"
-#include "Aql/AqlValue.h"
 #include "Transaction/Helpers.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
@@ -35,11 +33,6 @@ void ManagedDocumentResult::setManaged(uint8_t const* vpack) {
   VPackSlice const slice(vpack);
   _string.assign(slice.startAs<char>(), slice.byteSize());
   _revisionId = transaction::helpers::extractRevFromDocument(slice);
-}
-
-void ManagedDocumentResult::setRevisionId() noexcept {
-  TRI_ASSERT(!this->empty());
-  _revisionId = transaction::helpers::extractRevFromDocument(VPackSlice(this->vpack()));
 }
 
 void ManagedDocumentResult::addToBuilder(velocypack::Builder& builder) const {

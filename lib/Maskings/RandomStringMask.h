@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,8 @@ namespace arangodb {
 namespace maskings {
 class RandomStringMask : public MaskingFunction {
  public:
-  static ParseResult<AttributeMasking> create(Path, Maskings*, VPackSlice const& def);
+  static ParseResult<AttributeMasking> create(Path, Maskings*,
+                                              VPackSlice const& def);
 
  public:
   VPackValue mask(bool, std::string& buffer) const override;
@@ -44,4 +45,3 @@ class RandomStringMask : public MaskingFunction {
 };
 }  // namespace maskings
 }  // namespace arangodb
-

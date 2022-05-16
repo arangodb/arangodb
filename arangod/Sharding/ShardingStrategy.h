@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,7 +39,8 @@ class ShardingStrategy {
   ShardingStrategy& operator=(ShardingStrategy const&) = delete;
 
  public:
-  typedef std::function<std::unique_ptr<ShardingStrategy>(ShardingInfo*)> FactoryFunction;
+  typedef std::function<std::unique_ptr<ShardingStrategy>(ShardingInfo*)>
+      FactoryFunction;
 
   ShardingStrategy() = default;
   virtual ~ShardingStrategy() = default;
@@ -48,7 +49,7 @@ class ShardingStrategy {
 
   virtual std::string const& name() const = 0;
 
-  virtual bool usesDefaultShardKeys() = 0;
+  virtual bool usesDefaultShardKeys() const noexcept = 0;
 
   virtual void toVelocyPack(arangodb::velocypack::Builder& result) const;
 
@@ -70,10 +71,10 @@ class ShardingStrategy {
   /// `_key` is the one and only sharding attribute.
   ////////////////////////////////////////////////////////////////////////////////
 
-  virtual ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice, bool docComplete,
-                                        ShardID& shardID, bool& usesDefaultShardKeys,
-                                        arangodb::velocypack::StringRef const& key) = 0;
+  virtual ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice,
+                                        bool docComplete, ShardID& shardID,
+                                        bool& usesDefaultShardKeys,
+                                        std::string_view const& key) = 0;
 };
 
 }  // namespace arangodb
-

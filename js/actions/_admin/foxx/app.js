@@ -62,7 +62,7 @@ function proxyLocal (method, url, qs, body, headers = {}) {
     headers,
     body
   };
-  if (require('internal').db._version(true)['maintainer-mode'] === 'true') {
+  if (require('internal').db._version(true).details['maintainer-mode'] === 'true') {
     req.timeout = 300;
   }
   const res = request(req);
@@ -83,6 +83,7 @@ function resolveAppInfo (appInfo, refresh) {
     return {source: `${baseUrl}${splitted[1]}/archive/${splitted[2] || 'master'}.zip`};
   }
   if (/^https?:/i.test(appInfo)) {
+    FoxxManager.validateInstallUrl(appInfo);
     return {source: appInfo};
   }
   if (/^uploads[/\\]tmp-/.test(appInfo)) {

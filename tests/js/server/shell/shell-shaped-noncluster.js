@@ -40,34 +40,24 @@ var internal = require("internal");
 
 function GeoShapedJsonSuite () {
   'use strict';
-  var cn = "UnitTestsCollectionShaped";
-  var c;
+  const cn = "UnitTestsCollectionShaped";
+  let c;
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
       db._drop(cn);
       c = db._create(cn);
-      c.ensureGeoIndex("lat", "lon");
+      c.ensureIndex({ type: "geo", fields: ["lat", "lon"] });
 
-      for (var i = -3; i < 3; ++i) {
-        for (var j = -3; j < 3; ++j) {
-          c.save({ distance: 0, lat: 40 + 0.01 * i, lon: 40 + 0.01 * j, something: "test" });
+      let docs = [];
+      for (let i = -3; i < 3; ++i) {
+        for (let j = -3; j < 3; ++j) {
+          docs.push({ distance: 0, lat: 40 + 0.01 * i, lon: 40 + 0.01 * j, something: "test" });
         }
       }
-
-
-      // wait until the documents are actually shaped json
-      internal.wal.flush(true, true);
+      c.insert(docs);
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       db._drop(cn);

@@ -1,0 +1,67 @@
+buildType:
+  default: debug
+  choices:
+    debug:
+      short: Debug
+      long: Emit debug information
+      buildType: Debug
+    release:
+      short: Release
+      long: Optimize generated code
+      buildType: RelWithDebInfo
+
+io:
+  default: 'no'
+  choices:
+    'no':
+      short: No IO
+      long: Disable IO extension
+      settings:
+        BOOST_GIL_ENABLE_EXT_IO: no
+    'yes':
+      short: IO
+      long: Enable IO extension
+      settings:
+        BOOST_GIL_ENABLE_EXT_IO: yes
+
+numeric:
+  default: 'no'
+  choices:
+    'no':
+      short: No Numeric
+      long: Disable Numeric extension
+      settings:
+        BOOST_GIL_ENABLE_EXT_NUMERIC: no
+    'yes':
+      short: Numeric
+      long: Enable Numeric extension
+      settings:
+        BOOST_GIL_ENABLE_EXT_NUMERIC: yes
+
+toolbox:
+  default: 'no'
+  choices:
+    'no':
+      short: No Toolbox
+      long: Disable Toolbox extension
+      settings:
+        BOOST_GIL_ENABLE_EXT_TOOLBOX: no
+    'yes':
+      short: Toolbox
+      long: Enable Toolbox extension
+      settings:
+        BOOST_GIL_ENABLE_EXT_TOOLBOX: yes
+
+headers:
+  default: 'no'
+  choices:
+    'no':
+      short: No Header Tests
+      long: Disable header tests extension
+      settings:
+        BOOST_GIL_BUILD_HEADER_TESTS: no
+    'yes':
+      short: Header Tests
+      long: Enable header tests extension
+      settings:
+        BOOST_GIL_BUILD_HEADER_TESTS: yes

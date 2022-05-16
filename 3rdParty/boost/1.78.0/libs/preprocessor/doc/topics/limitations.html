@@ -1,0 +1,319 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <meta content="text/html; charset=windows-1252"
+      http-equiv="content-type">
+    <title>limitations.html</title>
+    <link rel="stylesheet" type="text/css" href="../styles.css">
+    <style>
+    u { font-weight: normal; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <h3>Preprocessor library limitations</h3>
+    <blockquote>
+      <p>The Boost preprocessor library has always had certain specific
+        limitations, which are specifically explained in other areas of
+        this documentation and are implemented as object-like macros in
+        the header file config/limits.hpp. These limitations largely
+        detail the maximum number for certain features in the library.
+        These maximums have been chosen in order to accommodate the
+        large number of compilers and their preprocessors which the
+        library supports, in order to provide a lowest common set of
+        limits with which the vast majority of these compilers can work
+        successfully. This reflects the situation that the C/C++
+        standard rarely specifies preprocessor limitations for compilers
+        but rather allows each compiler to choose whatever limitations
+        it deems necessary in its preprocessor. While this allows
+        individual compilers to largely choose what preprocessor
+        limitations it deems necessary, it makes it more difficult for a
+        preprocessor library like this one to work with a large number
+        of preprocessors across a number of operating system platforms.
+        The difficulty of this situation means that this Boost
+        preprocessor library has chosen fairly conservative limitations.<br>
+      </p>
+      <p>In fact the limitation macros, although indeed existing, have
+        never previously been used internally in the preprocessor
+        library code. Instead while the limitation macros do indeed
+        exist, the library has internally used fixed numbers equivalent
+        to what these macros represent. This historical situation most
+        probably reflects the fact that the library did not want the
+        end-user's possibly changing the limitations, by redefining the
+        macros in config/limits.hpp, to change how the library works and
+        therefore cause problems in using the library.<br>
+      </p>
+      <p>This situation has now changed and a number of the limitation
+        macros specified in config/limits.hpp are now used internally in
+        the library code when the preprocessor is C++ standard
+        conforming. This topic is therefore about how an end-user can
+        change the limitations of the library.<br>
+      </p>
+    </blockquote>
+    <h4>Type of limitations</h4>
+    <blockquote>
+      <p>The type of limitations in the Boost preprocessor library can
+        be divided as:<br>
+      </p>
+      <ul>
+        <li>Numbers</li>
+        <li>Sizes</li>
+        <li>Loops</li>
+        <li>Iterations</li>
+      </ul>
+      The library has support for numbers. This supports basic
+      arithmetic, comparisons, and logical operations. This support is
+      documented by the macro BOOST_PP_LIMIT_MAG, where 'MAG' is short
+      for "MAGNITUDE'. The current fixed maximum value is 256. This
+      means that the library supports numerical operations in the range
+      between 0 and 256.<br>
+      <br>
+      The library has support for the maximum sizes of higher level
+      types. These types are arrays, lists, seqs, tuples, and variadic
+      data. By sizes for these higher level constructs it is meant the
+      maximum number of elements of which a higher level construct can
+      consist. For arrays and tuples this value is documented by the
+      macro BOOST_PP_LIMIT_TUPLE while for variadic data this value is
+      documented by the macro BOOST_PP_LIMIT_VARIADIC. In both these
+      cases the current fixed maximum value is 64. For seqs the value is
+      documented by the macro BOOST_PP_LIMIT_SEQ, whose current fixed
+      value is 256. For lists there has never been a limitation macro
+      but in actual fact the limitation on the maximum number of list
+      elements is defined by the maximum number given above for
+      BOOST_PP_LIMIT_MAG. So a list, like a seq, has a default maximum
+      of 256 elements. The reason that the maximum number of elements
+      for arrays, tuples, and variadic data is 64 while for seqs and
+      lists it is the much larger value of 256 is because the
+      implementation of the former constructs often involves passing the
+      likewise number as parameters to internal macros and a number of
+      compilers have placed limitations on the number of parameters a
+      macro can have; so the much safer 64 was chosen so as to be able
+      to work with these compilers.<br>
+      <br>
+      The looping constructs consist of the control structure
+      BOOST_PP_WHILE and the repetition constructs BOOST_PP_FOR and
+      BOOST_PP_REPEAT. Each of these have a limitation macro, all
+      currently set to 256. This means that the loop can run at maximum
+      256 times. The corresponding limitation macros are
+      BOOST_PP_LIMIT_WHILE, BOOST_PP_LIMIT_FOR, and
+      BOOST_PP_LIMIT_REPEAT.<br>
+      <br>
+      Iteration constructs consist of local iteration and file iteration
+      constructs.The specifics are more fully discussed in their own
+      topics. The corresponding macro is BOOST_PP_LIMIT_ITERATION whose
+      value is 256.<br>
+    </blockquote>
+    <h4> Limitation dependencies</h4>
+    <blockquote>A number of the limitations are actually dependent on
+      other limitations. These are:<br>
+      <ul>
+        <li>BOOST_PP_LIMIT_MAG depends on BOOST_PP_LIMIT_WHILE. All the
+          arithmetic macros except for BOOST_PP_INC and BOOST_PP_DEC
+          depend on looping using BOOST_PP_WHILE. Similarly all the
+          comparison macros except for BOOST_PP_EQUAL and
+          BOOST_PP_NOT_EQUAL depend on BOOST_PP_WHILE. So whatever is
+          the value for BOOST_PP_LIMIT_MAG is also the value for
+          BOOST_PP_LIMIT_WHILE.</li>
+        <li>BOOST_PP_LIMIT_TUPLE depends on BOOST_PP_LIMIT_VARIADIC,
+          since array/tuple functionality often ends up calling variadic data
+          functionality. So while BOOST_PP_LIMIT_TUPLE can be smaller
+          than BOOST_PP_LIMIT_VARIADIC it can never be larger.<br>
+        </li>
+        <li>BOOST_PP_LIMIT_SEQ depends on BOOST_PP_LIMIT_MAG since the
+          total size of a seq must be at most the largest number. So
+          while BOOST_PP_LIMIT_SEQ could be smaller than
+          BOOST_PP_LIMIT_MAG it can never be larger.</li>
+        <li>BOOST_PP_LIMIT_FOR, BOOST_PP_LIMIT_REPEAT, and
+          BOOST_PP_LIMIT_ITERATION all depend on BOOST_PP_LIMIT_MAG.
+          While any of these values could be smaller than
+          BOOST_PP_LIMIT_MAG none of them can be larger.</li>
+      </ul>
+    </blockquote>
+    <h4>Changing the limitations</h4>
+    <blockquote>
+      <p>Limitations can be changed by the end-user defining a
+        limitation macro prior to including preprocessor library header
+        files. This can be done either in a source file or as part of a
+        compiler command line.<br>
+      </p>
+    </blockquote>
+    <blockquote>
+      <p>Before specifying which limitations can be changed a number of
+        items need to be emphasized:<br>
+      </p>
+      <ul>
+        <li>The limitations which can be changed can only be done for
+          C++ standard conforming preprocessors. You can use the macro
+          BOOST_PP_IS_STANDARD, invoking it as BOOST_PP_IS_STANDARD(),
+          to determine if your compiler has a C++ standard conforming
+          preprocessor. Almost all major compilers, including gcc and
+          clang, have C++ standard conforming preprocessors. Most
+          notably the default Visual C++ compiler is not a C++ standard
+          conforming preprocessor, but the new preprocessor for Visual
+          C++, available in Visual Studio 2019 and above, is a C++
+          standard conforming preprocessor. If you change a limitation
+          for a compiler that is not a C++ standard conforming
+          preprocessor the change is simply ignored and no preprocessor
+          error will occur. This is because any non-conforming
+          preprocessor does not actually include or use the macros in
+          the config/limits.hpp file.<br>
+        </li>
+        <li>WARNING ! WARNING ! WARNING ! Increasing limitations may
+          mean that preprocessors may fail because the compiler itself
+          can not handle the increase in the limitations. This may occur
+          because the compiler has an internal limit on the number of
+          parameters that can be passed to a macro, the number of nested
+          macro invocations, or even the amount of memory needed for the
+          preprocessor to expand a macro.</li>
+        <li>Except for possibly first including the preprocessor header
+          boost/preprocessor/config/config.hpp, changing any limitation
+          must be done before including Boost preprocessor headers in a
+          TU ( translation unit ) to work properly. Attempting to change
+          a limitation after including Boost preprocessor headers will
+          at worst lead to preprocessor errors and at best lead to UB (
+          undefined behavior ).</li>
+        <li>Limitations can only be changed to specific values as given
+          below. Attempting to change limitations to other than the
+          specific values will lead to the change being ignored or, if
+          incorrectly done after including Boost preprocessor headers, a
+          preprocessor error.</li>
+      </ul>
+      All the limitations whose default value is 256 can be changed to
+      either 512 or 1024, except for BOOST_PP_LIMIT_WHILE which can not
+      be changed.<br>
+      The two limitations whose default value is 64 can be changed to
+      128 or 256.<br>
+      <br>
+      For the individual limitations:<br>
+      <ul>
+        <li>BOOST_PP_LIMIT_MAG : When you change this limitation the
+          value of BOOST_PP_LIMIT_WHILE also changes so that it is equal
+          to BOOST_PP_LIMIT_MAG. This is because numerical computations
+          depend on the BOOST_PP_WHILE loop, and therefore
+          BOOST_PP_LIMIT_WHILE itself can not be changed. Also when you
+          change the BOOST_PP_LIMIT_MAG limitation the value of
+          BOOST_PP_LIMIT_SEQ, if it has not been also changed to be less
+          than BOOST_PP_LIMIT_MAG, is also changed to the value of
+          BOOST_PP_LIMIT_MAG. This is so that seqs, like lists, will
+          normally have the same maximum number of elements, as defined
+          by BOOST_PP_LIMIT_MAG, unless you decide otherwise and change
+          the BOOST_PP_LIMIT_SEQ&nbsp; yourself.<br>
+        </li>
+        <li>BOOST_PP_LIMIT_TUPLE: When you change this limitation the
+          value of BOOST_PP_LIMIT_VARIADIC also changes so that it is at
+          least equal to BOOST_PP_LIMIT_TUPLE if the value of
+          BOOST_PP_LIMIT_VARIADIC has not also been changed to be
+          greater than BOOST_PP_LIMIT_TUPLE. This is because
+          tuples/arrays depend on variadic functionality.</li>
+        <li>BOOST_PP_LIMIT_SEQ, BOOST_PP_LIMIT_FOR,
+          BOOST_PP_LIMIT_REPEAT, BOOST_PP_LIMIT_ITERATION: If you try to
+          set any of these values greater than the BOOST_PP_LIMIT_MAG
+          value, the particular limitation is set to equal the value of
+          BOOST_PP_LIMIT_MAG. This is because all of these limits depend
+          on the range of numerical values.</li>
+      </ul>
+    </blockquote>
+    <h4>Other considerations</h4>
+    <blockquote>
+      <p>There is no necessity to change any limitation if you are happy
+        with its default value. However if you decide to increase a
+        limitation you should be aware that doing so can affect both the
+        amount of memory used by the preprocessor and the speed in which
+        preprocessing is accomplished. In the first case some
+        preprocessors have been known to run out of memory if a
+        limitation value is increased, even though this should really
+        never happen in modern computer systems. In the latter case
+        preprocessing might become so slow that trying to use the
+        library with some increased limitation, and have your
+        preprocessing finish in some reasonable amount of time, becomes
+        impossible. The latter can occur when you are using lists or
+        seqs and while cycling through a large number of elements you
+        are also doing time consuming operations on each element value
+        which generates further macro looping. Nearly all arithmetic and
+        comparison operations involve further macro looping.<br>
+      </p>
+      <p>For lists and seqs there is functionality which uses the
+        BOOST_PP_FOR macro. If the maximum size for lists and seqs is
+        increased, by using BOOST_PP_LIMIT_MAG macro, you may also need
+        to define BOOST_PP_LIMIT_FOR to increase the maximum number of
+        'for' loops in order to cycle through all lists or seqs using
+        this functionality.<br>
+      </p>
+      <p>The BOOST_PP_WHILE construct is used internally for looping by
+        nearly all arithmetic and comparison macros as well as
+        internally by a number of other macros in the library which loop
+        through elements. While the construct can be called from within
+        an already running BOOST_PP_WHILE loop, it is possible to run
+        out of BOOST_PP_WHILE loops when this happens. In order to solve
+        this problem you can specify a BOOST_PP_LIMIT_MAG which is
+        larger than the maximum number you will ordinarily use. This
+        will give you twice the number of BOOST_PP_WHILE loops and will
+        keep you from running out of loops if you have to do arithmetic
+        computations while cycling through lists and seqs and the number
+        of lists and/or seqs you cycle through is anywhere near your
+        original&nbsp; maximum.<br>
+      </p>
+    </blockquote>
+    <h4>Testing limitations</h4>
+    <blockquote>
+      <p>The default testing of the preprocessor library, using Boost
+        Build's b2 command in the preprocessor test directory, only
+        tests the default limitations. If you want to test, within the
+        test directory, any of the non-default limitations which may be
+        set, you can do so by invoking the b2 command with any of these
+        explicit targets:<br>
+      </p>
+      <ul>
+        <li>preprocessor_128 : arrays, tuples, and variadics with up to
+          128 elements</li>
+        <li>preprocessor_256 : arrays, tuples, and variadics with up to
+          256 elements</li>
+        <li>preprocessor_512 : numbers, lists, seqs, looping, and
+          iteration constructs with 512 maximum</li>
+        <li>preprocessor_1024 : numbers, lists, seqs, looping, and
+          iteration constructs with 1024 maximum</li>
+        <li>preprocessor_tup : both the first and second items in this
+          list</li>
+        <li>preprocessor_num : both the third and fourth items in this
+          list</li>
+        <li>preprocessor_limits : all preprocessor limitations</li>
+      </ul>
+      If you invoke b2 with the last preprocessor_limits target your
+      testing may take awhile for your compiler. When you choose one of
+      the above targets, as in <code>'b2 preprocessor_limits'</code>,
+      the default tests are not run. If you want the default tests run,
+      along with any of the targets such as preprocessor_limits, your
+      command would be <code>'b2 . preprocessor_limits'</code>, where
+      the '.' notation means all the non-explicit ( aka default )
+      targets.<br>
+    </blockquote>
+    <blockquote> </blockquote>
+    <blockquote>
+      <ul>
+      </ul>
+    </blockquote>
+    <blockquote> </blockquote>
+    <b>See</b> <b>Also</b><br>
+    <ul>
+      <li><a href="../ref/is_standard.html">BOOST_PP_IS_STANDARD</a><br>
+      </li>
+      <li><a href="../ref/limit_mag.html">BOOST_PP_LIMIT_MAG</a></li>
+      <li><a href="../ref/limit_tuple.html">BOOST_PP_LIMIT_TUPLE</a></li>
+      <li><a href="../ref/limit_variadic.html">BOOST_PP_LIMIT_VARIADIC</a></li>
+      <li><a href="../ref/limit_seq.html">BOOST_PP_LIMIT_SEQ</a></li>
+      <li><a href="../ref/limit_while.html">BOOST_PP_LIMIT_WHILE</a></li>
+      <li><a href="../ref/limit_for.html">BOOST_PP_LIMIT_FOR</a></li>
+      <li><a href="../ref/limit_repeat.html">BOOST_PP_LIMIT_REPEAT</a></li>
+      <li><a href="../ref/limit_iteration.html">BOOST_PP_LIMIT_ITERATION</a><br>
+      </li>
+    </ul>
+    <hr size="1">
+    <div style="margin-left: 0px;"> <i>© Copyright Edward Diener 2020</i>
+    </div>
+    <div style="margin-left: 0px;">
+      <p><small>Distributed under the Boost Software License, Version
+          1.0. (See accompanying file <a
+            href="../../../../LICENSE_1_0.txt">LICENSE_1_0.txt</a> or
+          copy at <a href="http://www.boost.org/LICENSE_1_0.txt">www.boost.org/LICENSE_1_0.txt</a>)</small></p>
+    </div>
+  </body>
+</html>

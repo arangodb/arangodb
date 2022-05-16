@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchViewMeta.h"
 #include "VocBase/LogicalView.h"
 
@@ -32,23 +33,24 @@
 
 namespace arangodb {
 
-struct ViewFactory;  // forward declaration
+struct ViewFactory;
 
 }  // namespace arangodb
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
-class IResearchLink; // forward declaration
+class IResearchLink;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class IResearchViewCoordinator
 /// @brief an abstraction over the distributed IResearch index implementing the
 ///        LogicalView interface
 ///////////////////////////////////////////////////////////////////////////////
-class IResearchViewCoordinator final : public arangodb::LogicalView {
+class IResearchViewCoordinator final : public LogicalView {
  public:
-  virtual ~IResearchViewCoordinator() = default;
+  static constexpr std::pair<ViewType, std::string_view> typeInfo() noexcept {
+    return {ViewType::kSearch, StaticStrings::ViewType};
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the factory for this type of view
@@ -62,24 +64,22 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   /// @note definitions are not persisted
   /// @return the 'link' was newly added to the IResearch View
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result link(IResearchLink const& link);
+  Result link(IResearchLink const& link);
 
-  void open() override {
-    // NOOP
-  }
+  void open() final {}
 
   using LogicalDataSource::properties;
-  virtual arangodb::Result properties(velocypack::Slice const& properties,
-                                      bool partialUpdate) override;
+  Result properties(VPackSlice properties, bool isUserRequest,
+                    bool partialUpdate) final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unlink remove 'cid' from the persisted list of tracked collection
   ///        IDs
   /// @return success == view does not track collection
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result unlink(DataSourceId cid) noexcept;
+  Result unlink(DataSourceId cid) noexcept;
 
-  bool visitCollections(CollectionVisitor const& visitor) const override;
+  bool visitCollections(CollectionVisitor const& visitor) const final;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @return primary sorting order of a view, empty -> use system order
@@ -102,24 +102,23 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
     return _meta._storedValues;
   }
 
- protected:
-  virtual Result appendVelocyPackImpl(arangodb::velocypack::Builder& builder,
-                                      Serialization context) const override;
-
-  virtual arangodb::Result dropImpl() override;
-
-  arangodb::Result renameImpl(std::string const& oldName) override;
-
  private:
-  struct ViewFactory;  // forward declaration
+  Result appendVPackImpl(VPackBuilder& build, Serialization ctx,
+                         bool safe) const final;
 
-  IResearchViewCoordinator(TRI_vocbase_t& vocbase, velocypack::Slice info);
+  Result dropImpl() final;
 
-  std::unordered_map<DataSourceId, std::pair<std::string, arangodb::velocypack::Builder>> _collections;  // transient member, not persisted
-  mutable irs::async_utils::read_write_mutex _mutex;  // for use with '_collections'
+  Result renameImpl(std::string const& oldName) final;
+
+  struct ViewFactory;
+
+  IResearchViewCoordinator(TRI_vocbase_t& vocbase, VPackSlice info);
+
+  // transient member, not persisted
+  std::unordered_map<DataSourceId, std::pair<std::string, VPackBuilder>>
+      _collections;
+  mutable std::shared_mutex _mutex;  // for use with '_collections'
   IResearchViewMeta _meta;
-};  // IResearchViewCoordinator
+};
 
-}  // namespace iresearch
-}  // namespace arangodb
-
+}  // namespace arangodb::iresearch

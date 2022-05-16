@@ -1,0 +1,339 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Generating Random Numbers</title>
+<link rel="stylesheet" href="../../multiprecision.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Multiprecision">
+<link rel="up" href="../tut.html" title="Tutorial">
+<link rel="prev" href="conversions.html" title="Constructing and Interconverting Between Number Types">
+<link rel="next" href="primetest.html" title="Primality Testing">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="conversions.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tut.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="primetest.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_multiprecision.tut.random"></a><a class="link" href="random.html" title="Generating Random Numbers">Generating Random Numbers</a>
+</h3></div></div></div>
+<p>
+        Random numbers are generated in conjunction with Boost.Random.
+      </p>
+<p>
+        There is a single generator that supports generating random integers with
+        large bit counts: <a href="http://www.boost.org/doc/html/boost/random/independent_bits_engine.html" target="_top"><code class="computeroutput"><span class="identifier">independent_bits_engine</span></code></a>. This type
+        can be used with either <span class="emphasis"><em>unbounded</em></span> integer types, or
+        with <span class="emphasis"><em>bounded</em></span> (ie fixed precision) unsigned integers:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">multiprecision</span><span class="special">/</span><span class="identifier">cpp_int</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">random</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+   <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">multiprecision</span><span class="special">;</span>
+   <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">random</span><span class="special">;</span>
+
+   <span class="comment">//</span>
+   <span class="comment">// Declare our random number generator type, the underlying generator</span>
+   <span class="comment">// is the Mersenne twister mt19937 engine, and we'll generate 256 bit</span>
+   <span class="comment">// random values, independent_bits_engine will make multiple calls</span>
+   <span class="comment">// to the underlying engine until we have the requested number of bits:</span>
+   <span class="comment">//</span>
+   <span class="keyword">typedef</span> <span class="identifier">independent_bits_engine</span><span class="special">&lt;</span><span class="identifier">mt19937</span><span class="special">,</span> <span class="number">256</span><span class="special">,</span> <span class="identifier">cpp_int</span><span class="special">&gt;</span> <span class="identifier">generator_type</span><span class="special">;</span>
+   <span class="identifier">generator_type</span> <span class="identifier">gen</span><span class="special">;</span>
+   <span class="comment">//</span>
+   <span class="comment">// Generate some values:</span>
+   <span class="comment">//</span>
+   <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">hex</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">showbase</span><span class="special">;</span>
+   <span class="keyword">for</span><span class="special">(</span><span class="keyword">unsigned</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">10</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">gen</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+   <span class="comment">//</span>
+   <span class="comment">// Alternatively if we wish to generate random values in a fixed-precision</span>
+   <span class="comment">// type, then we must use an unsigned type in order to adhere to the</span>
+   <span class="comment">// conceptual requirements of the generator:</span>
+   <span class="comment">//</span>
+   <span class="keyword">typedef</span> <span class="identifier">independent_bits_engine</span><span class="special">&lt;</span><span class="identifier">mt19937</span><span class="special">,</span> <span class="number">512</span><span class="special">,</span> <span class="identifier">uint512_t</span><span class="special">&gt;</span> <span class="identifier">generator512_type</span><span class="special">;</span>
+   <span class="identifier">generator512_type</span> <span class="identifier">gen512</span><span class="special">;</span>
+   <span class="comment">//</span>
+   <span class="comment">// Generate some 1024-bit unsigned values:</span>
+   <span class="comment">//</span>
+   <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">hex</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">showbase</span><span class="special">;</span>
+   <span class="keyword">for</span><span class="special">(</span><span class="keyword">unsigned</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">10</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">gen512</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+      <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Program output is:
+      </p>
+<pre class="programlisting">0xD091BB5C22AE9EF6E7E1FAEED5C31F792082352CF807B7DFE9D300053895AFE1
+0xA1E24BBA4EE4092B18F868638C16A625474BA8C43039CD1A8C006D5FFE2D7810
+0xF51F2AE7FF1816E4F702EF59F7BADAFA285954A1B9D09511F878C4B3FB2A0137
+0xF508E4AA1C1FE6527C419418CC50AA59CCDF2E5C4C0A1F3B2452A9DC01397D8D
+0x6BF88C311CCA797AEA6DA4AEA3C78807CACE1969E0E0D4ADF5A14BAB80F00988
+0xA7DE9F4CCC450CBA0924668F5C7DC380D96089C53640AC4CEF1A2E6DAE6D9426
+0xADC1965B6613BA46C1FB41C2BD9B0ECDBE3DEDFC7989C8EE6468FD6E6C0DF032
+0xA7CD66342C826D8B2BD2E4124D4A2DBEB4BF6FA7CC1A89590826328251097330
+0x46E46CB0DF577EC20BD1E364262C556418DDA0C9FE7B45D9D2CE21C9D268409A
+0xB1E049E1200BFA47512D6E73C3851EEEF341C0817D973E4808D17554A9E20D28
+0xD091BB5C22AE9EF6E7E1FAEED5C31F792082352CF807B7DFE9D300053895AFE1A1E24BBA4EE4092B18F868638C16A625474BA8C43039CD1A8C006D5FFE2D7810
+0xF51F2AE7FF1816E4F702EF59F7BADAFA285954A1B9D09511F878C4B3FB2A0137F508E4AA1C1FE6527C419418CC50AA59CCDF2E5C4C0A1F3B2452A9DC01397D8D
+0x6BF88C311CCA797AEA6DA4AEA3C78807CACE1969E0E0D4ADF5A14BAB80F00988A7DE9F4CCC450CBA0924668F5C7DC380D96089C53640AC4CEF1A2E6DAE6D9426
+0xADC1965B6613BA46C1FB41C2BD9B0ECDBE3DEDFC7989C8EE6468FD6E6C0DF032A7CD66342C826D8B2BD2E4124D4A2DBEB4BF6FA7CC1A89590826328251097330
+0x46E46CB0DF577EC20BD1E364262C556418DDA0C9FE7B45D9D2CE21C9D268409AB1E049E1200BFA47512D6E73C3851EEEF341C0817D973E4808D17554A9E20D28
+0x70518CE6203AC30361ADD0AB35D0430CC3F8E8920D1C8509CB92388E095436BF2FD6E20868A29AF97D61330B753EC6FC7211EFEA7CD15133A574C4FFCB41F198
+0xB598EEF6EBBE7347C1332568CEBA5A7046A99459B4AD9F11AE00FEAA00B8B573A7B480B6B5F0B06C29A0EC27A4DAA0101E76A1C574BE91337F94C950C61F6ED6
+0xF5B1C7A192E195F8572384D4E0732C8895D41B68CEE496C3394BBD52048CD47CC05309BED23D2D63414DE9C5D2229F23818666A3F0A8B109B2F6B12769A48341
+0xE4123C566C548C8FF5941F6194B993AA8C1651342876763C237CE42EC300D11B263821CA3AEB820241EC0F84CF4AC36DD7393EE6FD0FC06A4118A30A551B54A4
+0xD074F86F4CC1C54A3E57A70303774CDAEDE43895379CE62759988939E8490DDC325410E1D9352F6A4047080AF47C081D9DB51A85C765D71F79297527FCCA2773
+</pre>
+<p>
+        In addition, the generator adaptors <a href="http://www.boost.org/doc/html/boost/random/discard_block_engine.html" target="_top"><code class="computeroutput"><span class="identifier">discard_block</span></code></a>, <a href="http://www.boost.org/doc/html/boost/random/xor_combine_engine.html" target="_top"><code class="computeroutput"><span class="identifier">xor_combine_engine</span></code></a> and <a href="http://www.boost.org/doc/html/boost/random/discrete_distribution.html" target="_top"><code class="computeroutput"><span class="identifier">discrete_distribution</span></code></a> can be used
+        with multiprecision types. Note that if you seed an <code class="computeroutput"><span class="identifier">independent_bits_engine</span></code>,
+        then you are actually seeding the underlying generator, and should therefore
+        provide a sequence of unsigned 32-bit values as the seed.
+      </p>
+<p>
+        Alternatively we can generate integers in a given range using <a href="http://www.boost.org/doc/html/boost/random/uniform_int_distribution.html" target="_top"><code class="computeroutput"><span class="identifier">uniform_int_distribution</span></code></a>, this
+        will invoke the underlying engine multiple times to build up the required
+        number of bits in the result:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">multiprecision</span><span class="special">/</span><span class="identifier">cpp_int</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">random</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+   <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">multiprecision</span><span class="special">;</span>
+   <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">random</span><span class="special">;</span>
+
+   <span class="comment">//</span>
+   <span class="comment">// Generate integers in a given range using uniform_int,</span>
+   <span class="comment">// the underlying generator is invoked multiple times</span>
+   <span class="comment">// to generate enough bits:</span>
+   <span class="comment">//</span>
+   <span class="identifier">mt19937</span> <span class="identifier">mt</span><span class="special">;</span>
+   <span class="identifier">uniform_int_distribution</span><span class="special">&lt;</span><span class="identifier">cpp_int</span><span class="special">&gt;</span> <span class="identifier">ui</span><span class="special">(-(</span><span class="identifier">cpp_int</span><span class="special">(</span><span class="number">1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="number">256</span><span class="special">),</span> <span class="identifier">cpp_int</span><span class="special">(</span><span class="number">1</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="number">256</span><span class="special">);</span>
+   <span class="comment">//</span>
+   <span class="comment">// Generate the numbers:</span>
+   <span class="comment">//</span>
+   <span class="keyword">for</span><span class="special">(</span><span class="keyword">unsigned</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">10</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">ui</span><span class="special">(</span><span class="identifier">mt</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+   <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Program output is
+      </p>
+<pre class="programlisting">25593993629538149833210527544371584707508847463356155903670894544241785158492
+12721121657520147247744796431842326146296294180809160027132416389225539366745
+106034929479008809862776424170460808190085984129117168803272987114325199071833
+86048861429530654936263414134573980939351899046345384016090167510299251354700
+-23473382144925885755951447143660880642389842563343761080591177733698450031250
+76840269649240973945508128641415259490679375154523618053296924666747244530145
+21638369166612496703991271955994563624044383325105383029306009417224944272131
+18829152205014764576551421737727569993966577957447887116062495161081023584880
+101521572847669971701030312596819435590097618913255156117898217707115132658117
+-97490271301923067621481012355971422109456300816856752380346627103308328292057
+</pre>
+<p>
+        It is also possible to use <a href="http://www.boost.org/doc/html/boost/random/uniform_int_distribution.html" target="_top"><code class="computeroutput"><span class="identifier">uniform_int_distribution</span></code></a> with a
+        multiprecision generator such as <a href="http://www.boost.org/doc/html/boost/random/independent_bits_engine.html" target="_top"><code class="computeroutput"><span class="identifier">independent_bits_engine</span></code></a>. Or to
+        use <a href="http://www.boost.org/doc/html/boost/random/uniform_smallint.html" target="_top"><code class="computeroutput"><span class="identifier">uniform_smallint</span></code></a> or <a href="http://www.boost.org/doc/html/boost/random/random_number_generator.html" target="_top"><code class="computeroutput"><span class="identifier">random_number_generator</span></code></a> with multiprecision
+        types.
+      </p>
+<p>
+        floating-point values in [0,1) are most easily generated using <a href="http://www.boost.org/doc/html/boost/random/generate_canonical.html" target="_top"><code class="computeroutput"><span class="identifier">generate_canonical</span></code></a>, note that
+        <code class="computeroutput"><span class="identifier">generate_canonical</span></code> will call
+        the generator multiple times to produce the requested number of bits, for
+        example we can use it with a regular generator like so:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">multiprecision</span><span class="special">/</span><span class="identifier">cpp_bin_float</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">random</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+   <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">multiprecision</span><span class="special">;</span>
+   <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">random</span><span class="special">;</span>
+
+   <span class="identifier">mt19937</span> <span class="identifier">gen</span><span class="special">;</span>
+   <span class="comment">//</span>
+   <span class="comment">// Generate the values:</span>
+   <span class="comment">//</span>
+   <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">setprecision</span><span class="special">(</span><span class="number">50</span><span class="special">);</span>
+   <span class="keyword">for</span><span class="special">(</span><span class="keyword">unsigned</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">20</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">generate_canonical</span><span class="special">&lt;</span><span class="identifier">cpp_bin_float_50</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">cpp_bin_float_50</span><span class="special">&gt;::</span><span class="identifier">digits</span><span class="special">&gt;(</span><span class="identifier">gen</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+   <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Which produces the following output:
+      </p>
+<pre class="programlisting">0.96886777112423135248554451482797431507115448261086
+0.54722059636785192454525760726084778627750790023546
+0.99646132554800874317788284808573062871409279729804
+0.98110969177693891782396443737643892769773768718591
+0.29702944955795083040856753579705872634075574515969
+0.63976335709815275010379796044374742646738557798647
+0.79792861516022605265555700991255998690336456180995
+0.68135953856026596523755400091345037778580909233387
+0.47475868061723477935404326837783394169122045199915
+0.30191312687731969398296589840622989141067852863748
+0.87242882006730022427155209451091472382531795659709
+0.82190326480741096300318873712966555706035846579562
+0.49058903962146072778707295967429263659897501512813
+0.2102090745190061764133345429475530760261103345204
+0.4087311609617603484960794513055502599728804206333
+0.79397497154919267900450180642484943996546102712187
+0.70577425166871982574205252142383800792823003687121
+0.64396095652194035523385641523010248768636064728226
+0.5737546665965914620678634509134819579811035412969
+0.017773895576552474810236796736785695789752666554273
+</pre>
+<p>
+        Note however, the distributions do not invoke the generator multiple times
+        to fill up the mantissa of a multiprecision floating-point type with random
+        bits. For these therefore, we should probably use a multiprecision generator
+        (ie <code class="computeroutput"><span class="identifier">independent_bits_engine</span></code>)
+        in combination with the distribution:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">multiprecision</span><span class="special">/</span><span class="identifier">cpp_bin_float</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">multiprecision</span><span class="special">/</span><span class="identifier">cpp_int</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">random</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+   <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">multiprecision</span><span class="special">;</span>
+   <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">random</span><span class="special">;</span>
+   <span class="comment">//</span>
+   <span class="comment">// Generate some distruted values:</span>
+   <span class="comment">//</span>
+   <span class="identifier">uniform_real_distribution</span><span class="special">&lt;</span><span class="identifier">cpp_bin_float_50</span><span class="special">&gt;</span> <span class="identifier">ur</span><span class="special">(-</span><span class="number">20</span><span class="special">,</span> <span class="number">20</span><span class="special">);</span>
+   <span class="identifier">gamma_distribution</span><span class="special">&lt;</span><span class="identifier">cpp_bin_float_50</span><span class="special">&gt;</span> <span class="identifier">gd</span><span class="special">(</span><span class="number">20</span><span class="special">);</span>
+   <span class="identifier">independent_bits_engine</span><span class="special">&lt;</span><span class="identifier">mt19937</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">cpp_bin_float_50</span><span class="special">&gt;::</span><span class="identifier">digits</span><span class="special">,</span> <span class="identifier">cpp_int</span><span class="special">&gt;</span> <span class="identifier">gen</span><span class="special">;</span>
+   <span class="comment">//</span>
+   <span class="comment">// Generate some values:</span>
+   <span class="comment">//</span>
+   <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">setprecision</span><span class="special">(</span><span class="number">50</span><span class="special">);</span>
+   <span class="keyword">for</span><span class="special">(</span><span class="keyword">unsigned</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">20</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">ur</span><span class="special">(</span><span class="identifier">gen</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+   <span class="keyword">for</span><span class="special">(</span><span class="keyword">unsigned</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">20</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">gd</span><span class="special">(</span><span class="identifier">gen</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+   <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Which produces the following output:
+      </p>
+<pre class="programlisting">-18.576837157065858312137736538355805944098004018928
+4.5605477000094480453928920098152026546185388161216
+-1.7611402252150150370944527411235180945558276280598
+-2.471338289511354190492328039842914272146783953149
+-7.4131520453411321647183692139916357315276121488316
+-9.192739117661751364518299455475684051782402347659
+7.0126880787149555595443325648941661436898526919013
+2.8554749162054097111723076181877881960039268668423
+14.390501287552165467965587841551705310012046701036
+-8.9747073123748752412086051960748002945548570524149
+-8.1305063133718605220959174700954037986278348616362
+9.5496899464463627949564295930962040525540578754312
+-15.309681742947663333436391348699943078942921692008
+2.0454914298189175280771944784358385982869708951824
+-10.069253024538932382193363493367304983742246396276
+13.449212808583153116670057807764145176004060370818
+-6.0065092542772507561228141992257782449634820245355
+15.00971466974838379824678369267201922989930663822
+16.158514812070905438581736305533045434508525979205
+-2.1531361299576399413547008719541457739794964378093
+19.398278792113040046930806838893737245011219380822
+12.965216582396067073600685365545292876001524716225
+19.561779374349650983983836397553672788578622096947
+15.982213641588944604037715576313848977716540941271
+23.96044616946856385664151481695038833903083043492
+21.054716943622792848187523422423642819628010070375
+18.596078774135209530930707331338838805575875990091
+19.539530839287848627426769425090194390388333335812
+17.176133236359396942946640290935498641489373354297
+16.228802394876800099035133760539461530246286999827
+23.63807160907473465631049083277558060813997674519
+12.838499607321990428122225501321564153572478845401
+16.878362445712403300584931374939967549572637230102
+20.646246409377134464856282996941395597420615529803
+16.602429236226052406561338766554127142762673418695
+21.680007865714197450495711030406314524681744024329
+21.038948660115771777833205901845639760348321521616
+30.494499676527802078320016654058105593076348727966
+18.704734464995637480940828829962787676146589788572
+22.502216997171061548799304902323434654678156658236
+</pre>
+<p>
+        And finally, it is possible to use the floating-point generators <a href="http://www.boost.org/doc/html/boost/random/lagged_fibonacci_01_engine.html" target="_top"><code class="computeroutput"><span class="identifier">lagged_fibonacci_01_engine</span></code></a> and
+        <a href="http://www.boost.org/doc/html/boost/random/subtract_with_idp144360752.html" target="_top"><code class="computeroutput"><span class="identifier">subtract_with_carry_01_engine</span></code></a> directly
+        with multiprecision floating-point types. It's worth noting however, that
+        there is a distinct lack of literature on generating high bit-count random
+        numbers, and therefore a lack of "known good" parameters to use
+        with these generators in this situation. For this reason, these should probably
+        be used for research purposes only:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">multiprecision</span><span class="special">/</span><span class="identifier">cpp_bin_float</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">random</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">scoped_ptr</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+   <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">multiprecision</span><span class="special">;</span>
+   <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">random</span><span class="special">;</span>
+   <span class="comment">//</span>
+   <span class="comment">// Generate some multiprecision values, note that the generator is so large</span>
+   <span class="comment">// that we have to allocate it on the heap, otherwise we may run out of</span>
+   <span class="comment">// stack space!  We could avoid this by using a floating point type which</span>
+   <span class="comment">// allocates it's internal storage on the heap - cpp_bin_float will do</span>
+   <span class="comment">// this with the correct template parameters, as will the GMP or MPFR</span>
+   <span class="comment">// based reals.</span>
+   <span class="comment">//</span>
+   <span class="keyword">typedef</span> <span class="identifier">lagged_fibonacci_01_engine</span><span class="special">&lt;</span><span class="identifier">cpp_bin_float_50</span><span class="special">,</span> <span class="number">48</span><span class="special">,</span> <span class="number">44497</span><span class="special">,</span> <span class="number">21034</span> <span class="special">&gt;</span> <span class="identifier">big_fib_gen</span><span class="special">;</span>
+   <span class="identifier">boost</span><span class="special">::</span><span class="identifier">scoped_ptr</span><span class="special">&lt;</span><span class="identifier">big_fib_gen</span><span class="special">&gt;</span> <span class="identifier">pgen</span><span class="special">(</span><span class="keyword">new</span> <span class="identifier">big_fib_gen</span><span class="special">);</span>
+   <span class="comment">//</span>
+   <span class="comment">// Generate some values:</span>
+   <span class="comment">//</span>
+   <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">setprecision</span><span class="special">(</span><span class="number">50</span><span class="special">);</span>
+   <span class="keyword">for</span><span class="special">(</span><span class="keyword">unsigned</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">20</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="special">(*</span><span class="identifier">pgen</span><span class="special">)()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+   <span class="comment">//</span>
+   <span class="comment">// try again with a ranlux generator, this is not quite so large</span>
+   <span class="comment">// so we can use the heap this time:</span>
+   <span class="comment">//</span>
+   <span class="keyword">typedef</span> <span class="identifier">subtract_with_carry_01_engine</span><span class="special">&lt;</span><span class="identifier">cpp_bin_float_50</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">cpp_bin_float_50</span><span class="special">&gt;::</span><span class="identifier">digits</span> <span class="special">-</span> <span class="number">5</span><span class="special">,</span> <span class="number">10</span><span class="special">,</span> <span class="number">24</span> <span class="special">&gt;</span> <span class="identifier">ranlux_big_base_01</span><span class="special">;</span>
+   <span class="keyword">typedef</span> <span class="identifier">discard_block_engine</span><span class="special">&lt;</span> <span class="identifier">ranlux_big_base_01</span><span class="special">,</span> <span class="number">389</span><span class="special">,</span> <span class="number">24</span> <span class="special">&gt;</span> <span class="identifier">big_ranlux</span><span class="special">;</span>
+   <span class="identifier">big_ranlux</span> <span class="identifier">rg</span><span class="special">;</span>
+   <span class="keyword">for</span><span class="special">(</span><span class="keyword">unsigned</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">20</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">rg</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+   <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2002-2020 John
+      Maddock and Christopher Kormanyos<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="conversions.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tut.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="primetest.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

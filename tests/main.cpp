@@ -34,6 +34,7 @@
 #include "Basics/Thread.h"
 #include "Basics/icu-helper.h"
 #include "Cluster/ServerState.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
@@ -41,11 +42,10 @@
 #include "RestServer/ServerIdFeature.h"
 #include "VocBase/Identifiers/ServerId.h"
 
-template <class Function>
+template<class Function>
 class TestThread : public arangodb::Thread {
  public:
-  TestThread(arangodb::application_features::ApplicationServer& server,
-             Function&& f, int i, char* c[])
+  TestThread(arangodb::ArangodServer& server, Function&& f, int i, char* c[])
       : arangodb::Thread(server, "gtest"), _f(f), _i(i), _c(c), _done(false) {
     run();
     CONDITION_LOCKER(guard, _wait);
@@ -85,7 +85,8 @@ int main(int argc, char* argv[]) {
   int subargc = 0;
   char** subargv = (char**)malloc(sizeof(char*) * argc);
   bool logLineNumbers = false;
-  arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
+  arangodb::RandomGenerator::initialize(
+      arangodb::RandomGenerator::RandomType::MERSENNE);
   // global setup...
   for (int i = 0; i < argc; i++) {
     if (strcmp(argv[i], "--version") == 0) {
@@ -113,7 +114,7 @@ int main(int argc, char* argv[]) {
 
   ARGV0 = subargv[0];
 
-  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+  arangodb::ArangodServer server(nullptr, nullptr);
   arangodb::ServerState state(server);
   state.setRole(arangodb::ServerState::ROLE_SINGLE);
   arangodb::ShellColorsFeature sc(server);
@@ -128,18 +129,21 @@ int main(int argc, char* argv[]) {
   ctx.exit(0);  // set "good" exit code by default
 
   arangodb::ServerIdFeature::setId(arangodb::ServerId{12345});
-  // many other places rely on the reboot id being initialized, 
+  // many other places rely on the reboot id being initialized,
   // so we do it here in a central place
-  arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1}); 
+  arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});
+  arangodb::ServerState::instance()->setGoogleTest(true);
   IcuInitializer::setup(ARGV0);
+
+  // enable mocking globally - not awesome, but helps to prevent runtime
+  // assertions in queries
+  arangodb::ClusterEngine::Mocking = true;
 
   // Run tests in subthread such that it has a larger stack size in libmusl,
   // the stack size for subthreads has been reconfigured in the
   // ArangoGlobalContext above in the libmusl case:
   int result;
-  auto tests = [](int argc, char* argv[]) -> int {
-    return RUN_ALL_TESTS();
-  };
+  auto tests = [](int argc, char* argv[]) -> int { return RUN_ALL_TESTS(); };
   TestThread<decltype(tests)> t(server, std::move(tests), subargc, subargv);
   result = t.result();
 

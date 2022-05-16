@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/StaticStrings.h"
 #include "Basics/conversions.h"
@@ -52,8 +51,8 @@ TRI_vocbase_t& GetContextVocBase(v8::Isolate* isolate) {
 /// @brief checks if argument is a document identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const arg,
-                                std::string& collectionName,
+static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> arg,
+                                bool extendedNames, std::string& collectionName,
                                 std::unique_ptr<char[]>& key) {
   TRI_ASSERT(collectionName.empty());
 
@@ -62,7 +61,7 @@ static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> cons
   }
 
   // the handle must always be an ASCII string. These is no need to normalize it
-  // first
+  // first.
   v8::String::Utf8Value str(isolate, arg);
 
   if (*str == nullptr) {
@@ -70,8 +69,9 @@ static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> cons
   }
 
   // collection name / document key
-  size_t split;
-  if (KeyGenerator::validateId(*str, str.length(), &split)) {
+  [[maybe_unused]] size_t split = 0;
+  if (KeyGeneratorHelper::validateId(*str, str.length(), extendedNames,
+                                     split)) {
     collectionName = std::string(*str, split);
     auto const length = str.length() - split - 1;
     auto buffer = new char[length + 1];
@@ -82,7 +82,7 @@ static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> cons
   }
 
   // document key only
-  if (KeyGenerator::validateKey(*str, str.length())) {
+  if (KeyGeneratorHelper::validateKey(*str, str.length())) {
     auto const length = str.length();
     auto buffer = new char[length + 1];
     memcpy(buffer, *str, length);
@@ -101,7 +101,8 @@ static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> cons
 /// will remain open afterwards!
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val,
+bool ExtractDocumentHandle(v8::Isolate* isolate,
+                           v8::Handle<v8::Value> const val, bool extendedNames,
                            std::string& collectionName, VPackBuilder& builder,
                            bool includeRev) {
   auto context = TRI_IGETC;
@@ -112,7 +113,8 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
 
   // extract the document identifier and revision from a string
   if (val->IsString()) {
-    bool res = ParseDocumentHandle(isolate, val, collectionName, key);
+    bool res =
+        ParseDocumentHandle(isolate, val, extendedNames, collectionName, key);
     if (res) {
       if (key.get() == nullptr) {
         return false;
@@ -132,15 +134,19 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
     TRI_GET_GLOBAL_STRING(_IdKey);
     TRI_GET_GLOBAL_STRING(_KeyKey);
     if (TRI_HasRealNamedProperty(context, isolate, obj, _IdKey)) {
-      v8::Handle<v8::Value> didVal = obj->Get(context, _IdKey).FromMaybe(v8::Local<v8::Value>());
+      v8::Handle<v8::Value> didVal =
+          obj->Get(context, _IdKey).FromMaybe(v8::Local<v8::Value>());
 
-      if (!ParseDocumentHandle(isolate, didVal, collectionName, key)) {
+      if (!ParseDocumentHandle(isolate, didVal, extendedNames, collectionName,
+                               key)) {
         return false;
       }
     } else if (TRI_HasRealNamedProperty(context, isolate, obj, _KeyKey)) {
-      v8::Handle<v8::Value> didVal = obj->Get(context, _KeyKey).FromMaybe(v8::Local<v8::Value>());
+      v8::Handle<v8::Value> didVal =
+          obj->Get(context, _KeyKey).FromMaybe(v8::Local<v8::Value>());
 
-      if (!ParseDocumentHandle(isolate, didVal, collectionName, key)) {
+      if (!ParseDocumentHandle(isolate, didVal, extendedNames, collectionName,
+                               key)) {
         return false;
       }
     } else {
@@ -151,7 +157,8 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
       return false;
     }
     // If we get here we have a valid key
-    builder.add(StaticStrings::KeyString, VPackValue(reinterpret_cast<char*>(key.get())));
+    builder.add(StaticStrings::KeyString,
+                VPackValue(reinterpret_cast<char*>(key.get())));
 
     if (!includeRev) {
       return true;
@@ -161,7 +168,8 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
     if (!TRI_HasRealNamedProperty(context, isolate, obj, _RevKey)) {
       return true;
     }
-    v8::Handle<v8::Value> revObj = obj->Get(context, _RevKey).FromMaybe(v8::Local<v8::Value>());
+    v8::Handle<v8::Value> revObj =
+        obj->Get(context, _RevKey).FromMaybe(v8::Local<v8::Value>());
     if (!revObj->IsString()) {
       return true;
     }

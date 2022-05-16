@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,14 +30,17 @@ namespace graph {
 
 class ValidationResult {
  public:
-  friend std::ostream& operator<<(std::ostream& stream, ValidationResult const& res);
+  friend std::ostream& operator<<(std::ostream& stream,
+                                  ValidationResult const& res);
 
-  enum class Type { TAKE, PRUNE, FILTER };
+  enum class Type { TAKE, PRUNE, FILTER, FILTER_AND_PRUNE };
 
   explicit ValidationResult(Type type) : _type(type) {}
 
   bool isPruned() const noexcept;
   bool isFiltered() const noexcept;
+
+  void combine(Type t) noexcept;
 
  private:
   Type _type;
@@ -47,4 +50,3 @@ std::ostream& operator<<(std::ostream& stream, ValidationResult const& res);
 
 }  // namespace graph
 }  // namespace arangodb
-

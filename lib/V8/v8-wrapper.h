@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,7 +57,7 @@
 /// @brief V8 wrapper helper
 ////////////////////////////////////////////////////////////////////////////////
 
-template <typename STRUCT, uint16_t CID>
+template<typename STRUCT, uint16_t CID>
 class V8Wrapper {
  public:
   V8Wrapper(v8::Isolate* isolate, STRUCT* object, void (*free)(STRUCT* object),
@@ -79,7 +79,8 @@ class V8Wrapper {
   virtual ~V8Wrapper() {
     if (!_handle.IsEmpty()) {
       _handle.ClearWeak();
-      v8::Local<v8::Object> data = v8::Local<v8::Object>::New(_isolate, _handle);
+      v8::Local<v8::Object> data =
+          v8::Local<v8::Object>::New(_isolate, _handle);
       data->SetInternalField(0, v8::Undefined(_isolate));
       _handle.Reset();
 
@@ -96,7 +97,8 @@ class V8Wrapper {
 
   static STRUCT* unwrap(v8::Handle<v8::Object> handle) {
     TRI_ASSERT(handle->InternalFieldCount() > 0);
-    return static_cast<V8Wrapper*>(handle->GetAlignedPointerFromInternalField(0))
+    return static_cast<V8Wrapper*>(
+               handle->GetAlignedPointerFromInternalField(0))
         ->_object;
   }
 
@@ -155,13 +157,15 @@ class V8Wrapper {
   /// @brief weak callback
   //////////////////////////////////////////////////////////////////////////////
 
-  static void weakCallback(const v8::WeakCallbackInfo<v8::Persistent<v8::Object>>& data) {
+  static void weakCallback(
+      const v8::WeakCallbackInfo<v8::Persistent<v8::Object>>& data) {
     auto isolate = data.GetIsolate();
     auto persistent = data.GetParameter();
     auto myPointer = v8::Local<v8::Object>::New(isolate, *persistent);
 
     TRI_ASSERT(myPointer->InternalFieldCount() > 0);
-    auto obj = static_cast<V8Wrapper*>(myPointer->GetAlignedPointerFromInternalField(0))
+    auto obj = static_cast<V8Wrapper*>(
+                   myPointer->GetAlignedPointerFromInternalField(0))
                    ->_object;
 
     TRI_ASSERT(persistent == &obj->_handle);

@@ -50,7 +50,7 @@ function UniqueConstraintSuite() {
 
   setUp : function () {
     internal.db._drop(cn);
-    collection = internal.db._create(cn, { waitForSync : false });
+    collection = internal.db._create(cn);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,7 +69,7 @@ function UniqueConstraintSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreationUniqueConstraint : function () {
-      var idx = collection.ensureUniqueConstraint("a");
+      var idx = collection.ensureIndex({ type: "hash", fields: ["a"], unique: true });
       var id = idx.id;
 
       assertNotEqual(0, id);
@@ -78,7 +78,7 @@ function UniqueConstraintSuite() {
       assertEqual(["a"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
 
-      idx = collection.ensureUniqueConstraint("a");
+      idx = collection.ensureIndex({ type: "hash", fields: ["a"], unique: true });
 
       assertEqual(id, idx.id);
       assertEqual("hash", idx.type);
@@ -92,7 +92,7 @@ function UniqueConstraintSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreationPermutedUniqueConstraint : function () {
-      var idx = collection.ensureUniqueConstraint("a", "b");
+      var idx = collection.ensureIndex({ type: "hash", fields: ["a", "b"], unique: true });
       var id = idx.id;
 
       assertNotEqual(0, id);
@@ -101,7 +101,7 @@ function UniqueConstraintSuite() {
       assertEqual(["a","b"].sort(), idx.fields.sort());
       assertTrue(idx.isNewlyCreated);
 
-      idx = collection.ensureUniqueConstraint("b", "a");
+      idx = collection.ensureIndex({ type: "hash", fields: ["b", "a"], unique: true });
 
       assertEqual("hash", idx.type);
       assertTrue(idx.unique);
@@ -115,7 +115,7 @@ function UniqueConstraintSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUniqueDocuments : function () {
-      var idx = collection.ensureUniqueConstraint("a", "b", { sparse: true });
+      var idx = collection.ensureIndex({ type: "hash", fields: ["b", "a"], unique: true, sparse: true });
 
       assertEqual("hash", idx.type);
       assertEqual(true, idx.unique);

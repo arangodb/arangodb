@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,21 +24,27 @@
 #include "ExecutionStats.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 
 /// @brief convert the statistics to VelocyPack
-void ExecutionStats::toVelocyPack(VPackBuilder& builder, bool reportFullCount) const {
+void ExecutionStats::toVelocyPack(VPackBuilder& builder,
+                                  bool reportFullCount) const {
   builder.openObject();
   builder.add("writesExecuted", VPackValue(writesExecuted));
   builder.add("writesIgnored", VPackValue(writesIgnored));
   builder.add("scannedFull", VPackValue(scannedFull));
   builder.add("scannedIndex", VPackValue(scannedIndex));
+  builder.add("cursorsCreated", VPackValue(cursorsCreated));
+  builder.add("cursorsRearmed", VPackValue(cursorsRearmed));
+  builder.add("cacheHits", VPackValue(cacheHits));
+  builder.add("cacheMisses", VPackValue(cacheMisses));
+
   builder.add("filtered", VPackValue(filtered));
   builder.add("httpRequests", VPackValue(requests));
   if (reportFullCount) {
@@ -56,6 +62,7 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder, bool reportFullCount) c
       builder.add("id", VPackValue(pair.first.id()));
       builder.add("calls", VPackValue(pair.second.calls));
       builder.add("items", VPackValue(pair.second.items));
+      builder.add("filtered", VPackValue(pair.second.filtered));
       builder.add("runtime", VPackValue(pair.second.runtime));
       builder.close();
     }
@@ -70,6 +77,10 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   writesIgnored += summand.writesIgnored;
   scannedFull += summand.scannedFull;
   scannedIndex += summand.scannedIndex;
+  cursorsCreated += summand.cursorsCreated;
+  cursorsRearmed += summand.cursorsRearmed;
+  cacheHits += summand.cacheHits;
+  cacheMisses += summand.cacheMisses;
   filtered += summand.filtered;
   requests += summand.requests;
   if (summand.fullCount > 0) {
@@ -86,7 +97,8 @@ void ExecutionStats::add(ExecutionStats const& summand) {
     if (alias != _nodeAliases.end()) {
       nid = alias->second;
       if (nid.id() == ExecutionNodeId::InternalNode) {
-        // ignore this value, it is an internal node that we do not want to expose
+        // ignore this value, it is an internal node that we do not want to
+        // expose
         continue;
       }
     }
@@ -101,7 +113,8 @@ void ExecutionStats::add(ExecutionStats const& summand) {
   }
 }
 
-void ExecutionStats::addNode(arangodb::aql::ExecutionNodeId nid, ExecutionNodeStats const& stats) {
+void ExecutionStats::addNode(arangodb::aql::ExecutionNodeId nid,
+                             ExecutionNodeStats const& stats) {
   auto const alias = _nodeAliases.find(nid);
   if (alias != _nodeAliases.end()) {
     nid = alias->second;
@@ -110,7 +123,7 @@ void ExecutionStats::addNode(arangodb::aql::ExecutionNodeId nid, ExecutionNodeSt
       return;
     }
   }
-  
+
   auto it = _nodes.find(nid);
   if (it != _nodes.end()) {
     it->second += stats;
@@ -119,11 +132,15 @@ void ExecutionStats::addNode(arangodb::aql::ExecutionNodeId nid, ExecutionNodeSt
   }
 }
 
-ExecutionStats::ExecutionStats()
+ExecutionStats::ExecutionStats() noexcept
     : writesExecuted(0),
       writesIgnored(0),
       scannedFull(0),
       scannedIndex(0),
+      cursorsCreated(0),
+      cursorsRearmed(0),
+      cacheHits(0),
+      cacheMisses(0),
       filtered(0),
       requests(0),
       fullCount(0),
@@ -131,40 +148,64 @@ ExecutionStats::ExecutionStats()
       executionTime(0.0),
       peakMemoryUsage(0) {}
 
-ExecutionStats::ExecutionStats(VPackSlice const& slice) : ExecutionStats() {
+ExecutionStats::ExecutionStats(VPackSlice slice) : ExecutionStats() {
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "stats is not an object");
   }
 
-  writesExecuted = slice.get("writesExecuted").getNumber<int64_t>();
-  writesIgnored = slice.get("writesIgnored").getNumber<int64_t>();
-  scannedFull = slice.get("scannedFull").getNumber<int64_t>();
-  scannedIndex = slice.get("scannedIndex").getNumber<int64_t>();
-  filtered = slice.get("filtered").getNumber<int64_t>();
+  TRI_ASSERT(cursorsCreated == 0);
+  TRI_ASSERT(cursorsRearmed == 0);
+  TRI_ASSERT(cacheHits == 0);
+  TRI_ASSERT(cacheMisses == 0);
 
-  if (slice.hasKey("httpRequests")) {
-    requests = slice.get("httpRequests").getNumber<int64_t>();
-  }
+  writesExecuted = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "writesExecuted", 0);
+  writesIgnored = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "writesIgnored", 0);
+  scannedFull = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "scannedFull", 0);
+  scannedIndex = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "scannedIndex", 0);
+  filtered =
+      basics::VelocyPackHelper::getNumericValue<uint64_t>(slice, "filtered", 0);
+  requests = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "httpRequests", 0);
+  peakMemoryUsage = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "peakMemoryUsage", 0);
 
-  if (slice.hasKey("peakMemoryUsage")) {
-    peakMemoryUsage = std::max<size_t>(peakMemoryUsage, slice.get("peakMemoryUsage").getNumber<int64_t>());
-  }
+  // cursorsCreated and cursorsRearmed are optional attributes.
+  // the attributes are currently not shown in profile outputs,
+  // but are rather used for testing purposes.
+  cursorsCreated = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "cursorsCreated", 0);
+  cursorsRearmed = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "cursorsRearmed", 0);
+
+  // cacheHits and cacheMisses are also optional attributes.
+  cacheHits = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "cacheHits", 0);
+  cacheMisses = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "cacheMisses", 0);
 
   // note: fullCount is an optional attribute!
-  if (slice.hasKey("fullCount")) {
-    fullCount = slice.get("fullCount").getNumber<int64_t>();
+  if (VPackSlice s = slice.get("fullCount"); s.isNumber()) {
+    fullCount = s.getNumber<uint64_t>();
   } else {
     fullCount = count;
   }
 
   // note: node stats are optional
-  if (slice.hasKey("nodes")) {
+  if (VPackSlice s = slice.get("nodes"); s.isArray()) {
     ExecutionNodeStats node;
-    for (VPackSlice val : VPackArrayIterator(slice.get("nodes"))) {
-      auto nid = ExecutionNodeId{val.get("id").getNumber<ExecutionNodeId::BaseType>()};
-      node.calls = val.get("calls").getNumber<size_t>();
-      node.items = val.get("items").getNumber<size_t>();
+    for (VPackSlice val : VPackArrayIterator(s)) {
+      auto nid =
+          ExecutionNodeId{val.get("id").getNumber<ExecutionNodeId::BaseType>()};
+      node.calls = val.get("calls").getNumber<uint64_t>();
+      node.items = val.get("items").getNumber<uint64_t>();
+      if (VPackSlice s = val.get("filtered"); !s.isNone()) {
+        node.filtered = s.getNumber<uint64_t>();
+      }
       node.runtime = val.get("runtime").getNumber<double>();
       auto const& alias = _nodeAliases.find(nid);
       if (alias != _nodeAliases.end()) {
@@ -181,11 +222,15 @@ void ExecutionStats::setPeakMemoryUsage(size_t value) {
   peakMemoryUsage = value;
 }
 
-void ExecutionStats::clear() {
+void ExecutionStats::clear() noexcept {
   writesExecuted = 0;
   writesIgnored = 0;
   scannedFull = 0;
   scannedIndex = 0;
+  cursorsCreated = 0;
+  cursorsRearmed = 0;
+  cacheHits = 0;
+  cacheMisses = 0;
   filtered = 0;
   requests = 0;
   fullCount = 0;

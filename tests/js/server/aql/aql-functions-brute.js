@@ -128,6 +128,7 @@ function ahuacatlFunctionsBruteTestSuite () {
     "UNSET",
     "UNSET_RECURSIVE",
     "KEEP",
+    "KEEP_RECURSIVE",
     "TRANSLATE",
     "ZIP",
     "NEAR",

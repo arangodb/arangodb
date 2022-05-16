@@ -29,6 +29,7 @@
 
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -117,6 +118,6 @@ std::string encodeBase64U(std::string const&, bool pad);
 
 void toLowerInPlace(std::string& str);
 
-std::string extractPathParameters(std::string const& path, StringMap& params);
+std::string extractPathParameters(std::string_view path, StringMap& params);
 }}}  // namespace arangodb::fuerte::v1
 #endif

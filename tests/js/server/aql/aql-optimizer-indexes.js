@@ -60,12 +60,12 @@ function optimizerIndexesTestSuite () {
       }
       c.insert(docs);
       
-      idx = c.ensureSkiplist("value");
+      idx = c.ensureIndex({ type: "skiplist", fields: ["value"] });
     },
     
     setUp: function() {
       if (idx === null) {
-        idx = c.ensureSkiplist("value");
+        idx = c.ensureIndex({ type: "skiplist", fields: ["value"] });
       }
     },
 
@@ -967,7 +967,7 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultipleSubqueriesMultipleIndexes : function () {
-      idx1 = c.ensureHashIndex("value"); // now we have a hash and a skiplist index
+      idx1 = c.ensureIndex({ type: "hash", fields: ["value"] }); // now we have a hash and a skiplist index
       var query = "LET a = (FOR x IN " + c.name() + " FILTER x.value == 1 RETURN x._key) " +
                   "LET b = (FOR x IN " + c.name() + " FILTER x.value == 2 RETURN x._key) " +
                   "LET c = (FOR x IN " + c.name() + " FILTER x.value == 3 RETURN x._key) " +
@@ -1017,7 +1017,7 @@ function optimizerIndexesTestSuite () {
 
     testMultipleSubqueriesHashIndexes : function () {
       deleteDefaultIdx(); // drop skiplist index
-      idx1 = c.ensureHashIndex("value");
+      idx1 = c.ensureIndex({ type: "hash", fields: ["value"] });
       var query = "LET a = (FOR x IN " + c.name() + " FILTER x.value == 1 RETURN x._key) " +
                   "LET b = (FOR x IN " + c.name() + " FILTER x.value == 2 RETURN x._key) " +
                   "LET c = (FOR x IN " + c.name() + " FILTER x.value == 3 RETURN x._key) " +
@@ -1065,7 +1065,7 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testJoinMultipleIndexes : function () {
-      idx1 = c.ensureHashIndex("value"); // now we have a hash and a skiplist index
+      idx1 = c.ensureIndex({ type: "hash", fields: ["value"] }); // now we have a hash and a skiplist index
       var query = "FOR i IN " + c.name() + " FILTER i.value < 10 FOR j IN " + c.name() + " FILTER j.value == i.value RETURN j._key";
 
       var explain = AQL_EXPLAIN(query, {}, opt);
@@ -1104,7 +1104,7 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testJoinRangesMultipleIndexes : function () {
-      idx1 = c.ensureHashIndex("value"); // now we have a hash and a skiplist index
+      idx1 = c.ensureIndex({ type: "hash", fields: ["value"] }); // now we have a hash and a skiplist index
       var query = "FOR i IN " + c.name() + " FILTER i.value < 5 FOR j IN " + c.name() + " FILTER j.value < i.value RETURN j._key";
 
       var explain = AQL_EXPLAIN(query, {}, opt);
@@ -1143,7 +1143,7 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTripleJoin : function () {
-      idx1 = c.ensureHashIndex("value"); // now we have a hash and a skiplist index
+      idx1 = c.ensureIndex({ type: "hash", fields: ["value"] }); // now we have a hash and a skiplist index
       var query = "FOR i IN " + c.name() + " FILTER i.value == 4 FOR j IN " + c.name() + " FILTER j.value == i.value FOR k IN " + c.name() + " FILTER k.value < j.value RETURN k._key";
 
       var explain = AQL_EXPLAIN(query, {}, opt);
@@ -1186,7 +1186,7 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSubqueryMadness : function () {
-      idx1 = c.ensureHashIndex("value"); // now we have a hash and a skiplist index
+      idx1 = c.ensureIndex({ type: "hash", fields: ["value"] }); // now we have a hash and a skiplist index
       var query = "LET a = (FOR x IN " + c.name() + " FILTER x.value == 1 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " +
                   "LET b = (FOR x IN " + c.name() + " FILTER x.value == 2 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " +
                   "LET c = (FOR x IN " + c.name() + " FILTER x.value == 3 FOR y IN " + c.name() + " FILTER y.value == x.value RETURN x._key) " +
@@ -1254,7 +1254,7 @@ function optimizerIndexesTestSuite () {
     },
 
     testIndexOrHashNoDocuments : function () {
-      idx1 = c.ensureHashIndex("value");
+      idx1 = c.ensureIndex({ type: "hash", fields: ["value"] });
       var query = "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value == 9 RETURN 1";
 
       var plan = AQL_EXPLAIN(query, {}, opt).plan;
@@ -1319,7 +1319,7 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrHash : function () {
-      idx1 = c.ensureHashIndex("value");
+      idx1 = c.ensureIndex({ type: "hash", fields: ["value"] });
       var query = "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value == 9 RETURN i.value";
 
       var plan = AQL_EXPLAIN(query, {}, opt).plan;
@@ -1345,7 +1345,7 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrUniqueHash : function () {
-      idx1 = c.ensureUniqueConstraint("value");
+      idx1 = c.ensureIndex({ type: "hash", fields: ["value"], unique: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value == 9 RETURN i.value";
 
       var plan = AQL_EXPLAIN(query, {}, opt).plan;
@@ -1420,7 +1420,7 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrUniqueSkiplist : function () {
-      idx1 = c.ensureUniqueSkiplist("value");
+      idx1 = c.ensureIndex({ type: "skiplist", fields: ["value"], unique: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value == 9 RETURN i.value";
 
       var plan = AQL_EXPLAIN(query, {}, opt).plan;
@@ -1846,12 +1846,12 @@ function optimizerIndexesModifyTestSuite () {
       c = db._create("UnitTestsCollection");
 
       let docs = [];
-      for (var i = 0; i < 2000; ++i) {
+      for (let i = 0; i < 2000; ++i) {
         docs.push({ _key: "test" + i, value: i });
       }
       c.insert(docs);
       
-      idx = c.ensureSkiplist("value");
+      idx = c.ensureIndex({ type: "skiplist", fields: ["value"] });
     },
     
     tearDown: function() {
@@ -2161,7 +2161,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrNoIndex : function () {
-      c.ensureSkiplist("value2");
+      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value2 == 1 RETURN i.value2";
@@ -2184,7 +2184,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrNoIndexComplexConditionEq : function () {
-      c.ensureSkiplist("value2");
+      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: [ i.value ] } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == -1 || [ i.value ] == i.value2 RETURN i.value2";
@@ -2207,7 +2207,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrNoIndexComplexConditionIn : function () {
-      c.ensureSkiplist("value2");
+      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: [ i.value ] } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == -1 || i.value IN i.value2 RETURN i.value2";
@@ -2230,7 +2230,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrNoIndexComplexConditionLt1 : function () {
-      c.ensureSkiplist("value2");
+      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value - 1 } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == -1 || i.value2 < i.value RETURN i.value2";
@@ -2253,7 +2253,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrNoIndexComplexConditionLt2 : function () {
-      c.ensureSkiplist("value2");
+      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value - 1 } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == -1 || i.value2 < NOOPT(i.value) RETURN i.value2";
@@ -2276,7 +2276,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrNoIndexComplexConditionGt : function () {
-      c.ensureSkiplist("value2");
+      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value + 1 } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == -1 || i.value2 > i.value RETURN i.value2";
@@ -2299,7 +2299,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrHashMultipleRanges : function () {
-      c.ensureHashIndex("value2", "value3");
+      c.ensureIndex({ type: "hash", fields: ["value2", "value3"] });
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER (i.value2 == 2 && i.value3 == 2) || (i.value2 == 3 && i.value3 == 3) RETURN i.value2";
@@ -2327,7 +2327,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrSkiplistMultipleRanges : function () {
-      c.ensureSkiplist("value2", "value3");
+      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"] });
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER (i.value2 == 2 && i.value3 == 2) || (i.value2 == 3 && i.value3 == 3) RETURN i.value2";
@@ -2355,7 +2355,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrHashMultipleRangesPartialNoIndex1 : function () {
-      c.ensureHashIndex("value2", "value3");
+      c.ensureIndex({ type: "hash", fields: ["value2", "value3"] });
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER (i.value2 == 1 && i.value3 == 1) || (i.value2 == 2) RETURN i.value2";
@@ -2376,7 +2376,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrHashMultipleRangesPartialNoIndex2 : function () {
-      c.ensureHashIndex("value2", "value3");
+      c.ensureIndex({ type: "hash", fields: ["value2", "value3"] });
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER (i.value2 == 1 && i.value3 == 1) || (i.value3 == 2) RETURN i.value2";
@@ -2398,7 +2398,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrSkiplistMultipleRangesPartialIndex : function () {
-      c.ensureSkiplist("value2", "value3");
+      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"] });
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER (i.value2 == 1 && i.value3 == 1) || (i.value2 == 2) RETURN i.value2";
@@ -2425,7 +2425,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexOrSkiplistMultipleRangesPartialNoIndex : function () {
-      c.ensureSkiplist("value2", "value3");
+      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"] });
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER (i.value2 == 1 && i.value3 == 1) || (i.value3 == 2) RETURN i.value2";
@@ -2447,7 +2447,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexAndUseIndex : function () {
-      c.ensureSkiplist("value2");
+      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == 1 && i.value2 == 1 RETURN i.value2";
@@ -2578,7 +2578,7 @@ function optimizerIndexesModifyTestSuite () {
     testIndexAndHashIndexedNonIndexed : function () {
       // drop the skiplist index
       c.dropIndex(c.getIndexes()[1]);
-      c.ensureHashIndex("value");
+      c.ensureIndex({ type: "hash", fields: ["value"] });
       // value2 is not indexed
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
@@ -2614,7 +2614,7 @@ function optimizerIndexesModifyTestSuite () {
 
     testIndexAndAlternativeHashAndSkiplistIndexedNonIndexed : function () {
       // create a competitor index
-      c.ensureHashIndex("value");
+      c.ensureIndex({ type: "hash", fields: ["value"] });
 
       // value2 is not indexed
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
@@ -2654,7 +2654,7 @@ function optimizerIndexesModifyTestSuite () {
       c.dropIndex(c.getIndexes()[1]);
 
       // create an alternative index
-      c.ensureSkiplist("value", "value3");
+      c.ensureIndex({ type: "skiplist", fields: ["value", "value3"] });
 
       // value2 is not indexed
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
@@ -2691,7 +2691,7 @@ function optimizerIndexesModifyTestSuite () {
 
     testIndexAndAlternativeSkiplistPartialIndexedNonIndexed : function () {
       // create a competitor index
-      c.ensureSkiplist("value", "value3");
+      c.ensureIndex({ type: "skiplist", fields: ["value", "value3"] });
 
       // value2 is not indexed
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
@@ -2727,7 +2727,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexNotNoIndex : function () {
-      c.ensureSkiplist("value2");
+      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
       var queries = [
@@ -2755,7 +2755,7 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexNotUseIndex : function () {
-      c.ensureSkiplist("value2");
+      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
       var queries = [
@@ -2789,8 +2789,8 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexUsageIn : function () {
-      c.ensureHashIndex("value2");
-      c.ensureSkiplist("value3");
+      c.ensureIndex({ type: "hash", fields: ["value2"] });
+      c.ensureIndex({ type: "skiplist", fields: ["value3"] });
 
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
@@ -2866,8 +2866,8 @@ function optimizerIndexesModifyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexUsageInNoIndex : function () {
-      c.ensureHashIndex("value2");
-      c.ensureSkiplist("value3");
+      c.ensureIndex({ type: "hash", fields: ["value2"] });
+      c.ensureIndex({ type: "skiplist", fields: ["value3"] });
 
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
@@ -2900,7 +2900,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseHash : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
-      c.ensureHashIndex("value2", { sparse: true });
+      c.ensureIndex({ type: "hash", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value";
 
       var plan = AQL_EXPLAIN(query, {}, opt).plan;
@@ -2929,7 +2929,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseUniqueHash : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
-      c.ensureUniqueConstraint("value2", { sparse: true });
+      c.ensureIndex({ type: "hash", fields: ["value2"], unique: true, sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value";
 
       var plan = AQL_EXPLAIN(query, {}, opt).plan;
@@ -2958,7 +2958,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseHashCollisions : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
 
-      c.ensureHashIndex("value2", { sparse: true });
+      c.ensureIndex({ type: "hash", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value";
 
       var plan = AQL_EXPLAIN(query, {}, opt).plan;
@@ -2987,7 +2987,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseHashCollisionsOr : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
 
-      c.ensureHashIndex("value2", { sparse: true });
+      c.ensureIndex({ type: "hash", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 || i.value2 == 9 RETURN i.value";
 
       var plan = AQL_EXPLAIN(query, {}, opt).plan;
@@ -3016,7 +3016,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseHashDynamic : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
 
-      c.ensureHashIndex("value2", { sparse: true });
+      c.ensureIndex({ type: "hash", fields: ["value2"], sparse: true });
       var queries = [
         "LET a = NOOPT(null) FOR i IN " + c.name() + " FILTER i.value2 == a RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value2 == NOOPT(null) RETURN i.value",
@@ -3046,7 +3046,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseHashNull : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
 
-      c.ensureHashIndex("value2", { sparse: true });
+      c.ensureIndex({ type: "hash", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == null RETURN i.value";
 
       var plan = AQL_EXPLAIN(query, {}, opt).plan;
@@ -3070,8 +3070,8 @@ function optimizerIndexesModifyTestSuite () {
     testSparseHashesNull : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
 
-      c.ensureHashIndex("value2", { sparse: true });
-      c.ensureHashIndex("value2", { sparse: false });
+      c.ensureIndex({ type: "hash", fields: ["value2"], sparse: true });
+      c.ensureIndex({ type: "hash", fields: ["value2"], sparse: false });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == null RETURN i.value";
 
       var plan = AQL_EXPLAIN(query, {}, opt).plan;
@@ -3100,7 +3100,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseHashMulti : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureHashIndex("value2", "value3", { sparse: true });
+      c.ensureIndex({ type: "hash", fields: ["value2", "value3"], sparse: true });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 RETURN i.value",
@@ -3135,7 +3135,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseHashMultiMissing : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureHashIndex("value2", "value3", { sparse: true });
+      c.ensureIndex({ type: "hash", fields: ["value2", "value3"], sparse: true });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value",
@@ -3164,7 +3164,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseHashMultiNull : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureHashIndex("value2", "value3", { sparse: true });
+      c.ensureIndex({ type: "hash", fields: ["value2", "value3"], sparse: true });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 == null && i.value3 == null RETURN i.value",
@@ -3194,8 +3194,8 @@ function optimizerIndexesModifyTestSuite () {
     testSparseHashesMultiNull : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureHashIndex("value2", "value3", { sparse: true });
-      c.ensureHashIndex("value2", "value3", { sparse: false });
+      c.ensureIndex({ type: "hash", fields: ["value2", "value3"], sparse: true });
+      c.ensureIndex({ type: "hash", fields: ["value2", "value3"], sparse: false });
 
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == null && i.value3 == null RETURN i.value";
 
@@ -3225,7 +3225,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplist : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
-      c.ensureSkiplist("value2", { sparse: true });
+      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value";
 
       var plan = AQL_EXPLAIN(query, {}, opt).plan;
@@ -3254,7 +3254,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseUniqueSkiplist : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
-      c.ensureUniqueSkiplist("value2", { sparse: true });
+      c.ensureIndex({ type: "skiplist", fields: ["value2"], unique: true, sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value";
 
       var plan = AQL_EXPLAIN(query, {}, opt).plan;
@@ -3283,7 +3283,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistCollisions : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
 
-      c.ensureSkiplist("value2", { sparse: true });
+      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value";
 
       var plan = AQL_EXPLAIN(query, {}, opt).plan;
@@ -3312,7 +3312,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistCollisionsOr : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
 
-      c.ensureSkiplist("value2", { sparse: true });
+      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 || i.value2 == 9 RETURN i.value";
 
       var plan = AQL_EXPLAIN(query, {}, opt).plan;
@@ -3341,7 +3341,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistDynamic : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
 
-      c.ensureSkiplist("value2", { sparse: true });
+      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true });
       var queries = [
         "LET a = NOOPT(null) FOR i IN " + c.name() + " FILTER i.value2 == a RETURN i.value",
         "FOR i IN " + c.name() + " FILTER i.value2 == NOOPT(null) RETURN i.value",
@@ -3371,7 +3371,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistNull : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
 
-      c.ensureSkiplist("value2", { sparse: true });
+      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == null RETURN i.value";
 
       var plan = AQL_EXPLAIN(query, {}, opt).plan;
@@ -3395,8 +3395,8 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistsNull : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
 
-      c.ensureSkiplist("value2", { sparse: true });
-      c.ensureSkiplist("value2", { sparse: false });
+      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true });
+      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: false });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == null RETURN i.value";
 
       var plan = AQL_EXPLAIN(query, {}, opt).plan;
@@ -3425,7 +3425,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistMulti : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureSkiplist("value2", "value3", { sparse: true });
+      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"], sparse: true });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 RETURN i.value",
@@ -3460,7 +3460,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistMultiMissing : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureSkiplist("value2", "value3", { sparse: true });
+      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"], sparse: true });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value",
@@ -3489,7 +3489,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistMultiNull : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureSkiplist("value2", "value3", { sparse: true });
+      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"], sparse: true });
 
       var queries = [
         "FOR i IN " + c.name() + " FILTER i.value2 == null && i.value3 == null RETURN i.value",
@@ -3519,8 +3519,8 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistsMultiNull : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
-      c.ensureSkiplist("value2", "value3", { sparse: true });
-      c.ensureSkiplist("value2", "value3", { sparse: false });
+      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"], sparse: true });
+      c.ensureIndex({ type: "skiplist", fields: ["value2", "value3"], sparse: false });
 
       var query = "FOR i IN " + c.name() + " FILTER i.value2 == null && i.value3 == null RETURN i.value";
 
@@ -3550,7 +3550,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistRangeNoIndex : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
-      c.ensureSkiplist("value2", { sparse: true });
+      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 < 10 SORT i.value2 RETURN i.value2";
 
       var plan = AQL_EXPLAIN(query, {}, opt).plan;
@@ -3573,7 +3573,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistRangeWithNullNoIndex : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
-      c.ensureSkiplist("value2", { sparse: true });
+      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 < 10 && i.value2 >= null SORT i.value2 RETURN i.value2";
 
       var plan = AQL_EXPLAIN(query, {}, opt).plan;
@@ -3596,7 +3596,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistRangeWithIndex : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
-      c.ensureSkiplist("value2", { sparse: true });
+      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 < 10 && i.value2 > null SORT i.value2 RETURN i.value2";
 
       var plan = AQL_EXPLAIN(query, {}, opt).plan;
@@ -3620,7 +3620,7 @@ function optimizerIndexesModifyTestSuite () {
     testSparseSkiplistRangeWithIndexValue : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
 
-      c.ensureSkiplist("value2", { sparse: true });
+      c.ensureIndex({ type: "skiplist", fields: ["value2"], sparse: true });
       var query = "FOR i IN " + c.name() + " FILTER i.value2 < 10 && i.value2 >= 2 SORT i.value2 RETURN i.value2";
 
       var plan = AQL_EXPLAIN(query, {}, opt).plan;

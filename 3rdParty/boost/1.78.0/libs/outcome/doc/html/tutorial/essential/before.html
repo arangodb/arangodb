@@ -1,0 +1,92 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Before we begin - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../tutorial/essential.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../tutorial/essential.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../tutorial/essential/result.html"><img src="../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both">Before we begin</h1></div></div></div>
+  
+
+<h2 id="outcome-v2-namespace">Outcome v2 namespace</h2>
+
+<p>It is recommended that you refer to entities from this Outcome v2 via the following namespace alias:</p>
+
+<div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="k">namespace</span> <span class="n">outcome</span> <span class="o">=</span> <span class="n">BOOST_OUTCOME_V2_NAMESPACE</span><span class="p">;</span>
+</code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/using_result.cpp#L38" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<p>On standalone Outcome only, as patches and modifications are applied to this library,
+namespaces get permuted in order to not to cause binary incompatibility. At some point
+namespace <code>outcome_v2</code> will be defined, and this will be the preferred namespace.
+Until then <code>BOOST_OUTCOME_V2_NAMESPACE</code> denotes the most recently
+updated version, getting closer to <code>outcome_v2</code>.</p>
+
+<p>On Boost.Outcome only, as Boost provides no binary compatibility across releases,
+<code>BOOST_OUTCOME_V2_NAMESPACE</code> always expands into <code>boost::outcome_v2</code>.</p>
+
+<h2 id="online-compilers">Online compilers</h2>
+
+<p>If you&rsquo;ve never used them before, you will find
+<a href="https://godbolt.org/">Godbolt</a> and <a href="https://wandbox.org/">Wandbox</a> invaluable.
+These let you play with C++ inside your web browser.</p>
+
+<p>Most of the source code snippets in Outcome have a link in their top right to
+the original source code on github. You can copy and paste this source code into
+Godbolt (if you wish to study the assembler generated) or Wandbox (if you
+wish to run the program).</p>
+
+<h3 id="godbolt">Godbolt</h3>
+
+<p>Godbolt is invaluable for visualising online the assembler generated for a
+piece of C++, for all the major compilers and CPU architectures.</p>
+
+<p>Standalone Outcome is built into Godbolt! In the right hand pane toolbar, click the
+libraries dropdown (currently third from the right, looks like a book), find
+Outcome and choose the version you want.</p>
+
+<p>After this is selected, you can <code>#include</code> any of these editions of Outcome:</p>
+
+<dl>
+  <dt><code>&lt;outcome-basic.hpp&gt;</code></dt>
+  <dd>An inclusion of <code>basic_outcome.hpp</code> + <code>try.hpp</code> which includes as few
+  system headers as possible in order to give an absolute minimum compile time
+  impact edition of Outcome. See <a href="https://github.com/ned14/stl-header-heft">https://github.com/ned14/stl-header-heft</a>.
+  </dd>
+  <dt><code>&lt;outcome-experimental.hpp&gt;</code></dt>
+  <dd>An inclusion of <code>experimental/status_outcome.hpp</code> + <code>try.hpp</code> which
+  is the low compile time impact of the basic edition combined with
+  <code>status_code</code> from <a href="https://ned14.github.io/status-code/">https://ned14.github.io/status-code/</a>. If you are on an
+  embedded system where binary bloat must be absolutely avoided, and don't
+  mind the potentially unstable <code>status_code</code>, this is definitely the edition
+  for you.
+  </dd>
+  <dt><code>&lt;outcome.hpp&gt;</code></dt>
+  <dd>An inclusion of <code>outcome.hpp</code> which brings in all the specialisations
+  for the <code>std</code> STL types, plus iostreams support. If you don't know which
+  edition to use, you should use this one, it ought to "just work".</dd>
+</dl>
+
+<p>Here is the first tutorial topic&rsquo;s source code loaded into Godbolt: <a href="https://godbolt.org/z/4of3c8">https://godbolt.org/z/4of3c8</a></p>
+
+<h3 id="wandbox">Wandbox</h3>
+
+<p>Wandbox lets you place a third party header into a separate tab. It also
+comes with a recent Boost libraries. Either technique can be used to
+explore Outcome.</p>
+
+<p>Here is the first tutorial topic&rsquo;s source code loaded into Wandbox: <a href="https://wandbox.org/permlink/sJoeKHXSyCU5Avft">https://wandbox.org/permlink/sJoeKHXSyCU5Avft</a></p>
+
+
+        </div><p><small>Last revised: December 15, 2020 at 12:22:39 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../tutorial/essential.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../tutorial/essential.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../tutorial/essential/result.html"><img src="../../images/next.png" alt="Next"></a></div></body>
+</html>

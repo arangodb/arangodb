@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,7 +42,8 @@ using namespace arangodb::basics;
 /// @brief creates a shell
 ////////////////////////////////////////////////////////////////////////////////
 
-ShellBase* ShellBase::buildShell(std::string const& history, Completer* completer) {
+ShellBase* ShellBase::buildShell(std::string const& history,
+                                 Completer* completer) {
   return new LinenoiseShell(history, completer);
 }
 
@@ -59,10 +60,13 @@ void ShellBase::sortAlternatives(std::vector<std::string>& completions) {
 }
 
 ShellBase::ShellBase(std::string const& history, Completer* completer)
-    : _current(), _historyFilename(), _state(STATE_NONE), _completer(completer) {
+    : _current(),
+      _historyFilename(),
+      _state(STATE_NONE),
+      _completer(completer) {
   // construct the complete history path
   if (!history.empty()) {
-    // note: if history is empty, we will not write any history and not 
+    // note: if history is empty, we will not write any history and not
     // construct the full filename
     std::string path(TRI_HomeDirectory());
 

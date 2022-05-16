@@ -1,5 +1,5 @@
 import { Reducer } from 'redux';
-import { ClusterState, ClusterActions, HealthInfo, ShardDistributionResponse } from './types';
+import { ClusterActions, ClusterState, HealthInfo, ShardDistributionResponse } from './types';
 
 export const initialState: ClusterState = {
   shortToServer: new Map<string, string>(),
@@ -17,34 +17,53 @@ const createMapsShortVsServer = (health: HealthInfo) => {
       shortToServer.set(value.ShortName, key);
     }
   }
-  return { serverToShort, shortToServer };
+  return {
+    serverToShort,
+    shortToServer
+  };
 };
 
 const mergeShardDistribution = (state: ClusterState, newDistribution : ShardDistributionResponse) : ShardDistributionResponse => {
   const { selected, shardDistribution} = state;
   if (Object.keys(newDistribution).length === 1) {
     if (newDistribution.hasOwnProperty(selected)) {
-      return { ...shardDistribution, ...newDistribution };
+      return {
+        ...shardDistribution,
+        ...newDistribution
+      };
     }
     // This was an old select, we can ignore
     return shardDistribution;
   }
   // This is a full distribution, just return it
   return newDistribution;
-}
+};
 
 const reducer : Reducer<ClusterState> = (state : ClusterState = initialState, action : ClusterActions) => {
   switch (action.type) {
     case '@@cluster/checkHealthSuccess':
       const { serverToShort, shortToServer } = createMapsShortVsServer(action.payload);
-      return { ...state, serverToShort, shortToServer };
+      return {
+        ...state,
+        serverToShort,
+        shortToServer
+      };
     case '@@cluster/fetchShardDetails':
-      return {...state, selected: action.payload};
+      return {
+        ...state,
+        selected: action.payload
+      };
     case '@@cluster/fetchShardDetailsSuccess':
       const shardDistribution = mergeShardDistribution(state, action.payload);
-      return {...state, shardDistribution};
+      return {
+        ...state,
+        shardDistribution
+      };
     case '@@cluster/unselectShardDetails':
-      return {...state, selected: ""};
+      return {
+        ...state,
+        selected: ""
+      };
     default:
       return state;
   }

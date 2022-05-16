@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +36,7 @@ class Methods;
 
 namespace aql {
 
-template <BlockPassthrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 class RegisterInfos;
 class NoStats;
@@ -48,7 +48,8 @@ class NoResultsExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -62,20 +63,22 @@ class NoResultsExecutor {
    *
    * @return DONE, NoStats, HardLimit = 0 Call
    */
-  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output) const
-      noexcept -> std::tuple<ExecutorState, Stats, AqlCall>;
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input,
+                                 OutputAqlItemRow& output) const noexcept
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
 
   /**
    * @brief DO NOT SKIP ROWS
    *
    ** @return DONE, NoStats, 0, HardLimit = 0 Call
    */
-  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call) const
-      noexcept -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                   AqlCall& call) const noexcept
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
-  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                             AqlCall const& call) const noexcept -> size_t;
+  [[nodiscard]] auto expectedNumberOfRowsNew(
+      AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+      -> size_t;
 };
 }  // namespace aql
 }  // namespace arangodb
-

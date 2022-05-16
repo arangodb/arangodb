@@ -99,9 +99,7 @@ function getQueryExplanation (query, bindVars) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getModifyQueryResults (query, bindVars, options = {}) {
-  var queryResult = AQL_EXECUTE(query, bindVars, options);
-
-  return queryResult.stats;
+  return  AQL_EXECUTE(query, bindVars, options).stats;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -109,9 +107,7 @@ function getModifyQueryResults (query, bindVars, options = {}) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getModifyQueryResultsRaw (query, bindVars, options = {}) {
-  var queryResult = AQL_EXECUTE(query, bindVars, options);
-
-  return queryResult;
+  return AQL_EXECUTE(query, bindVars, options);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -337,6 +333,10 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
     // ignore these statistics for comparisons
     delete results[i].stats.scannedFull;
     delete results[i].stats.scannedIndex;
+    delete results[i].stats.cursorsCreated;
+    delete results[i].stats.cursorsRearmed;
+    delete results[i].stats.cacheHits;
+    delete results[i].stats.cacheMisses;
     delete results[i].stats.filtered;
     delete results[i].stats.executionTime;
     delete results[i].stats.httpRequests;

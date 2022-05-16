@@ -239,6 +239,17 @@ function WindowTestSuite() {
         assertEqual(nodes[11].type, "FilterNode");
       }
     },
+    
+    testCountWithoutArgument: function() {
+      // regression test because we previously had a nullptr access since we did not
+      // correctly handle aggregate functions without any arguments
+      const result = db._query(`
+        FOR d IN [{}, {}, {}, {}]
+          WINDOW { preceding: 1, following: 0 } AGGREGATE cnt = COUNT()
+          RETURN cnt`).toArray();
+
+      assertEqual([1, 2, 2, 2], result);
+    }
   };
 }
 

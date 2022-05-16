@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,14 +23,11 @@
 
 #pragma once
 
-#include <rocksdb/options.h>
-
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
+
+#include <rocksdb/options.h>
 
 namespace rocksdb {
 class Iterator;
@@ -39,82 +36,28 @@ class TransactionDB;
 }  // namespace rocksdb
 
 namespace arangodb {
-class RocksDBCollection;
-class RocksDBPrimaryIndex;
-
-/// @brief iterator over all documents in the collection
-/// basically sorted after LocalDocumentId
-class RocksDBAllIndexIterator final : public IndexIterator {
- public:
-  RocksDBAllIndexIterator(LogicalCollection* collection, transaction::Methods* trx);
-  ~RocksDBAllIndexIterator() = default;
-
-  char const* typeName() const override { return "all-index-iterator"; }
-
-  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override;
-  bool nextDocumentImpl(DocumentCallback const& cb, size_t limit) override;
-  void skipImpl(uint64_t count, uint64_t& skipped) override;
-  void resetImpl() override;
-
- private:
-  bool outOfRange() const;
-  void seekIfRequired();
-
- private:
-  RocksDBKeyBounds const _bounds;
-  rocksdb::Slice _upperBound;  // used for iterate_upper_bound
-  std::unique_ptr<rocksdb::Iterator> _iterator;
-  rocksdb::Comparator const* _cmp;
-  // we use _mustSeek to save repeated seeks for the same start key
-  bool _mustSeek;
-};
-
-class RocksDBAnyIndexIterator final : public IndexIterator {
- public:
-  RocksDBAnyIndexIterator(LogicalCollection* collection, transaction::Methods* trx);
-  ~RocksDBAnyIndexIterator() = default;
-
-  char const* typeName() const override { return "any-index-iterator"; }
-
-  bool nextImpl(LocalDocumentIdCallback const& cb, size_t limit) override;
-  bool nextDocumentImpl(DocumentCallback const& cb, size_t limit) override;
-  // cppcheck-suppress virtualCallInConstructor ; desired impl
-  void resetImpl() override;
-
- private:
-  bool outOfRange() const;
-  bool checkIter();
-
-  rocksdb::Comparator const* _cmp;
-  std::unique_ptr<rocksdb::Iterator> _iterator;
-  uint64_t const _objectId;
-  RocksDBKeyBounds const _bounds;
-
-  uint64_t _total;
-  uint64_t _returned;
-  bool _forward;
-};
-  
-  
 /// @brief return false to stop iteration
-typedef std::function<bool(rocksdb::Slice const& key, rocksdb::Slice const& value)> GenericCallback;
+typedef std::function<bool(rocksdb::Slice const& key,
+                           rocksdb::Slice const& value)>
+    GenericCallback;
 
+/// @brief a forward-only iterator over the primary index, only reading from the
+/// database, not taking into account changes done in the current transaction
 class RocksDBGenericIterator {
  public:
-  RocksDBGenericIterator(rocksdb::TransactionDB* db, rocksdb::ReadOptions& options,
+  RocksDBGenericIterator(rocksdb::TransactionDB* db,
+                         rocksdb::ReadOptions& options,
                          RocksDBKeyBounds const& bounds);
   RocksDBGenericIterator(RocksDBGenericIterator&&) = default;
 
   ~RocksDBGenericIterator() = default;
 
-  //* The following functions returns true if the iterator is valid within bounds on return.
+  //* The following functions returns true if the iterator is valid within
+  // bounds on return.
   //  @param limit - number of documents the callback should be applied to
   bool next(GenericCallback const& cb, size_t limit);
 
-  // documents to skip, skipped documents
-  bool skip(uint64_t count, uint64_t& skipped);
   bool seek(rocksdb::Slice const& key);
-  bool reset();
   bool hasMore() const;
 
   // return bounds
@@ -123,7 +66,6 @@ class RocksDBGenericIterator {
  private:
   bool outOfRange() const;
 
- private:
   RocksDBKeyBounds const _bounds;
   rocksdb::ReadOptions const _options;
   std::unique_ptr<rocksdb::Iterator> _iterator;
@@ -132,4 +74,14 @@ class RocksDBGenericIterator {
 
 RocksDBGenericIterator createPrimaryIndexIterator(transaction::Methods* trx,
                                                   LogicalCollection* col);
+
+namespace rocksdb_iterators {
+std::unique_ptr<IndexIterator> createAllIterator(LogicalCollection* collection,
+                                                 transaction::Methods* trx,
+                                                 ReadOwnWrites readOwnWrites);
+
+std::unique_ptr<IndexIterator> createAnyIterator(LogicalCollection* collection,
+                                                 transaction::Methods* trx);
+}  // namespace rocksdb_iterators
+
 }  // namespace arangodb

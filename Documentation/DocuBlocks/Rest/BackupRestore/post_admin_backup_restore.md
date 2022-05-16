@@ -29,7 +29,7 @@ are detailed in the returned error document.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestBackupRestoreBackup_rocksdb}
+@EXAMPLE_ARANGOSH_RUN{RestBackupRestoreBackup}
     var backup = require("@arangodb/hotbackup").create();
     var url = "/_admin/backup/restore";
     var body = {

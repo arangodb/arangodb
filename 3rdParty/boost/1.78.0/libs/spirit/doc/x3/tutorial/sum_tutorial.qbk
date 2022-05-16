@@ -1,0 +1,75 @@
+[/==============================================================================
+    Copyright (C) 2001-2015 Joel de Guzman
+    Copyright (C) 2001-2011 Hartmut Kaiser
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+===============================================================================/]
+
+[section Sum - adding numbers]
+
+Here's a parser that sums a comma-separated list of numbers.
+
+Ok we've glossed over some details in our previous examples. First, our
+includes:
+
+    #include <boost/spirit/home/x3.hpp>
+    #include <iostream>
+    #include <string>
+
+Then some using directives:
+
+    namespace x3 = boost::spirit::x3;
+    namespace ascii = boost::spirit::x3::ascii;
+
+    using x3::double_;
+    using ascii::space;
+    using x3::_attr;
+
+Now the actual parser:
+
+    template <typename Iterator>
+    bool adder(Iterator first, Iterator last, double& n)
+    {
+        auto assign = [&](auto& ctx){ n = _attr(ctx); };
+        auto add = [&](auto& ctx){ n += _attr(ctx); };
+
+        bool r = x3::phrase_parse(first, last,
+
+            //  Begin grammar
+            (
+                double_[assign] >> *(',' >> double_[add])
+            )
+            ,
+            //  End grammar
+
+            space);
+
+        if (first != last) // fail if we did not get a full match
+            return false;
+        return r;
+    }
+
+The full cpp file for this example can be found here:
+[@../../../example/x3/sum.cpp sum.cpp]
+
+This is almost like our original numbers list example. We're incrementally
+building on top of our examples. This time though, like in the complex number
+example, we'll be adding the smarts. There's an accumulator (`double& n`) that
+adds the numbers parsed. On a successful parse, this number is the sum of all
+the parsed numbers.
+
+The first `double_` parser attaches this action:
+
+    [&](auto& ctx){ n = _attr(ctx); }
+
+This assigns the parsed result (actually, the attribute of `double_`) to `n`.
+The second `double_` parser attaches this action:
+
+    [&](auto& ctx){ n += _attr(ctx); }
+
+So, subsequent numbers add into `n`.
+
+That wasn't too bad, was it :-) ?
+
+[endsect]

@@ -24,8 +24,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_EMPTY_TEST_EXECUTOR_H
-#define ARANGOD_AQL_EMPTY_TEST_EXECUTOR_H
+#pragma once
 
 #include "Aql/EmptyExecutorInfos.h"
 #include "Aql/ExecutionState.h"
@@ -40,14 +39,15 @@ namespace arangodb {
 namespace aql {
 
 class InputAqlItemRow;
-template <BlockPassthrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 
 class TestEmptyExecutorHelper {
  public:
   struct Properties {
     static const bool preservesOrder = true;
-    static const BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static const BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -70,5 +70,3 @@ class TestEmptyExecutorHelper {
 
 }  // namespace aql
 }  // namespace arangodb
-
-#endif

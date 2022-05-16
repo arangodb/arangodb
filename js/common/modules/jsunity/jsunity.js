@@ -229,7 +229,7 @@ var jsUnity = exports.jsUnity = (function () {
     },
 
     fail: function (message) {
-      throw message || "fail";
+      throw new Error(message || "fail(): invoked without message");
     }
   };
 
@@ -245,7 +245,7 @@ var jsUnity = exports.jsUnity = (function () {
       .exec(fn);
 
     return {
-      name: tokens[1].length ? tokens[1] : undefined,
+      name: tokens[1].length ? tokens[1] : fn.name,
       body: tokens[2]
     };
   }

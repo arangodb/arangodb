@@ -1,0 +1,511 @@
+<?xml version="1.0" standalone="yes"?>
+<library-reference id="headers"><title>Headers</title><header name="boost/stl_interfaces/config.hpp">
+<macro name="BOOST_STL_INTERFACES_USE_CONCEPTS"/>
+<macro name="BOOST_STL_INTERFACES_NAMESPACE_V1"/>
+<macro name="BOOST_STL_INTERFACES_NAMESPACE_V2"/>
+</header>
+<header name="boost/stl_interfaces/fwd.hpp">
+<namespace name="boost">
+<namespace name="stl_interfaces">
+<enum name="element_layout"><enumvalue name="discontiguous"><default>= false</default></enumvalue><enumvalue name="contiguous"><default>= true</default></enumvalue><description><para>An enumeration used to indicate whether the underlying data have a contiguous or discontiguous layout when instantiating <computeroutput><classname alt="boost::stl_interfaces::view_interface">view_interface</classname></computeroutput> and <computeroutput><classname alt="boost::stl_interfaces::sequence_container_interface">sequence_container_interface</classname></computeroutput>. </para></description></enum>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/stl_interfaces/iterator_interface.hpp">
+<namespace name="boost">
+<namespace name="stl_interfaces">
+<struct name="access"><description><para>A type for granting access to the private members of an iterator derived from <computeroutput><classname alt="boost::stl_interfaces::iterator_interface">iterator_interface</classname></computeroutput>. </para></description></struct><struct name="iterator_interface"><template>
+      <template-type-parameter name="Derived"/>
+      <template-type-parameter name="IteratorConcept"/>
+      <template-type-parameter name="ValueType"/>
+      <template-type-parameter name="Reference"/>
+      <template-type-parameter name="Pointer"/>
+      <template-type-parameter name="DifferenceType"/>
+    </template><typedef name="iterator_concept"><type>IteratorConcept</type></typedef>
+<typedef name="iterator_category"><type><emphasis>unspecified</emphasis></type></typedef>
+<typedef name="value_type"><type>std::remove_const_t&lt; ValueType &gt;</type></typedef>
+<typedef name="reference"><type>Reference</type></typedef>
+<typedef name="pointer"><type><emphasis>unspecified</emphasis></type></typedef>
+<typedef name="difference_type"><type>DifferenceType</type></typedef>
+<method-group name="public member functions">
+<method name="operator *" cv="const noexcept(noexcept(*access::base(std::declval&lt; D const &amp; &gt;()))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="operator-&gt;" cv="const noexcept(noexcept(detail::make_pointer&lt; pointer &gt;(*std::declval&lt; D const &amp; &gt;()))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="operator[]" cv="const noexcept(noexcept(D(std::declval&lt; D const &amp; &gt;()), std::declval&lt; D &amp; &gt;()+=i, *std::declval&lt; D &amp; &gt;())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="i"><paramtype>difference_type</paramtype></parameter></method>
+<method name="operator++" cv="noexcept(noexcept(++access::base(std::declval&lt; D &amp; &gt;()))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+          <template-type-parameter name="Enable"><default>std::enable_if_t&lt;!<classname alt="boost::stl_interfaces::v1_dtl::plus_eq">v1_dtl::plus_eq</classname>&lt;D, difference_type&gt;::value&gt;</default></template-type-parameter>
+        </template></method>
+<method name="operator++" cv="noexcept(noexcept(std::declval&lt; D &amp; &gt;()+=difference_type(1))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="operator++" cv="noexcept(noexcept(D(std::declval&lt; D &amp; &gt;()),++std::declval&lt; D &amp; &gt;())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name=""><paramtype>int</paramtype></parameter></method>
+<method name="operator+=" cv="noexcept(noexcept(access::base(std::declval&lt; D &amp; &gt;())+=n)))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="n"><paramtype>difference_type</paramtype></parameter></method>
+<method name="operator+" cv="const noexcept(noexcept(D(std::declval&lt; D &amp; &gt;()), std::declval&lt; D &amp; &gt;()+=i)))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="i"><paramtype>difference_type</paramtype></parameter></method>
+<method name="operator--" cv="noexcept(noexcept(--access::base(std::declval&lt; D &amp; &gt;()))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+          <template-type-parameter name="Enable"><default>std::enable_if_t&lt;!<classname alt="boost::stl_interfaces::v1_dtl::plus_eq">v1_dtl::plus_eq</classname>&lt;D, difference_type&gt;::value&gt;</default></template-type-parameter>
+        </template></method>
+<method name="operator--" cv="noexcept(noexcept(D(std::declval&lt; D &amp; &gt;()), std::declval&lt; D &amp; &gt;()+=-difference_type(1))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="operator--" cv="noexcept(noexcept(D(std::declval&lt; D &amp; &gt;()), --std::declval&lt; D &amp; &gt;())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name=""><paramtype>int</paramtype></parameter></method>
+<method name="operator-=" cv="noexcept"><type>constexpr D &amp;</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="i"><paramtype>difference_type</paramtype></parameter></method>
+<method name="operator-" cv="const noexcept(noexcept(access::base(std::declval&lt; D const &amp; &gt;()) - access::base(other))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="other"><paramtype>D</paramtype></parameter></method>
+</method-group>
+</struct><struct name="proxy_arrow_result"><template>
+      <template-type-parameter name="T"/>
+    </template><description><para>The return type of <computeroutput>operator-&gt;()</computeroutput> in a proxy iterator.</para><para>This template is used as the default <computeroutput>Pointer</computeroutput> template parameter in the <computeroutput>proxy_iterator_interface</computeroutput> template alias. Note that the use of this template implies a copy or move of the underlying object of type <computeroutput>T</computeroutput>. </para></description><method-group name="public member functions">
+<method name="operator-&gt;" cv="const noexcept"><type>constexpr T const  *</type></method>
+<method name="operator-&gt;" cv="noexcept"><type>constexpr T *</type></method>
+</method-group>
+<constructor cv="noexcept(noexcept(T(value))))"><parameter name="value"><paramtype>T const &amp;</paramtype></parameter></constructor>
+<constructor cv="noexcept(noexcept(T(std::move(value)))))"><parameter name="value"><paramtype>T &amp;&amp;</paramtype></parameter></constructor>
+</struct><namespace name="v1_dtl">
+<struct name="plus_eq"><template>
+      <template-type-parameter name="Iterator"/>
+      <template-type-parameter name="DifferenceType"/>
+      <template-type-parameter name=""><default>void</default></template-type-parameter>
+    </template><inherit access="public">false_type</inherit></struct><struct-specialization name="plus_eq"><template>
+      <template-type-parameter name="Iterator"/>
+      <template-type-parameter name="DifferenceType"/>
+    </template><specialization><template-arg>Iterator</template-arg><template-arg>DifferenceType</template-arg><template-arg>void_t&lt; decltype(std::declval&lt; Iterator &amp; &gt;()+=std::declval&lt; DifferenceType &gt;())&gt;</template-arg></specialization><inherit access="public">true_type</inherit></struct-specialization><struct name="ra_iter"><template>
+      <template-type-parameter name="Iterator"/>
+      <template-type-parameter name=""><default>void</default></template-type-parameter>
+    </template><inherit access="public">false_type</inherit></struct><struct-specialization name="ra_iter"><template>
+      <template-type-parameter name="Iterator"/>
+    </template><specialization><template-arg>Iterator</template-arg><template-arg>void_t&lt; typename Iterator::iterator_concept &gt;</template-arg></specialization><inherit access="public">std::integral_constant&lt; bool, std::is_base_of&lt; std::random_access_iterator_tag, Iterator::iterator_concept &gt;::value &gt;</inherit></struct-specialization>
+
+<function name="derived_iterator"><type>void</type><template>
+          <template-type-parameter name="D"/>
+          <template-type-parameter name="IteratorConcept"/>
+          <template-type-parameter name="ValueType"/>
+          <template-type-parameter name="Reference"/>
+          <template-type-parameter name="Pointer"/>
+          <template-type-parameter name="DifferenceType"/>
+        </template><parameter name=""><paramtype><classname>iterator_interface</classname>&lt; D, IteratorConcept, ValueType, Reference, Pointer, DifferenceType &gt; const &amp;</paramtype></parameter></function>
+</namespace>
+<namespace name="v2_dtl">
+<data-member name="derived_iter"><type>concept</type></data-member>
+<function name="derived_iterator"><type>void</type><template>
+          <template-type-parameter name="D"/>
+          <template-type-parameter name="IteratorConcept"/>
+          <template-type-parameter name="ValueType"/>
+          <template-type-parameter name="Reference"/>
+          <template-type-parameter name="Pointer"/>
+          <template-type-parameter name="DifferenceType"/>
+        </template><parameter name=""><paramtype>v2::iterator_interface&lt; D, IteratorConcept, ValueType, Reference, Pointer, DifferenceType &gt; const &amp;</paramtype></parameter></function>
+</namespace>
+<typedef name="proxy_iterator_interface"><description><para>A template alias useful for defining proxy iterators. <para><emphasis role="bold">See Also:</emphasis><para><computeroutput><classname alt="boost::stl_interfaces::iterator_interface">iterator_interface</classname></computeroutput>. </para>
+</para>
+</para></description><type><classname>iterator_interface</classname>&lt; Derived, IteratorConcept, ValueType, Reference, <classname>proxy_arrow_result</classname>&lt; Reference &gt;, DifferenceType &gt;</type></typedef>
+
+
+
+
+
+
+
+
+
+
+
+<function name="operator=="><type>constexpr auto</type><template>
+          <template-type-parameter name="IteratorInterface1"/>
+          <template-type-parameter name="IteratorInterface2"/>
+          <template-type-parameter name="Enable"><default>std::enable_if_t&lt;!v1_dtl::ra_iter&lt;IteratorInterface1&gt;::value&gt;</default></template-type-parameter>
+        </template><parameter name="lhs"><paramtype>IteratorInterface1</paramtype></parameter><parameter name="rhs"><paramtype>IteratorInterface2</paramtype></parameter><description><para>Implementation of <computeroutput>operator==()</computeroutput>, implemented in terms of the iterator underlying IteratorInterface, for all iterators derived from <computeroutput><classname alt="boost::stl_interfaces::iterator_interface">iterator_interface</classname></computeroutput>, except those with an iterator category derived from <computeroutput>std::random_access_iterator_tag</computeroutput>.</para><para>Implementation of <computeroutput>operator==()</computeroutput> for all iterators derived from <computeroutput><classname alt="boost::stl_interfaces::iterator_interface">iterator_interface</classname></computeroutput> that have an iterator category derived from <computeroutput>std::random_access_iterator_tag</computeroutput>. </para></description></function>
+<function name="operator!="><type>constexpr auto</type><template>
+          <template-type-parameter name="IteratorInterface1"/>
+          <template-type-parameter name="IteratorInterface2"/>
+        </template><parameter name="lhs"><paramtype>IteratorInterface1</paramtype></parameter><parameter name="rhs"><paramtype>IteratorInterface2</paramtype></parameter><description><para>Implementation of <computeroutput>operator!=()</computeroutput> for all iterators derived from <computeroutput><classname alt="boost::stl_interfaces::iterator_interface">iterator_interface</classname></computeroutput>. </para></description></function>
+<function name="operator&lt;"><type>constexpr auto</type><template>
+          <template-type-parameter name="IteratorInterface1"/>
+          <template-type-parameter name="IteratorInterface2"/>
+        </template><parameter name="lhs"><paramtype>IteratorInterface1</paramtype></parameter><parameter name="rhs"><paramtype>IteratorInterface2</paramtype></parameter><description><para>Implementation of <computeroutput>operator&lt;()</computeroutput> for all iterators derived from <computeroutput><classname alt="boost::stl_interfaces::iterator_interface">iterator_interface</classname></computeroutput> that have an iterator category derived from <computeroutput>std::random_access_iterator_tag</computeroutput>. </para></description></function>
+<function name="operator&lt;="><type>constexpr auto</type><template>
+          <template-type-parameter name="IteratorInterface1"/>
+          <template-type-parameter name="IteratorInterface2"/>
+        </template><parameter name="lhs"><paramtype>IteratorInterface1</paramtype></parameter><parameter name="rhs"><paramtype>IteratorInterface2</paramtype></parameter><description><para>Implementation of <computeroutput>operator&lt;=()</computeroutput> for all iterators derived from <computeroutput><classname alt="boost::stl_interfaces::iterator_interface">iterator_interface</classname></computeroutput> that have an iterator category derived from <computeroutput>std::random_access_iterator_tag</computeroutput>. </para></description></function>
+<function name="operator&gt;"><type>constexpr auto</type><template>
+          <template-type-parameter name="IteratorInterface1"/>
+          <template-type-parameter name="IteratorInterface2"/>
+        </template><parameter name="lhs"><paramtype>IteratorInterface1</paramtype></parameter><parameter name="rhs"><paramtype>IteratorInterface2</paramtype></parameter><description><para>Implementation of <computeroutput>operator&gt;()</computeroutput> for all iterators derived from <computeroutput><classname alt="boost::stl_interfaces::iterator_interface">iterator_interface</classname></computeroutput> that have an iterator category derived from <computeroutput>std::random_access_iterator_tag</computeroutput>. </para></description></function>
+<function name="operator&gt;="><type>constexpr auto</type><template>
+          <template-type-parameter name="IteratorInterface1"/>
+          <template-type-parameter name="IteratorInterface2"/>
+        </template><parameter name="lhs"><paramtype>IteratorInterface1</paramtype></parameter><parameter name="rhs"><paramtype>IteratorInterface2</paramtype></parameter><description><para>Implementation of <computeroutput>operator&gt;=()</computeroutput> for all iterators derived from <computeroutput><classname alt="boost::stl_interfaces::iterator_interface">iterator_interface</classname></computeroutput> that have an iterator category derived from <computeroutput>std::random_access_iterator_tag</computeroutput>. </para></description></function>
+<function name="operator=="><type>constexpr bool</type><template>
+          <template-type-parameter name="D1"/>
+          <template-type-parameter name="D2"/>
+        </template><parameter name="lhs"><paramtype>D1</paramtype></parameter><parameter name="rhs"><paramtype>D2</paramtype></parameter></function>
+<function name="operator!="><type>constexpr auto</type><template>
+          <template-type-parameter name="D1"/>
+          <template-type-parameter name="D2"/>
+        </template><parameter name="lhs"><paramtype>D1</paramtype></parameter><parameter name="rhs"><paramtype>D2</paramtype></parameter></function>
+</namespace>
+</namespace>
+<macro name="BOOST_STL_INTERFACES_STATIC_ASSERT_CONCEPT" kind="functionlike"><macro-parameter name="type"/><macro-parameter name="concept_name"/><description><para><computeroutput>static_asserts</computeroutput> that type <computeroutput>type</computeroutput> models concept <computeroutput>concept_name</computeroutput>. This is useful for checking that an iterator, view, etc. that you write using one of the *<computeroutput>_interface</computeroutput> templates models the right C++ concept.</para><para>For example: <computeroutput>BOOST_STL_INTERFACES_STATIC_ASSERT_CONCEPT(my_iter, std::input_iterator)</computeroutput>.</para><para><note><para>This macro expands to nothing when <computeroutput>__cpp_lib_concepts</computeroutput> is not defined. </para>
+</note>
+</para></description></macro>
+<macro name="BOOST_STL_INTERFACES_STATIC_ASSERT_ITERATOR_TRAITS" kind="functionlike"><macro-parameter name="iter"/><macro-parameter name="category"/><macro-parameter name="concept"/><macro-parameter name="value_type"/><macro-parameter name="reference"/><macro-parameter name="pointer"/><macro-parameter name="difference_type"/><description><para><computeroutput>static_asserts</computeroutput> that the types of all typedefs in <computeroutput>std::iterator_traits&lt;iter&gt;</computeroutput> match the remaining macro parameters. This is useful for checking that an iterator you write using <computeroutput>iterator_interface</computeroutput> has the correct iterator traits.</para><para>For example: <computeroutput>BOOST_STL_INTERFACES_STATIC_ASSERT_ITERATOR_TRAITS(my_iter, std::input_iterator_tag, std::input_iterator_tag, int, int &amp;, int *, std::ptrdiff_t)</computeroutput>.</para><para><note><para>This macro ignores the <computeroutput>concept</computeroutput> parameter when <computeroutput>__cpp_lib_concepts</computeroutput> is not defined. </para>
+</note>
+</para></description></macro>
+</header>
+<header name="boost/stl_interfaces/reverse_iterator.hpp">
+<namespace name="boost">
+<namespace name="stl_interfaces">
+
+
+
+
+
+
+
+
+<function name="operator=="><type>constexpr auto</type><template>
+          <template-type-parameter name="BidiIter"/>
+        </template><parameter name="lhs"><paramtype>reverse_iterator&lt; BidiIter &gt;</paramtype></parameter><parameter name="rhs"><paramtype>reverse_iterator&lt; BidiIter &gt;</paramtype></parameter></function>
+<function name="operator=="><type>constexpr auto</type><template>
+          <template-type-parameter name="BidiIter1"/>
+          <template-type-parameter name="BidiIter2"/>
+        </template><parameter name="lhs"><paramtype>reverse_iterator&lt; BidiIter1 &gt;</paramtype></parameter><parameter name="rhs"><paramtype>reverse_iterator&lt; BidiIter2 &gt;</paramtype></parameter></function>
+<function name="make_reverse_iterator"><type>auto</type><template>
+          <template-type-parameter name="BidiIter"/>
+        </template><parameter name="it"><paramtype>BidiIter</paramtype></parameter><description><para>Makes a <computeroutput>reverse_iterator&lt;BidiIter&gt;</computeroutput> from an iterator of type <computeroutput>Bidiiter</computeroutput>.</para><para>Makes a <computeroutput>reverse_iterator&lt;BidiIter&gt;</computeroutput> from an iterator of type <computeroutput>Bidiiter</computeroutput>. This only exists to make migration from Boost.STLInterfaces to C++20 easier; switch to the one in <computeroutput>std</computeroutput> as soon as you can. </para></description></function>
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/stl_interfaces/sequence_container_interface.hpp">
+<namespace name="boost">
+<namespace name="stl_interfaces">
+<struct name="sequence_container_interface"><template>
+      <template-type-parameter name="Derived"/>
+      <template-nontype-parameter name="Contiguity"><type>element_layout</type></template-nontype-parameter>
+    </template><method-group name="public member functions">
+<method name="empty" cv="noexcept(noexcept(std::declval&lt; D &amp; &gt;().begin()==std::declval&lt; D &amp; &gt;().end())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="empty" cv="const noexcept(noexcept(std::declval&lt; D const &amp; &gt;().begin()==std::declval&lt; D const &amp; &gt;().end())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="data" cv="noexcept(noexcept(std::declval&lt; D &amp; &gt;().begin())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+          <template-nontype-parameter name="C"><type>element_layout</type><default>Contiguity</default></template-nontype-parameter>
+          <template-type-parameter name="Enable"><default>std::enable_if_t&lt;C == element_layout::contiguous&gt;</default></template-type-parameter>
+        </template></method>
+<method name="data" cv="const noexcept(noexcept(std::declval&lt; D const &amp; &gt;().begin())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+          <template-nontype-parameter name="C"><type>element_layout</type><default>Contiguity</default></template-nontype-parameter>
+          <template-type-parameter name="Enable"><default>std::enable_if_t&lt;C == element_layout::contiguous&gt;</default></template-type-parameter>
+        </template></method>
+<method name="size" cv="noexcept(noexcept(std::declval&lt; D &amp; &gt;().end() - std::declval&lt; D &amp; &gt;().begin())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="size" cv="const noexcept(noexcept(std::declval&lt; D const &amp; &gt;().end() - std::declval&lt; D const &amp; &gt;().begin())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="front" cv="noexcept(noexcept(*std::declval&lt; D &amp; &gt;().begin())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="front" cv="const noexcept(noexcept(*std::declval&lt; D const &amp; &gt;().begin())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="push_front" cv="noexcept(noexcept(std::declval&lt; D &amp; &gt;().emplace_front(x))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="x"><paramtype>typename D::value_type const &amp;</paramtype></parameter></method>
+<method name="push_front" cv="noexcept(noexcept(std::declval&lt; D &amp; &gt;().emplace_front(std::move(x)))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="x"><paramtype>typename D::value_type &amp;&amp;</paramtype></parameter></method>
+<method name="pop_front" cv="noexcept"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="back" cv="noexcept(noexcept(*std::prev(std::declval&lt; D &amp; &gt;().end()))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+          <template-type-parameter name="Enable"><default>std::enable_if_t&lt;                v1_dtl::decrementable_sentinel&lt;D&gt;::value &amp;&amp;                v1_dtl::common_range&lt;D&gt;::value&gt;</default></template-type-parameter>
+        </template></method>
+<method name="back" cv="const noexcept(noexcept(*std::prev(std::declval&lt; D const &amp; &gt;().end()))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+          <template-type-parameter name="Enable"><default>std::enable_if_t&lt;                v1_dtl::decrementable_sentinel&lt;D&gt;::value &amp;&amp;                v1_dtl::common_range&lt;D&gt;::value&gt;</default></template-type-parameter>
+        </template></method>
+<method name="push_back" cv="noexcept(noexcept(std::declval&lt; D &amp; &gt;().emplace_back(x))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="x"><paramtype>typename D::value_type const &amp;</paramtype></parameter></method>
+<method name="push_back" cv="noexcept(noexcept(std::declval&lt; D &amp; &gt;().emplace_back(std::move(x)))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="x"><paramtype>typename D::value_type &amp;&amp;</paramtype></parameter></method>
+<method name="pop_back" cv="noexcept"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="operator[]" cv="noexcept(noexcept(std::declval&lt; D &amp; &gt;().begin()[n])))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="n"><paramtype>typename D::size_type</paramtype></parameter></method>
+<method name="operator[]" cv="const noexcept(noexcept(std::declval&lt; D const &amp; &gt;().begin()[n])))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="n"><paramtype>typename D::size_type</paramtype></parameter></method>
+<method name="at"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="i"><paramtype>typename D::size_type</paramtype></parameter></method>
+<method name="at" cv="const"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="i"><paramtype>typename D::size_type</paramtype></parameter></method>
+<method name="begin" cv="const noexcept(noexcept(std::declval&lt; D &amp; &gt;().begin())))"><type>constexpr Iter</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+          <template-type-parameter name="Iter"><default>typename D::const_iterator</default></template-type-parameter>
+        </template></method>
+<method name="end" cv="const noexcept(noexcept(std::declval&lt; D &amp; &gt;().end())))"><type>constexpr Iter</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+          <template-type-parameter name="Iter"><default>typename D::const_iterator</default></template-type-parameter>
+        </template></method>
+<method name="cbegin" cv="const noexcept(noexcept(std::declval&lt; D const &amp; &gt;().begin())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="cend" cv="const noexcept(noexcept(std::declval&lt; D const &amp; &gt;().end())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="rbegin" cv="noexcept(noexcept(stl_interfaces::make_reverse_iterator(std::declval&lt; D &amp; &gt;().end()))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+          <template-type-parameter name="Enable"><default>std::enable_if_t&lt;v1_dtl::common_range&lt;D&gt;::value&gt;</default></template-type-parameter>
+        </template></method>
+<method name="rend" cv="noexcept(noexcept(stl_interfaces::make_reverse_iterator(std::declval&lt; D &amp; &gt;().begin()))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+          <template-type-parameter name="Enable"><default>std::enable_if_t&lt;v1_dtl::common_range&lt;D&gt;::value&gt;</default></template-type-parameter>
+        </template></method>
+<method name="rbegin" cv="const noexcept(noexcept(std::declval&lt; D &amp; &gt;().rbegin())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="rend" cv="const noexcept(noexcept(std::declval&lt; D &amp; &gt;().rend())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="crbegin" cv="const noexcept(noexcept(std::declval&lt; D const &amp; &gt;().rbegin())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="crend" cv="const noexcept(noexcept(std::declval&lt; D const &amp; &gt;().rend())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="insert" cv="noexcept(noexcept(std::declval&lt; D &amp; &gt;().emplace(pos, x))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="pos"><paramtype>typename D::const_iterator</paramtype></parameter><parameter name="x"><paramtype>typename D::value_type const &amp;</paramtype></parameter></method>
+<method name="insert" cv="noexcept(noexcept(std::declval&lt; D &amp; &gt;() .emplace(pos, std::move(x)))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="pos"><paramtype>typename D::const_iterator</paramtype></parameter><parameter name="x"><paramtype>typename D::value_type &amp;&amp;</paramtype></parameter></method>
+<method name="insert" cv="noexcept(noexcept(std::declval&lt; D &amp; &gt;().insert(pos, detail::make_n_iter(x, n), detail::make_n_iter_end(x, n)))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="pos"><paramtype>typename D::const_iterator</paramtype></parameter><parameter name="n"><paramtype>typename D::size_type</paramtype></parameter><parameter name="x"><paramtype>typename D::value_type const &amp;</paramtype></parameter></method>
+<method name="insert" cv="noexcept(noexcept(std::declval&lt; D &amp; &gt;() .insert(pos, il.begin(), il.end()))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="pos"><paramtype>typename D::const_iterator</paramtype></parameter><parameter name="il"><paramtype>std::initializer_list&lt; typename D::value_type &gt;</paramtype></parameter></method>
+<method name="erase" cv="noexcept"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="pos"><paramtype>typename D::const_iterator</paramtype></parameter></method>
+<method name="assign" cv="noexcept(noexcept(std::declval&lt; D &amp; &gt;().insert(std::declval&lt; D &amp; &gt;().begin(), first, last))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="InputIterator"/>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+          <template-type-parameter name="Enable"><default>std::enable_if_t&lt;v1_dtl::in_iter&lt;InputIterator&gt;::value&gt;</default></template-type-parameter>
+        </template><parameter name="first"><paramtype>InputIterator</paramtype></parameter><parameter name="last"><paramtype>InputIterator</paramtype></parameter></method>
+<method name="assign" cv="noexcept(noexcept(std::declval&lt; D &amp; &gt;() .insert(std::declval&lt; D &amp; &gt;().begin(), detail::make_n_iter(x, n), detail::make_n_iter_end(x, n)))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="n"><paramtype>typename D::size_type</paramtype></parameter><parameter name="x"><paramtype>typename D::value_type const &amp;</paramtype></parameter></method>
+<method name="assign" cv="noexcept(noexcept(std::declval&lt; D &amp; &gt;().assign(il.begin(), il.end()))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="il"><paramtype>std::initializer_list&lt; typename D::value_type &gt;</paramtype></parameter></method>
+<method name="clear" cv="noexcept"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+</method-group>
+<copy-assignment cv="noexcept(noexcept(std::declval&lt; D &amp; &gt;().assign(il.begin(), il.end()))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="il"><paramtype>std::initializer_list&lt; typename D::value_type &gt;</paramtype></parameter></copy-assignment>
+</struct><namespace name="v1_dtl">
+<struct name="clear_impl"><template>
+      <template-type-parameter name="D"/>
+      <template-type-parameter name=""><default>void</default></template-type-parameter>
+    </template><method-group name="public static functions">
+<method name="call" cv="noexcept" specifiers="static"><type>constexpr void</type><parameter name="d"><paramtype>D &amp;</paramtype></parameter></method>
+</method-group>
+</struct><struct-specialization name="clear_impl"><template>
+      <template-type-parameter name="D"/>
+    </template><specialization><template-arg>D</template-arg><template-arg>void_t&lt; decltype(std::declval&lt; D &gt;().clear())&gt;</template-arg></specialization><method-group name="public static functions">
+<method name="call" cv="noexcept" specifiers="static"><type>constexpr void</type><parameter name="d"><paramtype>D &amp;</paramtype></parameter></method>
+</method-group>
+</struct-specialization><typedef name="in_iter"><type>std::is_convertible&lt; typename std::iterator_traits&lt; Iter &gt;::iterator_category, std::input_iterator_tag &gt;</type></typedef>
+
+<function name="derived_container"><type>void</type><template>
+          <template-type-parameter name="D"/>
+          <template-nontype-parameter name="Contiguity"><type>element_layout</type></template-nontype-parameter>
+        </template><parameter name=""><paramtype><classname>sequence_container_interface</classname>&lt; D, Contiguity &gt; const &amp;</paramtype></parameter></function>
+
+</namespace>
+
+<function name="swap"><type>constexpr auto</type><template>
+          <template-type-parameter name="ContainerInterface"/>
+        </template><parameter name="lhs"><paramtype>ContainerInterface &amp;</paramtype></parameter><parameter name="rhs"><paramtype>ContainerInterface &amp;</paramtype></parameter><description><para>Implementation of free function <computeroutput>swap()</computeroutput> for all containers derived from <computeroutput><classname alt="boost::stl_interfaces::sequence_container_interface">sequence_container_interface</classname></computeroutput>. </para></description></function>
+<function name="operator=="><type>constexpr auto</type><template>
+          <template-type-parameter name="ContainerInterface"/>
+        </template><parameter name="lhs"><paramtype>ContainerInterface const &amp;</paramtype></parameter><parameter name="rhs"><paramtype>ContainerInterface const &amp;</paramtype></parameter><description><para>Implementation of <computeroutput>operator==()</computeroutput> for all containers derived from <computeroutput><classname alt="boost::stl_interfaces::sequence_container_interface">sequence_container_interface</classname></computeroutput>. </para></description></function>
+<function name="operator!="><type>constexpr auto</type><template>
+          <template-type-parameter name="ContainerInterface"/>
+        </template><parameter name="lhs"><paramtype>ContainerInterface const &amp;</paramtype></parameter><parameter name="rhs"><paramtype>ContainerInterface const &amp;</paramtype></parameter><description><para>Implementation of <computeroutput>operator!=()</computeroutput> for all containers derived from <computeroutput><classname alt="boost::stl_interfaces::sequence_container_interface">sequence_container_interface</classname></computeroutput>. </para></description></function>
+<function name="operator&lt;"><type>constexpr auto</type><template>
+          <template-type-parameter name="ContainerInterface"/>
+        </template><parameter name="lhs"><paramtype>ContainerInterface const &amp;</paramtype></parameter><parameter name="rhs"><paramtype>ContainerInterface const &amp;</paramtype></parameter><description><para>Implementation of <computeroutput>operator&lt;()</computeroutput> for all containers derived from <computeroutput><classname alt="boost::stl_interfaces::sequence_container_interface">sequence_container_interface</classname></computeroutput>. </para></description></function>
+<function name="operator&lt;="><type>constexpr auto</type><template>
+          <template-type-parameter name="ContainerInterface"/>
+        </template><parameter name="lhs"><paramtype>ContainerInterface const &amp;</paramtype></parameter><parameter name="rhs"><paramtype>ContainerInterface const &amp;</paramtype></parameter><description><para>Implementation of <computeroutput>operator&lt;=()</computeroutput> for all containers derived from <computeroutput><classname alt="boost::stl_interfaces::sequence_container_interface">sequence_container_interface</classname></computeroutput>. </para></description></function>
+<function name="operator&gt;"><type>constexpr auto</type><template>
+          <template-type-parameter name="ContainerInterface"/>
+        </template><parameter name="lhs"><paramtype>ContainerInterface const &amp;</paramtype></parameter><parameter name="rhs"><paramtype>ContainerInterface const &amp;</paramtype></parameter><description><para>Implementation of <computeroutput>operator&gt;()</computeroutput> for all containers derived from <computeroutput><classname alt="boost::stl_interfaces::sequence_container_interface">sequence_container_interface</classname></computeroutput>. </para></description></function>
+<function name="operator&gt;="><type>constexpr auto</type><template>
+          <template-type-parameter name="ContainerInterface"/>
+        </template><parameter name="lhs"><paramtype>ContainerInterface const &amp;</paramtype></parameter><parameter name="rhs"><paramtype>ContainerInterface const &amp;</paramtype></parameter><description><para>Implementation of <computeroutput>operator&gt;=()</computeroutput> for all containers derived from <computeroutput><classname alt="boost::stl_interfaces::sequence_container_interface">sequence_container_interface</classname></computeroutput>. </para></description></function>
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+<header name="boost/stl_interfaces/view_interface.hpp">
+<namespace name="boost">
+<namespace name="stl_interfaces">
+<struct name="view_interface"><template>
+      <template-type-parameter name="Derived"/>
+      <template-nontype-parameter name="Contiguity"><type>element_layout</type></template-nontype-parameter>
+    </template><method-group name="public member functions">
+<method name="empty" cv="noexcept(noexcept(std::declval&lt; D &amp; &gt;().begin()==std::declval&lt; D &amp; &gt;().end())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="empty" cv="const noexcept(noexcept(std::declval&lt; D const &amp; &gt;().begin()==std::declval&lt; D const &amp; &gt;().end())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="operator bool" cv="noexcept(noexcept(std::declval&lt; D &amp; &gt;().empty())))" specifiers="explicit"><type>constexpr</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+          <template-type-parameter name="R"><default>decltype(std::declval&lt;D &amp;&gt;().empty())</default></template-type-parameter>
+        </template></method>
+<method name="operator bool" cv="const noexcept(noexcept(std::declval&lt; D const &amp; &gt;().empty())))" specifiers="explicit"><type>constexpr</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+          <template-type-parameter name="R"><default>decltype(std::declval&lt;D const &amp;&gt;().empty())</default></template-type-parameter>
+        </template></method>
+<method name="data" cv="noexcept(noexcept(std::declval&lt; D &amp; &gt;().begin())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+          <template-nontype-parameter name="C"><type>element_layout</type><default>Contiguity</default></template-nontype-parameter>
+          <template-type-parameter name="Enable"><default>std::enable_if_t&lt;C == element_layout::contiguous&gt;</default></template-type-parameter>
+        </template></method>
+<method name="data" cv="const noexcept(noexcept(std::declval&lt; D const &amp; &gt;().begin())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+          <template-nontype-parameter name="C"><type>element_layout</type><default>Contiguity</default></template-nontype-parameter>
+          <template-type-parameter name="Enable"><default>std::enable_if_t&lt;C == element_layout::contiguous&gt;</default></template-type-parameter>
+        </template></method>
+<method name="size" cv="noexcept(noexcept(std::declval&lt; D &amp; &gt;().end() - std::declval&lt; D &amp; &gt;().begin())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="size" cv="const noexcept(noexcept(std::declval&lt; D const &amp; &gt;().end() - std::declval&lt; D const &amp; &gt;().begin())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="front" cv="noexcept(noexcept(*std::declval&lt; D &amp; &gt;().begin())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="front" cv="const noexcept(noexcept(*std::declval&lt; D const &amp; &gt;().begin())))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template></method>
+<method name="back" cv="noexcept(noexcept(*std::prev(std::declval&lt; D &amp; &gt;().end()))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+          <template-type-parameter name="Enable"><default>std::enable_if_t&lt;                v1_dtl::decrementable_sentinel&lt;D&gt;::value &amp;&amp;                v1_dtl::common_range&lt;D&gt;::value&gt;</default></template-type-parameter>
+        </template></method>
+<method name="back" cv="const noexcept(noexcept(*std::prev(std::declval&lt; D const &amp; &gt;().end()))))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+          <template-type-parameter name="Enable"><default>std::enable_if_t&lt;                v1_dtl::decrementable_sentinel&lt;D&gt;::value &amp;&amp;                v1_dtl::common_range&lt;D&gt;::value&gt;</default></template-type-parameter>
+        </template></method>
+<method name="operator[]" cv="noexcept(noexcept(std::declval&lt; D &amp; &gt;().begin()[n])))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="n"><paramtype>v1_dtl::range_difference_t&lt; D &gt;</paramtype></parameter></method>
+<method name="operator[]" cv="const noexcept(noexcept(std::declval&lt; D const &amp; &gt;().begin()[n])))"><type>constexpr auto</type><template>
+          <template-type-parameter name="D"><default>Derived</default></template-type-parameter>
+        </template><parameter name="n"><paramtype>v1_dtl::range_difference_t&lt; D &gt;</paramtype></parameter></method>
+</method-group>
+</struct><namespace name="v1_dtl">
+<function name="derived_view"><type>void</type><template>
+          <template-type-parameter name="D"/>
+          <template-nontype-parameter name="Contiguity"><type>element_layout</type></template-nontype-parameter>
+        </template><parameter name=""><paramtype><classname>view_interface</classname>&lt; D, Contiguity &gt; const &amp;</paramtype></parameter></function>
+
+
+</namespace>
+<data-member name="BOOST_STL_INTERFACES_NAMESPACE_V1"><type/></data-member>
+<data-member name="BOOST_STL_INTERFACES_NAMESPACE_V2"><type/></data-member>
+<function name="operator!="><type>constexpr auto</type><template>
+          <template-type-parameter name="ViewInterface"/>
+        </template><parameter name="lhs"><paramtype>ViewInterface</paramtype></parameter><parameter name="rhs"><paramtype>ViewInterface</paramtype></parameter><description><para>Implementation of <computeroutput>operator!=()</computeroutput> for all views derived from <computeroutput><classname alt="boost::stl_interfaces::view_interface">view_interface</classname></computeroutput>. </para></description></function>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</namespace>
+</namespace>
+</header>
+</library-reference>

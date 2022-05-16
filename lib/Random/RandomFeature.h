@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,15 +27,26 @@
 
 namespace arangodb {
 
+class LoggerFeature;
+
 class RandomFeature final : public application_features::ApplicationFeature {
  public:
-  explicit RandomFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Random"; }
+
+  template<typename Server>
+  explicit RandomFeature(Server& server)
+      : RandomFeature{server, Server::template id<RandomFeature>()} {
+    startsAfter<LoggerFeature, Server>();
+  }
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
+
+ private:
+  RandomFeature(application_features::ApplicationServer& server,
+                size_t registration);
 
   uint32_t _randomGenerator;
 };
 
 }  // namespace arangodb
-

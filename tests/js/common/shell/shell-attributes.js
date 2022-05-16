@@ -565,11 +565,6 @@ function AttributesSuite () {
 
       assertEqual(1, result.length);
       assertEqual([ true ], result);
-      
-      result = db._query("RETURN NOOPT(LIKE('a\nb c', '%b%'))").toArray().sort();
-
-      assertEqual(1, result.length);
-      assertEqual([ true ], result);
     }
 
   };

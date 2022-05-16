@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -43,43 +42,41 @@
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include <limits>
+
 using namespace arangodb::options;
 
 namespace arangodb {
 
 AuthenticationFeature* AuthenticationFeature::INSTANCE = nullptr;
 
-AuthenticationFeature::AuthenticationFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Authentication"),
+AuthenticationFeature::AuthenticationFeature(Server& server)
+    : ArangodFeature{server, *this},
       _userManager(nullptr),
       _authCache(nullptr),
       _authenticationUnixSockets(true),
       _authenticationSystemOnly(true),
       _localAuthentication(true),
       _active(true),
-      _authenticationTimeout(0.0) {
+      _authenticationTimeout(0.0),
+      _sessionTimeout(static_cast<double>(1 * std::chrono::hours(1) /
+                                          std::chrono::seconds(1))) {  // 1 hour
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 
-#ifdef USE_ENTERPRISE
-  startsAfter<LdapFeature>();
-#endif
+  if constexpr (Server::contains<LdapFeature>()) {
+    startsAfter<LdapFeature>();
+  }
 }
 
-void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void AuthenticationFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("server.disable-authentication",
                         "server.authentication");
   options->addOldOption("server.disable-authentication-unix-sockets",
                         "server.authentication-unix-sockets");
   options->addOldOption("server.authenticate-system-only",
                         "server.authentication-system-only");
-  options->addOldOption("server.allow-method-override",
-                        "http.allow-method-override");
-  options->addOldOption("server.hide-product-header",
-                        "http.hide-product-header");
-  options->addOldOption("server.keep-alive-timeout", "http.keep-alive-timeout");
-  options->addOldOption("server.default-api-compatibility", "");
-  options->addOldOption("no-server", "server.rest-server");
 
   options->addOption("--server.authentication",
                      "enable authentication for ALL client requests",
@@ -90,9 +87,28 @@ void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
       "timeout for the authentication cache in seconds (0 = indefinitely)",
       new DoubleParameter(&_authenticationTimeout));
 
+  options
+      ->addOption(
+          "--server.session-timeout",
+          "lifetime for tokens in seconds that can be obtained from "
+          "the POST /_open/auth endpoint. Used by the web interface "
+          "for JWT-based sessions",
+          new DoubleParameter(&_sessionTimeout, /*base*/ 1.0, /*minValue*/ 1.0,
+                              /*maxValue*/ std::numeric_limits<double>::max(),
+                              /*minInclusive*/ false),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30900);
+
   options->addOption("--server.local-authentication",
                      "enable authentication using the local user database",
-                     new BooleanParameter(&_localAuthentication));
+                     new BooleanParameter(&_localAuthentication),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnCoordinator,
+                         arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--server.authentication-system-only",
@@ -100,12 +116,15 @@ void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
       new BooleanParameter(&_authenticationSystemOnly));
 
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-  options->addOption("--server.authentication-unix-sockets",
-                     "authentication for requests via UNIX domain sockets",
-                     new BooleanParameter(&_authenticationUnixSockets));
+  options->addOption(
+      "--server.authentication-unix-sockets",
+      "authentication for requests via UNIX domain sockets",
+      new BooleanParameter(&_authenticationUnixSockets),
+      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
+                                   arangodb::options::Flags::OsLinux,
+                                   arangodb::options::Flags::OsMac));
 #endif
 
-  // Maybe deprecate this option in devel
   options
       ->addOption("--server.jwt-secret",
                   "secret to use when doing jwt authentication",
@@ -118,26 +137,31 @@ void AuthenticationFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
       "file containing jwt secret to use when doing jwt authentication.",
       new StringParameter(&_jwtSecretKeyfileProgramOption));
 
-  options->addOption(
-      "--server.jwt-secret-folder",
-      "folder containing one or more jwt secret files to use for jwt "
-      "authentication. Files are sorted alphabetically: First secret "
-      "is used for signing + verifying JWT tokens. The latter secrets "
-      "are only used for verifying.",
-      new StringParameter(&_jwtSecretFolderProgramOption),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Enterprise))
+  options
+      ->addOption(
+          "--server.jwt-secret-folder",
+          "folder containing one or more jwt secret files to use for jwt "
+          "authentication. Files are sorted alphabetically: First secret "
+          "is used for signing + verifying JWT tokens. The latter secrets "
+          "are only used for verifying.",
+          new StringParameter(&_jwtSecretFolderProgramOption),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Enterprise))
       .setIntroducedIn(30700);
 }
 
-void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (!_jwtSecretKeyfileProgramOption.empty() && !_jwtSecretFolderProgramOption.empty()) {
+void AuthenticationFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> options) {
+  if (!_jwtSecretKeyfileProgramOption.empty() &&
+      !_jwtSecretFolderProgramOption.empty()) {
     LOG_TOPIC("d3515", FATAL, Logger::STARTUP)
         << "please specify either '--server.jwt-"
            "secret-keyfile' or '--server.jwt-secret-folder' but not both.";
     FATAL_ERROR_EXIT();
   }
 
-  if (!_jwtSecretKeyfileProgramOption.empty() || !_jwtSecretFolderProgramOption.empty()) {
+  if (!_jwtSecretKeyfileProgramOption.empty() ||
+      !_jwtSecretFolderProgramOption.empty()) {
     Result res = loadJwtSecretsFromFile();
     if (res.fail()) {
       LOG_TOPIC("d3617", FATAL, Logger::STARTUP) << res.errorMessage();
@@ -168,29 +192,32 @@ void AuthenticationFeature::prepare() {
   if (ServerState::isSingleServer(role) || ServerState::isCoordinator(role)) {
 #if USE_ENTERPRISE
     if (server().getFeature<LdapFeature>().isEnabled()) {
-      _userManager.reset(
-          new auth::UserManager(server(), std::make_unique<LdapAuthenticationHandler>(
-                                              server().getFeature<LdapFeature>())));
-    } else {
-      _userManager.reset(new auth::UserManager(server()));
+      _userManager = std::make_unique<auth::UserManager>(
+          server(), std::make_unique<LdapAuthenticationHandler>(
+                        server().getFeature<LdapFeature>()));
     }
-#else
-    _userManager.reset(new auth::UserManager(server()));
 #endif
+    if (_userManager == nullptr) {
+      _userManager = std::make_unique<auth::UserManager>(server());
+    }
+
+    TRI_ASSERT(_userManager != nullptr);
   } else {
     LOG_TOPIC("713c0", DEBUG, Logger::AUTHENTICATION)
         << "Not creating user manager";
   }
 
   TRI_ASSERT(_authCache == nullptr);
-  _authCache.reset(new auth::TokenCache(_userManager.get(), _authenticationTimeout));
+  _authCache = std::make_unique<auth::TokenCache>(_userManager.get(),
+                                                  _authenticationTimeout);
 
   if (_jwtSecretProgramOption.empty()) {
     LOG_TOPIC("43396", INFO, Logger::AUTHENTICATION)
         << "Jwt secret not specified, generating...";
     uint16_t m = 254;
     for (size_t i = 0; i < _maxSecretLength; i++) {
-      _jwtSecretProgramOption += static_cast<char>(1 + RandomGenerator::interval(m));
+      _jwtSecretProgramOption +=
+          static_cast<char>(1 + RandomGenerator::interval(m));
     }
   }
 
@@ -228,15 +255,10 @@ bool AuthenticationFeature::hasUserdefinedJwt() const {
   return !_jwtSecretProgramOption.empty();
 }
 
-/// secret used for signing & verification of secrets
-std::string AuthenticationFeature::jwtActiveSecret() const {
-  std::lock_guard<std::mutex> guard(_jwtSecretsLock);
-  return _jwtSecretProgramOption;
-}
-
 #ifdef USE_ENTERPRISE
 /// verification only secrets
-std::pair<std::string, std::vector<std::string>> AuthenticationFeature::jwtSecrets() const {
+std::pair<std::string, std::vector<std::string>>
+AuthenticationFeature::jwtSecrets() const {
   std::lock_guard<std::mutex> guard(_jwtSecretsLock);
   return {_jwtSecretProgramOption, _jwtPassiveSecrets};
 }
@@ -259,7 +281,8 @@ Result AuthenticationFeature::loadJwtSecretKeyfile() {
     // at the end of a file can easily happen. We do not base64-encode,
     // though, so the bytes count as given. Zero bytes might be a problem
     // here.
-    std::string contents = basics::FileUtils::slurp(_jwtSecretKeyfileProgramOption);
+    std::string contents =
+        basics::FileUtils::slurp(_jwtSecretKeyfileProgramOption);
     _jwtSecretProgramOption = basics::StringUtils::trim(contents, " \t\n\r");
   } catch (std::exception const& ex) {
     std::string msg("unable to read content of jwt-secret file '");
@@ -284,27 +307,30 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
 
   // filter out empty filenames, hidden files, tmp files and symlinks
   list.erase(std::remove_if(list.begin(), list.end(),
-      [this](std::string const& file) {
-        if (file.empty() || file[0] == '.') {
-          return true;
-        }
-        if (file.size() >= 4 && file.substr(file.size() - 4, 4) == ".tmp") {
-          return true;
-        }
-        auto p = basics::FileUtils::buildFilename(_jwtSecretFolderProgramOption, file);
-        if (basics::FileUtils::isSymbolicLink(p)) {
-          return true;
-        }
-        return false;
-      }),
-      list.end());
+                            [this](std::string const& file) {
+                              if (file.empty() || file[0] == '.') {
+                                return true;
+                              }
+                              if (file.size() >= 4 &&
+                                  file.substr(file.size() - 4, 4) == ".tmp") {
+                                return true;
+                              }
+                              auto p = basics::FileUtils::buildFilename(
+                                  _jwtSecretFolderProgramOption, file);
+                              if (basics::FileUtils::isSymbolicLink(p)) {
+                                return true;
+                              }
+                              return false;
+                            }),
+             list.end());
 
   if (list.empty()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "empty JWT secrets directory");
   }
 
   auto slurpy = [&](std::string const& file) {
-    auto p = basics::FileUtils::buildFilename(_jwtSecretFolderProgramOption, file);
+    auto p =
+        basics::FileUtils::buildFilename(_jwtSecretFolderProgramOption, file);
     std::string contents = basics::FileUtils::slurp(p);
     return basics::StringUtils::trim(contents, " \t\n\r");
   };

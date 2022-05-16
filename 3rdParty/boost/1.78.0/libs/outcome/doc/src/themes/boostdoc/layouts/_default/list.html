@@ -1,0 +1,34 @@
+{{ define "main" }}
+{{if .Content}}
+  <div class="titlepage"><div><div><h1 style="clear: both">{{.Title | markdownify}}</h1></div></div></div>
+  {{- if and (gt .WordCount 800) .TableOfContents }}
+  <div class="toc">
+    {{- $toc := replace .TableOfContents `<nav id="TableOfContents">
+<ul>` `<dl class="toc">`}}
+    {{- $toc = replace $toc `</ul>
+</nav>` `</dl>` }}
+    {{- $toc = replace $toc `<ul>` `<dd><dl>` }}
+    {{- $toc = replace $toc `</ul>` `</dl></dd>` }}
+    {{- $toc = replace $toc `<li>` `<dt>` }}
+    {{- $toc = replace $toc `</li>` `</dt>` }}
+    {{- $toc | safeHTML }}
+  </div>
+  {{- end }}
+{{ .Content }}
+{{else }}
+{{ $paginator := .Paginator }}
+
+<div class="extra-pagination inner">
+{{ partial "pagination.html" $paginator }}
+</div>
+
+{{ range $index, $page := $paginator.Pages }}
+   {{ .Render "li" }}
+{{ end }}
+
+<div style="margin-bottom:2rem"></div>
+
+{{ partial "pagination.html" $paginator }}
+
+{{end}}
+{{end}}

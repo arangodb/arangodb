@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,11 +26,10 @@
 #include "Basics/Common.h"
 #include <string>
 
-
 namespace arangodb {
 namespace options {
 void DefineEnvironment(std::string const& keyValue);
-std::string EnvironmentTranslator(std::string const& value, char const* binaryPath);
+std::string EnvironmentTranslator(std::string const& value,
+                                  char const* binaryPath);
 }  // namespace options
 }  // namespace arangodb
-

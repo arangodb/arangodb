@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +32,7 @@ using namespace arangodb::url;
 namespace {
 // used for URI-encoding
 static char const* hexValuesLower = "0123456789abcdef";
-};
+};  // namespace
 
 std::ostream& Query::toStream(std::ostream& ostream) const {
   struct output {
@@ -102,8 +102,11 @@ Port::Port(uint16_t port) : _value(port) {}
 
 uint16_t const& Port::value() const noexcept { return _value; }
 
-Authority::Authority(std::optional<UserInfo> userInfo, Host host, std::optional<Port> port)
-    : _userInfo(std::move(userInfo)), _host(std::move(host)), _port(std::move(port)) {}
+Authority::Authority(std::optional<UserInfo> userInfo, Host host,
+                     std::optional<Port> port)
+    : _userInfo(std::move(userInfo)),
+      _host(std::move(host)),
+      _port(std::move(port)) {}
 std::optional<UserInfo> const& Authority::userInfo() const noexcept {
   return _userInfo;
 }
@@ -164,8 +167,11 @@ std::optional<Fragment> const& Url::fragment() const noexcept {
   return _fragment;
 }
 
-Location::Location(Path path, std::optional<Query> query, std::optional<Fragment> fragment)
-    : _path(std::move(path)), _query(std::move(query)), _fragment(std::move(fragment)) {}
+Location::Location(Path path, std::optional<Query> query,
+                   std::optional<Fragment> fragment)
+    : _path(std::move(path)),
+      _query(std::move(query)),
+      _fragment(std::move(fragment)) {}
 
 std::string Location::toString() const {
   std::stringstream location;
@@ -175,9 +181,7 @@ std::string Location::toString() const {
 
 Path const& Location::path() const noexcept { return _path; }
 
-std::optional<Query> const& Location::query() const noexcept {
-  return _query;
-}
+std::optional<Query> const& Location::query() const noexcept { return _query; }
 
 std::optional<Fragment> const& Location::fragment() const noexcept {
   return _fragment;
@@ -185,10 +189,8 @@ std::optional<Fragment> const& Location::fragment() const noexcept {
 
 // unreserved are A-Z, a-z, 0-9 and - _ . ~
 bool arangodb::url::isUnreserved(char c) {
-  return (c >= '0' && c <= '9') || 
-         (c >= 'a' && c <= 'z') || 
-         (c >= 'A' && c <= 'Z') || 
-         c == '-' || c == '_' || c == '.' || c == '~';
+  return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||
+         (c >= 'A' && c <= 'Z') || c == '-' || c == '_' || c == '.' || c == '~';
 }
 
 // reserved are:
@@ -219,7 +221,8 @@ std::string arangodb::url::uriEncode(std::string const& raw) {
   return encoded;
 }
 
-std::ostream& arangodb::url::operator<<(std::ostream& ostream, Location const& location) {
+std::ostream& arangodb::url::operator<<(std::ostream& ostream,
+                                        Location const& location) {
   ostream << location.path().value();
 
   if (location.query()) {
@@ -245,7 +248,8 @@ std::ostream& arangodb::url::operator<<(std::ostream& ostream, Url const& url) {
   return ostream;
 }
 
-std::ostream& arangodb::url::operator<<(std::ostream& ostream, Authority const& authority) {
+std::ostream& arangodb::url::operator<<(std::ostream& ostream,
+                                        Authority const& authority) {
   if (authority.userInfo()) {
     ostream << *authority.userInfo() << "@";
   }
@@ -256,7 +260,8 @@ std::ostream& arangodb::url::operator<<(std::ostream& ostream, Authority const& 
   return ostream;
 }
 
-std::ostream& arangodb::url::operator<<(std::ostream& ostream, UserInfo const& userInfo) {
+std::ostream& arangodb::url::operator<<(std::ostream& ostream,
+                                        UserInfo const& userInfo) {
   ostream << userInfo.user().value();
   if (userInfo.password()) {
     ostream << ":" << userInfo.password()->value();
@@ -264,11 +269,12 @@ std::ostream& arangodb::url::operator<<(std::ostream& ostream, UserInfo const& u
   return ostream;
 }
 
-std::ostream& arangodb::url::operator<<(std::ostream& ostream, Query const& query) {
+std::ostream& arangodb::url::operator<<(std::ostream& ostream,
+                                        Query const& query) {
   return query.toStream(ostream);
 }
 
-std::ostream& arangodb::url::operator<<(std::ostream& ostream,
-                                        QueryParameters const& queryParameters) {
+std::ostream& arangodb::url::operator<<(
+    std::ostream& ostream, QueryParameters const& queryParameters) {
   return queryParameters.toStream(ostream);
 }

@@ -1,0 +1,482 @@
+[/
+ / Copyright (c) 2014 Vicente J. Botet Escriba
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[//////////////////////////////////////////////////////////]
+[section:parallel Parallel - Fork-Join -- EXPERIMENTAL]
+
+[section:fork_join Fork-Join]
+
+[warning These features are experimental and subject to change in future versions. There are not too much tests yet, so it is possible that you can find out some trivial bugs :(] 
+
+[note These features are based on the [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4088.pdf [* n4088 - Task Region R3]] C++1y proposal from P. Halpern, A. Robison, A. Laksberg, H. Sutter, et al.  The text that follows has been adapted from this paper to show the differences.]
+
+The major difference respect to the standard proposal is that we are able to use a common executor for several task regions.
+
+[note 
+Up to now, Boost.Thread doesn't implement the parallel algorithms as defined in [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4105.pdf [* n4105 - Information technology – Programming languages, their environments and system software interfaces – Technical Specification for C++ Extensions for Parallelism]].
+]
+
+[////////////////////]
+[section Introduction]
+
+
+This module introduces a C++11/c++14 library function template `task_region` and a library class `task_region_handle`
+with member functions `run` and `wait` that together enable developers to write expressive and portable fork-join
+parallel code.
+
+The working draft for the Parallelism TS [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4105.pdf [*N4105]] augments the STL algorithms with the inclusion of parallel execution policies. Programmers use these as a basis to write additional high-level algorithms that can be implemented in terms of the provided parallel algorithms. However, the scope of n4105 does not include lower-level mechanisms to express arbitrary fork-join parallelism
+
+The `task_region`, `run` and the `wait` functions provided by this library are based on the `task_group` concept that is a part of the common subset of the PPL and the TBB libraries.
+
+[endsect] [/ Introduction]
+
+
+[/////////////////////////]
+[section:tutorial Tutorial]
+
+Consider an example of a parallel traversal of a tree, where a user-provided function compute is applied to each node of the tree, returning the sum of the results:
+
+  template<typename Func>
+  int traverse(node *n, Func&& compute)
+  {
+    int left = 0, right = 0;
+    task_region([&](task_region_handle& tr) {
+      if (n->left)
+        tr.run([&] { left = traverse(n->left, compute); });
+      if (n->right)
+        tr.run([&] { right = traverse(n->right, compute); });
+    });
+    return compute(n) + left + right;
+  }
+
+The example above demonstrates the use of two of the functions proposed in this paper, `task_region` and
+`task_region_handle::run`.
+The `task_region` function delineates a region in a program code potentially containing invocations of tasks
+spawned by the `run` member function of the `task_region_handle` class.
+
+The run function spawns a task, a unit of work that is allowed to execute in parallel with respect to the caller.
+Any parallel tasks spawned by `run` within the `task_region` are joined back to a single thread of execution at
+the end of the `task_region`.
+
+`run` takes a user-provided function object `f` and starts it asynchronously - i.e. it may return before the
+execution of `f` completes. The implementation's scheduler may choose to run `f` immediately or delay running
+`f` until compute resources become available.
+
+A `task_region_handle` can be constructed only by `task_region` because it has no public constructors.
+Thus, `run` can be invoked (directly or indirectly) only from a user-provided function passed to `task_region`:
+
+  void g();
+  void f(task_region_handle& tr)
+  {
+    tr.run(g); // OK, invoked from within task_region in h
+  }
+  void h()
+  {
+    task_region(f);
+  }
+
+  int main()
+  {
+    task_region_handle tr; // Error: no public constructor
+    tr.run(g); // No way to call run outside of a task_region
+    return 0;
+  }
+
+[endsect] [/ Tutorial]
+
+[////////////////]
+[section:examples Examples]
+
+[section:fib Parallel Fibonacci]
+
+
+This is surely the worst implementation of the Fibonacci function. Anyway, here it is, as it is simple and shows the fork-join structure clearly. `Fibonacci(n) = Fibonacci(n-1) + Fibonacci(n-2)`, so the task decomposition is trivial.
+
+  int fib_task_region(int n)
+  {
+    using boost::experimental::parallel::task_region;
+    using boost::experimental::parallel::task_region_handle;
+  
+    if (n == 0) return 0;
+    if (n == 1) return 1;
+  
+    int n1;
+    int n2;
+  
+    task_region([&](task_region_handle& trh)
+        {
+          trh.run([&]
+              {
+                n1 = fib_task_region(n - 1);
+              });
+  
+          n2 = fib_task_region(n - 2);
+        });
+  
+    return n1 + n2;
+  }
+
+  int main()
+  {
+    for (int i = 0; i<10; ++i) {
+      std::cout << fib_task_region(i) << " ";
+    }
+    std::cout << std::endl;
+  }
+
+[endsect] [/ Fib]
+[section:fibex Parallel Fibonacci - Specific executor]
+
+The previous example make use of an implementation defined way to spawn the tasks. Often the user wants to master how the task must be spawned. There is an overload of `task_region` that accept an additional `Executor` parameter and a function that takes as parameter a `task_region_handle_gen<Executor>`. `task_region_handle_gen<Executor>` run uses this executor to spawn the tasks. 
+
+  template <class Ex>
+  int fib_task_region_gen( Ex& ex, int n)
+  {
+    using boost::experimental::parallel::task_region;
+    using boost::experimental::parallel::task_region_handle_gen;
+  
+    if (n == 0) return 0;
+    if (n == 1) return 1;
+  
+    int n1;
+    int n2;
+  
+    task_region(ex, [&](task_region_handle_gen<Ex>& trh) // (2)
+        {
+          trh.run([&]
+              {
+                n1 = fib_task_region(n - 1);
+              });
+  
+          n2 = fib_task_region(n - 2);
+        });
+  
+    return n1 + n2;
+  }
+
+  int main()
+  {
+    boost::basic_thread_pool tp; // (1)
+    for (int i = 0; i<10; ++i) {
+      std::cout << fib_task_region_gen(tp,i) << " ";
+    }
+    std::cout << std::endl;
+    return 0;
+  }
+
+
+The specific executor is declared in line (1) and it is used in line (2).
+
+[endsect] [/ Fib ex]
+
+
+
+
+[section:quick_sort Parallel Accumulate]
+
+
+[endsect] [/ Accumulate]
+
+[section:quick_sort Parallel Quick Sort]
+
+
+
+[endsect] [/ QuickSort]
+[endsect] [/ Examples]
+
+
+[////////////////////////]
+[section:rationale Design Rationale]
+
+
+[endsect] [/ Design Rationale]
+[endsect] [/ Fork-Join]
+
+[/////////////////////]
+[section:ref Reference -- EXPERIMENTAL]
+
+[/////////////////////////]
+[section:v1 Parallel V1]
+
+[section:exception_list Header `<experimental/exception_list.hpp>`]
+
+  namespace boost
+  {
+  namespace experimental
+  {
+  namespace parallel
+  {
+  inline namespace v1
+  {
+  
+    class exception_list;
+
+  } // v1
+  } // parallel
+  } // experimental
+  } // boost
+
+
+[/////////////////////////]
+[section:exception_list Class `exception_list`]
+
+  namespace boost
+  {
+  namespace experimental
+  {
+  namespace parallel
+  {
+  inline namespace v1
+  {
+  
+    class exception_list: public std::exception
+    {
+    public:
+      typedef 'implementation defined' const_iterator;
+  
+      ~exception_list() noexcept {}
+  
+      void add(exception_ptr const& e);
+      size_t size() const noexcept;
+      const_iterator begin() const noexcept;
+      const_iterator end() const noexcept;
+      const char* what() const noexcept;
+  
+    };
+
+  } // v1
+  } // parallel
+  } // experimental
+  } // boost
+
+
+[endsect] [/ exception_list]
+
+[endsect] [/ exception_list.hpp]
+
+[endsect] [/ Parallel V1]
+
+[////////////////////////////////////////////////////////////////////]
+[section:v2 Parallel V2]
+[////////////////////////////////////////////////////////////////////]
+[section:concepts Concepts]
+[////////////////////////////////////////////////////////////////////]
+[section:regionCallable Concept `Region_Callable`]
+
+[endsect] [/ Region_Callable]
+[////////////////////////////////////////////////////////////////////]
+[section:taskCallable Concept `Task_Callable`]
+
+
+[endsect] [/ Task_Callable]
+[////////////////////////////////////////////////////////////////////]
+[endsect] [/ Concepts]
+[////////////////////////////////////////////////////////////////////]
+[section:task_region Header `<experimental/task_region.hpp>`]
+
+  namespace boost
+  {
+  namespace experimental
+  {
+  namespace parallel
+  {
+  inline namespace v2
+  {
+
+    class task_canceled_exception;
+  
+    template <class Executor>
+    class task_region_handle_gen;
+  
+    using default_executor = 'implementation defined';
+
+    class task_region_handle;
+  
+    template <typename Executor, typename F>
+      void task_region_final(Executor& ex, F&& f); 
+    template <typename F>
+      void task_region_final(F&& f);
+
+    template <typename Executor, typename F>
+      void task_region(Executor& ex, F&& f);
+    template <typename F>
+      void task_region(F&& f);
+
+  } // v2
+  } // parallel
+  } // experimental
+  } // boost
+
+
+[////////////////////////////////////////////////////////////////////]
+[section:task_canceled_exception Class `task_canceled_exception `]
+
+  namespace boost
+  {
+  namespace experimental
+  {
+  namespace parallel
+  {
+  inline namespace v2
+  {
+  
+    class task_canceled_exception: public std::exception
+    {
+    public:
+      task_canceled_exception() noexcept;
+      task_canceled_exception(const task_canceled_exception&) noexcept;
+      task_canceled_exception& operator=(const task_canceled_exception&) noexcept;
+      virtual const char* what() const noexcept;
+    };
+
+  } // v2
+  } // parallel
+  } // experimental
+  } // boost
+
+[endsect] [/ task_canceled_exception]
+[////////////////////////////////////////////////////////////////////]
+[section:task_region_handle_gen Template Class `task_region_handle_gen<>`]
+
+  namespace boost
+  {
+  namespace experimental
+  {
+  namespace parallel
+  {
+  inline namespace v2
+  {
+  
+    template <class Executor>
+    class task_region_handle_gen
+    {
+    protected:
+      task_region_handle_gen(Executor& ex);
+   
+      ~task_region_handle_gen(); 
+  
+    public:
+      task_region_handle_gen(const task_region_handle_gen&) = delete;
+      task_region_handle_gen& operator=(const task_region_handle_gen&) = delete;
+      task_region_handle_gen* operator&() const = delete;
+  
+      template<typename F>
+      void run(F&& f);
+  
+      void wait();
+    };
+
+  } // v2
+  } // parallel
+  } // experimental
+  } // boost
+
+[endsect] [/ task_region_handle_gen]
+[////////////////////////////////////////////////////////////////////]
+[section:default_executor Class `default_executor `]
+
+  namespace boost
+  {
+  namespace experimental
+  {
+  namespace parallel
+  {
+  inline namespace v2
+  {
+  
+    using default_executor = 'implementation defined';
+ 
+  } // v2
+  } // parallel
+  } // experimental
+  } // boost
+
+[endsect] [/ default_executor]
+[////////////////////////////////////////////////////////////////////]
+[section:task_region_handle Class `task_region_handle `]
+
+  namespace boost
+  {
+  namespace experimental
+  {
+  namespace parallel
+  {
+  inline namespace v2
+  {
+  
+    class task_region_handle :
+      public task_region_handle_gen<default_executor>
+    {
+    protected:
+      task_region_handle();
+      task_region_handle(const task_region_handle&) = delete;
+      task_region_handle& operator=(const task_region_handle&) = delete;
+      task_region_handle* operator&() const = delete;
+  
+    };
+  
+  } // v2
+  } // parallel
+  } // experimental
+  } // boost
+
+[endsect] [/ task_region_handle]
+[////////////////////////////////////////////////////////////////////]
+[section:task_region_final Template Function `task_region_final `]
+
+  namespace boost
+  {
+  namespace experimental
+  {
+  namespace parallel
+  {
+  inline namespace v2
+  { 
+  
+    template <typename Executor, typename F>
+      void task_region_final(Executor& ex, F&& f); 
+    template <typename F>
+      void task_region_final(F&& f);
+
+  } // v2
+  } // parallel
+  } // experimental
+  } // boost
+
+[endsect] [/ task_region_final]
+[////////////////////////////////////////////////////////////////////]
+[section:task_region Template Function `task_region `]
+
+  namespace boost
+  {
+  namespace experimental
+  {
+  namespace parallel
+  {
+  inline namespace v2
+  { 
+  
+    template <typename Executor, typename F>
+      void task_region(Executor& ex, F&& f);
+    template <typename F>
+      void task_region(F&& f);
+
+  } // v2
+  } // parallel
+  } // experimental
+  } // boost
+
+[endsect] [/ task_region]
+
+
+
+
+[endsect] [/ task_region.hpp]
+[endsect] [/ Parallel V2]
+[endsect] [/ Reference]
+
+[endsect] [/ Parallel]

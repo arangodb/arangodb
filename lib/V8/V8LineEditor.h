@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,7 +41,8 @@ class V8LineEditor : public LineEditor {
   V8LineEditor& operator=(LineEditor const&) = delete;
 
  public:
-  V8LineEditor(v8::Isolate*, v8::Handle<v8::Context>, std::string const& history);
+  V8LineEditor(v8::Isolate*, v8::Handle<v8::Context>,
+               std::string const& history);
 
   ~V8LineEditor();
 
@@ -84,4 +85,3 @@ class V8LineEditor : public LineEditor {
   std::atomic<bool> _executingCommand;
 };
 }  // namespace arangodb
-

@@ -99,8 +99,6 @@ const tearDownAll = () => {
   try {
     analyzers.remove(analyzerName, true);
   } catch (e) {}
-
-  assertEqual(0, db._analyzers.count(), db._analyzers.toArray());
 };
 
 function IResearchViewEnumerationRegressionTest() {

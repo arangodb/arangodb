@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,21 +34,20 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
-class CollectionNameResolver;
-
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
 
-ModifierOperationType RemoveModifierCompletion::accumulate(ModificationExecutorAccumulator& accu,
-                                                           InputAqlItemRow& row) {
+ModifierOperationType RemoveModifierCompletion::accumulate(
+    ModificationExecutorAccumulator& accu, InputAqlItemRow& row) {
   RegisterId const inDocReg = _infos._input1RegisterId;
 
   // The document to be REMOVEd
   AqlValue const& inDoc = row.getValue(inDocReg);
 
   if (writeRequired(_infos, inDoc.slice(), StaticStrings::Empty)) {
-    CollectionNameResolver const& collectionNameResolver{_infos._query.resolver()};
+    CollectionNameResolver const& collectionNameResolver{
+        _infos._query.resolver()};
 
     std::string key{}, rev{};
     Result result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev);
@@ -73,6 +72,7 @@ ModifierOperationType RemoveModifierCompletion::accumulate(ModificationExecutorA
   }
 }
 
-OperationResult RemoveModifierCompletion::transact(transaction::Methods& trx, VPackSlice const& data) {
-  return trx.remove(_infos._aqlCollection->name(), data, _infos._options);
+futures::Future<OperationResult> RemoveModifierCompletion::transact(
+    transaction::Methods& trx, VPackSlice const& data) {
+  return trx.removeAsync(_infos._aqlCollection->name(), data, _infos._options);
 }

@@ -1,7 +1,7 @@
 name: arangodb_v8_context_alive
 introducedIn: "3.6.7"
 help: |
-  Number of V8 contexts currently alive
+  Number of V8 contexts currently alive.
 unit: number
 type: gauge
 category: Statistics

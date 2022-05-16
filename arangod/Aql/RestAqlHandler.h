@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,17 +33,16 @@ namespace arangodb {
 namespace aql {
 class Query;
 class QueryRegistry;
-enum class SerializationFormat;
 
 /// @brief shard control request handler
 class RestAqlHandler : public RestVocbaseBaseHandler {
  public:
-  RestAqlHandler(application_features::ApplicationServer&, GeneralRequest*,
-                 GeneralResponse*, QueryRegistry*);
+  RestAqlHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
+                 QueryRegistry*);
 
  public:
   char const* name() const override final { return "RestAqlHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLUSTER_AQL; }
+  RequestLane lane() const override final;
   RestStatus execute() override;
   RestStatus continueExecute() override;
   void shutdownExecute(bool isFinalized) noexcept override;
@@ -52,7 +51,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
    public:
     static auto execute() -> const char* { return "/_api/aql/execute"; }
   };
-  
+
   // PUT method for /_api/aql/<operation>/<queryId>, this is using
   // the part of the cursor API with side effects.
   // <operation>: can be "execute", "getSome", "skipSome" "initializeCursor" or
@@ -96,7 +95,8 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   // set, then the root block of the stored query must be a ScatterBlock
   // and the shard ID is given as an additional argument to the ScatterBlock's
   // special API.
-  RestStatus useQuery(std::string const& operation, std::string const& idString);
+  RestStatus useQuery(std::string const& operation,
+                      std::string const& idString);
 
  private:
   // POST method for /_api/aql/setup (internal)
@@ -125,8 +125,9 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   void setupClusterQuery();
 
   // handle for useQuery
-  RestStatus handleUseQuery(std::string const&, arangodb::velocypack::Slice const);
-  
+  RestStatus handleUseQuery(std::string const&,
+                            arangodb::velocypack::Slice querySlice);
+
   // handle query finalization for all engines
   RestStatus handleFinishQuery(std::string const& idString);
 
@@ -138,10 +139,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   QueryRegistry* _queryRegistry;
 
   aql::ExecutionEngine* _engine;
-
-  // id of current query
-  QueryId _qId;
 };
 }  // namespace aql
 }  // namespace arangodb
-

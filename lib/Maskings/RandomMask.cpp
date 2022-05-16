@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,12 +31,13 @@ using namespace arangodb::maskings;
 
 ParseResult<AttributeMasking> RandomMask::create(Path path, Maskings* maskings,
                                                  VPackSlice const&) {
-  return ParseResult<AttributeMasking>(AttributeMasking(path, new RandomMask(maskings)));
+  return ParseResult<AttributeMasking>(
+      AttributeMasking(path, new RandomMask(maskings)));
 }
 
 VPackValue RandomMask::mask(bool value, std::string&) const {
-  int64_t result =
-      RandomGenerator::interval(static_cast<int64_t>(0), static_cast<int64_t>(1));
+  int64_t result = RandomGenerator::interval(static_cast<int64_t>(0),
+                                             static_cast<int64_t>(1));
 
   return VPackValue(result % 2 == 0);
 }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,6 @@
 #include "Basics/exitcodes.h"
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -40,30 +39,34 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/StorageEngine.h"
 
+using namespace arangodb;
 using namespace arangodb::options;
 
 namespace {
+
+using EngineResolver = StorageEngine& (*)(ArangodServer&);
+
 struct EngineInfo {
-  std::type_index type;
+  EngineResolver resolver;
   // whether or not the engine is deprecated
   bool deprecated;
   // whether or not new deployments with this engine are allowed
   bool allowNewDeployments;
 };
 
-std::unordered_map<std::string, EngineInfo> createEngineMap() {
-  std::unordered_map<std::string, EngineInfo> map;
-  // rocksdb is not deprecated and the engine of choice
-  map.try_emplace(arangodb::RocksDBEngine::EngineName,
-                  EngineInfo{ std::type_index(typeid(arangodb::RocksDBEngine)), false, true });
-  return map;
-}
-}
+constexpr std::array<std::pair<std::string_view, EngineInfo>, 1> kEngines{
+    {{RocksDBEngine::kEngineName,
+      {[](ArangodServer& server) -> StorageEngine& {
+         return server.getFeature<RocksDBEngine>();
+       },
+       false, true}}}};
+
+}  // namespace
 
 namespace arangodb {
 
-EngineSelectorFeature::EngineSelectorFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "EngineSelector"),
+EngineSelectorFeature::EngineSelectorFeature(Server& server)
+    : ArangodFeature{server, *this},
       _engine(nullptr),
       _engineName("auto"),
       _selected(false),
@@ -72,13 +75,14 @@ EngineSelectorFeature::EngineSelectorFeature(application_features::ApplicationSe
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }
 
-void EngineSelectorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void EngineSelectorFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
   options->addOption("--server.storage-engine",
                      "storage engine type "
                      "(note that the mmfiles engine is unavailable since "
                      "v3.7.0 and cannot be used anymore)",
-                     new DiscreteValuesParameter<StringParameter>(&_engineName,
-                                                                  availableEngineNames()));
+                     new DiscreteValuesParameter<StringParameter>(
+                         &_engineName, availableEngineNames()));
 }
 
 void EngineSelectorFeature::prepare() {
@@ -88,8 +92,6 @@ void EngineSelectorFeature::prepare() {
     return;
   }
 #endif
-  auto engines = ::createEngineMap();
-
   // read engine from file in database_directory ENGINE (mmfiles/rocksdb)
   auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
   auto path = databasePathFeature.directory();
@@ -99,7 +101,8 @@ void EngineSelectorFeature::prepare() {
   if (!ServerState::instance()->isCoordinator() &&
       basics::FileUtils::isRegularFile(_engineFilePath)) {
     LOG_TOPIC("98b5c", DEBUG, Logger::STARTUP)
-        << "looking for previously selected engine in file '" << _engineFilePath << "'";
+        << "looking for previously selected engine in file '" << _engineFilePath
+        << "'";
     try {
       std::string content =
           basics::StringUtils::trim(basics::FileUtils::slurp(_engineFilePath));
@@ -130,11 +133,14 @@ void EngineSelectorFeature::prepare() {
 
   TRI_ASSERT(_engineName != "auto");
 
-  auto selected = engines.find(_engineName);
-  if (selected == engines.end()) {
+  auto const selected =
+      std::find_if(std::begin(kEngines), std::end(kEngines),
+                   [this](auto& info) { return _engineName == info.first; });
+  if (selected == std::end(kEngines)) {
     if (_engineName == "mmfiles") {
       LOG_TOPIC("10eb6", FATAL, Logger::STARTUP)
-          << "the mmfiles storage engine is unavailable from version v3.7.0 onwards";
+          << "the mmfiles storage engine is unavailable from version v3.7.0 "
+             "onwards";
     } else {
       // should not happen
       LOG_TOPIC("3e975", FATAL, Logger::STARTUP)
@@ -146,7 +152,9 @@ void EngineSelectorFeature::prepare() {
   if (selected->second.deprecated) {
     if (!selected->second.allowNewDeployments) {
       LOG_TOPIC("23562", ERR, arangodb::Logger::STARTUP)
-          << "The " << _engineName << " storage engine is deprecated and unsupported and will be removed in a future version. "
+          << "The " << _engineName
+          << " storage engine is deprecated and unsupported and will be "
+             "removed in a future version. "
           << "Please plan for a migration to a different ArangoDB storage "
              "engine.";
 
@@ -160,7 +168,9 @@ void EngineSelectorFeature::prepare() {
       }
     } else {
       LOG_TOPIC("80866", WARN, arangodb::Logger::STARTUP)
-          << "The " << _engineName << " storage engine is deprecated and will be removed in a future version. "
+          << "The " << _engineName
+          << " storage engine is deprecated and will be removed in a future "
+             "version. "
           << "Please plan for a migration to a different ArangoDB storage "
              "engine.";
     }
@@ -170,25 +180,27 @@ void EngineSelectorFeature::prepare() {
     ClusterEngine& ce = server().getFeature<ClusterEngine>();
     _engine = &ce;
 
-    for (auto& engine : engines) {
-      StorageEngine& e = server().getFeature<StorageEngine>(engine.second.type);
+    for (auto& engine : kEngines) {
+      StorageEngine& e = engine.second.resolver(server());
       // turn off all other storage engines
-      LOG_TOPIC("001b6", TRACE, Logger::STARTUP) << "disabling storage engine " << engine.first;
+      LOG_TOPIC("001b6", TRACE, Logger::STARTUP)
+          << "disabling storage engine " << engine.first;
       e.disable();
       if (engine.first == _engineName) {
-        LOG_TOPIC("4a3fc", INFO, Logger::FIXME) << "using storage engine " << engine.first;
+        LOG_TOPIC("4a3fc", DEBUG, Logger::STARTUP)
+            << "using storage engine " << engine.first;
         ce.setActualEngine(&e);
       }
     }
 
   } else {
     // deactivate all engines but the selected one
-    for (auto& engine : engines) {
-      auto& e = server().getFeature<StorageEngine>(engine.second.type);
+    for (auto& engine : kEngines) {
+      StorageEngine& e = engine.second.resolver(server());
 
       if (engine.first == _engineName) {
         // this is the selected engine
-        LOG_TOPIC("144fe", INFO, Logger::FIXME)
+        LOG_TOPIC("144fe", DEBUG, Logger::STARTUP)
             << "using storage engine '" << engine.first << "'";
         e.enable();
 
@@ -225,7 +237,8 @@ void EngineSelectorFeature::start() {
       basics::FileUtils::spit(_engineFilePath, _engineName, true);
     } catch (std::exception const& ex) {
       LOG_TOPIC("4ff0f", FATAL, Logger::STARTUP)
-          << "unable to write 'ENGINE' file '" << _engineFilePath << "': " << ex.what()
+          << "unable to write 'ENGINE' file '" << _engineFilePath
+          << "': " << ex.what()
           << ". please make sure the file/directory is writable for the "
              "arangod process and user";
       FATAL_ERROR_EXIT();
@@ -239,18 +252,23 @@ void EngineSelectorFeature::unprepare() {
   _engine = nullptr;
 
   if (ServerState::instance()->isCoordinator()) {
-    ClusterEngine& ce = server().getFeature<ClusterEngine>();
-    ce.setActualEngine(nullptr);
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+    if (!arangodb::ClusterEngine::Mocking) {
+#endif
+      ClusterEngine& ce = server().getFeature<ClusterEngine>();
+      ce.setActualEngine(nullptr);
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+    }
+#endif
   }
 }
 
 // return the names of all available storage engines
 std::unordered_set<std::string> EngineSelectorFeature::availableEngineNames() {
-  std::unordered_set<std::string> result;
-  for (auto const& it : ::createEngineMap()) {
+  std::unordered_set<std::string> result{"auto"};
+  for (auto const& it : kEngines) {
     result.emplace(it.first);
   }
-  result.emplace("auto");
   return result;
 }
 
@@ -261,23 +279,24 @@ StorageEngine& EngineSelectorFeature::engine() {
   return *_engine;
 }
 
-template <typename As, typename std::enable_if<std::is_base_of<StorageEngine, As>::value, int>::type>
+template<typename As, typename std::enable_if<
+                          std::is_base_of<StorageEngine, As>::value, int>::type>
 As& EngineSelectorFeature::engine() {
   return *static_cast<As*>(_engine);
 }
 template ClusterEngine& EngineSelectorFeature::engine<ClusterEngine>();
 template RocksDBEngine& EngineSelectorFeature::engine<RocksDBEngine>();
 
-std::string const& EngineSelectorFeature::engineName() {
+std::string_view EngineSelectorFeature::engineName() {
   return _engine->typeName();
 }
 
-std::string const& EngineSelectorFeature::defaultEngine() {
-  return RocksDBEngine::EngineName;
+std::string_view EngineSelectorFeature::defaultEngine() {
+  return RocksDBEngine::kEngineName;
 }
 
 bool EngineSelectorFeature::isRocksDB() {
-  return engineName() == RocksDBEngine::EngineName;
+  return engineName() == RocksDBEngine::kEngineName;
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS

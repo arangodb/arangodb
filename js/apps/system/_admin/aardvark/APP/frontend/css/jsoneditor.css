@@ -238,7 +238,7 @@ div.jsoneditor-tree table.jsoneditor-tree {
 }
 
 div.jsoneditor-tree div.jsoneditor-tree-inner {
-  padding-bottom: 300px;
+  padding-bottom: 0;
 }
 
 div.jsoneditor-outer {

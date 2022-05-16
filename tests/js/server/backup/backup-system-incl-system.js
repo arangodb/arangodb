@@ -34,6 +34,7 @@ const jsunity = require("jsunity");
 const users = require("@arangodb/users");
 const colname = 'UnitTestBkpCollection';
 const isCluster = false;
+const userManager = require("@arangodb/users");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -48,7 +49,15 @@ function backupTestSuite() {
       users.reload();
     },
 
-    tearDown: function () { },
+    tearDownAll: function () {
+      db._flushCache();
+      // Users are here already, don't clean them up:
+      //userManager.all().forEach(user => {
+      //  if (user.user !== "root") {
+      //    userManager.remove(user.user);
+      //  }
+      //});
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the non system collection

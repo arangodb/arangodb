@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,8 +28,9 @@
 #include <functional>
 #include <memory>
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionVariable.h"
+#include "RestServer/arangod.h"
+#include "Agency/AgencyCommon.h"
 
 namespace arangodb {
 class AgencyComm;
@@ -37,7 +38,7 @@ class AgencyComm;
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace application_features {
 class ApplicationServer;
@@ -98,9 +99,14 @@ class AgencyCallback {
   //////////////////////////////////////////////////////////////////////////////
 
  public:
-  AgencyCallback(application_features::ApplicationServer& server, std::string const&,
-                 std::function<bool(velocypack::Slice const&)> const&, bool needsValue,
-                 bool needsInitialValue = true);
+  using CallbackType =
+      std::function<bool(velocypack::Slice, consensus::index_t)>;
+
+  AgencyCallback(ArangodServer& server, std::string const&,
+                 std::function<bool(velocypack::Slice const&)> const&,
+                 bool needsValue, bool needsInitialValue = true);
+  AgencyCallback(ArangodServer& server, std::string key, CallbackType,
+                 bool needsValue, bool needsInitialValue = true);
 
   std::string const key;
   arangodb::basics::ConditionVariable _cv;
@@ -118,7 +124,7 @@ class AgencyCallback {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief wait until a callback is received or a timeout has happened
-  /// 
+  ///
   /// @return true => if we got woken up after maxTimeout
   ///         false => if someone else ringed the condition variable
   //////////////////////////////////////////////////////////////////////////////
@@ -130,22 +136,23 @@ class AgencyCallback {
   //////////////////////////////////////////////////////////////////////////////
   void local(bool b);
   bool local() const;
-  
+
  private:
   // execute callback with current value data:
-  bool execute(velocypack::Slice data);
-  
+  bool execute(velocypack::Slice data, consensus::index_t raftIndex);
+
   // execute callback without any data:
   bool executeEmpty();
 
   // Compare last value and newly read one and call execute if the are
   // different:
-  void checkValue(std::shared_ptr<velocypack::Builder>, bool forceCheck);
+  void checkValue(std::shared_ptr<velocypack::Builder>,
+                  consensus::index_t raftIndex, bool forceCheck);
 
  private:
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
   std::unique_ptr<AgencyComm> _agency;
-  std::function<bool(velocypack::Slice const&)> const _cb;
+  CallbackType const _cb;
   std::shared_ptr<velocypack::Builder> _lastData;
   bool const _needsValue;
   /// @brief this flag is set if there was an attempt to signal the callback's
@@ -155,12 +162,11 @@ class AgencyCallback {
   ///  2a) execute callback
   ///  2b) execute callback signaling
   ///  3) caller going into condition.wait() (and not woken up)
-  /// this variable is protected by the condition variable! 
-  bool _wasSignaled;
+  /// this variable is protected by the condition variable!
+  bool _wasSignaled{false};
 
-  /// Determined when registered in registry. Default: true 
-  bool _local;
+  /// Determined when registered in registry. Default: true
+  bool _local{true};
 };
 
 }  // namespace arangodb
-

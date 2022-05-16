@@ -1,0 +1,86 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Class access</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Contract 1.0.0">
+<link rel="up" href="../../reference.html#header.boost.contract.core.access_hpp" title="Header &lt;boost/contract/core/access.hpp&gt;">
+<link rel="prev" href="constructor.html" title="Function template constructor">
+<link rel="next" href="../../BOOST_CONTRACT_CHECK.html" title="Macro BOOST_CONTRACT_CHECK">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="constructor.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../reference.html#header.boost.contract.core.access_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../BOOST_CONTRACT_CHECK.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.contract.access"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class access</span></h2>
+<p>boost::contract::access — Declare this class as friend to program invariants and base types as private members. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../reference.html#header.boost.contract.core.access_hpp" title="Header &lt;boost/contract/core/access.hpp&gt;">boost/contract/core/access.hpp</a>&gt;
+
+</span>
+<span class="keyword">class</span> <a class="link" href="access.html" title="Class access">access</a> <span class="special">{</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idm36687"></a><h2>Description</h2>
+<p>Declare this class a friend of the user-defined class specifying the contracts and then invariant functions and the base types <code class="computeroutput">typedef</code> can be declared as non-public members:</p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">u</span>
+    <span class="preprocessor">#define</span> <span class="identifier">BASES</span> <span class="keyword">public</span> <span class="identifier">b</span><span class="special">,</span> <span class="keyword">private</span> <span class="identifier">w</span>
+    <span class="special">:</span> <span class="identifier">BASES</span>
+<span class="special">{</span>
+    <span class="keyword">friend</span> <span class="keyword">class</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">contract</span><span class="special">::</span><span class="identifier">access</span><span class="special">;</span>
+
+    <span class="keyword">typedef</span> <span class="identifier">BOOST_CONTRACT_BASE_TYPES</span><span class="special">(</span><span class="identifier">BASES</span><span class="special">)</span> <span class="identifier">base_types</span><span class="special">;</span> <span class="comment">// Private.</span>
+    <span class="preprocessor">#undef</span> <span class="identifier">BASES</span>
+
+    <span class="keyword">void</span> <span class="identifier">invariant</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="special">{</span> <span class="special">...</span> <span class="special">}</span> <span class="comment">// Private (same for static and volatile).</span>
+
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="special">...</span>
+<span class="special">}</span><span class="special">;</span>
+</pre>
+<p>In real code, programmers will likely chose to declare this class as friend so to fully control public interfaces of their user-defined classes (this is not extensively done in the examples of this documentation only for brevity). This class is not intended to be directly used by programmers a part from being declared as <code class="computeroutput">friend</code> (and that is why this class does not have any public member and it is not copyable).</p>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../../../../../../doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>Not declaring this class friend of user-defined classes will cause compiler errors on some compilers (e.g., MSVC) because the private members needed to check the contracts will not be accessible. On other compilers (e.g., GCC and CLang), the private access will instead fail SFINAE and no compiler error will be reported while invariants and subcontracting will be silently skipped at run-time. Therefore, programmers must make sure to either declare this class as friend or to always declare invariant functions and base types <code class="computeroutput">typedef</code> as public members.</p></td></tr>
+</table></div>
+<p>
+</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p> <a class="link" href="../../boost_contract/advanced.html#boost_contract.advanced.access_specifiers" title="Access Specifiers"> Access Specifiers</a> </p>
+<p>
+</p>
+<p>
+</p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2008-2019 Lorenzo Caminiti<p>
+        Distributed under the Boost Software License, Version 1.0 (see accompanying
+        file LICENSE_1_0.txt or a copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="constructor.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../reference.html#header.boost.contract.core.access_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../BOOST_CONTRACT_CHECK.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

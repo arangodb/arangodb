@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,36 +51,37 @@ class ShortestPathNode : public virtual GraphNode {
   ShortestPathNode(ExecutionPlan& plan, ShortestPathNode const& node);
 
  public:
-  ShortestPathNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
-                   AstNode const* direction, AstNode const* start, AstNode const* target,
-                   AstNode const* graph, std::unique_ptr<graph::BaseOptions> options);
+  ShortestPathNode(ExecutionPlan* plan, ExecutionNodeId id,
+                   TRI_vocbase_t* vocbase, AstNode const* direction,
+                   AstNode const* start, AstNode const* target,
+                   AstNode const* graph,
+                   std::unique_ptr<graph::BaseOptions> options);
 
-  ShortestPathNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  ShortestPathNode(ExecutionPlan* plan,
+                   arangodb::velocypack::Slice const& base);
 
   ~ShortestPathNode();
 
   /// @brief Internal constructor to clone the node.
-  ShortestPathNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
-                   std::vector<Collection*> const& edgeColls,
-                   std::vector<Collection*> const& vertexColls,
-                   TRI_edge_direction_e defaultDirection,
-                   std::vector<TRI_edge_direction_e> const& directions,
-                   Variable const* inStartVariable, std::string const& startVertexId,
-                   Variable const* inTargetVariable, std::string const& targetVertexId,
-                   std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph);
+  ShortestPathNode(
+      ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+      std::vector<Collection*> const& edgeColls,
+      std::vector<Collection*> const& vertexColls,
+      TRI_edge_direction_e defaultDirection,
+      std::vector<TRI_edge_direction_e> const& directions,
+      Variable const* inStartVariable, std::string const& startVertexId,
+      Variable const* inTargetVariable, std::string const& targetVertexId,
+      std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph);
 
  public:
   /// @brief return the type of the node
   NodeType getType() const override final { return SHORTEST_PATH; }
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -103,8 +104,9 @@ class ShortestPathNode : public virtual GraphNode {
   Variable const* targetInVariable() const { return _inTargetVariable; }
 
   std::string const getTargetVertex() const { return _targetVertexId; }
-  
-  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
+
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
+                            replacements) override;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
@@ -120,6 +122,11 @@ class ShortestPathNode : public virtual GraphNode {
   /// @brief Overrides GraphNode::options() with a more specific return type
   ///  (casts graph::BaseOptions* into graph::ShortestPathOptions*)
   auto options() const -> graph::ShortestPathOptions*;
+
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override final;
 
  private:
   void shortestPathCloneHelper(ExecutionPlan& plan, ShortestPathNode& c,
@@ -147,4 +154,3 @@ class ShortestPathNode : public virtual GraphNode {
 
 }  // namespace aql
 }  // namespace arangodb
-

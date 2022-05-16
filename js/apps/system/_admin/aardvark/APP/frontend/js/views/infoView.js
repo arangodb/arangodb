@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, Backbone, window, $, frontendConfig */
+/* global arangoHelper, Backbone, window, $, _, frontendConfig */
 
 (function () {
   'use strict';
@@ -28,9 +28,10 @@
             arangoHelper.arangoError('Figures', 'Could not get figures.');
             // in error case: try to render the other information
             self.renderInfoView();
+          } else {
+            clusterData.shardCounts = data.count;
+            self.renderInfoView(clusterData);
           }
-          clusterData.shardCounts = data.count;
-          self.renderInfoView(clusterData);
         };
         this.model.getShardCounts(callbackShardCount);
       } else {
@@ -47,7 +48,7 @@
 
     breadcrumb: function () {
       $('#subNavigationBar .breadcrumb').html(
-        'Collection: ' + (this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
+        'Collection: ' + _.escape(this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
       );
     },
 
@@ -65,7 +66,8 @@
             figures: figures,
             revision: revision,
             model: this.model,
-            cluster: cluster || {}
+            cluster: cluster || {},
+            isCluster: frontendConfig.isCluster
           };
 
           window.modalView.show(

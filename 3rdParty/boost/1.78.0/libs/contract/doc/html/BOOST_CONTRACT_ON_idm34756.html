@@ -1,0 +1,62 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Macro BOOST_CONTRACT_ON_MISSING_CHECK_DECL</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Chapter 1. Boost.Contract 1.0.0">
+<link rel="up" href="reference.html#header.boost.contract.core.config_hpp" title="Header &lt;boost/contract/core/config.hpp&gt;">
+<link rel="prev" href="BOOST_CONTRACT_PERMISSIVE.html" title="Macro BOOST_CONTRACT_PERMISSIVE">
+<link rel="next" href="BOOST_CONTRACT_PR_idm34776.html" title="Macro BOOST_CONTRACT_PRECONDITIONS_DISABLE_NO_ASSERTION">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="BOOST_CONTRACT_PERMISSIVE.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="reference.html#header.boost.contract.core.config_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="BOOST_CONTRACT_PR_idm34776.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="BOOST_CONTRACT_ON_idm34756"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Macro BOOST_CONTRACT_ON_MISSING_CHECK_DECL</span></h2>
+<p>BOOST_CONTRACT_ON_MISSING_CHECK_DECL — Code block to execute if contracts are not assigned to a  <code class="computeroutput"><a class="link" href="boost/contract/check.html" title="Class check">boost::contract::check</a></code> variable (undefined and executes <code class="computeroutput">BOOST_ASSERT(false)</code> by default). </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="reference.html#header.boost.contract.core.config_hpp" title="Header &lt;boost/contract/core/config.hpp&gt;">boost/contract/core/config.hpp</a>&gt;
+
+</span>BOOST_CONTRACT_ON_MISSING_CHECK_DECL</pre></div>
+<div class="refsect1">
+<a name="idm37324"></a><h2>Description</h2>
+<p>In general, there is a logic error in the program when contracts are not explicitly assigned to a local variable of type  <code class="computeroutput"><a class="link" href="boost/contract/check.html" title="Class check">boost::contract::check</a></code> and without using C++11 <code class="computeroutput">auto</code> declarations (because that is a misuse of this library). Therefore, by default (i.e., when this macro is not defined) this library calls <code class="computeroutput">BOOST_ASSERT(false)</code> in those cases. If this macro is defined, this library will execute the code expanded by this macro instead of calling <code class="computeroutput">BOOST_ASSERT(false)</code> (if programmers prefer to throw an exception, etc.).</p>
+<p>This macro can also be defined to be any block of code (and use empty curly brackets <code class="computeroutput">{}</code> to generate no error, not recommended), for example (on GCC): </p>
+<pre class="programlisting"><span class="identifier">gcc</span> <span class="special">-</span><span class="identifier">DBOOST_CONTRACT_ON_MISSING_CHECK_DECL</span><span class="special">=</span><span class="char">'{ throw std::logic_error("missing contract check declaration"); }'</span> <span class="special">...</span>
+</pre>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p> <a class="link" href="boost_contract/tutorial.html" title="Tutorial"> Tutorial</a> </p>
+<p>
+</p>
+<p>
+</p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2008-2019 Lorenzo Caminiti<p>
+        Distributed under the Boost Software License, Version 1.0 (see accompanying
+        file LICENSE_1_0.txt or a copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="BOOST_CONTRACT_PERMISSIVE.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="reference.html#header.boost.contract.core.config_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="BOOST_CONTRACT_PR_idm34776.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

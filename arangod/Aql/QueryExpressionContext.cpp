@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,39 +23,45 @@
 
 #include "QueryExpressionContext.h"
 
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/AqlValue.h"
 #include "Aql/QueryContext.h"
-#include "Aql/AqlFunctionsInternalCache.h"
 #include "Transaction/Methods.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-void QueryExpressionContext::registerWarning(ErrorCode errorCode, char const* msg) {
+void QueryExpressionContext::registerWarning(ErrorCode errorCode,
+                                             char const* msg) {
   _query.warnings().registerWarning(errorCode, msg);
 }
 
-void QueryExpressionContext::registerError(ErrorCode errorCode, char const* msg) {
+void QueryExpressionContext::registerError(ErrorCode errorCode,
+                                           char const* msg) {
   _query.warnings().registerError(errorCode, msg);
 }
 
-icu::RegexMatcher* QueryExpressionContext::buildRegexMatcher(char const* ptr, size_t length,
-                                                             bool caseInsensitive) {
-  return _aqlFunctionsInternalCache.buildRegexMatcher(ptr, length, caseInsensitive);
+icu::RegexMatcher* QueryExpressionContext::buildRegexMatcher(
+    char const* ptr, size_t length, bool caseInsensitive) {
+  return _aqlFunctionsInternalCache.buildRegexMatcher(ptr, length,
+                                                      caseInsensitive);
 }
 
-icu::RegexMatcher* QueryExpressionContext::buildLikeMatcher(char const* ptr, size_t length,
-                                                            bool caseInsensitive) {
-  return _aqlFunctionsInternalCache.buildLikeMatcher(ptr, length, caseInsensitive);
+icu::RegexMatcher* QueryExpressionContext::buildLikeMatcher(
+    char const* ptr, size_t length, bool caseInsensitive) {
+  return _aqlFunctionsInternalCache.buildLikeMatcher(ptr, length,
+                                                     caseInsensitive);
 }
 
-icu::RegexMatcher* QueryExpressionContext::buildSplitMatcher(AqlValue splitExpression,
-                                                             velocypack::Options const* opts,
-                                                             bool& isEmptyExpression) {
-  return _aqlFunctionsInternalCache.buildSplitMatcher(splitExpression, opts, isEmptyExpression);
+icu::RegexMatcher* QueryExpressionContext::buildSplitMatcher(
+    AqlValue splitExpression, velocypack::Options const* opts,
+    bool& isEmptyExpression) {
+  return _aqlFunctionsInternalCache.buildSplitMatcher(splitExpression, opts,
+                                                      isEmptyExpression);
 }
 
-arangodb::ValidatorBase* QueryExpressionContext::buildValidator(arangodb::velocypack::Slice const& params) {
+arangodb::ValidatorBase* QueryExpressionContext::buildValidator(
+    arangodb::velocypack::Slice const& params) {
   return _aqlFunctionsInternalCache.buildValidator(params);
 }
 
@@ -63,10 +69,17 @@ TRI_vocbase_t& QueryExpressionContext::vocbase() const {
   return _trx.vocbase();
 }
 
-transaction::Methods& QueryExpressionContext::trx() const {
-  return _trx;
+transaction::Methods& QueryExpressionContext::trx() const { return _trx; }
+
+bool QueryExpressionContext::killed() const { return _query.killed(); }
+
+QueryContext& QueryExpressionContext::query() { return _query; }
+
+void QueryExpressionContext::setVariable(Variable const* variable,
+                                         arangodb::velocypack::Slice value) {
+  _variables.emplace(variable, value);
 }
 
-bool QueryExpressionContext::killed() const  {
-  return _query.killed();
+void QueryExpressionContext::clearVariable(Variable const* variable) noexcept {
+  _variables.erase(variable);
 }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,7 +70,6 @@ config_t::config_t()
       _compactionKeepSize(50000),
       _supervisionGracePeriod(15.0),
       _supervisionOkThreshold(5.0),
-      _cmdLineTimings(false),
       _version(0),
       _startup("origin"),
       _maxAppendSize(250),
@@ -79,7 +78,8 @@ config_t::config_t()
 config_t::config_t(std::string const& rid, size_t as, size_t ps, double minp,
                    double maxp, std::string const& e,
                    std::vector<std::string> const& g, bool s, bool st, bool w,
-                   double f, uint64_t c, uint64_t k, double p, double o, bool t, size_t a)
+                   double f, uint64_t c, uint64_t k, double p, double o,
+                   size_t a)
     : _recoveryId(rid),
       _agencySize(as),
       _poolSize(ps),
@@ -96,7 +96,6 @@ config_t::config_t(std::string const& rid, size_t as, size_t ps, double minp,
       _compactionKeepSize(k),
       _supervisionGracePeriod(p),
       _supervisionOkThreshold(o),
-      _cmdLineTimings(t),
       _version(0),
       _startup("origin"),
       _maxAppendSize(a),
@@ -129,7 +128,6 @@ config_t& config_t::operator=(config_t const& other) {
   _compactionKeepSize = other._compactionKeepSize;
   _supervisionGracePeriod = other._supervisionGracePeriod;
   _supervisionOkThreshold = other._supervisionOkThreshold;
-  _cmdLineTimings = other._cmdLineTimings;
   _version = other._version;
   _startup = other._startup;
   _maxAppendSize = other._maxAppendSize;
@@ -157,7 +155,6 @@ config_t& config_t::operator=(config_t&& other) {
   _compactionKeepSize = std::move(other._compactionKeepSize);
   _supervisionGracePeriod = std::move(other._supervisionGracePeriod);
   _supervisionOkThreshold = std::move(other._supervisionOkThreshold);
-  _cmdLineTimings = std::move(other._cmdLineTimings);
   _version = std::move(other._version);
   _startup = std::move(other._startup);
   _maxAppendSize = std::move(other._maxAppendSize);
@@ -167,11 +164,6 @@ config_t& config_t::operator=(config_t&& other) {
 size_t config_t::version() const {
   READ_LOCKER(readLocker, _lock);
   return _version;
-}
-
-bool config_t::cmdLineTimings() const {
-  READ_LOCKER(readLocker, _lock);
-  return _cmdLineTimings;
 }
 
 double config_t::supervisionGracePeriod() const {
@@ -299,7 +291,8 @@ config_t::upsert_t config_t::upsertPool(VPackSlice const& otherPool,
     auto const id = entry.key.copyString();
     auto const endpoint = entry.value.copyString();
     if (_pool.find(id) == _pool.end()) {
-      LOG_TOPIC("95b8d", INFO, Logger::AGENCY) << "Adding " << id << "(" << endpoint << ") to agent pool";
+      LOG_TOPIC("95b8d", INFO, Logger::AGENCY)
+          << "Adding " << id << "(" << endpoint << ") to agent pool";
       _pool[id] = endpoint;
       ++_version;
       return CHANGED;
@@ -504,7 +497,8 @@ std::string config_t::startup() const {
 }
 
 /// @brief findIdInPool
-bool config_t::matchPeer(std::string const& id, std::string const& endpoint) const {
+bool config_t::matchPeer(std::string const& id,
+                         std::string const& endpoint) const {
   READ_LOCKER(readLocker, _lock);
   auto const& it = _pool.find(id);
   return (it == _pool.end()) ? false : it->second == endpoint;
@@ -518,7 +512,8 @@ bool config_t::findInPool(std::string const& id) const {
 
 /// @brief merge from persisted configuration
 bool config_t::merge(VPackSlice const& conf) {
-  WRITE_LOCKER(writeLocker, _lock);  // All must happen under the lock or else ...
+  WRITE_LOCKER(writeLocker,
+               _lock);  // All must happen under the lock or else ...
 
   // FIXME: All these "command line beats persistence" are wrong, since
   // the given default values never happen. Only fixed _supervision with
@@ -562,7 +557,8 @@ bool config_t::merge(VPackSlice const& conf) {
   ss.clear();
   ss << "Agent pool: ";
   if (conf.hasKey(poolStr)) {  // Persistence only
-    LOG_TOPIC("fc6ad", DEBUG, Logger::AGENCY) << "Found agent pool in persistence:";
+    LOG_TOPIC("fc6ad", DEBUG, Logger::AGENCY)
+        << "Found agent pool in persistence:";
     for (auto const& peer : VPackObjectIterator(conf.get(poolStr))) {
       auto const& id = peer.key.copyString();
       if (id != _id) {
@@ -643,7 +639,8 @@ bool config_t::merge(VPackSlice const& conf) {
   ss << "Supervision interval [s]: ";
   if (_supervisionFrequency == 0) {  // Command line beats persistence
     if (conf.hasKey(supervisionFrequencyStr)) {
-      _supervisionFrequency = conf.get(supervisionFrequencyStr).getNumber<double>();
+      _supervisionFrequency =
+          conf.get(supervisionFrequencyStr).getNumber<double>();
       ss << _supervisionFrequency << " (persisted)";
     } else {
       _supervisionFrequency = 2.5;
@@ -718,19 +715,24 @@ void config_t::updateConfiguration(VPackSlice const& other) {
     _supervision = other.get(supervisionStr).getBoolean();
   }
   if (other.hasKey(supervisionFrequencyStr)) {
-    _supervisionFrequency = other.get(supervisionFrequencyStr).getNumber<double>();
+    _supervisionFrequency =
+        other.get(supervisionFrequencyStr).getNumber<double>();
   }
   if (other.hasKey(supervisionGracePeriodStr)) {
-    _supervisionGracePeriod = other.get(supervisionGracePeriodStr).getNumber<double>();
+    _supervisionGracePeriod =
+        other.get(supervisionGracePeriodStr).getNumber<double>();
   }
   if (other.hasKey(supervisionOkThresholdStr)) {
-    _supervisionOkThreshold = other.get(supervisionOkThresholdStr).getNumber<double>();
+    _supervisionOkThreshold =
+        other.get(supervisionOkThresholdStr).getNumber<double>();
   }
   if (other.hasKey(compactionStepSizeStr)) {
-    _compactionStepSize = other.get(compactionStepSizeStr).getNumber<uint64_t>();
+    _compactionStepSize =
+        other.get(compactionStepSizeStr).getNumber<uint64_t>();
   }
   if (other.hasKey(compactionKeepSizeStr)) {
-    _compactionKeepSize = other.get(compactionKeepSizeStr).getNumber<uint64_t>();
+    _compactionKeepSize =
+        other.get(compactionKeepSizeStr).getNumber<uint64_t>();
   }
 
   ++_version;

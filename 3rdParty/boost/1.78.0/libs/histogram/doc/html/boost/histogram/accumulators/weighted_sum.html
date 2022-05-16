@@ -1,0 +1,114 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Class template weighted_sum</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter 1. Boost.Histogram">
+<link rel="up" href="../../../histogram/reference.html#header.boost.histogram.accumulators.weighted_sum_hpp" title="Header &lt;boost/histogram/accumulators/weighted_sum.hpp&gt;">
+<link rel="prev" href="weighted_mean.html" title="Class template weighted_mean">
+<link rel="next" href="../algorithm/empty.html" title="Function template empty">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="weighted_mean.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../histogram/reference.html#header.boost.histogram.accumulators.weighted_sum_hpp"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../algorithm/empty.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.histogram.accumulators.weighted_sum"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class template weighted_sum</span></h2>
+<p>boost::histogram::accumulators::weighted_sum — Holds sum of weights and its variance estimate. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../../histogram/reference.html#header.boost.histogram.accumulators.weighted_sum_hpp" title="Header &lt;boost/histogram/accumulators/weighted_sum.hpp&gt;">boost/histogram/accumulators/weighted_sum.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> ValueType<span class="special">&gt;</span> 
+<span class="keyword">class</span> <a class="link" href="weighted_sum.html" title="Class template weighted_sum">weighted_sum</a> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// types</span>
+  <span class="keyword">typedef</span> <span class="identifier">ValueType</span>          <a name="boost.histogram.accumulators.weighted_sum.value_type"></a><span class="identifier">value_type</span><span class="special">;</span>     
+  <span class="keyword">typedef</span> <span class="keyword">const</span> <span class="identifier">value_type</span> <span class="special">&amp;</span> <a name="boost.histogram.accumulators.weighted_sum.const_reference"></a><span class="identifier">const_reference</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="weighted_sum.html#boost.histogram.accumulators.weighted_sumconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="weighted_sum.html#idm13552-bb"><span class="identifier">weighted_sum</span></a><span class="special">(</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+  <a class="link" href="weighted_sum.html#idm13553-bb"><span class="identifier">weighted_sum</span></a><span class="special">(</span><span class="identifier">const_reference</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <a class="link" href="weighted_sum.html#idm13557-bb"><span class="identifier">weighted_sum</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="weighted_sum.html" title="Class template weighted_sum">weighted_sum</a><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="weighted_sum.html#idm13564-bb"><span class="identifier">weighted_sum</span></a><span class="special">(</span><span class="identifier">const_reference</span><span class="special">,</span> <span class="identifier">const_reference</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="weighted_sum.html#idm13501-bb">public member functions</a></span>
+  <a class="link" href="weighted_sum.html" title="Class template weighted_sum">weighted_sum</a> <span class="special">&amp;</span> <a class="link" href="weighted_sum.html#idm13502-bb"><span class="keyword">operator</span><span class="special">++</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="weighted_sum.html" title="Class template weighted_sum">weighted_sum</a> <span class="special">&amp;</span> <a class="link" href="weighted_sum.html#idm13506-bb"><span class="keyword">operator</span><span class="special">+=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="../weight_type.html" title="Struct template weight_type">weight_type</a><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="weighted_sum.html" title="Class template weighted_sum">weighted_sum</a> <span class="special">&amp;</span> <a class="link" href="weighted_sum.html#idm13513-bb"><span class="keyword">operator</span><span class="special">+=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="weighted_sum.html" title="Class template weighted_sum">weighted_sum</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="weighted_sum.html" title="Class template weighted_sum">weighted_sum</a> <span class="special">&amp;</span> <a class="link" href="weighted_sum.html#idm13520-bb"><span class="keyword">operator</span> <span class="special">*=</span></a><span class="special">(</span><span class="identifier">const_reference</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="weighted_sum.html#idm13526-bb"><span class="keyword">operator</span><span class="special">==</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="weighted_sum.html" title="Class template weighted_sum">weighted_sum</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="weighted_sum.html#idm13531-bb"><span class="keyword">operator</span><span class="special">!=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="weighted_sum.html" title="Class template weighted_sum">weighted_sum</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">const_reference</span> <a class="link" href="weighted_sum.html#idm13536-bb"><span class="identifier">value</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">const_reference</span> <a class="link" href="weighted_sum.html#idm13539-bb"><span class="identifier">variance</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="weighted_sum.html#idm13542-bb"><span class="keyword">operator</span> <span class="identifier">const_reference</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Archive<span class="special">&gt;</span> <span class="keyword">void</span> <a class="link" href="weighted_sum.html#idm13544-bb"><span class="identifier">serialize</span></a><span class="special">(</span><span class="identifier">Archive</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">unsigned</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idm22032"></a><h2>Description</h2>
+<div class="refsect2">
+<a name="idm22034"></a><h3>
+<a name="boost.histogram.accumulators.weighted_sumconstruct-copy-destruct"></a><code class="computeroutput">weighted_sum</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><pre class="literallayout"><a name="idm13552-bb"></a><span class="identifier">weighted_sum</span><span class="special">(</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span></pre></li>
+<li class="listitem">
+<pre class="literallayout"><a name="idm13553-bb"></a><span class="identifier">weighted_sum</span><span class="special">(</span><span class="identifier">const_reference</span> value<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Initialize sum to value and allow implicit conversion. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <a name="idm13557-bb"></a><span class="identifier">weighted_sum</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="weighted_sum.html" title="Class template weighted_sum">weighted_sum</a><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <span class="special">&amp;</span> s<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Allow implicit conversion from sum&lt;T&gt; </li>
+<li class="listitem">
+<pre class="literallayout"><a name="idm13564-bb"></a><span class="identifier">weighted_sum</span><span class="special">(</span><span class="identifier">const_reference</span> value<span class="special">,</span> <span class="identifier">const_reference</span> variance<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Initialize sum to value and variance. </li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="idm22090"></a><h3>
+<a name="idm13501-bb"></a><code class="computeroutput">weighted_sum</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="weighted_sum.html" title="Class template weighted_sum">weighted_sum</a> <span class="special">&amp;</span> <a name="idm13502-bb"></a><span class="keyword">operator</span><span class="special">++</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Increment by one. </li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="weighted_sum.html" title="Class template weighted_sum">weighted_sum</a> <span class="special">&amp;</span> <a name="idm13506-bb"></a><span class="keyword">operator</span><span class="special">+=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="../weight_type.html" title="Struct template weight_type">weight_type</a><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span> <span class="special">&amp;</span> w<span class="special">)</span><span class="special">;</span></pre>Increment by weight. </li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="weighted_sum.html" title="Class template weighted_sum">weighted_sum</a> <span class="special">&amp;</span> <a name="idm13513-bb"></a><span class="keyword">operator</span><span class="special">+=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="weighted_sum.html" title="Class template weighted_sum">weighted_sum</a> <span class="special">&amp;</span> rhs<span class="special">)</span><span class="special">;</span></pre>Added another weighted sum. </li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="weighted_sum.html" title="Class template weighted_sum">weighted_sum</a> <span class="special">&amp;</span> <a name="idm13520-bb"></a><span class="keyword">operator</span> <span class="special">*=</span><span class="special">(</span><span class="identifier">const_reference</span> x<span class="special">)</span><span class="special">;</span></pre>Scale by value. </li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">bool</span> <a name="idm13526-bb"></a><span class="keyword">operator</span><span class="special">==</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="weighted_sum.html" title="Class template weighted_sum">weighted_sum</a> <span class="special">&amp;</span> rhs<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">bool</span> <a name="idm13531-bb"></a><span class="keyword">operator</span><span class="special">!=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="weighted_sum.html" title="Class template weighted_sum">weighted_sum</a> <span class="special">&amp;</span> rhs<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_reference</span> <a name="idm13536-bb"></a><span class="identifier">value</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Return value of the sum. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_reference</span> <a name="idm13539-bb"></a><span class="identifier">variance</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Return estimated variance of the sum. </li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">explicit</span> <a name="idm13542-bb"></a><span class="keyword">operator</span> <span class="identifier">const_reference</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Archive<span class="special">&gt;</span> <span class="keyword">void</span> <a name="idm13544-bb"></a><span class="identifier">serialize</span><span class="special">(</span><span class="identifier">Archive</span> <span class="special">&amp;</span> ar<span class="special">,</span> <span class="keyword">unsigned</span><span class="special">)</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Hans
+      Dembinski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="weighted_mean.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../histogram/reference.html#header.boost.histogram.accumulators.weighted_sum_hpp"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../algorithm/empty.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

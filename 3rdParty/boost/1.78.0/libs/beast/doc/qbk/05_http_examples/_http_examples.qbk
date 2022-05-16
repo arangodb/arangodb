@@ -1,0 +1,149 @@
+[/
+    Copyright (c) 2016-2019 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section:more_examples HTTP Examples]
+
+These examples in this section are working functions that may be found
+in the examples directory. They demonstrate the usage of the library for
+a variety of scenarios.
+
+
+
+[section:change_body_type Change Body Type __example__]
+
+Sophisticated servers may wish to defer the choice of the Body template type
+until after the header is available. Then, a body type may be chosen
+depending on the header contents. For example, depending on the verb,
+target path, or target query parameters. To accomplish this, a parser
+is declared to read in the header only, using a trivial body type such as
+[link beast.ref.boost__beast__http__empty_body `empty_body`]. Then, a new parser is constructed
+from this existing parser where the body type is conditionally determined
+by information from the header or elsewhere.
+
+This example illustrates how a server may make the commitment of a body
+type depending on the method verb:
+
+[example_http_defer_body]
+
+[endsect]
+
+
+
+[section:expect_100_continue_client Expect 100-continue (Client) __example__]
+
+The Expect field with the value "100-continue" in a request is special. It
+indicates that the after sending the message header, a client desires an
+immediate informational response before sending the message body, which
+presumably may be expensive to compute or large. This behavior is described in
+[@https://tools.ietf.org/html/rfc7231#section-5.1.1 rfc7231 section 5.1.1].
+Invoking the 100-continue behavior is implemented easily in a client by
+constructing a __serializer__ to send the header first, then receiving
+the server response, and finally conditionally send the body using the same
+serializer instance. A synchronous, simplified version (no timeout) of
+this client action looks like this:
+
+[example_http_send_expect_100_continue]
+
+[endsect]
+
+
+
+[section:expect_100_continue_server Expect 100-continue (Server) __example__]
+
+The Expect field with the value "100-continue" in a request is special. It
+indicates that the after sending the message header, a client desires an
+immediate informational response before sending the message body, which
+presumably may be expensive to compute or large. This behavior is described in
+[@https://tools.ietf.org/html/rfc7231#section-5.1.1 rfc7231 section 5.1.1].
+Handling the Expect field can be implemented easily in a server by constructing
+a __parser__ to read the header first, then send an informational HTTP
+response, and finally read the body using the same parser instance. A
+synchronous version of this server action looks like this:
+
+[example_http_receive_expect_100_continue]
+
+[endsect]
+
+
+
+[section:head_request_client HEAD request (Client) __example__]
+
+The
+[@https://tools.ietf.org/html/rfc7231#section-4.3.2 HEAD request]
+method indicates to the server that the client wishes to receive the
+entire header that would be delivered if the method was GET, except
+that the body is omitted. When a client wishes to receive the response
+to a HEAD request, it is necessary to inform the parser not to expect
+a body. This is done by calling
+[link beast.ref.boost__beast__http__basic_parser.skip `basic_parser::skip`]
+with the value `true`, as shown in this example:
+
+[example_http_do_head_request]
+
+[endsect]
+
+
+
+[section:head_response_server HEAD response (Server) __example__]
+
+When a server receives a
+[@https://tools.ietf.org/html/rfc7231#section-4.3.2 HEAD request],
+the response should contain the entire header that would be delivered
+if the method was GET, except that the body is omitted.
+
+[example_http_do_head_response]
+
+[endsect]
+
+
+
+[section:http_relay HTTP Relay __example__]
+
+An HTTP proxy acts as a relay between client and server. The proxy reads a
+request from the client and sends it to the server, possibly adjusting some
+of the headers and representation of the body along the way. Then, the
+proxy reads a response from the server and sends it back to the client,
+also with the possibility of changing the headers and body representation.
+
+The example that follows implements a synchronous HTTP relay. It uses a
+fixed size buffer, to avoid reading in the entire body so that the upstream
+connection sees a header without unnecessary latency. This example brings
+together all of the concepts discussed so far, it uses both a __serializer__
+and a __parser__ to achieve its goal:
+
+[example_http_relay]
+
+[endsect]
+
+
+
+[section:send_child_process_output Send Child Process Output __example__]
+
+Sometimes it is necessary  to send a message whose body is not conveniently
+described by a single container. For example, when implementing an HTTP relay
+function a robust implementation needs to present body buffers individually
+as they become available from the downstream host. These buffers should be
+fixed in size, otherwise creating the unnecessary and inefficient burden of
+reading the complete message body before forwarding it to the upstream host.
+
+To enable these use-cases, the body type __buffer_body__ is provided. This
+body uses a caller-provided pointer and size instead of an owned container.
+To use this body, instantiate an instance of the serializer and fill in
+the pointer and size fields before calling a stream write function.
+
+This example reads from a child process and sends the output back in an
+HTTP response. The output of the process is sent as it becomes available:
+
+[example_http_send_cgi_response]
+
+[endsect]
+
+
+
+[endsect]

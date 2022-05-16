@@ -1,0 +1,56 @@
+[/
+ / Copyright (c) 2003-2021 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:Protocol Protocol requirements]
+
+A type `X` meets the `Protocol` requirements if it satisfies the requirements
+of `Destructible` (C++Std [destructible]), `CopyConstructible` (C++Std
+[copyconstructible]), and `CopyAssignable` (C++Std [copyassignable]), as well
+as the additional requirements listed below.
+
+No copy or move operation of the type `X` shall exit via an exception.
+
+[table Protocol requirements
+  [[expression] [return type] [assertion/note[br]pre/post-conditions]]
+  [
+    [`X::endpoint`]
+    [type meeting [link boost_asio.reference.Endpoint endpoint] requirements]
+    []
+  ]
+]
+
+In the table below, `a` denotes a (possibly const) value of type `X`.
+
+[table Protocol requirements for extensible implementations
+  [[expression] [return type] [assertion/note[br]pre/post-conditions]]
+  [
+    [`a.family()`]
+    [`int`]
+    [
+      Returns a value suitable for passing as the /domain/ argument to
+      __POSIX__ __socket__ (or equivalent).
+    ]
+  ]
+  [
+    [`a.type()`]
+    [`int`]
+    [
+      Returns a value suitable for passing as the /type/ argument to __POSIX__
+      __socket__ (or equivalent).
+    ]
+  ]
+  [
+    [`a.protocol()`]
+    [`int`]
+    [
+      Returns a value suitable for passing as the /protocol/ argument to
+      __POSIX__ __socket__ (or equivalent).
+    ]
+  ]
+]
+
+[endsect]

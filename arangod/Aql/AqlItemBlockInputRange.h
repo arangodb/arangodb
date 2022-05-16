@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,29 +31,29 @@ namespace arangodb::aql {
 
 class ShadowAqlItemRow;
 
-
 class AqlItemBlockInputRange {
  public:
   /// @brief tag that can be used to speed up nextDataRow
   struct HasDataRow {};
 
  public:
-  explicit AqlItemBlockInputRange(ExecutorState state, std::size_t skipped = 0);
+  explicit AqlItemBlockInputRange(MainQueryState state,
+                                  std::size_t skipped = 0);
 
-  AqlItemBlockInputRange(ExecutorState, std::size_t skipped,
-                         arangodb::aql::SharedAqlItemBlockPtr const&, std::size_t startIndex);
+  AqlItemBlockInputRange(MainQueryState, std::size_t skipped,
+                         arangodb::aql::SharedAqlItemBlockPtr const&,
+                         std::size_t startIndex);
 
-  AqlItemBlockInputRange(ExecutorState, std::size_t skipped,
+  AqlItemBlockInputRange(MainQueryState, std::size_t skipped,
                          arangodb::aql::SharedAqlItemBlockPtr&&,
                          std::size_t startIndex) noexcept;
 
   void reset() noexcept { _block.reset(nullptr); }
   bool hasBlock() const noexcept { return _block.get() != nullptr; }
-  
+
   arangodb::aql::SharedAqlItemBlockPtr getBlock() const noexcept;
 
   ExecutorState upstreamState() const noexcept;
-  bool upstreamHasMore() const noexcept;
 
   bool hasValidRow() const noexcept;
 
@@ -62,10 +62,12 @@ class AqlItemBlockInputRange {
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peekDataRow() const;
 
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow();
-  
-  /// @brief optimized version of nextDataRow, only to be used when it is known that 
-  /// there is a next data row (i.e. if a previous call to hasDataRow() returned true)
-  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow(HasDataRow);
+
+  /// @brief optimized version of nextDataRow, only to be used when it is known
+  /// that there is a next data row (i.e. if a previous call to hasDataRow()
+  /// returned true)
+  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow(
+      HasDataRow);
 
   /// @brief moves the row index one forward if we are at a row right now
   void advanceDataRow() noexcept;
@@ -104,7 +106,7 @@ class AqlItemBlockInputRange {
    */
   [[nodiscard]] auto countShadowRows() const noexcept -> std::size_t;
 
-  [[nodiscard]] auto finalState() const noexcept -> ExecutorState;
+  [[nodiscard]] auto finalState() const noexcept -> MainQueryState;
 
   /**
    * @brief Skip over all remaining data rows until the next shadow row.
@@ -119,16 +121,15 @@ class AqlItemBlockInputRange {
 
   enum LookAhead { NOW, NEXT };
   enum RowType { DATA, SHADOW };
-  template <LookAhead doPeek, RowType type>
+  template<LookAhead doPeek, RowType type>
   ExecutorState nextState() const noexcept;
 
  private:
   arangodb::aql::SharedAqlItemBlockPtr _block{nullptr};
   std::size_t _rowIndex{};
-  ExecutorState _finalState{ExecutorState::HASMORE};
+  MainQueryState _finalState{MainQueryState::HASMORE};
   // How many rows were skipped upstream
   std::size_t _skipped{};
 };
 
 }  // namespace arangodb::aql
-

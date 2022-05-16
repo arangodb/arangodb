@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +32,7 @@
 
 #include <boost/lockfree/queue.hpp>
 
-#include "RestServer/Metrics.h"
+#include "Metrics/Fwd.h"
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
@@ -43,10 +43,11 @@ class SupervisedSchedulerManagerThread;
 
 class SupervisedScheduler final : public Scheduler {
  public:
-  SupervisedScheduler(application_features::ApplicationServer& server,
-                      uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
-                      uint64_t fifo1Size, uint64_t fifo2Size, uint64_t fifo3Size,
-                      double ongoingMultiplier, double unavailabilityQueueFillGrade);
+  SupervisedScheduler(ArangodServer& server, uint64_t minThreads,
+                      uint64_t maxThreads, uint64_t maxQueueSize,
+                      uint64_t fifo1Size, uint64_t fifo2Size,
+                      uint64_t fifo3Size, uint64_t ongoingLowPriorityLimit,
+                      double unavailabilityQueueFillGrade);
   ~SupervisedScheduler() final;
 
   bool start() override;
@@ -55,8 +56,14 @@ class SupervisedScheduler final : public Scheduler {
   void toVelocyPack(velocypack::Builder&) const override;
   Scheduler::QueueStatistics queueStatistics() const override;
 
-  void trackBeginOngoingLowPriorityTask();
-  void trackEndOngoingLowPriorityTask();
+  void trackCreateHandlerTask() noexcept;
+  void trackBeginOngoingLowPriorityTask() noexcept;
+  void trackEndOngoingLowPriorityTask() noexcept;
+
+  void trackQueueTimeViolation();
+
+  /// @brief returns the last stored dequeue time [ms]
+  uint64_t getLastLowPriorityDequeueTime() const noexcept override;
 
   /// @brief set the time it took for the last low prio item to be dequeued
   /// (time between queuing and dequeing) [ms]
@@ -71,17 +78,20 @@ class SupervisedScheduler final : public Scheduler {
   static_assert(HighPriorityQueue < NumberOfQueues);
   static_assert(MediumPriorityQueue < NumberOfQueues);
   static_assert(LowPriorityQueue < NumberOfQueues);
-  
+
   static_assert(HighPriorityQueue < MediumPriorityQueue);
   static_assert(MediumPriorityQueue < LowPriorityQueue);
 
   /// @brief approximate fill grade of the scheduler's queue (in %)
   double approximateQueueFillGrade() const override;
-  
+
   /// @brief fill grade of the scheduler's queue (in %) from which onwards
   /// the server is considered unavailable (because of overload)
   double unavailabilityQueueFillGrade() const override;
- 
+
+  /// @brief get information about low prio queue:
+  std::pair<uint64_t, uint64_t> getNumberLowPrioOngoingAndQueued() const;
+
  protected:
   bool isStopping() override { return _stopping; }
 
@@ -95,23 +105,24 @@ class SupervisedScheduler final : public Scheduler {
   // done if the thread has actually started to work on a request less than
   // 1 seconds ago.
   // _sleepTimeout_ms is the amount of ms the thread should sleep before waking
-  // up again. Note that each worker wakes up constantly, even if there is no work.
+  // up again. Note that each worker wakes up constantly, even if there is no
+  // work.
   //
   // All those values are maintained by the supervisor thread.
   // Currently they are set once and for all the same, however a future
   // implementation my alter those values for each thread individually.
   //
-  // _lastJobStarted is the timepoint when the last job in this thread was started.
-  // _working indicates if the thread is currently processing a job.
-  //    Hence if you want to know, if the thread has a long running job, test for
-  //    _working && (now - _lastJobStarted) > eps
+  // _lastJobStarted is the timepoint when the last job in this thread was
+  // started. _working indicates if the thread is currently processing a job.
+  //    Hence if you want to know, if the thread has a long running job, test
+  //    for _working && (now - _lastJobStarted) > eps
   struct WorkerState {
-    uint64_t _queueRetryTime_us; // t1
-    uint64_t _sleepTimeout_ms;  // t2
+    uint64_t _queueRetryTime_us;  // t1
+    uint64_t _sleepTimeout_ms;    // t2
     std::atomic<bool> _stop, _working, _sleeping;
     // _ready = false means the Worker is not properly initialized
-    // _ready = true means it is initialized and can be used to dispatch tasks to
-    // _ready is protected by the Scheduler's condition variable & mutex
+    // _ready = true means it is initialized and can be used to dispatch tasks
+    // to _ready is protected by the Scheduler's condition variable & mutex
     bool _ready;
     std::atomic<clock::time_point> _lastJobStarted;
     std::unique_ptr<SupervisedSchedulerWorkerThread> _thread;
@@ -149,11 +160,13 @@ class SupervisedScheduler final : public Scheduler {
   // Check if we are allowed to pull from a queue with the given index
   // This is used to give priority to "FAST" and "MED" lanes accordingly.
   bool canPullFromQueue(uint64_t queueIdx) const noexcept;
-  
+
   void runWorker();
   void runSupervisor();
 
-  [[nodiscard]] bool queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> item) override;
+  [[nodiscard]] bool queueItem(RequestLane lane,
+                               std::unique_ptr<WorkItemBase> item,
+                               bool bounded) override;
 
  private:
   NetworkFeature& _nf;
@@ -165,7 +178,12 @@ class SupervisedScheduler final : public Scheduler {
 
   // Since the lockfree queue can only handle PODs, one has to wrap lambdas
   // in a container class and store pointers. -- Maybe there is a better way?
-  boost::lockfree::queue<WorkItemBase*> _queues[NumberOfQueues];
+  struct {
+    /// @brief the number of items that have been enqueued via tryBoundedQueue
+    /// Items that are added via an unbounded queue operation are not counted!
+    std::atomic<uint64_t> numCountedItems{0};
+    boost::lockfree::queue<WorkItemBase*> queue;
+  } _queues[NumberOfQueues];
 
   // aligning required to prevent false sharing - assumes cache line size is 64
   alignas(64) std::atomic<uint64_t> _jobsSubmitted;
@@ -175,7 +193,7 @@ class SupervisedScheduler final : public Scheduler {
   size_t const _minNumWorkers;
   size_t const _maxNumWorkers;
   uint64_t const _maxFifoSizes[NumberOfQueues];
-  size_t const _ongoingLowPriorityLimit;
+  uint64_t const _ongoingLowPriorityLimit;
 
   /// @brief fill grade of the scheduler's queue (in %) from which onwards
   /// the server is considered unavailable (because of overload)
@@ -183,9 +201,9 @@ class SupervisedScheduler final : public Scheduler {
 
   std::list<std::shared_ptr<WorkerState>> _workerStates;
   std::list<std::shared_ptr<WorkerState>> _abandonedWorkerStates;
-  std::atomic<uint64_t> _numWorking;   // Number of threads actually working
-  std::atomic<uint64_t> _numAwake;     // Number of threads working or spinning
-                                       // (i.e. not sleeping)
+  std::atomic<uint64_t> _numWorking;  // Number of threads actually working
+  std::atomic<uint64_t> _numAwake;    // Number of threads working or spinning
+                                      // (i.e. not sleeping)
 
   // The following mutex protects the lists _workerStates and
   // _abandonedWorkerStates, whenever one accesses any of these two
@@ -199,29 +217,28 @@ class SupervisedScheduler final : public Scheduler {
   std::condition_variable _conditionSupervisor;
   std::unique_ptr<SupervisedSchedulerManagerThread> _manager;
 
-  Gauge<uint64_t>& _metricsQueueLength;
-  Gauge<uint64_t>& _metricsJobsDone;
-  Gauge<uint64_t>& _metricsJobsSubmitted;
-  Gauge<uint64_t>& _metricsJobsDequeued;
-  Counter& _metricsJobsDoneTotal;
-  Counter& _metricsJobsSubmittedTotal;
-  Counter& _metricsJobsDequeuedTotal;
-  Gauge<uint64_t>& _metricsNumAwakeThreads;
-  Gauge<uint64_t>& _metricsNumWorkingThreads;
-  Gauge<uint64_t>& _metricsNumWorkerThreads;
-  
-  Counter& _metricsThreadsStarted;
-  Counter& _metricsThreadsStopped;
-  Counter& _metricsQueueFull;
-  Gauge<uint64_t>& _ongoingLowPriorityGauge;
-  
+  metrics::Gauge<uint64_t>& _metricsQueueLength;
+  metrics::Counter& _metricsJobsDoneTotal;
+  metrics::Counter& _metricsJobsSubmittedTotal;
+  metrics::Counter& _metricsJobsDequeuedTotal;
+  metrics::Gauge<uint64_t>& _metricsNumAwakeThreads;
+  metrics::Gauge<uint64_t>& _metricsNumWorkingThreads;
+  metrics::Gauge<uint64_t>& _metricsNumWorkerThreads;
+
+  metrics::Counter& _metricsHandlerTasksCreated;
+  metrics::Counter& _metricsThreadsStarted;
+  metrics::Counter& _metricsThreadsStopped;
+  metrics::Counter& _metricsQueueFull;
+  metrics::Counter& _metricsQueueTimeViolations;
+  metrics::Gauge<uint64_t>& _ongoingLowPriorityGauge;
+
   /// @brief amount of time it took for the last low prio item to be dequeued
   /// (time between queuing and dequeing) [ms].
   /// this metric is only updated probabilistically
-  Gauge<uint64_t>& _metricsLastLowPriorityDequeueTime;
+  metrics::Gauge<uint64_t>& _metricsLastLowPriorityDequeueTime;
 
-  std::array<std::reference_wrapper<Gauge<uint64_t>>, NumberOfQueues> _metricsQueueLengths;
+  std::array<std::reference_wrapper<metrics::Gauge<uint64_t>>, NumberOfQueues>
+      _metricsQueueLengths;
 };
 
 }  // namespace arangodb
-

@@ -1,0 +1,16 @@
+{
+    "key": "ptr_container",
+    "name": "Pointer Container",
+    "authors": [
+        "Thorsten Ottosen"
+    ],
+    "description": "Containers for storing heap-allocated polymorphic objects to ease OO-programming.",
+    "category": [
+        "Containers",
+        "Data"
+    ],
+    "maintainers": [
+        "Thorsten Ottosen <nesotto -at- cs.auc.dk>"
+    ],
+    "cxxstd": "03"
+}

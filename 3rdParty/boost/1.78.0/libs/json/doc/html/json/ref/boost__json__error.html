@@ -1,0 +1,289 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>error</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.JSON">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__json__kind.html" title="kind">
+<link rel="next" href="boost__json__condition.html" title="condition">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__json__kind.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__json__condition.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="json.ref.boost__json__error"></a><a class="link" href="boost__json__error.html" title="error">error</a>
+</h4></div></div></div>
+<p>
+        <a class="indexterm" name="idm57984"></a>
+      </p>
+<p>
+        Error codes returned by JSON operations.
+      </p>
+<h5>
+<a name="json.ref.boost__json__error.h0"></a>
+        <span class="phrase"><a name="json.ref.boost__json__error.synopsis"></a></span><a class="link" href="boost__json__error.html#json.ref.boost__json__error.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="https://github.com/cppalliance/json/blob/master/include/boost/json/error.hpp" target="_top">boost/json/error.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">enum</span> <span class="identifier">error</span>
+</pre>
+<h5>
+<a name="json.ref.boost__json__error.h1"></a>
+        <span class="phrase"><a name="json.ref.boost__json__error.values"></a></span><a class="link" href="boost__json__error.html#json.ref.boost__json__error.values">Values</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">syntax</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  syntax error
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">extra_data</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  extra data
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">incomplete</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  incomplete JSON
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">exponent_overflow</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  exponent too large
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">too_deep</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  too deep
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">illegal_leading_surrogate</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  illegal leading surrogate
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">illegal_trailing_surrogate</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  illegal trailing surrogate
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">expected_hex_digit</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  expected hex digit
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">expected_utf16_escape</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  expected utf16 escape
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">object_too_large</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  An object contains too many elements.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">array_too_large</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  An array contains too many elements.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">key_too_large</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  A key is too large.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">string_too_large</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  A string is too large.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">exception</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  The parser encountered an exception and must be reset.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">not_number</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  not a number
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">not_exact</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  number cast is not exact
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">test_failure</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  test failure
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+        Convenience header <code class="literal">&lt;<a href="https://github.com/cppalliance/json/blob/master/include/boost/json.hpp" target="_top">boost/json.hpp</a>&gt;</code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Vinnie Falco<br>Copyright © 2020 Krystian Stasiowski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__json__kind.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__json__condition.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

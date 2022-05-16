@@ -1,0 +1,215 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>file_mode</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Beast">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__beast__role_type.html" title="role_type">
+<link rel="next" href="boost__beast__errc.html" title="errc">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__role_type.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__errc.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="beast.ref.boost__beast__file_mode"></a><a class="link" href="boost__beast__file_mode.html" title="file_mode">file_mode</a>
+</h4></div></div></div>
+<p>
+        <a class="indexterm" name="idm66821"></a>
+      </p>
+<p>
+        File open modes.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__file_mode.h0"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__file_mode.synopsis"></a></span><a class="link" href="boost__beast__file_mode.html#beast.ref.boost__beast__file_mode.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="../../../../../../boost/beast/core/file_base.hpp" target="_top">boost/beast/core/file_base.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">enum</span> <span class="identifier">file_mode</span>
+</pre>
+<h5>
+<a name="beast.ref.boost__beast__file_mode.h1"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__file_mode.values"></a></span><a class="link" href="boost__beast__file_mode.html#beast.ref.boost__beast__file_mode.values">Values</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">read</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Random read-only access to an existing file.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">scan</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Sequential read-only access to an existing file.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">write</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Random reading and writing to a new or truncated file.
+                </p>
+                <p>
+                  This mode permits random-access reading and writing for the specified
+                  file. If the file does not exist prior to the function call, it
+                  is created with an initial size of zero bytes. Otherwise if the
+                  file already exists, the size is truncated to zero bytes.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">write_new</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Random reading and writing to a new file only.
+                </p>
+                <p>
+                  This mode permits random-access reading and writing for the specified
+                  file. The file will be created with an initial size of zero bytes.
+                  If the file already exists prior to the function call, an error
+                  is returned and no file is opened.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">write_existing</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Random write-only access to existing file.
+                </p>
+                <p>
+                  If the file does not exist, an error is generated.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">append</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Appending to a new or truncated file.
+                </p>
+                <p>
+                  The current file position shall be set to the end of the file prior
+                  to each write.
+                </p>
+                <p>
+                  @li If the file does not exist, it is created.
+                </p>
+                <p>
+                  @li If the file exists, it is truncated to zero size upon opening.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">append_existing</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Appending to an existing file.
+                </p>
+                <p>
+                  The current file position shall be set to the end of the file prior
+                  to each write.
+                </p>
+                <p>
+                  If the file does not exist, an error is generated.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__file_mode.h2"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__file_mode.description"></a></span><a class="link" href="boost__beast__file_mode.html#beast.ref.boost__beast__file_mode.description">Description</a>
+      </h5>
+<p>
+        These modes are used when opening files using instances of the <span class="emphasis"><em>File</em></span>
+        concept.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__file_mode.h3"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__file_mode.see_also"></a></span><a class="link" href="boost__beast__file_mode.html#beast.ref.boost__beast__file_mode.see_also">See
+        Also</a>
+      </h5>
+<p>
+        <a class="link" href="boost__beast__file_stdio.html" title="file_stdio"><code class="computeroutput"><span class="identifier">file_stdio</span></code></a>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__role_type.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__errc.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

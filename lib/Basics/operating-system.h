@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,7 +34,8 @@
 // padding
 
 #if defined(__amd64__) || defined(__amd64) || defined(__x86_64__) || \
-    defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64) || defined(__aarch64__)
+    defined(__x86_64) || defined(_M_X64) || defined(_M_AMD64) ||     \
+    defined(__aarch64__)
 #undef TRI_PADDING_32
 #else
 #define TRI_PADDING_32 1
@@ -48,7 +49,8 @@
 #elif defined(__ppc__) || defined(__POWERPC__) || defined(_M_PPC)
 /* unaligned accesses are slow */
 #undef TRI_UNALIGNED_ACCESS
-#elif defined(__i386__) || defined(__x86_64__) || defined(_M_IX86) || defined(_M_X64)
+#elif defined(__i386__) || defined(__x86_64__) || defined(_M_IX86) || \
+    defined(_M_X64)
 /* unaligned accesses should work */
 #define TRI_UNALIGNED_ACCESS 1
 #else
@@ -172,6 +174,7 @@
 #define TRI_DIR_SEPARATOR_STR "/"
 
 #define TRI_O_CLOEXEC O_CLOEXEC
+#define TRI_O_TMPFILE 0
 #define TRI_NOATIME 0
 
 #define TRI_CHDIR ::chdir
@@ -187,8 +190,8 @@
 #define TRI_DUP ::dup
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
-#define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atimespec.tv_sec
-#define TRI_STAT_MTIME_SEC(statbuf) statbuf.st_mtimespec.tv_sec
+#define TRI_STAT_ATIME_SEC(statbuf) (statbuf).st_atimespec.tv_sec
+#define TRI_STAT_MTIME_SEC(statbuf) (statbuf).st_mtimespec.tv_sec
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
 #define TRI_FDOPEN(a, b) ::fdopen((a), (b))
@@ -216,12 +219,19 @@
 
 #define TRI_CLOSE_SOCKET TRI_closesocket
 #define TRI_READ_SOCKET(a, b, c, d) TRI_readsocket((a), (b), (c), (d))
-#define TRI_WRITE_SOCKET(a, b, c, d) TRI_writesocket((a), (b), (c), (d))
 
 // user and group types
 
 #define TRI_uid_t uid_t
 #define TRI_gid_t gid_t
+
+// noexcept
+
+#if defined(__clang__) && __clang_major__ == 11 && __clang_minor__ == 0
+#define ARANGODB_NOEXCEPT_ASSIGN_OP /* noexcept */
+#else
+#define ARANGODB_NOEXCEPT_ASSIGN_OP noexcept
+#endif
 
 #endif
 
@@ -318,6 +328,7 @@
 #define TRI_DIR_SEPARATOR_STR "/"
 
 #define TRI_O_CLOEXEC O_CLOEXEC
+#define TRI_O_TMPFILE O_TMPFILE
 #define TRI_NOATIME 0
 
 #define TRI_CHDIR ::chdir
@@ -333,8 +344,8 @@
 #define TRI_DUP ::dup
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
-#define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atimespec.tv_sec
-#define TRI_STAT_MTIME_SEC(statbuf) statbuf.st_mtimespec.tv_sec
+#define TRI_STAT_ATIME_SEC(statbuf) (statbuf).st_atimespec.tv_sec
+#define TRI_STAT_MTIME_SEC(statbuf) (statbuf).st_mtimespec.tv_sec
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
 #define TRI_FDOPEN(a, b) ::fdopen((a), (b))
@@ -362,12 +373,15 @@
 
 #define TRI_CLOSE_SOCKET TRI_closesocket
 #define TRI_READ_SOCKET(a, b, c, d) TRI_readsocket((a), (b), (c), (d))
-#define TRI_WRITE_SOCKET(a, b, c, d) TRI_writesocket((a), (b), (c), (d))
 
 // user and group types
 
 #define TRI_uid_t uid_t
 #define TRI_gid_t gid_t
+
+// noexcept
+
+#define ARANGODB_NOEXCEPT_ASSIGN_OP noexcept
 
 #endif
 
@@ -477,6 +491,7 @@
 #define TRI_DIR_SEPARATOR_STR "/"
 
 #define TRI_O_CLOEXEC O_CLOEXEC
+#define TRI_O_TMPFILE O_TMPFILE
 #define TRI_NOATIME O_NOATIME
 
 #define TRI_CHDIR ::chdir
@@ -492,8 +507,8 @@
 #define TRI_DUP ::dup
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
-#define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atim.tv_sec
-#define TRI_STAT_MTIME_SEC(statbuf) statbuf.st_mtim.tv_sec
+#define TRI_STAT_ATIME_SEC(statbuf) (statbuf).st_atim.tv_sec
+#define TRI_STAT_MTIME_SEC(statbuf) (statbuf).st_mtim.tv_sec
 #define TRI_UNLINK ::unlink
 #define TRI_WRITE ::write
 #define TRI_FDOPEN(a, b) ::fdopen((a), (b))
@@ -521,13 +536,16 @@
 
 #define TRI_CLOSE_SOCKET TRI_closesocket
 #define TRI_READ_SOCKET(a, b, c, d) TRI_readsocket((a), (b), (c), (d))
-#define TRI_WRITE_SOCKET(a, b, c, d) TRI_writesocket((a), (b), (c), (d))
 
 // user and group types
 
 #include <sys/types.h>
 #define TRI_uid_t uid_t
 #define TRI_gid_t gid_t
+
+// noexcept
+
+#define ARANGODB_NOEXCEPT_ASSIGN_OP noexcept
 
 #endif
 
@@ -594,7 +612,8 @@
 #define TRI_random ::rand
 #define TRI_srandom ::srand
 
-#if ( defined(_MSC_VER) && _MSC_VER < 1900 ) || ( defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR) )
+#if (defined(_MSC_VER) && _MSC_VER < 1900) || \
+    (defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR))
 #define snprintf _snprintf
 #endif
 
@@ -685,6 +704,7 @@ typedef unsigned char bool;
 #define S_IWUSR _S_IWRITE
 
 #define TRI_O_CLOEXEC 0
+#define TRI_O_TMPFILE 0
 #define TRI_NOATIME 0
 
 #define O_RDONLY _O_RDONLY
@@ -752,7 +772,6 @@ void TRI_GET_ARGV_WIN(int& argc, char** argv);
 
 #define TRI_CLOSE_SOCKET TRI_closesocket
 #define TRI_READ_SOCKET(a, b, c, d) TRI_readsocket((a), (b), (c), (d))
-#define TRI_WRITE_SOCKET(a, b, c, d) TRI_writesocket((a), (b), (c), (d))
 
 // user and group types
 
@@ -763,5 +782,8 @@ void TRI_GET_ARGV_WIN(int& argc, char** argv);
 #define TRI_uid_t void*
 #define TRI_gid_t void*
 
-#endif
+// noexcept
 
+#define ARANGODB_NOEXCEPT_ASSIGN_OP noexcept
+
+#endif

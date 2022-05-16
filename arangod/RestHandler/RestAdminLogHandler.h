@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,8 +34,8 @@ namespace arangodb {
 
 class RestAdminLogHandler : public RestBaseHandler {
  public:
-  explicit RestAdminLogHandler(application_features::ApplicationServer&,
-                               GeneralRequest*, GeneralResponse*);
+  explicit RestAdminLogHandler(ArangodServer&, GeneralRequest*,
+                               GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestAdminLogHandler"; }
@@ -47,7 +47,6 @@ class RestAdminLogHandler : public RestBaseHandler {
   void clearLogs();
   RestStatus reportLogs(bool newFormat);
   void handleLogLevel();
-
+  void handleLogStructuredParams();
 };
 }  // namespace arangodb
-

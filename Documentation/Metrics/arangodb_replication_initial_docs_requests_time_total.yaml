@@ -2,7 +2,7 @@ name: arangodb_replication_initial_docs_requests_time_total
 renamedFrom: arangodb_replication_initial_docs_requests_time
 introducedIn: "3.8.0"
 help: |
-  Accumulated time needed to request replication docs data
+  Accumulated time needed to request replication docs data.
 unit: ms
 type: counter
 category: Replication

@@ -1,0 +1,54 @@
+////
+Copyright 2019-2020 Peter Dimov
+
+Distributed under the Boost Software License, Version 1.0.
+
+See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt
+////
+
+[#changelog]
+# Revision History
+
+## Changes in 1.77.0
+
+* Added `mp_intersperse`, `mp_split`, `mp_join`
+
+## Changes in 1.75.0
+
+* Added `mp_pairwise_fold` (suggested by Barry Revzin)
+* Removed `mp_invoke` (use `mp_invoke_q`)
+
+## Changes in 1.74.0
+
+* Improved compilation performance of `mp_with_index<N>` for large `N`
+* Added `tuple_transform` (contributed by Hans Dembinski)
+
+## Changes in 1.73.0
+
+* Added `mp_unique_if` (contributed by Kris Jusiak)
+* Added `mp_flatten`
+* Added `mp_rotate_left`, `mp_rotate_right` (contributed by Duncan Barber)
+* Added `mp_compose`
+* Added `mp_power_set`
+* Added `mp_partial_sum`
+* Added `mp_iterate`
+
+## Changes in 1.70.0
+
+* Renamed `mp_invoke` to `mp_invoke_q`
+* Added `mp_similar`
+* Added `mp_set_union`, `mp_set_intersection`, `mp_set_difference`
+* Added `mp_not_fn`
+* Added `mp_transform_first`, `mp_transform_second`, `mp_transform_third`
+* Added `mp_filter`
+* Added `mp_eval_if_not`, `mp_eval_or`, `mp_valid_q`
+* Added `mp_back`, `mp_pop_back`
+* Added `BOOST_MP11_VERSION`
+
+## Changes in 1.69.0
+
+* Removed dependency on Boost.Config; Mp11 is now standalone
+* Improved code generation for `mp_with_index`
+* Added `mp_starts_with` (contributed by Glen Fernandes)
+* Added CMake support

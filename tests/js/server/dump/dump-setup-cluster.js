@@ -57,6 +57,19 @@ const setup = require(base);
   setup.createJobs();
   setup.createFoxx();
   setup.createAnalyzers();
+
+  // all types of enterprise related graphs
+  setup.createEmptySmartGraph();
+  setup.createEmptySatelliteGraph();
+  setup.createEmptyDisjointGraph();
+  setup.createSmartGraphWithoutData();
+  setup.createSatelliteGraphWithoutData();
+  setup.createDisjointGraphWithoutData();
+  setup.createSmartGraphSingleServer();
+  setup.createSatelliteGraphSingleServer();
+  setup.createDisjointGraphSingleServer();
+  setup.createHybridSmartGraphSingleServer();
+  setup.createHybridDisjointSmartGraphSingleServer();
 })();
 
 return {

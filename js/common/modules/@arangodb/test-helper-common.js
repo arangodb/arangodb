@@ -91,28 +91,8 @@ exports.Helper = {
   },
 
   waitUnload: function (collection, waitForCollector) {
-    var arangodb = require('@arangodb');
-    var internal = require('internal');
-
-    collection.unload();
+    let internal = require('internal');
     internal.wal.flush(true, waitForCollector || false);
-
-    var iterations = 0;
-
-    while (collection.status() !== arangodb.ArangoCollection.STATUS_UNLOADED) {
-      collection.unload();
-      internal.wait(0.25, true);
-
-      ++iterations;
-
-      if (iterations === 20) {
-        require('console').log('waiting for collection ' + collection.name() + ' to unload');
-      } else if (iterations === 400) {
-        require('console').log('waited very long for unload of collection ' + collection.name());
-      } else if (iterations === 1600) {
-        throw 'waited too long for unload of collection ' + collection.name();
-      }
-    }
   },
 };
 

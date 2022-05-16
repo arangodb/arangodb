@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "RestServer/arangod.h"
 
 #include <velocypack/Builder.h>
 #include <string>
@@ -34,11 +35,7 @@ class ApplicationServer;
 }
 namespace stats {
 
-enum RequestStatisticsSource {
-  USER,
-  SUPERUSER,
-  ALL
-};
+enum RequestStatisticsSource { USER, SUPERUSER, ALL };
 
 enum class GroupType { System, Client, ClientUser, Http, Vst, Server };
 
@@ -77,19 +74,20 @@ struct Figure {
 
 class Descriptions final {
  public:
-  explicit Descriptions(application_features::ApplicationServer&);
+  explicit Descriptions(ArangodServer&);
 
   std::vector<stats::Group> const& groups() const { return _groups; }
 
   std::vector<stats::Figure> const& figures() const { return _figures; }
 
   void serverStatistics(velocypack::Builder&) const;
-  void clientStatistics(velocypack::Builder&, RequestStatisticsSource source) const;
+  void clientStatistics(velocypack::Builder&,
+                        RequestStatisticsSource source) const;
   void httpStatistics(velocypack::Builder&) const;
   void processStatistics(velocypack::Builder&) const;
 
  private:
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
 
   std::vector<double> _requestTimeCuts;
   std::vector<double> _connectionTimeCuts;
@@ -101,4 +99,3 @@ class Descriptions final {
 };
 }  // namespace stats
 }  // namespace arangodb
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,35 +25,21 @@
 
 #include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
-#include "Utils/SingleCollectionTransaction.h"
 
 namespace arangodb {
 namespace transaction {
 class Methods;
 }
-  
+
 class RestDocumentHandler : public RestVocbaseBaseHandler {
  public:
-  RestDocumentHandler(application_features::ApplicationServer&, GeneralRequest*,
-                      GeneralResponse*);
+  RestDocumentHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
   ~RestDocumentHandler();
 
  public:
   RestStatus execute() override final;
   char const* name() const override final { return "RestDocumentHandler"; }
-  RequestLane lane() const override final {
-    bool isSyncReplication = false;
-    // We do not care for the real value, enough if it is there.
-    std::ignore = _request->value(StaticStrings::IsSynchronousReplicationString,
-                                  isSyncReplication);
-    if (isSyncReplication) {
-      return RequestLane::SERVER_SYNCHRONOUS_REPLICATION;
-      // This leads to the high queue, we want replication requests to be
-      // executed with a higher prio than leader requests, even if they
-      // are done from AQL.
-    }
-    return RequestLane::CLIENT_SLOW;
-  }
+  RequestLane lane() const override final;
 
   void shutdownExecute(bool isFinalized) noexcept override final;
 
@@ -84,9 +70,8 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
 
   // removes a document
   RestStatus removeDocument();
-  
-private:
+
+ private:
   std::unique_ptr<transaction::Methods> _activeTrx;
 };
 }  // namespace arangodb
-

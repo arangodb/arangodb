@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,12 +42,24 @@
 namespace {
 
 arangodb::aql::AstNodeType const CmpMap[]{
-    arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ,  // NODE_TYPE_OPERATOR_BINARY_EQ: 3 == a <==> a == 3
-    arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE,  // NODE_TYPE_OPERATOR_BINARY_NE: 3 != a <==> a != 3
-    arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT,  // NODE_TYPE_OPERATOR_BINARY_LT: 3 < a  <==> a > 3
-    arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE,  // NODE_TYPE_OPERATOR_BINARY_LE: 3 <= a <==> a >= 3
-    arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT,  // NODE_TYPE_OPERATOR_BINARY_GT: 3 > a  <==> a < 3
-    arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE  // NODE_TYPE_OPERATOR_BINARY_GE: 3 >= a <==> a <= 3
+    arangodb::aql::
+        NODE_TYPE_OPERATOR_BINARY_EQ,  // NODE_TYPE_OPERATOR_BINARY_EQ:
+                                       // 3 == a <==> a == 3
+    arangodb::aql::
+        NODE_TYPE_OPERATOR_BINARY_NE,  // NODE_TYPE_OPERATOR_BINARY_NE:
+                                       // 3 != a <==> a != 3
+    arangodb::aql::
+        NODE_TYPE_OPERATOR_BINARY_GT,  // NODE_TYPE_OPERATOR_BINARY_LT:
+                                       // 3 < a  <==> a > 3
+    arangodb::aql::
+        NODE_TYPE_OPERATOR_BINARY_GE,  // NODE_TYPE_OPERATOR_BINARY_LE:
+                                       // 3 <= a <==> a >= 3
+    arangodb::aql::
+        NODE_TYPE_OPERATOR_BINARY_LT,  // NODE_TYPE_OPERATOR_BINARY_GT:
+                                       // 3 > a  <==> a < 3
+    arangodb::aql::
+        NODE_TYPE_OPERATOR_BINARY_LE  // NODE_TYPE_OPERATOR_BINARY_GE:
+                                      // 3 >= a <==> a <= 3
 };
 
 }
@@ -60,7 +72,8 @@ bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
     return true;
   }
 
-  if ((lhs == nullptr && rhs != nullptr) || (lhs != nullptr && rhs == nullptr)) {
+  if ((lhs == nullptr && rhs != nullptr) ||
+      (lhs != nullptr && rhs == nullptr)) {
     return false;
   }
 
@@ -159,7 +172,9 @@ bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs) {
       return lhs->value.value._int == rhs->value.value._int;
     }
 
-    default: { return false; }
+    default: {
+      return false;
+    }
   }
 }
 
@@ -171,7 +186,8 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
   // hash node type
   auto const& typeString = node->getTypeString();
 
-  hash = fasthash64(static_cast<const void*>(typeString.c_str()), typeString.size(), hash);
+  hash = fasthash64(static_cast<const void*>(typeString.c_str()),
+                    typeString.size(), hash);
 
   // hash node members
   for (size_t i = 0, n = node->numMembers(); i < n; ++i) {
@@ -240,8 +256,9 @@ size_t hash(aql::AstNode const* node, size_t hash /*= 0*/) noexcept {
           return fasthash64(static_cast<const void*>(&node->value.value._int),
                             sizeof(node->value.value._int), hash);
         case aql::VALUE_TYPE_DOUBLE:
-          return fasthash64(static_cast<const void*>(&node->value.value._double),
-                            sizeof(node->value.value._double), hash);
+          return fasthash64(
+              static_cast<const void*>(&node->value.value._double),
+              sizeof(node->value.value._double), hash);
         case aql::VALUE_TYPE_STRING:
           return fasthash64(static_cast<const void*>(node->getStringValue()),
                             node->getStringLength(), hash);
@@ -300,8 +317,9 @@ irs::string_ref getFuncName(aql::AstNode const& node) {
   return fname;
 }
 
-void visitReferencedVariables(aql::AstNode const& root,
-                              std::function<void(aql::Variable const&)> const& visitor) {
+void visitReferencedVariables(
+    aql::AstNode const& root,
+    std::function<void(aql::Variable const&)> const& visitor) {
   auto preVisitor = [](aql::AstNode const* node) -> bool {
     return !node->isConstant();
   };
@@ -335,10 +353,11 @@ void visitReferencedVariables(aql::AstNode const& root,
 
 aql::AstNode const ScopedAqlValue::INVALID_NODE(aql::NODE_TYPE_ROOT);
 
-/*static*/ irs::string_ref const& ScopedAqlValue::typeString(ScopedValueType type) noexcept {
-  static irs::string_ref const TYPE_NAMES[] = {
-    "invalid", "null", "boolean", "double", "string", "array", "range", "object"
-  };
+/*static*/ irs::string_ref const& ScopedAqlValue::typeString(
+    ScopedValueType type) noexcept {
+  static irs::string_ref const TYPE_NAMES[] = {"invalid", "null",   "boolean",
+                                               "double",  "string", "array",
+                                               "range",   "object"};
 
   TRI_ASSERT(size_t(type) < IRESEARCH_COUNTOF(TYPE_NAMES));
 
@@ -387,24 +406,27 @@ bool ScopedAqlValue::execute(iresearch::QueryContext const& ctx) {
   return true;
 }
 
-bool normalizeGeoDistanceCmpNode(
-    aql::AstNode const& in,
-    aql::Variable const& ref,
-    NormalizedCmpNode& out) {
-  static_assert(adjacencyChecker<aql::AstNodeType>::checkAdjacency<
-                aql::NODE_TYPE_OPERATOR_BINARY_GE, aql::NODE_TYPE_OPERATOR_BINARY_GT,
-                aql::NODE_TYPE_OPERATOR_BINARY_LE, aql::NODE_TYPE_OPERATOR_BINARY_LT,
-                aql::NODE_TYPE_OPERATOR_BINARY_NE, aql::NODE_TYPE_OPERATOR_BINARY_EQ>(),
-                "Values are not adjacent");
+bool normalizeGeoDistanceCmpNode(aql::AstNode const& in,
+                                 aql::Variable const& ref,
+                                 NormalizedCmpNode& out) {
+  static_assert(
+      adjacencyChecker<aql::AstNodeType>::checkAdjacency<
+          aql::NODE_TYPE_OPERATOR_BINARY_GE, aql::NODE_TYPE_OPERATOR_BINARY_GT,
+          aql::NODE_TYPE_OPERATOR_BINARY_LE, aql::NODE_TYPE_OPERATOR_BINARY_LT,
+          aql::NODE_TYPE_OPERATOR_BINARY_NE,
+          aql::NODE_TYPE_OPERATOR_BINARY_EQ>(),
+      "Values are not adjacent");
 
-  auto checkFCallGeoDistance = [](aql::AstNode const* node, aql::Variable const& ref) {
+  auto checkFCallGeoDistance = [](aql::AstNode const* node,
+                                  aql::Variable const& ref) {
     if (!node || aql::NODE_TYPE_FCALL != node->type) {
       return false;
     }
 
-    auto* impl = reinterpret_cast<aql::Function const*>(node->getData())->implementation;
+    auto* impl =
+        reinterpret_cast<aql::Function const*>(node->getData())->implementation;
 
-   if (impl != &aql::Functions::GeoDistance) {
+    if (impl != &aql::Functions::GeoDistance) {
       return false;
     }
 
@@ -420,8 +442,7 @@ bool normalizeGeoDistanceCmpNode(
   auto cmp = in.type;
 
   if (cmp < aql::NODE_TYPE_OPERATOR_BINARY_EQ ||
-      cmp > aql::NODE_TYPE_OPERATOR_BINARY_GE ||
-      in.numMembers() != 2) {
+      cmp > aql::NODE_TYPE_OPERATOR_BINARY_GE || in.numMembers() != 2) {
     // wrong `in` type
     return false;
   }
@@ -452,13 +473,15 @@ bool normalizeGeoDistanceCmpNode(
   return true;
 }
 
-bool normalizeCmpNode(aql::AstNode const& in,
-                      aql::Variable const& ref, NormalizedCmpNode& out) {
-  static_assert(adjacencyChecker<aql::AstNodeType>::checkAdjacency<
-                aql::NODE_TYPE_OPERATOR_BINARY_GE, aql::NODE_TYPE_OPERATOR_BINARY_GT,
-                aql::NODE_TYPE_OPERATOR_BINARY_LE, aql::NODE_TYPE_OPERATOR_BINARY_LT,
-                aql::NODE_TYPE_OPERATOR_BINARY_NE, aql::NODE_TYPE_OPERATOR_BINARY_EQ>(),
-                "Values are not adjacent");
+bool normalizeCmpNode(aql::AstNode const& in, aql::Variable const& ref,
+                      bool allowExpansion, NormalizedCmpNode& out) {
+  static_assert(
+      adjacencyChecker<aql::AstNodeType>::checkAdjacency<
+          aql::NODE_TYPE_OPERATOR_BINARY_GE, aql::NODE_TYPE_OPERATOR_BINARY_GT,
+          aql::NODE_TYPE_OPERATOR_BINARY_LE, aql::NODE_TYPE_OPERATOR_BINARY_LT,
+          aql::NODE_TYPE_OPERATOR_BINARY_NE,
+          aql::NODE_TYPE_OPERATOR_BINARY_EQ>(),
+      "Values are not adjacent");
 
   if (!in.isDeterministic()) {
     // unable normalize nondeterministic node
@@ -478,8 +501,8 @@ bool normalizeCmpNode(aql::AstNode const& in,
   auto const* value = in.getMemberUnchecked(1);
   TRI_ASSERT(value);
 
-  if (!iresearch::checkAttributeAccess(attribute, ref)) {
-    if (!iresearch::checkAttributeAccess(value, ref)) {
+  if (!iresearch::checkAttributeAccess(attribute, ref, allowExpansion)) {
+    if (!iresearch::checkAttributeAccess(value, ref, allowExpansion)) {
       // no suitable attribute access node found
       return false;
     }
@@ -500,8 +523,8 @@ bool normalizeCmpNode(aql::AstNode const& in,
   return true;
 }
 
-bool attributeAccessEqual(aql::AstNode const* lhs,
-                          aql::AstNode const* rhs, QueryContext const* ctx) {
+bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
+                          QueryContext const* ctx) {
   struct NodeValue {
     enum class Type {
       INVALID = 0,
@@ -540,7 +563,8 @@ bool attributeAccessEqual(aql::AstNode const* lhs,
           }
         }
 
-      } else if (n == 2 && aql::NODE_TYPE_INDEXED_ACCESS == type) {  // [<something>]
+      } else if (n == 2 &&
+                 aql::NODE_TYPE_INDEXED_ACCESS == type) {  // [<something>]
         auto* root = node->getMemberUnchecked(0);
         auto* offset = node->getMemberUnchecked(1);
 
@@ -621,7 +645,7 @@ bool attributeAccessEqual(aql::AstNode const* lhs,
   } lhsValue, rhsValue;
 
   // TODO: is the "&" intionally. If yes: why?
-  //cppcheck-suppress uninitvar; false positive
+  // cppcheck-suppress uninitvar; false positive
   while (lhsValue.read(lhs, ctx) & rhsValue.read(rhs, ctx)) {
     if (lhsValue != rhsValue) {
       return false;
@@ -636,8 +660,10 @@ bool attributeAccessEqual(aql::AstNode const* lhs,
 }
 
 bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
-                             QueryContext const& ctx) {
-  struct {
+                             QueryContext const& ctx, bool allowExpansion) {
+  struct AttributeChecker {
+    AttributeChecker(bool expansion) : _expansion(expansion) {}
+
     bool attributeAccess(aql::AstNode const& node) {
       irs::string_ref strValue;
 
@@ -650,8 +676,12 @@ bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
       return true;
     }
 
-    bool expansion(aql::AstNode const&) const {
-      return false;  // do not support [*]
+    bool expansion(aql::AstNode const&) {
+      if (!_expansion) {
+        return false;
+      }
+      str_->append("[*]");
+      return true;
     }
 
     bool indexAccess(aql::AstNode const& node) {
@@ -700,7 +730,8 @@ bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
     std::string* str_;
     QueryContext const* ctx_;
     char buf_[21];  // enough to hold all numbers up to 64-bits
-  } builder;
+    bool _expansion;
+  } builder(allowExpansion);
 
   name.clear();
   builder.str_ = &name;
@@ -712,23 +743,29 @@ bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
 }
 
 aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
-                                         aql::Variable const& ref) noexcept {
-  struct {
+                                         aql::Variable const& ref,
+                                         bool allowExpansion) noexcept {
+  struct AttributeChecker {
+    AttributeChecker(bool expansion) : _expansion(expansion) {}
+
     bool attributeAccess(aql::AstNode const&) const { return true; }
 
     bool indexAccess(aql::AstNode const&) const { return true; }
 
-    bool expansion(aql::AstNode const&) const {
-      return false;  // do not support [*]
-    }
-  } checker;
+    bool expansion(aql::AstNode const&) const { return _expansion; }
+
+    bool _expansion;
+  } checker(allowExpansion);
 
   aql::AstNode const* head = nullptr;
 
-  return node && aql::NODE_TYPE_REFERENCE != node->type  // do not allow root node to be REFERENCE
+  return node &&
+                 aql::NODE_TYPE_REFERENCE !=
+                     node->type  // do not allow root node to be REFERENCE
                  && visitAttributeAccess(head, node, checker) && head &&
                  aql::NODE_TYPE_REFERENCE == head->type &&
-                 reinterpret_cast<void const*>(&ref) == head->getData()  // same variable
+                 reinterpret_cast<void const*>(&ref) ==
+                     head->getData()  // same variable
              ? node
              : nullptr;
 }

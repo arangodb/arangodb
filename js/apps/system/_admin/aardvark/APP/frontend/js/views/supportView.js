@@ -31,7 +31,7 @@
 
     renderSwagger: function () {
       var path = window.location.pathname.split('/');
-      var url = window.location.protocol + '//' + window.location.hostname + ':' + window.location.port + '/' + path[1] + '/' + path[2] + '/_admin/aardvark/api/index.html?collapsed';
+      var url = window.location.protocol + '//' + window.location.hostname + ':' + window.location.port + '/' + encodeURIComponent(path[1]) + '/' + encodeURIComponent(path[2]) + '/_admin/aardvark/api/index.html?collapsed';
       $('#swagger').html('');
       $('#swagger').append(
         '<iframe src="' + url + '" style="border:none"></iframe>'

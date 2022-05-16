@@ -1,0 +1,211 @@
+[section:traits Type Traits]
+
+[h2 Overview]
+
+Have you ever wanted to write a generic function that can operate
+on any kind of dereferenceable object?  If you have, you've
+probably run into the problem of how to determine the type that the
+object "points at":
+
+   template <class Dereferenceable>
+   void f(Dereferenceable p)
+   {
+       *what-goes-here?* value = \*p;
+       ...
+   }
+
+
+[h2 `pointee`]
+
+It turns out to be impossible to come up with a fully-general
+algorithm to do determine *what-goes-here* directly, but it is
+possible to require that `pointee<Dereferenceable>::type` is
+correct. Naturally, `pointee` has the same difficulty: it can't
+determine the appropriate `::type` reliably for all
+`Dereferenceable`\ s, but it makes very good guesses (it works
+for all pointers, standard and boost smart pointers, and
+iterators), and when it guesses wrongly, it can be specialized as
+necessary:
+
+  namespace boost
+  {
+    template <class T>
+    struct pointee<third_party_lib::smart_pointer<T> >
+    {
+        typedef T type;
+    };
+  }
+
+[h2 `indirect_reference`]
+
+`indirect_reference<T>::type` is rather more specialized than
+`pointee`, and is meant to be used to forward the result of
+dereferencing an object of its argument type.  Most dereferenceable
+types just return a reference to their pointee, but some return
+proxy references or return the pointee by value.  When that
+information is needed, call on `indirect_reference`.
+
+Both of these templates are essential to the correct functioning of
+[link iterator.specialized.indirect `indirect_iterator`].
+
+[h2 `minimum_category`]
+
+`minimum_category` takes two iterator categories or two iterator traversal tags
+and returns the one that is the weakest (i.e. least advanced). For example:
+
+  static_assert(
+      is_same<
+          minimum_category<
+              std::forward_iterator_tag,
+              std::random_access_iterator_tag
+          >::type,
+          std::forward_iterator_tag
+      >::value,
+      "Unexpected minimum_category result"
+  );
+
+[h2 Iterator category and traversal tags manipulation]
+
+The library provides several utilities to simplify conversions between iterator categories
+and traversal tags:
+
+* `iterator_category_to_traversal<C>::type` - the metafunction takes an iterator category `C` and returns
+the corresponding traversal tag.
+* `iterator_traversal<T>::type` - a shorthand for `iterator_category_to_traversal<iterator_category<T>::type>::type`.
+* `pure_traversal_tag<T>::type` - the metafunction takes a tag `T` which derives from one of the iterator traversal tags
+and returns that traversal tag. `T` may also derive from other tags describing the iterator (e.g. whether this is a `const`-iterator
+or not), these additional tags are not considered.
+* `pure_iterator_traversal<T>::type` - a shorthand for `pure_traversal_tag<iterator_traversal<T>::type>::type`.
+
+[h2 Reference]
+
+[h3 `pointee`]
+
+  template <class Dereferenceable>
+  struct pointee
+  {
+      typedef /* see below */ type;
+  };
+
+[*Requires:] For an object `x` of type `Dereferenceable`, `*x`
+  is well-formed.  If `++x` is ill-formed it shall neither be
+  ambiguous nor shall it violate access control, and
+  `Dereferenceable::element_type` shall be an accessible type.
+  Otherwise `iterator_traits<Dereferenceable>::value_type` shall
+  be well formed. \[Note: These requirements need not apply to
+  explicit or partial specializations of `pointee`\]
+
+`type` is determined according to the following algorithm, where
+`x` is an object of type `Dereferenceable`:
+
+  if ( ++x is ill-formed )
+  {
+      return Dereferenceable::element_type
+  }
+  else if (*x is a mutable reference to
+           std::iterator_traits<Dereferenceable>::value_type)
+  {
+      return iterator_traits<Dereferenceable>::value_type
+  }
+  else
+  {
+      return iterator_traits<Dereferenceable>::value_type const
+  }
+
+[h3 `indirect_reference`]
+
+  template <class Dereferenceable>
+  struct indirect_reference
+  {
+      typedef /* see below */ type;
+  };
+
+[*Requires:] For an object `x` of type `Dereferenceable`, `*x`
+  is well-formed.  If `++x` is ill-formed it shall neither be
+  ambiguous nor shall it violate access control, and
+  `pointee<Dereferenceable>::type&` shall be well-formed.
+  Otherwise `iterator_traits<Dereferenceable>::reference` shall
+  be well formed.  \[Note: These requirements need not apply to
+  explicit or partial specializations of `indirect_reference`\]
+
+`type` is determined according to the following algorithm, where
+`x` is an object of type `Dereferenceable`:
+
+  if ( ++x is ill-formed )
+      return pointee<Dereferenceable>::type&
+  else
+      std::iterator_traits<Dereferenceable>::reference
+
+[h3 `minimum_category`]
+
+  template <typename C1, typename C2>
+  struct minimum_category
+  {
+      typedef /* see below */ type;
+  };
+
+[*Requires:] Both `C1` and `C2` shall be standard iterator categories or
+  iterator traversal tags.
+
+`type` is determined according to the following algorithm, where `c1` is an
+object of type `C1` and `c2` is an object of type `C2`:
+
+  if (c1 is convertible to c2)
+      return C2;
+  else
+      return C1;
+
+[note The above definition relies on the fact that the more restricting categories
+and traversal tags are convertible to the less restricting ones.]
+
+[h3 `iterator_category_to_traversal`]
+
+  template <typename C>
+  struct iterator_category_to_traversal
+  {
+      typedef /* see below */ type;
+  };
+
+[*Requires:] `C` shall be a standard iterator category or an
+  iterator traversal tag.
+
+If `C` is an iterator traversal tag or convertible to one, `type` equivalent to `C`.
+Otherwise, `type` is defined to the closest iterator traversal tag matching `C`.
+
+[h3 `iterator_traversal`]
+
+  template <typename Iterator>
+  struct iterator_traversal
+  {
+      typedef typename iterator_category_to_traversal<
+          typename iterator_category<Iterator>::type
+      >::type type;
+  };
+
+[*Requires:] `Iterator` shall be an iterator.
+
+[h3 `pure_traversal_tag`]
+
+  template <typename T>
+  struct pure_traversal_tag
+  {
+      typedef /* see below */ type;
+  };
+
+[*Requires:] `T` shall be convertible to an iterator traversal tag.
+
+`type` is defined to be the most advanced traversal tag `Tag` so that `T` is convertible to `Tag`.
+
+[h3 `pure_iterator_traversal`]
+
+  template <typename Iterator>
+  struct pure_iterator_traversal
+  {
+      typedef typename pure_traversal_tag<
+          typename iterator_traversal<Iterator>::type
+      >::type type;
+  };
+
+[*Requires:] `Iterator` shall be an iterator.
+
+[endsect]

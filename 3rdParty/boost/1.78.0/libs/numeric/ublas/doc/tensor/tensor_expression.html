@@ -1,0 +1,272 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta name="generator" content=
+"HTML Tidy for Linux/x86 (vers 1st March 2004), see www.w3.org" />
+<meta http-equiv="Content-Type" content=
+"text/html; charset=us-ascii" />
+<link rel="stylesheet" href="../../../../boost.css" type="text/css"/>
+<link rel="stylesheet" href="ublas.css" type="text/css" />
+<script type="text/javascript" src="js/jquery-1.3.2.min.js" async="async" ></script>
+<script type="text/javascript" src="js/jquery.toc-gw.js" async="async" ></script>
+<title>Tensor Expressions</title>
+</head>
+<body>
+<h1><img src="../../../../boost.png" align="middle" />Tensor Expressions</h1>
+<div class="toc" id="toc"></div>
+
+
+
+
+<h2><a name="tensor_expression"></a>Tensor Expression</h2>
+<h4>Description</h4>
+<p>The templated class <code>tensor_expression&lt;T,E&gt;</code>
+is required to be a public base of all classes. There is no Tensor Expression concept defined.</p>
+<h4>Definition</h4>
+<p>Defined in the header tensor/expression.hpp.</p>
+<h4>Model of</h4>
+<p>None. <u>Not a Tensor Expression</u>!
+</p>
+
+<h4>Type requirements</h4>
+<p>None.</p>
+<h4>Public base classes</h4>
+<p><code>ublas_expression&lt;E&gt;</code>.</p>
+
+<h4>Template parameters</h4>
+<table border="1" summary="parameters">
+<tbody>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+<tr>
+<td><code>T</code></td>
+<td>The type of the tensor.</td>
+</tr>
+<tr>
+<td><code>E</code></td>
+<td>The type of the tensor expression.</td>
+</tr>
+</tbody>
+</table>
+
+<h4>Member types</h4>
+<table border="1" style="font-size:100%" summary="members">
+<tbody style="font-size:100%" >
+<tr>
+<th>Member type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td><code>expression_type</code></td>
+<td>Type of the derived expression which is <code>E</code>.</td>
+</tr>
+<tr>
+<td><code>type_category</code></td>
+<td>Tag for categorization which is <code>tensor_tag</code>.</td>
+</tr>
+<tr>
+<td><code>tensor_type</code></td>
+<td>Reference type which is <code>T</code>.</td>
+</tr>
+</tbody>
+</table>
+
+<h4>Public Member Functions</h4>
+<table border="1" summary="members">
+<tbody>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+<tr>
+<td><code>const expression_type &amp;operator()() const</code></td>
+<td>Returns a <code>const</code> reference to the derived expression.</td>
+</tr>
+</tbody>
+</table>
+
+<!--------------------- ---->
+<br>
+<br>
+
+<h2><a name="entrywise_tensor_operations"></a>Entrywise Tensor Operations</h2>
+
+
+<h3><a name="binary_tensor_expression"></a>Binary Tensor Expression</h3>
+
+<h4>Description</h4>
+<p>The templated class <code>binary_tensor_expression&lt;T,EL,ER,OP&gt;</code> contains a constant reference to a left and right expression that can be evaluated by using the access operator.</p>
+<h4>Definition</h4>
+<p>Defined in the header tensor/expression.hpp.</p>
+<h4>Model of</h4>
+<p>Tensor Expression</p>
+
+
+<h4>Type requirements</h4>
+<p>None.</p>
+
+<h4>Public base classes</h4>
+<p><code>tensor_expression&lt;T,binary_tensor_expression&lt;T,EL,ER,OP&gt;&gt;</code></p>
+
+<h4>Template parameters</h4>
+<table border="1" summary="parameters">
+<tbody>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+<tr>
+<td><code>T</code></td>
+<td>Type of the tensor.</td>
+</tr>
+<tr>
+<td><code>EL</code></td>
+<td>Type of the left binary tensor expression.</td>
+</tr>
+<tr>
+<td><code>ER</code></td>
+<td>Type of the right binary tensor expression.</td>
+</tr>
+<tr>
+<td><code>OP</code></td>
+<td>Type of the binary operation.</td>
+</tr>
+</tbody>
+</table>
+
+<h4>Member types</h4>
+<table border="1" style="font-size:100%" summary="members">
+<tbody style="font-size:100%" >
+<tr>
+<th>Member type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td><code>expression_type_left</code></td>
+<td>Type of the left expression which is <code>EL</code>.</td>
+</tr>
+<tr>
+<td><code>expression_type_right</code></td>
+<td>Type of the right expression which is <code>ER</code>.</td>
+</tr>
+<tr>
+<td><code>tensor_type</code></td>
+<td>Reference type which is <code>T</code>.</td>
+</tr>
+<tr>
+<td><code>binary_operation</code></td>
+<td>Type of the binary operation which is <code>OP</code>.</td>
+</tr>
+</tbody>
+</table>
+
+<h4>Public Member Functions</h4>
+<table border="1" summary="members">
+<tbody>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+<tr>
+<td><code>decltype(auto) operator()(std::size_t i) const </code></td>
+<td>Returns a <code>const</code> reference to the i-th element of the expression.</td>
+</tr>
+</tbody>
+</table>
+<br>
+
+<!--------------------- ---->
+
+<h3><a name="unary_tensor_expression"></a>Unary Tensor Expression</h3>
+
+
+<h4>Description</h4>
+<p>The templated class <code>unary_tensor_expression&lt;T,E,OP&gt;</code> contains a constant reference to an expression that can be evaluated by using the access operator.</p>
+<h4>Definition</h4>
+<p>Defined in the header tensor/expression.hpp.</p>
+<h4>Model of</h4>
+<p>Tensor Expression</p>
+
+<h4>Type requirements</h4>
+<p>None.</p>
+
+<h4>Public base classes</h4>
+<p><code>tensor_expression&lt;T,unary_tensor_expression&lt;T,E,OP&gt;&gt; </code></p>
+
+<h4>Template parameters</h4>
+<table border="1" summary="parameters">
+<tbody>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+<tr>
+<td><code>T</code></td>
+<td>Type of the tensor.</td>
+</tr>
+<tr>
+<td><code>E</code></td>
+<td>Type of the unary tensor expression.</td>
+</tr>
+<tr>
+<td><code>OP</code></td>
+<td>Type of the unary operation.</td>
+</tr>
+</tbody>
+</table>
+
+<h4>Member types</h4>
+<table border="1" style="font-size:100%" summary="members">
+<tbody style="font-size:100%" >
+<tr>
+<th>Member type</th>
+<th>Description</th>
+</tr>
+<tr>
+<td><code>expression_type</code></td>
+<td>Type of the expression which is <code>E</code>.</td>
+</tr>
+<tr>
+<td><code>tensor_type</code></td>
+<td>Reference type which is <code>T</code>.</td>
+</tr>
+<tr>
+<td><code>unary_operation</code></td>
+<td>Type of the unary operation which is <code>OP</code>.</td>
+</tr>
+</tbody>
+</table>
+
+<h4>Public Member Functions</h4>
+<table border="1" summary="members">
+<tbody>
+<tr>
+<th>Member</th>
+<th>Description</th>
+</tr>
+<tr>
+<td><code>decltype(auto) operator()(std::size_t i) const </code></td>
+<td>Returns a <code>const</code> reference to the i-th element of the expression.</td>
+</tr>
+</tbody>
+</table>
+
+<hr />
+<p>Copyright (&copy;) 2018 Cem Bassoy <br />
+   Use, modification and distribution are subject to the
+   Boost Software License, Version 1.0.
+   (See accompanying file LICENSE_1_0.txt
+   or copy at <a href="http://www.boost.org/LICENSE_1_0.txt">
+      http://www.boost.org/LICENSE_1_0.txt
+   </a>).
+</p>
+<script type="text/javascript">
+(function($) {
+    $('#toc').toc();
+})(jQuery);
+</script>
+</body>
+</html>

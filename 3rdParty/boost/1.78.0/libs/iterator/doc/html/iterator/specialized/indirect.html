@@ -1,0 +1,323 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Indirect Iterator</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Iterator">
+<link rel="up" href="../specialized.html" title="Specialized Adaptors">
+<link rel="prev" href="function_output.html" title="Function Output Iterator">
+<link rel="next" href="permutation.html" title="Permutation Iterator">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="function_output.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../specialized.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="permutation.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="iterator.specialized.indirect"></a><a class="link" href="indirect.html" title="Indirect Iterator">Indirect Iterator</a>
+</h3></div></div></div>
+<p>
+        <code class="computeroutput"><span class="identifier">indirect_iterator</span></code> adapts
+        an iterator by applying an <span class="bold"><strong>extra</strong></span> dereference
+        inside of <code class="computeroutput"><span class="keyword">operator</span><span class="special">*()</span></code>.
+        For example, this iterator adaptor makes it possible to view a container
+        of pointers (e.g. <code class="computeroutput"><span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">foo</span><span class="special">*&gt;</span></code>)
+        as if it were a container of the pointed-to type (e.g. <code class="computeroutput"><span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">foo</span><span class="special">&gt;</span></code>). <code class="computeroutput"><span class="identifier">indirect_iterator</span></code>
+        depends on two auxiliary traits, <code class="computeroutput"><span class="identifier">pointee</span></code>
+        and <code class="computeroutput"><span class="identifier">indirect_reference</span></code>, to
+        provide support for underlying iterators whose <code class="computeroutput"><span class="identifier">value_type</span></code>
+        is not an iterator.
+      </p>
+<h3>
+<a name="iterator.specialized.indirect.h0"></a>
+        <span class="phrase"><a name="iterator.specialized.indirect.example"></a></span><a class="link" href="indirect.html#iterator.specialized.indirect.example">Example</a>
+      </h3>
+<p>
+        This example prints an array of characters, using <code class="computeroutput"><span class="identifier">indirect_iterator</span></code>
+        to access the array of characters through an array of pointers. Next <code class="computeroutput"><span class="identifier">indirect_iterator</span></code> is used with the <code class="computeroutput"><span class="identifier">transform</span></code> algorithm to copy the characters
+        (incremented by one) to another array. A constant indirect iterator is used
+        for the source and a mutable indirect iterator is used for the destination.
+        The last part of the example prints the original array of characters, but
+        this time using the <code class="computeroutput"><span class="identifier">make_indirect_iterator</span></code>
+        helper function.
+      </p>
+<pre class="programlisting"><span class="keyword">char</span> <span class="identifier">characters</span><span class="special">[]</span> <span class="special">=</span> <span class="string">"abcdefg"</span><span class="special">;</span>
+<span class="keyword">const</span> <span class="keyword">int</span> <span class="identifier">N</span> <span class="special">=</span> <span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">characters</span><span class="special">)/</span><span class="keyword">sizeof</span><span class="special">(</span><span class="keyword">char</span><span class="special">)</span> <span class="special">-</span> <span class="number">1</span><span class="special">;</span> <span class="comment">// -1 since characters has a null char</span>
+<span class="keyword">char</span><span class="special">*</span> <span class="identifier">pointers_to_chars</span><span class="special">[</span><span class="identifier">N</span><span class="special">];</span>                        <span class="comment">// at the end.</span>
+<span class="keyword">for</span> <span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="identifier">N</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span>
+  <span class="identifier">pointers_to_chars</span><span class="special">[</span><span class="identifier">i</span><span class="special">]</span> <span class="special">=</span> <span class="special">&amp;</span><span class="identifier">characters</span><span class="special">[</span><span class="identifier">i</span><span class="special">];</span>
+
+<span class="comment">// Example of using indirect_iterator</span>
+
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">indirect_iterator</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">**,</span> <span class="keyword">char</span><span class="special">&gt;</span>
+  <span class="identifier">indirect_first</span><span class="special">(</span><span class="identifier">pointers_to_chars</span><span class="special">),</span> <span class="identifier">indirect_last</span><span class="special">(</span><span class="identifier">pointers_to_chars</span> <span class="special">+</span> <span class="identifier">N</span><span class="special">);</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">copy</span><span class="special">(</span><span class="identifier">indirect_first</span><span class="special">,</span> <span class="identifier">indirect_last</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream_iterator</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span><span class="special">,</span> <span class="string">","</span><span class="special">));</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+
+<span class="comment">// Example of making mutable and constant indirect iterators</span>
+
+<span class="keyword">char</span> <span class="identifier">mutable_characters</span><span class="special">[</span><span class="identifier">N</span><span class="special">];</span>
+<span class="keyword">char</span><span class="special">*</span> <span class="identifier">pointers_to_mutable_chars</span><span class="special">[</span><span class="identifier">N</span><span class="special">];</span>
+<span class="keyword">for</span> <span class="special">(</span><span class="keyword">int</span> <span class="identifier">j</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">j</span> <span class="special">&lt;</span> <span class="identifier">N</span><span class="special">;</span> <span class="special">++</span><span class="identifier">j</span><span class="special">)</span>
+  <span class="identifier">pointers_to_mutable_chars</span><span class="special">[</span><span class="identifier">j</span><span class="special">]</span> <span class="special">=</span> <span class="special">&amp;</span><span class="identifier">mutable_characters</span><span class="special">[</span><span class="identifier">j</span><span class="special">];</span>
+
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">indirect_iterator</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">*</span> <span class="keyword">const</span><span class="special">*&gt;</span> <span class="identifier">mutable_indirect_first</span><span class="special">(</span><span class="identifier">pointers_to_mutable_chars</span><span class="special">),</span>
+  <span class="identifier">mutable_indirect_last</span><span class="special">(</span><span class="identifier">pointers_to_mutable_chars</span> <span class="special">+</span> <span class="identifier">N</span><span class="special">);</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">indirect_iterator</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">*</span> <span class="keyword">const</span><span class="special">*,</span> <span class="keyword">char</span> <span class="keyword">const</span><span class="special">&gt;</span> <span class="identifier">const_indirect_first</span><span class="special">(</span><span class="identifier">pointers_to_chars</span><span class="special">),</span>
+  <span class="identifier">const_indirect_last</span><span class="special">(</span><span class="identifier">pointers_to_chars</span> <span class="special">+</span> <span class="identifier">N</span><span class="special">);</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">transform</span><span class="special">(</span><span class="identifier">const_indirect_first</span><span class="special">,</span> <span class="identifier">const_indirect_last</span><span class="special">,</span>
+  <span class="identifier">mutable_indirect_first</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">plus</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;(),</span> <span class="number">1</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">placeholders</span><span class="special">::</span><span class="identifier">_1</span><span class="special">));</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">copy</span><span class="special">(</span><span class="identifier">mutable_indirect_first</span><span class="special">,</span> <span class="identifier">mutable_indirect_last</span><span class="special">,</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream_iterator</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span><span class="special">,</span> <span class="string">","</span><span class="special">));</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+
+<span class="comment">// Example of using make_indirect_iterator()</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">copy</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_indirect_iterator</span><span class="special">(</span><span class="identifier">pointers_to_chars</span><span class="special">),</span>
+          <span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_indirect_iterator</span><span class="special">(</span><span class="identifier">pointers_to_chars</span> <span class="special">+</span> <span class="identifier">N</span><span class="special">),</span>
+          <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream_iterator</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span><span class="special">,</span> <span class="string">","</span><span class="special">));</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+</pre>
+<p>
+        The output is:
+      </p>
+<pre class="programlisting">a,b,c,d,e,f,g,
+b,c,d,e,f,g,h,
+a,b,c,d,e,f,g,
+</pre>
+<p>
+        The source code for this example can be found <a href="../../../../example/indirect_iterator_example.cpp" target="_top">here</a>.
+      </p>
+<h3>
+<a name="iterator.specialized.indirect.h1"></a>
+        <span class="phrase"><a name="iterator.specialized.indirect.reference"></a></span><a class="link" href="indirect.html#iterator.specialized.indirect.reference">Reference</a>
+      </h3>
+<h4>
+<a name="iterator.specialized.indirect.h2"></a>
+        <span class="phrase"><a name="iterator.specialized.indirect.synopsis"></a></span><a class="link" href="indirect.html#iterator.specialized.indirect.synopsis">Synopsis</a>
+      </h4>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span>
+    <span class="keyword">class</span> <span class="identifier">Iterator</span>
+  <span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Value</span> <span class="special">=</span> <span class="identifier">use_default</span>
+  <span class="special">,</span> <span class="keyword">class</span> <span class="identifier">CategoryOrTraversal</span> <span class="special">=</span> <span class="identifier">use_default</span>
+  <span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Reference</span> <span class="special">=</span> <span class="identifier">use_default</span>
+  <span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Difference</span> <span class="special">=</span> <span class="identifier">use_default</span>
+<span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">indirect_iterator</span>
+<span class="special">{</span>
+ <span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">typedef</span> <span class="comment">/* see below */</span> <span class="identifier">value_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="comment">/* see below */</span> <span class="identifier">reference</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="comment">/* see below */</span> <span class="identifier">pointer</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="comment">/* see below */</span> <span class="identifier">difference_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="comment">/* see below */</span> <span class="identifier">iterator_category</span><span class="special">;</span>
+
+    <span class="identifier">indirect_iterator</span><span class="special">();</span>
+    <span class="identifier">indirect_iterator</span><span class="special">(</span><span class="identifier">Iterator</span> <span class="identifier">x</span><span class="special">);</span>
+
+    <span class="keyword">template</span> <span class="special">&lt;</span>
+        <span class="keyword">class</span> <span class="identifier">Iterator2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Value2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Category2</span>
+      <span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Reference2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Difference2</span>
+    <span class="special">&gt;</span>
+    <span class="identifier">indirect_iterator</span><span class="special">(</span>
+        <span class="identifier">indirect_iterator</span><span class="special">&lt;</span>
+             <span class="identifier">Iterator2</span><span class="special">,</span> <span class="identifier">Value2</span><span class="special">,</span> <span class="identifier">Category2</span><span class="special">,</span> <span class="identifier">Reference2</span><span class="special">,</span> <span class="identifier">Difference2</span>
+        <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">y</span>
+      <span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">enable_if_convertible</span><span class="special">&lt;</span><span class="identifier">Iterator2</span><span class="special">,</span> <span class="identifier">Iterator</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">*</span> <span class="special">=</span> <span class="number">0</span> <span class="comment">// exposition</span>
+    <span class="special">);</span>
+
+    <span class="identifier">Iterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">base</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+    <span class="identifier">reference</span> <span class="keyword">operator</span><span class="special">*()</span> <span class="keyword">const</span><span class="special">;</span>
+    <span class="identifier">indirect_iterator</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">++();</span>
+    <span class="identifier">indirect_iterator</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">--();</span>
+<span class="keyword">private</span><span class="special">:</span>
+   <span class="identifier">Iterator</span> <span class="identifier">m_iterator</span><span class="special">;</span> <span class="comment">// exposition</span>
+<span class="special">};</span>
+</pre>
+<p>
+        The member types of <code class="computeroutput"><span class="identifier">indirect_iterator</span></code>
+        are defined according to the following pseudo-code, where <code class="computeroutput"><span class="identifier">V</span></code>
+        is <code class="computeroutput"><span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="identifier">Iterator</span><span class="special">&gt;::</span><span class="identifier">value_type</span></code>
+      </p>
+<pre class="programlisting">  if (Value is use_default) then
+      typedef remove_const&lt;pointee&lt;V&gt;::type&gt;::type value_type;
+  else
+      typedef remove_const&lt;Value&gt;::type value_type;
+
+  if (Reference is use_default) then
+      if (Value is use_default) then
+          typedef indirect_reference&lt;V&gt;::type reference;
+      else
+          typedef Value&amp; reference;
+  else
+      typedef Reference reference;
+
+  if (Value is use_default) then
+      typedef pointee&lt;V&gt;::type* pointer;
+  else
+      typedef Value* pointer;
+
+  if (Difference is use_default)
+      typedef iterator_traits&lt;Iterator&gt;::difference_type difference_type;
+  else
+      typedef Difference difference_type;
+
+  if (CategoryOrTraversal is use_default)
+      typedef <span class="bold"><strong>iterator-category</strong></span> (
+          iterator_traversal&lt;Iterator&gt;::type,<code class="computeroutput"><span class="identifier">reference</span></code>,<code class="computeroutput"><span class="identifier">value_type</span></code>
+      ) iterator_category;
+  else
+      typedef <span class="bold"><strong>iterator-category</strong></span> (
+          CategoryOrTraversal,<code class="computeroutput"><span class="identifier">reference</span></code>,<code class="computeroutput"><span class="identifier">value_type</span></code>
+      ) iterator_category;
+</pre>
+<h4>
+<a name="iterator.specialized.indirect.h3"></a>
+        <span class="phrase"><a name="iterator.specialized.indirect.requirements"></a></span><a class="link" href="indirect.html#iterator.specialized.indirect.requirements">Requirements</a>
+      </h4>
+<p>
+        The expression <code class="computeroutput"><span class="special">*</span><span class="identifier">v</span></code>,
+        where <code class="computeroutput"><span class="identifier">v</span></code> is an object of
+        <code class="computeroutput"><span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="identifier">Iterator</span><span class="special">&gt;::</span><span class="identifier">value_type</span></code>, shall be valid expression and
+        convertible to <code class="computeroutput"><span class="identifier">reference</span></code>.
+        <code class="computeroutput"><span class="identifier">Iterator</span></code> shall model the
+        traversal concept indicated by <code class="computeroutput"><span class="identifier">iterator_category</span></code>.
+        <code class="computeroutput"><span class="identifier">Value</span></code>, <code class="computeroutput"><span class="identifier">Reference</span></code>,
+        and <code class="computeroutput"><span class="identifier">Difference</span></code> shall be chosen
+        so that <code class="computeroutput"><span class="identifier">value_type</span></code>, <code class="computeroutput"><span class="identifier">reference</span></code>, and <code class="computeroutput"><span class="identifier">difference_type</span></code>
+        meet the requirements indicated by <code class="computeroutput"><span class="identifier">iterator_category</span></code>.
+      </p>
+<div class="blurb">
+<div class="titlepage"><div><div><p class="title"><b></b></p></div></div></div>
+<p>
+        Note: there are further requirements on the <code class="computeroutput"><span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="identifier">Iterator</span><span class="special">&gt;::</span><span class="identifier">value_type</span></code>
+        if the <code class="computeroutput"><span class="identifier">Value</span></code> parameter is
+        not <code class="computeroutput"><span class="identifier">use_default</span></code>, as implied
+        by the algorithm for deducing the default for the <code class="computeroutput"><span class="identifier">value_type</span></code>
+        member.
+      </p>
+</div>
+<h4>
+<a name="iterator.specialized.indirect.h4"></a>
+        <span class="phrase"><a name="iterator.specialized.indirect.concepts"></a></span><a class="link" href="indirect.html#iterator.specialized.indirect.concepts">Concepts</a>
+      </h4>
+<p>
+        In addition to the concepts indicated by <code class="computeroutput"><span class="identifier">iterator_category</span></code>
+        and by <code class="computeroutput"><span class="identifier">iterator_traversal</span><span class="special">&lt;</span><span class="identifier">indirect_iterator</span><span class="special">&gt;::</span><span class="identifier">type</span></code>,
+        a specialization of <code class="computeroutput"><span class="identifier">indirect_iterator</span></code>
+        models the following concepts, Where <code class="computeroutput"><span class="identifier">v</span></code>
+        is an object of <code class="computeroutput"><span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="identifier">Iterator</span><span class="special">&gt;::</span><span class="identifier">value_type</span></code>:
+      </p>
+<p>
+        Readable Iterator if <code class="computeroutput"><span class="identifier">reference</span><span class="special">(*</span><span class="identifier">v</span><span class="special">)</span></code>
+        is convertible to <code class="computeroutput"><span class="identifier">value_type</span></code>.
+      </p>
+<p>
+        Writable Iterator if <code class="computeroutput"><span class="identifier">reference</span><span class="special">(*</span><span class="identifier">v</span><span class="special">)</span>
+        <span class="special">=</span> <span class="identifier">t</span></code>
+        is a valid expression (where <code class="computeroutput"><span class="identifier">t</span></code>
+        is an object of type <code class="computeroutput"><span class="identifier">indirect_iterator</span><span class="special">::</span><span class="identifier">value_type</span></code>)
+      </p>
+<p>
+        Lvalue Iterator if <code class="computeroutput"><span class="identifier">reference</span></code>
+        is a reference type.
+      </p>
+<p>
+        <code class="computeroutput"><span class="identifier">indirect_iterator</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">,</span><span class="identifier">V1</span><span class="special">,</span><span class="identifier">C1</span><span class="special">,</span><span class="identifier">R1</span><span class="special">,</span><span class="identifier">D1</span><span class="special">&gt;</span></code> is interoperable with <code class="computeroutput"><span class="identifier">indirect_iterator</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">,</span><span class="identifier">V2</span><span class="special">,</span><span class="identifier">C2</span><span class="special">,</span><span class="identifier">R2</span><span class="special">,</span><span class="identifier">D2</span><span class="special">&gt;</span></code>
+        if and only if <code class="computeroutput"><span class="identifier">X</span></code> is interoperable
+        with <code class="computeroutput"><span class="identifier">Y</span></code>.
+      </p>
+<h4>
+<a name="iterator.specialized.indirect.h5"></a>
+        <span class="phrase"><a name="iterator.specialized.indirect.operations"></a></span><a class="link" href="indirect.html#iterator.specialized.indirect.operations">Operations</a>
+      </h4>
+<p>
+        In addition to the operations required by the concepts described above, specializations
+        of <code class="computeroutput"><span class="identifier">indirect_iterator</span></code> provide
+        the following operations:
+      </p>
+<pre class="programlisting"><span class="identifier">indirect_iterator</span><span class="special">();</span>
+</pre>
+<p>
+        <span class="bold"><strong>Requires: </strong></span> <code class="computeroutput"><span class="identifier">Iterator</span></code>
+        must be Default Constructible.<br> <span class="bold"><strong>Effects: </strong></span>
+        Constructs an instance of <code class="computeroutput"><span class="identifier">indirect_iterator</span></code>
+        with a default-constructed <code class="computeroutput"><span class="identifier">m_iterator</span></code>.
+      </p>
+<pre class="programlisting"><span class="identifier">indirect_iterator</span><span class="special">(</span><span class="identifier">Iterator</span> <span class="identifier">x</span><span class="special">);</span>
+</pre>
+<p>
+        <span class="bold"><strong>Effects: </strong></span> Constructs an instance of <code class="computeroutput"><span class="identifier">indirect_iterator</span></code> with <code class="computeroutput"><span class="identifier">m_iterator</span></code>
+        copy constructed from <code class="computeroutput"><span class="identifier">x</span></code>.
+      </p>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span>
+    <span class="keyword">class</span> <span class="identifier">Iterator2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Value2</span><span class="special">,</span> <span class="keyword">unsigned</span> <span class="identifier">Access</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Traversal</span>
+  <span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Reference2</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Difference2</span>
+<span class="special">&gt;</span>
+<span class="identifier">indirect_iterator</span><span class="special">(</span>
+    <span class="identifier">indirect_iterator</span><span class="special">&lt;</span>
+         <span class="identifier">Iterator2</span><span class="special">,</span> <span class="identifier">Value2</span><span class="special">,</span> <span class="identifier">Access</span><span class="special">,</span> <span class="identifier">Traversal</span><span class="special">,</span> <span class="identifier">Reference2</span><span class="special">,</span> <span class="identifier">Difference2</span>
+    <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">y</span>
+  <span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">enable_if_convertible</span><span class="special">&lt;</span><span class="identifier">Iterator2</span><span class="special">,</span> <span class="identifier">Iterator</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">*</span> <span class="special">=</span> <span class="number">0</span> <span class="comment">// exposition</span>
+<span class="special">);</span>
+</pre>
+<p>
+        <span class="bold"><strong>Requires: </strong></span> <code class="computeroutput"><span class="identifier">Iterator2</span></code>
+        is implicitly convertible to <code class="computeroutput"><span class="identifier">Iterator</span></code>.<br>
+        <span class="bold"><strong>Effects: </strong></span> Constructs an instance of <code class="computeroutput"><span class="identifier">indirect_iterator</span></code> whose <code class="computeroutput"><span class="identifier">m_iterator</span></code>
+        subobject is constructed from <code class="computeroutput"><span class="identifier">y</span><span class="special">.</span><span class="identifier">base</span><span class="special">()</span></code>.
+      </p>
+<pre class="programlisting"><span class="identifier">Iterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">base</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<p>
+        <span class="bold"><strong>Returns: </strong></span> <code class="computeroutput"><span class="identifier">m_iterator</span></code>
+      </p>
+<pre class="programlisting"><span class="identifier">reference</span> <span class="keyword">operator</span><span class="special">*()</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<p>
+        <span class="bold"><strong>Returns: </strong></span> <code class="computeroutput"><span class="special">**</span><span class="identifier">m_iterator</span></code>
+      </p>
+<pre class="programlisting"><span class="identifier">indirect_iterator</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">++();</span>
+</pre>
+<p>
+        <span class="bold"><strong>Effects: </strong></span> <code class="computeroutput"><span class="special">++</span><span class="identifier">m_iterator</span></code><br> <span class="bold"><strong>Returns:
+        </strong></span> <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+      </p>
+<pre class="programlisting"><span class="identifier">indirect_iterator</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">--();</span>
+</pre>
+<p>
+        <span class="bold"><strong>Effects: </strong></span> <code class="computeroutput"><span class="special">--</span><span class="identifier">m_iterator</span></code><br> <span class="bold"><strong>Returns:
+        </strong></span> <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2003, 2005 David Abrahams Jeremy Siek Thomas
+      Witt<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at &lt;ulink url="http://www.boost.org/LICENSE_1_0.txt"&gt;
+        http://www.boost.org/LICENSE_1_0.txt &lt;/ulink&gt;)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="function_output.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../specialized.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="permutation.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

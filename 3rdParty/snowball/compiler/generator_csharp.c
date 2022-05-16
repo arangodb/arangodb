@@ -418,6 +418,7 @@ static void generate_try(struct generator * g, struct node * p) {
 
     g->failure_label = new_label(g);
     g->label_used = 0;
+    str_clear(g->failure_str);
     if (keep_c) restore_string(p, g->failure_str, savevar);
 
     generate(g, p->left);
@@ -564,6 +565,7 @@ static void generate_GO(struct generator * g, struct node * p, int style) {
 
     g->failure_label = new_label(g);
     g->label_used = 0;
+    str_clear(g->failure_str);
     generate(g, p->left);
 
     if (style == 1) {
@@ -703,9 +705,17 @@ static void generate_hop(struct generator * g, struct node * p) {
     generate_AE(g, p->AE);
     w(g, ";~N");
 
-    g->S[0] = p->mode == m_forward ? "0" : "limit_backward";
-
-    write_failure_if(g, "~S0 > c || c > limit", p);
+    g->S[1] = p->mode == m_forward ? "> limit" : "< limit_backward";
+    g->S[2] = p->mode == m_forward ? "<" : ">";
+    if (p->AE->type == c_number) {
+        // Constant distance hop.
+        //
+        // No need to check for negative hop as that's converted to false by
+        // the analyser.
+        write_failure_if(g, "c ~S1", p);
+    } else {
+        write_failure_if(g, "c ~S1 || c ~S2 cursor", p);
+    }
     writef(g, "~Mcursor = c;~N", p);
     writef(g, "~}", p);
 }
@@ -1176,21 +1186,14 @@ static void generate_class_end(struct generator * g) {
     w(g, "~N");
 }
 
-static void generate_among_declaration(struct generator * g, struct among * x) {
-
-    g->I[0] = x->number;
-    g->I[1] = x->literalstring_count;
-
-    w(g, "~Mprivate readonly Among[] a_~I0;~N");
-}
-
-static void generate_among_table(struct generator * g, struct among * x) {
+static void generate_among_table(struct generator * g, struct among * x, const char * type) {
 
     struct amongvec * v = x->b;
 
     g->I[0] = x->number;
+    g->S[0] = type;
+    w(g, "~M~S0a_~I0 = new[] ~N~M{~N~+");
 
-    w(g, "~Ma_~I0 = new[] ~N~M{~N~+");
     {
         int i;
         for (i = 0; i < x->literalstring_count; i++) {
@@ -1212,16 +1215,25 @@ static void generate_among_table(struct generator * g, struct among * x) {
 }
 
 static void generate_amongs(struct generator * g) {
-    struct among * x;
+    int amongs_with_functions = 0;
+    struct among * x = g->analyser->amongs;
 
-    /* Generate declarations. */
-    x = g->analyser->amongs;
     while (x != 0) {
-        generate_among_declaration(g, x);
+        if (x->function_count) {
+            g->I[0] = x->number;
+            g->I[1] = x->literalstring_count;
+
+            w(g, "~Mprivate readonly Among[] a_~I0;~N");
+            ++amongs_with_functions;
+        } else {
+            generate_among_table(g, x, "private static readonly Among[] ");
+        }
         x = x->next;
     }
-
     w(g, "~N");
+
+    if (!amongs_with_functions) return;
+
     w(g, "~M/// <summary>~N");
     w(g, "~M///   Initializes a new instance of the <see cref=\"~n\"/> class.~N");
     w(g, "~M/// </summary>~N");
@@ -1229,7 +1241,9 @@ static void generate_amongs(struct generator * g) {
     w(g, "~Mpublic ~n()~N~{");
     x = g->analyser->amongs;
     while (x != 0) {
-        generate_among_table(g, x);
+        if (x->function_count) {
+            generate_among_table(g, x, "");
+        }
         x = x->next;
     }
 
@@ -1242,7 +1256,7 @@ static void generate_grouping_table(struct generator * g, struct grouping * q) {
 
     g->V[0] = q->name;
 
-    w(g, "~Mprivate static string ~V0 = ");
+    w(g, "~Mprivate const string ~V0 = ");
     write_literal_string(g, b);
     w(g, ";~N");
 }

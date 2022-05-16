@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,21 +29,10 @@
 
 #include <chrono>
 
-/// @brief construct locker with file and line information
-#ifdef ARANGODB_SHOW_LOCK_TIME
+/// @brief construct locker
+#define CONDITION_LOCKER(a, b) ::arangodb::basics::ConditionLocker a(&(b))
 
-#define CONDITION_LOCKER(a, b) \
-  arangodb::basics::ConditionLocker a(&(b), __FILE__, __LINE__)
-
-#else
-
-#define CONDITION_LOCKER(a, b) \
-  ::arangodb::basics::ConditionLocker a(&(b))
-
-#endif
-
-namespace arangodb {
-namespace basics {
+namespace arangodb::basics {
 class ConditionVariable;
 
 /// @brief condition locker
@@ -52,24 +41,13 @@ class ConditionVariable;
 /// when destroyed. It is possible the wait for an event in which case the lock
 /// is released or to broadcast an event.
 class ConditionLocker {
-  ConditionLocker(ConditionLocker const&);
-  ConditionLocker& operator=(ConditionLocker const&);
-
  public:
-/// @brief locks the condition variable
-///
-/// The constructor locks the condition variable, the destructor unlocks
-/// the condition variable
-#ifdef ARANGODB_SHOW_LOCK_TIME
+  ConditionLocker(ConditionLocker const&) = delete;
+  ConditionLocker& operator=(ConditionLocker const&) = delete;
 
-  ConditionLocker(ConditionVariable* conditionVariable, char const* file,
-                  int line, bool showLockTime = true);
-
-#else
-
-  explicit ConditionLocker(ConditionVariable* conditionVariable);
-
-#endif
+  /// The constructor locks the condition variable, the destructor unlocks
+  /// the condition variable
+  explicit ConditionLocker(ConditionVariable* conditionVariable) noexcept;
 
   /// @brief unlocks the condition variable
   ~ConditionLocker();
@@ -90,16 +68,16 @@ class ConditionLocker {
   bool wait(std::chrono::microseconds);
 
   /// @brief broadcasts an event
-  void broadcast();
+  void broadcast() noexcept;
 
   /// @brief signals an event
-  void signal();
+  void signal() noexcept;
 
   /// @brief unlocks the variable (handle with care, no exception allowed)
-  void unlock();
+  void unlock() noexcept;
 
   /// @brief relock the variable after unlock
-  void lock();
+  void lock() noexcept;
 
  private:
   /// @brief the condition
@@ -107,22 +85,5 @@ class ConditionLocker {
 
   /// @brief lock state
   bool _isLocked;
-
-#ifdef ARANGODB_SHOW_LOCK_TIME
-
-  /// @brief file
-  char const* _file;
-
-  /// @brief line number
-  int _line;
-
-  bool _showLockTime;
-
-  /// @brief lock time
-  double _time;
-
-#endif
 };
-}  // namespace basics
-}  // namespace arangodb
-
+}  // namespace arangodb::basics

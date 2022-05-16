@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,50 +23,45 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Containers/FlatHashMap.h"
+#include "RestServer/arangod.h"
 #include "VocBase/LogicalView.h"
 
 namespace arangodb {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief LogicalView factory for both end-user and internal instantiation
-////////////////////////////////////////////////////////////////////////////////
+// LogicalView factory for both end-user and internal instantiation
 struct ViewFactory {
-  virtual ~ViewFactory() = default;  // define to silence warning
+  virtual ~ViewFactory() = default;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief LogicalView factory for end-user validation instantiation and
-  ///        persistence
-  /// @return if success then 'view' is set, else 'view' state is undefined
-  //////////////////////////////////////////////////////////////////////////////
+  // LogicalView factory for end-user validation instantiation and
+  // persistence.
+  // Return if success then 'view' is set, else 'view' state is undefined
   virtual Result create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                        velocypack::Slice const& definition) const = 0;
+                        velocypack::Slice definition,
+                        bool isUserRequest) const = 0;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief LogicalView factory for internal instantiation only
-  //////////////////////////////////////////////////////////////////////////////
+  // LogicalView factory for internal instantiation only
   virtual Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                             velocypack::Slice const& definition) const = 0;
+                             velocypack::Slice definition) const = 0;
 };
 
-class ViewTypesFeature final : public application_features::ApplicationFeature {
+class ViewTypesFeature final : public ArangodFeature {
  public:
-  explicit ViewTypesFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "ViewTypes"; }
 
-  /// @return 'factory' for 'type' was added successfully
-  Result emplace(LogicalDataSource::Type const& type, ViewFactory const& factory);
+  explicit ViewTypesFeature(Server& server);
 
-  /// @return factory for the specified type or a failing placeholder if no such
-  /// type
-  ViewFactory const& factory(LogicalDataSource::Type const& type) const noexcept;
+  // Return 'factory' for 'type' was added successfully
+  Result emplace(std::string_view type, ViewFactory const& factory);
 
-  static std::string const& name();
-  void prepare() override final;
+  // Return factory for the specified type or a failing placeholder if no such
+  // type
+  ViewFactory const& factory(std::string_view type) const noexcept;
+
   void unprepare() override final;
 
  private:
-  std::unordered_map<LogicalDataSource::Type const*, ViewFactory const*> _factories;
+  containers::FlatHashMap<std::string_view, ViewFactory const*> _factories;
 };
 
 }  // namespace arangodb
-

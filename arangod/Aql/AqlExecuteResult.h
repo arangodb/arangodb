@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,7 @@
 #include <utility>
 
 namespace arangodb {
-template <class T>
+template<class T>
 class ResultT;
 }
 
@@ -43,7 +43,8 @@ namespace arangodb::aql {
 
 class AqlExecuteResult {
  public:
-  AqlExecuteResult(ExecutionState state, SkipResult skipped, SharedAqlItemBlockPtr&& block);
+  AqlExecuteResult(ExecutionState state, SkipResult skipped,
+                   SharedAqlItemBlockPtr&& block);
 
   void toVelocyPack(velocypack::Builder&, velocypack::Options const*) const;
   static auto fromVelocyPack(velocypack::Slice, AqlItemBlockManager&)
@@ -63,4 +64,3 @@ class AqlExecuteResult {
 };
 
 }  // namespace arangodb::aql
-

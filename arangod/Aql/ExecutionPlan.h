@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,17 +61,25 @@ class ExecutionPlan {
   /// @brief destroy the plan, frees all assigned nodes
   ~ExecutionPlan();
 
- public:
+  /// @brief maximum number of execution nodes allowed per query
+  /// (at the time the initial execution plan is created). we have to limit
+  /// this to prevent super-long runtimes for query optimization and
+  /// execution)
+  static constexpr uint64_t maxPlanNodes = 4000;
+
   /// @brief create an execution plan from an AST
   /// note: tracking memory usage requires accessing the Ast/Query objects,
   /// which can be inherently unsafe when running within the gtest unit tests.
-  static std::unique_ptr<ExecutionPlan> instantiateFromAst(Ast*, bool trackMemoryUsage);
+  static std::unique_ptr<ExecutionPlan> instantiateFromAst(
+      Ast*, bool trackMemoryUsage);
 
   /// @brief process the list of collections in a VelocyPack
-  static void getCollectionsFromVelocyPack(aql::Collections&, arangodb::velocypack::Slice const);
+  static void getCollectionsFromVelocyPack(aql::Collections&,
+                                           arangodb::velocypack::Slice const);
 
   /// @brief create an execution plan from VelocyPack
-  static std::unique_ptr<ExecutionPlan> instantiateFromVelocyPack(Ast* ast, arangodb::velocypack::Slice const);
+  static std::unique_ptr<ExecutionPlan> instantiateFromVelocyPack(
+      Ast* ast, arangodb::velocypack::Slice const);
 
   /// @brief whether or not the exclusive flag is set in the write options
   static bool hasExclusiveAccessOption(AstNode const* node);
@@ -81,12 +89,16 @@ class ExecutionPlan {
   /// @brief clone the plan by recursively cloning starting from the root
   ExecutionPlan* clone();
 
-  /// @brief export to VelocyPack
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(Ast*, bool verbose,
-                                                              ExplainRegisterPlan) const;
+  // build flags for plan serialization
+  static unsigned buildSerializationFlags(bool verbose, bool includeInternals,
+                                          bool explainRegisters) noexcept;
 
-  void toVelocyPack(arangodb::velocypack::Builder&, Ast*, bool verbose,
-                    ExplainRegisterPlan) const;
+  /// @brief export to VelocyPack
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(
+      Ast* ast, unsigned flags) const;
+
+  void toVelocyPack(arangodb::velocypack::Builder&, Ast* ast,
+                    unsigned flags) const;
 
   /// @brief check if the plan is empty
   inline bool empty() const { return (_root == nullptr); }
@@ -112,7 +124,8 @@ class ExecutionPlan {
   /// @brief get a node by its id
   ExecutionNode* getNodeById(ExecutionNodeId id) const;
 
-  std::unordered_map<ExecutionNodeId, ExecutionNode*> const& getNodesById() const;
+  std::unordered_map<ExecutionNodeId, ExecutionNode*> const& getNodesById()
+      const;
 
   /// @brief check if the node is the root node
   inline bool isRoot(ExecutionNode const* node) const { return _root == node; }
@@ -162,13 +175,16 @@ class ExecutionPlan {
   }
 
   bool shouldExcludeFromScatterGather(ExecutionNode const* node) const {
-    return (_excludeFromScatterGather.find(node) != _excludeFromScatterGather.end());
+    return (_excludeFromScatterGather.find(node) !=
+            _excludeFromScatterGather.end());
   }
 
   void enableAsyncPrefetching() noexcept { _isAsyncPrefetchEnabled = true; }
-  
-  bool isAsyncPrefetchEnabled() const noexcept { return _isAsyncPrefetchEnabled; }
-  
+
+  bool isAsyncPrefetchEnabled() const noexcept {
+    return _isAsyncPrefetchEnabled;
+  }
+
   /// @brief get the node where variable with id <id> is introduced . . .
   ExecutionNode* getVarSetBy(VariableId id) const {
     auto it = _varSetBy.find(id);
@@ -180,21 +196,22 @@ class ExecutionPlan {
   }
 
   /// @brief find nodes of a certain type
-  void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+  void findNodesOfType(containers::SmallVector<ExecutionNode*, 8>& result,
                        ExecutionNode::NodeType, bool enterSubqueries);
 
   /// @brief find nodes of certain types
-  void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+  void findNodesOfType(containers::SmallVector<ExecutionNode*, 8>& result,
                        std::initializer_list<ExecutionNode::NodeType> const&,
                        bool enterSubqueries);
 
   /// @brief find unique nodes of certain types
-  void findUniqueNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
-                             std::initializer_list<ExecutionNode::NodeType> const&,
-                             bool enterSubqueries);
+  void findUniqueNodesOfType(
+      containers::SmallVector<ExecutionNode*, 8>& result,
+      std::initializer_list<ExecutionNode::NodeType> const&,
+      bool enterSubqueries);
 
   /// @brief find all end nodes in a plan
-  void findEndNodes(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+  void findEndNodes(containers::SmallVector<ExecutionNode*, 8>& result,
                     bool enterSubqueries) const;
 
   /// @brief determine and set _varsUsedLater and _varSetBy
@@ -220,7 +237,8 @@ class ExecutionPlan {
   /// @brief unlinkNodes, note that this does not delete the removed
   /// nodes and that one cannot remove the root node of the plan.
   void unlinkNodes(std::unordered_set<ExecutionNode*> const& toUnlink);
-  void unlinkNodes(::arangodb::containers::HashSet<ExecutionNode*> const& toUnlink);
+  void unlinkNodes(
+      ::arangodb::containers::HashSet<ExecutionNode*> const& toUnlink);
 
   /// @brief unlinkNode, note that this does not delete the removed
   /// node and that one cannot remove the root node of the plan.
@@ -233,7 +251,7 @@ class ExecutionPlan {
   /// fails and throw an exception
   ExecutionNode* registerNode(ExecutionNode*);
 
-  template <typename Node, typename... Args>
+  template<typename Node, typename... Args>
   Node* createNode(Args&&...);
 
   /// @brief add a subquery to the plan, will call registerNode internally
@@ -284,10 +302,22 @@ class ExecutionPlan {
 
   bool fullCount() const noexcept;
 
+  /// @brief parses modification options from an AST node
+  static ModificationOptions parseModificationOptions(QueryContext& query,
+                                                      char const* operationNode,
+                                                      AstNode const*,
+                                                      bool addWarnings);
+
+  /// @brief registers a warning for an invalid OPTIONS attribute
+  static void invalidOptionAttribute(QueryContext& query,
+                                     char const* errorReason,
+                                     char const* operationName,
+                                     char const* name, size_t length);
+
  private:
-  template <WalkerUniqueness U>
+  template<WalkerUniqueness U>
   /// @brief find nodes of certain types
-  void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+  void findNodesOfType(containers::SmallVector<ExecutionNode*, 8>& result,
                        std::initializer_list<ExecutionNode::NodeType> const&,
                        bool enterSubqueries);
 
@@ -306,13 +336,9 @@ class ExecutionPlan {
 
   /// @brief create modification options by parsing an AST node
   /// and adding plan specific options.
-  ModificationOptions createModificationOptions(AstNode const*);
+  ModificationOptions createModificationOptions(char const* operationName,
+                                                AstNode const*);
 
- public:
-  /// @brief parses modification options form an AST node
-  static ModificationOptions parseModificationOptions(AstNode const*);
-
- private:
   /// @brief create COLLECT options from an AST node
   CollectOptions createCollectOptions(AstNode const*);
 
@@ -339,7 +365,7 @@ class ExecutionPlan {
 
   /// @brief create an execution plan element from an AST LET node
   ExecutionNode* fromNodeLet(ExecutionNode*, AstNode const*);
-  
+
   /// @brief create an execution plan element from an AST SORT node
   ExecutionNode* fromNodeSort(ExecutionNode*, AstNode const*);
 
@@ -366,14 +392,15 @@ class ExecutionPlan {
 
   /// @brief create an execution plan element from an AST UPSERT node
   ExecutionNode* fromNodeUpsert(ExecutionNode*, AstNode const*);
-  
+
   /// @brief create an execution plan element from an AST WINDOW node
   ExecutionNode* fromNodeWindow(ExecutionNode*, AstNode const*);
 
   /// @brief create an vertex element for graph nodes
   AstNode const* parseTraversalVertexNode(ExecutionNode*&, AstNode const*);
-  
-  std::vector<AggregateVarInfo> prepareAggregateVars(ExecutionNode** previous, AstNode const* node);
+
+  std::vector<AggregateVarInfo> prepareAggregateVars(ExecutionNode** previous,
+                                                     AstNode const* node);
 
  private:
   /// @brief map from node id to the actual node
@@ -407,7 +434,7 @@ class ExecutionPlan {
   /// @brief flag to indicate whether the postprocessing step to enable async
   /// prefetching on the node level should be executed.
   bool _isAsyncPrefetchEnabled{false};
-  
+
   /// @brief current nesting level while building the plan
   int _nestingLevel;
 
@@ -434,9 +461,8 @@ class ExecutionPlan {
 }  // namespace aql
 }  // namespace arangodb
 
-template <typename Node, typename... Args>
+template<typename Node, typename... Args>
 Node* ::arangodb::aql::ExecutionPlan::createNode(Args&&... args) {
   auto node = std::make_unique<Node>(std::forward<Args>(args)...);
   return ExecutionNode::castTo<Node*>(registerNode(std::move(node)));
 }
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 
 #include <cmath>
 #include <list>
+#include <memory>
 #include <optional>
 
 #include "Aql/QueryExecutionState.h"
@@ -45,12 +46,13 @@ namespace aql {
 class Query;
 
 struct QueryEntryCopy {
-  QueryEntryCopy(TRI_voc_tick_t id, std::string const& database,
-                 std::string const& user, std::string&& queryString,
-                 std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
-                 std::vector<std::string> dataSources, double started,
-                 double runTime, QueryExecutionState::ValueType state,
-                 bool stream, std::optional<ErrorCode> resultCode);
+  QueryEntryCopy(
+      TRI_voc_tick_t id, std::string const& database, std::string const& user,
+      std::string&& queryString,
+      std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
+      std::vector<std::string> dataSources, double started, double runTime,
+      QueryExecutionState::ValueType state, bool stream,
+      std::optional<ErrorCode> resultCode);
 
   void toVelocyPack(arangodb::velocypack::Builder& out) const;
 
@@ -65,7 +67,6 @@ struct QueryEntryCopy {
   QueryExecutionState::ValueType const state;
   std::optional<ErrorCode> resultCode;
   bool stream;
-
 };
 
 class QueryList {
@@ -199,10 +200,10 @@ class QueryList {
   }
 
   /// @brief enter a query
-  bool insert(Query*);
+  bool insert(Query&);
 
   /// @brief remove a query
-  void remove(Query*);
+  void remove(Query&);
 
   /// @brief kills a query
   Result kill(TRI_voc_tick_t id);
@@ -225,7 +226,7 @@ class QueryList {
  private:
   std::string extractQueryString(Query const& query, size_t maxLength) const;
 
-  void killQuery(Query& query, size_t maxLength, bool silent); 
+  void killQuery(Query& query, size_t maxLength, bool silent);
 
   /// @brief default maximum number of slow queries to keep in list
   static constexpr size_t defaultMaxSlowQueries = 64;
@@ -241,7 +242,7 @@ class QueryList {
   arangodb::basics::ReadWriteLock _lock;
 
   /// @brief list of current queries, protected by _lock
-  std::unordered_map<TRI_voc_tick_t, Query*> _current;
+  std::unordered_map<TRI_voc_tick_t, std::weak_ptr<Query>> _current;
 
   /// @brief list of slow queries, protected by _lock
   std::list<QueryEntryCopy> _slow;
@@ -257,7 +258,7 @@ class QueryList {
 
   /// @brief whether or not bind vars are also tracked with queries
   std::atomic<bool> _trackBindVars;
-  
+
   /// @brief whether or not data source names are also tracked with queries
   std::atomic<bool> _trackDataSources;
 
@@ -275,4 +276,3 @@ class QueryList {
 };
 }  // namespace aql
 }  // namespace arangodb
-

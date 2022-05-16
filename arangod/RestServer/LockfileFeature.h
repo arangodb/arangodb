@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,13 +23,15 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 
-class LockfileFeature final : public application_features::ApplicationFeature {
+class LockfileFeature final : public ArangodFeature {
  public:
-  explicit LockfileFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Lockfile"; }
+
+  explicit LockfileFeature(Server& server);
 
   void start() override final;
   void unprepare() override final;
@@ -39,4 +41,3 @@ class LockfileFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

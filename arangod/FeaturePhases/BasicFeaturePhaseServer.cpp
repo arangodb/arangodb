@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,64 +22,46 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BasicFeaturePhaseServer.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
-#include "ApplicationFeatures/DaemonFeature.h"
-#include "ApplicationFeatures/EnvironmentFeature.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ApplicationFeatures/LanguageFeature.h"
-#include "ApplicationFeatures/MaxMapCountFeature.h"
-#include "ApplicationFeatures/NonceFeature.h"
-#include "ApplicationFeatures/PrivilegeFeature.h"
-#include "ApplicationFeatures/SupervisorFeature.h"
-#include "ApplicationFeatures/TempFeature.h"
-#include "RestServer/DatabasePathFeature.h"
-#include "RestServer/FileDescriptorsFeature.h"
-#include "Scheduler/SchedulerFeature.h"
-#include "Sharding/ShardingFeature.h"
-#include "Ssl/SslFeature.h"
+namespace arangodb::application_features {
 
-#ifdef _WIN32
-#include "ApplicationFeatures/WindowsServiceFeature.h"
-#endif
-
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Audit/AuditFeature.h"
-#include "Enterprise/Encryption/EncryptionFeature.h"
-#endif
-
-namespace arangodb {
-namespace application_features {
-
-BasicFeaturePhaseServer::BasicFeaturePhaseServer(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "BasicsPhase") {
+BasicFeaturePhaseServer::BasicFeaturePhaseServer(ArangodServer& server)
+    : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
-  startsAfter<GreetingsFeaturePhase>();
+  startsAfter<GreetingsFeaturePhase, ArangodServer>();
 
-  startsAfter<DaemonFeature>();
-  startsAfter<DatabasePathFeature>();
-  startsAfter<EnvironmentFeature>();
-#ifdef TRI_HAVE_GETRLIMIT
-  startsAfter<FileDescriptorsFeature>();
-#endif
-  startsAfter<LanguageFeature>();
-  startsAfter<MaxMapCountFeature>();
-  startsAfter<NonceFeature>();
-  startsAfter<PrivilegeFeature>();
-  startsAfter<SchedulerFeature>();
-  startsAfter<ShardingFeature>();
-  startsAfter<SslFeature>();
-  startsAfter<SupervisorFeature>();
-  startsAfter<TempFeature>();
+  if constexpr (ArangodServer::contains<DaemonFeature>()) {
+    startsAfter<DaemonFeature, ArangodServer>();
+  }
+  if constexpr (ArangodServer::contains<SupervisorFeature>()) {
+    startsAfter<SupervisorFeature, ArangodServer>();
+  }
+  startsAfter<CpuUsageFeature, ArangodServer>();
+  startsAfter<DatabasePathFeature, ArangodServer>();
+  startsAfter<EnvironmentFeature, ArangodServer>();
+  startsAfter<LanguageFeature, ArangodServer>();
+  startsAfter<MaxMapCountFeature, ArangodServer>();
+  startsAfter<NonceFeature, ArangodServer>();
+  startsAfter<PrivilegeFeature, ArangodServer>();
+  startsAfter<SchedulerFeature, ArangodServer>();
+  startsAfter<SharedPRNGFeature, ArangodServer>();
+  startsAfter<ShardingFeature, ArangodServer>();
+  startsAfter<SslFeature, ArangodServer>();
+  startsAfter<TempFeature, ArangodServer>();
 
-#ifdef _WIN32
-  startsAfter<WindowsServiceFeature>();
-#endif
-
-#ifdef USE_ENTERPRISE
-  startsAfter<AuditFeature>();
-  startsAfter<EncryptionFeature>();
-#endif
+  if constexpr (ArangodServer::contains<FileDescriptorsFeature>()) {
+    startsAfter<FileDescriptorsFeature, ArangodServer>();
+  }
+  if constexpr (ArangodServer::contains<WindowsServiceFeature>()) {
+    startsAfter<WindowsServiceFeature, ArangodServer>();
+  }
+  if constexpr (ArangodServer::contains<AuditFeature>()) {
+    startsAfter<AuditFeature, ArangodServer>();
+  }
+  if constexpr (ArangodServer::contains<EncryptionFeature>()) {
+    startsAfter<EncryptionFeature, ArangodServer>();
+  }
 }
 
-}  // namespace application_features
-}  // namespace arangodb
+}  // namespace arangodb::application_features

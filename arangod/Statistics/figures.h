@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,20 +38,22 @@ namespace statistics {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct Counter {
-  Counter() : _count(0) {}
+  constexpr Counter() noexcept : _count(0) {}
 
   Counter& operator=(Counter const& other) {
     _count.store(other._count.load());
     return *this;
   }
 
-  void incCounter() { ++_count; }
+  void incCounter() noexcept { ++_count; }
 
-  void decCounter() { --_count; }
+  void decCounter() noexcept { --_count; }
 
-  int64_t get() const { return _count.load(std::memory_order_relaxed); }
+  int64_t get() const noexcept {
+    return _count.load(std::memory_order_relaxed);
+  }
 
-private:
+ private:
   std::atomic<int64_t> _count;
 };
 
@@ -122,4 +124,3 @@ struct Distribution {
 };
 }  // namespace statistics
 }  // namespace arangodb
-

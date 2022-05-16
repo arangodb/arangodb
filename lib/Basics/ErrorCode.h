@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -41,17 +42,22 @@ class ErrorCode {
   constexpr auto operator=(ErrorCode const&) noexcept -> ErrorCode& = default;
   constexpr auto operator=(ErrorCode&&) noexcept -> ErrorCode& = default;
 
-  [[nodiscard]] constexpr explicit operator int() const noexcept { return _value; }
+  [[nodiscard]] constexpr explicit operator int() const noexcept {
+    return _value;
+  }
 
-  // This could also be constexpr, but we'd have to include <velocypack/Value.h>,
-  // and I'm unsure whether that's worth it, and rather rely on IPO here.
+  // This could also be constexpr, but we'd have to include
+  // <velocypack/Value.h>, and I'm unsure whether that's worth it, and rather
+  // rely on IPO here.
   [[nodiscard]] explicit operator arangodb::velocypack::Value() const noexcept;
 
-  [[nodiscard]] constexpr auto operator==(ErrorCode other) const noexcept -> bool {
+  [[nodiscard]] constexpr auto operator==(ErrorCode other) const noexcept
+      -> bool {
     return _value == other._value;
   }
 
-  [[nodiscard]] constexpr auto operator!=(ErrorCode other) const noexcept -> bool {
+  [[nodiscard]] constexpr auto operator!=(ErrorCode other) const noexcept
+      -> bool {
     return _value != other._value;
   }
 
@@ -62,7 +68,7 @@ class ErrorCode {
 };
 
 namespace std {
-template <>
+template<>
 struct hash<ErrorCode> {
   auto operator()(ErrorCode const& errorCode) const noexcept -> std::size_t {
     return std::hash<int>{}(static_cast<int>(errorCode));
@@ -71,4 +77,3 @@ struct hash<ErrorCode> {
 }  // namespace std
 
 auto operator<<(std::ostream& out, ::ErrorCode const& res) -> std::ostream&;
-

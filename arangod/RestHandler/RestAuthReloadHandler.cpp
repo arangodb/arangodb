@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,12 +31,11 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAuthReloadHandler::RestAuthReloadHandler(application_features::ApplicationServer& server,
+RestAuthReloadHandler::RestAuthReloadHandler(ArangodServer& server,
                                              GeneralRequest* request,
                                              GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
@@ -56,9 +55,10 @@ RestStatus RestAuthReloadHandler::execute() {
   VPackBuilder result;
   result.openObject(true);
   result.add(StaticStrings::Error, VPackValue(false));
-  result.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+  result.add(StaticStrings::Code,
+             VPackValue(static_cast<int>(rest::ResponseCode::OK)));
   result.close();
-  
+
   generateResult(rest::ResponseCode::OK, result.slice());
   return RestStatus::DONE;
 }

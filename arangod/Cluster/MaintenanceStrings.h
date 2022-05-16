@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +23,7 @@
 
 #pragma once
 
-namespace arangodb {
-namespace maintenance {
+namespace arangodb::maintenance {
 
 constexpr char const* ACTIONS = "actions";
 constexpr char const* AGENCY = "agency";
@@ -38,13 +37,15 @@ constexpr char const* DROP_DATABASE = "DropDatabase";
 constexpr char const* DROP_INDEX = "DropIndex";
 constexpr char const* ENSURE_INDEX = "EnsureIndex";
 constexpr char const* FIELDS = "fields";
-constexpr char const* FOLLOWER_ID = "followerId";
+constexpr char const* FORCED_RESYNC = "forcedResync";
 constexpr char const* FOLLOWERS_TO_DROP = "followersToDrop";
+constexpr char const* FOLLOWER_ID = "followerId";
 constexpr char const* GLOB_UID = "globallyUniqueId";
 constexpr char const* ID = "id";
 constexpr char const* INDEX = "index";
 constexpr char const* INDEXES = "indexes";
 constexpr char const* KEY = "key";
+constexpr char const* LEADER_NOT_YET_KNOWN = "NOT_YET_TOUCHED";
 constexpr char const* LOCAL_LEADER = "localLeader";
 constexpr char const* NAME = "name";
 constexpr char const* OBJECT_ID = "objectId";
@@ -53,6 +54,9 @@ constexpr char const* OP = "op";
 constexpr char const* PHASE_ONE = "phaseOne";
 constexpr char const* PHASE_TWO = "phaseTwo";
 constexpr char const* PLAN_RAFT_INDEX = "planRaftIndex";
+constexpr char const* REPLICATED_LOG_ID = "replicatedLogId";
+constexpr char const* REPLICATED_LOG_SPEC = "replicatedLogSpec";
+constexpr char const* REPLICATED_STATE_CURRENT = "replicatedStateCurrent";
 constexpr char const* RESIGN_SHARD_LEADERSHIP = "ResignShardLeadership";
 constexpr char const* SCHEMA = "schema";
 constexpr char const* SELECTIVITY_ESTIMATE = "selectivityEstimate";
@@ -62,13 +66,13 @@ constexpr char const* SHARD = "shard";
 constexpr char const* SHARDS = "shards";
 constexpr char const* SHARD_VERSION = "shardVersion";
 constexpr char const* SYNCHRONIZE_SHARD = "SynchronizeShard";
+constexpr char const* SYNC_BY_REVISION = "syncByRevision";
 constexpr char const* TAKEOVER_SHARD_LEADERSHIP = "TakeoverShardLeadership";
 constexpr char const* THE_LEADER = "theLeader";
 constexpr char const* UNDERSCORE = "_";
 constexpr char const* UPDATE_COLLECTION = "UpdateCollection";
+constexpr char const* UPDATE_REPLICATED_LOG = "UpdateReplicatedLog";
+constexpr char const* UPDATE_REPLICATED_STATE = "UpdateReplicatedState";
 constexpr char const* WAIT_FOR_SYNC = "waitForSync";
-constexpr char const* LEADER_NOT_YET_KNOWN = "NOT_YET_TOUCHED";
 
-}  // namespace maintenance
-}  // namespace arangodb
-
+}  // namespace arangodb::maintenance

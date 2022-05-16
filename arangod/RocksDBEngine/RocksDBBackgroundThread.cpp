@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Replication/ReplicationClients.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
@@ -35,8 +36,11 @@
 
 using namespace arangodb;
 
-RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine& eng, double interval)
-    : Thread(eng.server(), "RocksDBThread"), _engine(eng), _interval(interval) {}
+RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine& eng,
+                                                 double interval)
+    : Thread(eng.server(), "RocksDBThread"),
+      _engine(eng),
+      _interval(interval) {}
 
 RocksDBBackgroundThread::~RocksDBBackgroundThread() { shutdown(); }
 
@@ -49,7 +53,11 @@ void RocksDBBackgroundThread::beginShutdown() {
 }
 
 void RocksDBBackgroundThread::run() {
+  FlushFeature& flushFeature = _engine.server().getFeature<FlushFeature>();
+
   double const startTime = TRI_microtime();
+  uint64_t runsUntilSyncForced = 1;
+  constexpr uint64_t maxRunsUntilSyncForced = 5;
 
   while (!isStopping()) {
     {
@@ -65,27 +73,71 @@ void RocksDBBackgroundThread::run() {
 
     try {
       if (!isStopping()) {
-        double start = TRI_microtime();
-        Result res = _engine.settingsManager()->sync(false);
-        if (res.fail()) {
-          LOG_TOPIC("a3d0c", WARN, Logger::ENGINES)
-              << "background settings sync failed: " << res.errorMessage();
-        }
+        flushFeature.releaseUnusedTicks();
 
-        double end = TRI_microtime();
-        if (end - start > 5.0) {
-          LOG_TOPIC("3ad54", WARN, Logger::ENGINES)
-              << "slow background settings sync: " << Logger::FIXED(end - start, 6)
-              << " s";
-        } else {
-          LOG_TOPIC("dd9ea", DEBUG, Logger::ENGINES)
-              << "slow background settings sync took: " << Logger::FIXED(end - start, 6)
-              << " s";
+        // it is important that we wrap the sync operation inside a
+        // try..catch of its own, because we still want the following
+        // garbage collection operations to be carried out even if
+        // the sync fails.
+        try {
+          // forceSync will effectively be true for the initial run that
+          // will happen when the recovery has finished. that way we
+          // can quickly push forward the WAL lower bound value after
+          // the recovery
+          bool forceSync = false;
+
+          // force a sync after at most x iterations (or initial run)
+          if (runsUntilSyncForced > 0 && --runsUntilSyncForced == 0) {
+            TRI_ASSERT(runsUntilSyncForced == 0);
+            forceSync = true;
+          }
+
+          LOG_TOPIC("34a21", TRACE, Logger::ENGINES)
+              << "running " << (forceSync ? "forced " : "")
+              << "background settings sync";
+
+          double start = TRI_microtime();
+          auto syncRes = _engine.settingsManager()->sync(forceSync);
+          double end = TRI_microtime();
+
+          if (syncRes.fail()) {
+            LOG_TOPIC("a3d0c", WARN, Logger::ENGINES)
+                << "background settings sync failed: "
+                << syncRes.errorMessage();
+          } else if (syncRes.get()) {
+            // reset our counter
+            runsUntilSyncForced = maxRunsUntilSyncForced;
+          }
+
+          if (end - start > 5.0) {
+            LOG_TOPIC("3ad54", WARN, Logger::ENGINES)
+                << "slow background settings sync took: "
+                << Logger::FIXED(end - start, 6) << " s";
+          } else if (end - start > 0.75) {
+            LOG_TOPIC("dd9ea", DEBUG, Logger::ENGINES)
+                << "slow background settings sync took: "
+                << Logger::FIXED(end - start, 6) << " s";
+          }
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("4652c", WARN, Logger::ENGINES)
+              << "caught exception in rocksdb background sync operation: "
+              << ex.what();
         }
       }
 
       bool force = isStopping();
       _engine.replicationManager()->garbageCollect(force);
+
+      if (!force) {
+        try {
+          // this only schedules tree rebuilds, but the actual rebuilds are
+          // performed by async tasks in the scheduler.
+          _engine.processTreeRebuilds();
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("eea93", WARN, Logger::ENGINES)
+              << "caught exception during tree rebuilding: " << ex.what();
+        }
+      }
 
       uint64_t minTick = _engine.db()->GetLatestSequenceNumber();
       auto cmTick = _engine.settingsManager()->earliestSeqNeeded();
@@ -99,7 +151,8 @@ void RocksDBBackgroundThread::run() {
             [&minTick](TRI_vocbase_t& vocbase) -> void {
               // lowestServedValue will return the lowest of the lastServedTick
               // values stored, or UINT64_MAX if no clients are registered
-              minTick = std::min(minTick, vocbase.replicationClients().lowestServedValue());
+              minTick = std::min(
+                  minTick, vocbase.replicationClients().lowestServedValue());
             });
       }
 
@@ -113,8 +166,14 @@ void RocksDBBackgroundThread::run() {
         _engine.determinePrunableWalFiles(minTick);
         // and then prune them when they expired
         _engine.pruneWalFiles();
+      } else {
+        // WAL file pruning not (yet) enabled. this will be the case the
+        // first few minutes after the instance startup.
+        // only keep track of which WAL files exist and what the lower
+        // bound sequence number is
+        _engine.determineWalFilesInitial();
       }
-        
+
       if (!isStopping()) {
         _engine.processCompactions();
       }
@@ -127,5 +186,11 @@ void RocksDBBackgroundThread::run() {
     }
   }
 
-  _engine.settingsManager()->sync(true);  // final write on shutdown
+  // final write on shutdown
+  auto syncRes = _engine.settingsManager()->sync(/*force*/ true);
+  if (syncRes.fail()) {
+    LOG_TOPIC("f3aa6", WARN, Logger::ENGINES)
+        << "caught exception during final RocksDB sync operation: "
+        << syncRes.errorMessage();
+  }
 }

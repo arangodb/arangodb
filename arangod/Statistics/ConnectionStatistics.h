@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,17 +32,17 @@ namespace arangodb {
 class ConnectionStatistics {
  public:
   static void initialize();
-  
+
   class Item {
    public:
-    Item() : _stat(nullptr) {}
-    explicit Item(ConnectionStatistics* stat) : _stat(stat) {}
+    constexpr Item() noexcept : _stat(nullptr) {}
+    explicit Item(ConnectionStatistics* stat) noexcept : _stat(stat) {}
 
     Item(Item const&) = delete;
     Item& operator=(Item const&) = delete;
 
-    Item(Item&& r) : _stat(r._stat) { r._stat = nullptr; }
-    Item& operator=(Item&& r) {
+    Item(Item&& r) noexcept : _stat(r._stat) { r._stat = nullptr; }
+    Item& operator=(Item&& r) noexcept {
       if (&r != this) {
         reset();
         _stat = r._stat;
@@ -53,7 +53,7 @@ class ConnectionStatistics {
 
     ~Item() { reset(); }
 
-    void reset() {
+    void reset() noexcept {
       if (_stat != nullptr) {
         _stat->release();
         _stat = nullptr;
@@ -71,14 +71,15 @@ class ConnectionStatistics {
         _stat->_connEnd = StatisticsFeature::time();
       }
     }
-    
+
     void SET_HTTP();
 
    private:
     ConnectionStatistics* _stat;
   };
-  
-  static Item acquire();
+
+  ConnectionStatistics() noexcept { reset(); }
+  static Item acquire() noexcept;
 
   struct Snapshot {
     statistics::Counter httpConnections;
@@ -93,11 +94,9 @@ class ConnectionStatistics {
   static void getSnapshot(Snapshot& snapshot);
 
  private:
-  ConnectionStatistics() { reset(); }
+  void release() noexcept;
 
-  void release();
-
-  void reset() {
+  void reset() noexcept {
     _connStart = 0.0;
     _connEnd = 0.0;
     _http = false;
@@ -112,4 +111,3 @@ class ConnectionStatistics {
   bool _error;
 };
 }  // namespace arangodb
-

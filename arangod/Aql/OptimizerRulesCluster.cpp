@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -99,7 +99,8 @@ std::vector<AstNode const*> hasBinaryCompare(ExecutionNode const* node) {
     }
 
     // skip over NARY AND/OR
-    if (node->type == NODE_TYPE_OPERATOR_NARY_OR || node->type == NODE_TYPE_OPERATOR_NARY_AND) {
+    if (node->type == NODE_TYPE_OPERATOR_NARY_OR ||
+        node->type == NODE_TYPE_OPERATOR_NARY_AND) {
       return true;
     } else {
       return false;
@@ -163,7 +164,8 @@ bool parentIsReturnOrConstCalc(ExecutionNode const* node) {
   return true;
 }
 
-void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* newNode) {
+void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode,
+                 ExecutionNode* newNode) {
   if (oldNode == plan->root()) {
     // intentional copy, the dependencies are changed in the loop
     std::vector<ExecutionNode*> deps = oldNode->getDependencies();
@@ -186,10 +188,10 @@ void replaceNode(ExecutionPlan* plan, ExecutionNode* oldNode, ExecutionNode* new
   }
 }
 
-bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPlan* plan,
+bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt,
+                                                    ExecutionPlan* plan,
                                                     OptimizerRule const& rule) {
-  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, EN::INDEX, false);
 
   if (nodes.size() != 1) {
@@ -202,7 +204,8 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
       continue;
     }
 
-    Index* index = ::hasSingleIndexHandle(node, Index::TRI_IDX_TYPE_PRIMARY_INDEX);
+    Index* index =
+        ::hasSingleIndexHandle(node, Index::TRI_IDX_TYPE_PRIMARY_INDEX);
     if (index) {
       IndexNode* indexNode = ExecutionNode::castTo<IndexNode*>(node);
       auto binaryCompares = ::hasBinaryCompare(node);
@@ -213,12 +216,12 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
 
       TRI_ASSERT(node != nullptr);
 
-      auto* parentModification =
-          ::hasSingleParent(node, {EN::INSERT, EN::REMOVE, EN::UPDATE, EN::REPLACE});
+      auto* parentModification = ::hasSingleParent(
+          node, {EN::INSERT, EN::REMOVE, EN::UPDATE, EN::REPLACE});
 
       if (parentModification) {
         auto mod = ExecutionNode::castTo<ModificationNode*>(parentModification);
-        
+
         if (!::parentIsReturnOrConstCalc(mod)) {
           continue;
         }
@@ -226,7 +229,13 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
         if (mod->collection() != indexNode->collection()) {
           continue;
         }
-        
+
+        if (mod->getOptions().exclusive) {
+          // exclusive lock used. this is not supported by the
+          // SingleRemoteOperationNode
+          continue;
+        }
+
         auto parentType = parentModification->getType();
         Variable const* update = nullptr;
         Variable const* keyVar = nullptr;
@@ -237,7 +246,8 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
           keyVar = ExecutionNode::castTo<RemoveNode const*>(mod)->inVariable();
         } else {
           // update / replace
-          auto updateReplaceNode = ExecutionNode::castTo<UpdateReplaceNode const*>(mod);
+          auto updateReplaceNode =
+              ExecutionNode::castTo<UpdateReplaceNode const*>(mod);
           update = updateReplaceNode->inDocVariable();
           if (updateReplaceNode->inKeyVariable() != nullptr) {
             keyVar = updateReplaceNode->inKeyVariable();
@@ -258,21 +268,22 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
           }
         }
 
-        ExecutionNode* singleOperationNode = plan->createNode<SingleRemoteOperationNode>(
-            plan, plan->nextId(), parentType, true, key, mod->collection(),
-            mod->getOptions(), update, indexNode->outVariable(),
-            mod->getOutVariableOld(), mod->getOutVariableNew());
+        ExecutionNode* singleOperationNode =
+            plan->createNode<SingleRemoteOperationNode>(
+                plan, plan->nextId(), parentType, true, key, mod->collection(),
+                mod->getOptions(), update, indexNode->outVariable(),
+                mod->getOutVariableOld(), mod->getOutVariableNew());
 
         ::replaceNode(plan, mod, singleOperationNode);
         plan->unlinkNode(indexNode);
         modified = true;
       } else if (::parentIsReturnOrConstCalc(node)) {
-        ExecutionNode* singleOperationNode = plan->registerNode(
-            new SingleRemoteOperationNode(plan, plan->nextId(), EN::INDEX, true,
-                                          key, indexNode->collection(),
-                                          ModificationOptions{}, nullptr /*in*/,
-                                          indexNode->outVariable() /*out*/,
-                                          nullptr /*old*/, nullptr /*new*/));
+        ExecutionNode* singleOperationNode =
+            plan->createNode<SingleRemoteOperationNode>(
+                plan, plan->nextId(), EN::INDEX, true, key,
+                indexNode->collection(), ModificationOptions{}, nullptr /*in*/,
+                indexNode->outVariable() /*out*/, nullptr /*old*/,
+                nullptr /*new*/);
         ::replaceNode(plan, indexNode, singleOperationNode);
         modified = true;
       }
@@ -282,11 +293,11 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
   return modified;
 }
 
-bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionPlan* plan,
-                                                      OptimizerRule const& rule) {
-  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, {EN::INSERT, EN::REMOVE, EN::UPDATE, EN::REPLACE}, false);
+bool substituteClusterSingleDocumentOperationsNoIndex(
+    Optimizer* opt, ExecutionPlan* plan, OptimizerRule const& rule) {
+  containers::SmallVector<ExecutionNode*, 8> nodes;
+  plan->findNodesOfType(
+      nodes, {EN::INSERT, EN::REMOVE, EN::UPDATE, EN::REPLACE}, false);
 
   if (nodes.size() != 1) {
     return false;
@@ -304,23 +315,30 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionP
       continue;
     }
 
+    if (mod->getOptions().exclusive) {
+      // exclusive lock used. this is not supported by the
+      // SingleRemoteOperationNode
+      continue;
+    }
+
     auto depType = mod->getType();
     Variable const* update = nullptr;
     Variable const* keyVar = nullptr;
     std::string key;
-        
+
     if (depType == EN::REMOVE) {
       keyVar = ExecutionNode::castTo<RemoveNode const*>(mod)->inVariable();
     } else if (depType == EN::INSERT) {
       update = ExecutionNode::castTo<InsertNode const*>(mod)->inVariable();
     } else {
-      auto updateReplaceNode = ExecutionNode::castTo<UpdateReplaceNode const*>(mod);
+      auto updateReplaceNode =
+          ExecutionNode::castTo<UpdateReplaceNode const*>(mod);
       update = updateReplaceNode->inDocVariable();
       if (updateReplaceNode->inKeyVariable() != nullptr) {
         keyVar = updateReplaceNode->inKeyVariable();
       }
     }
-    
+
     auto isArrayInput = [&](Variable const* variable) {
       if (variable == nullptr) {
         return false;
@@ -328,7 +346,8 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionP
 
       ExecutionNode* setter = plan->getVarSetBy(variable->id);
       if (setter != nullptr && setter->getType() == EN::CALCULATION) {
-        CalculationNode const* calc = ExecutionNode::castTo<CalculationNode*>(setter);
+        CalculationNode const* calc =
+            ExecutionNode::castTo<CalculationNode*>(setter);
         AstNode const* expr = calc->expression()->node();
         if (expr->isArray()) {
           return true;
@@ -370,12 +389,12 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionP
         bool foundKey = false;
         for (std::size_t i = 0; i < expr->numMembers(); i++) {
           auto* anode = expr->getMemberUnchecked(i);
-          if (anode->getStringRef() == StaticStrings::KeyString) {
+          if (anode->getStringView() == StaticStrings::KeyString) {
             if (anode->getMember(0)->isStringValue()) {
               key = anode->getMember(0)->getString();
             }
             foundKey = true;
-          } else if (anode->getStringRef() == StaticStrings::RevString) {
+          } else if (anode->getStringView() == StaticStrings::RevString) {
             foundKey = false;  // decline if _rev is in the game
             break;
           }
@@ -399,16 +418,20 @@ bool substituteClusterSingleDocumentOperationsNoIndex(Optimizer* opt, ExecutionP
       continue;
     }
 
-    ExecutionNode* singleOperationNode = plan->registerNode(
-        new SingleRemoteOperationNode(plan, plan->nextId(), depType, false, key,
-                                      mod->collection(), mod->getOptions(), update /*in*/,
-                                      nullptr, mod->getOutVariableOld(),
-                                      mod->getOutVariableNew()));
+    ExecutionNode* singleOperationNode =
+        plan->createNode<SingleRemoteOperationNode>(
+            plan, plan->nextId(), depType, false, key, mod->collection(),
+            mod->getOptions(), update /*in*/, nullptr, mod->getOutVariableOld(),
+            mod->getOutVariableNew());
 
     ::replaceNode(plan, mod, singleOperationNode);
 
     if (calc) {
-      plan->unlinkNode(calc);
+      plan->clearVarUsageComputed();
+      plan->findVarUsage();
+      if (!calc->isVarUsedLater(calc->outVariable())) {
+        plan->unlinkNode(calc);
+      }
     }
     modified = true;
   }  // for node : nodes
@@ -422,11 +445,13 @@ namespace arangodb {
 namespace aql {
 
 void substituteClusterSingleDocumentOperationsRule(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan, OptimizerRule const& rule) {
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+    OptimizerRule const& rule) {
   bool modified = false;
 
-  for (auto const& fun : {&::substituteClusterSingleDocumentOperationsIndex,
-                          &::substituteClusterSingleDocumentOperationsNoIndex}) {
+  for (auto const& fun :
+       {&::substituteClusterSingleDocumentOperationsIndex,
+        &::substituteClusterSingleDocumentOperationsNoIndex}) {
     modified = fun(opt, plan.get(), rule);
     if (modified) {
       break;
@@ -436,5 +461,5 @@ void substituteClusterSingleDocumentOperationsRule(
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-}
-}
+}  // namespace aql
+}  // namespace arangodb

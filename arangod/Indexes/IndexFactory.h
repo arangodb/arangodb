@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,136 +43,160 @@ class Slice;
 /// @brief factory for comparing/instantiating/normalizing a definition for a
 ///        specific Index type
 struct IndexTypeFactory {
-  explicit IndexTypeFactory(application_features::ApplicationServer& server);
+  explicit IndexTypeFactory(ArangodServer& server);
   virtual ~IndexTypeFactory() = default;  // define to silence warning
 
   /// @brief determine if the two Index definitions will result in the same
   ///        index once instantiated
-  virtual bool equal(Index::IndexType type, velocypack::Slice const& lhs, velocypack::Slice const& rhs,
-                     bool attributeOrderMatters) const;
+  virtual bool equal(Index::IndexType type, velocypack::Slice lhs,
+                     velocypack::Slice rhs, bool attributeOrderMatters) const;
 
-  virtual bool equal(velocypack::Slice const& lhs, velocypack::Slice const& rhs,
+  virtual bool equal(velocypack::Slice lhs, velocypack::Slice rhs,
                      std::string const& dbname) const = 0;
 
   /// @brief instantiate an Index definition
-  virtual std::shared_ptr<Index> instantiate(LogicalCollection& collection,
-                                             velocypack::Slice const& definition, IndexId id,
-                                             bool isClusterConstructor) const = 0;
+  virtual std::shared_ptr<Index> instantiate(
+      LogicalCollection& collection, velocypack::Slice definition, IndexId id,
+      bool isClusterConstructor) const = 0;
 
   /// @brief normalize an Index definition prior to instantiation/persistence
-  virtual Result normalize( // normalize definition
-    velocypack::Builder& normalized, // normalized definition (out-param)
-    velocypack::Slice definition, // source definition
-    bool isCreation, // definition for index creation
-    TRI_vocbase_t const& vocbase // index vocbase
-  ) const = 0;
+  virtual Result normalize(velocypack::Builder& normalized,
+                           velocypack::Slice definition, bool isCreation,
+                           TRI_vocbase_t const& vocbase) const = 0;
 
-  /// @brief the order of attributes matters by default  
+  /// @brief the order of attributes matters by default
   virtual bool attributeOrderMatters() const {
     // can be overridden by specific indexes
     return true;
   }
 
  protected:
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
 };
 
 class IndexFactory {
  public:
-  IndexFactory(application_features::ApplicationServer&);
+  IndexFactory(ArangodServer&);
   virtual ~IndexFactory() = default;
 
   /// @brief returns if 'factory' for 'type' was added successfully
   Result emplace(std::string const& type, IndexTypeFactory const& factory);
 
-  virtual Result enhanceIndexDefinition( // normalizze definition
-    velocypack::Slice const definition, // source definition
-    velocypack::Builder& normalized, // normalized definition (out-param)
-    bool isCreation, // definition for index creation
-    TRI_vocbase_t const& vocbase // index vocbase
-  ) const;
+  virtual Result enhanceIndexDefinition(velocypack::Slice definition,
+                                        velocypack::Builder& normalized,
+                                        bool isCreation,
+                                        TRI_vocbase_t const& vocbase) const;
 
-  /// @brief returns factory for the specified type or a failing placeholder if no such
-  /// type
+  /// @brief returns factory for the specified type or a failing placeholder if
+  /// no such type
   IndexTypeFactory const& factory(std::string const& type) const noexcept;
 
   /// @brief returns the index created from the definition
   /// will throw if an error occurs
-  std::shared_ptr<Index> prepareIndexFromSlice(velocypack::Slice definition, bool generateKey,
+  std::shared_ptr<Index> prepareIndexFromSlice(velocypack::Slice definition,
+                                               bool generateKey,
                                                LogicalCollection& collection,
                                                bool isClusterConstructor) const;
 
   /// @brief used to display storage engine capabilities
   virtual std::vector<std::string> supportedIndexes() const;
 
-  /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" => "hash")
-  /// used to display storage engine capabilities
+  /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
+  /// "hash") used to display storage engine capabilities
   virtual std::unordered_map<std::string, std::string> indexAliases() const;
 
   /// @brief create system indexes primary / edge
-  virtual void fillSystemIndexes(arangodb::LogicalCollection& col,
-                                 std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const = 0;
+  virtual void fillSystemIndexes(
+      LogicalCollection& col,
+      std::vector<std::shared_ptr<Index>>& systemIndexes) const = 0;
 
   /// @brief create indexes from a list of index definitions
-  virtual void prepareIndexes(LogicalCollection& col,
-                              arangodb::velocypack::Slice const& indexesSlice,
-                              std::vector<std::shared_ptr<arangodb::Index>>& indexes) const = 0;
+  virtual void prepareIndexes(
+      LogicalCollection& col, velocypack::Slice indexesSlice,
+      std::vector<std::shared_ptr<Index>>& indexes) const = 0;
 
-  static Result validateFieldsDefinition(arangodb::velocypack::Slice definition, 
+  static Result validateFieldsDefinition(velocypack::Slice definition,
+                                         std::string const& attributeName,
                                          size_t minFields, size_t maxFields,
                                          bool allowSubAttributes = true);
 
-  /// @brief process the fields list, deduplicate it, and add it to the json
-  static Result processIndexFields(arangodb::velocypack::Slice definition, 
-                                   arangodb::velocypack::Builder& builder,
-                                   size_t minFields, size_t maxFields, bool create,
-                                   bool allowExpansion, bool allowSubAttributes = true);
+  /// @brief process the "fields" list, deduplicate it, and add it to the json
+  static Result processIndexFields(velocypack::Slice definition,
+                                   velocypack::Builder& builder,
+                                   size_t minFields, size_t maxFields,
+                                   bool create, bool allowExpansion,
+                                   bool allowSubAttributes);
 
-  /// @brief process the unique flag and add it to the json
-  static void processIndexUniqueFlag(arangodb::velocypack::Slice definition,
-                                     arangodb::velocypack::Builder& builder);
+  /// @brief process the "storedValues" list, deduplicate it, and add it to the
+  /// json
+  static Result processIndexStoredValues(velocypack::Slice definition,
+                                         velocypack::Builder& builder,
+                                         size_t minFields, size_t maxFields,
+                                         bool create, bool allowSubAttributes);
 
-  /// @brief process the sparse flag and add it to the json
-  static void processIndexSparseFlag(arangodb::velocypack::Slice definition,
-                                     arangodb::velocypack::Builder& builder, bool create);
+  /// @brief process the "cacheEnabled" flag and add it to the json
+  static void processIndexCacheEnabled(velocypack::Slice definition,
+                                       velocypack::Builder& builder);
 
-  /// @brief process the deduplicate flag and add it to the json
-  static void processIndexDeduplicateFlag(arangodb::velocypack::Slice definition, 
-                                          arangodb::velocypack::Builder& builder);
+  /// @brief process the "inBackground" flag and add it to the json
+  static void processIndexInBackground(velocypack::Slice definition,
+                                       velocypack::Builder& builder);
 
-  /// @brief process the geojson flag and add it to the json
-  static void processIndexGeoJsonFlag(arangodb::velocypack::Slice definition,
-                                      arangodb::velocypack::Builder& builder);
+  /// @brief process the "unique" flag and add it to the json
+  static void processIndexUniqueFlag(velocypack::Slice definition,
+                                     velocypack::Builder& builder);
+
+  /// @brief process the "sparse" flag and add it to the json
+  static void processIndexSparseFlag(velocypack::Slice definition,
+                                     velocypack::Builder& builder, bool create);
+
+  /// @brief process the "deduplicate" flag and add it to the json
+  static void processIndexDeduplicateFlag(velocypack::Slice definition,
+                                          velocypack::Builder& builder);
+
+  /// @brief process the "geojson" flag and add it to the json
+  static void processIndexGeoJsonFlag(velocypack::Slice definition,
+                                      velocypack::Builder& builder);
+
+  /// @brief process the "legacyPolygons" flag and add it to the json
+  static void processIndexLegacyPolygonsFlag(velocypack::Slice definition,
+                                             velocypack::Builder& builder);
 
   /// @brief enhances the json of a hash, skiplist or persistent index
-  static Result enhanceJsonIndexGeneric(arangodb::velocypack::Slice definition,
-                                        arangodb::velocypack::Builder& builder, bool create);
+  static Result enhanceJsonIndexGeneric(velocypack::Slice definition,
+                                        velocypack::Builder& builder,
+                                        bool create);
 
   /// @brief enhances the json of a ttl index
-  static Result enhanceJsonIndexTtl(arangodb::velocypack::Slice definition,
-                                    arangodb::velocypack::Builder& builder, bool create);
+  static Result enhanceJsonIndexTtl(velocypack::Slice definition,
+                                    velocypack::Builder& builder, bool create);
 
   /// @brief enhances the json of a geo, geo1 or geo2 index
-  static Result enhanceJsonIndexGeo(arangodb::velocypack::Slice definition,
-                                    arangodb::velocypack::Builder& builder, bool create,
+  static Result enhanceJsonIndexGeo(velocypack::Slice definition,
+                                    velocypack::Builder& builder, bool create,
                                     int minFields, int maxFields);
-  
+
   /// @brief enhances the json of a fulltext index
-  static Result enhanceJsonIndexFulltext(arangodb::velocypack::Slice definition,
-                                         arangodb::velocypack::Builder& builder, bool create);
+  static Result enhanceJsonIndexFulltext(velocypack::Slice definition,
+                                         velocypack::Builder& builder,
+                                         bool create);
+
+  /// @brief enhances the json of a zkd index
+  static Result enhanceJsonIndexZkd(arangodb::velocypack::Slice definition,
+                                    arangodb::velocypack::Builder& builder,
+                                    bool create);
 
  protected:
   /// @brief clear internal factory/normalizer maps
   void clear();
 
-  static IndexId validateSlice(arangodb::velocypack::Slice info,
-                               bool generateKey, bool isClusterConstructor);
+  static IndexId validateSlice(velocypack::Slice info, bool generateKey,
+                               bool isClusterConstructor);
 
  protected:
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
   std::unordered_map<std::string, IndexTypeFactory const*> _factories;
   std::unique_ptr<IndexTypeFactory> _invalid;
 };
 
 }  // namespace arangodb
-

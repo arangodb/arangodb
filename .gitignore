@@ -20,6 +20,7 @@ build
 
 *.deb
 *.rpm
+*.user
 
 .DS_Store
 *.swp
@@ -27,6 +28,10 @@ build
 *.patch
 *.lnk
 Thumbs.db
+
+lib/Basics/error-registry.h
+lib/Basics/exitcodes.h
+lib/Basics/voc-errors.h
 
 cppcheck.xml
 
@@ -49,8 +54,8 @@ Debug32/
 Release64/
 Release32/
 WindowsLibraries/
-cluster/**
-cluster-init*/**
+cluster/
+cluster-init*/
 p/
 
 /core
@@ -64,13 +69,11 @@ CTestTestfile.cmake
 UnitTests/CTestTestfile.cmake
 UnitTests/cmake_install.cmake
 arangod/cmake_install.cmake
-arangosh/cmake_install.cmake
+client-tools/cmake_install.cmake
 cmake_install.cmake
 lib/cmake_install.cmake
 
 arangod/Aql/grammar.output
-
-UnitTests/HttpInterface/logs/
 
 /bin
 logs/
@@ -82,7 +85,11 @@ Installation/MacOSX/Bundle/Info.plist
 
 nbproject/
 .idea
+.vs
+CMakeSettings.json
 .vscode
+*.sublime-workspace
+*.sublime-project
 
 test.cpp.txt
 
@@ -116,4 +123,5 @@ scripts/perfanalysis
 perf*
 callgrind*
 
-Documentation/Metrics/allMetrics.yaml
+cmake-build*/
+.cache/

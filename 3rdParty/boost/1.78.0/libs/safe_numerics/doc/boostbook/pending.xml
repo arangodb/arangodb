@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE section PUBLIC "-//Boost//DTD BoostBook XML V1.1//EN"
+"http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<section id="safe_numerics.pending_issues">
+  <title>Pending Issues</title>
+
+  <?dbhtml stop-chunking?>
+
+  <para>The library is under development. There are a number of issues still
+  pending.</para>
+
+  <section>
+    <title><code>safe_base</code> Only Works for Scalar Types</title>
+
+    <para>The following is paraphrased from an issue raised by Andrzej
+    Krzemieński as a <ulink
+    url="https://github.com/robertramey/safe_numerics/issues/44">github
+    issue</ulink>. It touches upon fundamental ideas behind the library and
+    how these ideas as the implementation of the library collided with
+    reality.</para>
+
+    <para><quote>In the current implementation safe&lt;T&gt; will only work
+    with T being a C++ scalar type. Therefore making a general type
+    requirements that say what operations are allowed is superfluous, and
+    confusing (because it implies that safe&lt;&gt; is more
+    generic.</quote></para>
+
+    <para>When I started out, It became clear that I wanted "safe" types to
+    look like "numeric" types. It also became clear pretty soon that there was
+    going to be significant template meta-programming in the implementation.
+    Normal type traits like std::is_integer are defined in the std namespace
+    and one is discouraged from extending it. Also I needed some compile time
+    "max" and "lowest" values. This lead me to base the design on
+    std::numeric_limits. But std::numeric limits is inherently extensible to
+    any "numeric" type. For example, money is a numeric type but not an
+    intrinsic types. So it seemed that I needed to define a "numeric" concept
+    which required that there be an implementation of std::numeric_limits for
+    any type T - such as money in this case. When I'm doubt - I tend to think
+    big.</para>
+
+    <para>For now though I'm not going to address it. For what it's worth, my
+    preference would be to do something like: <programlisting>template&lt;typename T&gt;
+struct range {
+    T m_lowest;
+    T m_highest;
+    // default implementation
+    range(
+        const &amp; T t_min, 
+        const &amp; T t_max
+    ) :
+        m_lowest(std::numeric_limits&lt;T&gt;::lowest(t_min),
+        m_highest(std::numeric_limits&lt;T&gt;::max(t_max)
+    {}
+};</programlisting></para>
+
+    <para>Then redeclare <code>safe_base</code>, etc., accordingly.</para>
+
+    <para>Also note that for C++20, template value parameters are no longer
+    restricted to integer primitive types but may be class types as well. This
+    means the library maybe extended to user class types without changing the
+    current template signatures.</para>
+  </section>
+
+  <section>
+    <title>Other Pending Issues</title>
+
+    <para><itemizedlist>
+        <listitem>
+          <para>The library is currently limited to integers. If there is
+          interest, it could be extended to floats and possible to user
+          defined types.</para>
+        </listitem>
+
+        <listitem>
+          <para>Although care has been taken to make the library portable, at
+          least some parts of the implementation - particularly
+          <code>checked</code> integer arithmetic - depend upon two's
+          complement representation of integers. Hence the library is probably
+          not currently portable to all other possible C++ architectures.
+          These days, this is unlikely to be a limitation in practice.
+          Starting with C++20, integer arithmetic will be guaranteed by the
+          C++ standard to be two's complement.</para>
+        </listitem>
+
+        <listitem>
+          <para><code>std::common_type</code> is used in a variety of generic
+          libraries, including std::chrono. Without a specialization for
+          <code>safe&lt;T&gt;</code>s one cannot use the safe wrappers e.g. as
+          a representation for <code>std::chrono::duration</code>.</para>
+        </listitem>
+      </itemizedlist></para>
+  </section>
+</section>

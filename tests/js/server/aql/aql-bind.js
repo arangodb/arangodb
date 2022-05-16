@@ -4,8 +4,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, bind parameters
 ///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -28,50 +26,104 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults;
-var assertQueryError = helper.assertQueryError;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+const internal = require("internal");
+const jsunity = require("jsunity");
+const helper = require("@arangodb/aql-helper");
+const getQueryResults = helper.getQueryResults;
+const assertQueryError = helper.assertQueryError;
 
 function ahuacatlBindTestSuite () {
-  var errors = internal.errors;
-  var numbers = null;
+  const errors = internal.errors;
+  let numbers = null;
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
 
     setUpAll : function () {
       internal.db._drop("UnitTestsAhuacatlNumbers");
       numbers = internal.db._create("UnitTestsAhuacatlNumbers");
 
-      for (var i = 1; i <= 100; ++i) {
-        numbers.save({ "value" : i });
+      let docs = [];
+      for (let i = 1; i <= 100; ++i) {
+        docs.push({ "value" : i });
       }
+      numbers.insert(docs);
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDownAll : function () {
       internal.db._drop("UnitTestsAhuacatlNumbers");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test bind with repeated usage of same bind parameter value
+////////////////////////////////////////////////////////////////////////////////
+    
+    testSameBindParameterUsedMultipleTimes1 : function () {
+      const bind = { values: { one: 1, two: 2, three: 3, four: 4 }, "@collection": numbers.name() };
+      
+      const expected = [ 1, 2, 3, 4 ];
+      let actual = getQueryResults("FOR d IN @@collection FILTER d.value == @values['one'] || d.value == @values['two'] || d.value == @values['three'] || d.value == @values['four'] RETURN d.value", bind);
+      assertEqual(expected, actual);
+    
+      // dot notation
+      actual = getQueryResults("FOR d IN @@collection FILTER d.value == @values.one || d.value == @values.two || d.value == @values.three || d.value == @values.four RETURN d.value", bind);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bind with repeated usage of same bind parameter value
+////////////////////////////////////////////////////////////////////////////////
+    
+    testSameBindParameterUsedMultipleTimes2 : function () {
+      const bind = { values: { one: 1, two: 2, three: 3, four: 4 }, "@collection": numbers.name() };
+      
+      const expected = [ 1, 2, 5, 18 ];
+      let actual = getQueryResults("LET d1 = @values['one'] + 1 LET d2 = @values['one'] + 17 FOR d IN @@collection LET d3 = @values['one'] + 4 LET d4 = @values['one'] + 17 FILTER d.value == @values['one'] || d.value == d1 || d.value == d2 || d.value == d3 || d.value == d4 RETURN d.value", bind);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bind with repeated usage of same bind parameter value
+////////////////////////////////////////////////////////////////////////////////
+    
+    testSameBindParameterUsedMultipleTimes3 : function () {
+      const bind = { values: { one: 1, seven: 7, ten: 10 }, "@collection": numbers.name() };
+      
+      const expected = [ 3, 4, 5, 6, 8 ];
+      const actual = getQueryResults("FOR d IN @@collection FILTER d.value >= @values['one'] FILTER d.value >= @values['one'] FILTER d.value != @values['one'] + 1 FILTER d.value >= @values['one'] + 2 FILTER d.value < @values['ten'] - 1 FILTER d.value != @values['seven'] RETURN d.value", bind);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bind with repeated usage of same bind parameter value
+////////////////////////////////////////////////////////////////////////////////
+    
+    testSameBindParameterUsedInConstantPropagation1 : function () {
+      const bind = { value: 17, "@collection": numbers.name() };
+      
+      const expected = [ 17, 18, 19, 20, 39 ];
+      const actual = getQueryResults("LET d1 = @value + 1 LET d2 = @value + 2 LET d3 = @value + 3 LET d4 = d3 + d2 FOR d IN @@collection FILTER d.value == @value || d.value == d1 || d.value == d2 || d.value == d3 || d.value == d4 RETURN d.value", bind);
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bind with repeated usage of same bind parameter value
+////////////////////////////////////////////////////////////////////////////////
+    
+    testSameBindParameterUsedInConstantPropagation2 : function () {
+      const bind = { values: { one: 1, seventy: 70, ninety: 90 }, "@collection": numbers.name() };
+      
+      const expected = [ 1, 2, 3, 4, 7, 70, 90 ];
+      const actual = getQueryResults("LET d1 = @values['one'] + 1 LET d2 = @values['one'] + 2 LET d3 = @values['one'] + 3 LET d4 = d3 + d2 FOR d IN @@collection FILTER d.value == @values['one'] || d.value == d1 || d.value == d2 || d.value == d3 || d.value == d4 || d.value == @values['seventy'] || d.value == @values['ninety'] RETURN d.value", bind);
+      assertEqual(expected, actual);
+    },
+    
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test bind with underscored variables
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindNamesWithUnderscore1 : function () {
-      var expected = [ 1, 2, 3, 4, 5, 6, 7, 9 ];
-      var actual = getQueryResults("FOR u IN @_values FILTER u != @_value RETURN u", { "_values" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ], "_value" : 8 });
+      const expected = [ 1, 2, 3, 4, 5, 6, 7, 9 ];
+      const actual = getQueryResults("FOR u IN @_values FILTER u != @_value RETURN u", { "_values" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ], "_value" : 8 });
 
       assertEqual(expected, actual);
     },
@@ -81,8 +133,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindNamesWithUnderscore2 : function () {
-      var expected = [ 1, 2, 3, 4, 5, 6, 7, 9 ];
-      var actual = getQueryResults("FOR u IN @values_to_look_in FILTER u != @value_to_look_for RETURN u", { "values_to_look_in" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ], "value_to_look_for" : 8 });
+      const expected = [ 1, 2, 3, 4, 5, 6, 7, 9 ];
+      const actual = getQueryResults("FOR u IN @values_to_look_in FILTER u != @value_to_look_for RETURN u", { "values_to_look_in" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ], "value_to_look_for" : 8 });
 
       assertEqual(expected, actual);
     },
@@ -92,8 +144,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindNamesWithUnderscore3 : function () {
-      var expected = [ 1, 2, 3, 4, 5, 6, 7, 9 ];
-      var actual = getQueryResults("FOR u IN @values_ FILTER u != @value_ RETURN u", { "values_" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ], "value_" : 8 });
+      const expected = [ 1, 2, 3, 4, 5, 6, 7, 9 ];
+      const actual = getQueryResults("FOR u IN @values_ FILTER u != @value_ RETURN u", { "values_" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ], "value_" : 8 });
 
       assertEqual(expected, actual);
     },
@@ -103,8 +155,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindNamesWithUnderscore4 : function () {
-      var expected = [ 1, 2, 3, 4, 5, 6, 7, 9 ];
-      var actual = getQueryResults("FOR u IN @___values___ FILTER u != @___value___ RETURN u", { "___values___" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ], "___value___" : 8 });
+      const expected = [ 1, 2, 3, 4, 5, 6, 7, 9 ];
+      const actual = getQueryResults("FOR u IN @___values___ FILTER u != @___value___ RETURN u", { "___values___" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ], "___value___" : 8 });
 
       assertEqual(expected, actual);
     },
@@ -125,8 +177,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindAscDesc1 : function () {
-      var expected = [ 1, 2, 3, 4, 6, 7, 9 ];
-      var actual = getQueryResults("FOR u IN @list SORT u @order RETURN u", { "list" : [ 9, 4, 3, 7, 2, 1, 6 ], "order" : "asc" });
+      const expected = [ 1, 2, 3, 4, 6, 7, 9 ];
+      const actual = getQueryResults("FOR u IN @list SORT u @order RETURN u", { "list" : [ 9, 4, 3, 7, 2, 1, 6 ], "order" : "asc" });
 
       assertEqual(expected, actual);
     },
@@ -136,8 +188,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindAscDesc2 : function () {
-      var expected = [ 1, 2, 3, 4, 6, 7, 9 ].reverse();
-      var actual = getQueryResults("FOR u IN @list SORT u @order RETURN u", { "list" : [ 9, 4, 3, 7, 2, 1, 6 ], "order" : "DESC" });
+      const expected = [ 1, 2, 3, 4, 6, 7, 9 ].reverse();
+      const actual = getQueryResults("FOR u IN @list SORT u @order RETURN u", { "list" : [ 9, 4, 3, 7, 2, 1, 6 ], "order" : "DESC" });
 
       assertEqual(expected, actual);
     },
@@ -147,8 +199,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindAscDesc3 : function () {
-      var expected = [ 1, 2, 3, 4, 6, 7, 9 ];
-      var actual = getQueryResults("FOR u IN @list SORT u @order RETURN u", { "list" : [ 9, 4, 3, 7, 2, 1, 6 ], "order" : true });
+      const expected = [ 1, 2, 3, 4, 6, 7, 9 ];
+      const actual = getQueryResults("FOR u IN @list SORT u @order RETURN u", { "list" : [ 9, 4, 3, 7, 2, 1, 6 ], "order" : true });
 
       assertEqual(expected, actual);
     },
@@ -158,8 +210,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindAscDesc4 : function () {
-      var expected = [ 1, 2, 3, 4, 6, 7, 9 ].reverse();
-      var actual = getQueryResults("FOR u IN @list SORT u @order RETURN u", { "list" : [ 9, 4, 3, 7, 2, 1, 6 ], "order" : false });
+      const expected = [ 1, 2, 3, 4, 6, 7, 9 ].reverse();
+      const actual = getQueryResults("FOR u IN @list SORT u @order RETURN u", { "list" : [ 9, 4, 3, 7, 2, 1, 6 ], "order" : false });
 
       assertEqual(expected, actual);
     },
@@ -169,8 +221,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindSingle : function () {
-      var expected = [ 2 ];
-      var actual = getQueryResults("FOR u IN @list FILTER u == 2 RETURN u", { "list" : [ 1, 2, 3, 4, 5, 22 ] });
+      const expected = [ 2 ];
+      const actual = getQueryResults("FOR u IN @list FILTER u == 2 RETURN u", { "list" : [ 1, 2, 3, 4, 5, 22 ] });
 
       assertEqual(expected, actual);
     },
@@ -180,8 +232,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindNull : function () {
-      var expected = [ null ];
-      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : null });
+      const expected = [ null ];
+      const actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : null });
 
       assertEqual(expected, actual);
     },
@@ -191,8 +243,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindBool1 : function () {
-      var expected = [ true ];
-      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : true });
+      const expected = [ true ];
+      const actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : true });
 
       assertEqual(expected, actual);
     },
@@ -202,8 +254,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindBool2 : function () {
-      var expected = [ false ];
-      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : false });
+      const expected = [ false ];
+      const actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : false });
 
       assertEqual(expected, actual);
     },
@@ -213,8 +265,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindNumeric1 : function () {
-      var expected = [ -5 ];
-      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : -5 });
+      const expected = [ -5 ];
+      const actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : -5 });
 
       assertEqual(expected, actual);
     },
@@ -224,8 +276,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindNumeric2 : function () {
-      var expected = [ 0 ];
-      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : 0 });
+      const expected = [ 0 ];
+      const actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : 0 });
 
       assertEqual(expected, actual);
     },
@@ -235,8 +287,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindNumeric3 : function () {
-      var expected = [ 1 ];
-      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : 1 });
+      const expected = [ 1 ];
+      const actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : 1 });
 
       assertEqual(expected, actual);
     },
@@ -246,7 +298,7 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindValueTypes : function () {
-      var values = { 
+      const values = { 
         nullValue: null, 
         falseValue: false, 
         trueValue: true, 
@@ -258,7 +310,7 @@ function ahuacatlBindTestSuite () {
         objectValues: { "" : 1, "foo-bar-baz" : "test", "a b c" : -42 } 
       };
 
-      var actual = getQueryResults("RETURN @values", { values: values });
+      const actual = getQueryResults("RETURN @values", { values: values });
       assertEqual([ values ], actual);
     },
 
@@ -267,8 +319,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindString1 : function () {
-      var expected = [ "the quick fox" ];
-      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : "the quick fox" });
+      const expected = [ "the quick fox" ];
+      const actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : "the quick fox" });
 
       assertEqual(expected, actual);
     },
@@ -278,8 +330,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindString2 : function () {
-      var expected = [ "" ];
-      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : "" });
+      const expected = [ "" ];
+      const actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : "" });
 
       assertEqual(expected, actual);
     },
@@ -289,8 +341,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindString3 : function () {
-      var expected = [ "\"the\"", "'fox'" ];
-      var actual = getQueryResults("FOR u IN @list FILTER u IN @values RETURN u", { "list" : [ "\"the\"", "'fox'"  ], "values" : [ "\"the\"", "'fox'" ] });
+      const expected = [ "\"the\"", "'fox'" ];
+      const actual = getQueryResults("FOR u IN @list FILTER u IN @values RETURN u", { "list" : [ "\"the\"", "'fox'"  ], "values" : [ "\"the\"", "'fox'" ] });
 
       assertEqual(expected, actual);
     },
@@ -300,8 +352,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindArray1 : function () {
-      var expected = [ "" ];
-      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : [ ] });
+      const expected = [ "" ];
+      const actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : [ ] });
 
       assertEqual(expected, actual);
     },
@@ -311,8 +363,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindArray2 : function () {
-      var expected = [ true, false, 1, null, [ ] ];
-      var actual = getQueryResults("FOR u IN @list FILTER u IN @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : [ true, false, 1, null, [ ] ] });
+      const expected = [ true, false, 1, null, [ ] ];
+      const actual = getQueryResults("FOR u IN @list FILTER u IN @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : [ true, false, 1, null, [ ] ] });
 
       assertEqual(expected, actual);
     },
@@ -322,8 +374,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindObject1 : function () {
-      var expected = [ { } ];
-      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : { } });
+      const expected = [ { } ];
+      const actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : [ "the quick fox", true, false, -5, 0, 1, null, "", [ ], { } ], "value" : { } });
 
       assertEqual(expected, actual);
     },
@@ -333,8 +385,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindObject2 : function () {
-      var expected = [ { "brown" : true, "fox" : true, "quick" : true } ];
-      var list = [ { "fox" : false, "brown" : false, "quick" : false },
+      const expected = [ { "brown" : true, "fox" : true, "quick" : true } ];
+      const list = [ { "fox" : false, "brown" : false, "quick" : false },
                    { "fox" : true,  "brown" : false, "quick" : false },
                    { "fox" : true,  "brown" : true,  "quick" : false },
                    { "fox" : true,  "brown" : true,  "quick" : true },
@@ -342,7 +394,7 @@ function ahuacatlBindTestSuite () {
                    { "fox" : false, "brown" : true,  "quick" : true },
                    { "fox" : false, "brown" : false, "quick" : true } ];
 
-      var actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : list, "value" : { "fox" : true, "brown" : true, "quick" : true } });
+      const actual = getQueryResults("FOR u IN @list FILTER u == @value RETURN u", { "list" : list, "value" : { "fox" : true, "brown" : true, "quick" : true } });
 
       assertEqual(expected, actual);
     },
@@ -353,8 +405,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindMultiple1 : function () {
-      var expected = [ 1.2, 1.2, 1.2 ];
-      var actual = getQueryResults("FOR u IN [ @value, @value, @value ] FILTER u == @value RETURN u", { "value" : 1.2 });
+      const expected = [ 1.2, 1.2, 1.2 ];
+      const actual = getQueryResults("FOR u IN [ @value, @value, @value ] FILTER u == @value RETURN u", { "value" : 1.2 });
 
       assertEqual(expected, actual);
     },
@@ -364,8 +416,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindMultiple2 : function () {
-      var expected = [ 5, 15 ];
-      var actual = getQueryResults("FOR u IN [ @value1, @value2, @value3 ] FILTER u IN [ @value1, @value2, @value3 ] && u >= @value1 && u <= @value2 RETURN u", { "value1" : 5, "value2" : 15, "value3" : 77 });
+      const expected = [ 5, 15 ];
+      const actual = getQueryResults("FOR u IN [ @value1, @value2, @value3 ] FILTER u IN [ @value1, @value2, @value3 ] && u >= @value1 && u <= @value2 RETURN u", { "value1" : 5, "value2" : 15, "value3" : 77 });
 
       assertEqual(expected, actual);
     },
@@ -375,8 +427,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindNames : function () {
-      var expected = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];
-      var actual = getQueryResults("FOR u IN [ @1, @2, @0, @11, @10, @fox, @FOX, @fox_, @fox__, @fox_1 ] RETURN u", { "1" : 1, "2" : 2, "0" : 3, "11" : 4, "10" : 5, "fox" : 6, "FOX" : 7, "fox_" : 8, "fox__" : 9, "fox_1" : 10 });
+      const expected = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ];
+      const actual = getQueryResults("FOR u IN [ @1, @2, @0, @11, @10, @fox, @FOX, @fox_, @fox__, @fox_1 ] RETURN u", { "1" : 1, "2" : 2, "0" : 3, "11" : 4, "10" : 5, "fox" : 6, "FOX" : 7, "fox_" : 8, "fox__" : 9, "fox_1" : 10 });
       assertEqual(expected, actual);
     },
 
@@ -385,8 +437,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindCombined : function () {
-      var expected = [ { "active" : true, "id" : 1, "likes" : "swimming", "name" : "John" } ]; 
-      var list = [ { "id" : 1, "active" : true, "likes" : "swimming", "name" : "John" }, 
+      const expected = [ { "active" : true, "id" : 1, "likes" : "swimming", "name" : "John" } ]; 
+      const list = [ { "id" : 1, "active" : true, "likes" : "swimming", "name" : "John" }, 
                    { "id" : 2, "active" : true, "likes" : "swimming", "name" : "Vanessa" }, 
                    { "id" : 3, "active" : false, "likes" : "hiking", "name" : "Fred" }, 
                    { "id" : 4, "active" : true, "likes" : "chess", "name" : "Mohammed" }, 
@@ -394,7 +446,7 @@ function ahuacatlBindTestSuite () {
                    { "id" : 6, "active" : true, "likes" : "running", "name" : "Amy" }, 
                    { "id" : 7, "active" : false, "likes" : "chess", "name" : "Stuart" } ];
 
-      var actual = getQueryResults("FOR u IN @list FILTER u.name != @name && u.id != @id && u.likes IN @likes && u.active == @active RETURN u", { "list" : list, "name" : "Amy", "id" : 2, "likes" : [ "fishing", "hiking", "swimming" ], "active" : true });
+      const actual = getQueryResults("FOR u IN @list FILTER u.name != @name && u.id != @id && u.likes IN @likes && u.active == @active RETURN u", { "list" : list, "name" : "Amy", "id" : 2, "likes" : [ "fishing", "hiking", "swimming" ], "active" : true });
 
       assertEqual(expected, actual);
     },
@@ -429,8 +481,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindCollectionWithId : function () {
-      var expected = [ 5, 63 ];
-      var actual = getQueryResults("FOR u IN @@collection FILTER u.value IN [ @value1, @value2 ] SORT u.value RETURN u.value", { "@collection" : numbers._id, "value1" : 5, "value2" : 63 });
+      const expected = [ 5, 63 ];
+      const actual = getQueryResults("FOR u IN @@collection FILTER u.value IN [ @value1, @value2 ] SORT u.value RETURN u.value", { "@collection" : numbers._id, "value1" : 5, "value2" : 63 });
 
       assertEqual(expected, actual);
     },
@@ -440,8 +492,8 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindCollection1 : function () {
-      var expected = [ 5, 63 ];
-      var actual = getQueryResults("FOR u IN @@collection FILTER u.value IN [ @value1, @value2 ] SORT u.value RETURN u.value", { "@collection" : numbers.name(), "value1" : 5, "value2" : 63 });
+      const expected = [ 5, 63 ];
+      const actual = getQueryResults("FOR u IN @@collection FILTER u.value IN [ @value1, @value2 ] SORT u.value RETURN u.value", { "@collection" : numbers.name(), "value1" : 5, "value2" : 63 });
 
       assertEqual(expected, actual);
     },
@@ -451,11 +503,11 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindCollection2 : function () {
-      var expected = [ 99 ];
-      var collection = numbers.name();
-      var params = { };
+      const expected = [ 99 ];
+      const collection = numbers.name();
+      const params = { };
       params["@" + collection] = collection;
-      var actual = getQueryResults("FOR " + collection + " IN @@" + collection + " FILTER " + collection + ".value == 99 RETURN " + collection + ".value", params);
+      const actual = getQueryResults("FOR " + collection + " IN @@" + collection + " FILTER " + collection + ".value == 99 RETURN " + collection + ".value", params);
 
       assertEqual(expected, actual);
     },
@@ -481,12 +533,11 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindLimit : function () {
-      var offset, limit;
-      var data = [ 1, 2, 3, 4 ];
+      const data = [ 1, 2, 3, 4 ];
 
-      for (offset = 0; offset < 6; ++offset) {
-        for (limit = 0; limit < 6; ++limit) {
-          var actual = getQueryResults("FOR u IN [ 1, 2, 3, 4 ] LIMIT @offset, @count RETURN u", { "offset" : offset, "count": limit });
+      for (let offset = 0; offset < 6; ++offset) {
+        for (let limit = 0; limit < 6; ++limit) {
+          const actual = getQueryResults("FOR u IN [ 1, 2, 3, 4 ] LIMIT @offset, @count RETURN u", { "offset" : offset, "count": limit });
        
           assertEqual(data.slice(offset, limit === 0 ? limit : offset + limit), actual);
         }
@@ -509,7 +560,7 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindAttributeNames1 : function () {
-      var actual = getQueryResults("FOR u IN [ { age: 1 }, { age: 2 }, { age: 3 } ] RETURN u.@what", { "what": "age" });
+      const actual = getQueryResults("FOR u IN [ { age: 1 }, { age: 2 }, { age: 3 } ] RETURN u.@what", { "what": "age" });
 
       assertEqual([ 1, 2, 3 ], actual);
     },
@@ -519,7 +570,7 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindAttributeNames2 : function () {
-      var actual = getQueryResults("FOR u IN [ { age: 1 }, { age: 2 }, { age: 3 } ] FILTER u.@what == @age RETURN u.@what", { "what": "age", "age": 2 });
+      const actual = getQueryResults("FOR u IN [ { age: 1 }, { age: 2 }, { age: 3 } ] FILTER u.@what == @age RETURN u.@what", { "what": "age", "age": 2 });
 
       assertEqual([ 2 ], actual);
     },
@@ -529,7 +580,7 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindAttributeNames3 : function () {
-      var actual = getQueryResults("FOR u IN [ { age1: 1 }, { age2: 2 }, { age3: 3 } ] RETURN u.@what", { "what": "age2" });
+      const actual = getQueryResults("FOR u IN [ { age1: 1 }, { age2: 2 }, { age3: 3 } ] RETURN u.@what", { "what": "age2" });
 
       assertEqual([ null, 2, null ], actual);
     },
@@ -539,7 +590,7 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindAttributeNames4 : function () {
-      var actual = getQueryResults("FOR u IN [ { `the fox` : 1 }, { `the-foxx` : 2 }, { `3`: 3 } ] FILTER u.@what == @value RETURN @value", { "what" : "the fox", "value" : 1 });
+      let actual = getQueryResults("FOR u IN [ { `the fox` : 1 }, { `the-foxx` : 2 }, { `3`: 3 } ] FILTER u.@what == @value RETURN @value", { "what" : "the fox", "value" : 1 });
       assertEqual([ 1 ], actual);
       
       actual = getQueryResults("FOR u IN [ { `the fox` : 1 }, { `the-foxx` : 2 }, { `3`: 3 } ] FILTER u.@what == @value RETURN @value", { "what" : "the-foxx", "value" : 2 });
@@ -557,7 +608,7 @@ function ahuacatlBindTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBindAttributeNames5 : function () {
-      var actual = getQueryResults("FOR u IN [ { name: { first: 'foo', last: 'bar' } } ] FILTER u.name.@part1 == 'foo' && u.name.@part2 == 'bar' RETURN u", { "part1" : "first", "part2" : "last" });
+      let actual = getQueryResults("FOR u IN [ { name: { first: 'foo', last: 'bar' } } ] FILTER u.name.@part1 == 'foo' && u.name.@part2 == 'bar' RETURN u", { "part1" : "first", "part2" : "last" });
       assertEqual([ { name: { first: "foo", last: "bar" } } ], actual);
       
       actual = getQueryResults("FOR u IN [ { name: { first: 'foo', last: 'bar' } } ] FILTER u.@part1 == 'foo' && u.@part2 == 'bar' RETURN u", { "part1" : [ "name", "first" ], "part2" : [ "name", "last" ] });
@@ -590,11 +641,6 @@ function ahuacatlBindTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(ahuacatlBindTestSuite);
 
 return jsunity.done();
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,28 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "V8FeaturePhase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 
-#include "Actions/ActionFeature.h"
-#include "ApplicationFeatures/V8PlatformFeature.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
-#include "FeaturePhases/ClusterFeaturePhase.h"
-#include "GeneralServer/ServerSecurityFeature.h"
-#include "V8Server/V8DealerFeature.h"
+namespace arangodb::application_features {
 
-namespace arangodb {
-namespace application_features {
-
-V8FeaturePhase::V8FeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "V8Phase") {
+V8FeaturePhase::V8FeaturePhase(ArangodServer& server)
+    : ApplicationFeaturePhase{server, *this} {
   setOptional(false);
-  startsAfter<ClusterFeaturePhase>();
+  startsAfter<ClusterFeaturePhase, ArangodServer>();
 
-  startsAfter<ActionFeature>();
-  startsAfter<ServerSecurityFeature>();
-  startsAfter<V8DealerFeature>();
-  startsAfter<V8PlatformFeature>();
-  startsAfter<V8SecurityFeature>();
+  startsAfter<ActionFeature, ArangodServer>();
+  startsAfter<ServerSecurityFeature, ArangodServer>();
+  startsAfter<V8DealerFeature, ArangodServer>();
+  startsAfter<V8PlatformFeature, ArangodServer>();
+  startsAfter<V8SecurityFeature, ArangodServer>();
 }
 
-}  // namespace application_features
-}  // namespace arangodb
+}  // namespace arangodb::application_features

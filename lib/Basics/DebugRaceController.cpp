@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,25 +42,30 @@ void DebugRaceController::reset() {
   _didTrigger = false;
 }
 
-bool DebugRaceController::didTrigger() const { 
+std::vector<std::any> DebugRaceController::data() const {
   std::unique_lock<std::mutex> guard(_mutex);
-  return _didTrigger; 
+  return _data;
 }
 
-std::vector<std::any> DebugRaceController::data() const { 
+auto DebugRaceController::waitForOthers(
+    size_t numberOfThreadsToWaitFor, std::any myData,
+    arangodb::application_features::ApplicationServer const& server) -> bool {
   std::unique_lock<std::mutex> guard(_mutex);
-  return _data; 
-}
-
-void DebugRaceController::waitForOthers(size_t numberOfThreadsToWaitFor, std::any myData,
-                                        arangodb::application_features::ApplicationServer const& server) {
-  std::unique_lock<std::mutex> guard(_mutex);
-  _data.emplace_back(std::move(myData));
-  _condVariable.wait(guard, [&] {
-    return _data.size() == numberOfThreadsToWaitFor || server.isStopping();
-  });
-  _didTrigger = true;
-  _condVariable.notify_all();
+  if (!_didTrigger) {
+    _data.emplace_back(std::move(myData));
+    _condVariable.wait(guard, [&] {
+      // check emtpy to continue after beeing resetted
+      return _data.empty() || _data.size() == numberOfThreadsToWaitFor ||
+             server.isStopping();
+    });
+    if (!_data.empty()) {
+      _didTrigger = true;
+    }
+    _condVariable.notify_all();
+    return true;
+  } else {
+    return false;
+  }
 }
 
 #endif

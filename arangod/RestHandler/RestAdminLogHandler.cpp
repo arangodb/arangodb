@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
@@ -35,12 +34,13 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
-#include "Logger/LogBufferFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Logger/LogTopic.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
+#include "RestServer/LogBufferFeature.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;
@@ -48,7 +48,8 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace {
-network::Headers buildHeaders(std::unordered_map<std::string, std::string> const& originalHeaders) {
+network::Headers buildHeaders(
+    std::unordered_map<std::string, std::string> const& originalHeaders) {
   auto auth = AuthenticationFeature::instance();
 
   network::Headers headers;
@@ -63,8 +64,9 @@ network::Headers buildHeaders(std::unordered_map<std::string, std::string> const
 }
 }  // namespace
 
-RestAdminLogHandler::RestAdminLogHandler(arangodb::application_features::ApplicationServer& server,
-                                         GeneralRequest* request, GeneralResponse* response)
+RestAdminLogHandler::RestAdminLogHandler(arangodb::ArangodServer& server,
+                                         GeneralRequest* request,
+                                         GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
 arangodb::Result RestAdminLogHandler::verifyPermitted() {
@@ -77,14 +79,14 @@ arangodb::Result RestAdminLogHandler::verifyPermitted() {
   // do we have admin rights (if rights are active)
   if (loggerFeature.onlySuperUser()) {
     if (!ExecContext::current().isSuperuser()) {
-      return arangodb::Result(
-          TRI_ERROR_HTTP_FORBIDDEN, "you need super user rights for log operations");
-    } // if
+      return arangodb::Result(TRI_ERROR_HTTP_FORBIDDEN,
+                              "you need super user rights for log operations");
+    }  // if
   } else {
     if (!ExecContext::current().isAdminUser()) {
-      return arangodb::Result(
-          TRI_ERROR_HTTP_FORBIDDEN, "you need admin rights for log operations");
-    } // if
+      return arangodb::Result(TRI_ERROR_HTTP_FORBIDDEN,
+                              "you need admin rights for log operations");
+    }  // if
   }
 
   return arangodb::Result();
@@ -93,8 +95,8 @@ arangodb::Result RestAdminLogHandler::verifyPermitted() {
 RestStatus RestAdminLogHandler::execute() {
   auto result = verifyPermitted();
   if (!result.ok()) {
-    generateError(
-        rest::ResponseCode::FORBIDDEN, result.errorNumber(), result.errorMessage());
+    generateError(rest::ResponseCode::FORBIDDEN, result.errorNumber(),
+                  result.errorMessage());
     return RestStatus::DONE;
   }
 
@@ -110,14 +112,43 @@ RestStatus RestAdminLogHandler::execute() {
       return reportLogs(/*newFormat*/ true);
     } else if (suffixes.size() == 1 && suffixes[0] == "level") {
       handleLogLevel();
+    } else if (suffixes.size() == 1 && suffixes[0] == "structured") {
+      handleLogStructuredParams();
     } else {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                    "superfluous suffix, expecting /_admin/log/entries");
+      generateError(
+          rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+          "superfluous suffix, expecting /_admin/log/<suffix>, "
+          "where suffix can be either 'entries', 'level' or 'structured'");
+    }
+  } else if (type == rest::RequestType::PUT) {
+    if (suffixes.size() == 1) {
+      if (suffixes[0] == "level") {
+        handleLogLevel();
+      } else if (suffixes[0] == "structured") {
+        handleLogStructuredParams();
+      } else {
+        generateError(rest::ResponseCode::BAD,
+                      TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+                      "superfluous suffix, expecting /_admin/log/<suffix>, "
+                      "where suffix can be either 'level' or 'structured'");
+      }
+    } else {  // error handling
+      if (suffixes.empty()) {
+        generateError(rest::ResponseCode::BAD,
+                      TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+                      "provide a suffix, expecting /_admin/log/<suffix>, "
+                      "where suffix can be either 'level' or 'structured'");
+      } else {
+        generateError(rest::ResponseCode::BAD,
+                      TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+                      "superfluous suffix, expecting /_admin/log/<suffix>, "
+                      "where suffix can be either 'level' or 'structured'");
+      }
     }
   } else {
-    handleLogLevel();
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
-
   return RestStatus::DONE;
 }
 
@@ -128,7 +159,8 @@ void RestAdminLogHandler::clearLogs() {
 
 RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
   bool foundServerIdParameter;
-  std::string const& serverId = _request->value("serverId", foundServerIdParameter);
+  std::string const& serverId =
+      _request->value("serverId", foundServerIdParameter);
 
   if (ServerState::instance()->isCoordinator() && foundServerIdParameter) {
     if (serverId != ServerState::instance()->getId()) {
@@ -145,7 +177,8 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
       }
 
       if (!found) {
-        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
+        generateError(rest::ResponseCode::NOT_FOUND,
+                      TRI_ERROR_HTTP_BAD_PARAMETER,
                       std::string("unknown serverId supplied."));
         return RestStatus::DONE;
       }
@@ -161,9 +194,10 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
       options.database = _request->databaseName();
       options.parameters = _request->parameters();
 
-      auto f = network::sendRequestRetry(pool, "server:" + serverId, fuerte::RestVerb::Get,
-                                    _request->requestPath(), VPackBuffer<uint8_t>{},
-                                    options, buildHeaders(_request->headers()));
+      auto f = network::sendRequestRetry(
+          pool, "server:" + serverId, fuerte::RestVerb::Get,
+          _request->requestPath(), VPackBuffer<uint8_t>{}, options,
+          buildHeaders(_request->headers()));
       return waitForFuture(std::move(f).thenValue(
           [self = std::dynamic_pointer_cast<RestAdminLogHandler>(
                shared_from_this())](network::Response const& r) {
@@ -179,10 +213,12 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
 
   // check the maximal log level to report
   bool found1;
-  std::string const& upto = StringUtils::tolower(_request->value("upto", found1));
+  std::string const& upto =
+      StringUtils::tolower(_request->value("upto", found1));
 
   bool found2;
-  std::string const& lvl = StringUtils::tolower(_request->value("level", found2));
+  std::string const& lvl =
+      StringUtils::tolower(_request->value("level", found2));
 
   LogLevel ul = LogLevel::INFO;
   bool useUpto = true;
@@ -247,7 +283,9 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
   // check the search criteria
   std::string const& searchString = _request->value("search");
   // generate result
-  std::vector<LogBuffer> entries = server().getFeature<LogBufferFeature>().entries(ul, start, useUpto, searchString);
+  std::vector<LogBuffer> entries =
+      server().getFeature<LogBufferFeature>().entries(ul, start, useUpto,
+                                                      searchString);
 
   // check the sort direction
   std::string const& sortdir = StringUtils::tolower(_request->value("sort"));
@@ -260,7 +298,7 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
   if (newFormat) {
     // new log format - introduced in 3.8.0.
     // this format is more intuitive and useful than the old format.
-    // the new format because it groups all attributes of a message together 
+    // the new format because it groups all attributes of a message together
     // in an object, whereas in the old format, the attributes of a message
     // were split into multiple top-level arrays (one array per attribute).
     size_t start = 0;
@@ -283,14 +321,16 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
       result.openObject();
       result.add("id", VPackValue(buf._id));
       result.add("topic", VPackValue(LogTopic::lookup(buf._topicId)));
-      LogLevel lvl = (buf._level == LogLevel::DEFAULT ? LogLevel::INFO : buf._level);
+      LogLevel lvl =
+          (buf._level == LogLevel::DEFAULT ? LogLevel::INFO : buf._level);
       result.add("level", VPackValue(Logger::translateLogLevel(lvl)));
-      result.add("date", VPackValue(TRI_StringTimeStamp(buf._timestamp, Logger::getUseLocalTime())));
+      result.add("date", VPackValue(TRI_StringTimeStamp(
+                             buf._timestamp, Logger::getUseLocalTime())));
       result.add("message", VPackValue(buf._message));
       result.close();
     }
 
-    result.close(); // messages
+    result.close();  // messages
     result.close();
   } else {
     // old log format
@@ -345,10 +385,10 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
         auto& buf = entries.at(i + static_cast<size_t>(offset));
 
         if (buf._level == LogLevel::DEFAULT) {
-          result.add(VPackValue(3)); // INFO
+          result.add(VPackValue(3));  // INFO
         } else {
           TRI_ASSERT(static_cast<uint32_t>(buf._level) > 0);
-          result.add(VPackValue(static_cast<uint32_t>(buf._level) - 1)); 
+          result.add(VPackValue(static_cast<uint32_t>(buf._level) - 1));
         }
       } catch (...) {
       }
@@ -381,9 +421,9 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
     }
 
     result.close();
-  
+
     result.close();  // Close the result object
-  } // format end
+  }                  // format end
 
   generateResult(rest::ResponseCode::OK, result.slice());
   return RestStatus::DONE;
@@ -409,7 +449,8 @@ void RestAdminLogHandler::handleLogLevel() {
     builder.openObject();
     auto const& levels = Logger::logLevelTopics();
     for (auto const& level : levels) {
-      builder.add(level.first, VPackValue(Logger::translateLogLevel(level.second)));
+      builder.add(level.first,
+                  VPackValue(Logger::translateLogLevel(level.second)));
     }
     builder.close();
 
@@ -425,9 +466,17 @@ void RestAdminLogHandler::handleLogLevel() {
     if (slice.isString()) {
       Logger::setLogLevel(slice.copyString());
     } else if (slice.isObject()) {
+      if (VPackSlice all = slice.get("all"); all.isString()) {
+        // handle "all" first, so we can do
+        // {"all":"info","requests":"debug"} or such
+        std::string const l = "all=" + all.copyString();
+        Logger::setLogLevel(l);
+      }
+      // now process all log topics except "all"
       for (auto it : VPackObjectIterator(slice)) {
-        if (it.value.isString()) {
-          std::string const l = it.key.copyString() + "=" + it.value.copyString();
+        if (it.value.isString() && !it.key.isEqualString(LogTopic::ALL)) {
+          std::string const l =
+              it.key.copyString() + "=" + it.value.copyString();
           Logger::setLogLevel(l);
         }
       }
@@ -438,13 +487,63 @@ void RestAdminLogHandler::handleLogLevel() {
     builder.openObject();
     auto const& levels = Logger::logLevelTopics();
     for (auto const& level : levels) {
-      builder.add(level.first, VPackValue(Logger::translateLogLevel(level.second)));
+      builder.add(level.first,
+                  VPackValue(Logger::translateLogLevel(level.second)));
     }
     builder.close();
 
     generateResult(rest::ResponseCode::OK, builder.slice());
   } else {
     // invalid method
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+  }
+}
+
+void RestAdminLogHandler::handleLogStructuredParams() {
+  auto const type = _request->requestType();
+
+  if (type == rest::RequestType::GET) {
+    VPackBuilder builder;
+    builder.openObject();
+    auto const params = Logger::structuredLogParams();
+    for (auto const& param : params) {
+      builder.add(param, VPackValue(true));
+    }
+    builder.close();
+
+    generateResult(rest::ResponseCode::OK, builder.slice());
+  } else if (type == rest::RequestType::PUT) {
+    // set log level
+    bool parseSuccess = false;
+    VPackSlice slice = this->parseVPackBody(parseSuccess);
+    if (!parseSuccess) {
+      return;  // error message generated in parseVPackBody
+    }
+
+    if (slice.isObject()) {
+      std::unordered_map<std::string, bool> paramsAndValues;
+      for (auto it : VPackObjectIterator(slice)) {
+        if (it.value.isBoolean()) {
+          paramsAndValues.try_emplace(it.key.copyString(),
+                                      it.value.getBoolean());
+        }
+      }
+      Logger::setLogStructuredParams(paramsAndValues);
+    }
+
+    VPackBuilder builder;
+    builder.openObject();
+    auto const params = Logger::structuredLogParams();
+    for (auto const& param : params) {
+      builder.add(param, VPackValue(true));
+    }
+    builder.close();
+
+    generateResult(rest::ResponseCode::OK, builder.slice());
+  } else {
+    // invalid method
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
 }

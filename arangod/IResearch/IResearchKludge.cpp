@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,47 +23,91 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchKludge.h"
+#include "IResearchRocksDBLink.h"
+#include "IResearchRocksDBInvertedIndex.h"
+#include "Basics/DownCast.h"
 
-#include "Basics/Common.h"
+#include <string>
+#include <string_view>
+
+namespace {
+
+inline void normalizeExpansion(std::string& name) {
+  // remove the last expansion as it could be omitted accodring to our
+  // indicies behaviour
+  if (name.ends_with("[*]")) {
+    name.resize(name.size() - 3);
+  }
+}
+
+}  // namespace
 
 namespace arangodb {
-namespace iresearch {
-namespace kludge {
+void syncIndexOnCreate(Index& index) {
+  iresearch::IResearchDataStore* store{nullptr};
+  switch (index.type()) {
+    case Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK:
+      store = &basics::downCast<iresearch::IResearchRocksDBLink>(index);
+      break;
+    case Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX:
+      store =
+          &basics::downCast<iresearch::IResearchRocksDBInvertedIndex>(index);
+      break;
+    default:
+      break;
+  }
+  if (store) {
+    store->commit();
+  }
+}
+}  // namespace arangodb
+
+namespace arangodb::iresearch::kludge {
 
 const char TYPE_DELIMITER = '\0';
 const char ANALYZER_DELIMITER = '\1';
 
-irs::string_ref const NULL_SUFFIX("\0_n", 3);
-irs::string_ref const BOOL_SUFFIX("\0_b", 3);
-irs::string_ref const NUMERIC_SUFFIX("\0_d", 3);
+std::string_view constexpr NULL_SUFFIX("\0_n", 3);
+std::string_view constexpr BOOL_SUFFIX("\0_b", 3);
+std::string_view constexpr NUMERIC_SUFFIX("\0_d", 3);
+std::string_view constexpr STRING_SUFFIX("\0_s", 3);
 
 void mangleType(std::string& name) { name += TYPE_DELIMITER; }
 
-void mangleAnalyzer(std::string& name) { name += ANALYZER_DELIMITER; }
+void mangleAnalyzer(std::string& name) {
+  normalizeExpansion(name);
+  name += ANALYZER_DELIMITER;
+}
 
 void mangleNull(std::string& name) {
-  name.append(NULL_SUFFIX.c_str(), NULL_SUFFIX.size());
+  normalizeExpansion(name);
+  name.append(NULL_SUFFIX);
 }
 
 void mangleBool(std::string& name) {
-  name.append(BOOL_SUFFIX.c_str(), BOOL_SUFFIX.size());
+  normalizeExpansion(name);
+  name.append(BOOL_SUFFIX);
 }
 
 void mangleNumeric(std::string& name) {
-  name.append(NUMERIC_SUFFIX.c_str(), NUMERIC_SUFFIX.size());
+  normalizeExpansion(name);
+  name.append(NUMERIC_SUFFIX);
 }
 
-void mangleField(
-    std::string& name,
-    iresearch::FieldMeta::Analyzer const& analyzer) {
-  name += ANALYZER_DELIMITER;
-  name += analyzer._shortName;
+void mangleString(std::string& name) {
+  normalizeExpansion(name);
+  name.append(STRING_SUFFIX);
 }
 
-}  // namespace kludge
-}  // namespace iresearch
-}  // namespace arangodb
+void mangleField(std::string& name, bool isSearchFilter,
+                 iresearch::FieldMeta::Analyzer const& analyzer) {
+  normalizeExpansion(name);
+  if (isSearchFilter || analyzer._pool->requireMangled()) {
+    name += ANALYZER_DELIMITER;
+    name += analyzer._shortName;
+  } else {
+    mangleString(name);
+  }
+}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+}  // namespace arangodb::iresearch::kludge

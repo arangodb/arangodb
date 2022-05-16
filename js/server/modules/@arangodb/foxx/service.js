@@ -707,26 +707,19 @@ module.exports =
     }
 
     static get _appPath () {
+      let dirName = internal.db._name();
+      if (!internal.isAllowedDatabaseName(dirName, false)) {
+        dirName = internal.db._id();
+      } 
       return APP_PATH ? (
-        path.join(APP_PATH, '_db', internal.db._name())
-        ) : undefined;
+        path.join(APP_PATH, '_db', dirName)
+      ) : undefined;
+
     }
 
     static get _systemAppPath () {
-      return APP_PATH ? (
+      return STARTUP_PATH ? (
         path.join(STARTUP_PATH, 'apps', 'system')
-        ) : undefined;
-    }
-
-    static get _oldAppPath () {
-      return APP_PATH ? (
-        path.join(APP_PATH, 'databases', internal.db._name())
-        ) : undefined;
-    }
-
-    static get _devAppPath () {
-      return DEV_APP_PATH ? (
-        path.join(DEV_APP_PATH, 'databases', internal.db._name())
         ) : undefined;
     }
 };

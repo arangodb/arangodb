@@ -61,7 +61,7 @@ there is no known upload operation with the given `uploadId`.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestBackupUploadBackup_rocksdb}
+@EXAMPLE_ARANGOSH_RUN{RestBackupUploadBackup}
     try {
       require("fs").makeDirectory("/tmp/backups");
     } catch(e) {
@@ -91,7 +91,7 @@ there is no known upload operation with the given `uploadId`.
 The `result` object of the body holds the `uploadId` string attribute which can
 be used to follow the upload process.
 
-@EXAMPLE_ARANGOSH_RUN{RestBackupUploadBackupStarted_rocksdb}
+@EXAMPLE_ARANGOSH_RUN{RestBackupUploadBackupStarted}
     try {
       require("fs").makeDirectory("/tmp/backups");
     } catch(e) {

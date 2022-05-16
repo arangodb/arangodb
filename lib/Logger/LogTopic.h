@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,13 +38,14 @@ class LogTopic {
  public:
   static constexpr size_t MAX_LOG_TOPICS = 64;
 
- public:
+  // pseudo topic to address all log topics
+  static const std::string ALL;
+
   static std::vector<std::pair<std::string, LogLevel>> logLevelTopics();
   static void setLogLevel(std::string const&, LogLevel);
   static LogTopic* lookup(std::string const&);
   static std::string lookup(size_t topicId);
 
- public:
   explicit LogTopic(std::string const& name);
   virtual ~LogTopic() = default;
 
@@ -62,7 +63,6 @@ class LogTopic {
     _level.store(that._level, std::memory_order_relaxed);
   }
 
- public:
   size_t id() const { return _id; }
   std::string const& name() const { return _name; }
   std::string const& displayName() const { return _displayName; }
@@ -79,4 +79,3 @@ class LogTopic {
   std::atomic<LogLevel> _level;
 };
 }  // namespace arangodb
-

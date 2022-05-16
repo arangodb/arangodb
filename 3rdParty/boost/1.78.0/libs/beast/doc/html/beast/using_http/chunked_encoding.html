@@ -1,0 +1,641 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Chunked Encoding</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Beast">
+<link rel="up" href="../using_http.html" title="HTTP">
+<link rel="prev" href="buffer_oriented_parsing.html" title="Buffer-Oriented Parsing">
+<link rel="next" href="custom_body_types.html" title="Custom Body Types">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="buffer_oriented_parsing.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_http.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="custom_body_types.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.using_http.chunked_encoding"></a><a class="link" href="chunked_encoding.html" title="Chunked Encoding">Chunked Encoding</a>
+</h3></div></div></div>
+<p>
+        For message payloads whose size is not known ahead of time, HTTP version
+        1.1 defines the <a href="https://tools.ietf.org/html/rfc7230#section-4.1" target="_top"><span class="emphasis"><em>chunked</em></span></a>
+        transfer coding. This coding consists of zero or more <a href="https://tools.ietf.org/html/rfc7230#section-4.1" target="_top"><span class="emphasis"><em>chunked
+        bodies</em></span></a>, followed by a <a href="https://tools.ietf.org/html/rfc7230#section-4.1" target="_top"><span class="emphasis"><em>last
+        chunk</em></span></a>. Each chunked body may contain optional application-defined,
+        connection-specific <a href="https://tools.ietf.org/html/rfc7230#section-4.1.1" target="_top"><span class="emphasis"><em>chunk-extensions</em></span></a>.
+        The last chunk may contain additional HTTP field values in a section of the
+        last chunk called a <a href="https://tools.ietf.org/html/rfc7230#section-4.1.2" target="_top"><span class="emphasis"><em>chunk-trailer</em></span></a>.
+        The field values are "promised" in the header as a comma delimited
+        list of field names in the <a href="https://tools.ietf.org/html/rfc7230#section-4.4" target="_top"><span class="bold"><strong>Trailer</strong></span></a> field value. Clients indicate their
+        willingness to accept trailers by including the "trailers" token
+        in the <a href="https://tools.ietf.org/html/rfc7230#section-4.3" target="_top"><span class="bold"><strong>TE</strong></span></a> field value.
+      </p>
+<h5>
+<a name="beast.using_http.chunked_encoding.h0"></a>
+        <span class="phrase"><a name="beast.using_http.chunked_encoding.serializing_chunks"></a></span><a class="link" href="chunked_encoding.html#beast.using_http.chunked_encoding.serializing_chunks">Serializing
+        Chunks</a>
+      </h5>
+<p>
+        The <a class="link" href="../ref/boost__beast__http__serializer.html" title="http::serializer"><code class="computeroutput"><span class="identifier">serializer</span></code></a> automatically applies
+        the chunked transfer encoding when a message returns <code class="computeroutput"><span class="keyword">true</span></code>
+        from <a class="link" href="../ref/boost__beast__http__message/chunked/overload1.html" title="http::message::chunked (1 of 2 overloads)"><code class="computeroutput"><span class="identifier">message</span><span class="special">::</span><span class="identifier">chunked</span></code></a>. The boundaries between
+        chunks emitted by the serializer are implementation defined. Chunk extensions
+        and trailers are omitted. Applications which need precise control over the
+        chunk boundaries, extensions, and trailers may use a set of helper classes
+        which enable manual emission of message payloads using chunk encoding.
+      </p>
+<p>
+        To use these helper classes, first serialize the header portion of the message
+        using the standard interface. Then prepare the buffers, chunk extensions,
+        and desired trailers, and use them with these helpers:
+      </p>
+<div class="table">
+<a name="beast.using_http.chunked_encoding.chunking_helpers"></a><p class="title"><b>Table 1.25. Chunking Helpers</b></p>
+<div class="table-contents"><table class="table" summary="Chunking Helpers">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__chunk_body.html" title="http::chunk_body"><code class="computeroutput"><span class="identifier">chunk_body</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  A buffer sequence representing a complete chunk body.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__chunk_crlf.html" title="http::chunk_crlf"><code class="computeroutput"><span class="identifier">chunk_crlf</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  A buffer sequence representing the CRLF (<code class="computeroutput"><span class="string">"\r\n"</span></code>)
+                  delimiter. This class is used when the caller desires to emit the
+                  chunk body in two or more individual stream operations.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__chunk_extensions.html" title="http::chunk_extensions"><code class="computeroutput"><span class="identifier">chunk_extensions</span></code></a>
+                </p>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__basic_chunk_extensions.html" title="http::basic_chunk_extensions"><code class="computeroutput"><span class="identifier">basic_chunk_extensions</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This is a simple, allocating container which lets callers easily
+                  build up a set of chunk extensions.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__chunk_header.html" title="http::chunk_header"><code class="computeroutput"><span class="identifier">chunk_header</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  A buffer sequence representing a hex-encoded chunk size, followed
+                  by an optional set of chunk extensions, including the terminating
+                  CRLF (<code class="computeroutput"><span class="string">"\r\n"</span></code>)
+                  delimiter which precedes the chunk body. This class is used when
+                  the caller desires to emit the chunk body in two or more individual
+                  stream operations.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__chunk_last.html" title="http::chunk_last"><code class="computeroutput"><span class="identifier">chunk_last</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  A buffer sequence representing a last chunk. The last chunk indicates
+                  the end of the chunked message payload, and may contain optional
+                  trailer fields.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__make_chunk.html" title="http::make_chunk"><code class="computeroutput"><span class="identifier">make_chunk</span></code></a>
+                </p>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__make_chunk_last.html" title="http::make_chunk_last"><code class="computeroutput"><span class="identifier">make_chunk_last</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  These helper functions are used to construct a chunk or last chunk
+                  directly at call sites.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+        We demonstrate the use of these objects first by declaring a function which
+        returns the next buffer sequence to use as a chunk body:
+      </p>
+<pre class="programlisting"><span class="comment">// This function returns the buffer containing the next chunk body</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">const_buffer</span> <span class="identifier">get_next_chunk_body</span><span class="special">();</span>
+</pre>
+<p>
+        This example demonstrates sending a complete chunked message payload manually.
+        No chunk extensions or trailers are emitted:
+      </p>
+<pre class="programlisting"><span class="comment">// Prepare an HTTP/1.1 response with a chunked body</span>
+<span class="identifier">response</span><span class="special">&lt;</span><span class="identifier">empty_body</span><span class="special">&gt;</span> <span class="identifier">res</span><span class="special">{</span><span class="identifier">status</span><span class="special">::</span><span class="identifier">ok</span><span class="special">,</span> <span class="number">11</span><span class="special">};</span>
+<span class="identifier">res</span><span class="special">.</span><span class="identifier">set</span><span class="special">(</span><span class="identifier">field</span><span class="special">::</span><span class="identifier">server</span><span class="special">,</span> <span class="string">"Beast"</span><span class="special">);</span>
+
+<span class="comment">// Set Transfer-Encoding to "chunked".</span>
+<span class="comment">// If a Content-Length was present, it is removed.</span>
+<span class="identifier">res</span><span class="special">.</span><span class="identifier">chunked</span><span class="special">(</span><span class="keyword">true</span><span class="special">);</span>
+
+<span class="comment">// Set up the serializer</span>
+<span class="identifier">response_serializer</span><span class="special">&lt;</span><span class="identifier">empty_body</span><span class="special">&gt;</span> <span class="identifier">sr</span><span class="special">{</span><span class="identifier">res</span><span class="special">};</span>
+
+<span class="comment">// Write the header first</span>
+<span class="identifier">write_header</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">sr</span><span class="special">);</span>
+
+<span class="comment">// Now manually emit three chunks:</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">make_chunk</span><span class="special">(</span><span class="identifier">get_next_chunk_body</span><span class="special">()));</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">make_chunk</span><span class="special">(</span><span class="identifier">get_next_chunk_body</span><span class="special">()));</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">make_chunk</span><span class="special">(</span><span class="identifier">get_next_chunk_body</span><span class="special">()));</span>
+
+<span class="comment">// We are responsible for sending the last chunk:</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">make_chunk_last</span><span class="special">());</span>
+</pre>
+<p>
+        The following code sends additional chunks, and sets chunk extensions using
+        the helper container. The container automatically quotes values in the serialized
+        output when necessary:
+      </p>
+<pre class="programlisting"><span class="comment">// Prepare a set of chunk extension to emit with the body</span>
+<span class="identifier">chunk_extensions</span> <span class="identifier">ext</span><span class="special">;</span>
+<span class="identifier">ext</span><span class="special">.</span><span class="identifier">insert</span><span class="special">(</span><span class="string">"mp3"</span><span class="special">);</span>
+<span class="identifier">ext</span><span class="special">.</span><span class="identifier">insert</span><span class="special">(</span><span class="string">"title"</span><span class="special">,</span> <span class="string">"Beale Street Blues"</span><span class="special">);</span>
+<span class="identifier">ext</span><span class="special">.</span><span class="identifier">insert</span><span class="special">(</span><span class="string">"artist"</span><span class="special">,</span> <span class="string">"W.C. Handy"</span><span class="special">);</span>
+
+<span class="comment">// Write the next chunk with the chunk extensions</span>
+<span class="comment">// The implementation will make a copy of the extensions object,</span>
+<span class="comment">// so the caller does not need to manage lifetime issues.</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">make_chunk</span><span class="special">(</span><span class="identifier">get_next_chunk_body</span><span class="special">(),</span> <span class="identifier">ext</span><span class="special">));</span>
+
+<span class="comment">// Write the next chunk with the chunk extensions</span>
+<span class="comment">// The implementation will make a copy of the extensions object, storing the copy</span>
+<span class="comment">// using the custom allocator, so the caller does not need to manage lifetime issues.</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">make_chunk</span><span class="special">(</span><span class="identifier">get_next_chunk_body</span><span class="special">(),</span> <span class="identifier">ext</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;{}));</span>
+
+<span class="comment">// Write the next chunk with the chunk extensions</span>
+<span class="comment">// The implementation allocates memory using the default allocator and takes ownership</span>
+<span class="comment">// of the extensions object, so the caller does not need to manage lifetime issues.</span>
+<span class="comment">// Note: ext is moved</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">make_chunk</span><span class="special">(</span><span class="identifier">get_next_chunk_body</span><span class="special">(),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(</span><span class="identifier">ext</span><span class="special">)));</span>
+</pre>
+<p>
+        Callers can take over the generation and management of the extensions buffer
+        by passing a non-owning string. Note that this requires the string contents
+        to adhere to the correct syntax for chunk extensions, including the needed
+        double quotes for values which contain spaces:
+      </p>
+<pre class="programlisting"><span class="comment">// Manually specify the chunk extensions.</span>
+<span class="comment">// Some of the strings contain spaces and a period and must be quoted</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">make_chunk</span><span class="special">(</span><span class="identifier">get_next_chunk_body</span><span class="special">(),</span>
+    <span class="string">";mp3"</span>
+    <span class="string">";title=\"Danny Boy\""</span>
+    <span class="string">";artist=\"Fred E. Weatherly\""</span>
+    <span class="special">));</span>
+</pre>
+<p>
+        The next code sample emits a chunked response which promises two trailer
+        fields and delivers them in the last chunk. The implementation allocates
+        memory using the default or a passed-in allocator to hold the state information
+        required to serialize the trailer:
+      </p>
+<pre class="programlisting"><span class="comment">// Prepare a chunked HTTP/1.1 response with some trailer fields</span>
+<span class="identifier">response</span><span class="special">&lt;</span><span class="identifier">empty_body</span><span class="special">&gt;</span> <span class="identifier">res</span><span class="special">{</span><span class="identifier">status</span><span class="special">::</span><span class="identifier">ok</span><span class="special">,</span> <span class="number">11</span><span class="special">};</span>
+<span class="identifier">res</span><span class="special">.</span><span class="identifier">set</span><span class="special">(</span><span class="identifier">field</span><span class="special">::</span><span class="identifier">server</span><span class="special">,</span> <span class="string">"Beast"</span><span class="special">);</span>
+
+<span class="comment">// Inform the client of the trailer fields we will send</span>
+<span class="identifier">res</span><span class="special">.</span><span class="identifier">set</span><span class="special">(</span><span class="identifier">field</span><span class="special">::</span><span class="identifier">trailer</span><span class="special">,</span> <span class="string">"Content-MD5, Expires"</span><span class="special">);</span>
+
+<span class="identifier">res</span><span class="special">.</span><span class="identifier">chunked</span><span class="special">(</span><span class="keyword">true</span><span class="special">);</span>
+
+<span class="comment">// Serialize the header and two chunks</span>
+<span class="identifier">response_serializer</span><span class="special">&lt;</span><span class="identifier">empty_body</span><span class="special">&gt;</span> <span class="identifier">sr</span><span class="special">{</span><span class="identifier">res</span><span class="special">};</span>
+<span class="identifier">write_header</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">sr</span><span class="special">);</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">make_chunk</span><span class="special">(</span><span class="identifier">get_next_chunk_body</span><span class="special">()));</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">make_chunk</span><span class="special">(</span><span class="identifier">get_next_chunk_body</span><span class="special">()));</span>
+
+<span class="comment">// Prepare the trailer</span>
+<span class="identifier">fields</span> <span class="identifier">trailer</span><span class="special">;</span>
+<span class="identifier">trailer</span><span class="special">.</span><span class="identifier">set</span><span class="special">(</span><span class="identifier">field</span><span class="special">::</span><span class="identifier">content_md5</span><span class="special">,</span> <span class="string">"f4a5c16584f03d90"</span><span class="special">);</span>
+<span class="identifier">trailer</span><span class="special">.</span><span class="identifier">set</span><span class="special">(</span><span class="identifier">field</span><span class="special">::</span><span class="identifier">expires</span><span class="special">,</span> <span class="string">"never"</span><span class="special">);</span>
+
+<span class="comment">// Emit the trailer in the last chunk.</span>
+<span class="comment">// The implementation will use the default allocator to create the storage for holding</span>
+<span class="comment">// the serialized fields.</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">make_chunk_last</span><span class="special">(</span><span class="identifier">trailer</span><span class="special">));</span>
+</pre>
+<p>
+        Using a custom allocator to serialize the last chunk:
+      </p>
+<pre class="programlisting"><span class="comment">// Use a custom allocator for serializing the last chunk</span>
+<span class="identifier">fields</span> <span class="identifier">trailer</span><span class="special">;</span>
+<span class="identifier">trailer</span><span class="special">.</span><span class="identifier">set</span><span class="special">(</span><span class="identifier">field</span><span class="special">::</span><span class="identifier">approved</span><span class="special">,</span> <span class="string">"yes"</span><span class="special">);</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">make_chunk_last</span><span class="special">(</span><span class="identifier">trailer</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;{}));</span>
+</pre>
+<p>
+        Alternatively, callers can take over the generation and lifetime management
+        of the serialized trailer fields by passing in a non-owning string:
+      </p>
+<pre class="programlisting"><span class="comment">// Manually emit a trailer.</span>
+<span class="comment">// We are responsible for ensuring that the trailer format adheres to the specification.</span>
+<span class="identifier">string_view</span> <span class="identifier">ext</span> <span class="special">=</span>
+    <span class="string">"Content-MD5: f4a5c16584f03d90\r\n"</span>
+    <span class="string">"Expires: never\r\n"</span>
+    <span class="string">"\r\n"</span><span class="special">;</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">make_chunk_last</span><span class="special">(</span><span class="identifier">net</span><span class="special">::</span><span class="identifier">const_buffer</span><span class="special">{</span><span class="identifier">ext</span><span class="special">.</span><span class="identifier">data</span><span class="special">(),</span> <span class="identifier">ext</span><span class="special">.</span><span class="identifier">size</span><span class="special">()}));</span>
+</pre>
+<p>
+        For the ultimate level of control, a caller can manually compose the chunk
+        itself by first emitting a header with the correct chunk body size, and then
+        by emitting the chunk body in multiple calls to the stream write function.
+        In this case the caller is responsible for also emitting the terminating
+        CRLF (<code class="computeroutput"><span class="string">"\r\n"</span></code>):
+      </p>
+<pre class="programlisting"><span class="comment">// Prepare a chunked HTTP/1.1 response and send the header</span>
+<span class="identifier">response</span><span class="special">&lt;</span><span class="identifier">empty_body</span><span class="special">&gt;</span> <span class="identifier">res</span><span class="special">{</span><span class="identifier">status</span><span class="special">::</span><span class="identifier">ok</span><span class="special">,</span> <span class="number">11</span><span class="special">};</span>
+<span class="identifier">res</span><span class="special">.</span><span class="identifier">set</span><span class="special">(</span><span class="identifier">field</span><span class="special">::</span><span class="identifier">server</span><span class="special">,</span> <span class="string">"Beast"</span><span class="special">);</span>
+<span class="identifier">res</span><span class="special">.</span><span class="identifier">chunked</span><span class="special">(</span><span class="keyword">true</span><span class="special">);</span>
+<span class="identifier">response_serializer</span><span class="special">&lt;</span><span class="identifier">empty_body</span><span class="special">&gt;</span> <span class="identifier">sr</span><span class="special">{</span><span class="identifier">res</span><span class="special">};</span>
+<span class="identifier">write_header</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">sr</span><span class="special">);</span>
+
+<span class="comment">// Obtain three body buffers up front</span>
+<span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">cb1</span> <span class="special">=</span> <span class="identifier">get_next_chunk_body</span><span class="special">();</span>
+<span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">cb2</span> <span class="special">=</span> <span class="identifier">get_next_chunk_body</span><span class="special">();</span>
+<span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">cb3</span> <span class="special">=</span> <span class="identifier">get_next_chunk_body</span><span class="special">();</span>
+
+<span class="comment">// Manually emit a chunk by first writing the chunk-size header with the correct size</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">chunk_header</span><span class="special">{</span>
+    <span class="identifier">buffer_bytes</span><span class="special">(</span><span class="identifier">cb1</span><span class="special">)</span> <span class="special">+</span>
+    <span class="identifier">buffer_bytes</span><span class="special">(</span><span class="identifier">cb2</span><span class="special">)</span> <span class="special">+</span>
+    <span class="identifier">buffer_bytes</span><span class="special">(</span><span class="identifier">cb3</span><span class="special">)});</span>
+
+<span class="comment">// And then output the chunk body in three pieces ("chunk the chunk")</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">cb1</span><span class="special">);</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">cb2</span><span class="special">);</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">cb3</span><span class="special">);</span>
+
+<span class="comment">// When we go this deep, we are also responsible for the terminating CRLF</span>
+<span class="identifier">net</span><span class="special">::</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">chunk_crlf</span><span class="special">{});</span>
+</pre>
+<h5>
+<a name="beast.using_http.chunked_encoding.h1"></a>
+        <span class="phrase"><a name="beast.using_http.chunked_encoding.parsing_chunks"></a></span><a class="link" href="chunked_encoding.html#beast.using_http.chunked_encoding.parsing_chunks">Parsing
+        Chunks</a>
+      </h5>
+<p>
+        The <a class="link" href="../ref/boost__beast__http__parser.html" title="http::parser"><code class="computeroutput"><span class="identifier">parser</span></code></a>
+        automatically removes the chunked transfer coding when it is the last encoding
+        in the list. However, it also discards the chunk extensions and does not
+        provide a way to determine the boundaries between chunks. Advanced applications
+        which need to access the chunk extensions or read complete individual chunks
+        may use a callback interface provided by <a class="link" href="../ref/boost__beast__http__parser.html" title="http::parser"><code class="computeroutput"><span class="identifier">parser</span></code></a>:
+      </p>
+<div class="table">
+<a name="beast.using_http.chunked_encoding.chunking_parse_callbacks"></a><p class="title"><b>Table 1.26. Chunking Parse Callbacks</b></p>
+<div class="table-contents"><table class="table" summary="Chunking Parse Callbacks">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__parser/on_chunk_header.html" title="http::parser::on_chunk_header"><code class="computeroutput"><span class="identifier">on_chunk_header</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Set a callback to be invoked on each chunk header.
+                </p>
+                <p>
+                  The callback will be invoked once for every chunk in the message
+                  payload, as well as once for the last chunk. The invocation happens
+                  after the chunk header is available but before any body octets
+                  have been parsed.
+                </p>
+                <p>
+                  The extensions are provided in raw, validated form, use <a class="link" href="../ref/boost__beast__http__basic_chunk_extensions/parse.html" title="http::basic_chunk_extensions::parse"><code class="computeroutput"><span class="identifier">chunk_extensions</span><span class="special">::</span><span class="identifier">parse</span></code></a> to parse the extensions
+                  into a structured container for easier access. The implementation
+                  type-erases the callback without requiring a dynamic allocation.
+                  For this reason, the callback object is passed by a non-constant
+                  reference.
+                </p>
+                <p>
+                  The function object will be called with this equivalent signature:
+                </p>
+<pre class="programlisting"><span class="keyword">void</span>
+<span class="identifier">callback</span><span class="special">(</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span> <span class="identifier">size</span><span class="special">,</span>         <span class="comment">// Size of the chunk, zero for the last chunk</span>
+    <span class="identifier">string_view</span> <span class="identifier">extensions</span><span class="special">,</span>     <span class="comment">// The chunk-extensions in raw form</span>
+    <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>            <span class="comment">// May be set by the callback to indicate an error</span>
+</pre>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__parser/on_chunk_body.html" title="http::parser::on_chunk_body"><code class="computeroutput"><span class="identifier">on_chunk_body</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Set a callback to be invoked on chunk body data.
+                </p>
+                <p>
+                  The callback will be invoked one or more times to provide buffers
+                  corresponding to the chunk body for the current chunk. The callback
+                  receives the number of octets remaining in this chunk body including
+                  the octets in the buffer provided.
+                </p>
+                <p>
+                  The callback must return the number of octets actually consumed.
+                  Any octets not consumed will be presented again in a subsequent
+                  invocation of the callback. The implementation type-erases the
+                  callback without requiring a dynamic allocation. For this reason,
+                  the callback object is passed by a non-constant reference.
+                </p>
+                <p>
+                  The function object will be called with this equivalent signature:
+                </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+<span class="identifier">callback</span><span class="special">(</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span> <span class="identifier">remain</span><span class="special">,</span>       <span class="comment">// Octets remaining in this chunk, includes `body`</span>
+    <span class="identifier">string_view</span> <span class="identifier">body</span><span class="special">,</span>           <span class="comment">// A buffer holding some or all of the remainder of the chunk body</span>
+    <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>            <span class="comment">// May be set by the callback to indicate an error</span>
+</pre>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+        This example will read a message header from the stream, and then manually
+        read each chunk. It recognizes the chunk boundaries and outputs the contents
+        of each chunk as it comes in. Any chunk extensions are printed, each extension
+        on its own line. Finally, any trailers promised in the header are printed.
+      </p>
+<pre class="programlisting"><span class="comment">/** Read a message with a chunked body and print the chunks and extensions
+*/</span>
+<span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">bool</span> <span class="identifier">isRequest</span><span class="special">,</span>
+    <span class="keyword">class</span> <span class="identifier">SyncReadStream</span><span class="special">,</span>
+    <span class="keyword">class</span> <span class="identifier">DynamicBuffer</span><span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">print_chunked_body</span><span class="special">(</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span><span class="special">&amp;</span> <span class="identifier">os</span><span class="special">,</span>
+    <span class="identifier">SyncReadStream</span><span class="special">&amp;</span> <span class="identifier">stream</span><span class="special">,</span>
+    <span class="identifier">DynamicBuffer</span><span class="special">&amp;</span> <span class="identifier">buffer</span><span class="special">,</span>
+    <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// Declare the parser with an empty body since</span>
+    <span class="comment">// we plan on capturing the chunks ourselves.</span>
+    <span class="identifier">parser</span><span class="special">&lt;</span><span class="identifier">isRequest</span><span class="special">,</span> <span class="identifier">empty_body</span><span class="special">&gt;</span> <span class="identifier">p</span><span class="special">;</span>
+
+    <span class="comment">// First read the complete header</span>
+    <span class="identifier">read_header</span><span class="special">(</span><span class="identifier">stream</span><span class="special">,</span> <span class="identifier">buffer</span><span class="special">,</span> <span class="identifier">p</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">);</span>
+    <span class="keyword">if</span><span class="special">(</span><span class="identifier">ec</span><span class="special">)</span>
+        <span class="keyword">return</span><span class="special">;</span>
+
+    <span class="comment">// This container will hold the extensions for each chunk</span>
+    <span class="identifier">chunk_extensions</span> <span class="identifier">ce</span><span class="special">;</span>
+
+    <span class="comment">// This string will hold the body of each chunk</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">chunk</span><span class="special">;</span>
+
+    <span class="comment">// Declare our chunk header callback  This is invoked</span>
+    <span class="comment">// after each chunk header and also after the last chunk.</span>
+    <span class="keyword">auto</span> <span class="identifier">header_cb</span> <span class="special">=</span>
+    <span class="special">[&amp;](</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span> <span class="identifier">size</span><span class="special">,</span>         <span class="comment">// Size of the chunk, or zero for the last chunk</span>
+        <span class="identifier">string_view</span> <span class="identifier">extensions</span><span class="special">,</span>     <span class="comment">// The raw chunk-extensions string. Already validated.</span>
+        <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ev</span><span class="special">)</span>             <span class="comment">// We can set this to indicate an error</span>
+    <span class="special">{</span>
+        <span class="comment">// Parse the chunk extensions so we can access them easily</span>
+        <span class="identifier">ce</span><span class="special">.</span><span class="identifier">parse</span><span class="special">(</span><span class="identifier">extensions</span><span class="special">,</span> <span class="identifier">ev</span><span class="special">);</span>
+        <span class="keyword">if</span><span class="special">(</span><span class="identifier">ev</span><span class="special">)</span>
+            <span class="keyword">return</span><span class="special">;</span>
+
+        <span class="comment">// See if the chunk is too big</span>
+        <span class="keyword">if</span><span class="special">(</span><span class="identifier">size</span> <span class="special">&gt;</span> <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">&gt;::</span><span class="identifier">max</span><span class="special">)())</span>
+        <span class="special">{</span>
+            <span class="identifier">ev</span> <span class="special">=</span> <span class="identifier">error</span><span class="special">::</span><span class="identifier">body_limit</span><span class="special">;</span>
+            <span class="keyword">return</span><span class="special">;</span>
+        <span class="special">}</span>
+
+        <span class="comment">// Make sure we have enough storage, and</span>
+        <span class="comment">// reset the container for the upcoming chunk</span>
+        <span class="identifier">chunk</span><span class="special">.</span><span class="identifier">reserve</span><span class="special">(</span><span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">&gt;(</span><span class="identifier">size</span><span class="special">));</span>
+        <span class="identifier">chunk</span><span class="special">.</span><span class="identifier">clear</span><span class="special">();</span>
+    <span class="special">};</span>
+
+    <span class="comment">// Set the callback. The function requires a non-const reference so we</span>
+    <span class="comment">// use a local variable, since temporaries can only bind to const refs.</span>
+    <span class="identifier">p</span><span class="special">.</span><span class="identifier">on_chunk_header</span><span class="special">(</span><span class="identifier">header_cb</span><span class="special">);</span>
+
+    <span class="comment">// Declare the chunk body callback. This is called one or</span>
+    <span class="comment">// more times for each piece of a chunk body.</span>
+    <span class="keyword">auto</span> <span class="identifier">body_cb</span> <span class="special">=</span>
+    <span class="special">[&amp;](</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span> <span class="identifier">remain</span><span class="special">,</span>   <span class="comment">// The number of bytes left in this chunk</span>
+        <span class="identifier">string_view</span> <span class="identifier">body</span><span class="special">,</span>       <span class="comment">// A buffer holding chunk body data</span>
+        <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">)</span>         <span class="comment">// We can set this to indicate an error</span>
+    <span class="special">{</span>
+        <span class="comment">// If this is the last piece of the chunk body,</span>
+        <span class="comment">// set the error so that the call to `read` returns</span>
+        <span class="comment">// and we can process the chunk.</span>
+        <span class="keyword">if</span><span class="special">(</span><span class="identifier">remain</span> <span class="special">==</span> <span class="identifier">body</span><span class="special">.</span><span class="identifier">size</span><span class="special">())</span>
+            <span class="identifier">ec</span> <span class="special">=</span> <span class="identifier">error</span><span class="special">::</span><span class="identifier">end_of_chunk</span><span class="special">;</span>
+
+        <span class="comment">// Append this piece to our container</span>
+        <span class="identifier">chunk</span><span class="special">.</span><span class="identifier">append</span><span class="special">(</span><span class="identifier">body</span><span class="special">.</span><span class="identifier">data</span><span class="special">(),</span> <span class="identifier">body</span><span class="special">.</span><span class="identifier">size</span><span class="special">());</span>
+
+        <span class="comment">// The return value informs the parser of how much of the body we</span>
+        <span class="comment">// consumed. We will indicate that we consumed everything passed in.</span>
+        <span class="keyword">return</span> <span class="identifier">body</span><span class="special">.</span><span class="identifier">size</span><span class="special">();</span>
+    <span class="special">};</span>
+    <span class="identifier">p</span><span class="special">.</span><span class="identifier">on_chunk_body</span><span class="special">(</span><span class="identifier">body_cb</span><span class="special">);</span>
+
+    <span class="keyword">while</span><span class="special">(!</span> <span class="identifier">p</span><span class="special">.</span><span class="identifier">is_done</span><span class="special">())</span>
+    <span class="special">{</span>
+        <span class="comment">// Read as much as we can. When we reach the end of the chunk, the chunk</span>
+        <span class="comment">// body callback will make the read return with the end_of_chunk error.</span>
+        <span class="identifier">read</span><span class="special">(</span><span class="identifier">stream</span><span class="special">,</span> <span class="identifier">buffer</span><span class="special">,</span> <span class="identifier">p</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">);</span>
+        <span class="keyword">if</span><span class="special">(!</span> <span class="identifier">ec</span><span class="special">)</span>
+            <span class="keyword">continue</span><span class="special">;</span>
+        <span class="keyword">else</span> <span class="keyword">if</span><span class="special">(</span><span class="identifier">ec</span> <span class="special">!=</span> <span class="identifier">error</span><span class="special">::</span><span class="identifier">end_of_chunk</span><span class="special">)</span>
+            <span class="keyword">return</span><span class="special">;</span>
+        <span class="keyword">else</span>
+            <span class="identifier">ec</span> <span class="special">=</span> <span class="special">{};</span>
+
+        <span class="comment">// We got a whole chunk, print the extensions:</span>
+        <span class="keyword">for</span><span class="special">(</span><span class="keyword">auto</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">extension</span> <span class="special">:</span> <span class="identifier">ce</span><span class="special">)</span>
+        <span class="special">{</span>
+            <span class="identifier">os</span> <span class="special">&lt;&lt;</span> <span class="string">"Extension: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">extension</span><span class="special">.</span><span class="identifier">first</span><span class="special">;</span>
+            <span class="keyword">if</span><span class="special">(!</span> <span class="identifier">extension</span><span class="special">.</span><span class="identifier">second</span><span class="special">.</span><span class="identifier">empty</span><span class="special">())</span>
+                <span class="identifier">os</span> <span class="special">&lt;&lt;</span> <span class="string">" = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">extension</span><span class="special">.</span><span class="identifier">second</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+            <span class="keyword">else</span>
+                <span class="identifier">os</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+        <span class="special">}</span>
+
+        <span class="comment">// Now print the chunk body</span>
+        <span class="identifier">os</span> <span class="special">&lt;&lt;</span> <span class="string">"Chunk Body: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">chunk</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="comment">// Get a reference to the parsed message, this is for convenience</span>
+    <span class="keyword">auto</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">msg</span> <span class="special">=</span> <span class="identifier">p</span><span class="special">.</span><span class="identifier">get</span><span class="special">();</span>
+
+    <span class="comment">// Check each field promised in the "Trailer" header and output it</span>
+    <span class="keyword">for</span><span class="special">(</span><span class="keyword">auto</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">name</span> <span class="special">:</span> <span class="identifier">token_list</span><span class="special">{</span><span class="identifier">msg</span><span class="special">[</span><span class="identifier">field</span><span class="special">::</span><span class="identifier">trailer</span><span class="special">]})</span>
+    <span class="special">{</span>
+        <span class="comment">// Find the trailer field</span>
+        <span class="keyword">auto</span> <span class="identifier">it</span> <span class="special">=</span> <span class="identifier">msg</span><span class="special">.</span><span class="identifier">find</span><span class="special">(</span><span class="identifier">name</span><span class="special">);</span>
+        <span class="keyword">if</span><span class="special">(</span><span class="identifier">it</span> <span class="special">==</span> <span class="identifier">msg</span><span class="special">.</span><span class="identifier">end</span><span class="special">())</span>
+        <span class="special">{</span>
+            <span class="comment">// Oops! They promised the field but failed to deliver it</span>
+            <span class="identifier">os</span> <span class="special">&lt;&lt;</span> <span class="string">"Missing Trailer: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">name</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+            <span class="keyword">continue</span><span class="special">;</span>
+        <span class="special">}</span>
+        <span class="identifier">os</span> <span class="special">&lt;&lt;</span> <span class="identifier">it</span><span class="special">-&gt;</span><span class="identifier">name</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="string">": "</span> <span class="special">&lt;&lt;</span> <span class="identifier">it</span><span class="special">-&gt;</span><span class="identifier">value</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Given the HTTP response as input on the left, the output of the function
+        shown above is shown on the right:
+      </p>
+<div class="table">
+<a name="beast.using_http.chunked_encoding.chunk_parsing_example_output"></a><p class="title"><b>Table 1.27. Chunk Parsing Example Output</b></p>
+<div class="table-contents"><table class="table" summary="Chunk Parsing Example Output">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Input
+                </p>
+              </th>
+<th>
+                <p>
+                  Output
+                </p>
+              </th>
+</tr></thead>
+<tbody><tr>
+<td>
+<pre class="programlisting"><span class="identifier">HTTP</span><span class="special">/</span><span class="number">1.1</span> <span class="number">200</span> <span class="identifier">OK</span><span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+<span class="identifier">Server</span><span class="special">:</span> <span class="identifier">test</span><span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+<span class="identifier">Trailer</span><span class="special">:</span> <span class="identifier">Expires</span><span class="special">,</span> <span class="identifier">Content</span><span class="special">-</span><span class="identifier">MD5</span><span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+<span class="identifier">Transfer</span><span class="special">-</span><span class="identifier">Encoding</span><span class="special">:</span> <span class="identifier">chunked</span><span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+<span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+<span class="number">5</span><span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+<span class="identifier">First</span><span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+<span class="identifier">d</span><span class="special">;</span><span class="identifier">quality</span><span class="special">=</span><span class="number">1.0</span><span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+<span class="identifier">Hello</span><span class="special">,</span> <span class="identifier">world</span><span class="special">!\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+<span class="identifier">e</span><span class="special">;</span><span class="identifier">file</span><span class="special">=</span><span class="identifier">abc</span><span class="special">.</span><span class="identifier">txt</span><span class="special">;</span><span class="identifier">quality</span><span class="special">=</span><span class="number">0.7</span><span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+<span class="identifier">The</span> <span class="identifier">Next</span> <span class="identifier">Chunk</span><span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+<span class="number">8</span><span class="special">;</span><span class="identifier">last</span><span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+<span class="identifier">Last</span> <span class="identifier">one</span><span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+<span class="number">0</span><span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+<span class="identifier">Expires</span><span class="special">:</span> <span class="identifier">never</span><span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+<span class="identifier">Content</span><span class="special">-</span><span class="identifier">MD5</span><span class="special">:</span> <span class="identifier">f4a5c16584f03d90</span><span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+<span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+</pre>
+              </td>
+<td>
+<pre class="programlisting"><span class="identifier">Chunk</span> <span class="identifier">Body</span><span class="special">:</span> <span class="identifier">First</span>
+<span class="identifier">Extension</span><span class="special">:</span> <span class="identifier">quality</span> <span class="special">=</span> <span class="number">1.0</span>
+<span class="identifier">Chunk</span> <span class="identifier">Body</span><span class="special">:</span> <span class="identifier">Hello</span><span class="special">,</span> <span class="identifier">world</span><span class="special">!</span>
+<span class="identifier">Extension</span><span class="special">:</span> <span class="identifier">file</span> <span class="special">=</span> <span class="identifier">abc</span><span class="special">.</span><span class="identifier">txt</span>
+<span class="identifier">Extension</span><span class="special">:</span> <span class="identifier">quality</span> <span class="special">=</span> <span class="number">0.7</span>
+<span class="identifier">Chunk</span> <span class="identifier">Body</span><span class="special">:</span> <span class="identifier">The</span> <span class="identifier">Next</span> <span class="identifier">Chunk</span>
+<span class="identifier">Extension</span><span class="special">:</span> <span class="identifier">last</span>
+<span class="identifier">Chunk</span> <span class="identifier">Body</span><span class="special">:</span> <span class="identifier">Last</span> <span class="identifier">one</span>
+<span class="identifier">Expires</span><span class="special">:</span> <span class="identifier">never</span>
+<span class="identifier">Content</span><span class="special">-</span><span class="identifier">MD5</span><span class="special">:</span> <span class="identifier">f4a5c16584f03d90</span>
+</pre>
+              </td>
+</tr></tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="buffer_oriented_parsing.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_http.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="custom_body_types.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

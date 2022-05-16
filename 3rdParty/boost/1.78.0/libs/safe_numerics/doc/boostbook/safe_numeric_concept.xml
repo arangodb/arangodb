@@ -1,0 +1,398 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE section PUBLIC "-//Boost//DTD BoostBook XML V1.1//EN"
+"http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<section id="safe_numerics.safe_numeric_concept">
+  <title>SafeNumeric&lt;T&gt;</title>
+
+  <?dbhtml stop-chunking?>
+
+  <section>
+    <title>Description</title>
+
+    <para>This holds an arithmetic value which can be used as a replacement
+    for built-in C++ arithmetic values. These types differ from their built-in
+    counter parts in that the are guaranteed not to produce invalid arithmetic
+    results. These operations return safe types rather than built-in
+    types.</para>
+  </section>
+
+  <section>
+    <title>Refinement of</title>
+
+    <para><link linkend="safe_numerics.numeric">Numeric</link> or <link
+    linkend="safe_numerics.integer">Integer</link></para>
+  </section>
+
+  <section>
+    <title>Notation</title>
+
+    <informaltable>
+      <tgroup cols="2">
+        <colspec align="left" colwidth="3*"/>
+
+        <colspec align="left" colwidth="10*"/>
+
+        <thead>
+          <row>
+            <entry align="left">Symbol</entry>
+
+            <entry align="left">Description</entry>
+          </row>
+        </thead>
+
+        <tbody>
+          <row>
+            <entry><code>T, U</code></entry>
+
+            <entry>Types fulfilling <link
+            linkend="safe_numerics.numeric">Numeric</link> or <link
+            linkend="safe_numerics.integer">Integer</link> type
+            requirements.</entry>
+          </row>
+
+          <row>
+            <entry>t, u</entry>
+
+            <entry>objects of types T, U</entry>
+          </row>
+
+          <row>
+            <entry>S</entry>
+
+            <entry>A type fulfilling SafeNumeric type requirements</entry>
+          </row>
+
+          <row>
+            <entry>s, s1, s2</entry>
+
+            <entry>objects of types S</entry>
+          </row>
+
+          <row>
+            <entry>op</entry>
+
+            <entry>C++ infix operator supported by underlying type T</entry>
+          </row>
+
+          <row>
+            <entry>prefix_op</entry>
+
+            <entry>C++ prefix operator: -, +, ~, ++, -- supported by
+            underlying type T</entry>
+          </row>
+
+          <row>
+            <entry>postfix_op</entry>
+
+            <entry>C++ postfix operator:++, -- supported by underlying type
+            T</entry>
+          </row>
+
+          <row>
+            <entry>assign_op</entry>
+
+            <entry>C++ assignment operator</entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </informaltable>
+  </section>
+
+  <section>
+    <title>Associated Types</title>
+
+    <informaltable>
+      <tgroup cols="2">
+        <colspec align="left" colwidth="3*"/>
+
+        <colspec align="left" colwidth="10*"/>
+
+        <tbody>
+          <row>
+            <entry><link
+            linkend="safe_numerics.promotion_policy"><code>PromotionPolicy</code></link></entry>
+
+            <entry>In C++ expressions, arguments must be of the same type. If
+            they are not, all arguments are converted to a common type in
+            accordance with rules of the C++ standard. For some applications
+            of the safe numerics library, we might want conversions which are
+            different than the standard ones. This class type implements the
+            conversion functions that are to be used with the safe numeric
+            type being instantiated.</entry>
+          </row>
+
+          <row>
+            <entry><link
+            linkend="safe_numerics.exception_policy"><code>ExceptionPolicy</code></link></entry>
+
+            <entry>The exception policy specifies what is to occur when a safe
+            operation cannot return a valid result. A type is an
+            ExceptionPolicy if it has specific functions for handling
+            exceptional events that occur in the course of safe numeric
+            operations.</entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </informaltable>
+  </section>
+
+  <section>
+    <title>Valid Expressions</title>
+
+    <para><informaltable>
+        <tgroup cols="3">
+          <colspec align="left" colwidth="3*"/>
+
+          <colspec align="left" colwidth="2*"/>
+
+          <colspec align="left" colwidth="8*"/>
+
+          <thead>
+            <row>
+              <entry align="left">Expression</entry>
+
+              <entry align="left">Result Type</entry>
+
+              <entry>Description</entry>
+            </row>
+          </thead>
+
+          <tbody>
+            <row>
+              <entry><code>s op t</code></entry>
+
+              <entry>unspecified S</entry>
+
+              <entry><para>invoke C++ operator op and return another
+              SafeNumeric type.</para></entry>
+            </row>
+
+            <row>
+              <entry><code>t op s</code></entry>
+
+              <entry>unspecified S</entry>
+
+              <entry><para>invoke C++ operator op and return another
+              SafeNumeric type.</para></entry>
+            </row>
+
+            <row>
+              <entry><code>s1 op s2</code></entry>
+
+              <entry>unspecified S</entry>
+
+              <entry><para>invoke C++ operator op and return another
+              SafeNumeric type.</para></entry>
+            </row>
+
+            <row>
+              <entry><code>prefix_op S</code></entry>
+
+              <entry>unspecified S</entry>
+
+              <entry><para>invoke C++ operator <code>prefix_op</code> and
+              return another SafeNumeric type.</para></entry>
+            </row>
+
+            <row>
+              <entry><code>S postfix_op</code></entry>
+
+              <entry>unspecified S</entry>
+
+              <entry><para>invoke C++ operator <code>postfix_op</code> and
+              return another SafeNumeric type.</para></entry>
+            </row>
+
+            <row>
+              <entry><code>s assign_op t</code></entry>
+
+              <entry>S &amp;</entry>
+
+              <entry><para>convert t to type S and assign it to s.
+              </para></entry>
+            </row>
+
+            <row>
+              <entry><code>t assign_op s</code></entry>
+
+              <entry>T &amp;</entry>
+
+              <entry><para>convert s to type T and assign it to s. If the
+              value t cannot be represented as an instance of type S, it is an
+              error.</para></entry>
+            </row>
+
+            <row>
+              <entry><code>S(t)</code></entry>
+
+              <entry>S</entry>
+
+              <entry><para>construct an instance of S from a value of type T.
+              In this case, T is referred to as the base type of S. If the
+              value t cannot be represented as an instance of type S, it is an
+              exception condition is invoked. </para></entry>
+            </row>
+
+            <row>
+              <entry><code>S</code></entry>
+
+              <entry>S</entry>
+
+              <entry><para>construct an uninitialized instance of
+              S.</para></entry>
+            </row>
+
+            <row>
+              <entry><code>T(s)</code></entry>
+
+              <entry>T</entry>
+
+              <entry><para>implicit conversion of the value of s to type T. If
+              the value of s cannot be correctly represented as a type T, an
+              exception condition is invoked.</para></entry>
+            </row>
+
+            <row>
+              <entry><code>static_cast&lt;T&gt;(s)</code></entry>
+
+              <entry>T</entry>
+
+              <entry><para>convert the value of s to type T. If the value of s
+              cannot be correctly represented as a type T, an exception
+              condition is invoked. </para></entry>
+            </row>
+
+            <row>
+              <entry><code>is_safe&lt;S&gt;</code></entry>
+
+              <entry><code>std::true_type</code></entry>
+
+              <entry><para>type trait to query whether any type S fulfills the
+              requirements for a SafeNumeric type.</para></entry>
+            </row>
+
+            <row>
+              <entry><code>get_promotion_policy&lt;S&gt;</code></entry>
+
+              <entry>S</entry>
+
+              <entry><para>Retrieve the <link
+              linkend="safe_numerics.promotion_policy"><code>PromotionPolicy</code></link><code>
+              which is used by the specified safe type</code>.</para></entry>
+            </row>
+
+            <row>
+              <entry><code>get_exception_policy&lt;S&gt;</code></entry>
+
+              <entry>S</entry>
+
+              <entry><para>Retrieve the <link
+              linkend="safe_numerics.exception_policy"><code>ExceptionPolicy</code></link>
+              which is used by the specified safe type.</para></entry>
+            </row>
+
+            <row>
+              <entry><code>base_type&lt;S&gt;::type</code></entry>
+
+              <entry>T</entry>
+
+              <entry><para>Retrieve the base type of a given safe
+              type.</para></entry>
+            </row>
+
+            <row>
+              <entry><code>base_value(s)</code></entry>
+
+              <entry>T</entry>
+
+              <entry><para>Retrieve the value of an instance of a safe type.
+              This is equivalent to
+              <code>static_cast&lt;base_type&lt;S&gt;&gt;(s)</code>.</para></entry>
+            </row>
+          </tbody>
+        </tgroup>
+      </informaltable></para>
+
+    <itemizedlist>
+      <listitem>
+        <para>The result of any binary operation where one or both of the
+        operands is a SafeNumeric type is also a SafeNumeric type. The
+        specific type is determined by the promotion rules implement in the
+        PromotionPolicy returned by get_promotion_policy&lt;S&gt; where S is
+        the result type.</para>
+      </listitem>
+
+      <listitem>
+        <para>All the expressions in the above table are
+        <code>constexpr</code> expressions.</para>
+      </listitem>
+
+      <listitem>
+        <para>Binary expressions which are not assignments and whose operands
+        are both safe types require that promotion and exception policies of
+        the operands be identical.</para>
+      </listitem>
+
+      <listitem>
+        <para><code>Operations on safe types are supported if and only if the
+        same operation is supported on the underlying types. For example, the
+        binary operations |</code>, <code>&amp;</code>, <code>^</code> and
+        <code>~</code> operations defined for safe unsigned integer types. But
+        they are not defined for floating point types. Currently the are also
+        defined for signed integer types. It's not clear that this is the
+        correct decision. On one hand, usage of these operators on signed
+        types is almost certainly an error in program logic. But trapping this
+        as an error conflicts with the goal of making safe types "drop-in"
+        replacements for the corresponding built-in types. In light of this,
+        these operators are currently supported as they are for normal
+        built-in types.</para>
+      </listitem>
+
+      <listitem>
+        <para>Safe Numeric types will be implicitly converted to built-in
+        types when appropriate. Here's an example:<programlisting>void f(int);
+
+int main(){
+    long x;
+    f(x);         // OK - builtin implicit version
+    safe&lt;long&gt; y;
+    f(y);
+    return 0;
+}</programlisting>This behavior supports the concept of
+        <code>safe&lt;T&gt;</code> as being a "drop-in" replacement for a
+        <code>T</code>.</para>
+      </listitem>
+    </itemizedlist>
+  </section>
+
+  <section>
+    <title>Invariants</title>
+
+    <para>The fundamental requirement of a SafeNumeric type is that it
+    implements all C++ operations permitted on its base type in a way the
+    prevents the return of an incorrect arithmetic result. Various
+    implementations of this concept may handle circumstances which produce
+    such results differently (throw exception, compile time trap, etc..). But
+    no implementation should return an arithmetically incorrect result.</para>
+  </section>
+
+  <section>
+    <title>Models</title>
+
+    <para><code>safe&lt;T&gt;</code></para>
+
+    <para><code>safe_signed_range&lt;-11, 11&gt;</code></para>
+
+    <para><code>safe_unsigned_range&lt;0, 11&gt;</code></para>
+
+    <para><code>safe_signed_literal&lt;4&gt;</code></para>
+  </section>
+
+  <section>
+    <title>Header</title>
+
+    <para><ulink
+    url="../../include/boost/safe_numerics/concept/safe_numeric.hpp"><code>#include
+    &lt;boost/safe_numerics/concepts/safe_numeric.hpp&gt;</code></ulink></para>
+  </section>
+</section>

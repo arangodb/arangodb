@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,14 +23,16 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 #include "GeneralServer/OperationMode.h"
 
 namespace arangodb {
 
-class ScriptFeature final : public application_features::ApplicationFeature {
+class ScriptFeature final : public ArangodFeature {
  public:
-  explicit ScriptFeature(application_features::ApplicationServer& server, int* result);
+  static constexpr std::string_view name() noexcept { return "Script"; }
+
+  explicit ScriptFeature(ArangodServer& server, int* result);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
@@ -44,4 +46,3 @@ class ScriptFeature final : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

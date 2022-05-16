@@ -1,0 +1,205 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Getting Started</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Compute">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Compute">
+<link rel="prev" href="../index.html" title="Chapter 1. Boost.Compute">
+<link rel="next" href="design.html" title="Design">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../index.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="design.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_compute.getting_started"></a><a class="link" href="getting_started.html" title="Getting Started">Getting Started</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="getting_started.html#boost_compute.getting_started.installation">Installation</a></span></dt>
+<dt><span class="section"><a href="getting_started.html#boost_compute.getting_started.compilation_and_usage">Compilation
+      and Usage</a></span></dt>
+<dt><span class="section"><a href="getting_started.html#boost_compute.getting_started.configuration_macros">Configuration
+      Macros</a></span></dt>
+<dt><span class="section"><a href="getting_started.html#boost_compute.getting_started.support">Support</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_compute.getting_started.installation"></a><a class="link" href="getting_started.html#boost_compute.getting_started.installation" title="Installation">Installation</a>
+</h3></div></div></div>
+<p>
+        Boost.Compute is available in Boost starting with version 1.61. Visit <a href="http://www.boost.org/users/download/" target="_top">http://www.boost.org/users/download/</a>
+        for download instructions.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_compute.getting_started.compilation_and_usage"></a><a class="link" href="getting_started.html#boost_compute.getting_started.compilation_and_usage" title="Compilation and Usage">Compilation
+      and Usage</a>
+</h3></div></div></div>
+<p>
+        Boost.Compute is a header-only library, so no linking is required. To use
+        the library just add the include directory to the compilation flags and link
+        with the system's OpenCL library. For example, with GCC:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">g</span><span class="special">++</span> <span class="special">-</span><span class="identifier">I</span><span class="special">/</span><span class="identifier">path</span><span class="special">/</span><span class="identifier">to</span><span class="special">/</span><span class="identifier">compute</span><span class="special">/</span><span class="identifier">include</span> <span class="identifier">main</span><span class="special">.</span><span class="identifier">cpp</span> <span class="special">-</span><span class="identifier">lOpenCL</span>
+</pre>
+<p>
+      </p>
+<p>
+        All of the Boost.Compute headers can be included with the following directive:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">compute</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+      </p>
+<p>
+        If you only want to include the core OpenCL wrapper headers (which have minimal
+        dependencies on the rest of Boost), use the following directive:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">compute</span><span class="special">/</span><span class="identifier">core</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+      </p>
+<p>
+        All of the classes and functions in Boost.Compute live in the <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">compute</span></code> namespace and can be brought into
+        global scope with:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">compute</span><span class="special">;</span>
+</pre>
+<p>
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_compute.getting_started.configuration_macros"></a><a class="link" href="getting_started.html#boost_compute.getting_started.configuration_macros" title="Configuration Macros">Configuration
+      Macros</a>
+</h3></div></div></div>
+<p>
+        Boost.Compute provides a number of optional features which can be configured
+        with the following macros.
+      </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Macro
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="literal">BOOST_COMPUTE_DEBUG_KERNEL_COMPILATION</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  When defined, if program::build() fails, the program source and
+                  build log will be written to stdout.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="literal">BOOST_COMPUTE_HAVE_THREAD_LOCAL</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Enables the use of C++11 <code class="literal">thread_local</code> storage
+                  specifier.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="literal">BOOST_COMPUTE_THREAD_SAFE</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Builds Boost.Compute in a thread-safe mode. This requires either
+                  support for C++11 thread-local storage (via defining the <code class="literal">BOOST_COMPUTE_HAVE_THREAD_LOCAL</code>
+                  macro) or linking with Boost.Thread.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="literal">BOOST_COMPUTE_USE_OFFLINE_CACHE</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Enables the offline-cache which stores compiled binaries on disk.
+                  This option requires linking with Boost.Filesystem and Boost.System.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_compute.getting_started.support"></a><a class="link" href="getting_started.html#boost_compute.getting_started.support" title="Support">Support</a>
+</h3></div></div></div>
+<p>
+        Bugs and issues can be reported to the <a href="https://github.com/boostorg/compute/issues?state=open" target="_top">issue
+        tracker</a>.
+      </p>
+<p>
+        There is also a mailing list for users and developers at <a href="https://groups.google.com/forum/#!forum/boost-compute" target="_top">https://groups.google.com/forum/#!forum/boost-compute</a>.
+      </p>
+<p>
+        Look through the <a class="link" href="faq.html" title="Frequently Asked Questions">FAQ</a> to see if you're
+        encountering a known or common issue.
+      </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2013, 2014 Kyle Lutz<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../index.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="design.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

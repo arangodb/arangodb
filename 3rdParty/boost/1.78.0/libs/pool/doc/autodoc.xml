@@ -1,0 +1,382 @@
+<?xml version="1.0" standalone="yes"?>
+<library-reference id="boost_pool_c___reference"><title>Boost.Pool C++ Reference</title><header name="boost/pool/object_pool.hpp">
+<para>Provides a template type boost::object_pool&lt;T, UserAllocator&gt; that can be used for fast and efficient memory allocation of objects of type T. It also provides automatic destruction of non-deallocated objects. </para><namespace name="boost">
+</namespace>
+</header>
+<header name="boost/pool/pool.hpp">
+<para>Provides class pool: a fast memory allocator that guarantees proper alignment of all allocated chunks, and which extends and generalizes the framework provided by the simple segregated storage solution. Also provides two UserAllocator classes which can be used in conjuction with pool. </para><namespace name="boost">
+<struct name="default_user_allocator_malloc_free"><purpose><ulink url="boost_pool/pool/pooling.html#boost_pool.pool.pooling.user_allocator">UserAllocator</ulink> used as template parameter for <classname alt="boost::pool">pool</classname> and <classname alt="boost::object_pool">object_pool</classname>. Uses malloc and free internally. </purpose><typedef name="size_type"><purpose>An unsigned integral type that can represent the size of the largest object to be allocated. </purpose><type>std::size_t</type></typedef>
+<typedef name="difference_type"><purpose>A signed integral type that can represent the difference of any two pointers. </purpose><type>std::ptrdiff_t</type></typedef>
+<method-group name="public static functions">
+<method name="malloc" specifiers="static"><type>char *</type><parameter name="bytes"><paramtype>const size_type</paramtype></parameter></method>
+<method name="free" specifiers="static"><type>void</type><parameter name="block"><paramtype>char *const</paramtype></parameter></method>
+</method-group>
+</struct><struct name="default_user_allocator_new_delete"><purpose>Allocator used as the default template parameter for a <ulink url="boost_pool/pool/pooling.html#boost_pool.pool.pooling.user_allocator">UserAllocator</ulink> template parameter. Uses new and delete. </purpose><typedef name="size_type"><purpose>An unsigned integral type that can represent the size of the largest object to be allocated. </purpose><type>std::size_t</type></typedef>
+<typedef name="difference_type"><purpose>A signed integral type that can represent the difference of any two pointers. </purpose><type>std::ptrdiff_t</type></typedef>
+<method-group name="public static functions">
+<method name="malloc" specifiers="static"><type>char *</type><parameter name="bytes"><paramtype>const size_type</paramtype></parameter><description><para>Attempts to allocate n bytes from the system. Returns 0 if out-of-memory </para></description></method>
+<method name="free" specifiers="static"><type>void</type><parameter name="block"><paramtype>char *const</paramtype></parameter><description><para>Attempts to de-allocate block. 
+</para></description><requires><para>Block must have been previously returned from a call to UserAllocator::malloc. </para>
+</requires></method>
+</method-group>
+</struct></namespace>
+</header>
+<header name="boost/pool/pool_alloc.hpp">
+<para>C++ Standard Library compatible pool-based allocators. </para><para>This header provides two template types - pool_allocator and fast_pool_allocator - that can be used for fast and efficient memory allocation in conjunction with the C++ Standard Library containers.</para><para>These types both satisfy the Standard Allocator requirements [20.1.5] and the additional requirements in [20.1.5/4], so they can be used with either Standard or user-supplied containers.</para><para>In addition, the fast_pool_allocator also provides an additional allocation and an additional deallocation function:</para><para><informaltable><tgroup cols="4"><tbody><row>
+<entry><emphasis role="bold">Expression</emphasis></entry><entry><emphasis role="bold">Return Type</emphasis></entry><entry><emphasis role="bold">Semantic Equivalence</emphasis></entry><entry><emphasis role="bold"/></entry></row>
+<row>
+<entry><computeroutput>PoolAlloc::allocate()</computeroutput></entry><entry><computeroutput>T *</computeroutput></entry><entry><computeroutput>PoolAlloc::allocate(1)</computeroutput> </entry></row>
+<row>
+<entry><computeroutput>PoolAlloc::deallocate(p)</computeroutput></entry><entry>void</entry><entry><computeroutput>PoolAlloc::deallocate(p, 1)</computeroutput> </entry></row>
+</tbody></tgroup></informaltable>
+</para><para>The typedef user_allocator publishes the value of the UserAllocator template parameter.</para><para><emphasis role="bold">Notes</emphasis></para><para>If the allocation functions run out of memory, they will throw <computeroutput>std::bad_alloc</computeroutput>.</para><para>The underlying Pool type used by the allocators is accessible through the Singleton Pool Interface. The identifying tag used for pool_allocator is pool_allocator_tag, and the tag used for fast_pool_allocator is fast_pool_allocator_tag. All template parameters of the allocators (including implementation-specific ones) determine the type of the underlying Pool, with the exception of the first parameter T, whose size is used instead.</para><para>Since the size of T is used to determine the type of the underlying Pool, each allocator for different types of the same size will share the same underlying pool. The tag class prevents pools from being shared between pool_allocator and fast_pool_allocator. For example, on a system where <computeroutput>sizeof(int) == sizeof(void *)</computeroutput>, <computeroutput>pool_allocator&lt;int&gt;</computeroutput> and <computeroutput>pool_allocator&lt;void *&gt;</computeroutput> will both allocate/deallocate from/to the same pool.</para><para>If there is only one thread running before main() starts and after main() ends, then both allocators are completely thread-safe.</para><para><emphasis role="bold">Compiler and STL Notes</emphasis></para><para>A number of common STL libraries contain bugs in their using of allocators. Specifically, they pass null pointers to the deallocate function, which is explicitly forbidden by the Standard [20.1.5 Table 32]. PoolAlloc will work around these libraries if it detects them; currently, workarounds are in place for: Borland C++ (Builder and command-line compiler) with default (RogueWave) library, ver. 5 and earlier, STLport (with any compiler), ver. 4.0 and earlier. </para><namespace name="boost">
+<class-specialization name="fast_pool_allocator"><template>
+      <template-type-parameter name="UserAllocator"/>
+      <template-type-parameter name="Mutex"/>
+      <template-nontype-parameter name="NextSize"><type>unsigned</type></template-nontype-parameter>
+      <template-nontype-parameter name="MaxSize"><type>unsigned</type></template-nontype-parameter>
+    </template><specialization><template-arg>void</template-arg><template-arg>UserAllocator</template-arg><template-arg>Mutex</template-arg><template-arg>NextSize</template-arg><template-arg>MaxSize</template-arg></specialization><purpose>Specialization of fast_pool_allocator&lt;void&gt;. </purpose><description><para>Specialization of fast_pool_allocator&lt;void&gt; required to make the allocator standard-conforming. </para></description><struct name="rebind"><template>
+      <template-type-parameter name="U"/>
+    </template><purpose>Nested class rebind allows for transformation from fast_pool_allocator&lt;T&gt; to <classname alt="boost::fast_pool_allocator">fast_pool_allocator</classname><underline>. </underline></purpose><description><para>Nested class rebind allows for transformation from fast_pool_allocator&lt;T&gt; to <classname alt="boost::fast_pool_allocator">fast_pool_allocator</classname><underline> via the member typedef other. </underline></para></description><typedef name="other"><type><classname>fast_pool_allocator</classname>&lt; U, UserAllocator, Mutex, NextSize, MaxSize &gt;</type></typedef>
+</struct><typedef name="pointer"><type>void *</type></typedef>
+<typedef name="const_pointer"><type>const void *</type></typedef>
+<typedef name="value_type"><type>void</type></typedef>
+</class-specialization><struct name="fast_pool_allocator_tag"><purpose>Simple tag type used by <classname alt="boost::fast_pool_allocator">fast_pool_allocator</classname> as a template parameter to the underlying <classname alt="boost::singleton_pool">singleton_pool</classname>. </purpose></struct><class-specialization name="pool_allocator"><template>
+      <template-type-parameter name="UserAllocator"/>
+      <template-type-parameter name="Mutex"/>
+      <template-nontype-parameter name="NextSize"><type>unsigned</type></template-nontype-parameter>
+      <template-nontype-parameter name="MaxSize"><type>unsigned</type></template-nontype-parameter>
+    </template><specialization><template-arg>void</template-arg><template-arg>UserAllocator</template-arg><template-arg>Mutex</template-arg><template-arg>NextSize</template-arg><template-arg>MaxSize</template-arg></specialization><purpose>Specialization of pool_allocator&lt;void&gt;. </purpose><description><para>Specialization of <classname alt="boost::pool_allocator">pool_allocator</classname> for type void: required by the standard to make this a conforming allocator type. </para></description><struct name="rebind"><template>
+      <template-type-parameter name="U"/>
+    </template><purpose>Nested class rebind allows for transformation from pool_allocator&lt;T&gt; to <classname alt="boost::pool_allocator">pool_allocator</classname><underline>. </underline></purpose><description><para>Nested class rebind allows for transformation from pool_allocator&lt;T&gt; to <classname alt="boost::pool_allocator">pool_allocator</classname><underline> via the member typedef other. </underline></para></description><typedef name="other"><type><classname>pool_allocator</classname>&lt; U, UserAllocator, Mutex, NextSize, MaxSize &gt;</type></typedef>
+</struct><typedef name="pointer"><type>void *</type></typedef>
+<typedef name="const_pointer"><type>const void *</type></typedef>
+<typedef name="value_type"><type>void</type></typedef>
+</class-specialization><struct name="pool_allocator_tag"><description><para>Simple tag type used by <classname alt="boost::pool_allocator">pool_allocator</classname> as an argument to the underlying <classname alt="boost::singleton_pool">singleton_pool</classname>. </para></description></struct></namespace>
+</header>
+<header name="boost/pool/poolfwd.hpp">
+<para>Forward declarations of all public (non-implemention) classes. </para><namespace name="boost">
+<class name="fast_pool_allocator"><template>
+      <template-type-parameter name="T"/>
+      <template-type-parameter name="UserAllocator"/>
+      <template-type-parameter name="Mutex"/>
+      <template-nontype-parameter name="NextSize"><type>unsigned</type></template-nontype-parameter>
+      <template-nontype-parameter name="MaxSize"><type>unsigned</type></template-nontype-parameter>
+    </template><purpose>A C++ Standard Library conforming allocator geared towards allocating single chunks. </purpose><description><para>While class template <computeroutput><classname alt="boost::pool_allocator">pool_allocator</classname></computeroutput> is a more general-purpose solution geared towards efficiently servicing requests for any number of contiguous chunks, <computeroutput><classname alt="boost::fast_pool_allocator">fast_pool_allocator</classname></computeroutput> is also a general-purpose solution, but is geared towards efficiently servicing requests for one chunk at a time; it will work for contiguous chunks, but not as well as <computeroutput><classname alt="boost::pool_allocator">pool_allocator</classname></computeroutput>.</para><para>If you are seriously concerned about performance, use <computeroutput><classname alt="boost::fast_pool_allocator">fast_pool_allocator</classname></computeroutput> when dealing with containers such as <computeroutput>std::list</computeroutput>, and use <computeroutput><classname alt="boost::pool_allocator">pool_allocator</classname></computeroutput> when dealing with containers such as <computeroutput>std::vector</computeroutput>.</para><para>The template parameters are defined as follows:</para><para><emphasis role="bold">T</emphasis> Type of object to allocate/deallocate.</para><para><emphasis role="bold">UserAllocator</emphasis>. Defines the method that the underlying Pool will use to allocate memory from the system. See <ulink url="boost_pool/pool/pooling.html#boost_pool.pool.pooling.user_allocator">User Allocators</ulink> for details.</para><para><emphasis role="bold">Mutex</emphasis> Allows the user to determine the type of synchronization to be used on the underlying <computeroutput><classname alt="boost::singleton_pool">singleton_pool</classname></computeroutput>.</para><para><emphasis role="bold">NextSize</emphasis> The value of this parameter is passed to the underlying Pool when it is created.</para><para><emphasis role="bold">MaxSize</emphasis> Limit on the maximum size used.</para><para><note><para>The underlying <classname alt="boost::singleton_pool">singleton_pool</classname> used by the this allocator constructs a pool instance that <emphasis role="bold">is never freed</emphasis>. This means that memory allocated by the allocator can be still used after main() has completed, but may mean that some memory checking programs will complain about leaks. </para>
+</note>
+</para></description><method-group name="public member functions">
+<method name="construct"><type>void</type><parameter name="ptr"><paramtype>const pointer</paramtype></parameter><parameter name="t"><paramtype>const value_type &amp;</paramtype></parameter></method>
+<method name="destroy"><type>void</type><parameter name="ptr"><paramtype>const pointer</paramtype></parameter><description><para>Destroy ptr using destructor. </para></description></method>
+<method name="operator==" cv="const"><type>bool</type><parameter name=""><paramtype>const <classname>fast_pool_allocator</classname> &amp;</paramtype></parameter></method>
+<method name="operator!=" cv="const"><type>bool</type><parameter name=""><paramtype>const <classname>fast_pool_allocator</classname> &amp;</paramtype></parameter></method>
+</method-group>
+<constructor><description><para>Ensures construction of the underlying <classname alt="boost::singleton_pool">singleton_pool</classname> IFF an instance of this allocator is constructed during global initialization. See ticket #2359 for a complete explanation at <ulink url="http://svn.boost.org/trac/boost/ticket/2359">http://svn.boost.org/trac/boost/ticket/2359</ulink> . </para></description></constructor>
+<constructor><template>
+          <template-type-parameter name="U"/>
+        </template><parameter name=""><paramtype>const <classname>fast_pool_allocator</classname>&lt; U, UserAllocator, Mutex, NextSize, MaxSize &gt; &amp;</paramtype></parameter><description><para>Ensures construction of the underlying <classname alt="boost::singleton_pool">singleton_pool</classname> IFF an instance of this allocator is constructed during global initialization. See ticket #2359 for a complete explanation at <ulink url="http://svn.boost.org/trac/boost/ticket/2359">http://svn.boost.org/trac/boost/ticket/2359</ulink> . </para></description></constructor>
+<method-group name="public static functions">
+<method name="address" specifiers="static"><type>pointer</type><parameter name="r"><paramtype>reference</paramtype></parameter></method>
+<method name="address" specifiers="static"><type>const_pointer</type><parameter name="s"><paramtype>const_reference</paramtype></parameter></method>
+<method name="max_size" specifiers="static"><type>size_type</type></method>
+<method name="allocate" specifiers="static"><type>pointer</type><parameter name="n"><paramtype>const size_type</paramtype></parameter></method>
+<method name="allocate" specifiers="static"><type>pointer</type><parameter name="n"><paramtype>const size_type</paramtype></parameter><parameter name=""><paramtype>const void * const</paramtype></parameter><description><para>Allocate memory . </para></description></method>
+<method name="allocate" specifiers="static"><type>pointer</type><description><para>Allocate memory. </para></description></method>
+<method name="deallocate" specifiers="static"><type>void</type><parameter name="ptr"><paramtype>const pointer</paramtype></parameter><parameter name="n"><paramtype>const size_type</paramtype></parameter><description><para>Deallocate memory. </para></description></method>
+<method name="deallocate" specifiers="static"><type>void</type><parameter name="ptr"><paramtype>const pointer</paramtype></parameter><description><para>deallocate/free </para></description></method>
+</method-group>
+</class><class name="object_pool"><template>
+      <template-type-parameter name="T"/>
+      <template-type-parameter name="UserAllocator"/>
+    </template><inherit access="protected">boost::pool&lt; UserAllocator &gt;</inherit><purpose>A template class that can be used for fast and efficient memory allocation of objects. It also provides automatic destruction of non-deallocated objects. </purpose><description><para><emphasis role="bold">T</emphasis> The type of object to allocate/deallocate. T must have a non-throwing destructor.</para><para><emphasis role="bold">UserAllocator</emphasis> Defines the allocator that the underlying Pool will use to allocate memory from the system. See <ulink url="boost_pool/pool/pooling.html#boost_pool.pool.pooling.user_allocator">User Allocators</ulink> for details.</para><para>Class <classname alt="boost::object_pool">object_pool</classname> is a template class that can be used for fast and efficient memory allocation of objects. It also provides automatic destruction of non-deallocated objects.</para><para>When the object pool is destroyed, then the destructor for type T is called for each allocated T that has not yet been deallocated. O(N).</para><para>Whenever an object of type ObjectPool needs memory from the system, it will request it from its UserAllocator template parameter. The amount requested is determined using a doubling algorithm; that is, each time more system memory is allocated, the amount of system memory requested is doubled. Users may control the doubling algorithm by the parameters passed to the <classname alt="boost::object_pool">object_pool</classname>'s constructor. </para></description><method-group name="protected member functions">
+<method name="store"><type><classname>pool</classname>&lt; UserAllocator &gt; &amp;</type><description><para>
+</para></description><returns><para>The underlying boost:: <classname alt="boost::pool">pool</classname> storage used by *this. </para>
+</returns></method>
+<method name="store" cv="const"><type>const <classname>pool</classname>&lt; UserAllocator &gt; &amp;</type><description><para>
+</para></description><returns><para>The underlying boost:: <classname alt="boost::pool">pool</classname> storage used by *this. </para>
+</returns></method>
+</method-group>
+<method-group name="protected static functions">
+<method name="nextof" specifiers="static"><type>void *&amp;</type><parameter name="ptr"><paramtype>void *const</paramtype></parameter><description><para>
+</para></description><returns><para>The next memory block after ptr (for the sake of code readability :) </para>
+</returns></method>
+</method-group>
+<method-group name="public member functions">
+<method name="malloc"><type>element_type *</type><description><para>Allocates memory that can hold one object of type ElementType.</para><para>If out of memory, returns 0.</para><para>Amortized O(1). </para></description></method>
+<method name="free"><type>void</type><parameter name="chunk"><paramtype>element_type *const</paramtype></parameter><description><para>De-Allocates memory that holds a chunk of type ElementType.</para><para>Note that p may not be 0.<sbr/>
+ Note that the destructor for p is not called. O(N). </para></description></method>
+<method name="is_from" cv="const"><type>bool</type><parameter name="chunk"><paramtype>element_type *const</paramtype></parameter><description><para>
+Returns false if chunk was allocated from some other pool or may be returned as the result of a future allocation from some other pool.</para><para>Otherwise, the return value is meaningless.</para><para><note><para>This function may NOT be used to reliably test random pointer values!</para>
+</note>
+</para></description><returns><para>true if chunk was allocated from *this or may be returned as the result of a future allocation from *this.</para>
+</returns></method>
+<method name="construct"><type>element_type *</type><description><para>
+</para></description><returns><para>A pointer to an object of type T, allocated in memory from the underlying pool and default constructed. The returned objected can be freed by a call to destroy. Otherwise the returned object will be automatically destroyed when *this is destroyed. </para>
+</returns></method>
+<method name="construct"><type>element_type *</type><template>
+          <template-type-parameter name="Arg1"/>
+          <template-nontype-parameter name="ArgN"><type>... class</type></template-nontype-parameter>
+        </template><parameter name=""><paramtype>Arg1 &amp;</paramtype></parameter><parameter name=""><paramtype>... ArgN &amp;</paramtype></parameter><description><para>
+<note><para>Since the number and type of arguments to this function is totally arbitrary, a simple system has been set up to automatically generate template construct functions. This system is based on the macro preprocessor m4, which is standard on UNIX systems and also available for Win32 systems.<sbr/>
+<sbr/>
+detail/pool_construct.m4, when run with m4, will create the file detail/pool_construct.ipp, which only defines the construct functions for the proper number of arguments. The number of arguments may be passed into the file as an m4 macro, NumberOfArguments; if not provided, it will default to 3.<sbr/>
+<sbr/>
+For each different number of arguments (1 to NumberOfArguments), a template function is generated. There are the same number of template parameters as there are arguments, and each argument's type is a reference to that (possibly cv-qualified) template argument. Each possible permutation of the cv-qualifications is also generated.<sbr/>
+<sbr/>
+Because each permutation is generated for each possible number of arguments, the included file size grows exponentially in terms of the number of constructor arguments, not linearly. For the sake of rational compile times, only use as many arguments as you need.<sbr/>
+<sbr/>
+detail/pool_construct.bat and detail/pool_construct.sh are also provided to call m4, defining NumberOfArguments to be their command-line parameter. See these files for more details. </para>
+</note>
+</para></description><returns><para>A pointer to an object of type T, allocated in memory from the underlying pool and constructed from arguments Arg1 to ArgN. The returned objected can be freed by a call to destroy. Otherwise the returned object will be automatically destroyed when *this is destroyed.</para>
+</returns></method>
+<method name="destroy"><type>void</type><parameter name="chunk"><paramtype>element_type *const</paramtype></parameter><description><para>Destroys an object allocated with construct.</para><para>Equivalent to:</para><para>p-&gt;~ElementType(); this-&gt;free(p);</para><para>
+</para></description><requires><para>p must have been previously allocated from *this via a call to construct. </para>
+</requires></method>
+<method name="get_next_size" cv="const"><type>size_type</type><description><para>
+</para></description><returns><para>The number of chunks that will be allocated next time we run out of memory. </para>
+</returns></method>
+<method name="set_next_size"><type>void</type><parameter name="x"><paramtype>const size_type</paramtype><description><para>wanted next_size (must not be zero). </para></description></parameter><description><para>Set a new number of chunks to allocate the next time we run out of memory. 
+</para></description></method>
+</method-group>
+<constructor specifiers="explicit"><parameter name="arg_next_size"><paramtype>const size_type</paramtype><default>32</default></parameter><parameter name="arg_max_size"><paramtype>const size_type</paramtype><default>0</default></parameter><description><para>Constructs a new (empty by default) ObjectPool. 
+
+
+</para></description><requires><para>next_size != 0. </para>
+</requires></constructor>
+<destructor/>
+</class><class name="pool"><template>
+      <template-type-parameter name="UserAllocator"/>
+    </template><inherit access="protected">boost::simple_segregated_storage&lt; UserAllocator::size_type &gt;</inherit><purpose>A fast memory allocator that guarantees proper alignment of all allocated chunks. </purpose><description><para>Whenever an object of type pool needs memory from the system, it will request it from its UserAllocator template parameter. The amount requested is determined using a doubling algorithm; that is, each time more system memory is allocated, the amount of system memory requested is doubled.</para><para>Users may control the doubling algorithm by using the following extensions:</para><para>Users may pass an additional constructor parameter to pool. This parameter is of type size_type, and is the number of chunks to request from the system the first time that object needs to allocate system memory. The default is 32. This parameter may not be 0.</para><para>Users may also pass an optional third parameter to pool's constructor. This parameter is of type size_type, and sets a maximum size for allocated chunks. When this parameter takes the default value of 0, then there is no upper limit on chunk size.</para><para>Finally, if the doubling algorithm results in no memory being allocated, the pool will backtrack just once, halving the chunk size and trying again.</para><para><emphasis role="bold">UserAllocator type</emphasis> - the method that the Pool will use to allocate memory from the system.</para><para>There are essentially two ways to use class pool: the client can call malloc() and free() to allocate and free single chunks of memory, this is the most efficient way to use a pool, but does not allow for the efficient allocation of arrays of chunks. Alternatively, the client may call ordered_malloc() and ordered_free(), in which case the free list is maintained in an ordered state, and efficient allocation of arrays of chunks are possible. However, this latter option can suffer from poor performance when large numbers of allocations are performed. </para></description><method-group name="private member functions">
+<method name="malloc_need_resize"><type>void *</type><description><para>
+</para></description><description><para>No memory in any of our storages; make a new storage, Allocates chunk in newly malloc aftert resize. 
+</para></description><returns><para>0 if out-of-memory. Called if malloc/ordered_malloc needs to resize the free list. </para>
+</returns><returns><para>pointer to chunk. </para>
+</returns></method>
+<method name="ordered_malloc_need_resize"><type>void *</type><purpose>Called if malloc needs to resize the free list. </purpose><description><para>No memory in any of our storages; make a new storage, 
+</para></description><returns><para>pointer to new chunk. </para>
+</returns></method>
+</method-group>
+<method-group name="protected member functions">
+<method name="store"><type><classname>simple_segregated_storage</classname>&lt; size_type &gt; &amp;</type><description><para>
+</para></description><returns><para>pointer to store. </para>
+</returns></method>
+<method name="store" cv="const"><type>const <classname>simple_segregated_storage</classname>&lt; size_type &gt; &amp;</type><description><para>
+</para></description><returns><para>pointer to store. </para>
+</returns></method>
+<method name="find_POD" cv="const"><type><classname>details::PODptr</classname>&lt; size_type &gt;</type><parameter name="chunk"><paramtype>void *const</paramtype></parameter><purpose>finds which POD in the list 'chunk' was allocated from. </purpose><description><para>find which PODptr storage memory that this chunk is from. 
+</para></description><returns><para>the PODptr that holds this chunk. </para>
+</returns></method>
+<method name="alloc_size" cv="const"><type>size_type</type><description><para>Calculated size of the memory chunks that will be allocated by this Pool. 
+</para></description><returns><para>allocated size. </para>
+</returns></method>
+</method-group>
+<method-group name="protected static functions">
+<method name="is_from" specifiers="static"><type>bool</type><parameter name="chunk"><paramtype>void *const</paramtype><description><para>chunk to check if is from this pool. </para></description></parameter><parameter name="i"><paramtype>char *const</paramtype><description><para>memory chunk at i with element sizeof_i. </para></description></parameter><parameter name="sizeof_i"><paramtype>const size_type</paramtype><description><para>element size (size of the chunk area of that block, not the total size of that block). </para></description></parameter><description><para>
+
+Returns false if chunk was allocated from some other pool, or may be returned as the result of a future allocation from some other pool. Otherwise, the return value is meaningless.</para><para>Note that this function may not be used to reliably test random pointer values. </para></description><returns><para>true if chunk was allocated or may be returned. as the result of a future allocation.</para>
+</returns></method>
+<method name="nextof" specifiers="static"><type>void *&amp;</type><parameter name="ptr"><paramtype>void *const</paramtype></parameter><description><para>
+</para></description><returns><para>Pointer dereferenced. (Provided and used for the sake of code readability :) </para>
+</returns></method>
+</method-group>
+<method-group name="public member functions">
+<method name="release_memory"><type>bool</type><description><para>pool must be ordered. Frees every memory block that doesn't have any allocated chunks. 
+</para></description><returns><para>true if at least one memory block was freed. </para>
+</returns></method>
+<method name="purge_memory"><type>bool</type><description><para>pool must be ordered. Frees every memory block.</para><para>This function invalidates any pointers previously returned by allocation functions of t. 
+</para></description><returns><para>true if at least one memory block was freed. </para>
+</returns></method>
+<method name="get_next_size" cv="const"><type>size_type</type><description><para>Number of chunks to request from the system the next time that object needs to allocate system memory. This value should never be 0. 
+</para></description><returns><para>next_size; </para>
+</returns></method>
+<method name="set_next_size"><type>void</type><parameter name="nnext_size"><paramtype>const size_type</paramtype></parameter><description><para>Set number of chunks to request from the system the next time that object needs to allocate system memory. This value should never be set to 0. 
+</para></description><returns><para>nnext_size. </para>
+</returns></method>
+<method name="get_max_size" cv="const"><type>size_type</type><description><para>
+</para></description><returns><para>max_size. </para>
+</returns></method>
+<method name="set_max_size"><type>void</type><parameter name="nmax_size"><paramtype>const size_type</paramtype></parameter><description><para>Set max_size. </para></description></method>
+<method name="get_requested_size" cv="const"><type>size_type</type><description><para>
+</para></description><returns><para>the requested size passed into the constructor. (This value will not change during the lifetime of a Pool object). </para>
+</returns></method>
+<method name="malloc"><type>void *</type><description><para>Allocates a chunk of memory. Searches in the list of memory blocks for a block that has a free chunk, and returns that free chunk if found. Otherwise, creates a new memory block, adds its free list to pool's free list, 
+</para></description><returns><para>a free chunk from that block. If a new memory block cannot be allocated, returns 0. Amortized O(1). </para>
+</returns></method>
+<method name="ordered_malloc"><type>void *</type><description><para>Same as malloc, only merges the free lists, to preserve order. Amortized O(1). 
+</para></description><returns><para>a free chunk from that block. If a new memory block cannot be allocated, returns 0. Amortized O(1). </para>
+</returns></method>
+<method name="ordered_malloc"><type>void *</type><parameter name="n"><paramtype>size_type</paramtype></parameter><description><para>Gets address of a chunk n, allocating new memory if not already available. 
+
+</para></description><returns><para>Address of chunk n if allocated ok. </para>
+</returns><returns><para>0 if not enough memory for n chunks. </para>
+</returns></method>
+<method name="free"><type>void</type><parameter name="chunk"><paramtype>void *const</paramtype></parameter><description><para>Same as malloc, only allocates enough contiguous chunks to cover n * requested_size bytes. Amortized O(n). 
+</para></description><description><para>Deallocates a chunk of memory. Note that chunk may not be 0. O(1).</para><para>Chunk must have been previously returned by t.malloc() or t.ordered_malloc(). Assumes that chunk actually refers to a block of chunks spanning n * partition_sz bytes. deallocates each chunk in that block. Note that chunk may not be 0. O(n). </para></description><returns><para>a free chunk from that block. If a new memory block cannot be allocated, returns 0. Amortized O(1). </para>
+</returns></method>
+<method name="ordered_free"><type>void</type><parameter name="chunk"><paramtype>void *const</paramtype></parameter><description><para>Same as above, but is order-preserving.</para><para>Note that chunk may not be 0. O(N) with respect to the size of the free list. chunk must have been previously returned by t.malloc() or t.ordered_malloc(). </para></description></method>
+<method name="free"><type>void</type><parameter name="chunks"><paramtype>void *const</paramtype></parameter><parameter name="n"><paramtype>const size_type</paramtype></parameter><description><para>Assumes that chunk actually refers to a block of chunks.</para><para>chunk must have been previously returned by t.ordered_malloc(n) spanning n * partition_sz bytes. Deallocates each chunk in that block. Note that chunk may not be 0. O(n). </para></description></method>
+<method name="ordered_free"><type>void</type><parameter name="chunks"><paramtype>void *const</paramtype></parameter><parameter name="n"><paramtype>const size_type</paramtype></parameter><description><para>Assumes that chunk actually refers to a block of chunks spanning n * partition_sz bytes; deallocates each chunk in that block.</para><para>Note that chunk may not be 0. Order-preserving. O(N + n) where N is the size of the free list. chunk must have been previously returned by t.malloc() or t.ordered_malloc(). </para></description></method>
+<method name="is_from" cv="const"><type>bool</type><parameter name="chunk"><paramtype>void *const</paramtype></parameter><description><para>
+</para></description><returns><para>Returns true if chunk was allocated from u or may be returned as the result of a future allocation from u. Returns false if chunk was allocated from some other pool or may be returned as the result of a future allocation from some other pool. Otherwise, the return value is meaningless. Note that this function may not be used to reliably test random pointer values. </para>
+</returns></method>
+</method-group>
+<constructor specifiers="explicit"><parameter name="nrequested_size"><paramtype>const size_type</paramtype><description><para>Requested chunk size </para></description></parameter><parameter name="nnext_size"><paramtype>const size_type</paramtype><default>32</default><description><para>parameter is of type size_type, is the number of chunks to request from the system the first time that object needs to allocate system memory. The default is 32. This parameter may not be 0. </para></description></parameter><parameter name="nmax_size"><paramtype>const size_type</paramtype><default>0</default><description><para>is the maximum number of chunks to allocate in one block. </para></description></parameter><description><para>Constructs a new empty Pool that can be used to allocate chunks of size RequestedSize. 
+</para></description></constructor>
+<destructor><description><para>Destructs the Pool, freeing its list of memory blocks. </para></description></destructor>
+</class><class name="pool_allocator"><template>
+      <template-type-parameter name="T"/>
+      <template-type-parameter name="UserAllocator"/>
+      <template-type-parameter name="Mutex"/>
+      <template-nontype-parameter name="NextSize"><type>unsigned</type></template-nontype-parameter>
+      <template-nontype-parameter name="MaxSize"><type>unsigned</type></template-nontype-parameter>
+    </template><purpose>A C++ Standard Library conforming allocator, based on an underlying pool. </purpose><description><para>Template parameters for <classname alt="boost::pool_allocator">pool_allocator</classname> are defined as follows:</para><para><emphasis role="bold">T</emphasis> Type of object to allocate/deallocate.</para><para><emphasis role="bold">UserAllocator</emphasis>. Defines the method that the underlying Pool will use to allocate memory from the system. See <ulink url="boost_pool/pool/pooling.html#boost_pool.pool.pooling.user_allocator">User Allocators</ulink> for details.</para><para><emphasis role="bold">Mutex</emphasis> Allows the user to determine the type of synchronization to be used on the underlying <classname alt="boost::singleton_pool">singleton_pool</classname>.</para><para><emphasis role="bold">NextSize</emphasis> The value of this parameter is passed to the underlying <classname alt="boost::singleton_pool">singleton_pool</classname> when it is created.</para><para><emphasis role="bold">MaxSize</emphasis> Limit on the maximum size used.</para><para><note><para>The underlying <classname alt="boost::singleton_pool">singleton_pool</classname> used by the this allocator constructs a pool instance that <emphasis role="bold">is never freed</emphasis>. This means that memory allocated by the allocator can be still used after main() has completed, but may mean that some memory checking programs will complain about leaks. </para>
+</note>
+</para></description><method-group name="public member functions">
+<method name="operator==" cv="const"><type>bool</type><parameter name=""><paramtype>const <classname>pool_allocator</classname> &amp;</paramtype></parameter></method>
+<method name="operator!=" cv="const"><type>bool</type><parameter name=""><paramtype>const <classname>pool_allocator</classname> &amp;</paramtype></parameter></method>
+</method-group>
+<constructor><description><para>Results in default construction of the underlying <classname alt="boost::singleton_pool">singleton_pool</classname> IFF an instance of this allocator is constructed during global initialization ( required to ensure construction of <classname alt="boost::singleton_pool">singleton_pool</classname> IFF an instance of this allocator is constructed during global initialization. See ticket #2359 for a complete explanation at <ulink url="http://svn.boost.org/trac/boost/ticket/2359">http://svn.boost.org/trac/boost/ticket/2359</ulink>) .</para></description></constructor>
+<constructor><template>
+          <template-type-parameter name="U"/>
+        </template><parameter name=""><paramtype>const <classname>pool_allocator</classname>&lt; U, UserAllocator, Mutex, NextSize, MaxSize &gt; &amp;</paramtype></parameter><description><para>Results in the default construction of the underlying <classname alt="boost::singleton_pool">singleton_pool</classname>, this is required to ensure construction of <classname alt="boost::singleton_pool">singleton_pool</classname> IFF an instance of this allocator is constructed during global initialization. See ticket #2359 for a complete explanation at <ulink url="http://svn.boost.org/trac/boost/ticket/2359">http://svn.boost.org/trac/boost/ticket/2359</ulink> .</para></description></constructor>
+<method-group name="public static functions">
+<method name="address" specifiers="static"><type>pointer</type><parameter name="r"><paramtype>reference</paramtype></parameter></method>
+<method name="address" specifiers="static"><type>const_pointer</type><parameter name="s"><paramtype>const_reference</paramtype></parameter></method>
+<method name="max_size" specifiers="static"><type>size_type</type></method>
+<method name="construct" specifiers="static"><type>void</type><parameter name="ptr"><paramtype>const pointer</paramtype></parameter><parameter name="t"><paramtype>const value_type &amp;</paramtype></parameter></method>
+<method name="destroy" specifiers="static"><type>void</type><parameter name="ptr"><paramtype>const pointer</paramtype></parameter></method>
+<method name="allocate" specifiers="static"><type>pointer</type><parameter name="n"><paramtype>const size_type</paramtype></parameter></method>
+<method name="allocate" specifiers="static"><type>pointer</type><parameter name="n"><paramtype>const size_type</paramtype><description><para>bytes to allocate. </para></description></parameter><parameter name=""><paramtype>const void * const</paramtype></parameter><description><para>allocate n bytes</para><para>
+</para></description></method>
+<method name="deallocate" specifiers="static"><type>void</type><parameter name="ptr"><paramtype>const pointer</paramtype><description><para>location to deallocate from. </para></description></parameter><parameter name="n"><paramtype>const size_type</paramtype><description><para>number of bytes to deallocate. </para></description></parameter><description><para>Deallocate n bytes from ptr 
+</para></description></method>
+</method-group>
+</class></namespace>
+</header>
+<header name="boost/pool/simple_segregated_storage.hpp">
+<para>Simple Segregated Storage. </para><para>A simple segregated storage implementation: simple segregated storage is the basic idea behind the Boost Pool library. Simple segregated storage is the simplest, and probably the fastest, memory allocation/deallocation algorithm. It begins by partitioning a memory block into fixed-size chunks. Where the block comes from is not important until implementation time. A Pool is some object that uses Simple Segregated Storage in this fashion. </para><namespace name="boost">
+<class name="simple_segregated_storage"><template>
+      <template-type-parameter name="SizeType"/>
+    </template><purpose>Simple Segregated Storage is the simplest, and probably the fastest, memory allocation/deallocation algorithm. It is responsible for partitioning a memory block into fixed-size chunks: where the block comes from is determined by the client of the class. </purpose><description><para>Template class <classname alt="boost::simple_segregated_storage">simple_segregated_storage</classname> controls access to a free list of memory chunks. Please note that this is a very simple class, with preconditions on almost all its functions. It is intended to be the fastest and smallest possible quick memory allocator - e.g., something to use in embedded systems. This class delegates many difficult preconditions to the user (i.e., alignment issues).</para><para>An object of type simple_segregated_storage&lt;SizeType&gt; is empty if its free list is empty. If it is not empty, then it is ordered if its free list is ordered. A free list is ordered if repeated calls to <computeroutput>malloc()</computeroutput> will result in a constantly-increasing sequence of values, as determined by <computeroutput>std::less&lt;void *&gt;</computeroutput>. A member function is <emphasis>order-preserving</emphasis> if the free list maintains its order orientation (that is, an ordered free list is still ordered after the member function call). </para></description><typedef name="size_type"><type>SizeType</type></typedef>
+<method-group name="private member functions">
+</method-group>
+<constructor><parameter name=""><paramtype>const <classname>simple_segregated_storage</classname> &amp;</paramtype></parameter></constructor>
+<copy-assignment><type>void</type><parameter name=""><paramtype>const <classname>simple_segregated_storage</classname> &amp;</paramtype></parameter></copy-assignment>
+<method-group name="private static functions">
+<method name="try_malloc_n" specifiers="static"><type>void *</type><parameter name="start"><paramtype>void *&amp;</paramtype></parameter><parameter name="n"><paramtype>size_type</paramtype></parameter><parameter name="partition_size"><paramtype>size_type</paramtype></parameter><description><para>
+
+</para></description><requires><para>(n &gt; 0), (start != 0), (nextof(start) != 0) </para>
+</requires><postconditions><para>(start != 0) The function attempts to find n contiguous chunks of size partition_size in the free list, starting at start. If it succeds, it returns the last chunk in that contiguous sequence, so that the sequence is known by [start, {retval}] If it fails, it does do either because it's at the end of the free list or hits a non-contiguous chunk. In either case, it will return 0, and set start to the last considered chunk. You are at the end of the free list if nextof(start) == 0. Otherwise, start points to the last chunk in the contiguous sequence, and nextof(start) points to the first chunk in the next contiguous sequence (assuming an ordered free list). </para>
+</postconditions></method>
+</method-group>
+<method-group name="protected member functions">
+<method name="find_prev"><type>void *</type><parameter name="ptr"><paramtype>void *</paramtype></parameter><description><para>Traverses the free list referred to by "first", and returns the iterator previous to where "ptr" would go if it was in the free list. Returns 0 if "ptr" would go at the beginning of the free list (i.e., before "first"). <note><para>Note that this function finds the location previous to where ptr would go if it was in the free list. It does not find the entry in the free list before ptr (unless ptr is already in the free list). Specifically, find_prev(0) will return 0, not the last entry in the free list. </para>
+</note>
+
+</para></description><returns><para>location previous to where ptr would go if it was in the free list. </para>
+</returns></method>
+</method-group>
+<method-group name="protected static functions">
+<method name="nextof" specifiers="static"><type>void *&amp;</type><parameter name="ptr"><paramtype>void *const</paramtype></parameter><description><para>The return value is just *ptr cast to the appropriate type. ptr must not be 0. (For the sake of code readability :)</para><para>As an example, let us assume that we want to truncate the free list after the first chunk. That is, we want to set *first to 0; this will result in a free list with only one entry. The normal way to do this is to first cast first to a pointer to a pointer to void, and then dereference and assign (*static_cast&lt;void **&gt;(first) = 0;). This can be done more easily through the use of this convenience function (nextof(first) = 0;). 
+</para></description><returns><para>dereferenced pointer. </para>
+</returns></method>
+</method-group>
+<method-group name="public member functions">
+<method name="add_block"><type>void</type><parameter name="block"><paramtype>void *const</paramtype></parameter><parameter name="nsz"><paramtype>const size_type</paramtype></parameter><parameter name="npartition_sz"><paramtype>const size_type</paramtype></parameter><description><para>Add block Segregate this block and merge its free list into the free list referred to by "first". 
+
+</para></description><requires><para>Same as segregate. </para>
+</requires><postconditions><para>!empty() </para>
+</postconditions></method>
+<method name="add_ordered_block"><type>void</type><parameter name="block"><paramtype>void *const</paramtype></parameter><parameter name="nsz"><paramtype>const size_type</paramtype></parameter><parameter name="npartition_sz"><paramtype>const size_type</paramtype></parameter><description><para>add block (ordered into list) This (slower) version of add_block segregates the block and merges its free list into our free list in the proper order. </para></description></method>
+<method name="empty" cv="const"><type>bool</type><description><para>
+</para></description><returns><para>true only if <classname alt="boost::simple_segregated_storage">simple_segregated_storage</classname> is empty. </para>
+</returns></method>
+<method name="malloc"><type>void *</type><description><para>Create a chunk. 
+</para></description><requires><para>!empty() Increment the "first" pointer to point to the next chunk. </para>
+</requires></method>
+<method name="free"><type>void</type><parameter name="chunk"><paramtype>void *const</paramtype></parameter><description><para>Free a chunk. 
+
+</para></description><requires><para>chunk was previously returned from a malloc() referring to the same free list. </para>
+</requires><postconditions><para>!empty() </para>
+</postconditions></method>
+<method name="ordered_free"><type>void</type><parameter name="chunk"><paramtype>void *const</paramtype></parameter><description><para>This (slower) implementation of 'free' places the memory back in the list in its proper order. 
+
+</para></description><requires><para>chunk was previously returned from a malloc() referring to the same free list </para>
+</requires><postconditions><para>!empty(). </para>
+</postconditions></method>
+<method name="malloc_n"><type>void *</type><parameter name="n"><paramtype>size_type</paramtype></parameter><parameter name="partition_size"><paramtype>size_type</paramtype></parameter><description><para>Attempts to find a contiguous sequence of n partition_sz-sized chunks. If found, removes them all from the free list and returns a pointer to the first. If not found, returns 0. It is strongly recommended (but not required) that the free list be ordered, as this algorithm will fail to find a contiguous sequence unless it is contiguous in the free list as well. Order-preserving. O(N) with respect to the size of the free list. </para></description></method>
+<method name="free_n"><type>void</type><parameter name="chunks"><paramtype>void *const</paramtype></parameter><parameter name="n"><paramtype>const size_type</paramtype></parameter><parameter name="partition_size"><paramtype>const size_type</paramtype></parameter><description><para>
+
+<note><para>If you're allocating/deallocating n a lot, you should be using an ordered pool. </para>
+</note>
+</para></description><requires><para>chunks was previously allocated from *this with the same values for n and partition_size. </para>
+</requires><postconditions><para>!empty() </para>
+</postconditions></method>
+<method name="ordered_free_n"><type>void</type><parameter name="chunks"><paramtype>void *const</paramtype></parameter><parameter name="n"><paramtype>const size_type</paramtype></parameter><parameter name="partition_size"><paramtype>const size_type</paramtype></parameter><description><para>Free n chunks from order list. 
+
+</para></description><requires><para>chunks was previously allocated from *this with the same values for n and partition_size.</para>
+</requires><requires><para>n should not be zero (n == 0 has no effect). </para>
+</requires></method>
+</method-group>
+<constructor><description><para>Construct empty storage area. 
+</para></description><postconditions><para>empty() </para>
+</postconditions></constructor>
+<method-group name="public static functions">
+<method name="segregate" specifiers="static"><type>void *</type><parameter name="block"><paramtype>void *</paramtype></parameter><parameter name="nsz"><paramtype>size_type</paramtype></parameter><parameter name="npartition_sz"><paramtype>size_type</paramtype></parameter><parameter name="end"><paramtype>void *</paramtype><default>0</default></parameter><description><para>Segregate block into chunks. 
+
+
+
+</para></description><requires><para>npartition_sz &gt;= sizeof(void *) </para>
+</requires><requires><para>npartition_sz = sizeof(void *) * i, for some integer i </para>
+</requires><requires><para>nsz &gt;= npartition_sz </para>
+</requires><requires><para>Block is properly aligned for an array of object of size npartition_sz and array of void *. The requirements above guarantee that any pointer to a chunk (which is a pointer to an element in an array of npartition_sz) may be cast to void **. </para>
+</requires></method>
+</method-group>
+</class></namespace>
+<macro name="BOOST_POOL_VALIDATE_INTERNALS"/>
+</header>
+<header name="boost/pool/singleton_pool.hpp">
+<para>The <computeroutput>singleton_pool</computeroutput> class allows other pool interfaces for types of the same size to share the same underlying pool. </para><para>Header singleton_pool.hpp provides a template class <computeroutput>singleton_pool</computeroutput>, which provides access to a pool as a singleton object. </para><namespace name="boost">
+<class name="singleton_pool"><template>
+      <template-type-parameter name="Tag"/>
+      <template-nontype-parameter name="RequestedSize"><type>unsigned</type></template-nontype-parameter>
+      <template-type-parameter name="UserAllocator"/>
+      <template-type-parameter name="Mutex"/>
+      <template-nontype-parameter name="NextSize"><type>unsigned</type></template-nontype-parameter>
+      <template-nontype-parameter name="MaxSize"><type>unsigned</type></template-nontype-parameter>
+    </template><description><para>The <classname alt="boost::singleton_pool">singleton_pool</classname> class allows other pool interfaces for types of the same size to share the same pool. Template parameters are as follows:</para><para><emphasis role="bold">Tag</emphasis> User-specified type to uniquely identify this pool: allows different unbounded sets of singleton pools to exist.</para><para><emphasis role="bold">RequestedSize</emphasis> The size of each chunk returned by member function <computeroutput>malloc()</computeroutput>.</para><para><emphasis role="bold">UserAllocator</emphasis> User allocator, default = <classname alt="boost::default_user_allocator_new_delete">default_user_allocator_new_delete</classname>.</para><para><emphasis role="bold">Mutex</emphasis> This class is the type of mutex to use to protect simultaneous access to the underlying Pool. Can be any Boost.Thread Mutex type or <computeroutput>boost::details::pool::null_mutex</computeroutput>. It is exposed so that users may declare some singleton pools normally (i.e., with synchronization), but some singleton pools without synchronization (by specifying <computeroutput>boost::details::pool::null_mutex</computeroutput>) for efficiency reasons. The member typedef <computeroutput>mutex</computeroutput> exposes the value of this template parameter. The default for this parameter is boost::details::pool::default_mutex which is a synonym for either <computeroutput>boost::details::pool::null_mutex</computeroutput> (when threading support is turned off in the compiler (so BOOST_HAS_THREADS is not set), or threading support has ben explicitly disabled with BOOST_DISABLE_THREADS (Boost-wide disabling of threads) or BOOST_POOL_NO_MT (this library only)) or for <computeroutput>boost::mutex</computeroutput> (when threading support is enabled in the compiler).</para><para><emphasis role="bold">NextSize</emphasis> The value of this parameter is passed to the underlying Pool when it is created and specifies the number of chunks to allocate in the first allocation request (defaults to 32). The member typedef <computeroutput>static const value next_size</computeroutput> exposes the value of this template parameter.</para><para><emphasis role="bold">MaxSize</emphasis>The value of this parameter is passed to the underlying Pool when it is created and specifies the maximum number of chunks to allocate in any single allocation request (defaults to 0).</para><para><emphasis role="bold">Notes:</emphasis></para><para>The underlying pool <emphasis>p</emphasis> referenced by the static functions in <classname alt="boost::singleton_pool">singleton_pool</classname> is actually declared in a way that is:</para><para>1 Thread-safe if there is only one thread running before main() begins and after main() ends – all of the static functions of <classname alt="boost::singleton_pool">singleton_pool</classname> synchronize their access to p.</para><para>2 Guaranteed to be constructed before it is used – thus, the simple static object in the synopsis above would actually be an incorrect implementation. The actual implementation to guarantee this is considerably more complicated.</para><para>3 Note too that a different underlying pool p exists for each different set of template parameters, including implementation-specific ones.</para><para>4 The underlying pool is constructed "as if" by:</para><para>pool&lt;UserAllocator&gt; p(RequestedSize, NextSize, MaxSize);</para><para><note><para>The underlying pool constructed by the singleton <emphasis role="bold">is never freed</emphasis>. This means that memory allocated by a <classname alt="boost::singleton_pool">singleton_pool</classname> can be still used after main() has completed, but may mean that some memory checking programs will complain about leaks from <classname alt="boost::singleton_pool">singleton_pool</classname>. </para>
+</note>
+</para></description><struct name="object_creator"><method-group name="public member functions">
+<method name="do_nothing" cv="const"><type>void</type></method>
+</method-group>
+<constructor/>
+</struct><typedef name="tag"><description><para>The Tag template parameter uniquely identifies this pool and allows different unbounded sets of singleton pools to exist. For example, the pool allocators use two tag classes to ensure that the two different allocator types never share the same underlying singleton pool. Tag is never actually used by <classname alt="boost::singleton_pool">singleton_pool</classname>. </para></description><type>Tag</type></typedef>
+<typedef name="mutex"><purpose>The type of mutex used to synchonise access to this pool (default <computeroutput>details::pool::default_mutex</computeroutput>). </purpose><type>Mutex</type></typedef>
+<typedef name="user_allocator"><purpose>The user-allocator used by this pool, default = <computeroutput><classname alt="boost::default_user_allocator_new_delete">default_user_allocator_new_delete</classname></computeroutput>. </purpose><type>UserAllocator</type></typedef>
+<typedef name="size_type"><purpose>size_type of user allocator. </purpose><type><classname>pool</classname>&lt; UserAllocator &gt;::size_type</type></typedef>
+<typedef name="difference_type"><purpose>difference_type of user allocator. </purpose><type><classname>pool</classname>&lt; UserAllocator &gt;::difference_type</type></typedef>
+<data-member name="requested_size" specifiers="static"><type>const unsigned</type><purpose>The size of each chunk allocated by this pool. </purpose></data-member>
+<data-member name="next_size" specifiers="static"><type>const unsigned</type><purpose>The number of chunks to allocate on the first allocation. </purpose></data-member>
+<data-member name="p" specifiers="static"><type><classname>pool</classname>&lt; UserAllocator &gt;</type><purpose>For exposition only! </purpose></data-member>
+<method-group name="private member functions">
+</method-group>
+<constructor/>
+<method-group name="public static functions">
+<method name="malloc" specifiers="static"><type>void *</type><description><para>Equivalent to SingletonPool::p.malloc(); synchronized. </para></description></method>
+<method name="ordered_malloc" specifiers="static"><type>void *</type><description><para>Equivalent to SingletonPool::p.ordered_malloc(); synchronized. </para></description></method>
+<method name="ordered_malloc" specifiers="static"><type>void *</type><parameter name="n"><paramtype>const size_type</paramtype></parameter><description><para>Equivalent to SingletonPool::p.ordered_malloc(n); synchronized. </para></description></method>
+<method name="is_from" specifiers="static"><type>bool</type><parameter name="ptr"><paramtype>void *const</paramtype></parameter><description><para>Equivalent to SingletonPool::p.is_from(chunk); synchronized. 
+</para></description><returns><para>true if chunk is from SingletonPool::is_from(chunk) </para>
+</returns></method>
+<method name="free" specifiers="static"><type>void</type><parameter name="ptr"><paramtype>void *const</paramtype></parameter><description><para>Equivalent to SingletonPool::p.free(chunk); synchronized. </para></description></method>
+<method name="ordered_free" specifiers="static"><type>void</type><parameter name="ptr"><paramtype>void *const</paramtype></parameter><description><para>Equivalent to SingletonPool::p.ordered_free(chunk); synchronized. </para></description></method>
+<method name="free" specifiers="static"><type>void</type><parameter name="ptr"><paramtype>void *const</paramtype></parameter><parameter name="n"><paramtype>const size_type</paramtype></parameter><description><para>Equivalent to SingletonPool::p.free(chunk, n); synchronized. </para></description></method>
+<method name="ordered_free" specifiers="static"><type>void</type><parameter name="ptr"><paramtype>void *const</paramtype></parameter><parameter name="n"><paramtype>const size_type</paramtype></parameter><description><para>Equivalent to SingletonPool::p.ordered_free(chunk, n); synchronized. </para></description></method>
+<method name="release_memory" specifiers="static"><type>bool</type><description><para>Equivalent to SingletonPool::p.release_memory(); synchronized. </para></description></method>
+<method name="purge_memory" specifiers="static"><type>bool</type><description><para>Equivalent to SingletonPool::p.purge_memory(); synchronized. </para></description></method>
+</method-group>
+<method-group name="private static functions">
+<method name="get_pool" specifiers="static"><type>pool_type &amp;</type></method>
+</method-group>
+</class></namespace>
+</header>
+</library-reference>

@@ -52,6 +52,10 @@ var sanitizeStats = function (stats) {
   // for the comparisons
   delete stats.scannedFull;
   delete stats.scannedIndex;
+  delete stats.cursorsCreated;
+  delete stats.cursorsRearmed;
+  delete stats.cacheHits;
+  delete stats.cacheMisses;
   delete stats.filtered;
   delete stats.executionTime;
   delete stats.httpRequests;
@@ -228,8 +232,8 @@ function ahuacatlModifySuite () {
 
         if (isCluster) {
           let plan = AQL_EXPLAIN(query,{}, disableSingleDocOp).plan;
-          assertFalse(hasDistributeNode(plan.nodes));
-          assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
+          assertTrue(hasDistributeNode(plan.nodes));
+          assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
         }
 
         assertEqual(0, actual.json.length);
@@ -1623,7 +1627,6 @@ function ahuacatlModifySuite () {
         c2.truncate({ compact: false });
       }
     },
-
   };
 }
 
@@ -1746,6 +1749,14 @@ function ahuacatlModifySkipSuite () {
 
       assertEqual(1000, db[cn].count());
     },
+
+    testSubqueryFullCount : function () {
+      const query = "LET sub = NOOPT(FOR doc IN " + cn + " REMOVE doc IN " + cn + " RETURN OLD) COLLECT WITH COUNT INTO l RETURN l"; 
+      let result = AQL_EXECUTE(query, null, { optimizer: { rules: ["-all"] } });
+      assertEqual(1, result.json.length);
+      assertEqual(1, result.json[0]);
+    },
+
   };
 }
 
@@ -1898,7 +1909,7 @@ function ahuacatlGeneratedSuite() {
       assertEqual(10, res.toArray().length);
     }
   };
-};
+}
 
 jsunity.run(ahuacatlModifySuite);
 jsunity.run(ahuacatlModifySkipSuite);

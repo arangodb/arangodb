@@ -1,0 +1,35 @@
+////
+Copyright 2017 Peter Dimov
+
+Distributed under the Boost Software License, Version 1.0.
+
+See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt
+////
+
+[#overview]
+# Overview
+
+Mp11 is a C++11 metaprogramming library for compile-time manipulation of data structures
+that contain types. It's based on template aliases and variadic templates and implements the
+approach outlined in the article
+<<simple_cxx11_metaprogramming.adoc#,"Simple {cpp} metaprogramming">>
+and <<simple_cxx11_metaprogramming_2.adoc#,its sequel>>. Reading these
+articles before proceeding with this documentation is _highly_ recommended.
+
+The general principles upon which Mp11 is built are that algorithms and metafunctions are
+template aliases of the form `F<T...>` and data structures are lists of the form `L<T...>`,
+with the library placing no requirements on `L`. `mp_list<T...>` is the built-in list type,
+but `std::tuple<T...>`, `std::pair<T1, T2>` and `std::variant<T...>` are also perfectly
+legitimate list types, although of course `std::pair<T1, T2>`, due to having exactly two elements,
+is not resizeable and will consequently not work with algorithms that need to add or remove
+elements.
+
+Another distinguishing feature of this approach is that lists (`L<T...>`) have the same form as
+metafunctions (`F<T...>`) and can therefore be used as such. For example, applying `std::add_pointer_t`
+to the list `std::tuple<int, float>` by way of `mp_transform<std::add_pointer_t, std::tuple<int, float>>`
+gives us `std::tuple<int*, float*>`, but we can also apply `mp_list` to the same tuple:
+
+    using R = mp_transform<mp_list, std::tuple<int, float>>;
+
+and get `std::tuple<mp_list<int>, mp_list<float>>`.

@@ -57,7 +57,7 @@ within the timeout, then an *HTTP 408* is returned.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestBackupCreateBackup_rocksdb}
+@EXAMPLE_ARANGOSH_RUN{RestBackupCreateBackup}
     var url = "/_admin/backup/create";
     var body = {
       label: "foo"

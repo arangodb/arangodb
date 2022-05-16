@@ -23,10 +23,9 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
-const joi = require('joi');
 const assert = require('assert');
 const typeIs = require('type-is');
-const mediaTyper = require('media-typer');
+const ct = require('content-type');
 const requestParts = require('internal').requestParts;
 
 exports.validateParams = function validateParams (typeDefs, rawParams, type) {
@@ -34,20 +33,18 @@ exports.validateParams = function validateParams (typeDefs, rawParams, type) {
     type = 'parameter';
   }
   const params = {};
-  for (const entry of typeDefs) {
-    const name = entry[0];
-    const def = entry[1];
-    if (def.schema && typeof def.schema.validate === 'function') {
-      const result = def.schema.validate(rawParams[name]);
-      if (result.error) {
-        const e = result.error;
-        e.message = e.message.replace(/^"value"/, `${type} "${name}"`);
-        throw e;
-      }
-      params[name] = result.value;
-    } else {
-      params[name] = rawParams[name];
+  for (const [name, def] of typeDefs) {
+    let value = rawParams[name];
+    if (def.fromClient) {
+      value = def.fromClient(value);
     }
+    const result = def.validate(value);
+    if (result.error) {
+      const e = result.error;
+      e.message = e.message.replace(/^"value"/, `${type} "${name}"`);
+      throw e;
+    }
+    params[name] = result.value;
   }
   return params;
 };
@@ -76,24 +73,21 @@ exports.parseRequestBody = function parseRequestBody (def, req) {
     actualType = def.contentTypes[0] || indicatedType;
   }
 
-  const parsedType = mediaTyper.parse(actualType);
-  actualType = mediaTyper.format(_.pick(parsedType, ['type', 'subtype', 'suffix']));
+  actualType = ct.parse(actualType);
 
-  if (parsedType.type === 'multipart') {
+  if (actualType.type.startsWith('multipart/')) {
     body = requestParts(req._raw);
   }
 
   let handler;
-  for (const entry of req.context.service.types.entries()) {
-    const key = entry[0];
-    const value = entry[1];
+  for (const [key, value] of req.context.service.types.entries()) {
     let match;
     if (key instanceof RegExp) {
-      match = actualType.test(key);
+      match = actualType.type.test(key);
     } else if (typeof key === 'function') {
-      match = key(actualType);
+      match = key(actualType.type, actualType.parameters);
     } else {
-      match = typeIs.is(key, actualType);
+      match = typeIs.is(key, actualType.type);
     }
     if (match && value.fromClient) {
       handler = value;
@@ -102,7 +96,7 @@ exports.parseRequestBody = function parseRequestBody (def, req) {
   }
 
   if (handler) {
-    body = handler.fromClient(body, req, parsedType);
+    body = handler.fromClient(body, req, actualType.parameters);
   }
 
   return body;
@@ -111,32 +105,15 @@ exports.parseRequestBody = function parseRequestBody (def, req) {
 exports.validateRequestBody = function validateRequestBody (def, req) {
   let body = req.body;
 
-  let schema = def.model && (def.model.schema || def.model);
-  if (!schema) {
-    return body;
+  const result = def.model.validate(body);
+  if (result.error) {
+    result.error.message = result.error.message.replace(/^"value"/, 'request body');
+    throw result.error;
   }
+  body = result.value;
 
-  if (schema.isJoi) {
-    if (def.multiple) {
-      schema = joi.array().items(schema).required();
-    }
-
-    const result = schema.validate(body);
-
-    if (result.error) {
-      result.error.message = result.error.message.replace(/^"value"/, 'request body');
-      throw result.error;
-    }
-
-    body = result.value;
-  }
-
-  if (def.model && def.model.fromClient) {
-    if (def.multiple) {
-      body = body.map((body) => def.model.fromClient(body));
-    } else {
-      body = def.model.fromClient(body);
-    }
+  if (def.model.fromClient) {
+    body = def.model.fromClient(body);
   }
 
   return body;

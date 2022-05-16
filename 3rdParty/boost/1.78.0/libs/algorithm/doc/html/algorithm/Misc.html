@@ -1,0 +1,1290 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Other Algorithms</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="The Boost Algorithm Library">
+<link rel="up" href="../index.html" title="The Boost Algorithm Library">
+<link rel="prev" href="CXX17.html" title="C++17 Algorithms">
+<link rel="next" href="not_yet_documented_cxx17_algos.html" title="Not-yet-documented C++17 Algorithms">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="CXX17.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="not_yet_documented_cxx17_algos.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="algorithm.Misc"></a><a class="link" href="Misc.html" title="Other Algorithms">Other Algorithms</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="Misc.html#algorithm.Misc.misc_inner_algorithms"></a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="Misc.html#algorithm.Misc.misc_inner_algorithms.none_of_equal">none_of_equal
+        </a></span></dt>
+<dt><span class="section"><a href="Misc.html#algorithm.Misc.misc_inner_algorithms.one_of_equal">one_of_equal
+        </a></span></dt>
+<dt><span class="section"><a href="Misc.html#algorithm.Misc.misc_inner_algorithms.is_decreasing">is_decreasing
+        </a></span></dt>
+<dt><span class="section"><a href="Misc.html#algorithm.Misc.misc_inner_algorithms.is_increasing">is_increasing
+        </a></span></dt>
+<dt><span class="section"><a href="Misc.html#algorithm.Misc.misc_inner_algorithms.is_strictly_decreasing">is_strictly_decreasing
+        </a></span></dt>
+<dt><span class="section"><a href="Misc.html#algorithm.Misc.misc_inner_algorithms.is_strictly_increasing">is_strictly_increasing
+        </a></span></dt>
+<dt><span class="section"><a href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.clamp">clamp</a></span></dt>
+<dt><span class="section"><a href="Misc.html#algorithm.Misc.misc_inner_algorithms.clamp_range">clamp_range
+        </a></span></dt>
+<dt><span class="section"><a href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.find_not">find_not
+        </a></span></dt>
+<dt><span class="section"><a href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward">find_backward
+        </a></span></dt>
+<dt><span class="section"><a href="Misc.html#algorithm.Misc.misc_inner_algorithms.find_not_backward">find_not_backward
+        </a></span></dt>
+<dt><span class="section"><a href="Misc.html#algorithm.Misc.misc_inner_algorithms.find_if_backward">find_if_backward
+        </a></span></dt>
+<dt><span class="section"><a href="Misc.html#algorithm.Misc.misc_inner_algorithms.find_if_not">find_if_not
+        </a></span></dt>
+<dt><span class="section"><a href="Misc.html#algorithm.Misc.misc_inner_algorithms.find_if_not_backward">find_if_not_backward
+        </a></span></dt>
+<dt><span class="section"><a href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.gather">gather</a></span></dt>
+<dt><span class="section"><a href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.hex">hex</a></span></dt>
+<dt><span class="section"><a href="Misc.html#algorithm.Misc.misc_inner_algorithms.unhex">unhex
+        </a></span></dt>
+<dt><span class="section"><a href="Misc.html#algorithm.Misc.misc_inner_algorithms.hex_lower">hex_lower
+        </a></span></dt>
+<dt><span class="section"><a href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.is_palindrome">is_palindrome</a></span></dt>
+<dt><span class="section"><a href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.is_partitioned_until">is_partitioned_until
+        </a></span></dt>
+<dt><span class="section"><a href="Misc.html#algorithm.Misc.misc_inner_algorithms.apply_reverse_permutation">apply_reverse_permutation
+        </a></span></dt>
+<dt><span class="section"><a href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.apply_permutation">apply_permutation</a></span></dt>
+<dt><span class="section"><a href="Misc.html#algorithm.Misc.misc_inner_algorithms.copy_until">copy_until
+        </a></span></dt>
+<dt><span class="section"><a href="Misc.html#algorithm.Misc.misc_inner_algorithms.copy_while">copy_while
+        </a></span></dt>
+<dt><span class="section"><a href="Misc.html#algorithm.Misc.misc_inner_algorithms.iota_n">iota_n
+        </a></span></dt>
+<dt><span class="section"><a href="Misc.html#algorithm.Misc.misc_inner_algorithms.power">power
+        </a></span></dt>
+</dl></dd>
+</dl></div>
+<div class="section">
+<div class="titlepage"></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="algorithm.Misc.misc_inner_algorithms.none_of_equal"></a><a class="link" href="Misc.html#algorithm.Misc.misc_inner_algorithms.none_of_equal" title="none_of_equal">none_of_equal
+        </a>
+</h4></div></div></div>
+<p>
+          <span class="bold"><strong><code class="literal"><a class="link" href="../header/boost/algorithm/cxx11/none_of_hpp.html" title="Header &lt;boost/algorithm/cxx11/none_of.hpp&gt;">none_of_equal</a>
+          </code> </strong></span> Whether none of a range's elements matches a value
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="algorithm.Misc.misc_inner_algorithms.one_of_equal"></a><a class="link" href="Misc.html#algorithm.Misc.misc_inner_algorithms.one_of_equal" title="one_of_equal">one_of_equal
+        </a>
+</h4></div></div></div>
+<p>
+          <span class="bold"><strong><code class="literal"><a class="link" href="../header/boost/algorithm/cxx11/one_of_hpp.html" title="Header &lt;boost/algorithm/cxx11/one_of.hpp&gt;">one_of_equal</a>
+          </code> </strong></span> Whether only one of a range's elements matches a
+          value
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="algorithm.Misc.misc_inner_algorithms.is_decreasing"></a><a class="link" href="Misc.html#algorithm.Misc.misc_inner_algorithms.is_decreasing" title="is_decreasing">is_decreasing
+        </a>
+</h4></div></div></div>
+<p>
+          <span class="bold"><strong><code class="literal"><a class="link" href="../header/boost/algorithm/cxx11/is_sorted_hpp.html" title="Header &lt;boost/algorithm/cxx11/is_sorted.hpp&gt;">is_decreasing</a>
+          </code> </strong></span> Whether an entire sequence is decreasing; i.e, each
+          item is less than or equal to the previous one
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="algorithm.Misc.misc_inner_algorithms.is_increasing"></a><a class="link" href="Misc.html#algorithm.Misc.misc_inner_algorithms.is_increasing" title="is_increasing">is_increasing
+        </a>
+</h4></div></div></div>
+<p>
+          <span class="bold"><strong><code class="literal"><a class="link" href="../header/boost/algorithm/cxx11/is_sorted_hpp.html" title="Header &lt;boost/algorithm/cxx11/is_sorted.hpp&gt;">is_increasing</a>
+          </code> </strong></span> Whether an entire sequence is increasing; i.e, each
+          item is greater than or equal to the previous one
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="algorithm.Misc.misc_inner_algorithms.is_strictly_decreasing"></a><a class="link" href="Misc.html#algorithm.Misc.misc_inner_algorithms.is_strictly_decreasing" title="is_strictly_decreasing">is_strictly_decreasing
+        </a>
+</h4></div></div></div>
+<p>
+          <span class="bold"><strong><code class="literal"><a class="link" href="../header/boost/algorithm/cxx11/is_sorted_hpp.html" title="Header &lt;boost/algorithm/cxx11/is_sorted.hpp&gt;">is_strictly_decreasing</a>
+          </code> </strong></span> Whether an entire sequence is strictly decreasing;
+          i.e, each item is less than the previous one
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="algorithm.Misc.misc_inner_algorithms.is_strictly_increasing"></a><a class="link" href="Misc.html#algorithm.Misc.misc_inner_algorithms.is_strictly_increasing" title="is_strictly_increasing">is_strictly_increasing
+        </a>
+</h4></div></div></div>
+<p>
+          <span class="bold"><strong><code class="literal"><a class="link" href="../header/boost/algorithm/cxx11/is_sorted_hpp.html" title="Header &lt;boost/algorithm/cxx11/is_sorted.hpp&gt;">is_strictly_increasing</a>
+          </code> </strong></span> Whether an entire sequence is strictly increasing;
+          i.e, each item is greater than the previous one
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.clamp"></a><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.clamp" title="clamp">clamp</a>
+</h4></div></div></div>
+<p>
+          The header file clamp.hpp contains two functions for "clamping"
+          a value between a pair of boundary values.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.clamp.h0"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.clamp.clamp"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.clamp.clamp">clamp</a>
+        </h6>
+<p>
+          The function <code class="computeroutput"><span class="identifier">clamp</span> <span class="special">(</span><span class="identifier">v</span><span class="special">,</span> <span class="identifier">lo</span><span class="special">,</span> <span class="identifier">hi</span><span class="special">)</span></code> returns:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              lo if v &lt; lo
+            </li>
+<li class="listitem">
+              hi if hi &lt; v
+            </li>
+<li class="listitem">
+              otherwise, v
+            </li>
+</ul></div>
+<p>
+          Note: using <code class="computeroutput"><span class="identifier">clamp</span></code> with
+          floating point numbers may give unexpected results if one of the values
+          is <code class="computeroutput"><span class="identifier">NaN</span></code>.
+        </p>
+<p>
+          There is also a version that allows the caller to specify a comparison
+          predicate to use instead of <code class="computeroutput"><span class="keyword">operator</span>
+          <span class="special">&lt;</span></code>.
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">const</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">clamp</span> <span class="special">(</span> <span class="keyword">const</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">val</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">lo</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">hi</span> <span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Pred</span><span class="special">&gt;</span>
+<span class="keyword">const</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">clamp</span> <span class="special">(</span> <span class="keyword">const</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">val</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">lo</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">hi</span><span class="special">,</span> <span class="identifier">Pred</span> <span class="identifier">p</span> <span class="special">);</span>
+</pre>
+<p>
+        </p>
+<p>
+          The following code:
+</p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">foo</span> <span class="special">=</span> <span class="number">23</span><span class="special">;</span>
+<span class="identifier">foo</span> <span class="special">=</span> <span class="identifier">clamp</span> <span class="special">(</span> <span class="identifier">foo</span><span class="special">,</span> <span class="number">1</span><span class="special">,</span> <span class="number">10</span> <span class="special">);</span>
+</pre>
+<p>
+          will leave <code class="computeroutput"><span class="identifier">foo</span></code> with a value
+          of 10
+        </p>
+<p>
+          Complexity: <code class="computeroutput"><span class="identifier">clamp</span></code> will
+          make either one or two calls to the comparison predicate before returning
+          one of the three parameters.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.clamp.h1"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.clamp.clamp_range"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.clamp.clamp_range">clamp_range</a>
+        </h6>
+<p>
+          There are also four range-based versions of clamp, that apply clamping
+          to a series of values. You could write them yourself with std::transform
+          and bind, like this: <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">transform</span>
+          <span class="special">(</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">out</span><span class="special">,</span> <span class="identifier">bind</span> <span class="special">(</span> <span class="identifier">clamp</span> <span class="special">(</span> <span class="identifier">_1</span><span class="special">,</span> <span class="identifier">lo</span><span class="special">,</span> <span class="identifier">hi</span> <span class="special">)))</span></code>, but they are provided here for your
+          convenience.
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">InputIterator</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">OutputIterator</span><span class="special">&gt;</span>
+<span class="identifier">OutputIterator</span> <span class="identifier">clamp_range</span> <span class="special">(</span> <span class="identifier">InputIterator</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">InputIterator</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">OutputIterator</span> <span class="identifier">out</span><span class="special">,</span>
+    <span class="keyword">typename</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="identifier">InputIterator</span><span class="special">&gt;::</span><span class="identifier">value_type</span> <span class="identifier">lo</span><span class="special">,</span>
+    <span class="keyword">typename</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="identifier">InputIterator</span><span class="special">&gt;::</span><span class="identifier">value_type</span> <span class="identifier">hi</span> <span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Range</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">OutputIterator</span><span class="special">&gt;</span>
+<span class="identifier">OutputIterator</span> <span class="identifier">clamp_range</span> <span class="special">(</span> <span class="keyword">const</span> <span class="identifier">Range</span> <span class="special">&amp;</span><span class="identifier">r</span><span class="special">,</span> <span class="identifier">OutputIterator</span> <span class="identifier">out</span><span class="special">,</span>
+	<span class="keyword">typename</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">range_iterator</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="identifier">Range</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;::</span><span class="identifier">value_type</span> <span class="identifier">lo</span><span class="special">,</span>
+	<span class="keyword">typename</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">range_iterator</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="identifier">Range</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;::</span><span class="identifier">value_type</span> <span class="identifier">hi</span> <span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">InputIterator</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">OutputIterator</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Pred</span><span class="special">&gt;</span>
+<span class="identifier">OutputIterator</span> <span class="identifier">clamp_range</span> <span class="special">(</span> <span class="identifier">InputIterator</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">InputIterator</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">OutputIterator</span> <span class="identifier">out</span><span class="special">,</span>
+    <span class="keyword">typename</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="identifier">InputIterator</span><span class="special">&gt;::</span><span class="identifier">value_type</span> <span class="identifier">lo</span><span class="special">,</span>
+    <span class="keyword">typename</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="identifier">InputIterator</span><span class="special">&gt;::</span><span class="identifier">value_type</span> <span class="identifier">hi</span><span class="special">,</span> <span class="identifier">Pred</span> <span class="identifier">p</span> <span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Range</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">OutputIterator</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Pred</span><span class="special">&gt;</span>
+<span class="identifier">OutputIterator</span> <span class="identifier">clamp_range</span> <span class="special">(</span> <span class="keyword">const</span> <span class="identifier">Range</span> <span class="special">&amp;</span><span class="identifier">r</span><span class="special">,</span> <span class="identifier">OutputIterator</span> <span class="identifier">out</span><span class="special">,</span>
+	<span class="keyword">typename</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">range_iterator</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="identifier">Range</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;::</span><span class="identifier">value_type</span> <span class="identifier">lo</span><span class="special">,</span>
+	<span class="keyword">typename</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">iterator_traits</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">range_iterator</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="identifier">Range</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;::</span><span class="identifier">value_type</span> <span class="identifier">hi</span><span class="special">,</span>
+	<span class="identifier">Pred</span> <span class="identifier">p</span> <span class="special">);</span>
+</pre>
+<p>
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="algorithm.Misc.misc_inner_algorithms.clamp_range"></a><a class="link" href="Misc.html#algorithm.Misc.misc_inner_algorithms.clamp_range" title="clamp_range">clamp_range
+        </a>
+</h4></div></div></div>
+<p>
+          <span class="bold"><strong><code class="literal"><a class="link" href="../header/boost/algorithm/clamp_hpp.html" title="Header &lt;boost/algorithm/clamp.hpp&gt;">clamp_range</a>
+          </code> </strong></span> Perform <code class="literal">clamp</code> on the elements
+          of a range and write the results into an output iterator
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_not"></a><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.find_not" title="find_not">find_not
+        </a>
+</h4></div></div></div>
+<p>
+          The header file 'find_not.hpp' contains a variants of a the stl algorithm
+          <code class="computeroutput"><span class="identifier">find</span></code>. The algorithm finds
+          the first value in the given sequence that is not equal to the given value.
+        </p>
+<p>
+          Consider this use of <code class="computeroutput"><span class="identifier">find</span><span class="special">()</span></code>:
+        </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">vec</span> <span class="special">=</span> <span class="special">{</span> <span class="number">1</span><span class="special">,</span> <span class="number">1</span><span class="special">,</span> <span class="number">2</span> <span class="special">};</span>
+<span class="keyword">auto</span> <span class="identifier">it</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">find</span><span class="special">(</span><span class="identifier">vec</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">vec</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="number">1</span><span class="special">);</span>
+</pre>
+<p>
+          This gives us the first occurance of <code class="computeroutput"><span class="number">1</span></code>
+          in <code class="computeroutput"><span class="identifier">vec</span></code>. What if we want
+          to find the first occurrance of any number besides <code class="computeroutput"><span class="number">1</span></code>
+          in <code class="computeroutput"><span class="identifier">vec</span></code>? We have to write
+          an unfortunate amount of code:
+        </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">vec</span> <span class="special">=</span> <span class="special">{</span> <span class="number">1</span><span class="special">,</span> <span class="number">1</span><span class="special">,</span> <span class="number">2</span> <span class="special">};</span>
+<span class="keyword">auto</span> <span class="identifier">it</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">find_if</span><span class="special">(</span><span class="identifier">vec</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">vec</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="special">[](</span><span class="keyword">int</span> <span class="identifier">i</span><span class="special">)</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">i</span> <span class="special">!=</span> <span class="number">1</span><span class="special">;</span> <span class="special">});</span>
+</pre>
+<p>
+          With <code class="computeroutput"><span class="identifier">find_not</span><span class="special">()</span></code>
+          the code gets much more terse:
+        </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">vec</span> <span class="special">=</span> <span class="special">{</span> <span class="number">1</span><span class="special">,</span> <span class="number">1</span><span class="special">,</span> <span class="number">2</span> <span class="special">};</span>
+<span class="keyword">auto</span> <span class="identifier">it</span> <span class="special">=</span> <span class="identifier">find_not</span><span class="special">(</span><span class="identifier">vec</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">vec</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="number">1</span><span class="special">);</span>
+</pre>
+<p>
+          The existing <code class="computeroutput"><span class="identifier">find</span></code> variants
+          are: <code class="computeroutput"><span class="identifier">find</span><span class="special">()</span></code>,
+          <code class="computeroutput"><span class="identifier">find_if</span><span class="special">()</span></code>,
+          and <code class="computeroutput"><span class="identifier">find_if_not</span><span class="special">()</span></code>.
+          It seems natural to also have <code class="computeroutput"><span class="identifier">find_not</span><span class="special">()</span></code>, for the very reason that we have <code class="computeroutput"><span class="identifier">find_if_not</span><span class="special">()</span></code>
+          -- to avoid having to write a lambda to wrap the negation of the find condition.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_not.h0"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_not.interface"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.find_not.interface">interface</a>
+        </h6>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">InputIter</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Sentinel</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="identifier">InputIter</span> <span class="identifier">find_not</span><span class="special">(</span><span class="identifier">InputIter</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">Sentinel</span> <span class="identifier">last</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">T</span> <span class="special">&amp;</span> <span class="identifier">x</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Range</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">range_iterator</span><span class="special">&lt;</span><span class="identifier">Range</span><span class="special">&gt;</span> <span class="identifier">find_not</span><span class="special">(</span><span class="identifier">Range</span> <span class="special">&amp;</span> <span class="identifier">r</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">T</span> <span class="special">&amp;</span> <span class="identifier">x</span><span class="special">);</span>
+</pre>
+<p>
+          These overloads of <code class="computeroutput"><span class="identifier">find_not</span></code>
+          return the first value that is not equal to <code class="computeroutput"><span class="identifier">x</span></code>
+          in the sequence <code class="computeroutput"><span class="special">[</span><span class="identifier">first</span><span class="special">,</span> <span class="identifier">last</span><span class="special">)</span></code> or <code class="computeroutput"><span class="identifier">r</span></code>,
+          respectively.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_not.h1"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_not.examples"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.find_not.examples">Examples</a>
+        </h6>
+<p>
+          Given the container <code class="computeroutput"><span class="identifier">c1</span></code>
+          containing <code class="computeroutput"><span class="special">{</span> <span class="number">0</span><span class="special">,</span> <span class="number">1</span><span class="special">,</span>
+          <span class="number">2</span> <span class="special">}</span></code>,
+          then
+        </p>
+<pre class="programlisting"><span class="identifier">find_not</span> <span class="special">(</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span>     <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span>    <span class="number">1</span> <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">begin</span><span class="special">()</span>
+<span class="identifier">find_not</span> <span class="special">(</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span>     <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span>    <span class="number">0</span> <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">next</span><span class="special">(</span><span class="identifier">c1</span><span class="special">.</span><span class="identifier">begin</span><span class="special">())</span>
+</pre>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_not.h2"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_not.iterator_requirements"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.find_not.iterator_requirements">Iterator
+          Requirements</a>
+        </h6>
+<p>
+          <code class="computeroutput"><span class="identifier">find_not</span></code> works on all iterators
+          except output iterators.
+        </p>
+<p>
+          The template parameter <code class="computeroutput"><span class="identifier">Sentinel</span></code>
+          is allowed to be different from <code class="computeroutput"><span class="identifier">InputIter</span></code>,
+          or they may be the same. For an <code class="computeroutput"><span class="identifier">InputIter</span></code>
+          <code class="computeroutput"><span class="identifier">it</span></code> and a <code class="computeroutput"><span class="identifier">Sentinel</span></code> <code class="computeroutput"><span class="identifier">end</span></code>,
+          <code class="computeroutput"><span class="identifier">it</span> <span class="special">==</span>
+          <span class="identifier">end</span></code> and <code class="computeroutput"><span class="identifier">it</span>
+          <span class="special">!=</span> <span class="identifier">end</span></code>
+          must be well-formed expressions.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_not.h3"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_not.complexity"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.find_not.complexity">Complexity</a>
+        </h6>
+<p>
+          Linear.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_not.h4"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_not.exception_safety"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.find_not.exception_safety">Exception
+          Safety</a>
+        </h6>
+<p>
+          <code class="computeroutput"><span class="identifier">find_not</span></code> takes its parameters
+          by value and do not depend upon any global state. Therefore, it provides
+          the strong exception guarantee.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_not.h5"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_not.notes"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.find_not.notes">Notes</a>
+        </h6>
+<p>
+          <code class="computeroutput"><span class="keyword">constexpr</span></code> in C++14 or later.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward"></a><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward" title="find_backward">find_backward
+        </a>
+</h4></div></div></div>
+<p>
+          The header file 'find_backward.hpp' contains variants of the stl algorithm
+          <code class="computeroutput"><span class="identifier">find</span></code>. These variants are
+          like <code class="computeroutput"><span class="identifier">find</span></code>, except that
+          the evaluate the elements of the given sequence in reverse order.
+        </p>
+<p>
+          Consider how finding the last element that is equal to <code class="computeroutput"><span class="identifier">x</span></code>
+          in a range is typically done:
+        </p>
+<pre class="programlisting"><span class="comment">// Assume a valid range if elements delimited by [first, last).</span>
+<span class="keyword">while</span> <span class="special">(</span><span class="identifier">last</span><span class="special">--</span> <span class="special">!=</span> <span class="identifier">first</span><span class="special">)</span> <span class="special">{</span>
+    <span class="keyword">if</span> <span class="special">(*</span><span class="identifier">last</span> <span class="special">==</span> <span class="identifier">x</span><span class="special">)</span> <span class="special">{</span>
+        <span class="comment">// Use last here...</span>
+    <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+          Raw loops are icky though. Perhaps we should do a bit of extra work to
+          allow the use of <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">find</span><span class="special">()</span></code>:
+        </p>
+<pre class="programlisting"><span class="keyword">auto</span> <span class="identifier">rfirst</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">make_reverse_iterator</span><span class="special">(</span><span class="identifier">last</span><span class="special">);</span>
+<span class="keyword">auto</span> <span class="identifier">rlast</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">make_reverse_iterator</span><span class="special">(</span><span class="identifier">first</span><span class="special">);</span>
+<span class="keyword">auto</span> <span class="identifier">it</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">find</span><span class="special">(</span><span class="identifier">rfirst</span><span class="special">,</span> <span class="identifier">rlast</span><span class="special">,</span> <span class="identifier">x</span><span class="special">);</span>
+<span class="comment">// Use it here...</span>
+</pre>
+<p>
+          That seems nicer in that there is no raw loop, but it has two major drawbacks.
+          First, it requires an unpleasant amount of typing. Second, it is less efficient
+          than forward-iterator <code class="computeroutput"><span class="identifier">find</span></code>
+          , since <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">reverse_iterator</span></code> calls its base-iterator's
+          <code class="computeroutput"><span class="keyword">operator</span><span class="special">--()</span></code>
+          in most of its member functions before doing the work that the member function
+          requires.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward.h0"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward.interface"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward.interface">interface</a>
+        </h6>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">BidiIter</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="identifier">BidiIter</span> <span class="identifier">find_backward</span><span class="special">(</span><span class="identifier">BidiIter</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">BidiIter</span> <span class="identifier">last</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">T</span> <span class="special">&amp;</span> <span class="identifier">x</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Range</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">range_iterator</span><span class="special">&lt;</span><span class="identifier">Range</span><span class="special">&gt;</span> <span class="identifier">find_backward</span><span class="special">(</span><span class="identifier">Range</span> <span class="special">&amp;</span> <span class="identifier">range</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">T</span> <span class="special">&amp;</span> <span class="identifier">x</span><span class="special">);</span>
+</pre>
+<p>
+          These overloads of <code class="computeroutput"><span class="identifier">find_backward</span></code>
+          return an iterator to the last element that is equal to <code class="computeroutput"><span class="identifier">x</span></code>
+          in <code class="computeroutput"><span class="special">[</span><span class="identifier">first</span><span class="special">,</span> <span class="identifier">last</span><span class="special">)</span></code> or <code class="computeroutput"><span class="identifier">r</span></code>,
+          respectively.
+        </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">BidiIter</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="identifier">BidiIter</span> <span class="identifier">find_not_backward</span><span class="special">(</span><span class="identifier">BidiIter</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">BidiIter</span> <span class="identifier">last</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">T</span> <span class="special">&amp;</span> <span class="identifier">x</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Range</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">range_iterator</span><span class="special">&lt;</span><span class="identifier">Range</span><span class="special">&gt;</span> <span class="identifier">find_not_backward</span><span class="special">(</span><span class="identifier">Range</span> <span class="special">&amp;</span> <span class="identifier">range</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">T</span> <span class="special">&amp;</span> <span class="identifier">x</span><span class="special">);</span>
+</pre>
+<p>
+          These overloads of <code class="computeroutput"><span class="identifier">find_not_backward</span></code>
+          return an iterator to the last element that is not equal to <code class="computeroutput"><span class="identifier">x</span></code> in <code class="computeroutput"><span class="special">[</span><span class="identifier">first</span><span class="special">,</span> <span class="identifier">last</span><span class="special">)</span></code>
+          or <code class="computeroutput"><span class="identifier">r</span></code>, respectively.
+        </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">BidiIter</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Pred</span><span class="special">&gt;</span>
+<span class="identifier">BidiIter</span> <span class="identifier">find_if_backward</span><span class="special">(</span><span class="identifier">BidiIter</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">BidiIter</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">Pred</span> <span class="identifier">p</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Range</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Pred</span><span class="special">&gt;</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">range_iterator</span><span class="special">&lt;</span><span class="identifier">Range</span><span class="special">&gt;</span> <span class="identifier">find_if_backward</span><span class="special">(</span><span class="identifier">Range</span> <span class="special">&amp;</span> <span class="identifier">range</span><span class="special">,</span> <span class="identifier">Pred</span> <span class="identifier">p</span><span class="special">);</span>
+</pre>
+<p>
+          These overloads of <code class="computeroutput"><span class="identifier">find_if_backward</span></code>
+          return an iterator to the last element for which <code class="computeroutput"><span class="identifier">pred</span></code>
+          returns <code class="computeroutput"><span class="keyword">true</span></code> in <code class="computeroutput"><span class="special">[</span><span class="identifier">first</span><span class="special">,</span> <span class="identifier">last</span><span class="special">)</span></code> or <code class="computeroutput"><span class="identifier">r</span></code>,
+          respectively.
+        </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">BidiIter</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Pred</span><span class="special">&gt;</span>
+<span class="identifier">BidiIter</span> <span class="identifier">find_if_not_backward</span><span class="special">(</span><span class="identifier">BidiIter</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">BidiIter</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">Pred</span> <span class="identifier">p</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Range</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Pred</span><span class="special">&gt;</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">range_iterator</span><span class="special">&lt;</span><span class="identifier">Range</span><span class="special">&gt;</span> <span class="identifier">find_if_not_backward</span><span class="special">(</span><span class="identifier">Range</span> <span class="special">&amp;</span> <span class="identifier">range</span><span class="special">,</span> <span class="identifier">Pred</span> <span class="identifier">p</span><span class="special">);</span>
+</pre>
+<p>
+          These overloads of <code class="computeroutput"><span class="identifier">find_if_not_backward</span></code>
+          return an iterator to the last element for which <code class="computeroutput"><span class="identifier">pred</span></code>
+          returns <code class="computeroutput"><span class="keyword">false</span></code> in <code class="computeroutput"><span class="special">[</span><span class="identifier">first</span><span class="special">,</span> <span class="identifier">last</span><span class="special">)</span></code> or <code class="computeroutput"><span class="identifier">r</span></code>,
+          respectively.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward.h1"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward.examples"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward.examples">Examples</a>
+        </h6>
+<p>
+          Given the container <code class="computeroutput"><span class="identifier">c1</span></code>
+          containing <code class="computeroutput"><span class="special">{</span> <span class="number">2</span><span class="special">,</span> <span class="number">1</span><span class="special">,</span>
+          <span class="number">2</span> <span class="special">}</span></code>,
+          then
+        </p>
+<pre class="programlisting"><span class="identifier">find_backward</span>        <span class="special">(</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="number">2</span>                          <span class="special">)</span> <span class="special">--&gt;</span> <span class="special">--</span><span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span>
+<span class="identifier">find_backward</span>        <span class="special">(</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="number">3</span>                          <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span>
+<span class="identifier">find_if_backward</span>     <span class="special">(</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="special">[](</span><span class="keyword">int</span> <span class="identifier">i</span><span class="special">)</span> <span class="special">{</span><span class="keyword">return</span> <span class="identifier">i</span> <span class="special">==</span> <span class="number">2</span><span class="special">;}</span> <span class="special">)</span> <span class="special">--&gt;</span> <span class="special">--</span><span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span>
+<span class="identifier">find_if_backward</span>     <span class="special">(</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="special">[](</span><span class="keyword">int</span> <span class="identifier">i</span><span class="special">)</span> <span class="special">{</span><span class="keyword">return</span> <span class="identifier">i</span> <span class="special">==</span> <span class="number">3</span><span class="special">;}</span> <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span>
+<span class="identifier">find_not_backward</span>    <span class="special">(</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="number">2</span>                          <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">prev</span><span class="special">(</span><span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="number">2</span><span class="special">)</span>
+<span class="identifier">find_not_backward</span>    <span class="special">(</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="number">1</span>                          <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span>
+<span class="identifier">find_if_not_backward</span> <span class="special">(</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="special">[](</span><span class="keyword">int</span> <span class="identifier">i</span><span class="special">)</span> <span class="special">{</span><span class="keyword">return</span> <span class="identifier">i</span> <span class="special">==</span> <span class="number">2</span><span class="special">;}</span> <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">prev</span><span class="special">(</span><span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="number">2</span><span class="special">)</span>
+<span class="identifier">find_if_not_backward</span> <span class="special">(</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="special">[](</span><span class="keyword">int</span> <span class="identifier">i</span><span class="special">)</span> <span class="special">{</span><span class="keyword">return</span> <span class="identifier">i</span> <span class="special">==</span> <span class="number">1</span><span class="special">;}</span> <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span>
+</pre>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward.h2"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward.iterator_requirements"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward.iterator_requirements">Iterator
+          Requirements</a>
+        </h6>
+<p>
+          All variants work on bidirectional iterators.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward.h3"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward.complexity"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward.complexity">Complexity</a>
+        </h6>
+<p>
+          Linear.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward.h4"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward.exception_safety"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward.exception_safety">Exception
+          Safety</a>
+        </h6>
+<p>
+          All of the variants take their parameters by value and do not depend upon
+          any global state. Therefore, all the routines in this file provide the
+          strong exception guarantee.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward.h5"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward.notes"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward.notes">Notes</a>
+        </h6>
+<p>
+          All variants are <code class="computeroutput"><span class="keyword">constexpr</span></code>
+          in C++14 or later.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="algorithm.Misc.misc_inner_algorithms.find_not_backward"></a><a class="link" href="Misc.html#algorithm.Misc.misc_inner_algorithms.find_not_backward" title="find_not_backward">find_not_backward
+        </a>
+</h4></div></div></div>
+<p>
+          <span class="bold"><strong><code class="literal"><a class="link" href="../header/boost/algorithm/find_backward_hpp.html" title="Header &lt;boost/algorithm/find_backward.hpp&gt;">find_not_backward</a>
+          </code> </strong></span> Find the last element in a sequence that does not
+          equal a value. See <a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward" title="find_backward">find_backward</a>.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="algorithm.Misc.misc_inner_algorithms.find_if_backward"></a><a class="link" href="Misc.html#algorithm.Misc.misc_inner_algorithms.find_if_backward" title="find_if_backward">find_if_backward
+        </a>
+</h4></div></div></div>
+<p>
+          <span class="bold"><strong><code class="literal"><a class="link" href="../header/boost/algorithm/find_backward_hpp.html" title="Header &lt;boost/algorithm/find_backward.hpp&gt;">find_if_backward</a>
+          </code> </strong></span> Find the last element in a sequence that satisfies
+          a predicate. See <a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward" title="find_backward">find_backward</a>.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="algorithm.Misc.misc_inner_algorithms.find_if_not"></a><a class="link" href="Misc.html#algorithm.Misc.misc_inner_algorithms.find_if_not" title="find_if_not">find_if_not
+        </a>
+</h4></div></div></div>
+<p>
+          <span class="bold"><strong><code class="literal"><a class="link" href="../header/boost/algorithm/cxx11/find_if_not_hpp.html" title="Header &lt;boost/algorithm/cxx11/find_if_not.hpp&gt;">find_if_not</a>
+          </code> </strong></span> Find the first element in a sequence that does not
+          satisfy a predicate. See <a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.find_not" title="find_not">find_not</a>.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="algorithm.Misc.misc_inner_algorithms.find_if_not_backward"></a><a class="link" href="Misc.html#algorithm.Misc.misc_inner_algorithms.find_if_not_backward" title="find_if_not_backward">find_if_not_backward
+        </a>
+</h4></div></div></div>
+<p>
+          <span class="bold"><strong><code class="literal"><a class="link" href="../header/boost/algorithm/find_backward_hpp.html" title="Header &lt;boost/algorithm/find_backward.hpp&gt;">find_if_not_backward</a>
+          </code> </strong></span> Find the last element in a sequence that does not
+          satisfy a predicate. See <a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.find_backward" title="find_backward">find_backward</a>.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.gather"></a><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.gather" title="gather">gather</a>
+</h4></div></div></div>
+<p>
+          The header file 'boost/algorithm/gather.hpp' contains two variants of a
+          single algorithm, <code class="computeroutput"><span class="identifier">gather</span></code>.
+        </p>
+<p>
+          <code class="computeroutput"><span class="identifier">gather</span><span class="special">()</span></code>
+          takes a collection of elements defined by a pair of iterators and moves
+          the ones satisfying a predicate to them to a position (called the pivot)
+          within the sequence. The algorithm is stable. The result is a pair of iterators
+          that contains the items that satisfy the predicate.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.gather.h0"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.gather.interface"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.gather.interface">Interface</a>
+        </h6>
+<p>
+          The function <code class="computeroutput"><span class="identifier">gather</span></code> returns
+          a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span></code> of iterators that denote the elements
+          that satisfy the predicate.
+        </p>
+<p>
+          There are two versions; one takes two iterators, and the other takes a
+          range.
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">algorithm</span> <span class="special">{</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">BidirectionalIterator</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Pred</span><span class="special">&gt;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span><span class="identifier">BidirectionalIterator</span><span class="special">,</span><span class="identifier">BidirectionalIterator</span><span class="special">&gt;</span>
+<span class="identifier">gather</span> <span class="special">(</span> <span class="identifier">BidirectionalIterator</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">BidirectionalIterator</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">BidirectionalIterator</span> <span class="identifier">pivot</span><span class="special">,</span> <span class="identifier">Pred</span> <span class="identifier">pred</span> <span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">BidirectionalRange</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Pred</span><span class="special">&gt;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">range_iterator</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="identifier">BidirectionalRange</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">range_iterator</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="identifier">BidirectionalRange</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">&gt;</span>
+<span class="identifier">gather</span> <span class="special">(</span> <span class="keyword">const</span> <span class="identifier">BidirectionalRange</span> <span class="special">&amp;</span><span class="identifier">range</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">range_iterator</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="identifier">BidirectionalRange</span><span class="special">&gt;::</span><span class="identifier">type</span> <span class="identifier">pivot</span><span class="special">,</span> <span class="identifier">Pred</span> <span class="identifier">pred</span> <span class="special">);</span>
+
+<span class="special">}}</span>
+</pre>
+<p>
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.gather.h1"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.gather.examples"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.gather.examples">Examples</a>
+        </h6>
+<p>
+          Given an sequence containing:
+</p>
+<pre class="programlisting"><span class="number">0</span> <span class="number">1</span> <span class="number">2</span> <span class="number">3</span> <span class="number">4</span> <span class="number">5</span> <span class="number">6</span> <span class="number">7</span> <span class="number">8</span> <span class="number">9</span>
+</pre>
+<p>
+        </p>
+<p>
+          a call to gather ( arr, arr + 10, arr + 4, IsEven ) will result in:
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="number">1</span> <span class="number">3</span> <span class="number">0</span> <span class="number">2</span> <span class="number">4</span> <span class="number">6</span> <span class="number">8</span> <span class="number">5</span> <span class="number">7</span> <span class="number">9</span>
+    <span class="special">|---|-----|</span>
+  <span class="identifier">first</span> <span class="special">|</span>  <span class="identifier">second</span>
+      <span class="identifier">pivot</span>
+</pre>
+<p>
+          where <code class="computeroutput"><span class="identifier">first</span></code> and <code class="computeroutput"><span class="identifier">second</span></code> are the fields of the pair that
+          is returned by the call.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.gather.h2"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.gather.iterator_requirements"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.gather.iterator_requirements">Iterator
+          Requirements</a>
+        </h6>
+<p>
+          <code class="computeroutput"><span class="identifier">gather</span></code> work on bidirectional
+          iterators or better. This requirement comes from the usage of <code class="computeroutput"><span class="identifier">stable_partition</span></code>, which requires bidirectional
+          iterators. Some standard libraries (libstdc++ and libc++, for example)
+          have implementations of <code class="computeroutput"><span class="identifier">stable_partition</span></code>
+          that work with forward iterators. If that is the case, then <code class="computeroutput"><span class="identifier">gather</span></code> will work with forward iterators
+          as well.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.gather.h3"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.gather.storage_requirements"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.gather.storage_requirements">Storage
+          Requirements</a>
+        </h6>
+<p>
+          <code class="computeroutput"><span class="identifier">gather</span></code> uses <code class="computeroutput"><span class="identifier">stable_partition</span></code>, which will attempt
+          to allocate temporary memory, but will work in-situ if there is none available.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.gather.h4"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.gather.complexity"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.gather.complexity">Complexity</a>
+        </h6>
+<p>
+          If there is sufficient memory available, the run time is linear: <code class="computeroutput"><span class="identifier">O</span><span class="special">(</span><span class="identifier">N</span><span class="special">)</span></code>
+        </p>
+<p>
+          If there is not any memory available, then the run time is <code class="computeroutput"><span class="identifier">O</span><span class="special">(</span><span class="identifier">N</span>
+          <span class="identifier">log</span> <span class="identifier">N</span><span class="special">)</span></code>.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.gather.h5"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.gather.exception_safety"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.gather.exception_safety">Exception
+          Safety</a>
+        </h6>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.gather.h6"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.gather.notes"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.gather.notes">Notes</a>
+        </h6>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.hex"></a><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.hex" title="hex">hex</a>
+</h4></div></div></div>
+<p>
+          The header file <code class="computeroutput"><span class="char">'boost/algorithm/hex.hpp'</span></code>
+          contains three variants each of two algorithms, <code class="computeroutput"><span class="identifier">hex</span></code>
+          and <code class="computeroutput"><span class="identifier">unhex</span></code>. They are inverse
+          algorithms; that is, one undoes the effort of the other. <code class="computeroutput"><span class="identifier">hex</span></code> takes a sequence of values, and turns
+          them into hexadecimal characters. <code class="computeroutput"><span class="identifier">unhex</span></code>
+          takes a sequence of hexadecimal characters, and outputs a sequence of values.
+        </p>
+<p>
+          <code class="computeroutput"><span class="identifier">hex</span></code> and <code class="computeroutput"><span class="identifier">unhex</span></code>
+          come from MySQL, where they are used in database queries and stored procedures.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.hex.h0"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.hex.interface"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.hex.interface">interface</a>
+        </h6>
+<p>
+          The function <code class="computeroutput"><span class="identifier">hex</span></code> takes
+          a sequence of values and writes hexadecimal characters. There are three
+          different interfaces, differing only in how the input sequence is specified.
+        </p>
+<p>
+          The first one takes an iterator pair. The second one takes a pointer to
+          the start of a zero-terminated sequence, such as a c string, and the third
+          takes a range as defined by the Boost.Range library.
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">InputIterator</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">OutputIterator</span><span class="special">&gt;</span>
+<span class="identifier">OutputIterator</span> <span class="identifier">hex</span> <span class="special">(</span> <span class="identifier">InputIterator</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">InputIterator</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">OutputIterator</span> <span class="identifier">out</span> <span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">OutputIterator</span><span class="special">&gt;</span>
+<span class="identifier">OutputIterator</span> <span class="identifier">hex</span> <span class="special">(</span> <span class="keyword">const</span> <span class="identifier">T</span> <span class="special">*</span><span class="identifier">ptr</span><span class="special">,</span> <span class="identifier">OutputIterator</span> <span class="identifier">out</span> <span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Range</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">OutputIterator</span><span class="special">&gt;</span>
+<span class="identifier">OutputIterator</span> <span class="identifier">hex</span> <span class="special">(</span> <span class="keyword">const</span> <span class="identifier">Range</span> <span class="special">&amp;</span><span class="identifier">r</span><span class="special">,</span> <span class="identifier">OutputIterator</span> <span class="identifier">out</span> <span class="special">);</span>
+</pre>
+<p>
+        </p>
+<p>
+          <code class="computeroutput"><span class="identifier">hex</span></code> writes only values
+          in the range '0'..'9' and 'A'..'F', but is not limited to character output.
+          The output iterator could refer to a wstring, or a vector of integers,
+          or any other integral type.
+        </p>
+<p>
+          The function <code class="computeroutput"><span class="identifier">unhex</span></code> takes
+          the output of <code class="computeroutput"><span class="identifier">hex</span></code> and turns
+          it back into a sequence of values.
+        </p>
+<p>
+          The input parameters for the different variations of <code class="computeroutput"><span class="identifier">unhex</span></code>
+          are the same as <code class="computeroutput"><span class="identifier">hex</span></code>.
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">InputIterator</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">OutputIterator</span><span class="special">&gt;</span>
+<span class="identifier">OutputIterator</span> <span class="identifier">unhex</span> <span class="special">(</span> <span class="identifier">InputIterator</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">InputIterator</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">OutputIterator</span> <span class="identifier">out</span> <span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">OutputIterator</span><span class="special">&gt;</span>
+<span class="identifier">OutputIterator</span> <span class="identifier">unhex</span> <span class="special">(</span> <span class="keyword">const</span> <span class="identifier">T</span> <span class="special">*</span><span class="identifier">ptr</span><span class="special">,</span> <span class="identifier">OutputIterator</span> <span class="identifier">out</span> <span class="special">);</span>
+
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Range</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">OutputIterator</span><span class="special">&gt;</span>
+<span class="identifier">OutputIterator</span> <span class="identifier">unhex</span> <span class="special">(</span> <span class="keyword">const</span> <span class="identifier">Range</span> <span class="special">&amp;</span><span class="identifier">r</span><span class="special">,</span> <span class="identifier">OutputIterator</span> <span class="identifier">out</span> <span class="special">);</span>
+</pre>
+<p>
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.hex.h1"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.hex.error_handling"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.hex.error_handling">Error
+          Handling</a>
+        </h6>
+<p>
+          The header 'hex.hpp' defines three exception classes:
+</p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">hex_decode_error</span><span class="special">:</span> <span class="keyword">virtual</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">exception</span><span class="special">,</span> <span class="keyword">virtual</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span> <span class="special">{};</span>
+<span class="keyword">struct</span> <span class="identifier">not_enough_input</span> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">hex_decode_error</span><span class="special">;</span>
+<span class="keyword">struct</span> <span class="identifier">non_hex_input</span> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">hex_decode_error</span><span class="special">;</span>
+</pre>
+<p>
+        </p>
+<p>
+          If the input to <code class="computeroutput"><span class="identifier">unhex</span></code> does
+          not contain an "even number" of hex digits, then an exception
+          of type <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">algorithm</span><span class="special">::</span><span class="identifier">not_enough_input</span></code> is thrown.
+        </p>
+<p>
+          If the input to <code class="computeroutput"><span class="identifier">unhex</span></code> contains
+          any non-hexadecimal characters, then an exception of type <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">algorithm</span><span class="special">::</span><span class="identifier">non_hex_input</span></code> is thrown.
+        </p>
+<p>
+          If you want to catch all the decoding errors, you can catch exceptions
+          of type <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">algorithm</span><span class="special">::</span><span class="identifier">hex_decode_error</span></code>.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.hex.h2"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.hex.examples"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.hex.examples">Examples</a>
+        </h6>
+<p>
+          Assuming that <code class="computeroutput"><span class="identifier">out</span></code> is an
+          iterator that accepts <code class="computeroutput"><span class="keyword">char</span></code>
+          values, and <code class="computeroutput"><span class="identifier">wout</span></code> accepts
+          <code class="computeroutput"><span class="keyword">wchar_t</span></code> values (and that sizeof
+          ( wchar_t ) == 2)
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">hex</span> <span class="special">(</span> <span class="string">"abcdef"</span><span class="special">,</span> <span class="identifier">out</span> <span class="special">)</span>  <span class="special">--&gt;</span> <span class="string">"616263646566"</span>
+<span class="identifier">hex</span> <span class="special">(</span> <span class="string">"32"</span><span class="special">,</span> <span class="identifier">out</span> <span class="special">)</span>     <span class="special">--&gt;</span> <span class="string">"3332"</span>
+<span class="identifier">hex</span> <span class="special">(</span> <span class="string">"abcdef"</span><span class="special">,</span> <span class="identifier">wout</span> <span class="special">)</span> <span class="special">--&gt;</span> <span class="string">"006100620063006400650066"</span>
+<span class="identifier">hex</span> <span class="special">(</span> <span class="string">"32"</span><span class="special">,</span> <span class="identifier">wout</span> <span class="special">)</span>    <span class="special">--&gt;</span> <span class="string">"00330032"</span>
+
+<span class="identifier">unhex</span> <span class="special">(</span> <span class="string">"616263646566"</span><span class="special">,</span> <span class="identifier">out</span> <span class="special">)</span>  <span class="special">--&gt;</span> <span class="string">"abcdef"</span>
+<span class="identifier">unhex</span> <span class="special">(</span> <span class="string">"3332"</span><span class="special">,</span> <span class="identifier">out</span> <span class="special">)</span>          <span class="special">--&gt;</span> <span class="string">"32"</span>
+<span class="identifier">unhex</span> <span class="special">(</span> <span class="string">"616263646566"</span><span class="special">,</span> <span class="identifier">wout</span> <span class="special">)</span> <span class="special">--&gt;</span> <span class="string">"\6162\6364\6566"</span>	<span class="special">(</span> <span class="identifier">i</span><span class="special">.</span><span class="identifier">e</span><span class="special">,</span> <span class="identifier">a</span> <span class="number">3</span> <span class="identifier">character</span> <span class="identifier">string</span> <span class="special">)</span>
+<span class="identifier">unhex</span> <span class="special">(</span> <span class="string">"3332"</span><span class="special">,</span> <span class="identifier">wout</span> <span class="special">)</span>         <span class="special">--&gt;</span> <span class="string">"\3233"</span>				<span class="special">(</span> <span class="identifier">U</span><span class="special">+</span><span class="number">3332</span><span class="special">,</span> <span class="identifier">SQUARE</span> <span class="identifier">HUARADDO</span> <span class="special">)</span>
+
+<span class="identifier">unhex</span> <span class="special">(</span> <span class="string">"3"</span><span class="special">,</span> <span class="identifier">out</span> <span class="special">)</span>            <span class="special">--&gt;</span> <span class="identifier">Error</span> <span class="special">-</span> <span class="keyword">not</span> <span class="identifier">enough</span> <span class="identifier">input</span>
+<span class="identifier">unhex</span> <span class="special">(</span> <span class="string">"32"</span><span class="special">,</span> <span class="identifier">wout</span> <span class="special">)</span>          <span class="special">--&gt;</span> <span class="identifier">Error</span> <span class="special">-</span> <span class="keyword">not</span> <span class="identifier">enough</span> <span class="identifier">input</span>
+
+<span class="identifier">unhex</span> <span class="special">(</span> <span class="string">"ACEG"</span><span class="special">,</span> <span class="identifier">out</span> <span class="special">)</span>         <span class="special">--&gt;</span> <span class="identifier">Error</span> <span class="special">-</span> <span class="identifier">non</span><span class="special">-</span><span class="identifier">hex</span> <span class="identifier">input</span>
+</pre>
+<p>
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.hex.h3"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.hex.iterator_requirements"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.hex.iterator_requirements">Iterator
+          Requirements</a>
+        </h6>
+<p>
+          <code class="computeroutput"><span class="identifier">hex</span></code> and <code class="computeroutput"><span class="identifier">unhex</span></code>
+          work on all iterator types.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.hex.h4"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.hex.complexity"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.hex.complexity">Complexity</a>
+        </h6>
+<p>
+          All of the variants of <code class="computeroutput"><span class="identifier">hex</span></code>
+          and <code class="computeroutput"><span class="identifier">unhex</span></code> run in <span class="emphasis"><em>O(N)</em></span>
+          (linear) time; that is, that is, they process each element in the input
+          sequence once.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.hex.h5"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.hex.exception_safety"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.hex.exception_safety">Exception
+          Safety</a>
+        </h6>
+<p>
+          All of the variants of <code class="computeroutput"><span class="identifier">hex</span></code>
+          and <code class="computeroutput"><span class="identifier">unhex</span></code> take their parameters
+          by value or const reference, and do not depend upon any global state. Therefore,
+          all the routines in this file provide the strong exception guarantee. However,
+          when working on input iterators, if an exception is thrown, the input iterators
+          will not be reset to their original values (i.e, the characters read from
+          the iterator cannot be un-read)
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.hex.h6"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.hex.notes"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.hex.notes">Notes</a>
+        </h6>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+              <code class="computeroutput"><span class="identifier">hex</span></code> and <code class="computeroutput"><span class="identifier">unhex</span></code> both do nothing when passed
+              empty ranges.
+            </li></ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="algorithm.Misc.misc_inner_algorithms.unhex"></a><a class="link" href="Misc.html#algorithm.Misc.misc_inner_algorithms.unhex" title="unhex">unhex
+        </a>
+</h4></div></div></div>
+<p>
+          <span class="bold"><strong><code class="literal"><a class="link" href="../header/boost/algorithm/hex_hpp.html" title="Header &lt;boost/algorithm/hex.hpp&gt;">unhex</a>
+          </code> </strong></span> Convert a sequence of hexadecimal characters into
+          a sequence of integers or characters
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="algorithm.Misc.misc_inner_algorithms.hex_lower"></a><a class="link" href="Misc.html#algorithm.Misc.misc_inner_algorithms.hex_lower" title="hex_lower">hex_lower
+        </a>
+</h4></div></div></div>
+<p>
+          <span class="bold"><strong><code class="literal"><a class="link" href="../header/boost/algorithm/hex_hpp.html" title="Header &lt;boost/algorithm/hex.hpp&gt;">hex_lower</a>
+          </code> </strong></span> Convert a sequence of integral types into a lower
+          case hexadecimal sequence of characters
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_palindrome"></a><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.is_palindrome" title="is_palindrome">is_palindrome</a>
+</h4></div></div></div>
+<p>
+          The header file 'is_palindrome.hpp' contains six variants of a single algorithm,
+          is_palindrome. The algorithm tests the sequence and returns true if the
+          sequence is a palindrome; i.e, it is identical when traversed either backwards
+          or frontwards.
+        </p>
+<p>
+          The routine <code class="computeroutput"><span class="identifier">is_palindrome</span></code>
+          takes a sequence and, optionally, a predicate. It will return true if the
+          predicate returns true for tested elements by algorithm in the sequence.
+        </p>
+<p>
+          The routine come in 6 forms; the first one takes two iterators to define
+          the range. The second form takes two iterators to define the range and
+          a predicate. The third form takes a single range parameter, and uses Boost.Range
+          to traverse it. The fourth form takes a single range parameter ( uses Boost.Range
+          to traverse it) and a predicate. The fifth form takes a single C-string
+          and a predicate. The sixth form takes a single C-string.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_palindrome.h0"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_palindrome.interface"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.is_palindrome.interface">interface</a>
+        </h6>
+<p>
+          The function <code class="computeroutput"><span class="identifier">is_palindrome</span></code>
+          returns true if the predicate returns true any tested by algorithm items
+          in the sequence. There are six versions: 1) takes two iterators. 2) takes
+          two iterators and a predicate. 3) takes a range. 4) takes a range and a
+          predicate. 5) takes a C-string and a predicate. 6) takes a C-string.
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">BidirectionalIterator</span><span class="special">&gt;</span>
+	<span class="keyword">bool</span> <span class="identifier">is_palindrome</span> <span class="special">(</span> <span class="identifier">BidirectionalIterator</span> <span class="identifier">begin</span><span class="special">,</span> <span class="identifier">BidirectionalIterator</span> <span class="identifier">end</span> <span class="special">);</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">BidirectionalIterator</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Predicate</span><span class="special">&gt;</span>
+	<span class="keyword">bool</span> <span class="identifier">is_palindrome</span> <span class="special">(</span> <span class="identifier">BidirectionalIterator</span> <span class="identifier">begin</span><span class="special">,</span> <span class="identifier">BidirectionalIterator</span> <span class="identifier">end</span><span class="special">,</span> <span class="identifier">Predicate</span> <span class="identifier">p</span> <span class="special">);</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Range</span><span class="special">&gt;</span>
+	<span class="keyword">bool</span> <span class="identifier">is_palindrome</span> <span class="special">(</span> <span class="keyword">const</span> <span class="identifier">Range</span> <span class="special">&amp;</span><span class="identifier">r</span> <span class="special">);</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Range</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Predicate</span><span class="special">&gt;</span>
+	<span class="keyword">bool</span> <span class="identifier">is_palindrome</span> <span class="special">(</span> <span class="keyword">const</span> <span class="identifier">Range</span> <span class="special">&amp;</span><span class="identifier">r</span><span class="special">,</span> <span class="identifier">Predicate</span> <span class="identifier">p</span> <span class="special">);</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Predicate</span><span class="special">&gt;</span>
+	<span class="keyword">bool</span> <span class="identifier">is_palindrome</span> <span class="special">(</span> <span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">str</span><span class="special">,</span> <span class="identifier">Predicate</span> <span class="identifier">p</span> <span class="special">);</span>
+<span class="keyword">bool</span> <span class="identifier">is_palindrome</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">str</span><span class="special">);</span>
+</pre>
+<p>
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_palindrome.h1"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_palindrome.examples"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.is_palindrome.examples">Examples</a>
+        </h6>
+<p>
+          Given the containers: const std::list&lt;int&gt; empty, const std::vector&lt;char&gt;
+          singleElement{'z'}, int oddNonPalindrome[] = {3,2,2}, const int oddPalindrome[]
+          = {1,2,3,2,1}, const int evenPalindrome[] = {1,2,2,1}, int evenNonPalindrome[]
+          = {1,4,8,8}, then
+</p>
+<pre class="programlisting"><span class="identifier">is_palindrome</span><span class="special">(</span><span class="identifier">empty</span><span class="special">))</span>  <span class="special">--&gt;</span> <span class="keyword">true</span> <span class="comment">//empty range                                                                       </span>
+<span class="identifier">is_palindrome</span><span class="special">(</span><span class="identifier">singleElement</span><span class="special">))</span>  <span class="special">--&gt;</span> <span class="keyword">true</span>
+<span class="identifier">is_palindrome</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">begin</span><span class="special">(</span><span class="identifier">oddNonPalindrome</span><span class="special">),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">end</span><span class="special">(</span><span class="identifier">oddNonPalindrome</span><span class="special">)))</span> <span class="special">--&gt;</span> <span class="keyword">false</span>
+<span class="identifier">is_palindrome</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">begin</span><span class="special">(</span><span class="identifier">evenPalindrome</span><span class="special">),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">end</span><span class="special">(</span><span class="identifier">evenPalindrome</span><span class="special">)))</span> <span class="special">--&gt;</span> <span class="keyword">true</span>
+<span class="identifier">is_palindrome</span><span class="special">(</span><span class="identifier">empty</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">empty</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">functorComparator</span><span class="special">()))</span> <span class="special">--&gt;</span> <span class="keyword">true</span> <span class="comment">//empty range                             </span>
+<span class="identifier">is_palindrome</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">begin</span><span class="special">(</span><span class="identifier">oddNonPalindrome</span><span class="special">),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">end</span><span class="special">(</span><span class="identifier">oddNonPalindrome</span><span class="special">),</span> <span class="identifier">funcComparator</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;))</span> <span class="special">--&gt;</span> <span class="keyword">false</span>
+<span class="identifier">is_palindrome</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">begin</span><span class="special">(</span><span class="identifier">oddPalindrome</span><span class="special">),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">end</span><span class="special">(</span><span class="identifier">oddPalindrome</span><span class="special">))</span> <span class="special">--&gt;</span> <span class="keyword">true</span>
+<span class="identifier">is_palindrome</span><span class="special">(</span><span class="identifier">evenPalindrome</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">equal_to</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;()))</span> <span class="special">--&gt;</span> <span class="keyword">true</span>
+<span class="identifier">is_palindrome</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">begin</span><span class="special">(</span><span class="identifier">evenNonPalindrome</span><span class="special">),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">end</span><span class="special">(</span><span class="identifier">evenNonPalindrome</span><span class="special">))</span> <span class="special">--&gt;</span> <span class="keyword">false</span>
+<span class="identifier">is_palindrome</span><span class="special">(</span><span class="string">"a"</span><span class="special">)</span> <span class="special">--&gt;</span> <span class="keyword">true</span>
+<span class="identifier">is_palindrome</span><span class="special">(</span><span class="string">"aba"</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">equal_to</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;())</span> <span class="special">--&gt;</span> <span class="keyword">true</span>
+</pre>
+<p>
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_palindrome.h2"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_palindrome.iterator_requirements"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.is_palindrome.iterator_requirements">Iterator
+          Requirements</a>
+        </h6>
+<p>
+          <code class="computeroutput"><span class="identifier">is_palindrome</span></code> work on Bidirectional
+          and RandomAccess iterators.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_palindrome.h3"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_palindrome.complexity"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.is_palindrome.complexity">Complexity</a>
+        </h6>
+<p>
+          All of the variants of <code class="computeroutput"><span class="identifier">is_palindrome</span></code>
+          run in <span class="emphasis"><em>O(N)</em></span> (linear) time; that is, they compare against
+          each element in the list once. If any of the comparisons not succeed, the
+          algorithm will terminate immediately, without examining the remaining members
+          of the sequence.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_palindrome.h4"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_palindrome.exception_safety"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.is_palindrome.exception_safety">Exception
+          Safety</a>
+        </h6>
+<p>
+          All of the variants of <code class="computeroutput"><span class="identifier">is_palindrome</span></code>
+          take their parameters by value, const pointer or const reference, and do
+          not depend upon any global state. Therefore, all the routines in this file
+          provide the strong exception guarantee.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_palindrome.h5"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_palindrome.notes"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.is_palindrome.notes">Notes</a>
+        </h6>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">is_palindrome</span></code> returns
+              true for empty ranges, const char* null pointers and for single element
+              ranges.
+            </li>
+<li class="listitem">
+              If you use version of 'is_palindrome' without custom predicate, 'is_palindrome'
+              uses default 'operator==()' for elements.
+            </li>
+<li class="listitem">
+              Be careful with using not null pointer 'const char*' without '\0' -
+              if you use it with 'is_palindrome', it's a undefined behaviour.
+            </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_partitioned_until"></a><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.is_partitioned_until" title="is_partitioned_until">is_partitioned_until
+        </a>
+</h4></div></div></div>
+<p>
+          The header file 'is_partitioned_until.hpp' contains two variants of a single
+          algorithm, <code class="computeroutput"><span class="identifier">is_partitioned_until</span></code>.
+          The algorithm tests to see if a sequence is partitioned according to a
+          predicate; in other words, all the items in the sequence that satisfy the
+          predicate are at the beginning of the sequence.
+        </p>
+<p>
+          The routine <code class="computeroutput"><span class="identifier">is_partitioned_until</span></code>
+          takes a sequence and a predicate. It returns the last iterator 'it' in
+          the sequence [begin, end) for which the is_partitioned(begin, it) is true.
+        </p>
+<p>
+          <code class="computeroutput"><span class="identifier">is_partitioned_until</span></code> come
+          in two forms; the first one takes two iterators to define the range. The
+          second form takes a single range parameter, and uses Boost.Range to traverse
+          it.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_partitioned_until.h0"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_partitioned_until.interface"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.is_partitioned_until.interface">interface</a>
+        </h6>
+<p>
+          The function <code class="computeroutput"><span class="identifier">is_partitioned_until</span></code>
+          returns the last iterator 'it' in the sequence [begin, end) for which the
+          is_partitioned(begin, it) is true. There are two versions; one takes two
+          iterators, and the other takes a range.
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">InputIterator</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Predicate</span><span class="special">&gt;</span>
+	<span class="identifier">InputIterator</span> <span class="identifier">is_partitioned_until</span> <span class="special">(</span> <span class="identifier">InputIterator</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">InputIterator</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">Predicate</span> <span class="identifier">p</span> <span class="special">);</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Range</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Predicate</span><span class="special">&gt;</span>
+	<span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">range_iterator</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="identifier">Range</span><span class="special">&gt;::</span><span class="identifier">type</span> <span class="identifier">is_partitioned_until</span> <span class="special">(</span> <span class="keyword">const</span> <span class="identifier">Range</span> <span class="special">&amp;</span><span class="identifier">r</span><span class="special">,</span> <span class="identifier">Predicate</span> <span class="identifier">p</span> <span class="special">);</span>
+</pre>
+<p>
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_partitioned_until.h1"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_partitioned_until.examples"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.is_partitioned_until.examples">Examples</a>
+        </h6>
+<p>
+          Given the container <code class="computeroutput"><span class="identifier">c</span></code> containing
+          <code class="computeroutput"><span class="special">{</span> <span class="number">0</span><span class="special">,</span> <span class="number">1</span><span class="special">,</span>
+          <span class="number">2</span><span class="special">,</span> <span class="number">3</span><span class="special">,</span> <span class="number">14</span><span class="special">,</span> <span class="number">15</span> <span class="special">}</span></code>,
+          then
+</p>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="identifier">isOdd</span> <span class="special">(</span> <span class="keyword">int</span> <span class="identifier">i</span> <span class="special">)</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">i</span> <span class="special">%</span> <span class="number">2</span> <span class="special">==</span> <span class="number">1</span><span class="special">;</span> <span class="special">}</span>
+<span class="keyword">bool</span> <span class="identifier">lessThan10</span> <span class="special">(</span> <span class="keyword">int</span> <span class="identifier">i</span> <span class="special">)</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">10</span><span class="special">;</span> <span class="special">}</span>
+
+<span class="identifier">is_partitioned_until</span> <span class="special">(</span> <span class="identifier">c</span><span class="special">,</span> <span class="identifier">isOdd</span> <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">iterator</span> <span class="identifier">to</span> <span class="char">'1'</span>
+<span class="identifier">is_partitioned_until</span> <span class="special">(</span> <span class="identifier">c</span><span class="special">,</span> <span class="identifier">lessThan10</span> <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">end</span>
+<span class="identifier">is_partitioned_until</span> <span class="special">(</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">begin</span> <span class="special">(),</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">end</span> <span class="special">(),</span> <span class="identifier">lessThan10</span> <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">end</span>
+<span class="identifier">is_partitioned_until</span> <span class="special">(</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">begin</span> <span class="special">(),</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">begin</span> <span class="special">()</span> <span class="special">+</span> <span class="number">3</span><span class="special">,</span> <span class="identifier">lessThan10</span> <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">end</span>
+<span class="identifier">is_partitioned_until</span> <span class="special">(</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">end</span> <span class="special">(),</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">end</span> <span class="special">(),</span> <span class="identifier">isOdd</span> <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">end</span>  <span class="comment">// empty range</span>
+</pre>
+<p>
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_partitioned_until.h2"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_partitioned_until.iterator_requirements"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.is_partitioned_until.iterator_requirements">Iterator
+          Requirements</a>
+        </h6>
+<p>
+          <code class="computeroutput"><span class="identifier">is_partitioned_until</span></code> works
+          on all iterators except output iterators.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_partitioned_until.h3"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_partitioned_until.complexity"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.is_partitioned_until.complexity">Complexity</a>
+        </h6>
+<p>
+          Both of the variants of <code class="computeroutput"><span class="identifier">is_partitioned_until</span></code>
+          run in <span class="emphasis"><em>O(N)</em></span> (linear) time; that is, they compare against
+          each element in the list once. If the sequence is found to be not partitioned
+          at any point, the routine will terminate immediately, without examining
+          the rest of the elements.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_partitioned_until.h4"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_partitioned_until.exception_safety"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.is_partitioned_until.exception_safety">Exception
+          Safety</a>
+        </h6>
+<p>
+          Both of the variants of <code class="computeroutput"><span class="identifier">is_partitioned_until</span></code>
+          take their parameters by value or const reference, and do not depend upon
+          any global state. Therefore, all the routines in this file provide the
+          strong exception guarantee.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_partitioned_until.h5"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.is_partitioned_until.notes"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.is_partitioned_until.notes">Notes</a>
+        </h6>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+              <code class="computeroutput"><span class="identifier">is_partitioned_until</span></code>
+              returns iterator to the end for empty and single-element ranges, no
+              matter what predicate is passed to test against.
+            </li></ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="algorithm.Misc.misc_inner_algorithms.apply_reverse_permutation"></a><a class="link" href="Misc.html#algorithm.Misc.misc_inner_algorithms.apply_reverse_permutation" title="apply_reverse_permutation">apply_reverse_permutation
+        </a>
+</h4></div></div></div>
+<p>
+          See below
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.apply_permutation"></a><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.apply_permutation" title="apply_permutation">apply_permutation</a>
+</h4></div></div></div>
+<p>
+          The header file <code class="literal"><a class="link" href="../header/boost/algorithm/apply_permutation_hpp.html" title="Header &lt;boost/algorithm/apply_permutation.hpp&gt;">apply_permutation.hpp</a></code>
+          contains two algorithms, <code class="computeroutput"><span class="identifier">apply_permutation</span></code>
+          and <code class="computeroutput"><span class="identifier">apply_reverse_permutation</span></code>.
+          There are also range-based versions. The algorithms transform the item
+          sequence according to index sequence order.
+        </p>
+<p>
+          The routine <code class="computeroutput"><span class="identifier">apply_permutation</span></code>
+          takes a item sequence and a order sequence. It reshuffles item sequence
+          according to order sequence. Every value in order sequence means where
+          the item comes from. Order sequence needs to be exactly a permutation of
+          the sequence [0, 1, ... , N], where N is the biggest index in the item
+          sequence (zero-indexed). The routine <code class="computeroutput"><span class="identifier">apply_reverse_permutation</span></code>
+          takes a item sequence and a order sequence. It will reshuffle item sequence
+          according to order sequence. Every value in order sequence means where
+          the item goes to. Order sequence needs to be exactly a permutation of the
+          sequence [0, 1, ... , N], where N is the biggest index in the item sequence
+          (zero-indexed).
+        </p>
+<p>
+          Implementations are based on these articles: https://blogs.msdn.microsoft.com/oldnewthing/20170102-00/?p=95095
+          https://blogs.msdn.microsoft.com/oldnewthing/20170103-00/?p=95105 https://blogs.msdn.microsoft.com/oldnewthing/20170104-00/?p=95115
+          https://blogs.msdn.microsoft.com/oldnewthing/20170109-00/?p=95145 https://blogs.msdn.microsoft.com/oldnewthing/20170110-00/?p=95155
+          https://blogs.msdn.microsoft.com/oldnewthing/20170111-00/?p=95165
+        </p>
+<p>
+          The routines come in 2 forms; the first one takes two iterators to define
+          the item range and one iterator to define the beginning of index range.
+          The second form takes range to define the item sequence and range to define
+          index sequence.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.apply_permutation.h0"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.apply_permutation.interface"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.apply_permutation.interface">interface</a>
+        </h6>
+<p>
+          There are two versions of algorithms: 1) takes four iterators. 2) takes
+          two ranges.
+</p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">RandomAccessIterator1</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">RandomAccessIterator2</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">apply_permutation</span><span class="special">(</span><span class="identifier">RandomAccessIterator1</span> <span class="identifier">item_begin</span><span class="special">,</span> <span class="identifier">RandomAccessIterator1</span> <span class="identifier">item_end</span><span class="special">,</span>
+                  <span class="identifier">RandomAccessIterator2</span> <span class="identifier">ind_begin</span><span class="special">,</span> <span class="identifier">RandomAccessIterator2</span> <span class="identifier">ind_end</span><span class="special">);</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Range1</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Range2</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">apply_permutation</span><span class="special">(</span><span class="identifier">Range1</span><span class="special">&amp;</span> <span class="identifier">item_range</span><span class="special">,</span> <span class="identifier">Range2</span><span class="special">&amp;</span> <span class="identifier">ind_range</span><span class="special">);</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">RandomAccessIterator1</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">RandomAccessIterator2</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">apply_reverse_permutation</span><span class="special">(</span><span class="identifier">RandomAccessIterator1</span> <span class="identifier">item_begin</span><span class="special">,</span> <span class="identifier">RandomAccessIterator1</span> <span class="identifier">item_end</span><span class="special">,</span>
+                  <span class="identifier">RandomAccessIterator2</span> <span class="identifier">ind_begin</span><span class="special">,</span> <span class="identifier">RandomAccessIterator2</span> <span class="identifier">ind_end</span><span class="special">);</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Range1</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Range2</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">apply_reverse_permutation</span><span class="special">(</span><span class="identifier">Range1</span><span class="special">&amp;</span> <span class="identifier">item_range</span><span class="special">,</span> <span class="identifier">Range2</span><span class="special">&amp;</span> <span class="identifier">ind_range</span><span class="special">);</span>
+</pre>
+<p>
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.apply_permutation.h1"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.apply_permutation.examples"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.apply_permutation.examples">Examples</a>
+        </h6>
+<p>
+          Given the containers: std::vector&lt;int&gt; emp_vec, emp_order, std::vector&lt;int&gt;
+          one{1}, one_order{0}, std::vector&lt;int&gt; two{1,2}, two_order{1,0},
+          std::vector&lt;int&gt; vec{1, 2, 3, 4, 5}, std::vector&lt;int&gt; order{4,
+          2, 3, 1, 0}, then
+</p>
+<pre class="programlisting"><span class="identifier">apply_permutation</span><span class="special">(</span><span class="identifier">emp_vec</span><span class="special">,</span> <span class="identifier">emp_order</span><span class="special">))</span>  <span class="special">--&gt;</span> <span class="identifier">no</span> <span class="identifier">changes</span>
+<span class="identifier">apply_reverse_permutation</span><span class="special">(</span><span class="identifier">emp_vec</span><span class="special">,</span> <span class="identifier">emp_order</span><span class="special">))</span>  <span class="special">--&gt;</span> <span class="identifier">no</span> <span class="identifier">changes</span>
+<span class="identifier">apply_permutation</span><span class="special">(</span><span class="identifier">one</span><span class="special">,</span> <span class="identifier">one_order</span><span class="special">)</span>  <span class="special">--&gt;</span> <span class="identifier">no</span> <span class="identifier">changes</span>
+<span class="identifier">apply_reverse_permutation</span><span class="special">(</span><span class="identifier">one</span><span class="special">,</span> <span class="identifier">one_order</span><span class="special">)</span>  <span class="special">--&gt;</span> <span class="identifier">no</span> <span class="identifier">changes</span>
+<span class="identifier">apply_permutation</span><span class="special">(</span><span class="identifier">two</span><span class="special">,</span> <span class="identifier">two_order</span><span class="special">)</span>  <span class="special">--&gt;</span> <span class="identifier">two</span><span class="special">:{</span><span class="number">2</span><span class="special">,</span><span class="number">1</span><span class="special">}</span>
+<span class="identifier">apply_reverse_permutation</span><span class="special">(</span><span class="identifier">two</span><span class="special">,</span> <span class="identifier">two_order</span><span class="special">)</span>  <span class="special">--&gt;</span> <span class="identifier">two</span><span class="special">:{</span><span class="number">2</span><span class="special">,</span><span class="number">1</span><span class="special">}</span>
+<span class="identifier">apply_permutation</span><span class="special">(</span><span class="identifier">vec</span><span class="special">,</span> <span class="identifier">order</span><span class="special">)</span>  <span class="special">--&gt;</span> <span class="identifier">vec</span><span class="special">:{</span><span class="number">5</span><span class="special">,</span> <span class="number">3</span><span class="special">,</span> <span class="number">4</span><span class="special">,</span> <span class="number">2</span><span class="special">,</span> <span class="number">1</span><span class="special">}</span>
+<span class="identifier">apply_reverse_permutation</span><span class="special">(</span><span class="identifier">vec</span><span class="special">,</span> <span class="identifier">order</span><span class="special">)</span>  <span class="special">--&gt;</span> <span class="identifier">vec</span><span class="special">:{</span><span class="number">5</span><span class="special">,</span> <span class="number">4</span><span class="special">,</span> <span class="number">2</span><span class="special">,</span> <span class="number">3</span><span class="special">,</span> <span class="number">1</span><span class="special">}</span>
+</pre>
+<p>
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.apply_permutation.h2"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.apply_permutation.iterator_requirements"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.apply_permutation.iterator_requirements">Iterator
+          Requirements</a>
+        </h6>
+<p>
+          <code class="computeroutput"><span class="identifier">apply_permutation</span></code> and 'apply_reverse_permutation'
+          work only on RandomAccess iterators. RandomAccess iterators required both
+          for item and index sequences.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.apply_permutation.h3"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.apply_permutation.complexity"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.apply_permutation.complexity">Complexity</a>
+        </h6>
+<p>
+          All of the variants of <code class="computeroutput"><span class="identifier">apply_permutation</span></code>
+          and <code class="computeroutput"><span class="identifier">apply_reverse_permutation</span></code>
+          run in <span class="emphasis"><em>O(N)</em></span> (linear) time. More
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.apply_permutation.h4"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.apply_permutation.exception_safety"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.apply_permutation.exception_safety">Exception
+          Safety</a>
+        </h6>
+<p>
+          All of the variants of <code class="computeroutput"><span class="identifier">apply_permutation</span></code>
+          and <code class="computeroutput"><span class="identifier">apply_reverse_permutation</span></code>
+          take their parameters by iterators or reference, and do not depend upon
+          any global state. Therefore, all the routines in this file provide the
+          strong exception guarantee.
+        </p>
+<h6>
+<a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.apply_permutation.h5"></a>
+          <span class="phrase"><a name="the_boost_algorithm_library.Misc.misc_inner_algorithms.apply_permutation.notes"></a></span><a class="link" href="Misc.html#the_boost_algorithm_library.Misc.misc_inner_algorithms.apply_permutation.notes">Notes</a>
+        </h6>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              If ItemSequence and IndexSequence are not equal, behavior is undefined.
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">apply_permutation</span></code> and
+              <code class="computeroutput"><span class="identifier">apply_reverse_permutation</span></code>
+              work also on empty sequences.
+            </li>
+<li class="listitem">
+              Order sequence must be zero-indexed.
+            </li>
+<li class="listitem">
+              Order sequence gets permuted.
+            </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="algorithm.Misc.misc_inner_algorithms.copy_until"></a><a class="link" href="Misc.html#algorithm.Misc.misc_inner_algorithms.copy_until" title="copy_until">copy_until
+        </a>
+</h4></div></div></div>
+<p>
+          <span class="bold"><strong><code class="literal"><a class="link" href="../header/boost/algorithm/cxx11/copy_if_hpp.html" title="Header &lt;boost/algorithm/cxx11/copy_if.hpp&gt;">copy_until</a>
+          </code> </strong></span> Copy all the elements at the start of the input
+          range that do not satisfy the predicate to the output range
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="algorithm.Misc.misc_inner_algorithms.copy_while"></a><a class="link" href="Misc.html#algorithm.Misc.misc_inner_algorithms.copy_while" title="copy_while">copy_while
+        </a>
+</h4></div></div></div>
+<p>
+          <span class="bold"><strong><code class="literal"><a class="link" href="../header/boost/algorithm/cxx11/copy_if_hpp.html" title="Header &lt;boost/algorithm/cxx11/copy_if.hpp&gt;">copy_while</a>
+          </code> </strong></span> Copy all the elements at the start of the input
+          range that satisfy the predicate to the output range
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="algorithm.Misc.misc_inner_algorithms.iota_n"></a><a class="link" href="Misc.html#algorithm.Misc.misc_inner_algorithms.iota_n" title="iota_n">iota_n
+        </a>
+</h4></div></div></div>
+<p>
+          <span class="bold"><strong><code class="literal"><a class="link" href="../boost/algorithm/iota_n.html" title="Function template iota_n">iota_n</a>
+          </code> </strong></span> Write a sequence of n increasing values to an output
+          iterator
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="algorithm.Misc.misc_inner_algorithms.power"></a><a class="link" href="Misc.html#algorithm.Misc.misc_inner_algorithms.power" title="power">power
+        </a>
+</h4></div></div></div>
+<p>
+          <span class="bold"><strong><code class="literal"><a class="link" href="reference.html#header.boost.algorithm.algorithm_hpp" title="Header &lt;boost/algorithm/algorithm.hpp&gt;">power</a>
+          </code> </strong></span> Raise a value to an integral power (<code class="literal">constexpr</code>
+          since C++14)
+        </p>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2010-2012 Marshall Clow<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="CXX17.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="not_yet_documented_cxx17_algos.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

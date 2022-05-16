@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,7 +39,8 @@ namespace function_utils {
  * "Failed to " + message + ", waiting to retry..."
  */
 bool retryUntilTimeout(std::function<bool()> fn, LogTopic& topic,
-                       std::string const& message, std::chrono::nanoseconds retryInterval,
+                       std::string const& message,
+                       std::chrono::nanoseconds retryInterval,
                        std::chrono::nanoseconds timeout) {
   auto start = std::chrono::steady_clock::now();
   bool success = false;
@@ -48,7 +49,8 @@ bool retryUntilTimeout(std::function<bool()> fn, LogTopic& topic,
     if (success) {
       break;
     }
-    LOG_TOPIC("18d0b", INFO, topic) << "Failed to " << message << ", waiting to retry...";
+    LOG_TOPIC("18d0b", INFO, topic)
+        << "Failed to " << message << ", waiting to retry...";
     std::this_thread::sleep_for(retryInterval);
   }
   return success;

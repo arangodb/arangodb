@@ -15,7 +15,7 @@
 
       // rerender
       self.interval = window.setInterval(function () {
-        if (window.location.hash.indexOf('cIndices/' + self.collectionName) !== -1 && window.VISIBLE) {
+        if (window.location.hash.indexOf('cIndices/' + encodeURIComponent(self.collectionName)) !== -1 && window.VISIBLE) {
           if ($('#collectionEditIndexTable').is(':visible') && !$('#indexDeleteModal').is(':visible')) {
             self.rerender();
           }
@@ -103,7 +103,7 @@
 
     breadcrumb: function () {
       $('#subNavigationBar .breadcrumb').html(
-        'Collection: ' + (this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
+        'Collection: ' + _.escape(this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
       );
     },
 
@@ -125,14 +125,29 @@
       var indexType = $('#newIndexType').val();
       var postParameter = {};
       var fields;
+      var storedValues;
       var unique;
       var sparse;
       var deduplicate;
       var estimates;
+      var cacheEnabled;
       var background;
       var name;
 
       switch (indexType) {
+        case 'Zkd':
+          fields = $('#newZkdFields').val();
+          const fieldValueTypes = $('#newZkdFieldValueTypes').val();
+          background = self.checkboxToValue('#newZkdBackground');
+          name = $('#newZkdName').val();
+          postParameter = {
+            type: 'zkd',
+            fields: self.stringToArray(fields),
+            fieldValueTypes,
+            inBackground: background,
+            name
+          };
+          break;
         case 'Ttl':
           fields = $('#newTtlFields').val();
           var expireAfter = parseInt($('#newTtlExpireAfter').val(), 10) || 0;
@@ -162,19 +177,26 @@
           break;
         case 'Persistent':
           fields = $('#newPersistentFields').val();
+          storedValues = self.stringToArray($('#newPersistentStoredValues').val());
+          if (!storedValues.length) {
+            storedValues = undefined;
+          }
           unique = self.checkboxToValue('#newPersistentUnique');
           sparse = self.checkboxToValue('#newPersistentSparse');
           deduplicate = self.checkboxToValue('#newPersistentDeduplicate');
           estimates = self.checkboxToValue('#newPersistentEstimates');
+          cacheEnabled = self.checkboxToValue('#newPersistentCacheEnabled');
           background = self.checkboxToValue('#newPersistentBackground');
           name = $('#newPersistentName').val();
           postParameter = {
             type: 'persistent',
             fields: self.stringToArray(fields),
+            storedValues: storedValues,
             unique: unique,
             sparse: sparse,
             deduplicate: deduplicate,
             estimates: estimates,
+            cacheEnabled: cacheEnabled,
             inBackground: background,
             name: name
           };
@@ -185,6 +207,7 @@
           sparse = self.checkboxToValue('#newHashSparse');
           deduplicate = self.checkboxToValue('#newHashDeduplicate');
           estimates = self.checkboxToValue('#newHashEstimates');
+          cacheEnabled = self.checkboxToValue('#newHashCacheEnabled');
           background = self.checkboxToValue('#newHashBackground');
           name = $('#newHashName').val();
           postParameter = {
@@ -194,6 +217,7 @@
             sparse: sparse,
             deduplicate: deduplicate,
             estimates: estimates,
+            cacheEnabled: cacheEnabled,
             inBackground: background,
             name: name
           };
@@ -217,6 +241,7 @@
           sparse = self.checkboxToValue('#newSkiplistSparse');
           deduplicate = self.checkboxToValue('#newSkiplistDeduplicate');
           estimates = self.checkboxToValue('#newSkiplistEstimates');
+          cacheEnabled = self.checkboxToValue('#newSkiplistCacheEnabled');
           background = self.checkboxToValue('#newSkiplistBackground');
           name = $('#newSkiplistName').val();
           postParameter = {
@@ -226,6 +251,7 @@
             sparse: sparse,
             deduplicate: deduplicate,
             estimates: estimates,
+            cacheEnabled: cacheEnabled,
             inBackground: background,
             name: name
           };
@@ -362,6 +388,7 @@
         '<i class="fa fa-circle-o-notch fa-spin"></i>'
       );
     },
+
     renderIndex: function (data, id, rerender) {
       this.index = data;
 
@@ -394,7 +421,7 @@
               $.ajax({
                 type: 'PUT',
                 cache: false,
-                url: arangoHelper.databaseUrl('/_api/job/' + job.id),
+                url: arangoHelper.databaseUrl('/_api/job/' + encodeURIComponent(job.id)),
                 contentType: 'application/json',
                 success: function (data, a, b) {
                   readJob(false, data, job.id);
@@ -412,7 +439,8 @@
 
       var cssClass = 'collectionInfoTh modal-text';
       if (this.index) {
-        var fieldString = '';
+        var fieldsString = '';
+        var storedValuesString = '';
         var actionString = '';
 
         if (rerender) {
@@ -427,9 +455,21 @@
             actionString = '<span class="deleteIndex icon_arangodb_roundminus" ' +
               'data-original-title="Delete index" title="Delete index"></span>';
           }
+          
+          if (v.storedValues !== undefined) {
+            storedValuesString = v.storedValues.join(', ');
+          } else {
+            storedValuesString = '';
+          }
 
           if (v.fields !== undefined) {
-            fieldString = v.fields.join(', ');
+            fieldsString = v.fields.map(
+              function(v) {
+                if (typeof v === 'object') {
+                  return v.name;
+                }
+                return v;
+              }).join(', ');
           }
 
           // cut index id
@@ -442,9 +482,9 @@
           );
           var sparse = (v.hasOwnProperty('sparse') ? v.sparse : 'n/a');
           var extras = [];
-          ["deduplicate", "expireAfter", "minLength", "geoJson", "estimates"].forEach(function(k) {
+          ['deduplicate', 'expireAfter', 'minLength', 'geoJson', 'estimates', 'cacheEnabled'].forEach(function (k) {
             if (v.hasOwnProperty(k)) {
-              extras.push(k + ": " + v[k]);
+              extras.push(k + ': ' + v[k]);
             }
           });
 
@@ -456,7 +496,8 @@
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(sparse) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(extras.join(", ")) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(selectivity) + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(fieldString) + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(fieldsString) + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(storedValuesString) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(v.name) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + actionString + '</th>' +
             '</tr>'
@@ -475,7 +516,10 @@
       }
       $('#newIndexType' + type).show();
       if (type) {
+        // select "maintain index selectivity estimates" by default
         $('#new' + type + 'Estimates').prop('checked', true);
+        // select "create in background" by default
+        $('#new' + type + 'Background').prop('checked', true);
       }
     },
 
@@ -505,9 +549,9 @@
       arangoHelper.createTooltips('.index-tooltip');
     },
 
-    stringToArray: function (fieldString) {
+    stringToArray: function (fieldsString) {
       var fields = [];
-      fieldString.split(',').forEach(function (field) {
+      fieldsString.split(',').forEach(function (field) {
         field = field.replace(/(^\s+|\s+$)/g, '');
         if (field !== '') {
           fields.push(field);

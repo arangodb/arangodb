@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,10 +26,7 @@
 
 #include <velocypack/HashedStringRef.h>
 
-namespace arangodb {
-namespace graph {
+namespace arangodb::graph {
 using VertexType = arangodb::velocypack::HashedStringRef;
 using EdgeType = arangodb::velocypack::HashedStringRef;
-}
-}  // namespace arangodb
-
+}  // namespace arangodb::graph

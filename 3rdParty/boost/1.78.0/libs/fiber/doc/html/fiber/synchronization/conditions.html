@@ -1,0 +1,1046 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Condition Variables</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Fiber">
+<link rel="up" href="../synchronization.html" title="Synchronization">
+<link rel="prev" href="mutex_types.html" title="Mutex Types">
+<link rel="next" href="barriers.html" title="Barriers">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="mutex_types.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../synchronization.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="barriers.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="fiber.synchronization.conditions"></a><a class="link" href="conditions.html" title="Condition Variables">Condition Variables</a>
+</h3></div></div></div>
+<h5>
+<a name="fiber.synchronization.conditions.h0"></a>
+        <span class="phrase"><a name="fiber.synchronization.conditions.synopsis"></a></span><a class="link" href="conditions.html#fiber.synchronization.conditions.synopsis">Synopsis</a>
+      </h5>
+<pre class="programlisting"><span class="keyword">enum</span> <span class="keyword">class</span> <span class="identifier">cv_status</span><span class="special">;</span> <span class="special">{</span>
+    <span class="identifier">no_timeout</span><span class="special">,</span>
+    <span class="identifier">timeout</span>
+<span class="special">};</span>
+
+<span class="keyword">class</span> <span class="identifier">condition_variable</span><span class="special">;</span>
+<span class="keyword">class</span> <span class="identifier">condition_variable_any</span><span class="special">;</span>
+</pre>
+<p>
+        The class <a class="link" href="conditions.html#class_condition_variable"><code class="computeroutput">condition_variable</code></a> provides a mechanism
+        for a fiber to wait for notification from another fiber. When the fiber awakens
+        from the wait, then it checks to see if the appropriate condition is now
+        true, and continues if so. If the condition is not true, then the fiber calls
+        <code class="computeroutput"><span class="identifier">wait</span></code> again to resume waiting.
+        In the simplest case, this condition is just a boolean variable:
+      </p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">condition_variable</span> <span class="identifier">cond</span><span class="special">;</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">mutex</span> <span class="identifier">mtx</span><span class="special">;</span>
+<span class="keyword">bool</span> <span class="identifier">data_ready</span> <span class="special">=</span> <span class="keyword">false</span><span class="special">;</span>
+
+<span class="keyword">void</span> <span class="identifier">process_data</span><span class="special">();</span>
+
+<span class="keyword">void</span> <span class="identifier">wait_for_data_to_process</span><span class="special">()</span> <span class="special">{</span>
+    <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">unique_lock</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">mutex</span> <span class="special">&gt;</span> <span class="identifier">lk</span><span class="special">(</span> <span class="identifier">mtx</span><span class="special">);</span>
+        <span class="keyword">while</span> <span class="special">(</span> <span class="special">!</span> <span class="identifier">data_ready</span><span class="special">)</span> <span class="special">{</span>
+            <span class="identifier">cond</span><span class="special">.</span><span class="identifier">wait</span><span class="special">(</span> <span class="identifier">lk</span><span class="special">);</span>
+        <span class="special">}</span>
+    <span class="special">}</span>   <span class="comment">// release lk</span>
+    <span class="identifier">process_data</span><span class="special">();</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Notice that the <code class="computeroutput"><span class="identifier">lk</span></code> is passed
+        to <a class="link" href="conditions.html#condition_variable_wait"><code class="computeroutput">condition_variable::wait()</code></a>: <code class="computeroutput"><span class="identifier">wait</span><span class="special">()</span></code> will atomically add the fiber to the set
+        of fibers waiting on the condition variable, and unlock the <a class="link" href="mutex_types.html#class_mutex"><code class="computeroutput">mutex</code></a>.
+        When the fiber is awakened, the <code class="computeroutput"><span class="identifier">mutex</span></code>
+        will be locked again before the call to <code class="computeroutput"><span class="identifier">wait</span><span class="special">()</span></code> returns. This allows other fibers to acquire
+        the <code class="computeroutput"><span class="identifier">mutex</span></code> in order to update
+        the shared data, and ensures that the data associated with the condition
+        is correctly synchronized.
+      </p>
+<p>
+        <code class="computeroutput"><span class="identifier">wait_for_data_to_process</span><span class="special">()</span></code> could equivalently be written:
+      </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">wait_for_data_to_process</span><span class="special">()</span> <span class="special">{</span>
+    <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">unique_lock</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">mutex</span> <span class="special">&gt;</span> <span class="identifier">lk</span><span class="special">(</span> <span class="identifier">mtx</span><span class="special">);</span>
+        <span class="comment">// make condition_variable::wait() perform the loop</span>
+        <span class="identifier">cond</span><span class="special">.</span><span class="identifier">wait</span><span class="special">(</span> <span class="identifier">lk</span><span class="special">,</span> <span class="special">[](){</span> <span class="keyword">return</span> <span class="identifier">data_ready</span><span class="special">;</span> <span class="special">});</span>
+    <span class="special">}</span>   <span class="comment">// release lk</span>
+    <span class="identifier">process_data</span><span class="special">();</span>
+<span class="special">}</span>
+</pre>
+<p>
+        In the meantime, another fiber sets <code class="computeroutput"><span class="identifier">data_ready</span></code>
+        to <code class="computeroutput"><span class="keyword">true</span></code>, and then calls either
+        <a class="link" href="conditions.html#condition_variable_notify_one"><code class="computeroutput">condition_variable::notify_one()</code></a> or <a class="link" href="conditions.html#condition_variable_notify_all"><code class="computeroutput">condition_variable::notify_all()</code></a> on
+        the <a class="link" href="conditions.html#class_condition_variable"><code class="computeroutput">condition_variable</code></a> <code class="computeroutput"><span class="identifier">cond</span></code>
+        to wake one waiting fiber or all the waiting fibers respectively.
+      </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">retrieve_data</span><span class="special">();</span>
+<span class="keyword">void</span> <span class="identifier">prepare_data</span><span class="special">();</span>
+
+<span class="keyword">void</span> <span class="identifier">prepare_data_for_processing</span><span class="special">()</span> <span class="special">{</span>
+    <span class="identifier">retrieve_data</span><span class="special">();</span>
+    <span class="identifier">prepare_data</span><span class="special">();</span>
+    <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">unique_lock</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">mutex</span> <span class="special">&gt;</span> <span class="identifier">lk</span><span class="special">(</span> <span class="identifier">mtx</span><span class="special">);</span>
+        <span class="identifier">data_ready</span> <span class="special">=</span> <span class="keyword">true</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="identifier">cond</span><span class="special">.</span><span class="identifier">notify_one</span><span class="special">();</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Note that the same <a class="link" href="mutex_types.html#class_mutex"><code class="computeroutput">mutex</code></a> is locked before the shared data is updated,
+        but that the <code class="computeroutput"><span class="identifier">mutex</span></code> does not
+        have to be locked across the call to <a class="link" href="conditions.html#condition_variable_notify_one"><code class="computeroutput">condition_variable::notify_one()</code></a>.
+      </p>
+<p>
+        Locking is important because the synchronization objects provided by <span class="bold"><strong>Boost.Fiber</strong></span> can be used to synchronize fibers running
+        on different threads.
+      </p>
+<p>
+        <span class="bold"><strong>Boost.Fiber</strong></span> provides both <a class="link" href="conditions.html#class_condition_variable"><code class="computeroutput">condition_variable</code></a> and
+        <a class="link" href="conditions.html#class_condition_variable_any"><code class="computeroutput">condition_variable_any</code></a>. <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">condition_variable</span></code>
+        can only wait on <a href="http://en.cppreference.com/w/cpp/thread/unique_lock" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">unique_lock</span></code></a><code class="computeroutput"><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span></code><a class="link" href="mutex_types.html#class_mutex"><code class="computeroutput">mutex</code></a><code class="computeroutput"> <span class="special">&gt;</span></code>
+        while <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">condition_variable_any</span></code> can wait on user-defined
+        lock types.
+      </p>
+<a name="condition_variable_spurious_wakeups"></a><h5>
+<a name="fiber.synchronization.conditions.h1"></a>
+        <span class="phrase"><a name="fiber.synchronization.conditions.no_spurious_wakeups"></a></span><a class="link" href="conditions.html#fiber.synchronization.conditions.no_spurious_wakeups">No Spurious
+        Wakeups</a>
+      </h5>
+<p>
+        Neither <a class="link" href="conditions.html#class_condition_variable"><code class="computeroutput">condition_variable</code></a> nor <a class="link" href="conditions.html#class_condition_variable_any"><code class="computeroutput">condition_variable_any</code></a> are
+        subject to spurious wakeup: <a class="link" href="conditions.html#condition_variable_wait"><code class="computeroutput">condition_variable::wait()</code></a> can
+        only wake up when <a class="link" href="conditions.html#condition_variable_notify_one"><code class="computeroutput">condition_variable::notify_one()</code></a> or
+        <a class="link" href="conditions.html#condition_variable_notify_all"><code class="computeroutput">condition_variable::notify_all()</code></a> is called. Even
+        so, it is prudent to use one of the <code class="computeroutput"><span class="identifier">wait</span><span class="special">(</span> <span class="identifier">lock</span><span class="special">,</span> <span class="identifier">predicate</span> <span class="special">)</span></code> overloads.
+      </p>
+<p>
+        Consider a set of consumer fibers processing items from a <a href="http://en.cppreference.com/w/cpp/container/queue" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">queue</span></code></a>.
+        The queue is continually populated by a set of producer fibers.
+      </p>
+<p>
+        The consumer fibers might reasonably wait on a <code class="computeroutput"><span class="identifier">condition_variable</span></code>
+        as long as the queue remains <a href="http://en.cppreference.com/w/cpp/container/queue/empty" target="_top"><code class="computeroutput"><span class="identifier">empty</span><span class="special">()</span></code></a>.
+      </p>
+<p>
+        Because producer fibers might <a href="http://en.cppreference.com/w/cpp/container/queue/push" target="_top"><code class="computeroutput"><span class="identifier">push</span><span class="special">()</span></code></a>
+        items to the queue in bursts, they call <a class="link" href="conditions.html#condition_variable_notify_all"><code class="computeroutput">condition_variable::notify_all()</code></a> rather
+        than <a class="link" href="conditions.html#condition_variable_notify_one"><code class="computeroutput">condition_variable::notify_one()</code></a>.
+      </p>
+<p>
+        But a given consumer fiber might well wake up from <a class="link" href="conditions.html#condition_variable_wait"><code class="computeroutput">condition_variable::wait()</code></a> and
+        find the queue <code class="computeroutput"><span class="identifier">empty</span><span class="special">()</span></code>,
+        because other consumer fibers might already have processed all pending items.
+      </p>
+<p>
+        (See also <a class="link" href="../rationale.html#spurious_wakeup">spurious wakeup</a>.)
+      </p>
+<a name="class_cv_status"></a><h5>
+<a name="fiber.synchronization.conditions.h2"></a>
+        <span class="phrase"><a name="fiber.synchronization.conditions.enumeration__code__phrase_role__identifier__cv_status__phrase___code_"></a></span><a class="link" href="conditions.html#fiber.synchronization.conditions.enumeration__code__phrase_role__identifier__cv_status__phrase___code_">Enumeration
+        <code class="computeroutput"><span class="identifier">cv_status</span></code></a>
+      </h5>
+<p>
+        A timed wait operation might return because of timeout or not.
+      </p>
+<pre class="programlisting"><span class="keyword">enum</span> <span class="keyword">class</span> <span class="identifier">cv_status</span> <span class="special">{</span>
+    <span class="identifier">no_timeout</span><span class="special">,</span>
+    <span class="identifier">timeout</span>
+<span class="special">};</span>
+</pre>
+<h5>
+<a name="fiber.synchronization.conditions.h3"></a>
+        <span class="phrase"><a name="fiber.synchronization.conditions._code__phrase_role__identifier__no_timeout__phrase___code_"></a></span><a class="link" href="conditions.html#fiber.synchronization.conditions._code__phrase_role__identifier__no_timeout__phrase___code_"><code class="computeroutput"><span class="identifier">no_timeout</span></code></a>
+      </h5>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+              The condition variable was awakened with <code class="computeroutput"><span class="identifier">notify_one</span></code>
+              or <code class="computeroutput"><span class="identifier">notify_all</span></code>.
+            </p></dd>
+</dl>
+</div>
+<h5>
+<a name="fiber.synchronization.conditions.h4"></a>
+        <span class="phrase"><a name="fiber.synchronization.conditions._code__phrase_role__identifier__timeout__phrase___code_"></a></span><a class="link" href="conditions.html#fiber.synchronization.conditions._code__phrase_role__identifier__timeout__phrase___code_"><code class="computeroutput"><span class="identifier">timeout</span></code></a>
+      </h5>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+              The condition variable was awakened by timeout.
+            </p></dd>
+</dl>
+</div>
+<p>
+        </p>
+<h5>
+<a name="class_condition_variable_any_bridgehead"></a>
+  <span class="phrase"><a name="class_condition_variable_any"></a></span>
+  <a class="link" href="conditions.html#class_condition_variable_any">Class
+        <code class="computeroutput">condition_variable_any</code></a>
+</h5>
+<p>
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">fiber</span><span class="special">/</span><span class="identifier">condition_variable</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">fibers</span> <span class="special">{</span>
+
+<span class="keyword">class</span> condition_variable_any <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    condition_variable_any<span class="special">();</span>
+    <span class="special">~</span>condition_variable_any<span class="special">();</span>
+
+    condition_variable_any<span class="special">(</span> condition_variable_any <span class="keyword">const</span><span class="special">&amp;)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+    condition_variable_any <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span> condition_variable_any <span class="keyword">const</span><span class="special">&amp;)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+
+    <span class="keyword">void</span> <span class="identifier">notify_one</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+    <span class="keyword">void</span> <span class="identifier">notify_all</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    template&lt; typename LockType &gt;
+    void <span class="identifier">wait</span><span class="special">(</span> LockType <span class="special">&amp;);</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> typename LockType, typename <span class="identifier">Pred</span> <span class="special">&gt;</span>
+    <span class="keyword">void</span> <span class="identifier">wait</span><span class="special">(</span> LockType <span class="special">&amp;,</span> <span class="identifier">Pred</span><span class="special">);</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> typename LockType, typename <span class="identifier">Clock</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Duration</span> <span class="special">&gt;</span>
+    <span class="identifier">cv_status</span> <span class="identifier">wait_until</span><span class="special">(</span> LockType <span class="special">&amp;,</span>
+                          <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> typename LockType, typename <span class="identifier">Clock</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Duration</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Pred</span> <span class="special">&gt;</span>
+    <span class="keyword">bool</span> <span class="identifier">wait_until</span><span class="special">(</span> LockType <span class="special">&amp;,</span>
+                     <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;,</span>
+                     <span class="identifier">Pred</span><span class="special">);</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> typename LockType, typename <span class="identifier">Rep</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Period</span> <span class="special">&gt;</span>
+    <span class="identifier">cv_status</span> <span class="identifier">wait_for</span><span class="special">(</span> LockType <span class="special">&amp;,</span>
+                        <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span><span class="special">&lt;</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="identifier">Period</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> typename LockType, typename <span class="identifier">Rep</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Period</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Pred</span> <span class="special">&gt;</span>
+    <span class="keyword">bool</span> <span class="identifier">wait_for</span><span class="special">(</span> LockType <span class="special">&amp;,</span>
+                   <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span><span class="special">&lt;</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="identifier">Period</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;,</span>
+                   <span class="identifier">Pred</span><span class="special">);</span>
+<span class="special">};</span>
+
+<span class="special">}}</span>
+</pre>
+<h5>
+<a name="fiber.synchronization.conditions.h5"></a>
+        <span class="phrase"><a name="fiber.synchronization.conditions.constructor"></a></span><a class="link" href="conditions.html#fiber.synchronization.conditions.constructor">Constructor</a>
+      </h5>
+<pre class="programlisting">condition_variable_any<span class="special">()</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+              Creates the object.
+            </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+              Nothing.
+            </p></dd>
+</dl>
+</div>
+<h5>
+<a name="fiber.synchronization.conditions.h6"></a>
+        <span class="phrase"><a name="fiber.synchronization.conditions.destructor"></a></span><a class="link" href="conditions.html#fiber.synchronization.conditions.destructor">Destructor</a>
+      </h5>
+<pre class="programlisting"><span class="special">~</span>condition_variable_any<span class="special">()</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+              All fibers waiting on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code> have been notified by a call to
+              <code class="computeroutput"><span class="identifier">notify_one</span></code> or <code class="computeroutput"><span class="identifier">notify_all</span></code> (though the respective
+              calls to <code class="computeroutput"><span class="identifier">wait</span></code>, <code class="computeroutput"><span class="identifier">wait_for</span></code> or <code class="computeroutput"><span class="identifier">wait_until</span></code>
+              need not have returned).
+            </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+              Destroys the object.
+            </p></dd>
+</dl>
+</div>
+<p>
+        </p>
+<h5>
+<a name="condition_variable_any_notify_one_bridgehead"></a>
+  <span class="phrase"><a name="condition_variable_any_notify_one"></a></span>
+  <a class="link" href="conditions.html#condition_variable_any_notify_one">Member
+        function <code class="computeroutput">notify_one</code>()</a>
+</h5>
+<p>
+      </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">notify_one</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+              If any fibers are currently <a class="link" href="../overview.html#blocking"><span class="emphasis"><em>blocked</em></span></a>
+              waiting on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+              in a call to <code class="computeroutput"><span class="identifier">wait</span></code>,
+              <code class="computeroutput"><span class="identifier">wait_for</span></code> or <code class="computeroutput"><span class="identifier">wait_until</span></code>, unblocks one of those
+              fibers.
+            </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+              Nothing.
+            </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+              It is arbitrary which waiting fiber is resumed.
+            </p></dd>
+</dl>
+</div>
+<p>
+        </p>
+<h5>
+<a name="condition_variable_any_notify_all_bridgehead"></a>
+  <span class="phrase"><a name="condition_variable_any_notify_all"></a></span>
+  <a class="link" href="conditions.html#condition_variable_any_notify_all">Member
+        function <code class="computeroutput">notify_all</code>()</a>
+</h5>
+<p>
+      </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">notify_all</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+              If any fibers are currently <a class="link" href="../overview.html#blocking"><span class="emphasis"><em>blocked</em></span></a>
+              waiting on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+              in a call to <code class="computeroutput"><span class="identifier">wait</span></code>,
+              <code class="computeroutput"><span class="identifier">wait_for</span></code> or <code class="computeroutput"><span class="identifier">wait_until</span></code>, unblocks all of those
+              fibers.
+            </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+              Nothing.
+            </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+              This is why a waiting fiber must <span class="emphasis"><em>also</em></span> check for
+              the desired program state using a mechanism external to the <code class="computeroutput">condition_variable_any</code>,
+              and retry the wait until that state is reached. A fiber waiting on
+              a <code class="computeroutput">condition_variable_any</code> might well wake up a number of times before
+              the desired state is reached.
+            </p></dd>
+</dl>
+</div>
+<p>
+        </p>
+<h5>
+<a name="condition_variable_any_wait_bridgehead"></a>
+  <span class="phrase"><a name="condition_variable_any_wait"></a></span>
+  <a class="link" href="conditions.html#condition_variable_any_wait">Templated
+        member function <code class="computeroutput">wait</code>()</a>
+</h5>
+<p>
+      </p>
+<pre class="programlisting">template&lt; typename LockType &gt;
+    void <span class="identifier">wait</span><span class="special">(</span> LockType <span class="special">&amp;</span> <span class="identifier">lk</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> typename LockType, typename <span class="identifier">Pred</span> <span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">wait</span><span class="special">(</span> LockType <span class="special">&amp;</span> <span class="identifier">lk</span><span class="special">,</span> <span class="identifier">Pred</span> <span class="identifier">pred</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="identifier">lk</span></code> is locked by the
+              current fiber, and either no other fiber is currently waiting on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>,
+              or the execution of the <a href="http://en.cppreference.com/w/cpp/thread/unique_lock/mutex" target="_top"><code class="computeroutput"><span class="identifier">mutex</span><span class="special">()</span></code></a>
+              member function on the <code class="computeroutput"><span class="identifier">lk</span></code>
+              objects supplied in the calls to <code class="computeroutput"><span class="identifier">wait</span></code>
+              in all the fibers currently waiting on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code> would return the same value as
+              <code class="computeroutput"><span class="identifier">lk</span><span class="special">-&gt;</span><span class="identifier">mutex</span><span class="special">()</span></code>
+              for this call to <code class="computeroutput"><span class="identifier">wait</span></code>.
+            </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd>
+<p>
+              Atomically call <code class="computeroutput"><span class="identifier">lk</span><span class="special">.</span><span class="identifier">unlock</span><span class="special">()</span></code> and blocks the current fiber. The
+              fiber will unblock when notified by a call to <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">notify_one</span><span class="special">()</span></code> or <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">notify_all</span><span class="special">()</span></code>. When the fiber is unblocked (for
+              whatever reason), the lock is reacquired by invoking <code class="computeroutput"><span class="identifier">lk</span><span class="special">.</span><span class="identifier">lock</span><span class="special">()</span></code>
+              before the call to <code class="computeroutput"><span class="identifier">wait</span></code>
+              returns. The lock is also reacquired by invoking <code class="computeroutput"><span class="identifier">lk</span><span class="special">.</span><span class="identifier">lock</span><span class="special">()</span></code> if the function exits with an exception.
+              The member function accepting <code class="computeroutput"><span class="identifier">pred</span></code>
+              is shorthand for:
+</p>
+<pre class="programlisting"><span class="keyword">while</span> <span class="special">(</span> <span class="special">!</span> <span class="identifier">pred</span><span class="special">()</span> <span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">wait</span><span class="special">(</span> <span class="identifier">lk</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+            </p>
+</dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="identifier">lk</span></code> is locked by the
+              current fiber.
+            </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="identifier">fiber_error</span></code> if an error
+              occurs.
+            </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+              The Precondition is a bit dense. It merely states that all the fibers
+              concurrently calling <code class="computeroutput"><span class="identifier">wait</span></code>
+              on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+              must wait on <code class="computeroutput"><span class="identifier">lk</span></code> objects
+              governing the <span class="emphasis"><em>same</em></span> <a class="link" href="mutex_types.html#class_mutex"><code class="computeroutput">mutex</code></a>. Three distinct
+              objects are involved in any <code class="computeroutput">condition_variable_any::wait()</code> call: the
+              <code class="computeroutput">condition_variable_any</code> itself, the <code class="computeroutput"><span class="identifier">mutex</span></code>
+              coordinating access between fibers and a local lock object (e.g. <a href="http://en.cppreference.com/w/cpp/thread/unique_lock" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">unique_lock</span></code></a>). In general,
+              you can partition the lifespan of a given <code class="computeroutput">condition_variable_any</code> instance
+              into periods with one or more fibers waiting on it, separated by periods
+              when no fibers are waiting on it. When more than one fiber is waiting
+              on that <code class="computeroutput">condition_variable_any</code>, all must pass lock objects referencing
+              the <span class="emphasis"><em>same</em></span> <code class="computeroutput"><span class="identifier">mutex</span></code>
+              instance.
+            </p></dd>
+</dl>
+</div>
+<p>
+        </p>
+<h5>
+<a name="condition_variable_any_wait_until_bridgehead"></a>
+  <span class="phrase"><a name="condition_variable_any_wait_until"></a></span>
+  <a class="link" href="conditions.html#condition_variable_any_wait_until">Templated
+        member function <code class="computeroutput">wait_until</code>()</a>
+</h5>
+<p>
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> typename LockType, typename <span class="identifier">Clock</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Duration</span> <span class="special">&gt;</span>
+<span class="identifier">cv_status</span> <span class="identifier">wait_until</span><span class="special">(</span> LockType <span class="special">&amp;</span> <span class="identifier">lk</span><span class="special">,</span>
+                      <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">abs_time</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> typename LockType, typename <span class="identifier">Clock</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Duration</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Pred</span> <span class="special">&gt;</span>
+<span class="keyword">bool</span> <span class="identifier">wait_until</span><span class="special">(</span> LockType <span class="special">&amp;</span> <span class="identifier">lk</span><span class="special">,</span>
+                 <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">abs_time</span><span class="special">,</span>
+                 <span class="identifier">Pred</span> <span class="identifier">pred</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="identifier">lk</span></code> is locked by the
+              current fiber, and either no other fiber is currently waiting on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>,
+              or the execution of the <code class="computeroutput"><span class="identifier">mutex</span><span class="special">()</span></code> member function on the <code class="computeroutput"><span class="identifier">lk</span></code> objects supplied in the calls
+              to <code class="computeroutput"><span class="identifier">wait</span></code>, <code class="computeroutput"><span class="identifier">wait_for</span></code> or <code class="computeroutput"><span class="identifier">wait_until</span></code>
+              in all the fibers currently waiting on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code> would return the same value as
+              <code class="computeroutput"><span class="identifier">lk</span><span class="special">.</span><span class="identifier">mutex</span><span class="special">()</span></code>
+              for this call to <code class="computeroutput"><span class="identifier">wait_until</span></code>.
+            </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd>
+<p>
+              Atomically call <code class="computeroutput"><span class="identifier">lk</span><span class="special">.</span><span class="identifier">unlock</span><span class="special">()</span></code> and blocks the current fiber. The
+              fiber will unblock when notified by a call to <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">notify_one</span><span class="special">()</span></code> or <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">notify_all</span><span class="special">()</span></code>, when the system time would be equal
+              to or later than the specified <code class="computeroutput"><span class="identifier">abs_time</span></code>.
+              When the fiber is unblocked (for whatever reason), the lock is reacquired
+              by invoking <code class="computeroutput"><span class="identifier">lk</span><span class="special">.</span><span class="identifier">lock</span><span class="special">()</span></code>
+              before the call to <code class="computeroutput"><span class="identifier">wait_until</span></code>
+              returns. The lock is also reacquired by invoking <code class="computeroutput"><span class="identifier">lk</span><span class="special">.</span><span class="identifier">lock</span><span class="special">()</span></code> if the function exits with an exception.
+              The member function accepting <code class="computeroutput"><span class="identifier">pred</span></code>
+              is shorthand for:
+</p>
+<pre class="programlisting"><span class="keyword">while</span> <span class="special">(</span> <span class="special">!</span> <span class="identifier">pred</span><span class="special">()</span> <span class="special">)</span> <span class="special">{</span>
+    <span class="keyword">if</span> <span class="special">(</span> <span class="identifier">cv_status</span><span class="special">::</span><span class="identifier">timeout</span> <span class="special">==</span> <span class="identifier">wait_until</span><span class="special">(</span> <span class="identifier">lk</span><span class="special">,</span> <span class="identifier">abs_time</span><span class="special">)</span> <span class="special">)</span>
+        <span class="keyword">return</span> <span class="identifier">pred</span><span class="special">();</span>
+<span class="special">}</span>
+<span class="keyword">return</span> <span class="keyword">true</span><span class="special">;</span>
+</pre>
+<p>
+              That is, even if <code class="computeroutput"><span class="identifier">wait_until</span><span class="special">()</span></code> times out, it can still return <code class="computeroutput"><span class="keyword">true</span></code> if <code class="computeroutput"><span class="identifier">pred</span><span class="special">()</span></code> returns <code class="computeroutput"><span class="keyword">true</span></code>
+              at that time.
+            </p>
+</dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="identifier">lk</span></code> is locked by the
+              current fiber.
+            </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="identifier">fiber_error</span></code> if an error
+              occurs or timeout-related exceptions.
+            </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+              The overload without <code class="computeroutput"><span class="identifier">pred</span></code>
+              returns <code class="computeroutput"><span class="identifier">cv_status</span><span class="special">::</span><span class="identifier">no_timeout</span></code> if awakened by <code class="computeroutput"><span class="identifier">notify_one</span><span class="special">()</span></code>
+              or <code class="computeroutput"><span class="identifier">notify_all</span><span class="special">()</span></code>,
+              or <code class="computeroutput"><span class="identifier">cv_status</span><span class="special">::</span><span class="identifier">timeout</span></code> if awakened because the system
+              time is past <code class="computeroutput"><span class="identifier">abs_time</span></code>.
+            </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+              The overload accepting <code class="computeroutput"><span class="identifier">pred</span></code>
+              returns <code class="computeroutput"><span class="keyword">false</span></code> if the call
+              is returning because the time specified by <code class="computeroutput"><span class="identifier">abs_time</span></code>
+              was reached and the predicate returns <code class="computeroutput"><span class="keyword">false</span></code>,
+              <code class="computeroutput"><span class="keyword">true</span></code> otherwise.
+            </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+              See <span class="bold"><strong>Note</strong></span> for <a class="link" href="conditions.html#condition_variable_any_wait"><code class="computeroutput">condition_variable_any::wait()</code></a>.
+            </p></dd>
+</dl>
+</div>
+<p>
+        </p>
+<h5>
+<a name="condition_variable_any_wait_for_bridgehead"></a>
+  <span class="phrase"><a name="condition_variable_any_wait_for"></a></span>
+  <a class="link" href="conditions.html#condition_variable_any_wait_for">Templated
+        member function <code class="computeroutput">wait_for</code>()</a>
+</h5>
+<p>
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> typename LockType, typename <span class="identifier">Rep</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Period</span> <span class="special">&gt;</span>
+<span class="identifier">cv_status</span> <span class="identifier">wait_for</span><span class="special">(</span> LockType <span class="special">&amp;</span> <span class="identifier">lk</span><span class="special">,</span>
+                    <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span><span class="special">&lt;</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="identifier">Period</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rel_time</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> typename LockType, typename <span class="identifier">Rep</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Period</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Pred</span> <span class="special">&gt;</span>
+<span class="keyword">bool</span> <span class="identifier">wait_for</span><span class="special">(</span> LockType <span class="special">&amp;</span> <span class="identifier">lk</span><span class="special">,</span>
+               <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span><span class="special">&lt;</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="identifier">Period</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rel_time</span><span class="special">,</span>
+               <span class="identifier">Pred</span> <span class="identifier">pred</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="identifier">lk</span></code> is locked by the
+              current fiber, and either no other fiber is currently waiting on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>,
+              or the execution of the <code class="computeroutput"><span class="identifier">mutex</span><span class="special">()</span></code> member function on the <code class="computeroutput"><span class="identifier">lk</span></code> objects supplied in the calls
+              to <code class="computeroutput"><span class="identifier">wait</span></code>, <code class="computeroutput"><span class="identifier">wait_for</span></code> or <code class="computeroutput"><span class="identifier">wait_until</span></code>
+              in all the fibers currently waiting on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code> would return the same value as
+              <code class="computeroutput"><span class="identifier">lk</span><span class="special">.</span><span class="identifier">mutex</span><span class="special">()</span></code>
+              for this call to <code class="computeroutput"><span class="identifier">wait_for</span></code>.
+            </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd>
+<p>
+              Atomically call <code class="computeroutput"><span class="identifier">lk</span><span class="special">.</span><span class="identifier">unlock</span><span class="special">()</span></code> and blocks the current fiber. The
+              fiber will unblock when notified by a call to <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">notify_one</span><span class="special">()</span></code> or <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">notify_all</span><span class="special">()</span></code>, when a time interval equal to or
+              greater than the specified <code class="computeroutput"><span class="identifier">rel_time</span></code>
+              has elapsed. When the fiber is unblocked (for whatever reason), the
+              lock is reacquired by invoking <code class="computeroutput"><span class="identifier">lk</span><span class="special">.</span><span class="identifier">lock</span><span class="special">()</span></code> before the call to <code class="computeroutput"><span class="identifier">wait</span></code> returns. The lock is also reacquired
+              by invoking <code class="computeroutput"><span class="identifier">lk</span><span class="special">.</span><span class="identifier">lock</span><span class="special">()</span></code>
+              if the function exits with an exception. The <code class="computeroutput"><span class="identifier">wait_for</span><span class="special">()</span></code> member function accepting <code class="computeroutput"><span class="identifier">pred</span></code> is shorthand for:
+</p>
+<pre class="programlisting"><span class="keyword">while</span> <span class="special">(</span> <span class="special">!</span> <span class="identifier">pred</span><span class="special">()</span> <span class="special">)</span> <span class="special">{</span>
+    <span class="keyword">if</span> <span class="special">(</span> <span class="identifier">cv_status</span><span class="special">::</span><span class="identifier">timeout</span> <span class="special">==</span> <span class="identifier">wait_for</span><span class="special">(</span> <span class="identifier">lk</span><span class="special">,</span> <span class="identifier">rel_time</span><span class="special">)</span> <span class="special">)</span> <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">pred</span><span class="special">();</span>
+    <span class="special">}</span>
+<span class="special">}</span>
+<span class="keyword">return</span> <span class="keyword">true</span><span class="special">;</span>
+</pre>
+<p>
+              (except of course that <code class="computeroutput"><span class="identifier">rel_time</span></code>
+              is adjusted for each iteration). The point is that, even if <code class="computeroutput"><span class="identifier">wait_for</span><span class="special">()</span></code>
+              times out, it can still return <code class="computeroutput"><span class="keyword">true</span></code>
+              if <code class="computeroutput"><span class="identifier">pred</span><span class="special">()</span></code>
+              returns <code class="computeroutput"><span class="keyword">true</span></code> at that time.
+            </p>
+</dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="identifier">lk</span></code> is locked by the
+              current fiber.
+            </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="identifier">fiber_error</span></code> if an error
+              occurs or timeout-related exceptions.
+            </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+              The overload without <code class="computeroutput"><span class="identifier">pred</span></code>
+              returns <code class="computeroutput"><span class="identifier">cv_status</span><span class="special">::</span><span class="identifier">no_timeout</span></code> if awakened by <code class="computeroutput"><span class="identifier">notify_one</span><span class="special">()</span></code>
+              or <code class="computeroutput"><span class="identifier">notify_all</span><span class="special">()</span></code>,
+              or <code class="computeroutput"><span class="identifier">cv_status</span><span class="special">::</span><span class="identifier">timeout</span></code> if awakened because at least
+              <code class="computeroutput"><span class="identifier">rel_time</span></code> has elapsed.
+            </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+              The overload accepting <code class="computeroutput"><span class="identifier">pred</span></code>
+              returns <code class="computeroutput"><span class="keyword">false</span></code> if the call
+              is returning because at least <code class="computeroutput"><span class="identifier">rel_time</span></code>
+              has elapsed and the predicate returns <code class="computeroutput"><span class="keyword">false</span></code>,
+              <code class="computeroutput"><span class="keyword">true</span></code> otherwise.
+            </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+              See <span class="bold"><strong>Note</strong></span> for <a class="link" href="conditions.html#condition_variable_any_wait"><code class="computeroutput">condition_variable_any::wait()</code></a>.
+            </p></dd>
+</dl>
+</div>
+<p>
+        </p>
+<h5>
+<a name="class_condition_variable_bridgehead"></a>
+  <span class="phrase"><a name="class_condition_variable"></a></span>
+  <a class="link" href="conditions.html#class_condition_variable">Class
+        <code class="computeroutput">condition_variable</code></a>
+</h5>
+<p>
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">fiber</span><span class="special">/</span><span class="identifier">condition_variable</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">fibers</span> <span class="special">{</span>
+
+<span class="keyword">class</span> condition_variable <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    condition_variable<span class="special">();</span>
+    <span class="special">~</span>condition_variable<span class="special">();</span>
+
+    condition_variable<span class="special">(</span> condition_variable <span class="keyword">const</span><span class="special">&amp;)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+    condition_variable <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span> condition_variable <span class="keyword">const</span><span class="special">&amp;)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+
+    <span class="keyword">void</span> <span class="identifier">notify_one</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+    <span class="keyword">void</span> <span class="identifier">notify_all</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    void <span class="identifier">wait</span><span class="special">(</span> std::unique_lock&lt; mutex &gt; <span class="special">&amp;);</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> typename <span class="identifier">Pred</span> <span class="special">&gt;</span>
+    <span class="keyword">void</span> <span class="identifier">wait</span><span class="special">(</span> std::unique_lock&lt; mutex &gt; <span class="special">&amp;,</span> <span class="identifier">Pred</span><span class="special">);</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> typename <span class="identifier">Clock</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Duration</span> <span class="special">&gt;</span>
+    <span class="identifier">cv_status</span> <span class="identifier">wait_until</span><span class="special">(</span> std::unique_lock&lt; mutex &gt; <span class="special">&amp;,</span>
+                          <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> typename <span class="identifier">Clock</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Duration</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Pred</span> <span class="special">&gt;</span>
+    <span class="keyword">bool</span> <span class="identifier">wait_until</span><span class="special">(</span> std::unique_lock&lt; mutex &gt; <span class="special">&amp;,</span>
+                     <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;,</span>
+                     <span class="identifier">Pred</span><span class="special">);</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> typename <span class="identifier">Rep</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Period</span> <span class="special">&gt;</span>
+    <span class="identifier">cv_status</span> <span class="identifier">wait_for</span><span class="special">(</span> std::unique_lock&lt; mutex &gt; <span class="special">&amp;,</span>
+                        <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span><span class="special">&lt;</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="identifier">Period</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> typename <span class="identifier">Rep</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Period</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Pred</span> <span class="special">&gt;</span>
+    <span class="keyword">bool</span> <span class="identifier">wait_for</span><span class="special">(</span> std::unique_lock&lt; mutex &gt; <span class="special">&amp;,</span>
+                   <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span><span class="special">&lt;</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="identifier">Period</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;,</span>
+                   <span class="identifier">Pred</span><span class="special">);</span>
+<span class="special">};</span>
+
+<span class="special">}}</span>
+</pre>
+<h5>
+<a name="fiber.synchronization.conditions.h7"></a>
+        <span class="phrase"><a name="fiber.synchronization.conditions.constructor0"></a></span><a class="link" href="conditions.html#fiber.synchronization.conditions.constructor0">Constructor</a>
+      </h5>
+<pre class="programlisting">condition_variable<span class="special">()</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+              Creates the object.
+            </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+              Nothing.
+            </p></dd>
+</dl>
+</div>
+<h5>
+<a name="fiber.synchronization.conditions.h8"></a>
+        <span class="phrase"><a name="fiber.synchronization.conditions.destructor0"></a></span><a class="link" href="conditions.html#fiber.synchronization.conditions.destructor0">Destructor</a>
+      </h5>
+<pre class="programlisting"><span class="special">~</span>condition_variable<span class="special">()</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+              All fibers waiting on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code> have been notified by a call to
+              <code class="computeroutput"><span class="identifier">notify_one</span></code> or <code class="computeroutput"><span class="identifier">notify_all</span></code> (though the respective
+              calls to <code class="computeroutput"><span class="identifier">wait</span></code>, <code class="computeroutput"><span class="identifier">wait_for</span></code> or <code class="computeroutput"><span class="identifier">wait_until</span></code>
+              need not have returned).
+            </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+              Destroys the object.
+            </p></dd>
+</dl>
+</div>
+<p>
+        </p>
+<h5>
+<a name="condition_variable_notify_one_bridgehead"></a>
+  <span class="phrase"><a name="condition_variable_notify_one"></a></span>
+  <a class="link" href="conditions.html#condition_variable_notify_one">Member
+        function <code class="computeroutput">notify_one</code>()</a>
+</h5>
+<p>
+      </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">notify_one</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+              If any fibers are currently <a class="link" href="../overview.html#blocking"><span class="emphasis"><em>blocked</em></span></a>
+              waiting on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+              in a call to <code class="computeroutput"><span class="identifier">wait</span></code>,
+              <code class="computeroutput"><span class="identifier">wait_for</span></code> or <code class="computeroutput"><span class="identifier">wait_until</span></code>, unblocks one of those
+              fibers.
+            </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+              Nothing.
+            </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+              It is arbitrary which waiting fiber is resumed.
+            </p></dd>
+</dl>
+</div>
+<p>
+        </p>
+<h5>
+<a name="condition_variable_notify_all_bridgehead"></a>
+  <span class="phrase"><a name="condition_variable_notify_all"></a></span>
+  <a class="link" href="conditions.html#condition_variable_notify_all">Member
+        function <code class="computeroutput">notify_all</code>()</a>
+</h5>
+<p>
+      </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">notify_all</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+              If any fibers are currently <a class="link" href="../overview.html#blocking"><span class="emphasis"><em>blocked</em></span></a>
+              waiting on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+              in a call to <code class="computeroutput"><span class="identifier">wait</span></code>,
+              <code class="computeroutput"><span class="identifier">wait_for</span></code> or <code class="computeroutput"><span class="identifier">wait_until</span></code>, unblocks all of those
+              fibers.
+            </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+              Nothing.
+            </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+              This is why a waiting fiber must <span class="emphasis"><em>also</em></span> check for
+              the desired program state using a mechanism external to the <code class="computeroutput">condition_variable</code>,
+              and retry the wait until that state is reached. A fiber waiting on
+              a <code class="computeroutput">condition_variable</code> might well wake up a number of times before the
+              desired state is reached.
+            </p></dd>
+</dl>
+</div>
+<p>
+        </p>
+<h5>
+<a name="condition_variable_wait_bridgehead"></a>
+  <span class="phrase"><a name="condition_variable_wait"></a></span>
+  <a class="link" href="conditions.html#condition_variable_wait">Templated
+        member function <code class="computeroutput">wait</code>()</a>
+</h5>
+<p>
+      </p>
+<pre class="programlisting">void <span class="identifier">wait</span><span class="special">(</span> std::unique_lock&lt; mutex &gt; <span class="special">&amp;</span> <span class="identifier">lk</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> typename <span class="identifier">Pred</span> <span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">wait</span><span class="special">(</span> std::unique_lock&lt; mutex &gt; <span class="special">&amp;</span> <span class="identifier">lk</span><span class="special">,</span> <span class="identifier">Pred</span> <span class="identifier">pred</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="identifier">lk</span></code> is locked by the
+              current fiber, and either no other fiber is currently waiting on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>,
+              or the execution of the <a href="http://en.cppreference.com/w/cpp/thread/unique_lock/mutex" target="_top"><code class="computeroutput"><span class="identifier">mutex</span><span class="special">()</span></code></a>
+              member function on the <code class="computeroutput"><span class="identifier">lk</span></code>
+              objects supplied in the calls to <code class="computeroutput"><span class="identifier">wait</span></code>
+              in all the fibers currently waiting on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code> would return the same value as
+              <code class="computeroutput"><span class="identifier">lk</span><span class="special">-&gt;</span><span class="identifier">mutex</span><span class="special">()</span></code>
+              for this call to <code class="computeroutput"><span class="identifier">wait</span></code>.
+            </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd>
+<p>
+              Atomically call <code class="computeroutput"><span class="identifier">lk</span><span class="special">.</span><span class="identifier">unlock</span><span class="special">()</span></code> and blocks the current fiber. The
+              fiber will unblock when notified by a call to <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">notify_one</span><span class="special">()</span></code> or <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">notify_all</span><span class="special">()</span></code>. When the fiber is unblocked (for
+              whatever reason), the lock is reacquired by invoking <code class="computeroutput"><span class="identifier">lk</span><span class="special">.</span><span class="identifier">lock</span><span class="special">()</span></code>
+              before the call to <code class="computeroutput"><span class="identifier">wait</span></code>
+              returns. The lock is also reacquired by invoking <code class="computeroutput"><span class="identifier">lk</span><span class="special">.</span><span class="identifier">lock</span><span class="special">()</span></code> if the function exits with an exception.
+              The member function accepting <code class="computeroutput"><span class="identifier">pred</span></code>
+              is shorthand for:
+</p>
+<pre class="programlisting"><span class="keyword">while</span> <span class="special">(</span> <span class="special">!</span> <span class="identifier">pred</span><span class="special">()</span> <span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">wait</span><span class="special">(</span> <span class="identifier">lk</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+            </p>
+</dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="identifier">lk</span></code> is locked by the
+              current fiber.
+            </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="identifier">fiber_error</span></code> if an error
+              occurs.
+            </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+              The Precondition is a bit dense. It merely states that all the fibers
+              concurrently calling <code class="computeroutput"><span class="identifier">wait</span></code>
+              on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+              must wait on <code class="computeroutput"><span class="identifier">lk</span></code> objects
+              governing the <span class="emphasis"><em>same</em></span> <a class="link" href="mutex_types.html#class_mutex"><code class="computeroutput">mutex</code></a>. Three distinct
+              objects are involved in any <code class="computeroutput">condition_variable::wait()</code> call: the <code class="computeroutput">condition_variable</code> itself,
+              the <code class="computeroutput"><span class="identifier">mutex</span></code> coordinating
+              access between fibers and a local lock object (e.g. <a href="http://en.cppreference.com/w/cpp/thread/unique_lock" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">unique_lock</span></code></a>). In general,
+              you can partition the lifespan of a given <code class="computeroutput">condition_variable</code> instance
+              into periods with one or more fibers waiting on it, separated by periods
+              when no fibers are waiting on it. When more than one fiber is waiting
+              on that <code class="computeroutput">condition_variable</code>, all must pass lock objects referencing
+              the <span class="emphasis"><em>same</em></span> <code class="computeroutput"><span class="identifier">mutex</span></code>
+              instance.
+            </p></dd>
+</dl>
+</div>
+<p>
+        </p>
+<h5>
+<a name="condition_variable_wait_until_bridgehead"></a>
+  <span class="phrase"><a name="condition_variable_wait_until"></a></span>
+  <a class="link" href="conditions.html#condition_variable_wait_until">Templated
+        member function <code class="computeroutput">wait_until</code>()</a>
+</h5>
+<p>
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> typename <span class="identifier">Clock</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Duration</span> <span class="special">&gt;</span>
+<span class="identifier">cv_status</span> <span class="identifier">wait_until</span><span class="special">(</span> std::unique_lock&lt; mutex &gt; <span class="special">&amp;</span> <span class="identifier">lk</span><span class="special">,</span>
+                      <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">abs_time</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> typename <span class="identifier">Clock</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Duration</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Pred</span> <span class="special">&gt;</span>
+<span class="keyword">bool</span> <span class="identifier">wait_until</span><span class="special">(</span> std::unique_lock&lt; mutex &gt; <span class="special">&amp;</span> <span class="identifier">lk</span><span class="special">,</span>
+                 <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">abs_time</span><span class="special">,</span>
+                 <span class="identifier">Pred</span> <span class="identifier">pred</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="identifier">lk</span></code> is locked by the
+              current fiber, and either no other fiber is currently waiting on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>,
+              or the execution of the <code class="computeroutput"><span class="identifier">mutex</span><span class="special">()</span></code> member function on the <code class="computeroutput"><span class="identifier">lk</span></code> objects supplied in the calls
+              to <code class="computeroutput"><span class="identifier">wait</span></code>, <code class="computeroutput"><span class="identifier">wait_for</span></code> or <code class="computeroutput"><span class="identifier">wait_until</span></code>
+              in all the fibers currently waiting on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code> would return the same value as
+              <code class="computeroutput"><span class="identifier">lk</span><span class="special">.</span><span class="identifier">mutex</span><span class="special">()</span></code>
+              for this call to <code class="computeroutput"><span class="identifier">wait_until</span></code>.
+            </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd>
+<p>
+              Atomically call <code class="computeroutput"><span class="identifier">lk</span><span class="special">.</span><span class="identifier">unlock</span><span class="special">()</span></code> and blocks the current fiber. The
+              fiber will unblock when notified by a call to <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">notify_one</span><span class="special">()</span></code> or <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">notify_all</span><span class="special">()</span></code>, when the system time would be equal
+              to or later than the specified <code class="computeroutput"><span class="identifier">abs_time</span></code>.
+              When the fiber is unblocked (for whatever reason), the lock is reacquired
+              by invoking <code class="computeroutput"><span class="identifier">lk</span><span class="special">.</span><span class="identifier">lock</span><span class="special">()</span></code>
+              before the call to <code class="computeroutput"><span class="identifier">wait_until</span></code>
+              returns. The lock is also reacquired by invoking <code class="computeroutput"><span class="identifier">lk</span><span class="special">.</span><span class="identifier">lock</span><span class="special">()</span></code> if the function exits with an exception.
+              The member function accepting <code class="computeroutput"><span class="identifier">pred</span></code>
+              is shorthand for:
+</p>
+<pre class="programlisting"><span class="keyword">while</span> <span class="special">(</span> <span class="special">!</span> <span class="identifier">pred</span><span class="special">()</span> <span class="special">)</span> <span class="special">{</span>
+    <span class="keyword">if</span> <span class="special">(</span> <span class="identifier">cv_status</span><span class="special">::</span><span class="identifier">timeout</span> <span class="special">==</span> <span class="identifier">wait_until</span><span class="special">(</span> <span class="identifier">lk</span><span class="special">,</span> <span class="identifier">abs_time</span><span class="special">)</span> <span class="special">)</span>
+        <span class="keyword">return</span> <span class="identifier">pred</span><span class="special">();</span>
+<span class="special">}</span>
+<span class="keyword">return</span> <span class="keyword">true</span><span class="special">;</span>
+</pre>
+<p>
+              That is, even if <code class="computeroutput"><span class="identifier">wait_until</span><span class="special">()</span></code> times out, it can still return <code class="computeroutput"><span class="keyword">true</span></code> if <code class="computeroutput"><span class="identifier">pred</span><span class="special">()</span></code> returns <code class="computeroutput"><span class="keyword">true</span></code>
+              at that time.
+            </p>
+</dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="identifier">lk</span></code> is locked by the
+              current fiber.
+            </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="identifier">fiber_error</span></code> if an error
+              occurs or timeout-related exceptions.
+            </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+              The overload without <code class="computeroutput"><span class="identifier">pred</span></code>
+              returns <code class="computeroutput"><span class="identifier">cv_status</span><span class="special">::</span><span class="identifier">no_timeout</span></code> if awakened by <code class="computeroutput"><span class="identifier">notify_one</span><span class="special">()</span></code>
+              or <code class="computeroutput"><span class="identifier">notify_all</span><span class="special">()</span></code>,
+              or <code class="computeroutput"><span class="identifier">cv_status</span><span class="special">::</span><span class="identifier">timeout</span></code> if awakened because the system
+              time is past <code class="computeroutput"><span class="identifier">abs_time</span></code>.
+            </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+              The overload accepting <code class="computeroutput"><span class="identifier">pred</span></code>
+              returns <code class="computeroutput"><span class="keyword">false</span></code> if the call
+              is returning because the time specified by <code class="computeroutput"><span class="identifier">abs_time</span></code>
+              was reached and the predicate returns <code class="computeroutput"><span class="keyword">false</span></code>,
+              <code class="computeroutput"><span class="keyword">true</span></code> otherwise.
+            </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+              See <span class="bold"><strong>Note</strong></span> for <a class="link" href="conditions.html#condition_variable_wait"><code class="computeroutput">condition_variable::wait()</code></a>.
+            </p></dd>
+</dl>
+</div>
+<p>
+        </p>
+<h5>
+<a name="condition_variable_wait_for_bridgehead"></a>
+  <span class="phrase"><a name="condition_variable_wait_for"></a></span>
+  <a class="link" href="conditions.html#condition_variable_wait_for">Templated
+        member function <code class="computeroutput">wait_for</code>()</a>
+</h5>
+<p>
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> typename <span class="identifier">Rep</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Period</span> <span class="special">&gt;</span>
+<span class="identifier">cv_status</span> <span class="identifier">wait_for</span><span class="special">(</span> std::unique_lock&lt; mutex &gt; <span class="special">&amp;</span> <span class="identifier">lk</span><span class="special">,</span>
+                    <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span><span class="special">&lt;</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="identifier">Period</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rel_time</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> typename <span class="identifier">Rep</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Period</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Pred</span> <span class="special">&gt;</span>
+<span class="keyword">bool</span> <span class="identifier">wait_for</span><span class="special">(</span> std::unique_lock&lt; mutex &gt; <span class="special">&amp;</span> <span class="identifier">lk</span><span class="special">,</span>
+               <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration</span><span class="special">&lt;</span> <span class="identifier">Rep</span><span class="special">,</span> <span class="identifier">Period</span> <span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rel_time</span><span class="special">,</span>
+               <span class="identifier">Pred</span> <span class="identifier">pred</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="identifier">lk</span></code> is locked by the
+              current fiber, and either no other fiber is currently waiting on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>,
+              or the execution of the <code class="computeroutput"><span class="identifier">mutex</span><span class="special">()</span></code> member function on the <code class="computeroutput"><span class="identifier">lk</span></code> objects supplied in the calls
+              to <code class="computeroutput"><span class="identifier">wait</span></code>, <code class="computeroutput"><span class="identifier">wait_for</span></code> or <code class="computeroutput"><span class="identifier">wait_until</span></code>
+              in all the fibers currently waiting on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code> would return the same value as
+              <code class="computeroutput"><span class="identifier">lk</span><span class="special">.</span><span class="identifier">mutex</span><span class="special">()</span></code>
+              for this call to <code class="computeroutput"><span class="identifier">wait_for</span></code>.
+            </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd>
+<p>
+              Atomically call <code class="computeroutput"><span class="identifier">lk</span><span class="special">.</span><span class="identifier">unlock</span><span class="special">()</span></code> and blocks the current fiber. The
+              fiber will unblock when notified by a call to <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">notify_one</span><span class="special">()</span></code> or <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">notify_all</span><span class="special">()</span></code>, when a time interval equal to or
+              greater than the specified <code class="computeroutput"><span class="identifier">rel_time</span></code>
+              has elapsed. When the fiber is unblocked (for whatever reason), the
+              lock is reacquired by invoking <code class="computeroutput"><span class="identifier">lk</span><span class="special">.</span><span class="identifier">lock</span><span class="special">()</span></code> before the call to <code class="computeroutput"><span class="identifier">wait</span></code> returns. The lock is also reacquired
+              by invoking <code class="computeroutput"><span class="identifier">lk</span><span class="special">.</span><span class="identifier">lock</span><span class="special">()</span></code>
+              if the function exits with an exception. The <code class="computeroutput"><span class="identifier">wait_for</span><span class="special">()</span></code> member function accepting <code class="computeroutput"><span class="identifier">pred</span></code> is shorthand for:
+</p>
+<pre class="programlisting"><span class="keyword">while</span> <span class="special">(</span> <span class="special">!</span> <span class="identifier">pred</span><span class="special">()</span> <span class="special">)</span> <span class="special">{</span>
+    <span class="keyword">if</span> <span class="special">(</span> <span class="identifier">cv_status</span><span class="special">::</span><span class="identifier">timeout</span> <span class="special">==</span> <span class="identifier">wait_for</span><span class="special">(</span> <span class="identifier">lk</span><span class="special">,</span> <span class="identifier">rel_time</span><span class="special">)</span> <span class="special">)</span> <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">pred</span><span class="special">();</span>
+    <span class="special">}</span>
+<span class="special">}</span>
+<span class="keyword">return</span> <span class="keyword">true</span><span class="special">;</span>
+</pre>
+<p>
+              (except of course that <code class="computeroutput"><span class="identifier">rel_time</span></code>
+              is adjusted for each iteration). The point is that, even if <code class="computeroutput"><span class="identifier">wait_for</span><span class="special">()</span></code>
+              times out, it can still return <code class="computeroutput"><span class="keyword">true</span></code>
+              if <code class="computeroutput"><span class="identifier">pred</span><span class="special">()</span></code>
+              returns <code class="computeroutput"><span class="keyword">true</span></code> at that time.
+            </p>
+</dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="identifier">lk</span></code> is locked by the
+              current fiber.
+            </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+              <code class="computeroutput"><span class="identifier">fiber_error</span></code> if an error
+              occurs or timeout-related exceptions.
+            </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+              The overload without <code class="computeroutput"><span class="identifier">pred</span></code>
+              returns <code class="computeroutput"><span class="identifier">cv_status</span><span class="special">::</span><span class="identifier">no_timeout</span></code> if awakened by <code class="computeroutput"><span class="identifier">notify_one</span><span class="special">()</span></code>
+              or <code class="computeroutput"><span class="identifier">notify_all</span><span class="special">()</span></code>,
+              or <code class="computeroutput"><span class="identifier">cv_status</span><span class="special">::</span><span class="identifier">timeout</span></code> if awakened because at least
+              <code class="computeroutput"><span class="identifier">rel_time</span></code> has elapsed.
+            </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+              The overload accepting <code class="computeroutput"><span class="identifier">pred</span></code>
+              returns <code class="computeroutput"><span class="keyword">false</span></code> if the call
+              is returning because at least <code class="computeroutput"><span class="identifier">rel_time</span></code>
+              has elapsed and the predicate returns <code class="computeroutput"><span class="keyword">false</span></code>,
+              <code class="computeroutput"><span class="keyword">true</span></code> otherwise.
+            </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+              See <span class="bold"><strong>Note</strong></span> for <a class="link" href="conditions.html#condition_variable_wait"><code class="computeroutput">condition_variable::wait()</code></a>.
+            </p></dd>
+</dl>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2013 Oliver Kowalke<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="mutex_types.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../synchronization.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="barriers.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

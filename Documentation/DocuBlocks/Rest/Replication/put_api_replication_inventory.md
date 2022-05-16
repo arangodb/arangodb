@@ -73,15 +73,15 @@ can execute these steps:
 If the clients wants to continuously stream replication log events from the logger
 server, the following additional steps need to be carried out:
 
-- the client should call */logger-follow* initially to fetch the first batch of
+- the client should call */_api/wal/tail* initially to fetch the first batch of
   replication events that were logged after the client's call to */inventory*.
 
-  The call to */logger-follow* should use a *from* parameter with the value of the
-  *lastLogTick* as reported by */inventory*. The call to */logger-follow* will return the
-  *x-arango-replication-lastincluded* which will contain the last tick value included
-  in the response.
+  The call to */_api/wal/tail* should use a *from* parameter with the value of the
+  *lastLogTick* as reported by */inventory*. The call to */_api/wal/tail* will
+  return the *x-arango-replication-lastincluded* header which will contain the
+  last tick value included in the response.
 
-- the client can then continuously call */logger-follow* to incrementally fetch new
+- the client can then continuously call */_api/wal/tail* to incrementally fetch new
   replication events that occurred after the last transfer.
 
   Calls should use a *from* parameter with the value of the *x-arango-replication-lastincluded*
@@ -125,13 +125,13 @@ With some additional indexes:
  EXAMPLE_ARANGOSH_RUN{RestReplicationInventoryIndexes_mmfiles}
     db._drop("IndexedCollection1");
     var c1 = db._create("IndexedCollection1");
-    c1.ensureHashIndex("name");
-    c1.ensureUniqueSkiplist("a", "b");
+    c1.ensureIndex({ type: "persistent", fields: ["name"] });
+    c1.ensureIndex({ type: "persistent", fields: ["a", "b"], unique: true });
 
     db._drop("IndexedCollection2");
     var c2 = db._create("IndexedCollection2");
-    c2.ensureFulltextIndex("text", 10);
-    c2.ensureSkiplist("a");
+    c2.ensureIndex({ type: "fulltext", fields: ["text"], minLength: 10 });
+    c2.ensureIndex({ type: "persistent", fields: ["a"] });
 
     var url = "/_api/replication/inventory";
     var response = logCurlRequest('GET', url);

@@ -1,0 +1,2050 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Numeric limits for 32-bit platform</title>
+<link rel="stylesheet" href="../../../multiprecision.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter 1. Boost.Multiprecision">
+<link rel="up" href="../limits.html" title="Numeric Limits">
+<link rel="prev" href="functions.html" title="std::numeric_limits&lt;&gt; functions">
+<link rel="next" href="how_to_tell.html" title="How to Determine the Kind of a Number From std::numeric_limits">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="functions.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../limits.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="how_to_tell.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_multiprecision.tut.limits.limits32"></a><a class="link" href="limits32.html" title="Numeric limits for 32-bit platform">Numeric limits
+        for 32-bit platform</a>
+</h4></div></div></div>
+<p>
+          These tables were generated using the following program and options:
+        </p>
+<pre class="programlisting">
+Program:
+ numeric_limits_qbk.cpp
+Mon Nov  4 18:09:06 2013
+BuildInfo:
+  Platform Win32
+  Compiler Microsoft Visual C++ version 10.0
+  MSVC version 160040219.
+  STL Dinkumware standard library version 520
+  Boost version 1.55.0
+</pre>
+<div class="table">
+<a name="boost_multiprecision.tut.limits.limits32.integral_constants"></a><p class="title"><b>Table 1.4. Integer types constants (<code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">is_integer</span>
+          <span class="special">==</span> <span class="keyword">true</span></code>
+          &amp;&amp; is_exact == true)</b></p>
+<div class="table-contents"><table class="table" summary="Integer types constants (std::numeric_limits&lt;T&gt;::is_integer
+          == true
+          &amp;&amp; is_exact == true)">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    type
+                  </p>
+                </th>
+<th>
+                  <p>
+                    signed
+                  </p>
+                </th>
+<th>
+                  <p>
+                    bound
+                  </p>
+                </th>
+<th>
+                  <p>
+                    modulo
+                  </p>
+                </th>
+<th>
+                  <p>
+                    round
+                  </p>
+                </th>
+<th>
+                  <p>
+                    radix
+                  </p>
+                </th>
+<th>
+                  <p>
+                    digits
+                  </p>
+                </th>
+<th>
+                  <p>
+                    digits10
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    bool
+                  </p>
+                </td>
+<td>
+                  <p>
+                    unsigned
+                  </p>
+                </td>
+<td>
+                  <p>
+                    bound
+                  </p>
+                </td>
+<td>
+                  <p>
+                    no
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to zero
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    1
+                  </p>
+                </td>
+<td>
+                  <p>
+                    0
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    char
+                  </p>
+                </td>
+<td>
+                  <p>
+                    signed
+                  </p>
+                </td>
+<td>
+                  <p>
+                    bound
+                  </p>
+                </td>
+<td>
+                  <p>
+                    modulo
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to zero
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    7
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    unsigned char
+                  </p>
+                </td>
+<td>
+                  <p>
+                    unsigned
+                  </p>
+                </td>
+<td>
+                  <p>
+                    bound
+                  </p>
+                </td>
+<td>
+                  <p>
+                    modulo
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to zero
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    8
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    char16_t
+                  </p>
+                </td>
+<td>
+                  <p>
+                    unsigned
+                  </p>
+                </td>
+<td>
+                  <p>
+                    bound
+                  </p>
+                </td>
+<td>
+                  <p>
+                    modulo
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to zero
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    16
+                  </p>
+                </td>
+<td>
+                  <p>
+                    4
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    char32_t
+                  </p>
+                </td>
+<td>
+                  <p>
+                    unsigned
+                  </p>
+                </td>
+<td>
+                  <p>
+                    bound
+                  </p>
+                </td>
+<td>
+                  <p>
+                    modulo
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to zero
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    32
+                  </p>
+                </td>
+<td>
+                  <p>
+                    9
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    short
+                  </p>
+                </td>
+<td>
+                  <p>
+                    signed
+                  </p>
+                </td>
+<td>
+                  <p>
+                    bound
+                  </p>
+                </td>
+<td>
+                  <p>
+                    modulo
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to zero
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    15
+                  </p>
+                </td>
+<td>
+                  <p>
+                    4
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    unsigned short
+                  </p>
+                </td>
+<td>
+                  <p>
+                    unsigned
+                  </p>
+                </td>
+<td>
+                  <p>
+                    bound
+                  </p>
+                </td>
+<td>
+                  <p>
+                    modulo
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to zero
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    16
+                  </p>
+                </td>
+<td>
+                  <p>
+                    4
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    int
+                  </p>
+                </td>
+<td>
+                  <p>
+                    signed
+                  </p>
+                </td>
+<td>
+                  <p>
+                    bound
+                  </p>
+                </td>
+<td>
+                  <p>
+                    modulo
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to zero
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    31
+                  </p>
+                </td>
+<td>
+                  <p>
+                    9
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    unsigned
+                  </p>
+                </td>
+<td>
+                  <p>
+                    unsigned
+                  </p>
+                </td>
+<td>
+                  <p>
+                    bound
+                  </p>
+                </td>
+<td>
+                  <p>
+                    modulo
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to zero
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    32
+                  </p>
+                </td>
+<td>
+                  <p>
+                    9
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    long
+                  </p>
+                </td>
+<td>
+                  <p>
+                    signed
+                  </p>
+                </td>
+<td>
+                  <p>
+                    bound
+                  </p>
+                </td>
+<td>
+                  <p>
+                    modulo
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to zero
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    31
+                  </p>
+                </td>
+<td>
+                  <p>
+                    9
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    unsigned long
+                  </p>
+                </td>
+<td>
+                  <p>
+                    unsigned
+                  </p>
+                </td>
+<td>
+                  <p>
+                    bound
+                  </p>
+                </td>
+<td>
+                  <p>
+                    modulo
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to zero
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    32
+                  </p>
+                </td>
+<td>
+                  <p>
+                    9
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    long long
+                  </p>
+                </td>
+<td>
+                  <p>
+                    signed
+                  </p>
+                </td>
+<td>
+                  <p>
+                    bound
+                  </p>
+                </td>
+<td>
+                  <p>
+                    modulo
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to zero
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    63
+                  </p>
+                </td>
+<td>
+                  <p>
+                    18
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    unsigned long long
+                  </p>
+                </td>
+<td>
+                  <p>
+                    unsigned
+                  </p>
+                </td>
+<td>
+                  <p>
+                    bound
+                  </p>
+                </td>
+<td>
+                  <p>
+                    modulo
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to zero
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    64
+                  </p>
+                </td>
+<td>
+                  <p>
+                    19
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    int32_t
+                  </p>
+                </td>
+<td>
+                  <p>
+                    signed
+                  </p>
+                </td>
+<td>
+                  <p>
+                    bound
+                  </p>
+                </td>
+<td>
+                  <p>
+                    modulo
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to zero
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    31
+                  </p>
+                </td>
+<td>
+                  <p>
+                    9
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    uint32_t
+                  </p>
+                </td>
+<td>
+                  <p>
+                    unsigned
+                  </p>
+                </td>
+<td>
+                  <p>
+                    bound
+                  </p>
+                </td>
+<td>
+                  <p>
+                    modulo
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to zero
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    32
+                  </p>
+                </td>
+<td>
+                  <p>
+                    9
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    int64_t
+                  </p>
+                </td>
+<td>
+                  <p>
+                    signed
+                  </p>
+                </td>
+<td>
+                  <p>
+                    bound
+                  </p>
+                </td>
+<td>
+                  <p>
+                    modulo
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to zero
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    63
+                  </p>
+                </td>
+<td>
+                  <p>
+                    18
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    uint64_t
+                  </p>
+                </td>
+<td>
+                  <p>
+                    unsigned
+                  </p>
+                </td>
+<td>
+                  <p>
+                    bound
+                  </p>
+                </td>
+<td>
+                  <p>
+                    modulo
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to zero
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    64
+                  </p>
+                </td>
+<td>
+                  <p>
+                    19
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    int128_t
+                  </p>
+                </td>
+<td>
+                  <p>
+                    signed
+                  </p>
+                </td>
+<td>
+                  <p>
+                    bound
+                  </p>
+                </td>
+<td>
+                  <p>
+                    modulo
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to zero
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    128
+                  </p>
+                </td>
+<td>
+                  <p>
+                    38
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    uint128_t
+                  </p>
+                </td>
+<td>
+                  <p>
+                    unsigned
+                  </p>
+                </td>
+<td>
+                  <p>
+                    bound
+                  </p>
+                </td>
+<td>
+                  <p>
+                    modulo
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to zero
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    128
+                  </p>
+                </td>
+<td>
+                  <p>
+                    38
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    int256_t
+                  </p>
+                </td>
+<td>
+                  <p>
+                    signed
+                  </p>
+                </td>
+<td>
+                  <p>
+                    bound
+                  </p>
+                </td>
+<td>
+                  <p>
+                    modulo
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to zero
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    256
+                  </p>
+                </td>
+<td>
+                  <p>
+                    77
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    uint256_t
+                  </p>
+                </td>
+<td>
+                  <p>
+                    unsigned
+                  </p>
+                </td>
+<td>
+                  <p>
+                    bound
+                  </p>
+                </td>
+<td>
+                  <p>
+                    modulo
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to zero
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    256
+                  </p>
+                </td>
+<td>
+                  <p>
+                    77
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    cpp_int
+                  </p>
+                </td>
+<td>
+                  <p>
+                    signed
+                  </p>
+                </td>
+<td>
+                  <p>
+                    unbounded
+                  </p>
+                </td>
+<td>
+                  <p>
+                    no
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to zero
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2147483647
+                  </p>
+                </td>
+<td>
+                  <p>
+                    646392383
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><div class="table">
+<a name="boost_multiprecision.tut.limits.limits32.integral_functions"></a><p class="title"><b>Table 1.5. Integer types functions (<code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">is_integer</span>
+          <span class="special">==</span> <span class="keyword">true</span>
+          <span class="special">&amp;&amp;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">min</span><span class="special">()</span> <span class="special">==</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">lowest</span><span class="special">()</span></code> )</b></p>
+<div class="table-contents"><table class="table" summary="Integer types functions (std::numeric_limits&lt;T&gt;::is_integer
+          == true
+          &amp;&amp; std::numeric_limits&lt;T&gt;::min() == std::numeric_limits&lt;T&gt;::lowest() )">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    function
+                  </p>
+                </th>
+<th>
+                  <p>
+                    max
+                  </p>
+                </th>
+<th>
+                  <p>
+                    min
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    bool
+                  </p>
+                </td>
+<td>
+                  <p>
+                    1
+                  </p>
+                </td>
+<td>
+                  <p>
+                    0
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    char
+                  </p>
+                </td>
+<td>
+                  <p>
+                    127
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -128
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    unsigned char
+                  </p>
+                </td>
+<td>
+                  <p>
+                    255
+                  </p>
+                </td>
+<td>
+                  <p>
+                    0
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    char16_t
+                  </p>
+                </td>
+<td>
+                  <p>
+                    65535
+                  </p>
+                </td>
+<td>
+                  <p>
+                    0
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    char32_t
+                  </p>
+                </td>
+<td>
+                  <p>
+                    4294967295
+                  </p>
+                </td>
+<td>
+                  <p>
+                    0
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    short
+                  </p>
+                </td>
+<td>
+                  <p>
+                    32767
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -32768
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    unsigned short
+                  </p>
+                </td>
+<td>
+                  <p>
+                    65535
+                  </p>
+                </td>
+<td>
+                  <p>
+                    0
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    int
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2147483647
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -2147483648
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    unsigned int
+                  </p>
+                </td>
+<td>
+                  <p>
+                    4294967295
+                  </p>
+                </td>
+<td>
+                  <p>
+                    0
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    long
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2147483647
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -2147483648
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    unsigned long
+                  </p>
+                </td>
+<td>
+                  <p>
+                    4294967295
+                  </p>
+                </td>
+<td>
+                  <p>
+                    0
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    long long
+                  </p>
+                </td>
+<td>
+                  <p>
+                    9223372036854775807
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -9223372036854775808
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    unsigned long long
+                  </p>
+                </td>
+<td>
+                  <p>
+                    18446744073709551615
+                  </p>
+                </td>
+<td>
+                  <p>
+                    0
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    int32_t
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2147483647
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -2147483648
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    int64_t
+                  </p>
+                </td>
+<td>
+                  <p>
+                    9223372036854775807
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -9223372036854775808
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    int128_t
+                  </p>
+                </td>
+<td>
+                  <p>
+                    340282366920938463463374607431768211455
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -340282366920938463463374607431768211455
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><div class="table">
+<a name="boost_multiprecision.tut.limits.limits32.float_functions"></a><p class="title"><b>Table 1.6. Floating-point types constants (<code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">is_integer</span><span class="special">==</span><span class="keyword">false</span> <span class="special">&amp;&amp;</span> <span class="identifier">is_signed</span><span class="special">==</span><span class="keyword">true</span> <span class="special">&amp;&amp;</span> <span class="identifier">is_modulo</span><span class="special">==</span><span class="keyword">false</span> <span class="special">&amp;&amp;</span> <span class="identifier">is_exact</span><span class="special">==</span><span class="keyword">false</span> <span class="special">&amp;&amp;</span> <span class="identifier">is_bound</span><span class="special">==</span><span class="keyword">true</span></code>)</b></p>
+<div class="table-contents"><table class="table" summary="Floating-point types constants (std::numeric_limits&lt;T&gt;::is_integer==false &amp;&amp; is_signed==true &amp;&amp; is_modulo==false &amp;&amp; is_exact==false &amp;&amp; is_bound==true)">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    type
+                  </p>
+                </th>
+<th>
+                  <p>
+                    round
+                  </p>
+                </th>
+<th>
+                  <p>
+                    radix
+                  </p>
+                </th>
+<th>
+                  <p>
+                    digits
+                  </p>
+                </th>
+<th>
+                  <p>
+                    digits10
+                  </p>
+                </th>
+<th>
+                  <p>
+                    max_digits10
+                  </p>
+                </th>
+<th>
+                  <p>
+                    min_exp
+                  </p>
+                </th>
+<th>
+                  <p>
+                    min_exp10
+                  </p>
+                </th>
+<th>
+                  <p>
+                    max_exp
+                  </p>
+                </th>
+<th>
+                  <p>
+                    max_exp10
+                  </p>
+                </th>
+<th>
+                  <p>
+                    tiny
+                  </p>
+                </th>
+<th>
+                  <p>
+                    trap
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    float
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to nearest
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    24
+                  </p>
+                </td>
+<td>
+                  <p>
+                    6
+                  </p>
+                </td>
+<td>
+                  <p>
+                    8
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -125
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -37
+                  </p>
+                </td>
+<td>
+                  <p>
+                    128
+                  </p>
+                </td>
+<td>
+                  <p>
+                    38
+                  </p>
+                </td>
+<td>
+                  <p>
+                    tiny
+                  </p>
+                </td>
+<td>
+                  <p>
+                    traps
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    double
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to nearest
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    53
+                  </p>
+                </td>
+<td>
+                  <p>
+                    15
+                  </p>
+                </td>
+<td>
+                  <p>
+                    17
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -1021
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -307
+                  </p>
+                </td>
+<td>
+                  <p>
+                    1024
+                  </p>
+                </td>
+<td>
+                  <p>
+                    308
+                  </p>
+                </td>
+<td>
+                  <p>
+                    tiny
+                  </p>
+                </td>
+<td>
+                  <p>
+                    traps
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    long double
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to nearest
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    53
+                  </p>
+                </td>
+<td>
+                  <p>
+                    15
+                  </p>
+                </td>
+<td>
+                  <p>
+                    17
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -1021
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -307
+                  </p>
+                </td>
+<td>
+                  <p>
+                    1024
+                  </p>
+                </td>
+<td>
+                  <p>
+                    308
+                  </p>
+                </td>
+<td>
+                  <p>
+                    tiny
+                  </p>
+                </td>
+<td>
+                  <p>
+                    traps
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    cpp_dec_float_50
+                  </p>
+                </td>
+<td>
+                  <p>
+                    indeterminate
+                  </p>
+                </td>
+<td>
+                  <p>
+                    10
+                  </p>
+                </td>
+<td>
+                  <p>
+                    50
+                  </p>
+                </td>
+<td>
+                  <p>
+                    50
+                  </p>
+                </td>
+<td>
+                  <p>
+                    80
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -222953000
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -67108864
+                  </p>
+                </td>
+<td>
+                  <p>
+                    222953000
+                  </p>
+                </td>
+<td>
+                  <p>
+                    67108864
+                  </p>
+                </td>
+<td>
+                  <p>
+                    no
+                  </p>
+                </td>
+<td>
+                  <p>
+                    no
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    bin_128bit_double_type
+                  </p>
+                </td>
+<td>
+                  <p>
+                    to nearest
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2
+                  </p>
+                </td>
+<td>
+                  <p>
+                    377
+                  </p>
+                </td>
+<td>
+                  <p>
+                    113
+                  </p>
+                </td>
+<td>
+                  <p>
+                    115
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -2147482894
+                  </p>
+                </td>
+<td>
+                  <p>
+                    -646392082
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2147482893
+                  </p>
+                </td>
+<td>
+                  <p>
+                    646392082
+                  </p>
+                </td>
+<td>
+                  <p>
+                    no
+                  </p>
+                </td>
+<td>
+                  <p>
+                    traps
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><div class="table">
+<a name="boost_multiprecision.tut.limits.limits32.float_functions0"></a><p class="title"><b>Table 1.7. Floating-point types functions (<code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;::</span><span class="identifier">is_integer</span>
+          <span class="special">==</span> <span class="keyword">false</span></code>)</b></p>
+<div class="table-contents"><table class="table" summary="Floating-point types functions (std::numeric_limits&lt;T&gt;::is_integer
+          == false)">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    function
+                  </p>
+                </th>
+<th>
+                  <p>
+                    float
+                  </p>
+                </th>
+<th>
+                  <p>
+                    double
+                  </p>
+                </th>
+<th>
+                  <p>
+                    long double
+                  </p>
+                </th>
+<th>
+                  <p>
+                    cpp_dec_50
+                  </p>
+                </th>
+<th>
+                  <p>
+                    cpp_bin_128
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    max
+                  </p>
+                </td>
+<td>
+                  <p>
+                    3.40282e+038
+                  </p>
+                </td>
+<td>
+                  <p>
+                    1.79769e+308
+                  </p>
+                </td>
+<td>
+                  <p>
+                    1.79769e+308
+                  </p>
+                </td>
+<td>
+                  <p>
+                    1e+67108865
+                  </p>
+                </td>
+<td>
+                  <p>
+                    1.85906e+646456766
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    min
+                  </p>
+                </td>
+<td>
+                  <p>
+                    1.17549e-038
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2.22507e-308
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2.22507e-308
+                  </p>
+                </td>
+<td>
+                  <p>
+                    1e-67108864
+                  </p>
+                </td>
+<td>
+                  <p>
+                    5.37906e-646456767
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    epsilon
+                  </p>
+                </td>
+<td>
+                  <p>
+                    1.19209e-007
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2.22045e-016
+                  </p>
+                </td>
+<td>
+                  <p>
+                    2.22045e-016
+                  </p>
+                </td>
+<td>
+                  <p>
+                    1e-49
+                  </p>
+                </td>
+<td>
+                  <p>
+                    6.49713e-114
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    round_error
+                  </p>
+                </td>
+<td>
+                  <p>
+                    0.5
+                  </p>
+                </td>
+<td>
+                  <p>
+                    0.5
+                  </p>
+                </td>
+<td>
+                  <p>
+                    0.5
+                  </p>
+                </td>
+<td>
+                  <p>
+                    0.5
+                  </p>
+                </td>
+<td>
+                  <p>
+                    0.5
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    infinity
+                  </p>
+                </td>
+<td>
+                  <p>
+                    1.#INF
+                  </p>
+                </td>
+<td>
+                  <p>
+                    1.#INF
+                  </p>
+                </td>
+<td>
+                  <p>
+                    1.#INF
+                  </p>
+                </td>
+<td>
+                  <p>
+                    inf
+                  </p>
+                </td>
+<td>
+                  <p>
+                    inf
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    quiet_NaN
+                  </p>
+                </td>
+<td>
+                  <p>
+                    1.#QNAN
+                  </p>
+                </td>
+<td>
+                  <p>
+                    1.#QNAN
+                  </p>
+                </td>
+<td>
+                  <p>
+                    1.#QNAN
+                  </p>
+                </td>
+<td>
+                  <p>
+                    nan
+                  </p>
+                </td>
+<td>
+                  <p>
+                    nan
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    signaling_NaN
+                  </p>
+                </td>
+<td>
+                  <p>
+                    1.#QNAN
+                  </p>
+                </td>
+<td>
+                  <p>
+                    1.#QNAN
+                  </p>
+                </td>
+<td>
+                  <p>
+                    1.#QNAN
+                  </p>
+                </td>
+<td>
+                  <p>
+                    0
+                  </p>
+                </td>
+<td>
+                  <p>
+                    0
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    denorm_min
+                  </p>
+                </td>
+<td>
+                  <p>
+                    1.4013e-045
+                  </p>
+                </td>
+<td>
+                  <p>
+                    4.94066e-324
+                  </p>
+                </td>
+<td>
+                  <p>
+                    4.94066e-324
+                  </p>
+                </td>
+<td>
+                  <p>
+                    0
+                  </p>
+                </td>
+<td>
+                  <p>
+                    0
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2002-2020 John
+      Maddock and Christopher Kormanyos<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="functions.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../limits.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="how_to_tell.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

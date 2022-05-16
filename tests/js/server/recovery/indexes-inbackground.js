@@ -37,14 +37,16 @@ function runSetup () {
   internal.debugClearFailAt();
 
   db._drop('UnitTestsRecovery1');
-  var c = db._create('UnitTestsRecovery1'), i;
+  let c = db._create('UnitTestsRecovery1');
 
-  for (i = 0; i < 1000; ++i) {
-    c.save({ value: i });
+  let docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ value: i });
   }
+  c.insert(docs);
 
   internal.debugSetFailAt("RocksDBBuilderIndex::fillIndex");
-  c.ensureSkiplist('value'); // should crash
+  c.ensureIndex({ type: "skiplist", fields: ["value"] });
 }
 
 // //////////////////////////////////////////////////////////////////////////////

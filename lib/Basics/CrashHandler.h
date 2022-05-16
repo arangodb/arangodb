@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <string_view>
+
 namespace arangodb {
 class CrashHandler {
  public:
@@ -30,13 +32,16 @@ class CrashHandler {
   static void logBacktrace();
 
   /// @brief logs a fatal message and crashes the program
-  [[noreturn]] static void crash(char const* context);
+  [[noreturn]] static void crash(std::string_view context);
 
   /// @brief logs an assertion failure and crashes the program
-  [[noreturn]] static void assertionFailure(char const* file, int line, char const* func, char const* context);
+  [[noreturn]] static void assertionFailure(char const* file, int line,
+                                            char const* func,
+                                            char const* context,
+                                            const char* message);
 
-  /// @brief set flag to kill process hard using SIGKILL, in order to circumvent core
-  /// file generation etc.
+  /// @brief set flag to kill process hard using SIGKILL, in order to circumvent
+  /// core file generation etc.
   static void setHardKill();
 
   /// @brief disable printing of backtraces
@@ -44,11 +49,10 @@ class CrashHandler {
 
   /// @brief installs the crash handler globally
   static void installCrashHandler();
-  
+
 #ifdef _WIN32
   static void setMiniDumpDirectory(std::string path);
 #endif
 };
 
 }  // namespace arangodb
-

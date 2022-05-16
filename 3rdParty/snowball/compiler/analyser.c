@@ -45,6 +45,8 @@ static void print_node_(struct node * p, int n, const char * s) {
         printf("'");
         report_b(stdout, p->literalstring);
         printf("'");
+    } else if (p->type == c_number) {
+        printf("%d", p->number);
     }
     printf("\n");
     if (p->AE) print_node_(p->AE, n+1, "# ");
@@ -266,7 +268,7 @@ static void read_names(struct analyser * a, int type) {
                 static const symbol c_len_lit[] = {
                     'l', 'e', 'n'
                 };
-                MOVE_TO_B(t->b, c_len_lit);
+                t->b = MOVE_TO_B(t->b, c_len_lit);
                 goto handle_as_name;
             }
             case c_lenof: {
@@ -277,7 +279,7 @@ static void read_names(struct analyser * a, int type) {
                 static const symbol c_lenof_lit[] = {
                     'l', 'e', 'n', 'o', 'f'
                 };
-                MOVE_TO_B(t->b, c_lenof_lit);
+                t->b = MOVE_TO_B(t->b, c_lenof_lit);
                 goto handle_as_name;
             }
             case c_name:
@@ -370,13 +372,13 @@ static void name_to_node(struct analyser * a, struct node * p, int type) {
     p->name = q;
 }
 
-static struct node * read_AE(struct analyser * a, int B) {
+static struct node * read_AE(struct analyser * a, struct name * assigned_to, int B) {
     struct tokeniser * t = a->tokeniser;
     struct node * p;
     struct node * q;
     switch (read_token(t)) {
         case c_minus: /* monadic */
-            q = read_AE(a, 100);
+            q = read_AE(a, assigned_to, 100);
             if (q->type == c_neg) {
                 /* Optimise away double negation, which avoids generators
                  * having to worry about generating "--" (decrement operator
@@ -386,17 +388,26 @@ static struct node * read_AE(struct analyser * a, int B) {
                 /* Don't free q, it's in the linked list a->nodes. */
                 break;
             }
+            if (q->type == c_number) {
+                /* Negated constant. */
+                q->number = -q->number;
+                p = q;
+                break;
+            }
             p = new_node(a, c_neg);
             p->right = q;
             break;
         case c_bra:
-            p = read_AE(a, 0);
+            p = read_AE(a, assigned_to, 0);
             get_token(a, c_ket);
             break;
         case c_name:
             p = new_node(a, c_name);
             name_to_node(a, p, 'i');
-            if (p->name) p->name->value_used = true;
+            if (p->name) {
+                // $x = x + 1 shouldn't count as a use of x.
+                p->name->value_used = (p->name != assigned_to);
+            }
             break;
         case c_maxint:
         case c_minint:
@@ -413,9 +424,33 @@ static struct node * read_AE(struct analyser * a, int B) {
             p->number = t->number;
             break;
         case c_lenof:
-        case c_sizeof:
-            p = C_style(a, "s", t->token);
+        case c_sizeof: {
+            int token = t->token;
+            p = C_style(a, "S", token);
+            if (!p->literalstring) break;
+
+            /* Replace lenof or sizeof on a literal string with a numeric
+             * constant.
+             */
+            int result;
+            if (token == c_lenof && t->encoding == ENC_UTF8) {
+                // UTF-8.
+                int i = 0;
+                symbol * b = p->literalstring;
+                result = 0;
+                while (i < SIZE(b)) {
+                    int dummy;
+                    i += get_utf8(b + i, &dummy);
+                    ++result;
+                }
+            } else {
+                result = SIZE(p->literalstring);
+            }
+            p->type = c_number;
+            p->literalstring = NULL;
+            p->number = result;
             break;
+        }
         default:
             error(a, e_unexpected_token);
             t->token_held = true;
@@ -428,9 +463,33 @@ static struct node * read_AE(struct analyser * a, int B) {
             t->token_held = true;
             return p;
         }
-        q = new_node(a, token);
-        q->left = p;
-        q->right = read_AE(a, b);
+        struct node * r = read_AE(a, assigned_to, b);
+        if (p->type == c_number && r->type == c_number) {
+            // Evaluate constant sub-expression.
+            q = new_node(a, c_number);
+            switch (token) {
+                case c_plus:
+                    q->number = p->number + r->number;
+                    break;
+                case c_minus:
+                    q->number = p->number - r->number;
+                    break;
+                case c_multiply:
+                    q->number = p->number * r->number;
+                    break;
+                case c_divide:
+                    q->number = p->number / r->number;
+                    break;
+                default:
+                    fprintf(stderr, "Unexpected AE operator %s\n",
+                            name_of_token(token));
+                    exit(1);
+            }
+        } else {
+            q = new_node(a, token);
+            q->left = p;
+            q->right = r;
+        }
         p = q;
     }
 }
@@ -482,7 +541,7 @@ static struct node * C_style(struct analyser * a, const char * s, int token) {
         case 'D':
             p->aux = read_C(a); continue;
         case 'A':
-            p->AE = read_AE(a, 0); continue;
+            p->AE = read_AE(a, 0, 0); continue;
         case 'f':
             get_token(a, c_for); continue;
         case 'S':
@@ -735,6 +794,14 @@ static void make_among(struct analyser * a, struct node * p, struct node * subst
     }
 }
 
+static int
+is_just_true(struct node * q)
+{
+    if (!q) return 1;
+    if (q->type != c_bra && q->type != c_true) return 0;
+    return is_just_true(q->left) && is_just_true(q->right);
+}
+
 static struct node * read_among(struct analyser * a) {
     struct tokeniser * t = a->tokeniser;
     struct node * p = new_node(a, c_among);
@@ -760,7 +827,14 @@ static struct node * read_among(struct analyser * a) {
                 p->number++; break;
             case c_bra:
                 if (previous_token == c_bra) error(a, e_adjacent_bracketed_in_among);
-                q = read_C_list(a); break;
+                q = read_C_list(a);
+                if (is_just_true(q->left)) {
+                    /* Convert anything equivalent to () to () so we handle it
+                     * the same way.
+                     */
+                    q->left = 0;
+                }
+                break;
             default:
                 error(a, e_unexpected_token_in_among);
                 previous_token = token;
@@ -788,12 +862,42 @@ static void check_modifyable(struct analyser * a) {
     if (!a->modifyable) error(a, e_not_allowed_inside_reverse);
 }
 
+static int ae_uses_name(struct node * p, struct name * q) {
+    switch (p->type) {
+        case c_name:
+        case c_lenof:
+        case c_sizeof:
+            if (p->name == q) return 1;
+            break;
+        case c_neg:
+            return ae_uses_name(p->right, q);
+        case c_multiply:
+        case c_plus:
+        case c_minus:
+        case c_divide:
+            return ae_uses_name(p->left, q) || ae_uses_name(p->right, q);
+    }
+    return 0;
+}
+
 static struct node * read_C(struct analyser * a) {
     struct tokeniser * t = a->tokeniser;
     int token = read_token(t);
     switch (token) {
-        case c_bra:
-            return read_C_list(a);
+        case c_bra: {
+            struct node * p = read_C_list(a);
+            if (p->type != c_bra) {
+                fprintf(stderr, "read_C_list returned unexpected type %s\n",
+                        name_of_token(p->type));
+                exit(1);
+            }
+            if (p->left && !p->left->right) {
+                // Replace a single entry command list with the command it
+                // contains in order to make subsequent optimisations easier.
+                p = p->left;
+            }
+            return p;
+        }
         case c_backwards:
             {
                 int mode = a->mode;
@@ -835,8 +939,31 @@ static struct node * read_C(struct analyser * a) {
         }
         case c_tomark:
         case c_atmark:
-        case c_hop:
             return C_style(a, "A", token);
+        case c_hop: {
+            struct node * n = C_style(a, "A", token);
+            if (n->AE->type == c_number) {
+                if (n->AE->number < 0) {
+                    fprintf(stderr,
+                            "%s:%d: warning: hop %d now signals f (as was "
+                            "always documented) rather than moving the cursor "
+                            "in the opposite direction\n",
+                            a->tokeniser->file,
+                            n->AE->line_number,
+                            n->AE->number);
+                    n->AE = NULL;
+                    n->type = c_false;
+                } else if (n->AE->number == 0) {
+                    fprintf(stderr,
+                            "%s:%d: warning: hop 0 is a no-op\n",
+                            a->tokeniser->file,
+                            n->AE->line_number);
+                    n->AE = NULL;
+                    n->type = c_true;
+                }
+            }
+            return n;
+        }
         case c_delete:
             check_modifyable(a);
             /* fall through */
@@ -880,9 +1007,17 @@ static struct node * read_C(struct analyser * a) {
             read_token(t);
             if (t->token == c_bra) {
                 /* Handle newer $(AE REL_OP AE) syntax. */
-                struct node * n = read_AE(a, 0);
+                struct node * n = read_AE(a, 0, 0);
                 read_token(t);
-                switch (t->token) {
+                int token = t->token;
+                switch (token) {
+                    case c_assign:
+                        count_error(a);
+                        fprintf(stderr, "%s:%d: Expected relational operator (did you mean '=='?)\n",
+				t->file, t->line_number);
+                        /* Assume it was == to try to avoid an error avalanche. */
+                        token = c_eq;
+                        /* FALLTHRU */
                     case c_eq:
                     case c_ne:
                     case c_gr:
@@ -890,9 +1025,40 @@ static struct node * read_C(struct analyser * a) {
                     case c_ls:
                     case c_le: {
                         struct node * lhs = n;
-                        n = new_node(a, t->token);
-                        n->left = lhs;
-                        n->AE = read_AE(a, 0);
+                        struct node * rhs = read_AE(a, 0, 0);
+                        if (lhs->type == c_number && rhs->type == c_number) {
+                            // Evaluate constant numeric test expression.
+                            int result;
+                            switch (token) {
+                                case c_eq:
+                                    result = (lhs->number == rhs->number);
+                                    break;
+                                case c_ne:
+                                    result = (lhs->number != rhs->number);
+                                    break;
+                                case c_gr:
+                                    result = (lhs->number > rhs->number);
+                                    break;
+                                case c_ge:
+                                    result = (lhs->number >= rhs->number);
+                                    break;
+                                case c_ls:
+                                    result = (lhs->number < rhs->number);
+                                    break;
+                                case c_le:
+                                    result = (lhs->number <= rhs->number);
+                                    break;
+                                default:
+                                    fprintf(stderr, "Unexpected numeric test operator %s\n",
+                                            name_of_token(t->token));
+                                    exit(1);
+                            }
+                            n = new_node(a, result ? c_true : c_false);
+                        } else {
+                            n = new_node(a, token);
+                            n->left = lhs;
+                            n->AE = rhs;
+                        }
                         get_token(a, c_ket);
                         break;
                     }
@@ -935,32 +1101,32 @@ static struct node * read_C(struct analyser * a) {
                         q = NULL;
                     }
                     p = new_node(a, read_AE_test(a));
-                    p->AE = read_AE(a, 0);
-
-                    if (q) {
-                        switch (p->type) {
-                            case c_mathassign:
-                                q->initialised = true;
-                                p->name = q;
-                                break;
-                            default:
-                                /* +=, etc don't "initialise" as they only
-                                 * amend an existing value.  Similarly, they
-                                 * don't count as using the value.
-                                 */
-                                p->name = q;
-                                break;
-                            case c_eq:
-                            case c_ne:
-                            case c_gr:
-                            case c_ge:
-                            case c_ls:
-                            case c_le:
-                                p->left = new_node(a, c_name);
-                                p->left->name = q;
+                    switch (p->type) {
+                        case c_eq:
+                        case c_ne:
+                        case c_gr:
+                        case c_ge:
+                        case c_ls:
+                        case c_le:
+                            p->left = new_node(a, c_name);
+                            p->left->name = q;
+                            if (q) {
                                 q->value_used = true;
-                                break;
-                        }
+                            }
+                            p->AE = read_AE(a, NULL, 0);
+                            break;
+                        default:
+                            /* +=, etc don't "initialise" as they only
+                             * amend an existing value.  Similarly, they
+                             * don't count as using the value.
+                             */
+                            p->name = q;
+                            p->AE = read_AE(a, q, 0);
+                            if (p->type == c_mathassign && q) {
+                                /* $x = x + 1 doesn't initialise x. */
+                                q->initialised = !ae_uses_name(p->AE, q);
+                            }
+                            break;
                     }
                 }
                 if (q) mark_used_in(a, q, p);
@@ -1206,6 +1372,7 @@ static void remove_dead_assignments(struct node * p, struct name * q) {
             case c_dollar:
                 /* c_true is a no-op. */
                 p->type = c_true;
+                p->AE = NULL;
                 break;
             default:
                 /* There are no read accesses to this variable, so any

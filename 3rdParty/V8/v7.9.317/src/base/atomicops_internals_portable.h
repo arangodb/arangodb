@@ -44,7 +44,7 @@ inline void SeqCst_MemoryFence() {
 #if defined(__GLIBCXX__)
   // Work around libstdc++ bug 51038 where atomic_thread_fence was declared but
   // not defined, leading to the linker complaining about undefined references.
-  __atomic_thread_fence(std::memory_order_seq_cst);
+  __atomic_thread_fence(static_cast<int>(std::memory_order_seq_cst));
 #else
   std::atomic_thread_fence(std::memory_order_seq_cst);
 #endif

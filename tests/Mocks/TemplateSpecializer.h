@@ -22,8 +22,7 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_TESTS_MOCKS_TEMPLATE_SPECIALIZER_H
-#define ARANGODB_TESTS_MOCKS_TEMPLATE_SPECIALIZER_H 1
+#pragma once
 
 namespace {
 
@@ -82,7 +81,8 @@ class TemplateSpecializer {
                 newSt = std::string("s") + std::to_string(TRI_NewTickServer());
                 break;
               case ReplacementCase::DBServer:
-                newSt = std::string("PRMR_000") + std::to_string(_nextServerNumber++);
+                newSt = std::string("PRMR_000") +
+                        std::to_string(_nextServerNumber++);
                 break;
               case ReplacementCase::DBName:
                 newSt = _dbName;
@@ -104,7 +104,8 @@ class TemplateSpecializer {
   }
 
  private:
-  size_t parseString(char const* templ, size_t pos, size_t const len, std::string& st) {
+  size_t parseString(char const* templ, size_t pos, size_t const len,
+                     std::string& st) {
     // This must be called when templ[pos] == '"'. It parses the string
     // and // puts it into st (not including the quotes around it).
     // The return value is pos advanced to behind the closing quote of
@@ -151,5 +152,3 @@ class TemplateSpecializer {
 };
 
 }  // namespace
-
-#endif

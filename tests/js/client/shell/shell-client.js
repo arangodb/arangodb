@@ -167,7 +167,7 @@ function clientTestSuite () {
     testICU_Compare_Skiplist_Sorting: function () {
       db._drop('ICU_SORTED');
       db._create('ICU_SORTED');
-      db.ICU_SORTED.ensureSkiplist('test');
+      db.ICU_SORTED.ensureIndex({ type: "skiplist", fields: ["test"] });
       db.ICU_SORTED.save({ test: 'äää' });
       db.ICU_SORTED.save({ test: 'aaa' });
       db.ICU_SORTED.save({ test: 'aab' });

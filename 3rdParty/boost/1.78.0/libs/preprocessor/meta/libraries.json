@@ -1,0 +1,17 @@
+{
+    "key": "preprocessor",
+    "name": "Preprocessor",
+    "authors": [
+        "Vesa Karvonen",
+        "Paul Mensonides"
+    ],
+    "description": "Preprocessor metaprogramming tools including repetition and recursion.",
+    "category": [
+        "Preprocessor"
+    ],
+    "maintainers": [
+        "Paul Mensonides <pmenso57 -at- comcast.net>",
+        "Edward Diener <eld -at- tropicsoft.com>"
+    ],
+    "cxxstd": "03"
+}

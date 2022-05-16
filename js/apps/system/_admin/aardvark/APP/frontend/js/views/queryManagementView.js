@@ -233,6 +233,18 @@
               '',
               ''
             ]);
+          } else {
+            // sort by query id, descending
+            rowsArray = rowsArray.sort(function(l, r) {
+              // normalize both inputs to strings (in case they are numbers)
+              l = String(l[0]).padStart(20, "0");
+              r = String(r[0]).padStart(20, "0");
+
+              if (l === r) {
+                return 0;
+              }
+              return l < r ? 1 : -1;
+            });
           }
 
           self.tableDescription.rows = rowsArray;

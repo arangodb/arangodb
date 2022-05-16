@@ -1,0 +1,71 @@
+[/
+  Copyright 2011 - 2020 John Maddock.
+  Copyright 2013 - 2019 Paul A. Bristow.
+  Copyright 2013 Christopher Kormanyos.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:float128 float128]
+
+`#include <boost/multiprecision/float128.hpp>`
+
+   namespace boost{ namespace multiprecision{
+
+   class float128_backend;
+
+   typedef number<float128_backend, et_off>    float128;
+
+   }} // namespaces
+
+The `float128` number type is a very thin wrapper around GCC's `__float128` or Intel's `_Quad` data types
+and provides an real-number type that is a drop-in replacement for the native C++ floating-point types, but with
+a 113 bit mantissa, and compatible with FORTRAN's 128-bit QUAD real.
+
+All the usual standard library and `std::numeric_limits` support are available, performance should be equivalent
+to the underlying native types: for example the LINPACK benchmarks for GCC's `__float128` and
+`boost::multiprecision::float128` both achieved 5.6 MFLOPS[footnote On 64-bit Ubuntu 11.10, GCC-4.8.0, Intel Core 2 Duo T5800.].
+
+As well as the usual conversions from arithmetic and string types, instances of `float128` are
+copy constructible and assignable from GCC's `__float128` and Intel's `_Quad` data types.
+
+It's also possible to access the underlying `__float128` or `_Quad` type via the `data()` member
+function of `float128_backend`.
+
+Things you should know when using this type:
+
+* Default constructed `float128`s have the value zero.
+* This backend supports rvalue-references and is move-aware, making instantiations of `number` on this backend move aware.
+* This type is fully `constexpr` aware - basic constexpr arithmetic is supported from C++14 and onwards, comparisons,
+plus the functions `fabs`, `abs`, `fpclassify`, `isnormal`, `isfinite`, `isinf` and `isnan` are also supported if either
+the compiler implements C++20's `std::is_constant_evaluated()`, or if the compiler is GCC.
+* It is not possible to round-trip objects of this type to and from a string and get back
+exactly the same value when compiled with Intel's C++ compiler and using `_Quad` as the underlying type: this is a current limitation of
+our code.  Round tripping when using `__float128` as the underlying type is possible (both for GCC and Intel).
+* Conversion from a string results in a `std::runtime_error` being thrown if the string can not be interpreted
+as a valid floating-point number.
+* Division by zero results in an infinity being produced.
+* Type `float128` can be used as a literal type (constexpr support).
+* Type `float128` can be used for full `constexpr` arithmetic from C++14 and later with GCC.  The functions `abs`, `fabs`, 
+`fpclassify`, `isnan`, `isinf`, `isfinite` and `isnormal` are also `constexpr`, but the transcendental functions are not.
+* When using the Intel compiler, the underlying type defaults to `__float128` if it's available and `_Quad` if not.  You can override
+the default by defining either `BOOST_MP_USE_FLOAT128` or `BOOST_MP_USE_QUAD`.
+* When the underlying type is Intel's `_Quad` type, the code must be compiled with the compiler option `-Qoption,cpp,--extended_float_type`.
+* When compiling with `gcc`, you need to use the flag `--std=gnu++11/14/17`, as the suffix 'Q' is a GNU extension. Compilation fails with the flag `--std=c++11/14/17`
+unless you also use `-fext-numeric-literals`.
+* You will need to link to `libquadmath.dll` with the link command `-lquadmath` and ensure that the DLL is visible by the linker. 
+If you are using the B2/bjam build system then commands`<linkflags>-lQUADMATH` and `<linkflags>-L"path/to/lib"` will be needed.
+* The values shown by `std::numeric_limits<float128>` and extremely close ['but not identical]
+to those from the equivalent precision and range multiprecision types `std::numeric_limits<cpp_bin_float_quad>` and `std::numeric_limits<cpp_dec_float_quad>`.
+
+[h5 float128 example:]
+
+[float128_eg]
+
+Values for `std::numeric_limits<float128>` are:
+
+[float128_numeric_limits]
+
+[endsect] [/section:float128 float128]

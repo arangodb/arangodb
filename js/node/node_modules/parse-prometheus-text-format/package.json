@@ -1,0 +1,34 @@
+{
+  "name": "parse-prometheus-text-format",
+  "version": "1.1.1",
+  "description": "Parses Prometheus text format into JavaScript objects",
+  "main": "dist/parse-prometheus-text-format.cjs.js",
+  "module": "dist/parse-prometheus-text-format.esm.js",
+  "browser": "dist/parse-prometheus-text-format.umd.js",
+  "scripts": {
+    "test": "node -r esm test/run-test.js",
+    "bench": "node -r esm test/run-test.js bench",
+    "build": "rollup -c"
+  },
+  "author": "Yunyu Lin",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "shallow-equal": "^1.2.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/yunyu/parse-prometheus-text-format.git"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.5.5",
+    "@babel/preset-env": "^7.5.5",
+    "esm": "^3.2.25",
+    "rollup": "^1.19.4",
+    "rollup-plugin-babel": "^4.3.3",
+    "rollup-plugin-commonjs": "^10.0.2",
+    "rollup-plugin-node-resolve": "^5.2.0"
+  },
+  "files": [
+    "dist"
+  ]
+}

@@ -1,0 +1,88 @@
+[section boost/python/return_internal_reference.hpp]
+[section Introduction]
+`return_internal_reference` instantiations are models of [link concepts.callpolicies `CallPolicies`] which allow pointers and references to objects held internally by a free or member function argument or from the target of a member function to be returned safely without making a copy of the referent. The default for its first template argument handles the common case where the containing object is the target (`*this`) of a wrapped member function. 
+[endsect]
+[section Class template `return_internal_reference`]
+[table
+ [[Parameter][Requirements][Description][Default]]
+ [[owner_arg][A positive compile-time constant of type `std::size_t`.][The index of the parameter which contains the object to which the reference or pointer is being returned. If used to wrap a member function, parameter 1 is the target object (`*this`). Note that if the target Python object type doesn't support weak references, a Python TypeError exception will be raised when the function being wrapped is called.][]]
+ [[Base][A model of [link concepts.callpolicies `CallPolicies`]][Used for policy composition. Any `result_converter` it supplies will be overridden by `return_internal_reference`, but its `precall` and `postcall` policies are composed as described here [link concepts.callpolicies `CallPolicies`].][default_call_policies]]
+]
+``
+namespace boost { namespace python
+{
+   template <std::size_t owner_arg = 1, class Base = default_call_policies>
+   struct return_internal_reference : Base
+   {
+      static PyObject* postcall(PyObject*, PyObject* result);
+      typedef reference_existing_object result_converter;
+   };
+}}
+``
+[endsect]
+[section Class `return_internal_reference` static functions]
+``PyObject* postcall(PyObject* args, PyObject* result);``
+[variablelist
+[[Requires][`PyTuple_Check(args) != 0`]]
+[[Returns][[link function_invocation_and_creation.models_of_callpolicies.boost_python_with_custodian_and_.class_with_custodian_and_ward_st `with_custodian_and_ward_postcall::postcall(args, result)`]]]
+]
+[endsect]
+[section Example]
+C++ module definition:
+``
+#include <boost/python/module.hpp>
+#include <boost/python/class.hpp>
+#include <boost/python/return_internal_reference.hpp>
+
+class Bar
+{
+ public:
+   Bar(int x) : x(x) {}
+   int get_x() const { return x; }
+   void set_x(int x) { this->x = x; }
+ private:
+   int x;
+};
+
+class Foo
+{
+ public:
+   Foo(int x) : b(x) {}
+
+   // Returns an internal reference
+   Bar const& get_bar() const { return b; }
+
+ private:
+   Bar b;
+};
+
+using namespace boost::python;
+BOOST_PYTHON_MODULE(internal_refs)
+{
+   class_<Bar>("Bar", init<int>())
+      .def("get_x", &Bar::get_x)
+      .def("set_x", &Bar::set_x)
+      ;
+
+   class_<Foo>("Foo", init<int>())
+      .def("get_bar", &Foo::get_bar
+          , return_internal_reference<>())
+      ;
+}
+``
+Python code:
+``
+>>> from internal_refs import *
+>>> f = Foo(3)
+>>> b1 = f.get_bar()
+>>> b2 = f.get_bar()
+>>> b1.get_x()
+3
+>>> b2.get_x()
+3
+>>> b1.set_x(42)
+>>> b2.get_x()
+42
+``
+[endsect]
+[endsect]

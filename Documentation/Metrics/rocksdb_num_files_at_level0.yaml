@@ -1,7 +1,7 @@
 name: rocksdb_num_files_at_level0
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "num-files-at-level0"
+  Number of RocksDB files at level 0.
 unit: number
 type: gauge
 category: RocksDB

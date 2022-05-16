@@ -1,0 +1,153 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>when_any, simple completion</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter 1. Fiber">
+<link rel="up" href="../when_any.html" title="when_any">
+<link rel="prev" href="../when_any.html" title="when_any">
+<link rel="next" href="when_any__return_value.html" title="when_any, return value">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../when_any.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../when_any.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="when_any__return_value.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="fiber.when_any.when_any.when_any__simple_completion"></a><a name="wait_first_simple_section"></a><a class="link" href="when_any__simple_completion.html" title="when_any, simple completion">when_any,
+        simple completion</a>
+</h4></div></div></div>
+<p>
+          The simplest case is when you only need to know that the first of a set
+          of asynchronous tasks has completed — but you don't need to obtain a return
+          value, and you're confident that they will not throw exceptions.
+        </p>
+<p>
+          <a name="wait_done"></a>For this we introduce a <code class="computeroutput"><span class="identifier">Done</span></code>
+          class to wrap a <code class="computeroutput"><span class="keyword">bool</span></code> variable
+          with a <a class="link" href="../../synchronization/conditions.html#class_condition_variable"><code class="computeroutput">condition_variable</code></a> and a <a class="link" href="../../synchronization/mutex_types.html#class_mutex"><code class="computeroutput">mutex</code></a>:
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">// Wrap canonical pattern for condition_variable + bool flag</span>
+<span class="keyword">struct</span> <span class="identifier">Done</span> <span class="special">{</span>
+<span class="keyword">private</span><span class="special">:</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">condition_variable</span>   <span class="identifier">cond</span><span class="special">;</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">mutex</span>                <span class="identifier">mutex</span><span class="special">;</span>
+    <span class="keyword">bool</span>                                <span class="identifier">ready</span> <span class="special">=</span> <span class="keyword">false</span><span class="special">;</span>
+
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span> <span class="identifier">Done</span> <span class="special">&gt;</span>     <span class="identifier">ptr</span><span class="special">;</span>
+
+    <span class="keyword">void</span> <span class="identifier">wait</span><span class="special">()</span> <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">unique_lock</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">mutex</span> <span class="special">&gt;</span> <span class="identifier">lock</span><span class="special">(</span> <span class="identifier">mutex</span><span class="special">);</span>
+        <span class="identifier">cond</span><span class="special">.</span><span class="identifier">wait</span><span class="special">(</span> <span class="identifier">lock</span><span class="special">,</span> <span class="special">[</span><span class="keyword">this</span><span class="special">](){</span> <span class="keyword">return</span> <span class="identifier">ready</span><span class="special">;</span> <span class="special">});</span>
+    <span class="special">}</span>
+
+    <span class="keyword">void</span> <span class="identifier">notify</span><span class="special">()</span> <span class="special">{</span>
+        <span class="special">{</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">unique_lock</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">mutex</span> <span class="special">&gt;</span> <span class="identifier">lock</span><span class="special">(</span> <span class="identifier">mutex</span><span class="special">);</span>
+            <span class="identifier">ready</span> <span class="special">=</span> <span class="keyword">true</span><span class="special">;</span>
+        <span class="special">}</span> <span class="comment">// release mutex</span>
+        <span class="identifier">cond</span><span class="special">.</span><span class="identifier">notify_one</span><span class="special">();</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+</pre>
+<p>
+        </p>
+<p>
+          The pattern we follow throughout this section is to pass a <a href="http://www.cplusplus.com/reference/memory/shared_ptr/" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">&lt;&gt;</span></code></a>
+          to the relevant synchronization object to the various tasks' fiber functions.
+          This eliminates nagging questions about the lifespan of the synchronization
+          object relative to the last of the fibers.
+        </p>
+<p>
+          <a name="wait_first_simple"></a><code class="computeroutput"><span class="identifier">wait_first_simple</span><span class="special">()</span></code> uses that tactic for <a class="link" href="when_any__simple_completion.html#wait_done"><code class="computeroutput"><span class="identifier">Done</span></code></a>:
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="special">...</span> <span class="identifier">Fns</span> <span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">wait_first_simple</span><span class="special">(</span> <span class="identifier">Fns</span> <span class="special">&amp;&amp;</span> <span class="special">...</span> <span class="identifier">functions</span><span class="special">)</span> <span class="special">{</span>
+    <span class="comment">// Use shared_ptr because each function's fiber will bind it separately,</span>
+    <span class="comment">// and we're going to return before the last of them completes.</span>
+    <span class="keyword">auto</span> <span class="identifier">done</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">make_shared</span><span class="special">&lt;</span> <span class="identifier">Done</span> <span class="special">&gt;()</span> <span class="special">);</span>
+    <span class="identifier">wait_first_simple_impl</span><span class="special">(</span> <span class="identifier">done</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">forward</span><span class="special">&lt;</span> <span class="identifier">Fns</span> <span class="special">&gt;(</span> <span class="identifier">functions</span><span class="special">)</span> <span class="special">...</span> <span class="special">);</span>
+    <span class="identifier">done</span><span class="special">-&gt;</span><span class="identifier">wait</span><span class="special">();</span>
+<span class="special">}</span>
+</pre>
+<p>
+        </p>
+<p>
+          <a name="wait_first_simple_impl"></a><code class="computeroutput"><span class="identifier">wait_first_simple_impl</span><span class="special">()</span></code> is an ordinary recursion over the argument
+          pack, capturing <code class="computeroutput"><span class="identifier">Done</span><span class="special">::</span><span class="identifier">ptr</span></code> for each new fiber:
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">// Degenerate case: when there are no functions to wait for, return</span>
+<span class="comment">// immediately.</span>
+<span class="keyword">void</span> <span class="identifier">wait_first_simple_impl</span><span class="special">(</span> <span class="identifier">Done</span><span class="special">::</span><span class="identifier">ptr</span><span class="special">)</span> <span class="special">{</span>
+<span class="special">}</span>
+
+<span class="comment">// When there's at least one function to wait for, launch it and recur to</span>
+<span class="comment">// process the rest.</span>
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">Fn</span><span class="special">,</span> <span class="keyword">typename</span> <span class="special">...</span> <span class="identifier">Fns</span> <span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">wait_first_simple_impl</span><span class="special">(</span> <span class="identifier">Done</span><span class="special">::</span><span class="identifier">ptr</span> <span class="identifier">done</span><span class="special">,</span> <span class="identifier">Fn</span> <span class="special">&amp;&amp;</span> <span class="identifier">function</span><span class="special">,</span> <span class="identifier">Fns</span> <span class="special">&amp;&amp;</span> <span class="special">...</span> <span class="identifier">functions</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">fiber</span><span class="special">(</span> <span class="special">[</span><span class="identifier">done</span><span class="special">,</span> <span class="identifier">function</span><span class="special">](){</span>
+                              <span class="identifier">function</span><span class="special">();</span>
+                              <span class="identifier">done</span><span class="special">-&gt;</span><span class="identifier">notify</span><span class="special">();</span>
+                          <span class="special">}).</span><span class="identifier">detach</span><span class="special">();</span>
+    <span class="identifier">wait_first_simple_impl</span><span class="special">(</span> <span class="identifier">done</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">forward</span><span class="special">&lt;</span> <span class="identifier">Fns</span> <span class="special">&gt;(</span> <span class="identifier">functions</span><span class="special">)</span> <span class="special">...</span> <span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+        </p>
+<p>
+          The body of the fiber's lambda is extremely simple, as promised: call the
+          function, notify <a class="link" href="when_any__simple_completion.html#wait_done"><code class="computeroutput"><span class="identifier">Done</span></code></a>
+          when it returns. The first fiber to do so allows <code class="computeroutput"><span class="identifier">wait_first_simple</span><span class="special">()</span></code> to return — which is why it's useful to
+          have <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">Done</span><span class="special">&gt;</span></code>
+          manage the lifespan of our <code class="computeroutput"><span class="identifier">Done</span></code>
+          object rather than declaring it as a stack variable in <code class="computeroutput"><span class="identifier">wait_first_simple</span><span class="special">()</span></code>.
+        </p>
+<p>
+          This is how you might call it:
+        </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">wait_first_simple</span><span class="special">(</span>
+        <span class="special">[](){</span> <span class="identifier">sleeper</span><span class="special">(</span><span class="string">"wfs_long"</span><span class="special">,</span>   <span class="number">150</span><span class="special">);</span> <span class="special">},</span>
+        <span class="special">[](){</span> <span class="identifier">sleeper</span><span class="special">(</span><span class="string">"wfs_medium"</span><span class="special">,</span> <span class="number">100</span><span class="special">);</span> <span class="special">},</span>
+        <span class="special">[](){</span> <span class="identifier">sleeper</span><span class="special">(</span><span class="string">"wfs_short"</span><span class="special">,</span>   <span class="number">50</span><span class="special">);</span> <span class="special">});</span>
+</pre>
+<p>
+        </p>
+<p>
+          In this example, control resumes after <code class="computeroutput"><span class="identifier">wait_first_simple</span><span class="special">()</span></code> when <a class="link" href="../../when_any.html#wait_sleeper"><code class="computeroutput"><span class="identifier">sleeper</span><span class="special">(</span><span class="string">"wfs_short"</span><span class="special">,</span>
+          <span class="number">50</span><span class="special">)</span></code></a>
+          completes — even though the other two <code class="computeroutput"><span class="identifier">sleeper</span><span class="special">()</span></code> fibers are still running.
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2013 Oliver Kowalke<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../when_any.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../when_any.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="when_any__return_value.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

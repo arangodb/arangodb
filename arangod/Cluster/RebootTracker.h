@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,8 @@
 
 #include "Basics/Mutex.h"
 #include "Cluster/CallbackGuard.h"
+#include "Cluster/ClusterTypes.h"
+#include "Containers/FlatHashMap.h"
 
 #include <map>
 #include <memory>
@@ -39,7 +41,7 @@ class SupervisedScheduler;
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace cluster {
 
@@ -72,7 +74,8 @@ class RebootTracker {
   CallbackGuard callMeOnChange(PeerState const& peerState, Callback callback,
                                std::string callbackDescription);
 
-  void updateServerState(std::unordered_map<ServerID, RebootId> const& state);
+  void updateServerState(
+      containers::FlatHashMap<ServerID, RebootId> const& state);
 
  private:
   using CallbackId = uint64_t;
@@ -92,13 +95,18 @@ class RebootTracker {
   void scheduleCallbacksFor(ServerID const& serverId, RebootId rebootId);
 
   static Callback createSchedulerCallback(
-      std::vector<std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>> callbacks);
+      std::vector<
+          std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>>
+          callbacks);
 
-  void queueCallbacks(std::vector<std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>> callbacks);
+  void queueCallbacks(
+      std::vector<
+          std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>>
+          callbacks);
   void queueCallback(DescriptedCallback callback);
 
  private:
-  Mutex _mutex;
+  mutable Mutex _mutex;
 
   CallbackId _nextCallbackId{1};
 
@@ -111,14 +119,20 @@ class RebootTracker {
   /// @brief List of registered callbacks per server.
   /// Maps (serverId, rebootId) to a set of callbacks (indexed by a CallbackId).
   /// Needs to fulfill the following:
-  ///  - A callback with a given ID may never be moved to another (serverId, rebootId) entry,
+  ///  - A callback with a given ID may never be moved to another (serverId,
+  ///  rebootId) entry,
   ///    to allow CallbackGuard to find a callback.
   ///  - All ServerIDs in this map must always exist in _rebootIds (though not
   ///    necessarily the other way round).
   ///  - The shared_ptr in the RebootId-indexed map must never be nullptr
-  ///  - The unordered_map pointed to by the aforementioned shared_ptr must never be empty
-  ///  - The RebootIds used as index in the inner map are expected to not be smaller than the corresponding ones in _rebootIds
-  std::unordered_map<ServerID, std::map<RebootId, std::shared_ptr<std::unordered_map<CallbackId, DescriptedCallback>>>> _callbacks;
+  ///  - The unordered_map pointed to by the aforementioned shared_ptr must
+  ///  never be empty
+  ///  - The RebootIds used as index in the inner map are expected to not be
+  ///  smaller than the corresponding ones in _rebootIds
+  std::unordered_map<ServerID,
+                     std::map<RebootId, std::shared_ptr<std::unordered_map<
+                                            CallbackId, DescriptedCallback>>>>
+      _callbacks;
 
   /// @brief Save a pointer to the scheduler for easier testing
   SchedulerPointer _scheduler;
@@ -126,4 +140,3 @@ class RebootTracker {
 
 }  // namespace cluster
 }  // namespace arangodb
-

@@ -70,8 +70,9 @@ CommonGraph.prototype.__updateDefinitions = function (edgeDefs, orphans) {
   this.__orphanCollections = orphans;
 };
 
-CommonGraph.prototype._extendEdgeDefinitions = function (edgeDefinition) {
-  const data = edgeDefinition || {};
+CommonGraph.prototype._extendEdgeDefinitions = function (edgeDefinition, options) {
+  const data = _.clone(edgeDefinition) || {};
+  data.options = options || {};
   const uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/edge";
   const requestResult = arangosh.checkRequestResult(db._connection.POST(uri, data));
   const graph = requestResult.graph;
@@ -81,8 +82,9 @@ CommonGraph.prototype._extendEdgeDefinitions = function (edgeDefinition) {
   }
 };
 
-CommonGraph.prototype._editEdgeDefinitions = function (edgeDefinition) {
-  const data = edgeDefinition || {};
+CommonGraph.prototype._editEdgeDefinitions = function (edgeDefinition, options) {
+  const data = _.clone(edgeDefinition) || {};
+  data.options = options || {};
   const uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/edge/" + edgeDefinition.collection;
   const requestResult = arangosh.checkRequestResult(db._connection.PUT(uri, data));
   const graph = requestResult.graph;
@@ -92,8 +94,8 @@ CommonGraph.prototype._editEdgeDefinitions = function (edgeDefinition) {
   }
 };
 
-CommonGraph.prototype._addVertexCollection = function (name, createCollection) {
-  const data = {};
+CommonGraph.prototype._addVertexCollection = function (name, createCollection, options = {}) {
+  const data = { options };
   if (name) {
     data.collection = name;
   }

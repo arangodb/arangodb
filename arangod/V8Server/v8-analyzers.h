@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,8 +26,8 @@
 
 #include <v8.h>
 
-struct TRI_v8_global_t; // forward declaration
-struct TRI_vocbase_t; // forward declaration
+struct TRI_v8_global_t;  // forward declaration
+struct TRI_vocbase_t;    // forward declaration
 
 namespace arangodb {
 namespace iresearch {
@@ -37,6 +37,5 @@ namespace iresearch {
 ////////////////////////////////////////////////////////////////////////////////
 void TRI_InitV8Analyzers(TRI_v8_global_t& v8g, v8::Isolate* isolate);
 
-} // iresearch
-} // arangodb
-
+}  // namespace iresearch
+}  // namespace arangodb

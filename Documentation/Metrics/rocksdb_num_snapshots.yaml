@@ -1,7 +1,7 @@
 name: rocksdb_num_snapshots
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "rocksdb-num-snapshots"
+  Number of unreleased RocksDB snapshots.
 unit: number
 type: gauge
 category: RocksDB

@@ -33,12 +33,18 @@ let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
 let isCluster = require("internal").isCluster();
+let dbs = ["_system", "maçã", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "testName"];
+
+function checkDumpJsonFile (dbName, path, id) {
+  let data = JSON.parse(fs.readFileSync(fs.join(path, "dump.json")).toString());
+  assertEqual(dbName, data.properties.name);
+  assertEqual(id, data.properties.id);
+}
 
 function dumpIntegrationSuite () {
   'use strict';
   const cn = 'UnitTestsDump';
-  // detect the path of arangodump. quite hacky, but works
-  const arangodump = fs.join(global.ARANGOSH_PATH, 'arangodump' + pu.executableExt);
+  const arangodump = pu.ARANGODUMP_BIN;
 
   assertTrue(fs.isFile(arangodump), "arangodump not found!");
 
@@ -46,8 +52,10 @@ function dumpIntegrationSuite () {
     let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
     args.push('--server.endpoint');
     args.push(endpoint);
-    args.push('--server.database');
-    args.push(arango.getDatabaseName());
+    if(args.indexOf("--all-databases") === -1) {
+      args.push('--server.database');
+      args.push(arango.getDatabaseName());
+    }
     args.push('--server.username');
     args.push(arango.connectedUser());
   };
@@ -82,9 +90,16 @@ function dumpIntegrationSuite () {
     }
     return structure;
   };
-
-  let checkStructureFile = function(tree, path, readable, cn) {
-    let structure = structureFile(path, cn);
+  
+  let checkStructureFile = function(tree, path, readable, cn, subdir="") {
+    let structurePath = path;
+    if(subdir !== "") {
+      structurePath = fs.join(path, subdir);
+    }
+    let structure = structureFile(structurePath, cn);
+    if(subdir !== "") {
+      structure = fs.join(subdir, structure);
+    }
     assertTrue(fs.isFile(fs.join(path, structure)), structure);
     assertNotEqual(-1, tree.indexOf(structure));
 
@@ -101,6 +116,15 @@ function dumpIntegrationSuite () {
         assertTrue(err instanceof SyntaxError, err);
       }
     }
+  };
+
+  let checkCollections = function (tree, path, subdir="") {
+    db._collections().forEach((collectionObj) => {
+      const collectionName = collectionObj.name();
+      if(!collectionName.startsWith("_")) {
+        checkStructureFile(tree, path, true, collectionName, subdir);
+      }
+    });
   };
 
   let checkDataFile = function(tree, path, compressed, envelopes, readable, cn) {
@@ -154,42 +178,59 @@ function dumpIntegrationSuite () {
   return {
 
     setUpAll: function () {
-      db._drop(cn);
-      let c = db._create(cn, { numberOfShards: 3 });
-      let docs = [];
-      for (let i = 0; i < 1000; ++i) {
-        docs.push({ _key: "test" + i });
-      }
-      c.insert(docs);
       
-      db._drop(cn + "Other");
-      c = db._create(cn + "Other", { numberOfShards: 3 });
-      c.insert(docs);
       
-      db._drop(cn + "Padded");
-      c = db._create(cn + "Padded", { keyOptions: { type: "padded" }, numberOfShards: 3 });
-      docs = [];
-      for (let i = 0; i < 1000; ++i) {
-        docs.push({});
-      }
-      c.insert(docs);
-      
-      db._drop(cn + "AutoIncrement");
-      if (!isCluster) {
-        c = db._create(cn + "AutoIncrement", { keyOptions: { type: "autoincrement" }, numberOfShards: 3 });
+      dbs.forEach((name) => {
+        if(name !== "_system") {
+          db._useDatabase("_system");
+          db._createDatabase(name);
+        }
+        db._useDatabase(name);
+        db._drop(cn);
+        let c = db._create(cn, { numberOfShards: 3 });
+        let docs = [];
+        for (let i = 0; i < 1000; ++i) {
+          docs.push({ _key: "test" + i });
+        }
+        c.insert(docs);
+        
+        db._drop(cn + "Other");
+        c = db._create(cn + "Other", { numberOfShards: 3 });
+        c.insert(docs);
+        
+        db._drop(cn + "Padded");
+        c = db._create(cn + "Padded", { keyOptions: { type: "padded" }, numberOfShards: 3 });
         docs = [];
         for (let i = 0; i < 1000; ++i) {
           docs.push({});
         }
         c.insert(docs);
-      }
+        
+        db._drop(cn + "AutoIncrement");
+        if (!isCluster) {
+          c = db._create(cn + "AutoIncrement", { keyOptions: { type: "autoincrement" }, numberOfShards: 3 });
+          docs = [];
+          for (let i = 0; i < 1000; ++i) {
+            docs.push({});
+          }
+          c.insert(docs);
+        }
+
+      });
     },
 
     tearDownAll: function () {
-      db._drop(cn);
-      db._drop(cn + "Other");
-      db._drop(cn + "Padded");
-      db._drop(cn + "AutoIncrement");
+      db._useDatabase("_system");
+      dbs.forEach((name) => {
+        if(name === "_system") {
+          db._drop(cn);
+          db._drop(cn + "Other");
+          db._drop(cn + "Padded");
+          db._drop(cn + "AutoIncrement");
+        } else {
+          db._dropDatabase(name);
+        }
+      });
     },
     
     testDumpOnlyOneShard: function () {
@@ -297,6 +338,105 @@ function dumpIntegrationSuite () {
       }
     },
     
+    testDumpSingleDatabase: function () {
+      dbs.forEach((name) => {
+        let path = fs.getTempFile();
+        db._useDatabase(name);
+        try {
+          let args = ['--overwrite', 'true'];
+          let tree = runDump(path, args, 0);
+          checkDumpJsonFile(name, path, db._id());
+          checkCollections(tree, path);
+        } finally {
+          try {
+            fs.removeDirectory(path);
+          } catch (err) {}
+        }
+      });
+    },
+
+    testDumpAllDatabases: function () {
+      let path = fs.getTempFile();
+      try {
+        let args = ['--all-databases', 'true'];
+        let tree = runDump(path, args, 0);
+        db._useDatabase("maçã");
+        assertEqual(-1, tree.indexOf("maçã"));
+        assertNotEqual(-1, tree.indexOf(db._id())); 
+        checkDumpJsonFile("maçã", fs.join(path, db._id()), db._id());
+        checkCollections(tree, path, db._id());
+        db._useDatabase("_system");
+        assertNotEqual(-1, tree.indexOf("_system"));
+        assertEqual(-1, tree.indexOf(db._id())); 
+        checkDumpJsonFile("_system", fs.join(path, db._name()), db._id());
+        checkCollections(tree, path, db._name());
+        db._useDatabase("testName");
+        assertNotEqual(-1, tree.indexOf("testName"));
+        assertEqual(-1, tree.indexOf(db._id())); 
+        checkDumpJsonFile("testName", fs.join(path, db._name()), db._id());
+        checkCollections(tree, path, db._name());
+        db._useDatabase("😀");
+        assertEqual(-1, tree.indexOf("😀")); 
+        assertNotEqual(-1, tree.indexOf(db._id()));
+        checkDumpJsonFile("😀", fs.join(path, db._id()), db._id());
+        checkCollections(tree, path, db._id());
+        db._useDatabase("ﻚﻠﺑ ﻞﻄﻴﻓ");
+        assertEqual(-1, tree.indexOf("ﻚﻠﺑ ﻞﻄﻴﻓ"));
+        assertNotEqual(-1, tree.indexOf(db._id()));
+        checkDumpJsonFile("ﻚﻠﺑ ﻞﻄﻴﻓ", fs.join(path, db._id()), db._id()); 
+        checkCollections(tree, path, db._id());
+      } finally {
+        try {
+          fs.removeDirectory(path);
+          db._useDatabase("_system");
+        } catch (err) {}
+      }
+    },
+    
+    testDumpAllDatabasesWithOverwrite: function () {
+      let path = fs.getTempFile();
+      try {
+        let args = ['--all-databases', 'true'];
+        runDump(path, args, 0);
+        
+        // run the dump a second time, to overwrite all data in the target directory
+        args.push('--overwrite');
+        args.push('true');
+
+        let tree = runDump(path, args, 0);
+        db._useDatabase("maçã");
+        assertEqual(-1, tree.indexOf("maçã"));
+        assertNotEqual(-1, tree.indexOf(db._id())); 
+        checkDumpJsonFile("maçã", fs.join(path, db._id()), db._id());
+        checkCollections(tree, path, db._id());
+        db._useDatabase("_system");
+        assertNotEqual(-1, tree.indexOf("_system"));
+        assertEqual(-1, tree.indexOf(db._id())); 
+        checkDumpJsonFile("_system", fs.join(path, db._name()), db._id());
+        checkCollections(tree, path, db._name());
+        db._useDatabase("testName");
+        assertNotEqual(-1, tree.indexOf("testName"));
+        assertEqual(-1, tree.indexOf(db._id())); 
+        checkDumpJsonFile("testName", fs.join(path, db._name()), db._id());
+        checkCollections(tree, path, db._name());
+        db._useDatabase("😀");
+        assertEqual(-1, tree.indexOf("😀")); 
+        assertNotEqual(-1, tree.indexOf(db._id()));
+        checkDumpJsonFile("😀", fs.join(path, db._id()), db._id());
+        checkCollections(tree, path, db._id());
+        db._useDatabase("ﻚﻠﺑ ﻞﻄﻴﻓ");
+        assertEqual(-1, tree.indexOf("ﻚﻠﺑ ﻞﻄﻴﻓ"));
+        assertNotEqual(-1, tree.indexOf(db._id()));
+        checkDumpJsonFile("ﻚﻠﺑ ﻞﻄﻴﻓ", fs.join(path, db._id()), db._id()); 
+        checkCollections(tree, path, db._id());
+      } finally {
+        try {
+          fs.removeDirectory(path);
+          db._useDatabase("_system");
+        } catch (err) {}
+      }
+    },
+
     testDumpCompressedEncryptedWithEnvelope: function () {
       if (!require("internal").isEnterprise()) {
         return;

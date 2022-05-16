@@ -78,6 +78,33 @@ function isFoxxmaster () {
   return global.ArangoServerState.isFoxxmaster();
 }
 
+function validateInstallUrl (url) {
+  if (!internal.foxxAllowInstallFromRemote()) {
+    // check if a user-defined install baseurl exists
+    let baseUrl = require('process').env.FOXX_BASE_URL;
+    let invalid = false;
+    if (baseUrl) {
+      if (!url.startsWith(baseUrl)) {
+        // install url does not start with FOXX_BASE_URL
+        invalid = true;
+      }
+    } else {
+      const checkRegex = /^https?:\/\/([^:\.]+:[^@\.]*@)?(www\.)?github\.com\//i;
+      invalid = !checkRegex.test(url);
+    }
+
+    if (invalid) {
+      throw new ArangoError({
+        errorNum: errors.ERROR_FORBIDDEN.code,
+        errorMessage: dd`
+          ${errors.ERROR_FORBIDDEN.message}
+          Installing apps from remote URLs is disabled
+        `
+      });
+    }
+  }
+}
+
 // Startup and self-heal
 
 function selfHealAll (skipReloadRouting) {
@@ -562,6 +589,8 @@ function _prepareService (serviceInfo, legacy = false) {
       _buildServiceBundleFromScript(tempServicePath, tempBundlePath, serviceInfo);
     } else if (/^https?:/i.test(serviceInfo)) {
       // Remote path
+      // check if we are allowed to install from this remote URL or not
+      validateInstallUrl(serviceInfo);
       const tempFile = downloadServiceBundleFromRemote(serviceInfo);
       try {
         _buildServiceFromFile(tempServicePath, tempBundlePath, tempFile);
@@ -1112,6 +1141,7 @@ exports.commitLocalState = commitLocalState;
 exports._createServiceBundle = createServiceBundle;
 exports._resetCache = () => GLOBAL_SERVICE_MAP.clear();
 exports._mountPoints = getMountPoints;
+exports.validateInstallUrl = validateInstallUrl;
 
 // -------------------------------------------------
 // Exports from Foxx utils module

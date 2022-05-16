@@ -1,0 +1,73 @@
+////
+Copyright 2019 Glen Joseph Fernandes
+(glenjofe@gmail.com)
+
+Distributed under the Boost Software License, Version 1.0.
+(http://www.boost.org/LICENSE_1_0.txt)
+////
+
+# Insert Formatted Output, <boost/io/ostream_put.hpp>
+:toc:
+:toc-title:
+:idprefix:
+
+## Description
+
+The header `<boost/io/ostream_put.hpp>` provides the function template
+`boost::io::ostream_put` for formatted output that satisfies the requirements
+of [ostream.formatted.reqmts].
+
+## Example
+
+The inserter for class template `basic_string_view` could be implemented as
+follows:
+
+```
+template<class charT, class traits>
+std::basic_ostream<charT, traits>&
+operator<<(std::basic_ostream<charT, traits>& os,
+    const basic_string_view<charT, traits>& str)
+{
+    return boost::io::ostream_put(os, str.data(), str.size());
+}
+```
+
+## Reference
+
+### Header Synopsis
+
+```
+namespace boost {
+namespace io {
+
+template<class charT, class traits>
+std::basic_ostream<charT, traits>&
+ostream_put(std::basic_ostream<charT, traits>& os,
+    const charT* data, std::size_t size);
+
+} // io
+} // boost
+```
+
+### Free functions
+
+```
+template<class charT, class traits>
+std::basic_ostream<charT, traits>&
+ostream_put(std::basic_ostream<charT, traits>& os,
+    const charT* data, std::size_t size);
+```
+
+[.specification]
+Effects:: Behaves like a formatted inserter (as described in
+[ostream.formatted.reqmts]) of `os`. Creates a character sequence `seq` of size
+characters starting at `data`, each widened using `os.widen()`
+([basic.ios.members]). Determines padding for `seq` as described in
+[ostream.formatted.reqmts]. Inserts `seq` into `os`. Calls `width(0)`.
+Returns:: `os`.
+
+## Acknowledgments
+
+Glen Fernandes updated the implementation of the `basic_string_ref` and
+`basic_string_view` stream insertion operators to write directly to the
+`basic_streambuf` and refactored that functionality into this common utility.

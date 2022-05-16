@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,21 +36,29 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-Acceptor::Acceptor(rest::GeneralServer& server, rest::IoContext& context, Endpoint* endpoint)
-    : _server(server), _ctx(context), _endpoint(endpoint), _open(false), _acceptFailures(0) {}
+Acceptor::Acceptor(rest::GeneralServer& server, rest::IoContext& context,
+                   Endpoint* endpoint)
+    : _server(server),
+      _ctx(context),
+      _endpoint(endpoint),
+      _open(false),
+      _acceptFailures(0) {}
 
 std::unique_ptr<Acceptor> Acceptor::factory(rest::GeneralServer& server,
-                                            rest::IoContext& context, Endpoint* endpoint) {
+                                            rest::IoContext& context,
+                                            Endpoint* endpoint) {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   if (endpoint->domainType() == Endpoint::DomainType::UNIX) {
     return std::make_unique<AcceptorUnixDomain>(server, context, endpoint);
   }
 #endif
   if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    return std::make_unique<AcceptorTcp<rest::SocketType::Ssl>>(server, context, endpoint);
+    return std::make_unique<AcceptorTcp<rest::SocketType::Ssl>>(server, context,
+                                                                endpoint);
   } else {
     TRI_ASSERT(endpoint->encryption() == Endpoint::EncryptionType::NONE);
-    return std::make_unique<AcceptorTcp<rest::SocketType::Tcp>>(server, context, endpoint);
+    return std::make_unique<AcceptorTcp<rest::SocketType::Tcp>>(server, context,
+                                                                endpoint);
   }
 }
 

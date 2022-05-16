@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,17 +30,23 @@
 #include "Basics/asio_ns.h"
 
 namespace arangodb {
+namespace application_features {
+class GreetingsFeaturePhase;
+}
 
 class SslFeature final : public application_features::ApplicationFeature {
  public:
-  explicit SslFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Ssl"; }
 
-  void prepare() override final;
-  void unprepare() override final;
+  template<typename Server>
+  explicit SslFeature(Server& server)
+      : application_features::ApplicationFeature(server, *this) {
+    setOptional(true);
+    startsAfter<application_features::GreetingsFeaturePhase, Server>();
+  }
 
  private:
   static const asio_ns::ssl::detail::openssl_init<true> sslBase;
 };
 
 }  // namespace arangodb
-

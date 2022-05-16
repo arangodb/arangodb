@@ -47,29 +47,35 @@ function runSetup () {
   internal.debugSetFailAt("RocksDBSettingsManagerSync"); 
 
   db._drop(colName1);
-  var c = db._create(colName1), i;
-  c.ensureHashIndex('value');
+  let c = db._create(colName1);
+  c.ensureIndex({ type: "hash", fields: ["value"] });
 
-  for (i = 0; i < 1000; ++i) {
-    c.save({ value: i });
+  let docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ value: i });
   }
+  c.insert(docs);
 
   db._drop(colName2);
   c = db._create(colName2);
-  c.ensureUniqueConstraint('a.value');
+  c.ensureIndex({ type: "hash", fields: ["a.value"], unique: true });
 
-  for (i = 0; i < 1000; ++i) {
-    c.save({ a: { value: i } });
+  docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ a: { value: i } });
   }
+  c.insert(docs);
 
   db._drop(colName3);
   c = db._create(colName3);
-  c.ensureHashIndex('a', 'b');
+  c.ensureIndex({ type: "hash", fields: ["a", "b"] });
 
-  for (i = 0; i < 500; ++i) {
-    c.save({ a: (i % 2) + 1, b: 1 });
-    c.save({ a: (i % 2) + 1, b: 2 });
+  docs = [];
+  for (let i = 0; i < 500; ++i) {
+    docs.push({ a: (i % 2) + 1, b: 1 });
+    docs.push({ a: (i % 2) + 1, b: 2 });
   }
+  c.insert(docs);
 
   db._drop('test');
   c = db._create('test');

@@ -1,6 +1,0 @@
-language: node_js
-node_js:
-  - node # latest stable Node.js release
-  - "lts/*" # latest LTS Node.js release, currently, active lts version is 6.
-install:
-  - yarn --ignore-engines

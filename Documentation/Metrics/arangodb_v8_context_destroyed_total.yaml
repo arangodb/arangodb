@@ -2,7 +2,7 @@ name: arangodb_v8_context_destroyed_total
 renamedFrom: arangodb_v8_context_destroyed
 introducedIn: "3.8.0"
 help: |
-  Total number of V8 contexts ever destroyed
+  Total number of V8 contexts ever destroyed.
 unit: number
 type: counter
 category: V8

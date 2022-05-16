@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,10 +25,10 @@
 #include "Scheduler.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <thread>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
@@ -47,11 +47,14 @@ using namespace arangodb::basics;
 
 namespace arangodb {
 
-class SchedulerThread : virtual public Thread {
+class SchedulerThread : public ServerThread<ArangodServer> {
  public:
-  explicit SchedulerThread(application_features::ApplicationServer& server, Scheduler& scheduler)
-      : Thread(server, "Scheduler"), _scheduler(scheduler) {}
-  ~SchedulerThread() = default; // shutdown is called by derived implementation!
+  explicit SchedulerThread(Server& server, Scheduler& scheduler,
+                           std::string const& name = "Scheduler")
+      : ServerThread<ArangodServer>(server, name), _scheduler(scheduler) {}
+
+  // shutdown is called by derived implementation!
+  ~SchedulerThread() = default;
 
  protected:
   Scheduler& _scheduler;
@@ -59,9 +62,8 @@ class SchedulerThread : virtual public Thread {
 
 class SchedulerCronThread : public SchedulerThread {
  public:
-  explicit SchedulerCronThread(application_features::ApplicationServer& server,
-                               Scheduler& scheduler)
-      : Thread(server, "SchedCron"), SchedulerThread(server, scheduler) {}
+  explicit SchedulerCronThread(ArangodServer& server, Scheduler& scheduler)
+      : SchedulerThread(server, scheduler, "SchedCron") {}
 
   ~SchedulerCronThread() { shutdown(); }
 
@@ -70,7 +72,7 @@ class SchedulerCronThread : public SchedulerThread {
 
 }  // namespace arangodb
 
-Scheduler::Scheduler(application_features::ApplicationServer& server)
+Scheduler::Scheduler(ArangodServer& server)
     : _server(server) /*: _stopping(false)*/
 {
   // Move this into the Feature and then move it else where
@@ -115,21 +117,24 @@ void Scheduler::runCronThread() {
     clock::duration sleepTime = std::chrono::milliseconds(50);
 
     while (!_cronQueue.empty()) {
-      // top is a reference to a tuple containing the timepoint and a shared_ptr to the work item
+      // top is a reference to a tuple containing the timepoint and a shared_ptr
+      // to the work item
       auto top = _cronQueue.top();
       if (top.first < now) {
         _cronQueue.pop();
         guard.unlock();
 
-        // It is time to schedule this task, try to get the lock and obtain a shared_ptr
-        // If this fails a default DelayedWorkItem is constructed which has disabled == true
+        // It is time to schedule this task, try to get the lock and obtain a
+        // shared_ptr If this fails a default DelayedWorkItem is constructed
+        // which has disabled == true
         try {
           auto item = top.second.lock();
           if (item) {
             item->run();
           }
         } catch (std::exception const& ex) {
-          LOG_TOPIC("6d997", WARN, Logger::THREADS) << "caught exception in runCronThread: " << ex.what();
+          LOG_TOPIC("6d997", WARN, Logger::THREADS)
+              << "caught exception in runCronThread: " << ex.what();
         }
 
         // always lock again, as we are going into the wait_for below
@@ -147,15 +152,15 @@ void Scheduler::runCronThread() {
   }
 }
 
-std::pair<bool, Scheduler::WorkHandle> Scheduler::queueDelay(
-    RequestLane lane, clock::duration delay, fu2::unique_function<void(bool cancelled)> handler) {
+Scheduler::WorkHandle Scheduler::queueDelayed(
+    RequestLane lane, clock::duration delay,
+    fu2::unique_function<void(bool cancelled)> handler) noexcept {
   TRI_ASSERT(!isStopping());
 
   if (delay < std::chrono::milliseconds(1)) {
     // execute directly
-    bool queued =
-        queue(lane, [handler = std::move(handler)]() mutable { handler(false); });
-    return std::make_pair(queued, nullptr);
+    queue(lane, [handler = std::move(handler)]() mutable { handler(false); });
+    return nullptr;
   }
 
   auto item = std::make_shared<DelayedWorkItem>(std::move(handler), lane, this);
@@ -170,7 +175,7 @@ std::pair<bool, Scheduler::WorkHandle> Scheduler::queueDelay(
     }
   }
 
-  return std::make_pair(true, item);
+  return item;
 }
 
 /*

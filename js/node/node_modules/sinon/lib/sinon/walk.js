@@ -21,7 +21,7 @@
             }
 
             Object.getOwnPropertyNames(obj).forEach(function (k) {
-                if (!seen[k]) {
+                if (seen[k] !== true) {
                     seen[k] = true;
                     var target = typeof Object.getOwnPropertyDescriptor(obj, k).get === "function" ?
                         originalObj : obj;

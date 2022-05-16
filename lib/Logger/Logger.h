@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -59,15 +59,17 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Basics/threads.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogTimeFormat.h"
 #include "Logger/LogTopic.h"
+#include "Basics/ReadWriteLock.h"
 
 namespace arangodb {
 namespace application_features {
@@ -84,9 +86,9 @@ struct LogMessage {
   LogMessage(LogMessage const&) = delete;
   LogMessage& operator=(LogMessage const&) = delete;
 
-  LogMessage(char const* function, char const* file, int line,
-             LogLevel level, size_t topicId, std::string&& message, 
-             uint32_t offset, bool shrunk) noexcept;
+  LogMessage(char const* function, char const* file, int line, LogLevel level,
+             size_t topicId, std::string&& message, uint32_t offset,
+             bool shrunk) noexcept;
 
   /// @brief whether or no the message was already shrunk
   bool shrunk() const noexcept { return _shrunk; }
@@ -107,6 +109,7 @@ struct LogMessage {
   int const _line;
   /// @brief log level
   LogLevel const _level;
+
   /// @brief id of log topic
   size_t const _topicId;
   /// @biref the actual log message
@@ -161,6 +164,7 @@ class Logger {
   static LogTopic AUTHENTICATION;
   static LogTopic AUTHORIZATION;
   static LogTopic BACKUP;
+  static LogTopic BENCH;
   static LogTopic CACHE;
   static LogTopic CLUSTER;
   static LogTopic CLUSTERCOMM;
@@ -176,6 +180,7 @@ class Logger {
   static LogTopic GRAPHS;
   static LogTopic HEARTBEAT;
   static LogTopic HTTPCLIENT;
+  static LogTopic LICENSE;
   static LogTopic MAINTENANCE;
   static LogTopic MEMORY;
   static LogTopic MMAP;
@@ -183,6 +188,8 @@ class Logger {
   static LogTopic PREGEL;
   static LogTopic QUERIES;
   static LogTopic REPLICATION;
+  static LogTopic REPLICATION2;
+  static LogTopic REPLICATED_STATE;
   static LogTopic REQUESTS;
   static LogTopic RESTORE;
   static LogTopic ROCKSDB;
@@ -208,60 +215,61 @@ class Logger {
   };
 
   struct CHARS {
-    CHARS(char const* data, size_t size) noexcept 
-         : data(data), size(size) {}
+    CHARS(char const* data, size_t size) noexcept : data(data), size(size) {}
     char const* data;
     size_t size;
   };
 
   struct BINARY {
-    BINARY(void const* baseAddress, size_t size) noexcept
-        : baseAddress(baseAddress), size(size) {}
-    explicit BINARY(std::string const& data) noexcept 
+    BINARY(void const* baseAddress, size_t size)
+    noexcept : baseAddress(baseAddress), size(size) {}
+    explicit BINARY(std::string const& data) noexcept
         : BINARY(data.data(), data.size()) {}
     void const* baseAddress;
     size_t size;
   };
 
   struct RANGE {
-    RANGE(void const* baseAddress, size_t size) noexcept
-        : baseAddress(baseAddress), size(size) {}
+    RANGE(void const* baseAddress, size_t size)
+    noexcept : baseAddress(baseAddress), size(size) {}
     void const* baseAddress;
     size_t size;
   };
 
   struct LINE {
-    explicit LINE(int line) noexcept 
-        : _line(line) {}
+    explicit LINE(int line) noexcept : _line(line) {}
     int _line;
   };
 
   struct FILE {
-    explicit FILE(char const* file) noexcept 
-        : _file(file) {}
+    explicit FILE(char const* file) noexcept : _file(file) {}
     char const* _file;
   };
 
   struct FUNCTION {
-    explicit FUNCTION(char const* function) noexcept 
-        : _function(function) {}
+    explicit FUNCTION(char const* function) noexcept : _function(function) {}
     char const* _function;
   };
 
   struct LOGID {
-    explicit LOGID(char const* logid) noexcept 
-        : _logid(logid) {}
+    explicit LOGID(char const* logid) noexcept : _logid(logid) {}
     char const* _logid;
   };
 
  public:
   static LogGroup& defaultLogGroup();
   static LogLevel logLevel();
+  static std::unordered_set<std::string> structuredLogParams();
   static std::vector<std::pair<std::string, LogLevel>> logLevelTopics();
   static void setLogLevel(LogLevel);
   static void setLogLevel(std::string const&);
   static void setLogLevel(std::vector<std::string> const&);
-
+  static std::unordered_map<std::string, bool> parseStringParams(
+      std::vector<std::string> const&);
+  static void setLogStructuredParamsOnServerStart(
+      std::vector<std::string> const&);
+  static void setLogStructuredParams(
+      std::unordered_map<std::string, bool> const& paramsAndValues);
   static void setRole(char role);
   static void setOutputPrefix(std::string const&);
   static void setHostname(std::string const&);
@@ -269,16 +277,19 @@ class Logger {
   static bool getShowIds() { return _showIds; };
   static void setShowLineNumber(bool);
   static void setShowRole(bool);
-  static bool getShowRole() { return _showRole; };
   static void setShortenFilenames(bool);
   static void setShowProcessIdentifier(bool);
   static void setShowThreadIdentifier(bool);
   static void setShowThreadName(bool);
   static void setUseColor(bool);
   static bool getUseColor() { return _useColor; };
-  static void setUseEscaped(bool);
-  static bool getUseEscaped() { return _useEscaped; };
-  static bool getUseLocalTime() { return LogTimeFormats::isLocalFormat(_timeFormat); }
+  static void setUseControlEscaped(bool);
+  static void setUseUnicodeEscaped(bool);
+  static bool getUseControlEscaped() { return _useControlEscaped; };
+  static bool getUseUnicodeEscaped() { return _useUnicodeEscaped; };
+  static bool getUseLocalTime() {
+    return LogTimeFormats::isLocalFormat(_timeFormat);
+  }
   static void setTimeFormat(LogTimeFormats::TimeFormat);
   static void setKeepLogrotate(bool);
   static void setLogRequestParameters(bool);
@@ -287,19 +298,23 @@ class Logger {
   static LogTimeFormats::TimeFormat timeFormat() { return _timeFormat; }
 
   // can be called after fork()
-  static void clearCachedPid() { _cachedPid = 0; }
+  static void clearCachedPid() {
+    _cachedPid.store(0, std::memory_order_relaxed);
+  }
 
-  static bool translateLogLevel(std::string const& l, bool isGeneral, LogLevel& level) noexcept;
+  static bool translateLogLevel(std::string const& l, bool isGeneral,
+                                LogLevel& level) noexcept;
 
   static std::string const& translateLogLevel(LogLevel) noexcept;
 
-  static void log(char const* logid, char const* function, char const* file, int line,
-                  LogLevel level, size_t topicId, std::string const& message);
+  static void log(char const* logid, char const* function, char const* file,
+                  int line, LogLevel level, size_t topicId,
+                  std::string const& message);
 
-  static void append(LogGroup&, std::unique_ptr<LogMessage>& msg,
-                     bool forceDirect,
-                     std::function<void(std::unique_ptr<LogMessage>&)> const& inactive =
-                         [](std::unique_ptr<LogMessage>&) -> void {});
+  static void append(
+      LogGroup&, std::unique_ptr<LogMessage> msg, bool forceDirect,
+      std::function<void(LogMessage const&)> const& inactive =
+          [](LogMessage const&) -> void {});
 
   static bool isEnabled(LogLevel level) {
     return (int)level <= (int)_level.load(std::memory_order_relaxed);
@@ -310,20 +325,20 @@ class Logger {
                                    : topic.level());
   }
 
- public:
   static void initialize(application_features::ApplicationServer&, bool);
   static void shutdown();
-  static void shutdownLogThread();
   static void flush() noexcept;
 
  private:
-  static Mutex _initializeMutex;
-
   // these variables might be changed asynchronously
   static std::atomic<bool> _active;
   static std::atomic<LogLevel> _level;
 
   // these variables must be set before calling initialized
+  static std::unordered_set<std::string>
+      _structuredLogParams;  // if in set, means value is true, else, means it's
+                             // false
+  static arangodb::basics::ReadWriteLock _structuredParamsLock;
   static LogTimeFormats::TimeFormat _timeFormat;
   static bool _showLineNumber;
   static bool _shortenFilenames;
@@ -331,18 +346,38 @@ class Logger {
   static bool _showThreadIdentifier;
   static bool _showThreadName;
   static bool _showRole;
-  static bool _threaded;
   static bool _useColor;
-  static bool _useEscaped;
+  static bool _useControlEscaped;
+  static bool _useUnicodeEscaped;
   static bool _keepLogRotate;
   static bool _logRequestParameters;
   static bool _showIds;
   static bool _useJson;
   static char _role;  // current server role to log
-  static TRI_pid_t _cachedPid;
+  static std::atomic<TRI_pid_t> _cachedPid;
   static std::string _outputPrefix;
   static std::string _hostname;
 
-  static std::unique_ptr<LogThread> _loggingThread;
+  struct ThreadRef {
+    ThreadRef();
+    ~ThreadRef();
+
+    ThreadRef(const ThreadRef&) = delete;
+    ThreadRef(ThreadRef&&) = delete;
+    ThreadRef& operator=(const ThreadRef&) = delete;
+    ThreadRef& operator=(ThreadRef&&) = delete;
+
+    LogThread* operator->() const noexcept { return _thread; }
+    operator bool() const noexcept { return _thread != nullptr; }
+
+   private:
+    LogThread* _thread;
+  };
+
+  // logger thread. only populated when threaded logging is selected.
+  // the pointer must only be used with atomic accessors after the ref counter
+  // has been increased. Best to usethe ThreadRef class for this!
+  static std::atomic<std::size_t> _loggingThreadRefs;
+  static std::atomic<LogThread*> _loggingThread;
 };
 }  // namespace arangodb

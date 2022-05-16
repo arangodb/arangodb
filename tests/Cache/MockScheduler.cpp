@@ -25,7 +25,6 @@
 #include <memory>
 
 #include <boost/asio/io_service.hpp>
-#include <boost/bind.hpp>
 
 #undef sleep
 #include <boost/thread/thread.hpp>

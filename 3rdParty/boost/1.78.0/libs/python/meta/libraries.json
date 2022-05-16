@@ -1,0 +1,15 @@
+{
+    "key": "python",
+    "name": "Python",
+    "authors": [
+        "Dave Abrahams"
+    ],
+    "description": "The Boost Python Library is a framework for interfacing Python and C++. It allows you to quickly and seamlessly expose C++ classes functions and objects to Python, and vice-versa, using no special tools -- just your C++ compiler.",
+    "category": [
+        "Inter-language"
+    ],
+    "maintainers": [
+	"Stefan Seefeld <stefan -at- seefeld.name>"
+    ],
+    "cxxstd": "03"
+}

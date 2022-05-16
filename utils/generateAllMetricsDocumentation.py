@@ -6,6 +6,7 @@ import os
 import re
 import sys
 from pathlib import Path
+from itertools import chain
 
 from yaml import load, dump, YAMLError
 try:
@@ -36,11 +37,14 @@ if len(sys.argv) > 1 and (sys.argv[1] == "-h" or sys.argv[1] == "--help"):
 CATEGORYNAMES = ["Health", "AQL", "Transactions", "Foxx", "Pregel",
                  "Statistics", "Replication", "Disk", "Errors",
                  "RocksDB", "Hotbackup", "k8s", "Connectivity", "Network",
-                 "V8", "Agency", "Scheduler", "Maintenance", "kubearangodb"]
+                 "V8", "Agency", "Scheduler", "Maintenance", "kubearangodb",
+                 "License", "ArangoSearch"]
+
+NODE_TYPES = ["coordinator", "dbserver", "agent", "single"]
 
 # Check that we are in the right place:
 LS_HERE = os.listdir(".")
-if not("arangod" in LS_HERE and "arangosh" in LS_HERE and
+if not("arangod" in LS_HERE and "client-tools" in LS_HERE and
        "Documentation" in LS_HERE and "CMakeLists.txt" in LS_HERE):
     print("Please execute me in the main source dir!")
     sys.exit(1)
@@ -55,51 +59,54 @@ if "template.yaml" in YAMLFILES:
 
 # Read list of metrics from source:
 METRICSLIST = []
-LINEMATCHCOUNTER = re.compile(r"DECLARE_COUNTER\s*\(\s*([a-z_A-Z0-9]+)\s*,")
-LINEMATCHGAUGE = re.compile(r"DECLARE_GAUGE\s*\(\s*([a-z_A-Z0-9]+)\s*,")
-LINEMATCHHISTOGRAM = re.compile(r"DECLARE_HISTOGRAM\s*\(\s*([a-z_A-Z0-9]+)\s*,")
-HEADERCOUNTER = re.compile(r"DECLARE_COUNTER\s*\(")
-HEADERGAUGE = re.compile(r"DECLARE_GAUGE\s*\(")
-HEADERHISTOGRAM = re.compile(r"DECLARE_HISTOGRAM\s*\(")
+LINEMATCHCOUNTER = re.compile(r"^\s*DECLARE_COUNTER\s*\(\s*([a-z_A-Z0-9]+)\s*,")
+LINEMATCHGAUGE = re.compile(r"^\s*DECLARE_GAUGE\s*\(\s*([a-z_A-Z0-9]+)\s*,")
+LINEMATCHHISTOGRAM = re.compile(r"^\s*DECLARE_HISTOGRAM\s*\(\s*([a-z_A-Z0-9]+)\s*,")
+HEADERCOUNTER = re.compile(r"^\s*DECLARE_COUNTER\s*\(")
+HEADERGAUGE = re.compile(r"^\s*DECLARE_GAUGE\s*\(")
+HEADERHISTOGRAM = re.compile(r"^\s*DECLARE_HISTOGRAM\s*\(")
 NAMEMATCH = re.compile(r"^\s*([a-z_A-Z0-9]+)\s*,")
 
-for rootdir in ("arangod", "lib"):
-    for f in Path(rootdir).glob("**/*.cpp"):
-        continuation = False
-        with open(f, encoding="utf-8") as s:
-            while True:
-                l = s.readline()
-                if not continuation:
-                    if l == "":
-                        break
-                    m = LINEMATCHCOUNTER.search(l)
-                    if m:
-                        METRICSLIST.append(m.group(1))
-                        continue
-                    m = LINEMATCHGAUGE.search(l)
-                    if m:
-                        METRICSLIST.append(m.group(1))
-                        continue
-                    m = LINEMATCHHISTOGRAM.search(l)
-                    if m:
-                        METRICSLIST.append(m.group(1))
-                        continue
-                    m = HEADERCOUNTER.search(l)
-                    if m:
-                        continuation = True
-                    m = HEADERGAUGE.search(l)
-                    if m:
-                        continuation = True
-                    m = HEADERHISTOGRAM.search(l)
-                    if m:
-                        continuation = True
-                else:
-                    continuation = False
-                    m = NAMEMATCH.search(l)
-                    if m:
-                        METRICSLIST.append(m.group(1))
+files = chain(*[ Path(rootdir).glob(pattern)
+            for rootdir in ["arangod", "lib", "enterprise"]
+            for pattern in ["**/*.cpp", "**/*.h"] ])
+
+for f in files:
+    continuation = False
+    with open(f, encoding="utf-8") as s:
+        while True:
+            l = s.readline()
+            if not continuation:
+                if l == "":
+                    break
+                m = LINEMATCHCOUNTER.search(l)
+                if m:
+                    METRICSLIST.append(m.group(1))
+                    continue
+                m = LINEMATCHGAUGE.search(l)
+                if m:
+                    METRICSLIST.append(m.group(1))
+                    continue
+                m = LINEMATCHHISTOGRAM.search(l)
+                if m:
+                    METRICSLIST.append(m.group(1))
+                    continue
+                m = HEADERCOUNTER.search(l)
+                if m:
+                    continuation = True
+                m = HEADERGAUGE.search(l)
+                if m:
+                    continuation = True
+                m = HEADERHISTOGRAM.search(l)
+                if m:
+                    continuation = True
+            else:
+                continuation = False
+                m = NAMEMATCH.search(l)
+                if m:
+                    METRICSLIST.append(m.group(1))
 if len(METRICSLIST) == 0:
-    print("Did not find any metrics in arangod/RestServer/MetricsFeature.h!")
+    print("Did not find any metrics in arangod/Metrics/MetricsFeature.h!")
     sys.exit(2)
 
 METRICSLIST.sort()
@@ -145,15 +152,29 @@ for i, metric in enumerate(METRICSLIST):
                         print(f"YAML file '{filename}' has an attribute "
                               f"'{attr}' whose value must be a string but isn't.")
                         bad = True
+                if y["help"].strip()[-1] != ".":
+                    print(f"YAML file '{filename}' has a 'help' attribute that "
+                          f"does not end with a period.")
+                    bad = True
                 if not isinstance(y["exposedBy"], list):
                     print(f"YAML file '{filename}' has an attribute 'exposedBy' "
                           f"whose value must be a list but isn't.")
                     bad = True
+                else:
+                    for e in y["exposedBy"]:
+                        if e not in NODE_TYPES:
+                            print(f"YAML file '{filename}' has an attribute 'exposedBy' "
+                                  f"that lists an invalid value '{e}'.")
+                            bad = True
                 if not bad:
                     if not y["category"] in CATEGORYNAMES:
                         print(f"YAML file '{filename}' has an unknown category "
                               f"'{y['category']}', please fix.")
                         bad = True
+                    if not bad:
+                        if y["name"] != metric:
+                            print(f"YAML file '{filename}' has an attribute name '" + y["name"] + "' which does not match the file name.")
+                            bad = True
 
     if bad:
         MISSING = True

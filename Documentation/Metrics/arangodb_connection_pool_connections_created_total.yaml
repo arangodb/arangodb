@@ -2,7 +2,7 @@ name: arangodb_connection_pool_connections_created_total
 renamedFrom: arangodb_connection_pool_connections_created
 introducedIn: "3.8.0"
 help: |
-  Total number of connections created for connection pool
+  Total number of connections created for connection pool.
 unit: number
 type: counter
 category: Connectivity

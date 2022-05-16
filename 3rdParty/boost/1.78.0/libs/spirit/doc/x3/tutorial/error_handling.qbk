@@ -1,0 +1,341 @@
+[/==============================================================================
+    Copyright (C) 2001-2018 Joel de Guzman
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    I would like to thank Rainbowverse, llc (https://primeorbial.com/)
+    for sponsoring this work and donating it to the community.
+===============================================================================/]
+
+[section Error Handling]
+
+This tutorial wouldn't be complete without touching on error handling. As a
+prerequisite in understanding this tutorial, please review the previous
+[tutorial_employee employee] and [tutorial_annotation annotations] examples.
+This example builds on top of these previous examples.
+
+The full cpp file for this example can be found here:
+[@../../../example/x3/error_handling.cpp error_handling.cpp]
+
+Please review the previous [tutorial_annotation annotations example]. The
+information there will be very helpful in understanding error handling.
+
+[heading The AST]
+
+Our AST is exactly the same as what we had before in the [tutorial_annotation
+annotations]:
+
+    namespace client { namespace ast
+    {
+        struct person : x3::position_tagged
+        {
+            person(
+                std::string const& first_name = ""
+              , std::string const& last_name = ""
+            )
+            : first_name(first_name)
+            , last_name(last_name)
+            {}
+
+            std::string first_name, last_name;
+        };
+
+        struct employee : x3::position_tagged
+        {
+            int age;
+            person who;
+            double salary;
+        };
+    }}
+
+We have two structs, the `person` and the `employee`. Each inherits from
+`x3::position_tagged` which provides positional information that we can use
+to tell the AST's position in the input stream anytime. We will need these
+information for error handling and reporting.
+
+Like before, we need to tell __fusion__ about our structs to make them
+first-class fusion citizens that the grammar can utilize:
+
+    BOOST_FUSION_ADAPT_STRUCT(client::ast::person,
+        first_name, last_name
+    )
+
+    BOOST_FUSION_ADAPT_STRUCT(client::ast::employee,
+        age, who, salary
+    )
+
+[heading Expectations]
+
+There are occasions in which it is expected that the input must match a
+particular parser or the input is invalid. Such cases generally arise after
+matching a portion of a grammar, such that the context is fully known. In
+such a situation, failure to match should result in an exception. For
+example, when parsing an e-mail address, a name, an "@" and a domain name
+must be matched or the address is invalid.
+
+Two X3 mechanisms facilitate parser expectations:
+
+# The expectation operator (__x3_expect__)
+# The expect directive (__x3_expectd__`[p]`)
+
+The expectation operator (__x3_expect__) requires that the following parser
+(`b`) match the input or an __x3_expectation_failure__ is emitted. Using a
+client supplied `on_error` handler, the exception can be serviced by calling
+the handler with the source iterators and context at which the parsing failed
+can be reported.
+
+By contrast, the sequence operator (__x3_sequence__) does not require that
+the following parser match the input, which allows for backtracking or simply
+returning false from the parse function with no exceptions.
+
+The expect directive (__x3_expectd__`[p]`) requires that the argument parser
+matches the input or an exception is emitted. Using on_error(), that
+exception can be handled by calling a handler with the context at which the
+parsing failed can be reported.
+
+[heading on_error]
+
+`on_error` is the counterpart of `on_success`, as discussed in the
+[tutorial_annotation annotations example]. While `on_success` handlers are
+callback hooks to client code that are executed by the parser after a
+/successful/ parse, `on_error` handlers are callback hooks to client code
+that are executed by the parser when an __x3_expectation_failure__ is thrown
+via the expect operator or directive. `on_error` handlers have access to the
+iterators, the context and the exception that was thrown.
+
+[heading Error Handling]
+
+Before we proceed, let me introduce a helper class, the
+x3::__x3_error_handler__. It is utility class that provides __clang__ style
+error reporting which gives you nice reports such as the following:
+
+[pre
+In line 16:
+Error! Expecting: person here:
+    'I am not a person!'    <--- this should be a person
+____^_
+]
+
+We'll see later that this error message is exactly what this example emits.
+
+Here's our `on_error` handler:
+
+    struct error_handler
+    {
+        template <typename Iterator, typename Exception, typename Context>
+        x3::error_handler_result on_error(
+            Iterator& first, Iterator const& last
+          , Exception const& x, Context const& context)
+        {
+            auto& error_handler = x3::get<x3::error_handler_tag>(context).get();
+            std::string message = "Error! Expecting: " + x.which() + " here:";
+            error_handler(x.where(), message);
+            return x3::error_handler_result::fail;
+        }
+    };
+
+`x3::error_handler_tag` is a special tag we will use to get a reference to
+the actual x3::__x3_error_handler__ that we will inject at very start, when
+we call parse. We get the x3::__x3_error_handler__ here:
+
+   auto& error_handler = x3::get<error_handler_tag>(context).get();
+
+The x3::__x3_error_handler__ handles all the nitty gritty details such as
+determining the line number and actual column position, and formatting the
+error message printed. All we have to do is provide the actual error string
+which we extract from the __x3_expectation_failure__ exception:
+
+   std::string message = "Error! Expecting: " + x.which() + " here:";
+
+Then, we return `x3::error_handler_result::fail` to tell X3 that we want to
+fail the parse when such an event is caught. You can return one of:
+
+[table
+    [[`Action`]     [Description]]
+    [[fail]         [Quit and fail. Return a no_match.]]
+    [[retry]        [Attempt error recovery, possibly moving the iterator position.]]
+    [[accept]       [Force success, moving the iterator position appropriately.]]
+    [[rethrow]      [Rethrows the error.]]
+]
+
+[heading The Parser]
+
+Now we'll rewrite employee parser with error handling in mind. Like the
+[tutorial_annotation annotations] example, inputs will be of the form:
+
+    { age, "forename", "surname", salary }
+
+Here we go:
+
+    namespace parser
+    {
+        using x3::int_;
+        using x3::double_;
+        using x3::lexeme;
+        using ascii::char_;
+
+        struct quoted_string_class;
+        struct person_class;
+        struct employee_class;
+
+        x3::rule<quoted_string_class, std::string> const quoted_string = "quoted_string";
+        x3::rule<person_class, ast::person> const person = "person";
+        x3::rule<employee_class, ast::employee> const employee = "employee";
+
+        auto const quoted_string_def = lexeme['"' >> +(char_ - '"') >> '"'];
+        auto const person_def = quoted_string > ',' > quoted_string;
+
+        auto const employee_def =
+                '{'
+            >   int_ > ','
+            >   person > ','
+            >   double_
+            >   '}'
+            ;
+
+        auto const employees = employee >> *(',' >> employee);
+
+        BOOST_SPIRIT_DEFINE(quoted_string, person, employee);
+
+        struct quoted_string_class {};
+        struct person_class : x3::annotate_on_success {};
+        struct employee_class : error_handler, x3::annotate_on_success {};
+    }
+
+Go back and review the [link __tutorial_annotated_employee_parser__ annotated
+employee parser]. What has changed? It is almost identical, except:
+
+Where appropriate, we're using the expectation operator (__x3_expect__) in
+place of the sequence operator (__x3_sequence__):
+
+    auto const person_def = quoted_string > ',' > quoted_string;
+
+    auto const employee_def =
+            '{'
+        >   int_ > ','
+        >   person > ','
+        >   double_
+        >   '}'
+        ;
+
+You will have some "deterministic points" in the grammar. Those are the
+places where backtracking *cannot* occur. For our example above, when you get
+a `'{'`, you definitely must see an `int_` next. After that, you definitely
+must have a `','` next and then a `person` and so on until the final `'}'`.
+Otherwise, there is no point in proceeding and trying other branches,
+regardless where they are. The input is definitely erroneous. When this
+happens, an expectation_failure exception is thrown. Somewhere outward, the
+error handler will catch the exception. In our case, it is caught in our
+`on_error` handler.
+
+Notice too that we subclass the `employee_class` from our `error_handler`. By
+doing so, we tell X3 that we want to call our `error_handler` whenever an
+exception is thrown somewhere inside the `employee` rule and whatever else it
+calls (i.e. the `person` and `quoted_string` rules).
+
+[heading Let's Parse]
+
+Now we have the complete parse mechanism with error handling:
+
+    void parse(std::string const& input)
+    {
+        using boost::spirit::x3::ascii::space;
+        typedef std::string::const_iterator iterator_type;
+
+        std::vector<client::ast::employee> ast;
+        iterator_type iter = input.begin();
+        iterator_type const end = input.end();
+
+        using boost::spirit::x3::with;
+        using boost::spirit::x3::error_handler_tag;
+        using error_handler_type = boost::spirit::x3::error_handler<iterator_type>;
+
+        // Our error handler
+        error_handler_type error_handler(iter, end, std::cerr);
+
+        // Our parser
+        using client::parser::employees;
+        auto const parser =
+            // we pass our error handler to the parser so we can access
+            // it later in our on_error and on_sucess handlers
+            with<error_handler_tag>(std::ref(error_handler))
+            [
+                employees
+            ];
+
+        bool r = phrase_parse(iter, end, parser, space, ast);
+
+        // ... Some final reports here
+    }
+
+Prior to calling `phrase_parse`, we first create an AST where parsed data will be
+stored:
+
+    std::vector<client::ast::employee> ast;
+
+We also create the actual error handler, sending message to `std::cerr`:
+
+    error_handler_type error_handler(iter, end, std::cerr);
+
+Then, we inject a reference to `error_handler`, using the `with` directive
+similar to what we did in the [link __tutorial_with_directive__ annotations
+example]:
+
+    auto const parser =
+        // we pass our error handler to the parser so we can access
+        // it later in our on_error and on_sucess handlers
+        with<error_handler_tag>(std::ref(error_handler))
+        [
+            employees
+        ];
+
+Now, if we give the parser an erroneous input:
+
+    std::string bad_input = R"(
+    {
+        23,
+        "Amanda",
+        "Stefanski",
+        1000.99
+    },
+    {
+        35,
+        "Angie",
+        "Chilcote",
+        2000.99
+    },
+    {
+        43,
+        'I am not a person!'    <--- this should be a person
+        3000.99
+    },
+    {
+        22,
+        "Dorene",
+        "Dole",
+        2500.99
+    },
+    {
+        38,
+        "Rossana",
+        "Rafferty",
+        5000.99
+    }
+    )";
+
+The parser will complain as expected:
+
+[pre
+-------------------------
+Now we have some errors
+In line 16:
+Error! Expecting: person here:
+    'I am not a person!'    <--- this should be a person
+____^_
+-------------------------
+Parsing failed
+-------------------------
+]
+
+[endsect]

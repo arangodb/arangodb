@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,11 +28,9 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryRegistry.h"
-#include "FeaturePhases/V8FeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 
 using namespace arangodb::application_features;
@@ -49,8 +47,7 @@ static constexpr uint64_t readyBit = 0x8000000000000000ULL;
 
 namespace arangodb {
 
-AqlFeature::AqlFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Aql") {
+AqlFeature::AqlFeature(Server& server) : ArangodFeature{server, *this} {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 

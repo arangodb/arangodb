@@ -36,22 +36,25 @@ function runSetup () {
   internal.debugClearFailAt();
 
   db._drop('UnitTestsRecovery');
-  var c = db._create('UnitTestsRecovery'), i, j;
-  c.ensureSkiplist('value2');
+  let c = db._create('UnitTestsRecovery');
+  c.ensureIndex({ type: "skiplist", fields: ["value2"] });
 
-  for (i = 0; i < 10000; ++i) {
-    c.save({ _key: 'test' + i, value1: 'test' + i, value2: i });
+  let docs = [];
+  for (let i = 0; i < 10000; ++i) {
+    docs.push({ _key: 'test' + i, value1: 'test' + i, value2: i });
   }
+  c.insert(docs);
 
   internal.wal.flush(true, true);
 
   internal.debugSetFailAt('CollectorThreadProcessQueuedOperations');
 
-  for (j = 0; j < 4; ++j) {
-    for (i = 0; i < 10000; ++i) {
-      c.save({ _key: 'foo-' + i + '-' + j, value1: 'test' + i, value2: 'abc' + i });
+  for (let j = 0; j < 4; ++j) {
+    let docs = [];
+    for (let i = 0; i < 10000; ++i) {
+      docs.push({ _key: 'foo-' + i + '-' + j, value1: 'test' + i, value2: 'abc' + i });
     }
-
+    c.insert(docs);
     internal.wal.flush(true, false);
   }
 

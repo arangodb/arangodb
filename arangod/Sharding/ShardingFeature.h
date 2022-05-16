@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "Sharding/ShardingStrategy.h"
+#include "RestServer/arangod.h"
 
 #include <velocypack/Slice.h>
 
@@ -33,23 +33,28 @@ namespace arangodb {
 
 class ShardingInfo;
 
-class ShardingFeature : public application_features::ApplicationFeature {
+class ShardingFeature : public ArangodFeature {
  public:
-  explicit ShardingFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Sharding"; }
+
+  explicit ShardingFeature(Server& server);
 
   void prepare() override final;
   void start() override final;
 
-  void registerFactory(std::string const& name, ShardingStrategy::FactoryFunction const&);
+  void registerFactory(std::string const& name,
+                       ShardingStrategy::FactoryFunction const&);
 
-  std::unique_ptr<ShardingStrategy> fromVelocyPack(arangodb::velocypack::Slice slice,
-                                                   ShardingInfo* sharding);
+  std::unique_ptr<ShardingStrategy> fromVelocyPack(
+      arangodb::velocypack::Slice slice, ShardingInfo* sharding);
 
-  std::unique_ptr<ShardingStrategy> create(std::string const& name, ShardingInfo* sharding);
+  std::unique_ptr<ShardingStrategy> create(std::string const& name,
+                                           ShardingInfo* sharding);
 
   /// @brief returns the name of the default sharding strategy for new
   /// collections
-  std::string getDefaultShardingStrategyForNewCollection(VPackSlice const& properties) const;
+  std::string getDefaultShardingStrategyForNewCollection(
+      VPackSlice const& properties) const;
 
  private:
   /// @brief returns the name of the default sharding strategy for existing
@@ -60,4 +65,3 @@ class ShardingFeature : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
-

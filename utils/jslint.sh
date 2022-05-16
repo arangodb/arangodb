@@ -12,9 +12,9 @@ if [ -z "$*" ] ; then
     $(find "${WD}/js/common/modules/@arangodb" -name "*.js") \
     $(find "${WD}/js/client/modules/@arangodb" -name "*.js") \
     $(find "${WD}/js/server/modules/@arangodb" -name "*.js") \
-    $(find "${WD}/tests/js/server" -name "*.js" | grep -v "ranges-combined") \
-    $(find "${WD}/tests/js/common" -name "*.js" | grep -v "test-data") \
-    $(find "${WD}/tests/js/client" -name "*.js") \
+    $(find "${WD}/tests/js/server" -name "*.js" -o -name "*.inc" | grep -v "ranges-combined") \
+    $(find "${WD}/tests/js/common" -name "*.js" -o -name "*.inc" | grep -v "test-data") \
+    $(find "${WD}/tests/js/client" -name "*.js" -o -name "*.inc") \
     $(find "${WD}/UnitTests" -name "*.js") \
     \
     $(find "${WD}/js/apps/system/_admin/aardvark/APP/frontend/js/models" -name "*.js") \
@@ -63,6 +63,7 @@ else
         JSDIR=$(grep startup-directory /etc/arangodb3/arangosh.conf  |sed "s;.*= *;;")
         mkdir -p "${JSDIR}/node/node_modules/"
         cp -a js/node/node_modules/eslint "${JSDIR}/node/node_modules/"
+        cp -a js/node/node_modules/ms "${JSDIR}/node/node_modules/"
      fi
 fi
 

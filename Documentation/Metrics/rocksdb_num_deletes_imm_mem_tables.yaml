@@ -1,7 +1,7 @@
 name: rocksdb_num_deletes_imm_mem_tables
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "rocksdb-num-deletes-imm-mem-tables" - sum over column families
+  Number of deletes in unflushed immutable RocksDB memtables.
 unit: number
 type: gauge
 category: RocksDB

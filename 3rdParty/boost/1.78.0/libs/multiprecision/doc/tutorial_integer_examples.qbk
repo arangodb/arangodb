@@ -1,0 +1,25 @@
+[/
+  Copyright 2011 - 2020 John Maddock.
+  Copyright 2013 - 2019 Paul A. Bristow.
+  Copyright 2013 Christopher Kormanyos.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:egs Examples]
+
+[import ../example/integer_examples.cpp]
+
+[section:factorials Factorials]
+[FAC1]
+[endsect] [/section:factorials Factorials]
+
+
+[section:bitops Bit Operations]
+[BITOPS]
+[endsect] [/section:bitops Bit Operations]
+
+
+[endsect]

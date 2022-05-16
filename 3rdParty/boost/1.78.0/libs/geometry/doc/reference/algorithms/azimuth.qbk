@@ -1,0 +1,22 @@
+[/============================================================================
+  Boost.Geometry
+
+  Copyright (c) 2021, Oracle and/or its affiliates.
+  Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
+
+  Use, modification and distribution is subject to the Boost Software License,
+  Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt)
+=============================================================================/]
+
+[def __this_function__ azimuth]
+
+[heading_conformance_no_ogc __this_function__]
+[note PostGIS contains an algorithm ST_Azimuth with the same functionality.
+  See the [@https://postgis.net/docs/ST_Azimuth.html PostGIS documentation]. 
+]
+
+[heading Behavior]
+The algorithm calculates the azimuth of a segment defined by a pair of points.
+
+[note The result is in radians.]

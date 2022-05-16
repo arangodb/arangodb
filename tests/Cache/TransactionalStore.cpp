@@ -29,8 +29,8 @@
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 
-#include "Basics/StringBuffer.h"
 #include "Basics/files.h"
+#include "Cache/BinaryKeyHasher.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
@@ -73,7 +73,8 @@ TransactionalStore::TransactionalStore(Manager* manager)
       _writeOptions(rocksdb::WriteOptions()),
       _txOptions(rocksdb::TransactionOptions()) {
   TRI_ASSERT(manager != nullptr);
-  _cache = manager->createCache(CacheType::Transactional, true);
+  _cache =
+      manager->createCache<BinaryKeyHasher>(CacheType::Transactional, true);
   TRI_ASSERT(_cache.get() != nullptr);
 
   _directory.appendText(TRI_GetTempPath());
@@ -200,7 +201,8 @@ bool TransactionalStore::update(TransactionalStore::Transaction* tx,
   return updated;
 }
 
-bool TransactionalStore::remove(TransactionalStore::Transaction* tx, std::uint64_t key) {
+bool TransactionalStore::remove(TransactionalStore::Transaction* tx,
+                                std::uint64_t key) {
   bool useInternalTransaction = (tx == nullptr);
   if (useInternalTransaction) {
     tx = beginTransaction(false);
@@ -229,8 +231,8 @@ bool TransactionalStore::remove(TransactionalStore::Transaction* tx, std::uint64
   return removed;
 }
 
-TransactionalStore::Document TransactionalStore::lookup(TransactionalStore::Transaction* tx,
-                                                        std::uint64_t key) {
+TransactionalStore::Document TransactionalStore::lookup(
+    TransactionalStore::Transaction* tx, std::uint64_t key) {
   bool useInternalTransaction = (tx == nullptr);
   if (useInternalTransaction) {
     tx = beginTransaction(true);

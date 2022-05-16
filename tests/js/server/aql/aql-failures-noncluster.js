@@ -231,53 +231,6 @@ function ahuacatlFailureSuite () {
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
 
-    // Disabled, because it does not apply to ExecutionBlockImpl<SortExecutor>.
-    // testSortBlock2 : function () {
-    //   internal.debugSetFailAt("SortBlock::doSortingInner");
-    //   assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i._key SORT key RETURN key");
-    //   assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value SORT key RETURN key");
-    //   assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 SORT key RETURN key");
-    // },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test failure
-////////////////////////////////////////////////////////////////////////////////
-
-    // Disabled, because it does not apply to ExecutionBlockImpl<SortExecutor>.
-    // testSortBlock3 : function () {
-    //   internal.debugSetFailAt("SortBlock::doSortingCache");
-    //   c.ensureSkiplist("value");
-    //   assertFailingQuery("FOR v IN " + c.name() + " FILTER v.value < 100 LIMIT 100 SORT v.value + 1 RETURN [v.value]");
-    // },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test failure
-////////////////////////////////////////////////////////////////////////////////
-
-    // Disabled, because it does not apply to ExecutionBlockImpl<SortExecutor>.
-    // testSortBlock4 : function () {
-    //   internal.debugSetFailAt("SortBlock::doSortingNext1");
-    //   c.ensureSkiplist("value");
-    //   assertFailingQuery("FOR v IN " + c.name() + " FILTER v.value < 100 LIMIT 100 SORT v.value + 1 RETURN [v.value]");
-    // },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test failure
-////////////////////////////////////////////////////////////////////////////////
-
-    // Disabled, because it does not apply to ExecutionBlockImpl<SortExecutor>.
-    // testSortBlock5 : function () {
-    //   internal.debugSetFailAt("SortBlock::doSortingNext2");
-    //   // we need values that are >= 16 bytes long
-    //   assertFailingQuery("LET x = NOOPT('xxxxxxxxxxxxxxxxxxxx') FOR i IN " + c.name() + " COLLECT key = i._key SORT CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', key) RETURN { key, x }");
-    //   assertFailingQuery("LET x = NOOPT('xxxxxxxxxxxxxxxxxxxx') FOR i IN " + c.name() + " COLLECT key = i.value SORT CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', key) RETURN { key, x }");
-    //   assertFailingQuery("LET x = NOOPT('xxxxxxxxxxxxxxxxxxxx') FOR i IN " + c.name() + " COLLECT key = i.value2 SORT CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', key) RETURN { key, x }");
-    // },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test failure
-////////////////////////////////////////////////////////////////////////////////
-
     testFilterBlock2 : function () {
       internal.debugSetFailAt("FilterExecutor::produceRows");
       assertFailingQuery("LET doc = { \"_id\": \"test/76689250173\", \"_rev\": \"76689250173\", \"_key\": \"76689250173\", \"test1\": \"something\", \"test2\": { \"DATA\": [ \"other\" ] } } FOR attr IN ATTRIBUTES(doc) LET prop = doc[attr] FILTER HAS(prop, 'DATA') RETURN [ attr, prop.DATA ]"); 
@@ -390,7 +343,7 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexBlock1 : function () {
-      idx = c.ensureHashIndex("value");
+      idx = c.ensureIndex({ type: "hash", fields: ["value"] });
       internal.debugSetFailAt("IndexBlock::initialize");
       assertFailingQuery("LET f = NOOPT(1) FOR j IN 1..10 FOR i IN " + c.name() + " FILTER i.value == j FILTER i.value == f RETURN i");
       assertFailingQuery("FOR j IN 1..10 FOR i IN " + c.name() + " FILTER i.value == j RETURN i");
@@ -401,13 +354,13 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexBlock2 : function () {
-      idx = c.ensureHashIndex("value");
+      idx = c.ensureIndex({ type: "hash", fields: ["value"] });
       internal.debugSetFailAt("IndexBlock::initializeExpressions");
       assertFailingQuery("LET f = NOOPT(1) FOR j IN 1..10 FOR i IN " + c.name() + " FILTER i.value == j FILTER i.value == f RETURN i");
     },
 
     testIndexBlock3 : function () {
-      idx = c.ensureSkiplist("value", "value2");
+      idx = c.ensureIndex({ type: "skiplist", fields: ["value", "value2"] });
       internal.debugSetFailAt("IndexBlock::readIndex");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 25 RETURN i");
       assertFailingQuery("FOR j IN 1..10 FOR i IN " + c.name() + " FILTER i.value == j RETURN i");
@@ -419,7 +372,7 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexBlock4 : function () {
-      idx = c.ensureHashIndex("value", "value2");
+      idx = c.ensureIndex({ type: "hash", fields: ["value", "value2"] });
       internal.debugSetFailAt("IndexBlock::readIndex");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 25 && i.value2 == 5 RETURN i");
     },
@@ -429,13 +382,13 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexBlock5 : function () {
-      idx = c.ensureSkiplist("value", "value2");
+      idx = c.ensureIndex({ type: "skiplist", fields: ["value", "value2"] });
       internal.debugSetFailAt("IndexBlock::readIndex");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 25 && i.value2 == 5 RETURN i");
     },
 
     testIndexBlock6 : function () {
-      idx = c.ensureHashIndex("value");
+      idx = c.ensureIndex({ type: "hash", fields: ["value"] });
       internal.debugSetFailAt("IndexBlock::executeExpression");
       // CONCAT  is an arbitrary non v8 function and can be replaced
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == NOOPT(CONCAT('1','2')) RETURN i");
@@ -462,79 +415,79 @@ function ahuacatlFailureSuite () {
     },
 
     testIndexNodeSkiplist1 : function () {
-      idx = c.ensureSkiplist("value");
+      idx = c.ensureIndex({ type: "skiplist", fields: ["value"] });
       internal.debugSetFailAt("SkiplistIndex::noSortIterator");
       assertFailingQuery("FOR i IN " + c.name() + " SORT i.value RETURN i");
     },
 
     testIndexNodeSkiplist2 : function () {
-      idx = c.ensureSkiplist("value");
+      idx = c.ensureIndex({ type: "skiplist", fields: ["value"] });
       internal.debugSetFailAt("SkiplistIndex::noIterator");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
     },
 
     testIndexNodeSkiplist3 : function () {
-      idx = c.ensureSkiplist("value");
+      idx = c.ensureIndex({ type: "skiplist", fields: ["value"] });
       internal.debugSetFailAt("SkiplistIndex::permutationEQ");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
     },
 
     testIndexNodeSkiplist4 : function () {
-      idx = c.ensureSkiplist("value");
+      idx = c.ensureIndex({ type: "skiplist", fields: ["value"] });
       internal.debugSetFailAt("Index::permutationIN");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value IN [1, 2] RETURN i");
     },
 
     testIndexNodeSkiplist5 : function () {
-      idx = c.ensureSkiplist("value[*]");
+      idx = c.ensureIndex({ type: "skiplist", fields: ["value[*]"] });
       internal.debugSetFailAt("SkiplistIndex::permutationArrayIN");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER 1 IN i.value[*] RETURN i");
     },
 
     testIndexNodeSkiplist6 : function () {
-      idx = c.ensureSkiplist("value");
+      idx = c.ensureIndex({ type: "skiplist", fields: ["value"] });
       internal.debugSetFailAt("SkiplistIndex::accessFitsIndex");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
     },
 
     testIndexNodeHashIndex1 : function () {
-      idx = c.ensureHashIndex("value");
+      idx = c.ensureIndex({ type: "hash", fields: ["value"] });
       internal.debugSetFailAt("HashIndex::noIterator");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
     },
 
     testIndexNodeHashIndex2 : function () {
-      idx = c.ensureHashIndex("value");
+      idx = c.ensureIndex({ type: "hash", fields: ["value"] });
       internal.debugSetFailAt("HashIndex::permutationEQ");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
     },
 
     testIndexNodeHashIndex3 : function () {
-      idx = c.ensureHashIndex("value");
+      idx = c.ensureIndex({ type: "hash", fields: ["value"] });
       internal.debugSetFailAt("Index::permutationIN");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value IN [1, 2] RETURN i");
     },
 
     testIndexNodeHashIndex4 : function () {
-      idx = c.ensureHashIndex("value[*]");
+      idx = c.ensureIndex({ type: "hash", fields: ["value[*]"] });
       internal.debugSetFailAt("HashIndex::permutationArrayIN");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER 1 IN i.value[*] RETURN i");
     },
 
     testSimpleAttributeMatcher2 : function () {
-      idx = c.ensureHashIndex("value");
+      idx = c.ensureIndex({ type: "hash", fields: ["value"] });
       internal.debugSetFailAt("SimpleAttributeMatcher::specializeAllChildrenEQ");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
     },
 
     testSimpleAttributeMatcher3 : function () {
-      idx = c.ensureHashIndex("value");
+      idx = c.ensureIndex({ type: "hash", fields: ["value"] });
       internal.debugSetFailAt("SimpleAttributeMatcher::specializeAllChildrenIN");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value IN [1, 2] RETURN i");
     },
 
     testSimpleAttributeMatcher4 : function () {
-      idx = c.ensureHashIndex("value");
+      idx = c.ensureIndex({ type: "hash", fields: ["value"] });
       internal.debugSetFailAt("SimpleAttributeMatcher::accessFitsIndex");
       assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == 1 RETURN i");
     },

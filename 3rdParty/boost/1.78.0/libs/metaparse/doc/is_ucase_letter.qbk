@@ -1,0 +1,76 @@
+[#is_ucase_letter]
+[section is_ucase_letter]
+
+[h1 Synopsis]
+
+  namespace util
+  {
+    template <class C>
+    struct is_ucase_letter;
+  }
+
+This is a [link lazy_metafunction lazy template metafunction] that supports
+[link currying currying].
+
+[table Arguments
+  [[Name] [Type]]
+  [[`C`]  [[link boxed_value boxed] character value]]
+]
+
+[h1 Description]
+
+Checks if `C` is an upper case letter. Returns a boxed boolean value.
+
+[h1 Header]
+
+  #include <boost/metaparse/util/is_ucase_letter.hpp>
+
+[h1 Expression semantics]
+
+The following expressions are equivalent:
+
+  is_ucase_letter<>::apply<boost::mpl::char_<'A'>>::type
+  boost::mpl::true_
+
+  is_ucase_letter<>::apply<boost::mpl::char_<'Z'>>::type
+  boost::mpl::true_
+
+  is_ucase_letter<>::apply<c>::type
+  boost::mpl::false_
+
+[h1 Example]
+
+  #include <boost/metaparse/util/is_ucase_letter.hpp>
+  
+  #include <type_traits>
+  
+  using namespace boost::metaparse;
+  
+  struct returns_char
+  {
+    using type = std::integral_constant<char, 'A'>;
+  };
+  
+  static_assert(
+    util::is_ucase_letter<std::integral_constant<char, 'A'>>::type::value,
+    "A should be an upper case letter"
+  );
+  
+  static_assert(
+    !util::is_ucase_letter<std::integral_constant<char, 'a'>>::type::value,
+    "a should not be an upper case letter"
+  );
+  
+  static_assert(
+    util::is_ucase_letter<>::type
+      ::apply<std::integral_constant<char, 'A'>>::type::value,
+    "it should support currying"
+  );
+  
+  static_assert(
+    util::is_ucase_letter<returns_char>::type::value,
+    "it should support lazy evaluation"
+  );
+
+[endsect]
+

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +40,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <fstream>
 #include <sys/types.h>
@@ -82,7 +81,9 @@ static void ProcessCsvAdd(TRI_csv_parser_t* parser, char const* field, size_t,
   v8::Handle<v8::Array>* array =
       reinterpret_cast<v8::Handle<v8::Array>*>(parser->_dataBegin);
 
-  (*array)->Set(TRI_IGETC, (uint32_t)column, TRI_V8_STRING(isolate, field)).FromMaybe(true);
+  (*array)
+      ->Set(TRI_IGETC, (uint32_t)column, TRI_V8_STRING(isolate, field))
+      .FromMaybe(true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,7 +96,9 @@ static void ProcessCsvEnd(TRI_csv_parser_t* parser, char const* field, size_t,
   v8::Handle<v8::Array>* array =
       reinterpret_cast<v8::Handle<v8::Array>*>(parser->_dataBegin);
 
-  (*array)->Set(TRI_IGETC, (uint32_t)column, TRI_V8_STRING(isolate, field)).FromMaybe(false);
+  (*array)
+      ->Set(TRI_IGETC, (uint32_t)column, TRI_V8_STRING(isolate, field))
+      .FromMaybe(false);
 
   v8::Handle<v8::Function>* cb =
       reinterpret_cast<v8::Handle<v8::Function>*>(parser->_dataEnd);
@@ -149,9 +152,10 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
-  if (!v8security.isAllowedToAccessPath(isolate, *filename, FSAccessType::READ)) {
+  if (!v8security.isAllowedToAccessPath(isolate, *filename,
+                                        FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not allowed to read files in this path");
   }
@@ -172,7 +176,8 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     // separator
     if (TRI_HasProperty(context, isolate, options, separatorKey)) {
-      separator = TRI_ObjectToString(context, isolate, options->Get(context, separatorKey));
+      separator = TRI_ObjectToString(context, isolate,
+                                     options->Get(context, separatorKey));
 
       if (separator.size() != 1) {
         TRI_V8_THROW_TYPE_ERROR(
@@ -182,7 +187,8 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     // quote
     if (TRI_HasProperty(context, isolate, options, quoteKey)) {
-      quote = TRI_ObjectToString(context, isolate, options->Get(context, quoteKey));
+      quote =
+          TRI_ObjectToString(context, isolate, options->Get(context, quoteKey));
 
       if (quote.length() > 1) {
         TRI_V8_THROW_TYPE_ERROR(
@@ -200,7 +206,8 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_csv_parser_t parser;
 
-  TRI_InitCsvParser(&parser, ProcessCsvBegin, ProcessCsvAdd, ProcessCsvEnd, isolate);
+  TRI_InitCsvParser(&parser, ProcessCsvBegin, ProcessCsvAdd, ProcessCsvEnd,
+                    isolate);
 
   TRI_SetSeparatorCsvParser(&parser, separator[0]);
   if (quote.length() > 0) {
@@ -217,7 +224,8 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   char buffer[10240];
 
   while (true) {
-    TRI_read_return_t n = TRI_READ(fd, buffer, static_cast<TRI_read_t>(sizeof(buffer)));
+    TRI_read_return_t n =
+        TRI_READ(fd, buffer, static_cast<TRI_read_t>(sizeof(buffer)));
 
     if (n < 0) {
       TRI_DestroyCsvParser(&parser);
@@ -255,7 +263,8 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ProcessJsonFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void JS_ProcessJsonFile(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -271,9 +280,10 @@ static void JS_ProcessJsonFile(v8::FunctionCallbackInfo<v8::Value> const& args) 
   }
 
   TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_v8security;
 
-  if (!v8security.isAllowedToAccessPath(isolate, *filename, FSAccessType::READ)) {
+  if (!v8security.isAllowedToAccessPath(isolate, *filename,
+                                        FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not allowed to read files in this path");
   }
@@ -289,7 +299,6 @@ static void JS_ProcessJsonFile(v8::FunctionCallbackInfo<v8::Value> const& args) 
   std::ifstream file;
   file.open(arangodb::basics::toWString(*filename));
 #endif
-
 
   auto builder = std::make_shared<VPackBuilder>();
   VPackParser parser(builder);
@@ -316,7 +325,8 @@ static void JS_ProcessJsonFile(v8::FunctionCallbackInfo<v8::Value> const& args) 
 
       try {
         parser.parse(ptr, end - ptr);
-        object = TRI_VPackToV8(isolate, builder->slice(), parser.options, nullptr); 
+        object =
+            TRI_VPackToV8(isolate, builder->slice(), parser.options, nullptr);
       } catch (std::exception const& ex) {
         TRI_V8_THROW_SYNTAX_ERROR(ex.what());
       }
@@ -338,9 +348,29 @@ static void JS_ProcessJsonFile(v8::FunctionCallbackInfo<v8::Value> const& args) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stores the V8 shell functions inside the global variable
+/// @brief check whether stdout is an interactive shell
+///
+/// @FUN{isATTy()}
+///
+/// return true if its an interactive shell
+///
 ////////////////////////////////////////////////////////////////////////////////
 
+static void JS_IsATTY(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("isATTY()");
+  }
+
+  TRI_V8_RETURN_BOOL(isatty(STDOUT_FILENO) != 0);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stores the V8 shell functions inside the global variable
+////////////////////////////////////////////////////////////////////////////////
 void TRI_InitV8Shell(v8::Isolate* isolate) {
   v8::HandleScope scope(isolate);
 
@@ -348,14 +378,14 @@ void TRI_InitV8Shell(v8::Isolate* isolate) {
   // create the global functions
   // .............................................................................
 
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "SYS_PROCESS_CSV_FILE"),
-                               JS_ProcessCsvFile);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "SYS_PROCESS_JSON_FILE"),
-                               JS_ProcessJsonFile);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_PROCESS_CSV_FILE"),
+      JS_ProcessCsvFile);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_PROCESS_JSON_FILE"),
+      JS_ProcessJsonFile);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_IS_A_TTY"), JS_IsATTY);
 
   bool isTty = (isatty(STDOUT_FILENO) != 0);
   // on Linux, isatty() == 0 may also indicate an error. we can ignore this
@@ -370,148 +400,176 @@ void TRI_InitV8Shell(v8::Isolate* isolate) {
   v8::Handle<v8::Object> colors = v8::Object::New(isolate);
 
   colors
-      ->DefineOwnProperty(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_RED"),
-                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_RED)
-                                : v8::String::Empty(isolate),
-                          v8::ReadOnly)
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_RED"),
+          isTty ? TRI_V8_ASCII_STRING(isolate,
+                                      ShellColorsFeature::SHELL_COLOR_RED)
+                : v8::String::Empty(isolate),
+          v8::ReadOnly)
       .FromMaybe(false);
 
   colors
-      ->DefineOwnProperty(TRI_IGETC,
-                          TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_RED"),
-                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_RED)
-                                : v8::String::Empty(isolate),
-                          v8::ReadOnly)
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_RED"),
+          isTty ? TRI_V8_ASCII_STRING(isolate,
+                                      ShellColorsFeature::SHELL_COLOR_BOLD_RED)
+                : v8::String::Empty(isolate),
+          v8::ReadOnly)
       .FromMaybe(false);
 
   colors
-      ->DefineOwnProperty(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_GREEN"),
-                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_GREEN)
-                                : v8::String::Empty(isolate),
-                          v8::ReadOnly)
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_GREEN"),
+          isTty ? TRI_V8_ASCII_STRING(isolate,
+                                      ShellColorsFeature::SHELL_COLOR_GREEN)
+                : v8::String::Empty(isolate),
+          v8::ReadOnly)
       .FromMaybe(false);
 
   colors
-      ->DefineOwnProperty(TRI_IGETC,
-                          TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_GREEN"),
-                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_GREEN)
-                                : v8::String::Empty(isolate),
-                          v8::ReadOnly)
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_GREEN"),
+          isTty ? TRI_V8_ASCII_STRING(
+                      isolate, ShellColorsFeature::SHELL_COLOR_BOLD_GREEN)
+                : v8::String::Empty(isolate),
+          v8::ReadOnly)
       .FromMaybe(false);
 
   colors
-      ->DefineOwnProperty(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_BLUE"),
-                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BLUE)
-                                : v8::String::Empty(isolate),
-                          v8::ReadOnly)
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_BLUE"),
+          isTty ? TRI_V8_ASCII_STRING(isolate,
+                                      ShellColorsFeature::SHELL_COLOR_BLUE)
+                : v8::String::Empty(isolate),
+          v8::ReadOnly)
       .FromMaybe(false);
 
   colors
-      ->DefineOwnProperty(TRI_IGETC,
-                          TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_BLUE"),
-                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_BLUE)
-                                : v8::String::Empty(isolate),
-                          v8::ReadOnly)
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_BLUE"),
+          isTty ? TRI_V8_ASCII_STRING(isolate,
+                                      ShellColorsFeature::SHELL_COLOR_BOLD_BLUE)
+                : v8::String::Empty(isolate),
+          v8::ReadOnly)
       .FromMaybe(false);
 
   colors
-      ->DefineOwnProperty(TRI_IGETC,
-                          TRI_V8_ASCII_STRING(isolate, "COLOR_YELLOW"),
-                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_YELLOW)
-                                : v8::String::Empty(isolate),
-                          v8::ReadOnly)
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_YELLOW"),
+          isTty ? TRI_V8_ASCII_STRING(isolate,
+                                      ShellColorsFeature::SHELL_COLOR_YELLOW)
+                : v8::String::Empty(isolate),
+          v8::ReadOnly)
       .FromMaybe(false);
 
   colors
-      ->DefineOwnProperty(TRI_IGETC,
-                          TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_YELLOW"),
-                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_YELLOW)
-                                : v8::String::Empty(isolate),
-                          v8::ReadOnly)
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_YELLOW"),
+          isTty ? TRI_V8_ASCII_STRING(
+                      isolate, ShellColorsFeature::SHELL_COLOR_BOLD_YELLOW)
+                : v8::String::Empty(isolate),
+          v8::ReadOnly)
       .FromMaybe(false);
 
   colors
-      ->DefineOwnProperty(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_WHITE"),
-                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_WHITE)
-                                : v8::String::Empty(isolate),
-                          v8::ReadOnly)
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_WHITE"),
+          isTty ? TRI_V8_ASCII_STRING(isolate,
+                                      ShellColorsFeature::SHELL_COLOR_WHITE)
+                : v8::String::Empty(isolate),
+          v8::ReadOnly)
       .FromMaybe(false);
 
   colors
-      ->DefineOwnProperty(TRI_IGETC,
-                          TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_WHITE"),
-                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_WHITE)
-                                : v8::String::Empty(isolate),
-                          v8::ReadOnly)
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_WHITE"),
+          isTty ? TRI_V8_ASCII_STRING(
+                      isolate, ShellColorsFeature::SHELL_COLOR_BOLD_WHITE)
+                : v8::String::Empty(isolate),
+          v8::ReadOnly)
       .FromMaybe(false);
 
   colors
-      ->DefineOwnProperty(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_CYAN"),
-                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_CYAN)
-                                : v8::String::Empty(isolate),
-                          v8::ReadOnly)
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_CYAN"),
+          isTty ? TRI_V8_ASCII_STRING(isolate,
+                                      ShellColorsFeature::SHELL_COLOR_CYAN)
+                : v8::String::Empty(isolate),
+          v8::ReadOnly)
       .FromMaybe(false);
 
   colors
-      ->DefineOwnProperty(TRI_IGETC,
-                          TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_CYAN"),
-                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_CYAN)
-                                : v8::String::Empty(isolate),
-                          v8::ReadOnly)
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_CYAN"),
+          isTty ? TRI_V8_ASCII_STRING(isolate,
+                                      ShellColorsFeature::SHELL_COLOR_BOLD_CYAN)
+                : v8::String::Empty(isolate),
+          v8::ReadOnly)
       .FromMaybe(false);
 
   colors
-      ->DefineOwnProperty(TRI_IGETC,
-                          TRI_V8_ASCII_STRING(isolate, "COLOR_MAGENTA"),
-                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_MAGENTA)
-                                : v8::String::Empty(isolate),
-                          v8::ReadOnly)
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_MAGENTA"),
+          isTty ? TRI_V8_ASCII_STRING(isolate,
+                                      ShellColorsFeature::SHELL_COLOR_MAGENTA)
+                : v8::String::Empty(isolate),
+          v8::ReadOnly)
       .FromMaybe(false);
 
   colors
-      ->DefineOwnProperty(TRI_IGETC,
-                          TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_MAGENTA"),
-                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_MAGENTA)
-                                : v8::String::Empty(isolate),
-                          v8::ReadOnly)
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_MAGENTA"),
+          isTty ? TRI_V8_ASCII_STRING(
+                      isolate, ShellColorsFeature::SHELL_COLOR_BOLD_MAGENTA)
+                : v8::String::Empty(isolate),
+          v8::ReadOnly)
       .FromMaybe(false);
 
   colors
-      ->DefineOwnProperty(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_BLACK"),
-                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BLACK)
-                                : v8::String::Empty(isolate),
-                          v8::ReadOnly)
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_BLACK"),
+          isTty ? TRI_V8_ASCII_STRING(isolate,
+                                      ShellColorsFeature::SHELL_COLOR_BLACK)
+                : v8::String::Empty(isolate),
+          v8::ReadOnly)
       .FromMaybe(false);
 
   colors
-      ->DefineOwnProperty(TRI_IGETC,
-                          TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_BLACK"),
-                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_BLACK)
-                                : v8::String::Empty(isolate),
-                          v8::ReadOnly)
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_BLACK"),
+          isTty ? TRI_V8_ASCII_STRING(
+                      isolate, ShellColorsFeature::SHELL_COLOR_BOLD_BLACK)
+                : v8::String::Empty(isolate),
+          v8::ReadOnly)
       .FromMaybe(false);
 
   colors
-      ->DefineOwnProperty(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_BLINK"),
-                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BLINK)
-                                : v8::String::Empty(isolate),
-                          v8::ReadOnly)
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_BLINK"),
+          isTty ? TRI_V8_ASCII_STRING(isolate,
+                                      ShellColorsFeature::SHELL_COLOR_BLINK)
+                : v8::String::Empty(isolate),
+          v8::ReadOnly)
       .FromMaybe(false);
 
   colors
-      ->DefineOwnProperty(TRI_IGETC,
-                          TRI_V8_ASCII_STRING(isolate, "COLOR_BRIGHT"),
-                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BRIGHT)
-                                : v8::String::Empty(isolate),
-                          v8::ReadOnly)
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_BRIGHT"),
+          isTty ? TRI_V8_ASCII_STRING(isolate,
+                                      ShellColorsFeature::SHELL_COLOR_BRIGHT)
+                : v8::String::Empty(isolate),
+          v8::ReadOnly)
       .FromMaybe(false);
 
   colors
-      ->DefineOwnProperty(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_RESET"),
-                          isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_RESET)
-                                : v8::String::Empty(isolate),
-                          v8::ReadOnly)
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "COLOR_RESET"),
+          isTty ? TRI_V8_ASCII_STRING(isolate,
+                                      ShellColorsFeature::SHELL_COLOR_RESET)
+                : v8::String::Empty(isolate),
+          v8::ReadOnly)
       .FromMaybe(false);
 
-  TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "COLORS"), colors);
+  TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "COLORS"),
+                               colors);
 }

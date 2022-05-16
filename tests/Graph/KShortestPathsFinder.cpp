@@ -48,7 +48,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 // test setup
 #include "../Mocks/Servers.h"
@@ -70,7 +69,7 @@ class KShortestPathsFinderTest : public ::testing::Test {
   GraphTestSetup s;
   MockGraphDatabase gdb;
 
-  std::unique_ptr<arangodb::aql::Query> query;
+  std::shared_ptr<arangodb::aql::Query> query;
   std::unique_ptr<arangodb::graph::ShortestPathOptions> spo;
 
   KShortestPathsFinder* finder;
@@ -128,7 +127,8 @@ TEST_F(KShortestPathsFinderTest, path_of_length_1) {
   finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
   ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
-  auto cpr = checkPath(spo.get(), result, {"1", "2"}, {{}, {"v/1", "v/2"}}, msgs);
+  auto cpr =
+      checkPath(spo.get(), result, {"1", "2"}, {{}, {"v/1", "v/2"}}, msgs);
   ASSERT_TRUE(cpr) << msgs;
 }
 
@@ -141,8 +141,9 @@ TEST_F(KShortestPathsFinderTest, path_of_length_4) {
   finder->startKShortestPathsTraversal(start->slice(), end->slice());
 
   ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
-  auto cpr = checkPath(spo.get(), result, {"1", "2", "3", "4"},
-                       {{}, {"v/1", "v/2"}, {"v/2", "v/3"}, {"v/3", "v/4"}}, msgs);
+  auto cpr =
+      checkPath(spo.get(), result, {"1", "2", "3", "4"},
+                {{}, {"v/1", "v/2"}, {"v/2", "v/3"}, {"v/3", "v/4"}}, msgs);
   ASSERT_TRUE(cpr) << msgs;
 }
 
@@ -217,7 +218,7 @@ class KShortestPathsFinderTestWeights : public ::testing::Test {
   GraphTestSetup s;
   MockGraphDatabase gdb;
 
-  std::unique_ptr<arangodb::aql::Query> query;
+  std::shared_ptr<arangodb::aql::Query> query;
   std::unique_ptr<arangodb::graph::ShortestPathOptions> spo;
 
   KShortestPathsFinder* finder;

@@ -694,7 +694,7 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateIgnore1 : function () {
-      c1.ensureUniqueConstraint("value3", { sparse: true });
+      c1.ensureIndex({ type: "hash", fields: ["value3"], unique: true, sparse: true });
       var expected = { writesExecuted: 1, writesIgnored: 99 };
       var query = "FOR d IN @@cn UPDATE d WITH { value3: 1 } IN @@cn OPTIONS { ignoreErrors: true }";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 });
@@ -710,7 +710,7 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateIgnore2 : function () {
-      c1.ensureUniqueConstraint("value1", { sparse: true });
+      c1.ensureIndex({ type: "hash", fields: ["value1"], unique: true, sparse: true });
       var expected = { writesExecuted: 0, writesIgnored: 51 };
       var query = "FOR i IN 50..100 UPDATE { _key: CONCAT('test', TO_STRING(i)), value1: 1 } IN @@cn OPTIONS { ignoreErrors: true }";
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 });

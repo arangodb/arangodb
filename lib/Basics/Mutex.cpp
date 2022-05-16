@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,10 +46,10 @@ using namespace arangodb;
 #ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
 // initialize _holder to "maximum" thread id. this will work if the type of
 // _holder is numeric, but will not work if its type is more complex.
-Mutex::Mutex()
+Mutex::Mutex() noexcept
     : _mutex(), _holder((std::numeric_limits<decltype(_holder)>::max)()) {
 #else
-Mutex::Mutex() : _mutex() {
+Mutex::Mutex() noexcept : _mutex() {
 #endif
   pthread_mutexattr_init(&_attributes);
 
@@ -61,7 +61,7 @@ Mutex::~Mutex() {
   pthread_mutexattr_destroy(&_attributes);
 }
 
-void Mutex::lock() {
+void Mutex::lock() noexcept {
 #ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
   // we must not hold the lock ourselves here
   TRI_ASSERT(_holder != Thread::currentThreadId());
@@ -71,7 +71,8 @@ void Mutex::lock() {
 
   if (rc != 0) {
     if (rc == EDEADLK) {
-      LOG_TOPIC("141bb", ERR, arangodb::Logger::FIXME) << "mutex deadlock detected";
+      LOG_TOPIC("141bb", ERR, arangodb::Logger::FIXME)
+          << "mutex deadlock detected";
     }
 
     LOG_TOPIC("4732f", FATAL, arangodb::Logger::FIXME)
@@ -84,7 +85,7 @@ void Mutex::lock() {
 #endif
 }
 
-bool Mutex::tryLock() {
+bool Mutex::try_lock() noexcept {
 #ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
   // we must not hold the lock ourselves here
   TRI_ASSERT(_holder != Thread::currentThreadId());
@@ -96,7 +97,8 @@ bool Mutex::tryLock() {
     if (rc == EBUSY) {  // lock is already being held
       return false;
     } else if (rc == EDEADLK) {
-      LOG_TOPIC("72989", ERR, arangodb::Logger::FIXME) << "mutex deadlock detected";
+      LOG_TOPIC("72989", ERR, arangodb::Logger::FIXME)
+          << "mutex deadlock detected";
     }
 
     LOG_TOPIC("1b2a6", FATAL, arangodb::Logger::FIXME)
@@ -111,7 +113,7 @@ bool Mutex::tryLock() {
   return true;
 }
 
-void Mutex::unlock() {
+void Mutex::unlock() noexcept {
 #ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
   TRI_ASSERT(_holder == Thread::currentThreadId());
   _holder = 0;
@@ -126,11 +128,11 @@ void Mutex::unlock() {
 }
 
 #ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
-void Mutex::assertLockedByCurrentThread() {
+void Mutex::assertLockedByCurrentThread() const noexcept {
   TRI_ASSERT(_holder == Thread::currentThreadId());
 }
 
-void Mutex::assertNotLockedByCurrentThread() {
+void Mutex::assertNotLockedByCurrentThread() const noexcept {
   TRI_ASSERT(_holder != Thread::currentThreadId());
 }
 #endif
@@ -141,18 +143,20 @@ void Mutex::assertNotLockedByCurrentThread() {
 
 #elif defined(TRI_HAVE_WIN32_THREADS)
 
-Mutex::Mutex() : _mutex() { InitializeSRWLock(&_mutex); }
+Mutex::Mutex() noexcept : _mutex() { InitializeSRWLock(&_mutex); }
 Mutex::~Mutex() = default;
 
-void Mutex::lock() { AcquireSRWLockExclusive(&_mutex); }
+void Mutex::lock() noexcept { AcquireSRWLockExclusive(&_mutex); }
 
-bool Mutex::tryLock() { return TryAcquireSRWLockExclusive(&_mutex) != 0; }
+bool Mutex::try_lock() noexcept {
+  return TryAcquireSRWLockExclusive(&_mutex) != 0;
+}
 
-void Mutex::unlock() { ReleaseSRWLockExclusive(&_mutex); }
+void Mutex::unlock() noexcept { ReleaseSRWLockExclusive(&_mutex); }
 
 #ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
-void Mutex::assertLockedByCurrentThread() {}
-void Mutex::assertNotLockedByCurrentThread() {}
+void Mutex::assertLockedByCurrentThread() const noexcept {}
+void Mutex::assertNotLockedByCurrentThread() const noexcept {}
 #endif
 
 #endif

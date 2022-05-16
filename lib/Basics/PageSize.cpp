@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,9 +45,7 @@ int pageSizeImpl() {
   return systemInfo.dwPageSize;
 }
 #else
-int pageSizeImpl() {
-  return getpagesize();
-}
+int pageSizeImpl() { return getpagesize(); }
 #endif
 
 struct PageSizeCache {
@@ -57,9 +55,7 @@ struct PageSizeCache {
 
 PageSizeCache const cache;
 
-} // namespace
+}  // namespace
 
 /// @brief return page size from cache
-int arangodb::PageSize::getValue() {
-  return ::cache.cachedValue;
-}
+int arangodb::PageSize::getValue() { return ::cache.cachedValue; }

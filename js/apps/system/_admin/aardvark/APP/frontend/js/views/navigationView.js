@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, templateEngine, $, window, arangoHelper, _ */
+/* global Backbone, templateEngine, $, window, sessionStorage, Storage, arangoHelper, _ */
 (function () {
   'use strict';
   window.NavigationView = Backbone.View.extend({
@@ -69,6 +69,9 @@
         currentDB: this.currentDB.toJSON()
       }));
       arangoHelper.checkDatabasePermissions(this.continueRender.bind(this), this.continueRender.bind(this));
+      if (window.frontendConfig.isEnterprise === true) {
+        this.fetchServerTime();
+      }
     },
 
     continueRender: function (readOnly) {
@@ -126,11 +129,109 @@
       return this;
     },
 
+    fetchLicenseInfo: function (serverTime) {
+      const self = this;
+      const url = arangoHelper.databaseUrl('/_admin/license');
+
+      $.ajax({
+        type: "GET",
+        url: url,
+        success: function (licenseData) {
+          if (licenseData.status && licenseData.features && licenseData.features.expires) {
+            self.renderLicenseInfo(licenseData.status, licenseData.features.expires, serverTime);
+          } else {
+            self.showLicenseError();
+          }
+        },
+        error: function () {
+          self.showLicenseError();
+        }
+      });
+    },
+
+    fetchServerTime: function () {
+      const self = this;
+      const url = arangoHelper.databaseUrl('/_admin/time');
+
+      $.ajax({
+        type: "GET",
+        url: url,
+        success: function (timeData) {
+            if (!timeData.error && timeData.code === 200 && timeData.time) {
+              self.fetchLicenseInfo(timeData.time);
+            } else {
+              self.showGetTimeError();
+            }          
+        }
+        // intentionally no error handling: non-root users may not be allowed to fetch license information, but in that case we do not want to show an error
+      });
+    },
+
+    showLicenseError: function () {
+      const errorElement = '<div id="subNavLicenseInfo" class="alert alert-danger alert-license"><span><i class="fa fa-exclamation-triangle"></i></span> <span id="licenseInfoText">Error: Failed to fetch license information</span></div>';
+      $('#licenseInfoArea').append(errorElement);
+    },
+
+    showGetTimeError: function () {
+      const errorElement = '<div id="subNavLicenseInfo" class="alert alert-danger alert-license"><span><i class="fa fa-exclamation-triangle"></i></span> <span id="licenseInfoText">Error: Failed to fetch server time</span></div>';
+      $('#licenseInfoArea').append(errorElement);
+    },
+
+    renderLicenseInfo: function (status, expires, serverTime) {
+      if (status !== null && expires !== null) {
+        let infotext = '';
+        let daysInfo = '';
+        let alertClasses = 'alert alert-license';
+        switch (status) {
+        case 'expiring':
+          let remains = expires - Math.round(serverTime);
+          let daysInfo = Math.ceil(remains / (3600*24));
+          let hoursInfo = '';
+          let minutesInfo = '';
+          infotext = 'Your license is expiring in under ';
+          if (daysInfo > 1) {
+            infotext += daysInfo + ' days';
+          } else {
+            hoursInfo = Math.ceil(remains / 3600);
+            if (hoursInfo > 1) {
+              infotext += hoursInfo + ' hours';
+            } else {
+              minutesInfo = Math.ceil(remains / 60);
+              infotext += minutesInfo + ' minutes';
+            }
+
+          }
+          infotext += '. Please contact ArangoDB sales to extend your license urgently.';
+          this.appendLicenseInfoToUi(infotext, alertClasses);
+          break;
+        case 'expired':
+          daysInfo = Math.floor((Math.round(serverTime) - expires) / (3600*24));
+          infotext = 'Your license expired ' + daysInfo + ' days ago. New enterprise features cannot be created. Please contact ArangoDB sales immediately.';
+          alertClasses += ' alert-danger';
+          this.appendLicenseInfoToUi(infotext, alertClasses);
+          break;
+        case 'read-only':
+          infotext = 'Your license has expired. This installation has been restricted to read-only mode. Please contact ArangoDB sales immediately to extend your license.';
+          alertClasses += ' alert-danger';
+          this.appendLicenseInfoToUi(infotext, alertClasses);
+          break;
+        default:
+          break;
+        }
+      }
+    },
+
+    appendLicenseInfoToUi: function(infotext, alertClasses) {
+      var infoElement = '<div id="subNavLicenseInfo" class="' + alertClasses + '"><span><i class="fa fa-exclamation-triangle"></i></span> <span id="licenseInfoText">' + infotext + '</span></div>';
+      $('#licenseInfoArea').append(infoElement);
+    },
+
     resize: function () {
       // set menu sizes - responsive
-      var height = $(window).height() - $('.subMenuEntries').first().height();
-      $('#navigationBar').css('min-height', height);
-      $('#navigationBar').css('height', height);
+      const height = $(window).height() - $('.subMenuEntries').first().height();
+      const navBar = $('#navigationBar');
+      navBar.css('min-height', height);
+      navBar.css('height', height);
     },
 
     navigateBySelect: function () {
@@ -262,7 +363,7 @@
         });
       } else {
         $(self.subEl + ' .bottom').append(
-          '<li class="subMenuEntry</li>'
+          '<li class="subMenuEntry"></li>'
         );
       }
     },
@@ -295,18 +396,6 @@
         this.selectMenuItem(id + '-menu');
       }
     },
-
-    /*
-    breadcrumb: function (name) {
-
-      if (window.location.hash.split('/')[0] !== '#collection') {
-        $('#subNavigationBar .breadcrumb').html(
-          '<a class="activeBread" href="#' + name + '">' + name + '</a>'
-        )
-      }
-
-    },
-    */
 
     selectMenuItem: function (menuItem, noMenuEntry) {
       if (menuItem === undefined) {

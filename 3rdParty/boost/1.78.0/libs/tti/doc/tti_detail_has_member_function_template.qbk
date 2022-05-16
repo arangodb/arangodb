@@ -1,0 +1,128 @@
+[/ 
+  (C) Copyright Edward Diener 2020
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:tti_detail_has_member_function_template Introspecting member function template]
+
+We can introspect a member function template of a user-defined type
+using the TTI functionality we shall now explain.
+
+A member function template is a function template that is a non-static memmber
+of a user-defined type. An example of a member function template would be:
+
+  struct AType 
+    {
+    template<class X,class Y,class Z> double AFuncTemplate(X x,Y * y,Z & z) 
+      { ...some code using x,y,z; return 0.0; }
+    };
+    
+In order to introspect the function template we use some theoretical valid instantiation of
+the member function template `AFuncTemplate`. An instantiation of a function template
+was previously explained in the topic [link sectti_function_templates "Introspecting function templates technique"].
+
+For the purposes of illustration the instantiation we will use is:
+
+  double AFuncTemplate<int,long,bool>(int,long *,bool &)
+
+What we have now which the TTI will need in order to introspect the member function
+template `template<class X,class Y,class Z> double AFuncTemplate(X,Y *,Z &)`
+within the `AType` struct is:
+
+* The name of `AFuncTemplate`
+* The template parameters of `int,long,bool`
+* The enclosing type of `AType`
+* The return type of `double`
+* The function parameters of `int,long *,bool &`
+
+[heading Generating the metafunction]
+
+As with all TTI functionality for introspecting entities within a user-defined
+type introspecting a member function template is a two step process. The first
+process is using a macro to generate a metafunction. The macro for
+member function templates is [macroref BOOST_TTI_HAS_MEMBER_FUNCTION_TEMPLATE].
+This macro takes the name of the member function template and the instantiated 
+template parameters, the first two items in our list above:
+
+  BOOST_TTI_HAS_MEMBER_FUNCTION_TEMPLATE(AFuncTemplate,int,long,bool)
+  
+An alternative form for compilers which do not support variadic macros, and which will
+also work with compilers which do support variadic macros, is to specify
+the template parameters of the instantiation as a single macro argument using a 
+Boost PP array:
+  
+  BOOST_TTI_HAS_MEMBER_FUNCTION_TEMPLATE(AFuncTemplate,(3,(int,long,bool)))
+  
+The macro generates a metafunction based on the pattern of
+"has_member_function_template_'name_of_inner_member_function_template'",
+which in our example case would be `has_member_function_template_AFuncTemplate`.
+
+[heading Invoking the metafunction]
+
+To use this macro to test whether our member function template exists
+the metafunction the macro creates is invoked with the enclosing type, the instantiated return type,
+and the instantiated function parameters, with the resulting `value` being a compile time
+boolean constant which is `true` if the member function template exists,
+or `false` otherwise. There are two ways to do this. We can either
+use each of our needed types as separate parameters, with the function parameters
+being enclosed in an MPL forward sequence, or we can compose our needed type
+in the form of a pointer to member function type. In the first case we would have:
+
+  has_member_function_template_AFuncTemplate<AType,double,boost::mpl::vector<int,long *,bool &> >::value
+  
+and in the second case we would have:
+
+  has_member_function_template_AFuncTemplate<double (AType::*) (int,long *,bool &)>::value
+  
+Both invocations are equivalent in functionality.
+
+[heading Other considerations]
+
+The macro for generating the metafunction for introspecting member function templates
+also has, like other macros in the TTI library, a complex macro form where the
+end-user can directly specify the name of the metafunction to be generated. The
+corresponding macro is BOOST_TTI_TRAIT_HAS_MEMBER_FUNCTION_TEMPLATE, 
+where the first parameter is the name of the metafunction to be generated,
+the second parameter is the member function template name, and the remaining parameters
+are the instantiated template parameters. For our example we could have
+
+  BOOST_TTI_TRAIT_HAS_MEMBER_FUNCTION_TEMPLATE(AMetafunctionName,AFuncTemplate,int,long,bool)
+  
+or for the non-variadic macro form
+
+  BOOST_TTI_TRAIT_HAS_MEMBER_FUNCTION_TEMPLATE(AMetafunctionName,AFuncTemplate,(3,(int,long,bool)))
+  
+which generates a metafunction whose name would be `AMetafunctionName`.
+  
+In all other respects the resulting metafunction generated works exactly the same
+as when using the simpler macro form previously illustrated.
+
+If you do use the simple macro form, which generates the metafunction name
+from the name of the function template you are introspecting, you can use
+a corresponding macro, taking the name of the member function template as a single
+parameter, to create the appropriate metafunction name if you do not want to
+remember the pattern for generating the metafunction name. This macro name is
+`BOOST_TTI_HAS_MEMBER_FUNCTION_TEMPLATE_GEN` as in
+
+  BOOST_TTI_HAS_MEMBER_FUNCTION_TEMPLATE_GEN(AFuncTemplate)
+  
+which would generate the name `has_member_function_template_AFuncTemplate`.
+
+When invoking the appropriate metafunction using the long form of an enclosing
+type, instantiated return type, and instantiated function parameters, a fourth
+template argument may optionally be given which holds a Boost FunctionTypes tag
+type to specify cv-qualification. This means you can add 'const', 'volatile', or
+both by specifying an appropriate tag type. An alternate to using the tag type 
+is to specify the enclosing type as 'const', 'volatile', or both.
+As an example if you specify the tag type as 
+'boost::function_types::const_qualified' or if you specify the enclosing
+type as 'const YourEnclosingType', the member function template which you are
+introspecting must be a const function template to match correctly.
+
+When invoking the metafunction using the shorter form of a pointer to member function
+you can simply add a possible cv-qualification, such as `const`, to the end of the
+pointer to member function syntax.
+
+[endsect]

@@ -1,0 +1,97 @@
+[section boost/python/overloads.hpp]
+[section Introduction]
+Defines facilities for generating families of overloaded Python functions and extension class methods from C++ functions and member functions with default arguments, or from similar families of C++ overloads
+[section overload-dispatch-expressions]
+An overload-dispatch-expression is used to describe a family of overloaded methods to be generated for an extension class. It has the following properties:
+[variablelist
+[[docstring][An [link ntbs] whose value will bound to the methods' `__doc__` attribute]]
+[[keywords][A [link function_invocation_and_creation.boost_python_args_hpp.introduction.keyword_expressions keyword-expression] which will be used to name (a trailing subsequence of) the arguments to the generated methods.]]
+[[call policies][An instance of some type which models CallPolicies.]]
+[[minimum arity][The minimum number of arguments to be accepted by a generated method overload.]]
+[[maximum arity][The maximum number of arguments to be accepted by a generated method overload.]]
+]
+[endsect]
+[endsect]
+[section OverloadDispatcher Concept]
+An OverloadDispatcher X is a class which has a minimum arity and a maximum arity, and for which the following following are valid overload-dispatch-expressions, with the same minimum and maximum arity as the OverloadDispatcher.
+``
+X()
+X(docstring)
+X(docstring, keywords)
+X(keywords, docstring)
+X()[policies]
+X(docstring)[policies]
+X(docstring, keywords)[policies]
+X(keywords, docstring)[policies]
+``
+* If policies are supplied, it must be an instance of a type which models [link concepts.callpolicies CallPolicies], and will be used as the result's call policies. Otherwise the result's call policies will be an instance of [link function_invocation_and_creation.models_of_callpolicies.boost_python_default_call_polici `default_call_policies`]. 
+* If docstring is supplied it must be an [link ntbs], and will be used as the result's docstring. Otherwise the result has an empty docstring. 
+* If keywords is supplied it must be the result of a [link function_invocation_and_creation.boost_python_args_hpp.introduction.keyword_expressions keyword-expression] whose length is no greater than X's maximum arity, and will be used as the result's keywords. Otherwise the result's keywords will be empty. 
+[endsect]
+[section Macros]
+``
+BOOST_PYTHON_FUNCTION_OVERLOADS(name, func_id, min_args, max_args)
+``
+Expands to the definition of an OverloadDispatcher called name in the current scope which can be used to generate the following function invocation:
+``func_id(a1, a2,...ai);``
+for all `min_args <= i <= max_args`.
+``
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(name, member_name, min_args, max_args)
+``
+Expands to the definition of an OverloadDispatcher called name in the current scope which can be used to generate the following function invocation: 
+``x.member_name(a1, a2,...ai);``
+for all min_args <= i <= max_args, where x is a reference to an object of class type. 
+[endsect]
+[section Example]
+``
+#include <boost/python/module.hpp>
+#include <boost/python/def.hpp>
+#include <boost/python/args.hpp>
+#include <boost/python/tuple.hpp>
+#include <boost/python/class.hpp>
+#include <boost/python/overloads.hpp>
+#include <boost/python/return_internal_reference.hpp>
+
+using namespace boost::python;
+
+tuple f(int x = 1, double y = 4.25, char const* z = "wow")
+{
+    return make_tuple(x, y, z);
+}
+
+BOOST_PYTHON_FUNCTION_OVERLOADS(f_overloads, f, 0, 3)
+
+struct Y {};
+struct X
+{
+    Y& f(int x, double y = 4.25, char const* z = "wow")
+    {
+        return inner;
+    }
+    Y inner;
+};
+
+BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(f_member_overloads, f, 1, 3)
+
+BOOST_PYTHON_MODULE(args_ext)
+{
+    def("f", f, 
+        f_overloads(
+            args("x", "y", "z"), "This is f's docstring"
+        ));
+
+    
+    class_<Y>("Y")
+        ;
+            
+    class_<X>("X", "This is X's docstring")
+        .def("f1", &X::f, 
+                f_member_overloads(
+                    args("x", "y", "z"), "f's docstring"
+                )[return_internal_reference<>()]
+        )
+        ;
+}
+``
+[endsect]
+[endsect]

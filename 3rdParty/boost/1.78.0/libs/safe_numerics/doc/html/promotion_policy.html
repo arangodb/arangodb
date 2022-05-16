@@ -1,0 +1,245 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>PromotionPolicy&lt;PP&gt;</title>
+<link rel="stylesheet" href="boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Safe Numerics">
+<link rel="up" href="concepts.html" title="Type Requirements">
+<link rel="prev" href="integer_concept.html" title="Integer&lt;T&gt;">
+<link rel="next" href="exception_policy.html" title="ExceptionPolicy&lt;EP&gt;">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img href="index.html" height="164px" src="pre-boost.jpg" alt="Library Documentation Index"></td>
+<td><h2>Safe Numerics</h2></td>
+</tr></table>
+<div class="spirit-nav">
+<a accesskey="p" href="integer_concept.html"><img src="images/prev.png" alt="Prev"></a><a accesskey="u" href="concepts.html"><img src="images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="images/home.png" alt="Home"></a><a accesskey="n" href="exception_policy.html"><img src="images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="safe_numerics.promotion_policy"></a>PromotionPolicy&lt;PP&gt;</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="promotion_policy.html#idm462685120784">Description</a></span></dt>
+<dt><span class="section"><a href="promotion_policy.html#idm462685110000">Notation</a></span></dt>
+<dt><span class="section"><a href="promotion_policy.html#idm462685100784">Valid Expressions</a></span></dt>
+<dt><span class="section"><a href="promotion_policy.html#idm462685075872">Models</a></span></dt>
+<dt><span class="section"><a href="promotion_policy.html#idm462684980816">Header</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm462685120784"></a>Description</h4></div></div></div>
+<p>In C++ expressions, arguments must be of the same type. If they are
+    not, all arguments are converted to a common type in accordance with rules
+    of the C++ standard. For some applications of the safe numerics library,
+    we might want conversions which are different than the standard ones. This
+    class type implements the conversion functions that are to be used with
+    the safe numeric type being instantiated.</p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">x</span><span class="special">;</span>
+<span class="keyword">char</span> <span class="identifier">y</span><span class="special">;</span>
+<span class="keyword">auto</span> <span class="identifier">z</span> <span class="special">=</span> <span class="identifier">x</span> <span class="special">+</span> <span class="identifier">y</span></pre>
+<p>the type of <code class="computeroutput">z</code> will be an
+    <code class="computeroutput">int</code>. This is a consequence for the standard rules for type
+    promotion for C/C++ arithmetic. A key feature of library permits one to
+    specify his own type promotion rules via a PromotionPolicy class.</p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm462685110000"></a>Notation</h4></div></div></div>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col align="left">
+<col align="left">
+</colgroup>
+<tbody>
+<tr>
+<td align="left"><code class="computeroutput">PP</code></td>
+<td align="left">A type that full fills the requirements of a
+            PromotionPollicy</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">T, U</code></td>
+<td align="left">A type that is a model of the Numeric concept</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">R</code></td>
+<td align="left">An object of type modeling Numeric which can be used to
+            construct a SafeNumeric type.</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm462685100784"></a>Valid Expressions</h4></div></div></div>
+<p>Any operations which result in integers which cannot be represented
+    as some Numeric type will throw an exception.These expressions return a
+    type which can be used as the basis create a SafeNumeric type.</p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col align="left">
+<col align="left">
+</colgroup>
+<thead><tr>
+<th align="left">Expression</th>
+<th align="left">Return Value</th>
+</tr></thead>
+<tbody>
+<tr>
+<td align="left"><code class="computeroutput">PP::addition_result&lt;T,
+              U&gt;::type</code></td>
+<td align="left">unspecified Numeric type</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">PP::subtraction_result&lt;T,
+              U&gt;::type</code></td>
+<td align="left">unspecified Numeric type</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">PP::multiplication_result&lt;T,
+              U&gt;::type</code></td>
+<td align="left">unspecified Numeric type</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">PP::division_result&lt;T,
+              U&gt;::type</code></td>
+<td align="left">unspecified Numeric type</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">PP::modulus_result&lt;T, U&gt;::type</code></td>
+<td align="left">unspecified Numeric type</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">PP::comparison_result&lt;T,
+              U&gt;::type</code></td>
+<td align="left">bool</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">PP::left_shift_result&lt;T,
+              U&gt;::type</code></td>
+<td align="left">unspecified Numeric type</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">PP::right_shift_result&lt;T,
+              u&gt;::type</code></td>
+<td align="left">unspecified Numeric type</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">PP::bitwise_or_result&lt;T,
+              U&gt;::type</code></td>
+<td align="left">unspecified Numeric type</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">PP::bitwise_and_result&lt;T,
+              U&gt;::type</code></td>
+<td align="left">unspecified Numeric type</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">PP::bitwise_xor_result&lt;T,
+              U&gt;::type</code></td>
+<td align="left">unspecified Numeric type</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm462685075872"></a>Models</h4></div></div></div>
+<p>The library contains a number of pre-made promotion policies:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+<p><a name="safe_numerics.promotion_policy.models.native"></a><code class="computeroutput">boost::numeric::native</code></p>
+<p>Use the normal C/C++ expression type promotion rules.
+        </p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">x</span><span class="special">;</span>
+<span class="keyword">char</span> <span class="identifier">y</span><span class="special">;</span>
+<span class="keyword">auto</span> <span class="identifier">z</span> <span class="special">=</span> <span class="identifier">x</span> <span class="special">+</span> <span class="identifier">y</span><span class="special">;</span> <span class="comment">// could result in overflow</span>
+<span class="identifier">safe</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="identifier">native</span><span class="special">&gt;</span> <span class="identifier">sx</span><span class="special">;</span>
+<span class="keyword">auto</span> <span class="identifier">sz</span> <span class="special">=</span> <span class="identifier">sx</span> <span class="special">+</span> <span class="identifier">y</span><span class="special">;</span> <span class="comment">// standard C++ code which detects errors</span></pre>
+<p>Type sz will be a <a class="link" href="">SafeNumeric</a> type
+        based on <code class="computeroutput">int</code>. If the result exceeds the maximum value
+        that can be stored in an <code class="computeroutput">int</code>, an error is
+        detected.</p>
+<p>The <code class="computeroutput">native</code> policy is documented in <a class="link" href="promotion_policies/native.html" title="native">Promotion Policies -
+        native</a>.</p>
+</li>
+<li class="listitem">
+<p><a name="safe_numerics.promotion_policy.models.automatic"></a><code class="computeroutput">boost::numeric::automatic</code></p>
+<p>Use optimizing expression type promotion rules. These rules
+        replace the normal C/C++ type promotion rules with other rules which
+        are designed to result in more efficient computations. Expression
+        types are promoted to the smallest type which can be guaranteed to
+        hold the result without overflow. If there is no such type, the result
+        will be checked for overflow. Consider the following
+        example:</p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">x</span><span class="special">;</span>
+<span class="keyword">char</span> <span class="identifier">y</span><span class="special">;</span>
+<span class="keyword">auto</span> <span class="identifier">z</span> <span class="special">=</span> <span class="identifier">x</span> <span class="special">+</span> <span class="identifier">y</span><span class="special">;</span> <span class="comment">// could result in overflow</span>
+<span class="identifier">safe</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="identifier">automatic</span><span class="special">&gt;</span> <span class="identifier">sx</span><span class="special">;</span>
+<span class="keyword">auto</span> <span class="identifier">sz</span> <span class="special">=</span> <span class="identifier">sx</span> <span class="special">+</span> <span class="identifier">y</span><span class="special">;</span> 
+    <span class="comment">// sz is a safe type based on long</span>
+    <span class="comment">// hence sz is guaranteed not to overflow.</span>
+<span class="identifier">safe_unsigned_range</span><span class="special">&lt;</span><span class="number">1</span><span class="special">,</span> <span class="number">4</span><span class="special">&gt;</span> <span class="identifier">a</span><span class="special">;</span>
+<span class="identifier">safe_unsigned_range</span><span class="special">&lt;</span><span class="number">2</span><span class="special">,</span> <span class="number">4</span><span class="special">&gt;</span> <span class="identifier">b</span><span class="special">;</span>
+<span class="keyword">auto</span> <span class="identifier">c</span> <span class="special">=</span> <span class="identifier">a</span> <span class="special">+</span> <span class="identifier">b</span><span class="special">;</span> <span class="comment">// c will be a safe type with a range [3,8] and cannot overflow</span>
+</pre>
+<p>Type sz will be a <a class="link" href="">SafeNumeric</a> type
+        which is guaranteed to hold he result of x + y. In this case that will
+        be a long int (or perhaps a long long) depending upon the compiler and
+        machine architecture. In this case, there will be no need for any
+        special checking on the result and there can be no overflow.</p>
+<p>Type of c will be a signed character as that type can be
+        guaranteed to hold the sum so no overflow checking is done.</p>
+<p>This policy is documented in <a class="link" href="promotion_policies/automatic.html" title="automatic">Promotion
+        Policies - automatic</a></p>
+</li>
+<li class="listitem">
+<p>boost::numeric::cpp</p>
+<p>Use expression type promotion rules to emulate another
+        processor. When this policy is used, C++ type for safe integers
+        follows the rules that a compiler on the target processor would use.
+        This permits one to test code destined for a one processor on the
+        another one. One situation there this can be very, very useful is when
+        testing code destined for a micro controller which doesn't have the
+        logging, debugging, input/output facilities of a
+        desktop.</p>
+<pre class="programlisting"><span class="comment">// specify a promotion policy to support proper emulation of </span>
+<span class="comment">// PIC 18f2520 types on the desktop</span>
+<span class="keyword">using</span> <span class="identifier">pic16_promotion</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">numeric</span><span class="special">::</span><span class="identifier">cpp</span><span class="special">&lt;</span>
+    <span class="number">8</span><span class="special">,</span>  <span class="comment">// char      8 bits</span>
+    <span class="number">16</span><span class="special">,</span> <span class="comment">// short     16 bits</span>
+    <span class="number">16</span><span class="special">,</span> <span class="comment">// int       16 bits</span>
+    <span class="number">16</span><span class="special">,</span> <span class="comment">// long      16 bits</span>
+    <span class="number">32</span>  <span class="comment">// long long 32 bits</span>
+<span class="special">&gt;</span><span class="special">;</span>
+<span class="special">...</span>
+<span class="identifier">safe</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint16_t</span><span class="special">,</span> <span class="identifier">pic16_promotion</span><span class="special">&gt;</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">y</span><span class="special">;</span>
+<span class="special">...</span>
+
+<span class="identifier">x</span> <span class="special">+</span> <span class="identifier">y</span><span class="special">;</span> <span class="comment">// detect possible overflow on the pic.</span></pre>
+<p>For a complete example see <a class="link" href="safety_critical_embedded_controller.html" title="Safety Critical Embedded Controller">Safety
+        Critical Embedded Controller</a>.</p>
+</li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm462684980816"></a>Header</h4></div></div></div>
+<p><a href="../../include/boost/safe_numerics/concept/promotion_policy.hpp" target="_top"><code class="computeroutput">#include
+    &lt;boost/safe_numerics/concepts/promotion_policy.hpp&gt;
+    </code></a></p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2012-2018 Robert Ramey<p><a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">Subject to Boost
+      Software License</a></p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="integer_concept.html"><img src="images/prev.png" alt="Prev"></a><a accesskey="u" href="concepts.html"><img src="images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="images/home.png" alt="Home"></a><a accesskey="n" href="exception_policy.html"><img src="images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

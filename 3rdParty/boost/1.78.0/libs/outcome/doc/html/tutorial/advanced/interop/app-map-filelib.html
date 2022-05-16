@@ -1,0 +1,70 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Mapping the File I/O library into the Application - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/advanced/interop/app-map-httplib2.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/advanced/interop.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/advanced/interop/app-map-tidylib.html"><img src="../../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both">Mapping the File I/O library into the Application</h1></div></div></div>
+  <p>To handle the File I/O library, once again we turn to custom <code>ValueOrError</code>
+converters:</p>
+
+<div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="c1">// Inject custom ValueOrError conversion
+</span><span class="c1"></span><span class="n">BOOST_OUTCOME_V2_NAMESPACE_BEGIN</span>
+<span class="k">namespace</span> <span class="n">convert</span>
+<span class="p">{</span>
+  <span class="c1">// Provide custom ValueOrError conversion from filelib::result&lt;U&gt;
+</span><span class="c1"></span>  <span class="c1">// into any app::outcome&lt;T&gt;
+</span><span class="c1"></span>  <span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span><span class="err"> </span><span class="nc">T</span><span class="p">,</span> <span class="k">class</span><span class="err"> </span><span class="nc">U</span><span class="o">&gt;</span>  <span class="c1">//
+</span><span class="c1"></span>  <span class="k">struct</span> <span class="n">value_or_error</span><span class="o">&lt;</span><span class="n">app</span><span class="o">::</span><span class="n">outcome</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">filelib</span><span class="o">::</span><span class="n">result</span><span class="o">&lt;</span><span class="n">U</span><span class="o">&gt;&gt;</span>
+  <span class="p">{</span>
+    <span class="c1">// True to indicate that this converter wants `result`/`outcome`
+</span><span class="c1"></span>    <span class="c1">// to NOT reject all other `result`
+</span><span class="c1"></span>    <span class="k">static</span> <span class="k">constexpr</span> <span class="kt">bool</span> <span class="n">enable_result_inputs</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+    <span class="c1">// False to indicate that this converter wants `outcome` to NOT
+</span><span class="c1"></span>    <span class="c1">// reject all other `outcome`
+</span><span class="c1"></span>    <span class="k">static</span> <span class="k">constexpr</span> <span class="kt">bool</span> <span class="n">enable_outcome_inputs</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+
+    <span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span><span class="err"> </span><span class="nc">X</span><span class="p">,</span>                                                                              <span class="c1">//
+</span><span class="c1"></span>              <span class="k">typename</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">enable_if_t</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">is_same</span><span class="o">&lt;</span><span class="n">filelib</span><span class="o">::</span><span class="n">result</span><span class="o">&lt;</span><span class="n">U</span><span class="o">&gt;</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">decay_t</span><span class="o">&lt;</span><span class="n">X</span><span class="o">&gt;&gt;::</span><span class="n">value</span>  <span class="c1">//
+</span><span class="c1"></span>                                          <span class="o">&amp;&amp;</span> <span class="n">std</span><span class="o">::</span><span class="n">is_constructible</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span> <span class="n">U</span><span class="o">&gt;::</span><span class="n">value</span><span class="o">&gt;&gt;</span>                   <span class="c1">//
+</span><span class="c1"></span>    <span class="k">constexpr</span> <span class="n">app</span><span class="o">::</span><span class="n">outcome</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span> <span class="k">operator</span><span class="p">()(</span><span class="n">X</span> <span class="o">&amp;&amp;</span><span class="n">src</span><span class="p">)</span>
+    <span class="p">{</span>
+      <span class="c1">// Forward any successful value
+</span><span class="c1"></span>      <span class="k">if</span><span class="p">(</span><span class="n">src</span><span class="p">.</span><span class="n">has_value</span><span class="p">())</span>
+      <span class="p">{</span>
+        <span class="k">return</span> <span class="p">{</span><span class="n">std</span><span class="o">::</span><span class="n">forward</span><span class="o">&lt;</span><span class="n">X</span><span class="o">&gt;</span><span class="p">(</span><span class="n">src</span><span class="p">).</span><span class="n">value</span><span class="p">()};</span>
+      <span class="p">}</span>
+
+      <span class="c1">// Synthesise a filesystem_error, exactly as if someone had
+</span><span class="c1"></span>      <span class="c1">// called src.value()
+</span><span class="c1"></span>      <span class="k">auto</span> <span class="o">&amp;</span><span class="n">fi</span> <span class="o">=</span> <span class="n">src</span><span class="p">.</span><span class="n">error</span><span class="p">();</span>
+      <span class="n">BOOST_OUTCOME_V2_NAMESPACE</span><span class="o">::</span><span class="n">try_throw_std_exception_from_error</span><span class="p">(</span><span class="n">fi</span><span class="p">.</span><span class="n">ec</span><span class="p">);</span>  <span class="c1">// might throw
+</span><span class="c1"></span>      <span class="k">return</span> <span class="p">{</span><span class="n">std</span><span class="o">::</span><span class="n">make_exception_ptr</span><span class="p">(</span>                                  <span class="c1">//
+</span><span class="c1"></span>      <span class="n">filelib</span><span class="o">::</span><span class="n">filesystem_error</span><span class="p">(</span><span class="n">fi</span><span class="p">.</span><span class="n">ec</span><span class="p">.</span><span class="n">message</span><span class="p">(),</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">fi</span><span class="p">.</span><span class="n">path1</span><span class="p">),</span> <span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">fi</span><span class="p">.</span><span class="n">path2</span><span class="p">),</span> <span class="n">fi</span><span class="p">.</span><span class="n">ec</span><span class="p">))};</span>
+    <span class="p">}</span>
+  <span class="p">};</span>
+<span class="p">}</span>  <span class="c1">// namespace convert
+</span><span class="c1"></span><span class="n">BOOST_OUTCOME_V2_NAMESPACE_END</span>
+</code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/finale.cpp#L296" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<p>Note that the conversion exactly duplicates the implementation of
+<code>throw_as_system_error_with_payload(failure_info fi)</code> from
+namespace <code>filelib</code>. In a production implementation, you probably
+ought to call that function and catch the exception it throws
+into a pointer, as that would be more long term maintainable.</p>
+
+
+        </div><p><small>Last revised: February 11, 2019 at 13:38:04 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/advanced/interop/app-map-httplib2.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/advanced/interop.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/advanced/interop/app-map-tidylib.html"><img src="../../../images/next.png" alt="Next"></a></div></body>
+</html>

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,17 +28,23 @@
 #include "VocBase/Identifiers/DataSourceId.h"
 
 #include <cstdint>
+#include <limits>
+#include <memory>
 #include <unordered_set>
 #include <vector>
 
 namespace arangodb {
+
+class Index;
+class IndexIteratorCoveringData;
+
 namespace transaction {
 class Methods;
 }
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 
 namespace aql {
 
@@ -48,58 +54,78 @@ class Projections {
  public:
   /// @brief projection for a single top-level attribute or a nested attribute
   struct Projection {
-   /// @brief the attribute path
-   AttributeNamePath path;
-   /// @brief attribute position in a covering index entry. only valid if _supportsCoveringIndex is true
-   uint16_t coveringIndexPosition;
-   /// @brief attribute length in a covering index entry. this can be shorter than the projection
-   uint16_t coveringIndexCutoff;
-   /// @brief attribute type
-   AttributeNamePath::Type type;
+    /// @brief the attribute path
+    AttributeNamePath path;
+    /// @brief attribute position in a covering index entry. only valid if
+    /// usesCoveringIndex() is true
+    uint16_t coveringIndexPosition;
+    /// @brief attribute length in a covering index entry. this can be shorter
+    /// than the projection
+    uint16_t coveringIndexCutoff;
+    /// @brief attribute type
+    AttributeNamePath::Type type;
   };
-  
+
+  static constexpr uint16_t kNoCoveringIndexPosition =
+      std::numeric_limits<uint16_t>::max();
+
   Projections();
 
   /// @brief create projections from the vector of attributes passed.
   /// attributes will be sorted and made unique inside
   explicit Projections(std::vector<arangodb::aql::AttributeNamePath> paths);
-  explicit Projections(std::unordered_set<arangodb::aql::AttributeNamePath> const& paths);
+  explicit Projections(
+      std::unordered_set<arangodb::aql::AttributeNamePath> const& paths);
 
   Projections(Projections&&) = default;
   Projections& operator=(Projections&&) = default;
   Projections(Projections const&) = default;
   Projections& operator=(Projections const&) = default;
 
-  /// @brief determine if there is covering support by indexes passed
-  void determineIndexSupport(DataSourceId const& id, 
-                             std::vector<transaction::Methods::IndexHandle> const& indexes);
+  static bool isCoveringIndexPosition(uint16_t position) noexcept;
 
-  /// @brief whether or not the projections are backed by a covering index
-  bool supportsCoveringIndex() const noexcept { return _supportsCoveringIndex; }
+  /// @brief set covering index context for these projections
+  void setCoveringContext(DataSourceId const& id,
+                          std::shared_ptr<arangodb::Index> const& index);
+
+  /// @brief whether or not the projections are backed by the specific index
+  bool usesCoveringIndex(
+      std::shared_ptr<arangodb::Index> const& index) const noexcept {
+    return _index == index;
+  }
+
+  /// @brief whether or not the projections are backed by any index
+  bool usesCoveringIndex() const noexcept { return _index != nullptr; }
 
   /// @brief whether or not there are any projections
   bool empty() const noexcept { return _projections.empty(); }
-  
+
   /// @brief number of projections
   size_t size() const noexcept { return _projections.size(); }
-  
+
   /// @brief checks if we have a single attribute projection on the attribute
   bool isSingle(std::string const& attribute) const noexcept;
-  
+
+  // return the covering index position for a specific attribute type.
+  // will throw if the index does not cover!
+  uint16_t coveringIndexPosition(aql::AttributeNamePath::Type type) const;
+
   /// @brief get projection at position
   Projection const& operator[](size_t index) const;
-  
+
   /// @brief get projection at position
   Projection& operator[](size_t index);
- 
+
   /// @brief extract projections from a full document
-  void toVelocyPackFromDocument(arangodb::velocypack::Builder& b, arangodb::velocypack::Slice slice,
+  void toVelocyPackFromDocument(arangodb::velocypack::Builder& b,
+                                arangodb::velocypack::Slice slice,
                                 transaction::Methods const* trxPtr) const;
-  
+
   /// @brief extract projections from a covering index
-  void toVelocyPackFromIndex(arangodb::velocypack::Builder& b, arangodb::velocypack::Slice slice,
+  void toVelocyPackFromIndex(arangodb::velocypack::Builder& b,
+                             IndexIteratorCoveringData& covering,
                              transaction::Methods const* trxPtr) const;
-  
+
   /// @brief serialize the projections to velocypack
   void toVelocyPack(arangodb::velocypack::Builder& b) const;
 
@@ -114,18 +140,16 @@ class Projections {
   /// shared prefix
   void removeSharedPrefixes();
 
- private:
   /// @brief all our projections (sorted, unique)
   std::vector<Projection> _projections;
 
-  /// @brief collection data source id (in case _id is queries and we need to resolve
-  /// the collection name)
+  /// @brief collection data source id (in case _id is queries and we need to
+  /// resolve the collection name)
   DataSourceId _datasourceId;
 
   /// @brief whether or not the projections are backed by a covering index
-  bool _supportsCoveringIndex;
+  std::shared_ptr<arangodb::Index> _index;
 };
 
-} // namespace aql
-} // namespace arangodb
-
+}  // namespace aql
+}  // namespace arangodb

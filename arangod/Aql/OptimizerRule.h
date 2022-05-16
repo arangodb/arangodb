@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,11 +23,10 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
-#include <velocypack/StringRef.h>
-
 #include <type_traits>
+#include <memory>
+
+#include "Basics/Common.h"
 
 namespace arangodb {
 namespace aql {
@@ -42,7 +41,8 @@ struct OptimizerRule;
 /// set the level of the appended plan to the largest level of rule
 /// that ought to be considered as done to indicate which rule is to be
 /// applied next.
-typedef void (*RuleFunction)(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+typedef void (*RuleFunction)(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                             OptimizerRule const&);
 
 /// @brief type of an optimizer rule
 struct OptimizerRule {
@@ -53,12 +53,14 @@ struct OptimizerRule {
     CanBeDisabled = 4,
     CanCreateAdditionalPlans = 8,
     DisabledByDefault = 16,
+    EnterpriseOnly = 32
   };
 
   /// @brief helper for building flags
-  template <typename... Args>
+  template<typename... Args>
   static std::underlying_type<Flags>::type makeFlags(Flags flag, Args... args) {
-    return static_cast<std::underlying_type<Flags>::type>(flag) + makeFlags(args...);
+    return static_cast<std::underlying_type<Flags>::type>(flag) +
+           makeFlags(args...);
   }
 
   static std::underlying_type<Flags>::type makeFlags() {
@@ -67,28 +69,23 @@ struct OptimizerRule {
 
   /// @brief check a flag for the rule
   bool hasFlag(Flags flag) const {
-    return ((flags & static_cast<std::underlying_type<Flags>::type>(flag)) != 0);
+    return ((flags & static_cast<std::underlying_type<Flags>::type>(flag)) !=
+            0);
   }
 
-  bool canBeDisabled() const {
-    return hasFlag(Flags::CanBeDisabled);
-  }
+  bool canBeDisabled() const { return hasFlag(Flags::CanBeDisabled); }
 
-  bool isClusterOnly() const {
-    return hasFlag(Flags::ClusterOnly);
-  }
+  bool isClusterOnly() const { return hasFlag(Flags::ClusterOnly); }
 
-  bool isHidden() const {
-    return hasFlag(Flags::Hidden);
-  }
+  bool isHidden() const { return hasFlag(Flags::Hidden); }
 
   bool canCreateAdditionalPlans() const {
     return hasFlag(Flags::CanCreateAdditionalPlans);
   }
 
-  bool isDisabledByDefault() const {
-    return hasFlag(Flags::DisabledByDefault);
-  }
+  bool isDisabledByDefault() const { return hasFlag(Flags::DisabledByDefault); }
+
+  bool isEnterpriseOnly() const { return hasFlag(Flags::EnterpriseOnly); }
 
   /// @brief optimizer rules
   enum RuleLevel : int {
@@ -211,6 +208,9 @@ struct OptimizerRule {
     // move filters and sort conditions into views and remove them
     handleArangoSearchViewsRule,
 
+    // move constrained sort into views
+    handleConstrainedSortInView,
+
     // remove calculations that are redundant
     // needs to run after filter removal
     removeUnnecessaryCalculationsRule2,
@@ -228,15 +228,12 @@ struct OptimizerRule {
     /// Pass 9: fuse filter conditions
     fuseFiltersRule,
 
-    /// Pass 9: patch update statements
-    patchUpdateStatementsRule,
+  /// "Pass 10": final transformations for the cluster
 
-    /// "Pass 10": final transformations for the cluster
-
-    // optimize queries in the cluster so that the entire query
-    // gets pushed to a single server
-    // if applied, this rule will turn all other cluster rules off
-    // for the current plan
+  // optimize queries in the cluster so that the entire query
+  // gets pushed to a single server
+  // if applied, this rule will turn all other cluster rules off
+  // for the current plan
 #ifdef USE_ENTERPRISE
     clusterOneShardRule,
 #endif
@@ -260,7 +257,8 @@ struct OptimizerRule {
     scatterIResearchViewInClusterRule,
 
 #ifdef USE_ENTERPRISE
-    // move traversal on SatelliteGraph to db server and add scatter / gather / remote
+    // move traversal on SatelliteGraph to db server and add scatter / gather /
+    // remote
     scatterSatelliteGraphRule,
 #endif
 
@@ -301,7 +299,8 @@ struct OptimizerRule {
     // push collect operations to the db servers
     collectInClusterRule,
 
-    // make sort node aware of subsequent limit statements for internal optimizations
+    // make sort node aware of subsequent limit statements for internal
+    // optimizations
     applySortLimitRule,
 
     // try to restrict fragments to a single shard if possible
@@ -315,18 +314,21 @@ struct OptimizerRule {
     // avoid copying large amounts of unneeded documents
     moveFiltersIntoEnumerateRule,
 
-    // turns LENGTH(FOR doc IN collection ... RETURN doc) into an optimized count
+    // turns LENGTH(FOR doc IN collection ... RETURN doc) into an optimized
+    // count
     // operation
     optimizeCountRule,
 
     // parallelizes execution in coordinator-sided GatherNodes
     parallelizeGatherRule,
 
-    // allows execution nodes to asynchronously prefetch the next batch from their
+    // allows execution nodes to asynchronously prefetch the next batch from
+    // their
     // upstream node.
     asyncPrefetch,
-    
-    // reduce a sorted gather to an unsorted gather if only a single shard is affected
+
+    // reduce a sorted gather to an unsorted gather if only a single shard is
+    // affected
     decayUnnecessarySortedGatherRule,
 
 #ifdef USE_ENTERPRISE
@@ -363,17 +365,29 @@ struct OptimizerRule {
 
   static_assert(scatterInClusterRule < parallelizeGatherRule);
 
-  velocypack::StringRef name;
+  static_assert(moveCalculationsUpRule < applySortLimitRule,
+                "sort-limit adds/moves limit nodes. And calculations should "
+                "not be moved up after that.");
+  static_assert(moveCalculationsUpRule2 < applySortLimitRule,
+                "sort-limit adds/moves limit nodes. And calculations should "
+                "not be moved up after that.");
+
+  static_assert(
+      handleConstrainedSortInView < lateDocumentMaterializationArangoSearchRule,
+      "Constrained sort optimization outperforms late materialization for "
+      "views so it should have a try before late materialization. "
+      "Also constrained sort rule now does not expects any late "
+      "materialization variables replacement");
+
+  std::string_view name;
   RuleFunction func;
   RuleLevel level;
   std::underlying_type<Flags>::type flags;
 
   OptimizerRule() = delete;
-  OptimizerRule(velocypack::StringRef name, RuleFunction const& ruleFunc, RuleLevel level, std::underlying_type<Flags>::type flags)
-      : name(name),
-        func(ruleFunc),
-        level(level),
-        flags(flags) {}
+  OptimizerRule(std::string_view name, RuleFunction const& ruleFunc,
+                RuleLevel level, std::underlying_type<Flags>::type flags)
+      : name(name), func(ruleFunc), level(level), flags(flags) {}
 
   OptimizerRule(OptimizerRule&& other) = default;
   OptimizerRule& operator=(OptimizerRule&& other) = default;
@@ -392,4 +406,3 @@ struct OptimizerRule {
 
 }  // namespace aql
 }  // namespace arangodb
-

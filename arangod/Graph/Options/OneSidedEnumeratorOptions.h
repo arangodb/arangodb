@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,11 +34,10 @@ namespace graph {
 struct OneSidedEnumeratorOptions {
  public:
   OneSidedEnumeratorOptions(size_t minDepth, size_t maxDepth);
-
   ~OneSidedEnumeratorOptions();
 
-  size_t getMinDepth() const;
-  size_t getMaxDepth() const;
+  [[nodiscard]] size_t getMinDepth() const;
+  [[nodiscard]] size_t getMaxDepth() const;
 
  private:
   size_t _minDepth;
@@ -46,4 +45,3 @@ struct OneSidedEnumeratorOptions {
 };
 }  // namespace graph
 }  // namespace arangodb
-

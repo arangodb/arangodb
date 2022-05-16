@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,8 +31,8 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
-  
+}  // namespace velocypack
+
 struct HealthData {
   Result res;
   /// @brief timestamp of full last health check execution. we only execute the
@@ -46,5 +46,4 @@ struct HealthData {
   void toVelocyPack(velocypack::Builder& builder) const;
 };
 
-}
-
+}  // namespace arangodb

@@ -1,0 +1,16 @@
+[section Compiler Support]
+
+_yap_ is written against the C++14 and C++17 standards.  It will use C++17
+features if they are present, and otherwise is C++14 code.
+
+_yap_ also uses Boost.Hana extensively, so only compilers that support Hana
+will be usable in building _yap_.
+
+Clang versions 3.8 and later (which corresponds to XCode versions 7.3 or
+later), and GCC versions 6 and later should work.
+
+MSVC++ version 14.15 (Visual Studio 2017 version 15.8) is partially supported.
+The tests all pass, but some compilation errors can be found in some of the
+examples.
+
+[endsect]

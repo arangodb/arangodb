@@ -1,0 +1,17 @@
+{
+    "key": "range",
+    "name": "Range",
+    "authors": [
+        "Niel Groves",
+        "Thorsten Ottosen"
+    ],
+    "description": "A new infrastructure for generic algorithms that builds on top of the new iterator concepts.",
+    "category": [
+        "Algorithms"
+    ],
+    "maintainers": [
+        "Neil Groves <neilgroves -at- googlemail.com>",
+        "Nathan Ridge <zeratul976 -at- hotmail.com>"
+    ],
+    "cxxstd": "03"
+}

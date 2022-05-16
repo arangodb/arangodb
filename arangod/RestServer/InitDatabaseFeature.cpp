@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,7 +38,6 @@
 #include <thread>
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/EnvironmentFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
@@ -46,7 +45,6 @@
 #include "Basics/files.h"
 #include "Basics/terminal-utils.h"
 #include "Cluster/ServerState.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
@@ -54,6 +52,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/EnvironmentFeature.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -61,32 +60,36 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-InitDatabaseFeature::InitDatabaseFeature(application_features::ApplicationServer& server,
-                                         std::vector<std::type_index> const& nonServerFeatures)
-    : ApplicationFeature(server, "InitDatabase"),
-      _nonServerFeatures(nonServerFeatures) {
+InitDatabaseFeature::InitDatabaseFeature(
+    Server& server, std::span<const size_t> nonServerFeatures)
+    : ArangodFeature{server, *this}, _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
 }
 
-void InitDatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addOption("--database.init-database", "initializes an empty database",
-                     new BooleanParameter(&_initDatabase),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
-                                                  arangodb::options::Flags::Command));
+void InitDatabaseFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
+  options->addOption(
+      "--database.init-database", "initializes an empty database",
+      new BooleanParameter(&_initDatabase),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
+                                          arangodb::options::Flags::Command));
 
-  options->addOption("--database.restore-admin",
-                     "resets the admin users and sets a new password",
-                     new BooleanParameter(&_restoreAdmin),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
-                                                  arangodb::options::Flags::Command));
+  options->addOption(
+      "--database.restore-admin",
+      "resets the admin users and sets a new password",
+      new BooleanParameter(&_restoreAdmin),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
+                                          arangodb::options::Flags::Command));
 
-  options->addOption("--database.password", "initial password of root user",
-                     new StringParameter(&_password),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  options->addOption(
+      "--database.password", "initial password of root user",
+      new StringParameter(&_password),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
-void InitDatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+void InitDatabaseFeature::validateOptions(
+    std::shared_ptr<ProgramOptions> options) {
   ProgramOptions::ProcessingResult const& result = options->processingResult();
   _seenPassword = result.touched("database.password");
 
@@ -97,7 +100,7 @@ void InitDatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> option
     // we can turn off all warnings about environment here, because they
     // wil show up on a regular start later anyway
     server().disableFeatures(
-        std::vector<std::type_index>{std::type_index(typeid(EnvironmentFeature))});
+        std::array{ArangodServer::id<EnvironmentFeature>()});
   }
 }
 
@@ -118,8 +121,8 @@ void InitDatabaseFeature::prepare() {
 
   if (!_seenPassword) {
     while (true) {
-      std::string password1 =
-          readPassword("Please enter a new password for the ArangoDB root user");
+      std::string password1 = readPassword(
+          "Please enter a new password for the ArangoDB root user");
 
       if (!password1.empty()) {
         std::string password2 = readPassword("Repeat password");
@@ -149,11 +152,13 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
   std::cout << message << ": " << std::flush;
 #ifdef _WIN32
   TRI_SetStdinVisibility(false);
-  TRI_DEFER(TRI_SetStdinVisibility(true));
+  auto sg =
+      arangodb::scopeGuard([&]() noexcept { TRI_SetStdinVisibility(true); });
   std::wstring wpassword;
   _setmode(_fileno(stdin), _O_U16TEXT);
   std::getline(std::wcin, wpassword);
-  icu::UnicodeString pw(wpassword.c_str(), static_cast<int32_t>(wpassword.length()));
+  icu::UnicodeString pw(wpassword.c_str(),
+                        static_cast<int32_t>(wpassword.length()));
   pw.toUTF8String<std::string>(password);
 #else
 #ifdef TRI_HAVE_TERMIOS_H

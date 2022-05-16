@@ -1,0 +1,17 @@
+{
+    "key": "endian",
+    "name": "Endian",
+    "authors": [
+        "Beman Dawes"
+    ],
+    "maintainers": [
+        "Peter Dimov <pdimov -at- gmail.com>"
+    ],
+    "description": "Types and conversion functions for correct byte ordering and more regardless of processor endianness.",
+    "category": [
+        "IO",
+        "Math",
+        "Miscellaneous"
+    ],
+    "cxxstd": "03"
+}

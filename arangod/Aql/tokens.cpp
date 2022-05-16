@@ -1,4 +1,6 @@
 #line 16 "Aql/tokens.ll"
+/* clang-format off */
+
 #include <stdint.h>
 #if (_MSC_VER >= 1)
 // fix ret_val = EOB_ACT_LAST_MATCH later on, its generated, we can't control this.
@@ -1313,7 +1315,7 @@ class Parser;
 }
 
 #include "Aql/AstNode.h"
-#include "Aql/grammar.h"
+#include "Aql/grammar.hpp"
 #include "Aql/Functions.h"
 #include "Aql/Parser.h"
 #include "Aql/QueryContext.h"

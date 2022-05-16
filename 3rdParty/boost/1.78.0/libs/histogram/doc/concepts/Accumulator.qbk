@@ -1,0 +1,96 @@
+[/
+            Copyright Hans Dembinski 2018 - 2019.
+   Distributed under the Boost Software License, Version 1.0.
+      (See accompanying file LICENSE_1_0.txt or copy at
+            https://www.boost.org/LICENSE_1_0.txt)
+]
+
+[section:Accumulator Accumulator]
+
+An [*Accumulator] is a functor which consumes the argument to update some internal state. Must be [@https://en.cppreference.com/w/cpp/named_req/DefaultConstructible DefaultConstructible], [@https://en.cppreference.com/w/cpp/named_req/CopyConstructible CopyConstructible], and [@https://en.cppreference.com/w/cpp/named_req/CopyAssignable CopyAssignable].
+
+[heading Required features]
+
+* `A` is a type meeting the requirements of [*Accumulator]
+* `a` and `b` are values of type `A`
+* `ts...` is a pack of values of arbitrary types
+
+[table Valid expressions
+[[Expression] [Returns] [Semantics, Pre/Post-conditions]]
+[
+  [`a(ts...)` or `++a`]
+  []
+  [
+    Either a call operator accepting a fixed number of arguments must be implemented, or the pre-increment operator. The call operator form `a(ts...)` may not be templated and not overloaded, except to support weights as described under optional features.
+  ]
+]
+[
+  [`a == b`]
+  [`bool`]
+  [
+    Returns `true` if all state variables compare equal. Otherwise returns `false`.
+  ]
+]
+[
+  [`a != b`]
+  [`bool`]
+  [
+    Must be implemented if `a == b` is implemented and must be equal to `!(a == b)`.
+  ]
+]
+]
+
+[heading Optional features]
+
+* `A` is a type meeting the requirements of [*Accumulator]
+* `a` and `b` are values of type `A`
+* `w` is a value of type [classref boost::histogram::weight_type]
+* `ts...` is a pack of values of arbitrary types
+
+[table Valid expressions
+[[Expression] [Return] [Semantics, Pre/Post-conditions]]
+[
+  [`a += w` or `a(w, ts...)`]
+  []
+  [
+    Does a weighted fill of the accumulator. Use this to implement weight support for an accumulator that is normally filled with `++a` or `a(ts...)`, respectively. Only the corresponding matching form may be implemented: `a += w` for `++a`, `a(w, ts...)` for `a(ts...)`. The call operator form `a(w, ts...)` may not be templated and not overloaded.
+  ]
+]
+[
+  [`a += b`]
+  [`A&`]
+  [
+    Adds a second accumulator `b` of type `A`. The result must be the same as if `a` had been filled with all arguments of `b`.
+  ]
+]
+[
+  [`a *= x`]
+  [`A&`]
+  [
+    Scales the accumulator state by the real value `x`. The result must be the same as if `a` had been filled with all arguments scaled by `x`.
+  ]
+]
+[
+  [`os << a`]
+  [`std::basic_ostream<CharT, Traits>&`]
+  [
+    `os` is a value of type `std::basic_ostream<CharT, Traits>`. Streams a text representation of the axis. May not mutate `a`.
+  ]
+]
+[
+  [`a.serialize(ar, n)`]
+  []
+  [
+    `ar` is a value of an archive with Boost.Serialization semantics and `n` is an unsigned integral value. Saves to the archive or loads serialized state from the archive. The version number `n` is the stored version when the object is loaded or the current version when the object is saved.
+  ]
+]
+]
+
+[heading Models]
+
+* [classref boost::histogram::accumulators::sum]
+* [classref boost::histogram::accumulators::weighted_sum]
+* [classref boost::histogram::accumulators::mean]
+* [classref boost::histogram::accumulators::weighted_mean]
+
+[endsect]

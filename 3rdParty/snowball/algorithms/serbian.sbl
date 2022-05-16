@@ -12,7 +12,7 @@ routines (
     cyr_to_lat
     prelude
     mark_regions
-    R1 R2
+    R1
     Step_1
     Step_2
     Step_3
@@ -20,7 +20,9 @@ routines (
 
 externals ( stem )
 
-integers ( p1 p2 p3 )
+booleans ( no_diacritics )
+
+integers ( p1 )
 
 groupings ( v ca sa rg )
 
@@ -69,14 +71,14 @@ stringdef zx    '{U+017E}' // small z with caron
 stringdef sx    '{U+0161}' // small s with caron
 stringdef dx    '{U+0111}' // small d with stroke
 
-define v 'aeiou' 
+define v 'aeiou'
 define sa '{cx}{cy}{zx}{sx}{dx}'
 define ca 'bvgdzjklmnprstfhc' + sa
 define rg 'r'
 
 
 define cyr_to_lat as (
-    
+
     do repeat goto (
         [substring] among (
             '{cyrA}'    (<- 'a')
@@ -111,54 +113,53 @@ define cyr_to_lat as (
             '{cyrSx}'   (<- '{sx}')
         )
     )
-        
+
 )
 
 define prelude as (
 
     do repeat goto (
-        ca ['ije'] ca <- 'e' 
+        ca ['ije'] ca <- 'e'
     )
 
     do repeat goto (
-        ca ['je'] ca <- 'e' 
+        ca ['je'] ca <- 'e'
     )
-        
+
     do repeat goto (
-        ['dj'] <- '{dx}' 
+        ['dj'] <- '{dx}'
     )
-        
+
 )
 
 define mark_regions as (
 
-    $p3 = 0
-    
+    set no_diacritics
+
     do (
-        gopast sa setmark p3
+        gopast sa unset no_diacritics
     )
-    
+
     $p1 = limit
-    $p2 = 0
-    
+
     do (
         gopast v setmark p1
+        ($p1 < 2) (
+            gopast non-v
+            setmark p1
+        )
     )
     do (
-        gopast 'r' setmark p2
-        $(p1 - p2 > 1) ($p1 = p2)
+        gopast 'r'
+        $(cursor >= 2) or (gopast non-rg)
+        $(p1 - cursor > 1) setmark p1
     )
-    ($p1 < 2) (
-        ($p1 == p2 gopast 'r' gopast non-rg) or ($p1 != p2 gopast v gopast non-v)
-        setmark p1
-    )
-    
+
 )
 
 backwardmode (
 
     define R1 as $p1 <= cursor
-    define R2 as $p3 == 0
 
     define Step_1 as (
         [substring] among (
@@ -171,7 +172,7 @@ backwardmode (
             'jaci'
             'jacima'        (<-'jak')
             '{cx}ajan'      (<-'{cx}ajni')
-            'cajan'         (R2 <-'cajni')
+            'cajan'         (no_diacritics <-'cajni')
             'eran'          (<-'erni')
             'laran'         (<-'larni')
             'esan'          (<-'esni')
@@ -202,7 +203,7 @@ backwardmode (
             'kusan'         (<-'kusni')
             'kustava'       (<-'kustva')
             'du{sx}an'      (<-'du{sx}ni')
-            'dusan'         (R2 <-'dusni')
+            'dusan'         (no_diacritics <-'dusni')
             'antan'         (<-'antni')
             'bilan'         (<-'bilni')
             'tilan'         (<-'tilni')
@@ -223,14 +224,14 @@ backwardmode (
             'tetan'         (<-'tetni')
             'pletan'        (<-'pletni')
             '{sx}ave'       (<-'{sx}avi')
-            'save'          (R2 <-'savi')
+            'save'          (no_diacritics <-'savi')
             'anata'         (<-'anta')
             'a{cx}ak'
             'a{cx}aka'      (<-'a{cx}ka')
             'acak'
-            'acaka'         (R2 <-'acka')
+            'acaka'         (no_diacritics <-'acka')
             'u{sx}ak'       (<-'u{sx}ka')
-            'usak'          (R2 <-'uska')
+            'usak'          (no_diacritics <-'uska')
             'atak'
             'ataka'
             'atci'
@@ -248,7 +249,7 @@ backwardmode (
             'utcima'        (<-'utka')
             'eskan'         (<-'eskna')
             'ti{cx}an'      (<-'ti{cx}ni')
-            'tican'         (R2 <-'ticni')
+            'tican'         (no_diacritics <-'ticni')
             'ojsci'         (<-'ojska')
             'esama'         (<-'esma')
             'metar'
@@ -258,7 +259,7 @@ backwardmode (
             'istar'
             'istara'        (<-'istra')
             'o{sx}{cy}u'    (<-'osti')
-            'oscu'          (R2 <-'osti')
+            'oscu'          (no_diacritics <-'osti')
             'daba'          (<-'dba')
             '{cx}cima'
             '{cx}ci'        (<-'{cx}ka')
@@ -291,10 +292,10 @@ backwardmode (
             'jebe'          (<-'jebi')
             'baci'          (<-'baci')
             'a{sx}an'       (<-'a{sx}ni')
-            'asan'          (R2 <-'asni')
+            'asan'          (no_diacritics <-'asni')
         )
     )
-	
+
     define Step_2 as (
         [substring] R1 among (
             'skijima'
@@ -2013,7 +2014,7 @@ backwardmode (
             'lucuj'
             'lucen'
             'luce'
-            'luci'          (R2 <-'luc')
+            'luci'          (no_diacritics <-'luc')
             'snjijima'
             'snjijemu'
             'snjijega'
@@ -2042,7 +2043,7 @@ backwardmode (
             'snje'
             'snji'
             'snjo'
-            'snju'          (R2 <-'snj')
+            'snju'          (no_diacritics <-'snj')
             'osijima'
             'osijemu'
             'osijega'
@@ -2072,7 +2073,7 @@ backwardmode (
             'osa'
             'ose'
             'osi'
-            'osu'           (R2 <-'os')
+            'osu'           (no_diacritics <-'os')
             'acismo'
             'aciste'
             'acima'
@@ -2108,7 +2109,7 @@ backwardmode (
             'acis'
             'ace'
             'aca'
-            'aci'           (R2 <-'ac')
+            'aci'           (no_diacritics <-'ac')
             'ecome'
             'ecoga'
             'ecemu'
@@ -2124,7 +2125,7 @@ backwardmode (
             'ecem'
             'ecim'
             'eca'
-            'ece'           (R2 <-'ec')
+            'ece'           (no_diacritics <-'ec')
             'ucomu'
             'ucome'
             'ucima'
@@ -2140,7 +2141,7 @@ backwardmode (
             'ucuh'
             'ucoj'
             'uca'
-            'uce'           (R2 <-'uc')
+            'uce'           (no_diacritics <-'uc')
             'rosismo'
             'rosivsi'
             'rosiste'
@@ -2156,7 +2157,7 @@ backwardmode (
             'rosis'
             'rosio'
             'rosim'
-            'rosih'         (R2 <-'rosi')
+            'rosih'         (no_diacritics <-'rosi')
             'acavsi'
             'acaste'
             'acasmo'
@@ -2179,7 +2180,7 @@ backwardmode (
             'acao'
             'acas'
             'acat'
-            'acah'          (R2 <-'aca')
+            'acah'          (no_diacritics <-'aca')
             'jasima'
             'jasama'
             'jasem'
@@ -2187,7 +2188,7 @@ backwardmode (
             'jase'
             'jasi'
             'jasa'
-            'jasu'          (R2 <-'jas')
+            'jasu'          (no_diacritics <-'jas')
             'tasima'
             'tasama'
             'tasem'
@@ -2195,7 +2196,7 @@ backwardmode (
             'tase'
             'tasa'
             'tasu'
-            'tasi'          (R2 <-'tas')
+            'tasi'          (no_diacritics <-'tas')
             'gasima'
             'gasama'
             'gasem'
@@ -2203,7 +2204,7 @@ backwardmode (
             'gasi'
             'gasu'
             'gase'
-            'gasa'          (R2 <-'gas')
+            'gasa'          (no_diacritics <-'gas')
             'nasama'
             'nasima'
             'nasem'
@@ -2211,7 +2212,7 @@ backwardmode (
             'nasu'
             'nasi'
             'nase'
-            'nasa'          (R2 <-'nas')
+            'nasa'          (no_diacritics <-'nas')
             'kasama'
             'kasima'
             'kasom'
@@ -2219,7 +2220,7 @@ backwardmode (
             'kasi'
             'kasu'
             'kase'
-            'kasa'          (R2 <-'kas')
+            'kasa'          (no_diacritics <-'kas')
             'vasama'
             'vasima'
             'vasom'
@@ -2227,7 +2228,7 @@ backwardmode (
             'vasi'
             'vase'
             'vasa'
-            'vasu'          (R2 <-'vas')
+            'vasu'          (no_diacritics <-'vas')
             'basama'
             'basima'
             'basom'
@@ -2235,9 +2236,9 @@ backwardmode (
             'basi'
             'base'
             'basu'
-            'basa'          (R2 <-'bas')
+            'basa'          (no_diacritics <-'bas')
             'astuci'
-            'astes'         (R2 <-'as')
+            'astes'         (no_diacritics <-'as')
             'cinima'
             'cinome'
             'cinama'
@@ -2252,89 +2253,89 @@ backwardmode (
             'cini'
             'cinu'
             'cine'
-            'cina'          (R2 <-'cin')
+            'cina'          (no_diacritics <-'cin')
             'astajase'
             'astajuci'
-            'astajes'       (R2 <-'astaj')
+            'astajes'       (no_diacritics <-'astaj')
             'istajase'
             'istajuci'
-            'istajes'       (R2 <-'istaj')
+            'istajes'       (no_diacritics <-'istaj')
             'ostajase'
             'ostajuci'
-            'ostajes'       (R2 <-'ostaj')
+            'ostajes'       (no_diacritics <-'ostaj')
             'astadose'
             'astades'
             'astanes'
-            'astavsi'       (R2 <-'asta')
+            'astavsi'       (no_diacritics <-'asta')
             'istadose'
             'istades'
             'istanes'
-            'istavsi'       (R2 <-'ista')
+            'istavsi'       (no_diacritics <-'ista')
             'ostadose'
             'ostades'
             'ostanes'
-            'ostavsi'       (R2 <-'osta')
+            'ostavsi'       (no_diacritics <-'osta')
             'avajuci'
             'avase'
-            'avas'          (R2 <-'ava')
+            'avas'          (no_diacritics <-'ava')
             'evajuci'
             'evase'
-            'evas'          (R2 <-'eva')
+            'evas'          (no_diacritics <-'eva')
             'ivajuci'
             'ivase'
-            'ivas'          (R2 <-'iva')
+            'ivas'          (no_diacritics <-'iva')
             'uvajuci'
             'uvase'
-            'uvas'          (R2 <-'uva')
-            'ovase'         (R2 <-'ova')
+            'uvas'          (no_diacritics <-'uva')
+            'ovase'         (no_diacritics <-'ova')
             'jetise'
-            'jetis'         (R2 <-'jeti')
+            'jetis'         (no_diacritics <-'jeti')
             'injase'
-            'injes'         (R2 <-'inj')
-            'istem'         (R2 <-'ist')
+            'injes'         (no_diacritics <-'inj')
+            'istem'         (no_diacritics <-'ist')
             'esama'
             'esem'
-            'esi'           (R2 <-'es')
+            'esi'           (no_diacritics <-'es')
             'etavsi'
             'etuci'
-            'etes'          (R2 <-'et')
+            'etes'          (no_diacritics <-'et')
             'isama'
             'isem'
-            'isi'           (R2 <-'is')
+            'isi'           (no_diacritics <-'is')
             'irajuci'
             'irujuci'
             'irujes'
             'iravsi'
             'irase'
-            'iras'          (R2 <-'ir')
+            'iras'          (no_diacritics <-'ir')
             'urajuci'
             'urase'
-            'uras'          (R2 <-'ur')
+            'uras'          (no_diacritics <-'ur')
             'ujuci'
-            'ujes'          (R2 <-'uj')
+            'ujes'          (no_diacritics <-'uj')
             'nivsi'
-            'nis'           (R2 <-'ni')
+            'nis'           (no_diacritics <-'ni')
             'snega'
             'snemu'
             'snem'
-            'sneg'          (R2 <-'sn')
+            'sneg'          (no_diacritics <-'sn')
             'tavsi'
-            'tas'           (R2 <-'ta')
+            'tas'           (no_diacritics <-'ta')
             'ajuci'
             'avsi'
             'ase'
-            'as'            (R2 <-'a')
+            'as'            (no_diacritics <-'a')
             'ijes'
             'ivsi'
             'ieci'
-            'is'            (R2 <-'i')
-            'es'            (R2 <-'e')
+            'is'            (no_diacritics <-'i')
+            'es'            (no_diacritics <-'e')
             'nuvsi'
             'nuci'
-            'nes'           (R2 <-'n')
+            'nes'           (no_diacritics <-'n')
         )
     )
-    
+
     define Step_3 as (
         [substring] R1 among (
             'enom'

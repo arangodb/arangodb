@@ -34,14 +34,16 @@ var request = require('@arangodb/request');
 var url = require('url');
 var querystring = require('querystring');
 var qs = require('qs');
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const internal = require("internal");
 
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function RequestSuite () {
-  'use strict';
+function BaseRequestSuite () {
   var buildUrl = function (append, base) {
     base = base === false ? '' : '/_admin/echo';
     append = append || '';
@@ -395,12 +397,33 @@ function RequestSuite () {
   };
 }
 
+function RequestSuite () {
+  let suite = {};
+  deriveTestSuite(BaseRequestSuite(), suite, '');
+  return suite;
+}
+
+function RequestSuiteWithSmallChunks () {
+  let suite = {
+    setUpAll: function() {
+      internal.debugSetFailAt("HttpCommTask<T>::readCallback_in_small_chunks");
+    },
+    
+    tearDownAll: function() {
+      internal.debugClearFailAt();
+    },
+  };
+
+  deriveTestSuite(BaseRequestSuite(), suite, '_SmallChunks');
+  return suite;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(RequestSuite);
+jsunity.run(RequestSuiteWithSmallChunks);
 
 return jsunity.done();
 

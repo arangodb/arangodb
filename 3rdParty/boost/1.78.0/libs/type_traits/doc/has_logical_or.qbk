@@ -1,0 +1,53 @@
+[/
+  (C) Copyright 2009-2011  Frederic Bron.
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:has_logical_or has_logical_or]
+   template <class Lhs, class Rhs=Lhs, class Ret=dont_care>
+   struct has_logical_or : public __tof {};
+
+__inherit
+If (i) `lhs` of type `Lhs` and `rhs` of type `Rhs` can be used in expression `lhs||rhs`,
+and (ii) `Ret=dont_care` or the result of expression `lhs||rhs` is convertible to `Ret`
+then inherits from __true_type,
+otherwise inherits from __false_type.
+
+The default behaviour (`Ret=dont_care`) is to not check for the return value of binary `operator||`.
+If `Ret` is different from the default `dont_care` type, the return value is checked to be convertible to `Ret`.
+Convertible to `Ret` means that the return value of the operator can be used as argument to a function expecting `Ret`:
+``
+void f(Ret);
+Lhs lhs;
+Rhs rhs;
+f(lhs||rhs); // is valid if has_logical_or<Lhs, Rhs, Ret>::value==true
+``
+If `Ret=void`, the return type is checked to be exactly `void`.
+
+__header `#include <boost/type_traits/has_logical_or.hpp>` or `#include <boost/type_traits/has_operator.hpp>` or `#include <boost/type_traits.hpp>`
+
+[has_binary_operator_compat]
+
+__examples
+
+[:`has_logical_or<Lhs, Rhs, Ret>::value_type` is the type `bool`.]
+[:`has_logical_or<Lhs, Rhs, Ret>::value` is a `bool` integral constant expression.]
+[:`has_logical_or<int>::value` is a `bool` integral constant expression that evaluates to `true`.]
+[:`has_logical_or<bool>` inherits from `__true_type`.]
+
+[:`has_logical_or<int, int, bool>` inherits from `__true_type`.]
+[:`has_logical_or<int, int, long>` inherits from `__true_type`.]
+[:`has_logical_or<int, double, bool>` inherits from `__true_type`.]
+[:`has_logical_or<const int, int>::value` inherits from `__true_type`.]
+
+[:`has_logical_or<int, int, std::string>` inherits from `__false_type`.]
+
+
+[*See also:] [link boost_typetraits.category.value_traits.operators Operator Type Traits]
+
+[binary_operator_known_issues has_logical_or..||..bool..bool..const ]
+
+[endsect]
+

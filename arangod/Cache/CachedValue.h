@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +25,6 @@
 
 #include <atomic>
 #include <cstdint>
-#include <cstring>
 
 namespace arangodb {
 namespace cache {
@@ -87,13 +86,6 @@ struct CachedValue {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Utility method to compare underlying key to external key
-  //////////////////////////////////////////////////////////////////////////////
-  inline bool sameKey(void const* k, std::size_t kSize) const noexcept {
-    return (keySize() == kSize) && (0 == memcmp(key(), k, kSize));
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Increase reference count
   //////////////////////////////////////////////////////////////////////////////
   inline void lease() noexcept { ++_refCount; }
@@ -125,7 +117,8 @@ struct CachedValue {
   static void operator delete(void* ptr);
 
  private:
-  static constexpr std::size_t _padding = alignof(std::atomic<std::uint32_t>) - 1;
+  static constexpr std::size_t _padding =
+      alignof(std::atomic<std::uint32_t>) - 1;
   static const std::size_t _headerAllocSize;
   static constexpr std::size_t _headerAllocMask = ~_padding;
   static constexpr std::size_t _headerAllocOffset = _padding;
@@ -142,11 +135,10 @@ struct CachedValue {
               std::size_t vSize) noexcept;
   CachedValue(CachedValue const& other) noexcept;
 
-  inline std::size_t offset() const {
+  inline std::size_t offset() const noexcept {
     return ((_keySize & _offsetMask) >> _offsetShift);
   }
 };
 
 };  // end namespace cache
 };  // end namespace arangodb
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,12 +37,12 @@
 #include "VocBase/ticks.h"
 
 #include <fuerte/types.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace network {
 
-ErrorCode resolveDestination(NetworkFeature const& feature, DestinationId const& dest,
+ErrorCode resolveDestination(NetworkFeature const& feature,
+                             DestinationId const& dest,
                              network::EndpointSpec& spec) {
   // Now look up the actual endpoint:
   if (!feature.server().hasFeature<ClusterFeature>()) {
@@ -56,7 +56,8 @@ ErrorCode resolveDestination(ClusterInfo& ci, DestinationId const& dest,
                              network::EndpointSpec& spec) {
   using namespace arangodb;
 
-  if (dest.compare(0, 6, "tcp://", 6) == 0 || dest.compare(0, 6, "ssl://", 6) == 0) {
+  if (dest.compare(0, 6, "tcp://", 6) == 0 ||
+      dest.compare(0, 6, "ssl://", 6) == 0) {
     spec.endpoint = dest;
     return TRI_ERROR_NO_ERROR;  // all good
   }
@@ -76,20 +77,22 @@ ErrorCode resolveDestination(ClusterInfo& ci, DestinationId const& dest,
   if (dest.compare(0, 6, "shard:", 6) == 0) {
     spec.shardId = dest.substr(6);
     {
-      std::shared_ptr<std::vector<ServerID>> resp = ci.getResponsibleServer(spec.shardId);
+      std::shared_ptr<std::vector<ServerID> const> resp =
+          ci.getResponsibleServer(spec.shardId);
       if (!resp->empty()) {
         spec.serverId = (*resp)[0];
       } else {
         LOG_TOPIC("60ee8", ERR, Logger::CLUSTER)
-            << "cannot find responsible server for shard '" << spec.shardId << "'";
+            << "cannot find responsible server for shard '" << spec.shardId
+            << "'";
         return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
       }
     }
-    LOG_TOPIC("64670", DEBUG, Logger::CLUSTER) << "Responsible server: " << spec.serverId;
+    LOG_TOPIC("64670", DEBUG, Logger::CLUSTER)
+        << "Responsible server: " << spec.serverId;
   } else if (dest.compare(0, 7, "server:", 7) == 0) {
     spec.serverId = dest.substr(7);
   } else {
-    std::string errorMessage = "did not understand destination '" + dest + "'";
     LOG_TOPIC("77a84", ERR, Logger::COMMUNICATION)
         << "did not understand destination '" << dest << "'";
     return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
@@ -100,8 +103,6 @@ ErrorCode resolveDestination(ClusterInfo& ci, DestinationId const& dest,
     if (spec.serverId.find(',') != std::string::npos) {
       TRI_ASSERT(false);
     }
-    std::string errorMessage =
-        "did not find endpoint of server '" + spec.serverId + "'";
     LOG_TOPIC("f29ef", ERR, Logger::COMMUNICATION)
         << "did not find endpoint of server '" << spec.serverId << "'";
     return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
@@ -110,7 +111,8 @@ ErrorCode resolveDestination(ClusterInfo& ci, DestinationId const& dest,
 }
 
 /// @brief extract the error code form the body
-ErrorCode errorCodeFromBody(arangodb::velocypack::Slice body, ErrorCode defaultErrorCode) {
+ErrorCode errorCodeFromBody(arangodb::velocypack::Slice body,
+                            ErrorCode defaultErrorCode) {
   if (body.isObject()) {
     VPackSlice num = body.get(StaticStrings::ErrorNum);
     if (num.isNumber()) {
@@ -121,8 +123,9 @@ ErrorCode errorCodeFromBody(arangodb::velocypack::Slice body, ErrorCode defaultE
   return defaultErrorCode;
 }
 
-Result resultFromBody(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& body,
-                      ErrorCode defaultError) {
+Result resultFromBody(
+    std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& body,
+    ErrorCode defaultError) {
   // read the error number from the response and use it if present
   if (body && !body->empty()) {
     return resultFromBody(VPackSlice(body->data()), defaultError);
@@ -130,8 +133,9 @@ Result resultFromBody(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> con
   return Result(defaultError);
 }
 
-Result resultFromBody(std::shared_ptr<arangodb::velocypack::Builder> const& body,
-                      ErrorCode defaultError) {
+Result resultFromBody(
+    std::shared_ptr<arangodb::velocypack::Builder> const& body,
+    ErrorCode defaultError) {
   // read the error number from the response and use it if present
   if (body) {
     return resultFromBody(body->slice(), defaultError);
@@ -140,7 +144,8 @@ Result resultFromBody(std::shared_ptr<arangodb::velocypack::Builder> const& body
   return Result(defaultError);
 }
 
-Result resultFromBody(arangodb::velocypack::Slice slice, ErrorCode defaultError) {
+Result resultFromBody(arangodb::velocypack::Slice slice,
+                      ErrorCode defaultError) {
   // read the error number from the response and use it if present
   if (slice.isObject()) {
     VPackSlice num = slice.get(StaticStrings::ErrorNum);
@@ -176,7 +181,8 @@ void errorCodesFromHeaders(network::Headers headers,
     for (auto code : VPackObjectIterator(codesSlice)) {
       VPackValueLength codeLength;
       char const* codeString = code.key.getString(codeLength);
-      auto codeNr = ErrorCode{NumberUtils::atoi_zero<int>(codeString, codeString + codeLength)};
+      auto codeNr = ErrorCode{
+          NumberUtils::atoi_zero<int>(codeString, codeString + codeLength)};
       if (includeNotFound || codeNr != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         errorCounter[codeNr] += code.value.getNumericValue<size_t>();
       }
@@ -270,14 +276,24 @@ rest::RequestType fuerteRestVerbToArango(fuerte::RestVerb verb) {
 }
 
 ErrorCode fuerteToArangoErrorCode(network::Response const& res) {
-  LOG_TOPIC_IF("abcde", ERR, Logger::COMMUNICATION, res.error != fuerte::Error::NoError)
+  LOG_TOPIC_IF("abcde", ERR, Logger::COMMUNICATION,
+               res.error != fuerte::Error::NoError)
       << "communication error: '" << fuerte::to_string(res.error)
-      << "' from destination '" << res.destination << "'";
+      << "' from destination '" << res.destination << "'"
+      << [](network::Response const& res) {
+           if (res.hasRequest()) {
+             return std::string(", url: ") +
+                    to_string(res.request().header.restVerb) + " " +
+                    res.request().header.path;
+           }
+           return std::string();
+         }(res);
   return toArangoErrorCodeInternal(res.error);
 }
 
 ErrorCode fuerteToArangoErrorCode(fuerte::Error err) {
-  LOG_TOPIC_IF("abcdf", ERR, Logger::COMMUNICATION, err != fuerte::Error::NoError)
+  LOG_TOPIC_IF("abcdf", ERR, Logger::COMMUNICATION,
+               err != fuerte::Error::NoError)
       << "communication error: '" << fuerte::to_string(err) << "'";
   return toArangoErrorCodeInternal(err);
 }
@@ -318,7 +334,8 @@ std::string fuerteStatusToArangoErrorMessage(fuerte::Response const& res) {
   return fuerteStatusToArangoErrorMessage(res.statusCode());
 }
 
-std::string fuerteStatusToArangoErrorMessage(fuerte::StatusCode const& statusCode) {
+std::string fuerteStatusToArangoErrorMessage(
+    fuerte::StatusCode const& statusCode) {
   return fuerte::status_code_to_string(statusCode);
 }
 

@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 params=("$@")
 
-ulimit -H -n 131072 || true
-ulimit -S -n 131072 || true
+if [ $(ulimit -S -n) -lt 131072 ]; then
+    if [ $(ulimit -H -n) -lt 131072 ]; then
+        ulimit -H -n 131072 || true
+    fi
+    ulimit -S -n 131072 || true
+fi
 
 rm -rf cluster
 if [ -d cluster-init ];then
@@ -54,8 +58,6 @@ if [ "$POOLSZ" == "" ] ; then
   POOLSZ=$NRAGENTS
 fi
 
-STORAGE_ENGINE="--server.storage-engine=rocksdb"
-
 if [ "$AUTOUPGRADE" == "1" ];then
   echo "-- Using autoupgrade procedure"
 fi
@@ -72,13 +74,13 @@ printf " # coordinators: %s," "$NRCOORDINATORS"
 printf " transport: %s\n" "$TRANSPORT"
 
 if (( $NRAGENTS % 2 == 0)) ; then
-  echo "**ERROR: Number of agents must be odd! Bailing out."
+  echo "**ERROR**: Number of agents must be odd! Bailing out."
   exit 1
 fi
 
 SFRE=1.0
 COMP=500
-KEEP=2000
+KEEP=50000
 if [ -z "$ONGOING_PORTS" ] ; then
   CO_BASE=$(( $PORT_OFFSET + 8530 ))
   DB_BASE=$(( $PORT_OFFSET + 8629 ))
@@ -98,8 +100,13 @@ if [ -z "$JWT_SECRET" ];then
   AUTHENTICATION="--server.authentication false"
   AUTHORIZATION_HEADER=""
 else
-  AUTHENTICATION="--server.jwt-secret $JWT_SECRET"
-  AUTHORIZATION_HEADER="Authorization: bearer $(jwtgen -a HS256 -s $JWT_SECRET -c 'iss=arangodb' -c 'server_id=setup')"
+  if ! command -v jwtgen &> /dev/null; then
+    echo "**ERROR**: jwtgen could not be found. Install via \"npm install -g jwtgen\". Bailing out"
+    exit
+  fi
+  echo $JWT_SECRET > cluster/jwt.secret
+  AUTHENTICATION="--server.jwt-secret-keyfile cluster/jwt.secret"
+  export AUTHORIZATION_HEADER="Authorization: bearer $(jwtgen -a HS256 -s $JWT_SECRET -c 'iss=arangodb' -c 'server_id=setup')"
 fi
 
 if [ -z "$ENCRYPTION_SECRET" ];then
@@ -137,58 +144,37 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
     [ "$INTERACTIVE_MODE" == "R" ] && sleep 1
     PORT=$(( $AG_BASE + $aid ))
     AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://$ADDRESS:$PORT "
-    if [ "$AUTOUPGRADE" == "1" ];then
-      $ARANGOD \
-          -c none \
-          --agency.activate true \
-          --agency.compaction-step-size $COMP \
-          --agency.compaction-keep-size $KEEP \
-          --agency.endpoint $TRANSPORT://$ENDPOINT:$AG_BASE \
-          --agency.my-address $TRANSPORT://$ADDRESS:$PORT \
-          --agency.pool-size $NRAGENTS \
-          --agency.size $NRAGENTS \
-          --agency.supervision true \
-          --agency.supervision-frequency $SFRE \
-          --agency.wait-for-sync false \
-          --database.directory cluster/data$PORT \
-          --javascript.enabled false \
-          --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
-          --log.role true \
-          --log.file cluster/$PORT.log \
-          --log.force-direct false \
-          --log.level $LOG_LEVEL_AGENCY \
-          --server.descriptors-minimum 0 \
-          $STORAGE_ENGINE \
-          $AUTHENTICATION \
-          $SSLKEYFILE \
-          $ENCRYPTION \
+
+    # startup options for agents
+    read -r -d '' AGENCY_OPTIONS << EOM
+      -c none 
+      --agency.activate true 
+      --agency.compaction-step-size $COMP 
+      --agency.compaction-keep-size $KEEP 
+      --agency.endpoint $TRANSPORT://$ENDPOINT:$AG_BASE 
+      --agency.my-address $TRANSPORT://$ADDRESS:$PORT
+      --agency.pool-size $NRAGENTS 
+      --agency.size $NRAGENTS 
+      --agency.supervision true 
+      --agency.supervision-frequency $SFRE 
+      --agency.wait-for-sync false 
+      --database.directory cluster/data$PORT 
+      --server.endpoint $TRANSPORT://$ENDPOINT:$PORT 
+      --log.role true 
+      --log.file cluster/$PORT.log 
+      --log.force-direct false 
+      --log.level $LOG_LEVEL_AGENCY 
+      --server.descriptors-minimum 0 
+EOM
+
+    AGENCY_OPTIONS="$AGENCY_OPTIONS $AUTHENTICATION $SSLKEYFILE $ENCRYPTION"
+
+    if [ "$AUTOUPGRADE" == "1" ]; then
+      $ARANGOD $AGENCY_OPTIONS \
           --database.auto-upgrade true \
           2>&1 | tee cluster/$PORT.stdout
     fi
-    $ARANGOD \
-        -c none \
-        --agency.activate true \
-        --agency.compaction-step-size $COMP \
-        --agency.compaction-keep-size $KEEP \
-        --agency.endpoint $TRANSPORT://$ENDPOINT:$AG_BASE \
-        --agency.my-address $TRANSPORT://$ADDRESS:$PORT \
-        --agency.pool-size $NRAGENTS \
-        --agency.size $NRAGENTS \
-        --agency.supervision true \
-        --agency.supervision-frequency $SFRE \
-        --agency.wait-for-sync false \
-        --database.directory cluster/data$PORT \
-        --javascript.enabled false \
-        --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
-        --log.role true \
-        --log.file cluster/$PORT.log \
-        --log.force-direct false \
-        --log.level $LOG_LEVEL_AGENCY \
-        --server.descriptors-minimum 0 \
-        $STORAGE_ENGINE \
-        $AUTHENTICATION \
-        $SSLKEYFILE \
-        $ENCRYPTION \
+    $ARANGOD $AGENCY_OPTIONS \
         2>&1 | tee cluster/$PORT.stdout &
 done
 
@@ -221,60 +207,38 @@ start() {
 
     TYPE=$1
     PORT=$2
-    mkdir -p cluster/data$PORT cluster/apps$PORT
+    mkdir -p cluster/data$PORT
     echo == Starting $TYPE on port $PORT
     [ "$INTERACTIVE_MODE" == "R" ] && sleep 1
+   
+    # startup options for coordinators and db servers
+    read -r -d '' SERVER_OPTIONS << EOM
+      -c none
+      --database.directory cluster/data$PORT
+      --cluster.agency-endpoint $TRANSPORT://$ENDPOINT:$AG_BASE
+      --cluster.my-address $TRANSPORT://$ADDRESS:$PORT 
+      --server.endpoint $TRANSPORT://$ENDPOINT:$PORT
+      --cluster.my-role $ROLE 
+      --log.role true 
+      --log.file cluster/$PORT.log 
+      --log.level $LOG_LEVEL 
+      --log.thread true
+      --javascript.startup-directory $SRC_DIR/js 
+      --javascript.module-directory $SRC_DIR/enterprise/js 
+      --javascript.app-path cluster/apps$PORT 
+      --log.force-direct false 
+      --log.level $LOG_LEVEL_CLUSTER
+      --server.descriptors-minimum 0
+      --javascript.allow-admin-execute true
+EOM
+
+    SERVER_OPTIONS="$SERVER_OPTIONS $SYSTEM_REPLICATION_FACTOR $AUTHENTICATION $SSLKEYFILE $ENCRYPTION"
     if [ "$AUTOUPGRADE" == "1" ];then
-      $CMD \
-          -c none \
-          --database.directory cluster/data$PORT \
-          --cluster.agency-endpoint $TRANSPORT://$ENDPOINT:$AG_BASE \
-          --cluster.my-address $TRANSPORT://$ADDRESS:$PORT \
-          --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
-          --cluster.my-role $ROLE \
-          --log.role true \
-          --log.file cluster/$PORT.log \
-          --log.level $LOG_LEVEL \
-          --server.statistics true \
-          --javascript.startup-directory $SRC_DIR/js \
-          --javascript.module-directory $SRC_DIR/enterprise/js \
-          --javascript.app-path cluster/apps$PORT \
-          --log.force-direct false \
-          --log.level $LOG_LEVEL_CLUSTER \
-          --server.descriptors-minimum 0 \
-          --javascript.allow-admin-execute true \
-          $SYSTEM_REPLICATION_FACTOR \
-          $STORAGE_ENGINE \
-          $AUTHENTICATION \
-          $SSLKEYFILE \
-          $ENCRYPTION \
+      $CMD $SERVER_OPTIONS \
           --database.auto-upgrade true \
           2>&1 | tee cluster/$PORT.stdout
     fi
-    $CMD \
-        -c none \
-        --database.directory cluster/data$PORT \
-        --cluster.agency-endpoint $TRANSPORT://$ENDPOINT:$AG_BASE \
-        --cluster.my-address $TRANSPORT://$ADDRESS:$PORT \
-        --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
-        --cluster.my-role $ROLE \
-        --log.role true \
-        --log.file cluster/$PORT.log \
-        --log.level $LOG_LEVEL \
-        --server.statistics true \
-        --javascript.startup-directory $SRC_DIR/js \
-        --javascript.module-directory $SRC_DIR/enterprise/js \
-        --javascript.app-path cluster/apps$PORT \
-        --log.force-direct false \
-        --log.thread true \
-        --log.level $LOG_LEVEL_CLUSTER \
-        --server.descriptors-minimum 0 \
-        --javascript.allow-admin-execute true \
-        $SYSTEM_REPLICATION_FACTOR \
-        $STORAGE_ENGINE \
-        $AUTHENTICATION \
-        $SSLKEYFILE \
-        $ENCRYPTION \
+    $CMD $SERVER_OPTIONS \
         2>&1 | tee cluster/$PORT.stdout &
 }
 
@@ -290,19 +254,25 @@ done
 
 testServer() {
     PORT=$1
+    COUNTER=0
     while true ; do
         if [ -z "$AUTHORIZATION_HEADER" ]; then
           ${CURL}//$ADDRESS:$PORT/_api/version > /dev/null 2>&1
         else
           ${CURL}//$ADDRESS:$PORT/_api/version -H "$AUTHORIZATION_HEADER" > /dev/null 2>&1
         fi
-        if [ "$?" != "0" ] ; then
-            echo Server on port $PORT does not answer yet.
+        if [ "x$?" != "x0" ] ; then
+            COUNTER=$(($COUNTER + 1))
+            if [ "x$COUNTER" = "x4" ]; then
+              # only print every now and then
+              echo Server on port $PORT does not answer yet.
+              COUNTER=0
+            fi;
         else
             echo Server on port $PORT is ready for business.
             break
         fi
-        sleep 1
+        sleep 0.25
     done
 }
 
@@ -315,5 +285,9 @@ done
 
 echo == Done, your cluster is ready at
 for p in `seq $CO_BASE $PORTTOPCO` ; do
+  if [ -z "$JWT_SECRET" ];then
     echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://[::1]:$p"
+  else
+    echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://[::1]:$p --server.jwt-secret-keyfile cluster/jwt.secret"
+  fi
 done

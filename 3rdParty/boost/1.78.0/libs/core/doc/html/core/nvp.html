@@ -1,0 +1,179 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>nvp</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Core">
+<link rel="up" href="../index.html" title="Chapter 1. Boost.Core">
+<link rel="prev" href="null_deleter.html" title="null_deleter">
+<link rel="next" href="pointer_traits.html" title="pointer_traits">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="null_deleter.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="pointer_traits.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="core.nvp"></a><a class="link" href="nvp.html" title="nvp">nvp</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="nvp.html#core.nvp.overview">Overview</a></span></dt>
+<dt><span class="section"><a href="nvp.html#core.nvp.examples">Examples</a></span></dt>
+<dt><span class="section"><a href="nvp.html#core.nvp.reference">Reference</a></span></dt>
+<dt><span class="section"><a href="nvp.html#core.nvp.history">History</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="core.nvp.overview"></a><a class="link" href="nvp.html#core.nvp.overview" title="Overview">Overview</a>
+</h3></div></div></div>
+<p>
+        The header &lt;boost/core/nvp.hpp&gt; provides the class template <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">nvp</span></code> that pairs a name (<code class="computeroutput"><span class="keyword">const</span>
+        <span class="keyword">char</span><span class="special">*</span></code>)
+        with the address of a value (<code class="computeroutput"><span class="identifier">T</span><span class="special">*</span></code>). It is the new implementation of the NVP
+        type previously provided by the Boost Serialization library. This type now
+        lives in the Core library so that other Boost libraries can support named
+        value serialization without taking a dependency on the Serialization library.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="core.nvp.examples"></a><a class="link" href="nvp.html#core.nvp.examples" title="Examples">Examples</a>
+</h3></div></div></div>
+<p>
+        The following snippet shows use in a member serialize function:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">serialize</span><span class="special">(</span><span class="identifier">A</span><span class="special">&amp;</span> <span class="identifier">archive</span><span class="special">,</span> <span class="keyword">unsigned</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">archive</span> <span class="special">&amp;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_nvp</span><span class="special">(</span><span class="string">"x"</span><span class="special">,</span> <span class="identifier">x_</span><span class="special">)</span> <span class="special">&amp;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_nvp</span><span class="special">(</span><span class="string">"y"</span><span class="special">,</span> <span class="identifier">y_</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="core.nvp.reference"></a><a class="link" href="nvp.html#core.nvp.reference" title="Reference">Reference</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">nvp</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">nvp</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">name</span><span class="special">,</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">value</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">name</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">value</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">const</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">const_value</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="keyword">const</span> <span class="identifier">nvp</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span> <span class="identifier">make_nvp</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">name</span><span class="special">,</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">value</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+<span class="special">}</span> <span class="comment">/* boost */</span>
+
+<span class="preprocessor">#define</span> <span class="identifier">BOOST_NVP</span><span class="special">(</span><span class="identifier">object</span><span class="special">)</span> <span class="emphasis"><em>see below</em></span>
+</pre>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="core.nvp.reference.constructors"></a><a class="link" href="nvp.html#core.nvp.reference.constructors" title="Constructors">Constructors</a>
+</h4></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term"><code class="computeroutput"><span class="identifier">nvp</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">name</span><span class="special">,</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">value</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><p>
+                Initializes the stored name pointer with <code class="computeroutput"><span class="identifier">name</span></code>
+                and the value pointer with <code class="computeroutput"><span class="identifier">addressof</span><span class="special">(</span><span class="identifier">value</span><span class="special">)</span></code>.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="core.nvp.reference.members"></a><a class="link" href="nvp.html#core.nvp.reference.members" title="Members">Members</a>
+</h4></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term"><code class="computeroutput"><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">name</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><p>
+                Returns a pointer to the name.
+              </p></dd>
+<dt><span class="term"><code class="computeroutput"><span class="identifier">T</span><span class="special">&amp;</span>
+            <span class="identifier">value</span><span class="special">()</span>
+            <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><p>
+                Returns a reference to the value.
+              </p></dd>
+<dt><span class="term"><code class="computeroutput"><span class="keyword">const</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">const_value</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><p>
+                Returns a reference to the value.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="core.nvp.reference.functions"></a><a class="link" href="nvp.html#core.nvp.reference.functions" title="Functions">Functions</a>
+</h4></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term"><code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">const</span> <span class="identifier">nvp</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span> <span class="identifier">make_nvp</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">name</span><span class="special">,</span> <span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">value</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></code></span></dt>
+<dd><p>
+                Returns <code class="computeroutput"><span class="identifier">nvp</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;(</span><span class="identifier">name</span><span class="special">,</span>
+                <span class="identifier">value</span><span class="special">)</span></code>.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="core.nvp.reference.macros"></a><a class="link" href="nvp.html#core.nvp.reference.macros" title="Macros">Macros</a>
+</h4></div></div></div>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term"><code class="computeroutput"><span class="preprocessor">#define</span> <span class="identifier">BOOST_NVP</span><span class="special">(</span><span class="identifier">object</span><span class="special">)</span> <span class="identifier">see</span> <span class="identifier">below</span></code></span></dt>
+<dd><p>
+                Expands to <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_nvp</span><span class="special">(</span><span class="identifier">BOOST_STRINGIZE</span><span class="special">(</span><span class="identifier">object</span><span class="special">),</span> <span class="identifier">object</span><span class="special">)</span></code>.
+              </p></dd>
+</dl>
+</div>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="core.nvp.history"></a><a class="link" href="nvp.html#core.nvp.history" title="History">History</a>
+</h3></div></div></div>
+<p>
+        Robert Ramey originally implemented NVP in the Serialization library. Glen
+        Fernandes implemented this new (but compatible) version in the Core library.
+      </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2014 Peter Dimov<br>Copyright © 2014 Glen Fernandes<br>Copyright © 2014 Andrey Semashev<p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="null_deleter.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="pointer_traits.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

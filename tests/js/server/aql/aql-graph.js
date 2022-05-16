@@ -43,9 +43,9 @@ var assertQueryError = helper.assertQueryError;
 /// @brief test suite for graph features
 ////////////////////////////////////////////////////////////////////////////////
 
-function ahuacatlQueryEdgesTestSuite () {
+function ahuacatlQueryEdgesTestSuite() {
   var vertex = null;
-  var edge   = null;
+  var edge = null;
   var vn = "UnitTestsAhuacatlVertex";
 
   return {
@@ -54,23 +54,23 @@ function ahuacatlQueryEdgesTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUpAll : function () {
+    setUpAll: function () {
       db._drop(vn);
       db._drop("UnitTestsAhuacatlEdge");
 
       vertex = db._create(vn, {numberOfShards: 4});
       edge = db._createEdgeCollection("UnitTestsAhuacatlEdge", {numberOfShards: 4});
 
-      vertex.save({ _key: "v1", name: "v1" });
-      vertex.save({ _key: "v2", name: "v2" });
-      vertex.save({ _key: "v3", name: "v3" });
-      vertex.save({ _key: "v4", name: "v4" });
-      vertex.save({ _key: "v5", name: "v5" });
-      vertex.save({ _key: "v6", name: "v6" });
-      vertex.save({ _key: "v7", name: "v7" });
+      vertex.save({_key: "v1", name: "v1"});
+      vertex.save({_key: "v2", name: "v2"});
+      vertex.save({_key: "v3", name: "v3"});
+      vertex.save({_key: "v4", name: "v4"});
+      vertex.save({_key: "v5", name: "v5"});
+      vertex.save({_key: "v6", name: "v6"});
+      vertex.save({_key: "v7", name: "v7"});
 
-      function makeEdge (from, to) {
-        edge.save(vn + "/" + from, vn + "/" + to, { _key: from + "" + to, what: from + "->" + to });
+      function makeEdge(from, to) {
+        edge.save(vn + "/" + from, vn + "/" + to, {_key: from + "" + to, what: from + "->" + to});
       }
 
       makeEdge("v1", "v2");
@@ -88,7 +88,7 @@ function ahuacatlQueryEdgesTestSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop("UnitTestsAhuacatlVertex");
       db._drop("UnitTestsAhuacatlEdge");
     },
@@ -97,87 +97,120 @@ function ahuacatlQueryEdgesTestSuite () {
 /// @brief checks edges ANY
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgesAny : function () {
+    testEdgesAny: function () {
       var q = `WITH ${vn} FOR v, e IN ANY @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
 
       var actual;
       actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v1"});
-      assertEqual(actual, [ "v1->v2", "v1->v3" ]);
+      assertEqual(actual, ["v1->v2", "v1->v3"]);
 
       actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v2"});
-      assertEqual(actual, [ "v1->v2", "v2->v3", "v4->v2" ]);
-      
+      assertEqual(actual, ["v1->v2", "v2->v3", "v4->v2"]);
+
       actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v3"});
-      assertEqual(actual, [ "v1->v3", "v2->v3", "v3->v4", "v3->v6", "v3->v7", "v6->v3", "v7->v3" ]);
-      
+      assertEqual(actual, ["v1->v3", "v2->v3", "v3->v4", "v3->v6", "v3->v7", "v6->v3", "v7->v3"]);
+
       actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v8"});
-      assertEqual(actual, [ ]);
-      
+      assertEqual(actual, []);
+
       actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/thefox"});
-      assertEqual(actual, [ ]);
-     
-      actual = getQueryResults(q, {start: "thefox/thefox"});
-      assertEqual(actual, [ ]);
+      assertEqual(actual, []);
+
+      if (cluster.isCluster()) {
+        try {
+          // [GraphRefactor] Note: Related to #GORDO-1360
+          const queryStartModified = `WITH ${vn}, thefox FOR v, e IN ANY @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
+          getQueryResults(queryStartModified, {start: "thefox/thefox"});
+          fail();
+        } catch (e) {
+          assertEqual(e.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+        }
+      } else {
+        actual = getQueryResults(q, {start: "thefox/thefox"});
+        assertEqual(actual, []);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks edges INBOUND
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgesIn : function () {
+    testEdgesIn: function () {
       var q = `WITH ${vn} FOR v, e IN INBOUND @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
-     
+
       var actual;
       actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v1"});
-      assertEqual(actual, [ ]);
+      assertEqual(actual, []);
 
       actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v2"});
-      assertEqual(actual, [ "v1->v2", "v4->v2" ]);
-      
+      assertEqual(actual, ["v1->v2", "v4->v2"]);
+
       actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v3"});
-      assertEqual(actual, [ "v1->v3", "v2->v3", "v6->v3", "v7->v3" ]);
-      
+      assertEqual(actual, ["v1->v3", "v2->v3", "v6->v3", "v7->v3"]);
+
       actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v8"});
-      assertEqual(actual, [ ]);
-      
+      assertEqual(actual, []);
+
       actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/thefox"});
-      assertEqual(actual, [ ]);
-     
-      actual = getQueryResults(q, {start: "thefox/thefox"});
-      assertEqual(actual, [ ]);
+      assertEqual(actual, []);
+
+      if (cluster.isCluster()) {
+        try {
+          // [GraphRefactor] Note: Related to #GORDO-1360
+          let qModified = `WITH ${vn}, thefox FOR v, e IN INBOUND @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
+          getQueryResults(qModified, {start: "thefox/thefox"});
+          fail();
+        } catch (e) {
+          assertEqual(e.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+        }
+      } else {
+        actual = getQueryResults(q, {start: "thefox/thefox"});
+        assertEqual(actual, []);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks edges OUTBOUND
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgesOut : function () {
+    testEdgesOut: function () {
       var q = `WITH ${vn} FOR v, e IN OUTBOUND @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
       var actual;
       actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v1"});
-      assertEqual(actual, [ "v1->v2", "v1->v3" ]);
+      assertEqual(actual, ["v1->v2", "v1->v3"]);
 
       actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v2"});
-      assertEqual(actual, [ "v2->v3" ]);
-      
+      assertEqual(actual, ["v2->v3"]);
+
       actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v3"});
-      assertEqual(actual, [ "v3->v4", "v3->v6", "v3->v7" ]);
-      
+      assertEqual(actual, ["v3->v4", "v3->v6", "v3->v7"]);
+
       actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/v8"});
-      assertEqual(actual, [ ]);
-      
+      assertEqual(actual, []);
+
       actual = getQueryResults(q, {start: "UnitTestsAhuacatlVertex/thefox"});
-      assertEqual(actual, [ ]);
-     
-      actual = getQueryResults(q, {start: "thefox/thefox"});
-      assertEqual(actual, [ ]);
+      assertEqual(actual, []);
+
+      if (cluster.isCluster()) {
+        try {
+          // [GraphRefactor] Note: Related to #GORDO-1360
+          let qModified = `WITH ${vn}, thefox FOR v, e IN OUTBOUND @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
+          getQueryResults(qModified, {start: "thefox/thefox"});
+          fail();
+        } catch (e) {
+          assertEqual(e.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+        }
+      } else {
+        actual = getQueryResults(q, {start: "thefox/thefox"});
+        assertEqual(actual, []);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks edges / vertex combination
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgesAnyInclVertices : function () {
+    testEdgesAnyInclVertices: function () {
       "use strict";
       let actual;
       var query = `WITH ${vn} FOR v, e IN ANY @start @@col SORT e.what RETURN v._key`;
@@ -193,29 +226,41 @@ function ahuacatlQueryEdgesTestSuite () {
       bindVars.start = "UnitTestsAhuacatlVertex/v2";
       actual = getQueryResults(query, bindVars);
       assertEqual(actual, ["v1", "v3", "v4"]);
-      
+
       bindVars.start = "UnitTestsAhuacatlVertex/v3";
       actual = getQueryResults(query, bindVars);
       assertEqual(actual, ["v1", "v2", "v4", "v6", "v7", "v6", "v7"]);
 
       bindVars.start = "UnitTestsAhuacatlVertex/v8";
       actual = getQueryResults(query, bindVars);
-      assertEqual(actual, [ ]);
+      assertEqual(actual, []);
 
       bindVars.start = "UnitTestsAhuacatlVertex/thefox";
       actual = getQueryResults(query, bindVars);
-      assertEqual(actual, [ ]);
-     
-      bindVars.start = "thefox/thefox";
-      actual = getQueryResults(query, bindVars);
-      assertEqual(actual, [ ]);
+      assertEqual(actual, []);
+
+      if (cluster.isCluster()) {
+        try {
+          // [GraphRefactor] Note: Related to #GORDO-1360
+          let queryModified = `WITH ${vn}, thefox FOR v, e IN ANY @start @@col SORT e.what RETURN v._key`;
+          bindVars.start = "thefox/thefox";
+          getQueryResults(queryModified, bindVars);
+          fail();
+        } catch (e) {
+          assertEqual(e.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+        }
+      } else {
+        bindVars.start = "thefox/thefox";
+        actual = getQueryResults(query, bindVars);
+        assertEqual(actual, []);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks edges / vertex combination
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgesInInclVerticesNonCollectionBind : function () {
+    testEdgesInInclVerticesNonCollectionBind: function () {
       "use strict";
       let actual;
       let query = `WITH ${vn} FOR v, e IN INBOUND @start @col SORT e.what RETURN v._key`;
@@ -238,15 +283,27 @@ function ahuacatlQueryEdgesTestSuite () {
 
       bindVars.start = "UnitTestsAhuacatlVertex/v8";
       actual = getQueryResults(query, bindVars);
-      assertEqual(actual, [ ]);
-      
+      assertEqual(actual, []);
+
       bindVars.start = "UnitTestsAhuacatlVertex/thefox";
       actual = getQueryResults(query, bindVars);
-      assertEqual(actual, [ ]);
-     
-      bindVars.start = "thefox/thefox";
-      actual = getQueryResults(query, bindVars);
-      assertEqual(actual, [ ]);
+      assertEqual(actual, []);
+
+      if (cluster.isCluster()) {
+        try {
+          // [GraphRefactor] Note: Related to #GORDO-1360
+          let queryModified = `WITH ${vn}, thefox FOR v, e IN INBOUND @start @col SORT e.what RETURN v._key`;
+          bindVars.start = "thefox/thefox";
+          getQueryResults(queryModified, bindVars);
+          fail();
+        } catch (e) {
+          assertEqual(e.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+        }
+      } else {
+        bindVars.start = "thefox/thefox";
+        actual = getQueryResults(query, bindVars);
+        assertEqual(actual, []);
+      }
     },
 
 
@@ -254,7 +311,7 @@ function ahuacatlQueryEdgesTestSuite () {
 /// @brief checks edges / vertex combination
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgesInInclVertices : function () {
+    testEdgesInInclVertices: function () {
       "use strict";
       let actual;
       let query = `WITH ${vn} FOR v, e IN INBOUND @start @@col SORT e.what RETURN v._key`;
@@ -277,44 +334,81 @@ function ahuacatlQueryEdgesTestSuite () {
 
       bindVars.start = "UnitTestsAhuacatlVertex/v8";
       actual = getQueryResults(query, bindVars);
-      assertEqual(actual, [ ]);
-      
+      assertEqual(actual, []);
+
       bindVars.start = "UnitTestsAhuacatlVertex/thefox";
       actual = getQueryResults(query, bindVars);
-      assertEqual(actual, [ ]);
-     
-      bindVars.start = "thefox/thefox";
-      actual = getQueryResults(query, bindVars);
-      assertEqual(actual, [ ]);
+      assertEqual(actual, []);
+
+
+      if (cluster.isCluster()) {
+        try {
+          // [GraphRefactor] Note: Related to #GORDO-1360
+          let query = `WITH ${vn}, thefox FOR v, e IN INBOUND @start @@col SORT e.what RETURN v._key`;
+          bindVars.start = "thefox/thefox";
+          getQueryResults(query, bindVars);
+          assertEqual(actual, []);
+          fail();
+        } catch (e) {
+          assertEqual(e.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+        }
+      } else {
+        bindVars.start = "thefox/thefox";
+        actual = getQueryResults(query, bindVars);
+        assertEqual(actual, []);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks edges / vertex combination
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgesOutInclVerticesNonCollectionBindInvalidValues : function () {
+    testEdgesOutInclVerticesNonCollectionBindInvalidValues: function () {
       "use strict";
-      let query = `WITH ${vn} FOR v, e IN OUTBOUND @start @col SORT e.what RETURN v._key`;
 
-      [ null, false, true, -1, 0, 1, 2030, 45354.2343, [], ["foo"], {} ].forEach(function(value) {
-        let bindVars = {
-          start: "UnitTestsAhuacatlVertex/v1",
-          col: value
-        };
+      if (cluster.isCluster()) {
+        // [GraphRefactor] Note: Related to #GORDO-1360
+        [null, false, true, -1, 0, 1, 2030, 45354.2343, [], {}].forEach(function (value) {
+          let modifiedQuery = `WITH ${vn}, ${value} FOR v, e IN OUTBOUND @start @col SORT e.what RETURN v._key`;
+          let bindVars = {
+            start: "UnitTestsAhuacatlVertex/v1",
+            col: value
+          };
+          assertQueryError(errors.ERROR_QUERY_PARSE.code, modifiedQuery, bindVars);
+        });
 
-        assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_TYPE.code, query, bindVars);
-      });
+        [["foo"]].forEach(function (value) {
+          let modifiedQuery = `WITH ${vn}, ${value} FOR v, e IN OUTBOUND @start @col SORT e.what RETURN v._key`;
+          let bindVars = {
+            start: "UnitTestsAhuacatlVertex/v1",
+            col: value
+          };
+          assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_TYPE.code, modifiedQuery, bindVars);
+        });
+
+      } else {
+        let query = `WITH ${vn} FOR v, e IN OUTBOUND @start @col SORT e.what RETURN v._key`;
+
+        [null, false, true, -1, 0, 1, 2030, 45354.2343, [], ["foo"], {}].forEach(function (value) {
+          let bindVars = {
+            start: "UnitTestsAhuacatlVertex/v1",
+            col: value
+          };
+
+          assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_TYPE.code, query, bindVars);
+        });
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks edges / vertex combination
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgesOutInclVerticesInvalidCollections : function () {
+    testEdgesOutInclVerticesInvalidCollections: function () {
       "use strict";
       let query = `WITH ${vn} FOR v, e IN OUTBOUND @start @col SORT e.what RETURN v._key`;
 
-      [ " ", "NonExisting", "foo bar" ].forEach(function(value) {
+      [" ", "NonExisting", "foo bar"].forEach(function (value) {
         let bindVars = {
           start: "UnitTestsAhuacatlVertex/v1",
           col: value
@@ -322,10 +416,10 @@ function ahuacatlQueryEdgesTestSuite () {
 
         assertQueryError(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, query, bindVars);
       });
-      
+
       query = `WITH ${vn} FOR v, e IN OUTBOUND @start @@col SORT e.what RETURN v._key`;
 
-      [ " ", "NonExisting", "foo bar" ].forEach(function(value) {
+      [" ", "NonExisting", "foo bar"].forEach(function (value) {
         let bindVars = {
           start: "UnitTestsAhuacatlVertex/v1",
           "@col": value
@@ -339,7 +433,7 @@ function ahuacatlQueryEdgesTestSuite () {
 /// @brief checks edges / vertex combination
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgesOutInclVerticesNonCollectionBind : function () {
+    testEdgesOutInclVerticesNonCollectionBind: function () {
       "use strict";
       let actual;
       let query = `WITH ${vn} FOR v, e IN OUTBOUND @start @col SORT e.what RETURN v._key`;
@@ -347,7 +441,7 @@ function ahuacatlQueryEdgesTestSuite () {
       let bindVars = {
         "col": "UnitTestsAhuacatlEdge",
       };
-     
+
       bindVars.start = "UnitTestsAhuacatlVertex/v1";
       actual = getQueryResults(query, bindVars);
       assertEqual(actual, ["v2", "v3"]);
@@ -359,29 +453,41 @@ function ahuacatlQueryEdgesTestSuite () {
       bindVars.start = "UnitTestsAhuacatlVertex/v3";
       actual = getQueryResults(query, bindVars);
       assertEqual(actual, ["v4", "v6", "v7"]);
-      
+
       bindVars.start = "UnitTestsAhuacatlVertex/v8";
       actual = getQueryResults(query, bindVars);
-      assertEqual(actual, [ ]);
+      assertEqual(actual, []);
 
       bindVars.start = "UnitTestsAhuacatlVertex/v5";
       actual = getQueryResults(query, bindVars);
-      assertEqual(actual, [ ]);
-      
+      assertEqual(actual, []);
+
       bindVars.start = "UnitTestsAhuacatlVertex/thefox";
       actual = getQueryResults(query, bindVars);
-      assertEqual(actual, [ ]);
-      
-      bindVars.start = "thefox/thefox";
-      actual = getQueryResults(query, bindVars);
-      assertEqual(actual, [ ]);
+      assertEqual(actual, []);
+
+      if (cluster.isCluster()) {
+        try {
+          // [GraphRefactor] Note: Related to #GORDO-1360
+          let queryModified = `WITH ${vn}, thefox FOR v, e IN OUTBOUND @start @col SORT e.what RETURN v._key`;
+          bindVars.start = "thefox/thefox";
+          getQueryResults(query, bindVars);
+          fail();
+        } catch (e) {
+          assertEqual(e.errorNum, errors.ERROR_QUERY_COLLECTION_LOCK_FAILED.code);
+        }
+      } else {
+        bindVars.start = "thefox/thefox";
+        actual = getQueryResults(query, bindVars);
+        assertEqual(actual, []);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks edges / vertex combination
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgesOutInclVertices : function () {
+    testEdgesOutInclVertices: function () {
       "use strict";
       let actual;
       let query = `WITH ${vn} FOR v, e IN OUTBOUND @start @@col SORT e.what RETURN v._key`;
@@ -389,7 +495,7 @@ function ahuacatlQueryEdgesTestSuite () {
       let bindVars = {
         "@col": "UnitTestsAhuacatlEdge",
       };
-     
+
       bindVars.start = "UnitTestsAhuacatlVertex/v1";
       actual = getQueryResults(query, bindVars);
       assertEqual(actual, ["v2", "v3"]);
@@ -401,29 +507,41 @@ function ahuacatlQueryEdgesTestSuite () {
       bindVars.start = "UnitTestsAhuacatlVertex/v3";
       actual = getQueryResults(query, bindVars);
       assertEqual(actual, ["v4", "v6", "v7"]);
-      
+
       bindVars.start = "UnitTestsAhuacatlVertex/v8";
       actual = getQueryResults(query, bindVars);
-      assertEqual(actual, [ ]);
+      assertEqual(actual, []);
 
       bindVars.start = "UnitTestsAhuacatlVertex/v5";
       actual = getQueryResults(query, bindVars);
-      assertEqual(actual, [ ]);
-      
+      assertEqual(actual, []);
+
       bindVars.start = "UnitTestsAhuacatlVertex/thefox";
       actual = getQueryResults(query, bindVars);
-      assertEqual(actual, [ ]);
-      
-      bindVars.start = "thefox/thefox";
-      actual = getQueryResults(query, bindVars);
-      assertEqual(actual, [ ]);
+      assertEqual(actual, []);
+
+      if (cluster.isCluster()) {
+        try {
+          // [GraphRefactor] Note: Related to #GORDO-1360
+          let queryModified = `WITH ${vn}, thefox FOR v, e IN OUTBOUND @start @@col SORT e.what RETURN v._key`;
+          bindVars.start = "thefox/thefox";
+          actual = getQueryResults(queryModified, bindVars);
+          fail();
+        } catch (e) {
+          assertEqual(e.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+        }
+      } else {
+        bindVars.start = "thefox/thefox";
+        actual = getQueryResults(query, bindVars);
+        assertEqual(actual, []);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks edges with filter
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgesFilterExample : function () {
+    testEdgesFilterExample: function () {
       var q;
       var bindVars = {start: "UnitTestsAhuacatlVertex/v3"};
       var actual;
@@ -431,107 +549,143 @@ function ahuacatlQueryEdgesTestSuite () {
         FILTER e.what == "v1->v3"
         SORT e.what RETURN e.what`;
       actual = getQueryResults(q, bindVars);
-      assertEqual(actual, [ "v1->v3" ]);
+      assertEqual(actual, ["v1->v3"]);
 
       q = `WITH ${vn} FOR v, e IN ANY @start UnitTestsAhuacatlEdge 
         FILTER e.what == "v1->v3" OR e.what == "v3->v6"
         SORT e.what RETURN e.what`;
       actual = getQueryResults(q, bindVars);
-      assertEqual(actual, [ "v1->v3", "v3->v6"]);
+      assertEqual(actual, ["v1->v3", "v3->v6"]);
 
       q = `WITH ${vn} FOR v, e IN ANY @start UnitTestsAhuacatlEdge 
         SORT e.what RETURN e.what`;
       actual = getQueryResults(q, bindVars);
-      assertEqual(actual, [ "v1->v3", "v2->v3", "v3->v4", "v3->v6", "v3->v7", "v6->v3", "v7->v3" ]);
+      assertEqual(actual, ["v1->v3", "v2->v3", "v3->v4", "v3->v6", "v3->v7", "v6->v3", "v7->v3"]);
 
       q = `WITH ${vn} FOR v, e IN ANY @start UnitTestsAhuacatlEdge 
         FILTER e.non == "matchable"
         SORT e.what RETURN e.what`;
       actual = getQueryResults(q, bindVars);
-      assertEqual(actual, [ ]);
+      assertEqual(actual, []);
 
       q = `WITH ${vn} FOR v, e IN ANY @start UnitTestsAhuacatlEdge 
         FILTER e.what == "v1->v3" OR e.non == "matchable"
         SORT e.what RETURN e.what`;
       actual = getQueryResults(q, bindVars);
-      assertEqual(actual, [ "v1->v3" ]);
+      assertEqual(actual, ["v1->v3"]);
 
       q = `WITH ${vn} FOR v, e IN ANY @start UnitTestsAhuacatlEdge 
         FILTER e.what == "v3->v6"
         SORT e.what RETURN e.what`;
       actual = getQueryResults(q, bindVars);
-      assertEqual(actual, [ "v3->v6" ]);
+      assertEqual(actual, ["v3->v6"]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks edges when starting with an array
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgesStartVertexArray : function () {
+    testEdgesStartVertexArray: function () {
       var q = `WITH ${vn} FOR s IN @start FOR v, e IN OUTBOUND s UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
-     
-      var actual;
-      actual = getQueryResults(q, {start: [ "UnitTestsAhuacatlVertex/v1", "UnitTestsAhuacatlVertex/v2" ]});
-      assertEqual(actual, [ "v1->v2", "v1->v3", "v2->v3" ]);
 
-      actual = getQueryResults(q, {start: [ {_id: "UnitTestsAhuacatlVertex/v1"}, {_id: "UnitTestsAhuacatlVertex/v2"} ]});
-      assertEqual(actual, [ "v1->v2", "v1->v3", "v2->v3" ]);
+      var actual;
+      actual = getQueryResults(q, {start: ["UnitTestsAhuacatlVertex/v1", "UnitTestsAhuacatlVertex/v2"]});
+      assertEqual(actual, ["v1->v2", "v1->v3", "v2->v3"]);
+
+      actual = getQueryResults(q, {start: [{_id: "UnitTestsAhuacatlVertex/v1"}, {_id: "UnitTestsAhuacatlVertex/v2"}]});
+      assertEqual(actual, ["v1->v2", "v1->v3", "v2->v3"]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks edges when starting on an object
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgesStartVertexObject : function () {
+    testEdgesStartVertexObject: function () {
       var q = `WITH ${vn} FOR v, e IN OUTBOUND @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
 
       var actual;
-      actual = getQueryResults(q, {start: { _id: "UnitTestsAhuacatlVertex/v1" }});
-      assertEqual(actual, [ "v1->v2", "v1->v3" ]);
+      actual = getQueryResults(q, {start: {_id: "UnitTestsAhuacatlVertex/v1"}});
+      assertEqual(actual, ["v1->v2", "v1->v3"]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks edges with illegal start
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdgesStartVertexIllegal : function () {
+    testEdgesStartVertexIllegal: function () {
       var q = `WITH ${vn} FOR v, e IN OUTBOUND @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
       var qArray = `WITH ${vn} FOR s IN @start FOR v, e IN OUTBOUND s UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
       var actual;
 
       var bindVars = {start: {_id: "v1"}}; // No collection
       actual = getQueryResults(q, bindVars);
-      assertEqual(actual, [ ]);
+      assertEqual(actual, []);
 
-      bindVars = {start: "UnitTestTheFuxx/v1"}; // Non existing collection
-      actual = getQueryResults(q, bindVars);
-      assertEqual(actual, [ ]);
+      if (cluster.isCluster()) {
+        const qModified = `WITH ${vn}, UnitTestTheFuxx FOR v, e IN OUTBOUND @start UnitTestsAhuacatlEdge SORT e.what RETURN e.what`;
+        try {
+          // [GraphRefactor] Note: Related to #GORDO-1360
+          bindVars = {start: "UnitTestTheFuxx/v1"}; // Non existing collection
+          getQueryResults(qModified, bindVars);
+          fail();
+        } catch (e) {
+          assertEqual(e.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+        }
+        try {
+          // [GraphRefactor] Note: Related to #GORDO-1360
+          bindVars = {start: {id: "UnitTestTheFuxx/v1"}};  // No _id attribute
+          getQueryResults(qModified, bindVars);
+          fail();
+        } catch (e) {
+          assertEqual(e.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+        }
+        try {
+          // [GraphRefactor] Note: Related to #GORDO-1360
+          bindVars = {start: [{id: "UnitTestTheFuxx/v1"}]}; // Error in Array
+          getQueryResults(qModified, bindVars);
+          fail();
+        } catch (e) {
+          assertEqual(e.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+        }
+        try {
+          // [GraphRefactor] Note: Related to #GORDO-1360
+          bindVars = {start: ["UnitTestTheFuxx/v1"]}; // Error in Array
+          getQueryResults(qModified, bindVars);
+          fail();
+        } catch (e) {
+          assertEqual(e.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+        }
+      } else {
+        bindVars = {start: "UnitTestTheFuxx/v1"}; // Non existing collection
+        actual = getQueryResults(q, bindVars);
+        assertEqual(actual, []);
 
-      bindVars = {start: { id: "UnitTestTheFuxx/v1"}};  // No _id attribute
-      actual = getQueryResults(q, bindVars);
-      assertEqual(actual, [ ]);
+        bindVars = {start: {id: "UnitTestTheFuxx/v1"}};  // No _id attribute
+        actual = getQueryResults(q, bindVars);
+        assertEqual(actual, []);
 
-      bindVars = {start: [{ id: "UnitTestTheFuxx/v1" }] }; // Error in Array
+        bindVars = {start: [{id: "UnitTestTheFuxx/v1"}]}; // Error in Array
+        actual = getQueryResults(qArray, bindVars);
+        // No Error thrown here
+        assertEqual(actual, []);
+
+        bindVars = {start: ["UnitTestTheFuxx/v1"]}; // Error in Array
+        actual = getQueryResults(qArray, bindVars);
+        // No Error thrown here
+        assertEqual(actual, []);
+      }
+
+      bindVars = {start: ["v1"]}; // Error in Array
       actual = getQueryResults(qArray, bindVars);
       // No Error thrown here
-      assertEqual(actual, [ ]);
-
-      bindVars = {start: ["UnitTestTheFuxx/v1"] }; // Error in Array
-      actual = getQueryResults(qArray, bindVars);
-      // No Error thrown here
-      assertEqual(actual, [ ]);
-
-      bindVars = {start: ["v1"] }; // Error in Array
-      actual = getQueryResults(qArray, bindVars);
-      // No Error thrown here
-      assertEqual(actual, [ ]);
+      assertEqual(actual, []);
     }
   };
 }
 
-function ahuacatlQueryNeighborsTestSuite () {
+function ahuacatlQueryNeighborsTestSuite() {
   var vertex = null;
-  var edge   = null;
+  var edge = null;
   var vn = "UnitTestsAhuacatlVertex";
 
   return {
@@ -540,23 +694,23 @@ function ahuacatlQueryNeighborsTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUpAll : function () {
+    setUpAll: function () {
       db._drop(vn);
       db._drop("UnitTestsAhuacatlEdge");
 
       vertex = db._create(vn, {numberOfShards: 4});
       edge = db._createEdgeCollection("UnitTestsAhuacatlEdge", {numberOfShards: 4});
 
-      vertex.save({ _key: "v1", name: "v1" });
-      vertex.save({ _key: "v2", name: "v2" });
-      vertex.save({ _key: "v3", name: "v3" });
-      vertex.save({ _key: "v4", name: "v4" });
-      vertex.save({ _key: "v5", name: "v5" });
-      vertex.save({ _key: "v6", name: "v6" });
-      vertex.save({ _key: "v7", name: "v7" });
+      vertex.save({_key: "v1", name: "v1"});
+      vertex.save({_key: "v2", name: "v2"});
+      vertex.save({_key: "v3", name: "v3"});
+      vertex.save({_key: "v4", name: "v4"});
+      vertex.save({_key: "v5", name: "v5"});
+      vertex.save({_key: "v6", name: "v6"});
+      vertex.save({_key: "v7", name: "v7"});
 
-      function makeEdge (from, to) {
-        edge.save(vn + "/" + from, vn + "/" + to, { what: from + "->" + to, _key: from + "_" + to });
+      function makeEdge(from, to) {
+        edge.save(vn + "/" + from, vn + "/" + to, {what: from + "->" + to, _key: from + "_" + to});
       }
 
       makeEdge("v1", "v2");
@@ -574,30 +728,30 @@ function ahuacatlQueryNeighborsTestSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop(vn);
       db._drop("UnitTestsAhuacatlEdge");
     },
 
-    testNeighborsEdgeFilter : function () {
+    testNeighborsEdgeFilter: function () {
       // try with bfs/uniqueVertices first
       let query1 = `WITH ${vn} FOR v, e, p IN 0..9 OUTBOUND "${vn}/v1" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} FILTER p.edges[*].what ALL != "v1->v2" && p.edges[*].what ALL != "v1->v3" RETURN v._key`;
-      
+
       let actual = getQueryResults(query1);
-      assertEqual(actual, [ "v1" ]);
+      assertEqual(actual, ["v1"]);
 
       // now try without bfs/uniqueVertices
       let query2 = `WITH ${vn} FOR v, e, p IN 0..9 OUTBOUND "${vn}/v1" UnitTestsAhuacatlEdge FILTER p.edges[*].what ALL != "v1->v2" && p.edges[*].what ALL != "v1->v3" RETURN v._key`;
-      
+
       actual = getQueryResults(query2);
-      assertEqual(actual, [ "v1" ]);
+      assertEqual(actual, ["v1"]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
-    testNeighborsAny : function () {
+    testNeighborsAny: function () {
       var actual;
       var v1 = "UnitTestsAhuacatlVertex/v1";
       var v2 = "UnitTestsAhuacatlVertex/v2";
@@ -611,32 +765,43 @@ function ahuacatlQueryNeighborsTestSuite () {
       var queryStart = `WITH ${vn} FOR n IN ANY "`;
       var queryEnd = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n._id RETURN n._id`;
       var queryEndData = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n RETURN n`;
-      
+
       actual = getQueryResults(queryStart + v1 + queryEnd);
-      assertEqual(actual, [ v2, v3 ]);
+      assertEqual(actual, [v2, v3]);
 
       actual = getQueryResults(queryStart + v2 + queryEnd);
-      assertEqual(actual, [ v1, v3, v4 ]);
+      assertEqual(actual, [v1, v3, v4]);
 
       // v6 and v7 are neighbors twice
       actual = getQueryResults(queryStart + v3 + queryEnd);
-      assertEqual(actual, [ v1, v2, v4, v6, v7 ]);
-      
+      assertEqual(actual, [v1, v2, v4, v6, v7]);
+
       actual = getQueryResults(queryStart + v8 + queryEnd);
-      assertEqual(actual, [ ]);
-      
+      assertEqual(actual, []);
+
       actual = getQueryResults(queryStart + v5 + queryEnd);
-      assertEqual(actual, [ ]);
+      assertEqual(actual, []);
 
       actual = getQueryResults(queryStart + theFox + queryEnd);
-      assertEqual(actual, [ ]);
-      
-      actual = getQueryResults(queryStart + "thefox/thefox" + queryEnd);
-      assertEqual(actual, [ ]);
+      assertEqual(actual, []);
+
+      if (cluster.isCluster()) {
+        try {
+          // [GraphRefactor] Note: Related to #GORDO-1360
+          const queryStartModified = `WITH ${vn}, thefox FOR n IN ANY "`;
+          getQueryResults(queryStartModified + "thefox/thefox" + queryEnd);
+          fail();
+        } catch (e) {
+          assertEqual(e.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+        }
+      } else {
+        actual = getQueryResults(queryStart + "thefox/thefox" + queryEnd);
+        assertEqual(actual, []);
+      }
 
       // Including Data
       actual = getRawQueryResults(queryStart + v3 + queryEndData);
-      actual = actual.map(function(x) {
+      actual = actual.map(function (x) {
         assertTrue(x.hasOwnProperty("_key"), "Neighbor has a _key");
         assertTrue(x.hasOwnProperty("_rev"), "Neighbor has a _rev");
         assertTrue(x.hasOwnProperty("_id"), "Neighbor has a _id");
@@ -651,7 +816,7 @@ function ahuacatlQueryNeighborsTestSuite () {
 /// @brief checks neighbors inbound
 ////////////////////////////////////////////////////////////////////////////////
 
-    testNeighborsIn : function () {
+    testNeighborsIn: function () {
       var actual;
       var v1 = "UnitTestsAhuacatlVertex/v1";
       var v2 = "UnitTestsAhuacatlVertex/v2";
@@ -666,31 +831,42 @@ function ahuacatlQueryNeighborsTestSuite () {
       var queryStart = `WITH ${vn} FOR n IN INBOUND "`;
       var queryEnd = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n._id RETURN n._id`;
       var queryEndData = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n RETURN n`;
-      
+
       actual = getQueryResults(queryStart + v1 + queryEnd);
-      assertEqual(actual, [ ]);
+      assertEqual(actual, []);
 
       actual = getQueryResults(queryStart + v2 + queryEnd);
       assertEqual(actual, [v1, v4]);
-      
+
       actual = getQueryResults(queryStart + v3 + queryEnd);
       assertEqual(actual, [v1, v2, v6, v7]);
-      
+
       actual = getQueryResults(queryStart + v8 + queryEnd);
-      assertEqual(actual, [ ]);
-      
+      assertEqual(actual, []);
+
       actual = getQueryResults(queryStart + v5 + queryEnd);
-      assertEqual(actual, [ ]);
+      assertEqual(actual, []);
 
       actual = getQueryResults(queryStart + theFox + queryEnd);
-      assertEqual(actual, [ ]);
-      
-      actual = getQueryResults(queryStart + "thefox/thefox" + queryEnd);
-      assertEqual(actual, [ ]);
+      assertEqual(actual, []);
+
+      if (cluster.isCluster()) {
+        try {
+          // [GraphRefactor] Note: Related to #GORDO-1360
+          const queryStartModified = `WITH ${vn}, thefox FOR n IN INBOUND "`;
+          getQueryResults(queryStartModified + "thefox/thefox" + queryEnd);
+          fail();
+        } catch (e) {
+          assertEqual(e.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+        }
+      } else {
+        actual = getQueryResults(queryStart + "thefox/thefox" + queryEnd);
+        assertEqual(actual, []);
+      }
 
       // Inclunding Data
       actual = getRawQueryResults(queryStart + v3 + queryEndData);
-      actual = actual.map(function(x) {
+      actual = actual.map(function (x) {
         assertTrue(x.hasOwnProperty("_key"), "Neighbor has a _key");
         assertTrue(x.hasOwnProperty("_rev"), "Neighbor has a _rev");
         assertTrue(x.hasOwnProperty("_id"), "Neighbor has a _id");
@@ -704,7 +880,7 @@ function ahuacatlQueryNeighborsTestSuite () {
 /// @brief checks outbound neighbors
 ////////////////////////////////////////////////////////////////////////////////
 
-    testNeighborsOut : function () {
+    testNeighborsOut: function () {
       var actual;
       var v1 = "UnitTestsAhuacatlVertex/v1";
       var v2 = "UnitTestsAhuacatlVertex/v2";
@@ -718,31 +894,42 @@ function ahuacatlQueryNeighborsTestSuite () {
       var queryStart = `WITH ${vn} FOR n IN OUTBOUND "`;
       var queryEnd = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n._id RETURN n._id`;
       var queryEndData = `" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} SORT n RETURN n`;
-      
+
       actual = getQueryResults(queryStart + v1 + queryEnd);
-      assertEqual(actual, [ v2, v3 ]);
+      assertEqual(actual, [v2, v3]);
 
       actual = getQueryResults(queryStart + v2 + queryEnd);
-      assertEqual(actual, [ v3 ]);
-      
+      assertEqual(actual, [v3]);
+
       actual = getQueryResults(queryStart + v3 + queryEnd);
-      assertEqual(actual, [ v4, v6, v7 ]);
-      
+      assertEqual(actual, [v4, v6, v7]);
+
       actual = getQueryResults(queryStart + v8 + queryEnd);
-      assertEqual(actual, [ ]);
+      assertEqual(actual, []);
 
       actual = getQueryResults(queryStart + v5 + queryEnd);
-      assertEqual(actual, [ ]);
-      
-      actual = getQueryResults(queryStart + theFox + queryEnd);
-      assertEqual(actual, [ ]);
+      assertEqual(actual, []);
 
-      actual = getQueryResults(queryStart + "thefox/thefox" + queryEnd);
-      assertEqual(actual, [ ]);
+      actual = getQueryResults(queryStart + theFox + queryEnd);
+      assertEqual(actual, []);
+
+      if (cluster.isCluster()) {
+        try {
+          // [GraphRefactor] Note: Related to #GORDO-1360
+          const queryStartModified = `WITH ${vn}, thefox FOR n IN OUTBOUND "`;
+          getQueryResults(queryStartModified + "thefox/thefox" + queryEnd);
+          fail();
+        } catch (e) {
+          assertEqual(e.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+        }
+      } else {
+        actual = getQueryResults(queryStart + "thefox/thefox" + queryEnd);
+        assertEqual(actual, []);
+      }
 
       // Inclunding Data
       actual = getRawQueryResults(queryStart + v3 + queryEndData);
-      actual = actual.map(function(x) {
+      actual = actual.map(function (x) {
         assertTrue(x.hasOwnProperty("_key"), "Neighbor has a _key");
         assertTrue(x.hasOwnProperty("_rev"), "Neighbor has a _rev");
         assertTrue(x.hasOwnProperty("_id"), "Neighbor has a _id");
@@ -752,7 +939,7 @@ function ahuacatlQueryNeighborsTestSuite () {
       assertEqual(actual, ["v4", "v6", "v7"]);
     },
 
-    testNeighborsEdgeExamples : function () {
+    testNeighborsEdgeExamples: function () {
       var actual;
       var v3 = "UnitTestsAhuacatlVertex/v3";
       var v4 = "UnitTestsAhuacatlVertex/v4";
@@ -765,30 +952,30 @@ function ahuacatlQueryNeighborsTestSuite () {
       // An empty filter should let all edges through
       actual = getQueryResults(createQuery(v3, ""));
 
-      assertEqual(actual, [ v4, v6, v7 ]);
+      assertEqual(actual, [v4, v6, v7]);
 
       // Should be able to handle exactly one object
       actual = getQueryResults(createQuery(v3, 'FILTER e.what == "v3->v4"'));
-      assertEqual(actual, [ v4 ]);
+      assertEqual(actual, [v4]);
 
       // Should be able to handle a list of objects
       actual = getQueryResults(createQuery(v3, 'FILTER e.what == "v3->v4" OR e.what == "v3->v6"'));
-      assertEqual(actual, [ v4, v6 ]);
+      assertEqual(actual, [v4, v6]);
 
       // Should be able to handle an id as string
       actual = getQueryResults(createQuery(v3, 'FILTER e._id == "UnitTestsAhuacatlEdge/v3_v6"'));
-      assertEqual(actual, [ v6 ]);
+      assertEqual(actual, [v6]);
 
       // Should be able to handle a mix of id and objects
       actual = getQueryResults(createQuery(v3, 'FILTER e._id == "UnitTestsAhuacatlEdge/v3_v6" OR e.what == "v3->v4"'));
-      assertEqual(actual, [ v4, v6 ]);
+      assertEqual(actual, [v4, v6]);
 
       // Should be able to handle internal attributes
       actual = getQueryResults(createQuery(v3, `FILTER e._to == "${v4}"`));
-      assertEqual(actual, [ v4 ]);
+      assertEqual(actual, [v4]);
     },
 
-    testNeighborsWithVertexFilters : function () {
+    testNeighborsWithVertexFilters: function () {
       let actual;
       const v1 = "UnitTestsAhuacatlVertex/v1";
       var v3 = "UnitTestsAhuacatlVertex/v3";
@@ -825,7 +1012,7 @@ function ahuacatlQueryNeighborsTestSuite () {
       assertEqual(actual, [v4, v6]);
     },
 
-    testNonUniqueBFSWithVertexFilters : function () {
+    testNonUniqueBFSWithVertexFilters: function () {
       let actual;
       const v1 = "UnitTestsAhuacatlVertex/v1";
       var v3 = "UnitTestsAhuacatlVertex/v3";
@@ -865,9 +1052,9 @@ function ahuacatlQueryNeighborsTestSuite () {
   };
 }
 
-function ahuacatlQueryBreadthFirstTestSuite () {
+function ahuacatlQueryBreadthFirstTestSuite() {
   let vertex = null;
-  let edge   = null;
+  let edge = null;
   const vn = "UnitTestsAhuacatlVertex";
   const en = "UnitTestsAhuacatlEdge";
   const center = vn + "/A";
@@ -892,12 +1079,12 @@ function ahuacatlQueryBreadthFirstTestSuite () {
 ///       +--> C <--+
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUpAll : function () {
+    setUpAll: function () {
       cleanUp();
 
       vertex = db._create(vn, {numberOfShards: 4});
       edge = db._createEdgeCollection(en, {numberOfShards: 4});
-      
+
       vertex.save({_key: "A"});
       vertex.save({_key: "B"});
       vertex.save({_key: "C"});
@@ -905,92 +1092,92 @@ function ahuacatlQueryBreadthFirstTestSuite () {
       vertex.save({_key: "E"});
       vertex.save({_key: "F"});
 
-      let makeEdge = function(from, to, type) {
+      let makeEdge = function (from, to, type) {
         edge.save({
           _from: vn + "/" + from,
-          _to: vn + "/" + to, 
+          _to: vn + "/" + to,
           _key: from + "" + to,
           type: type
         });
       };
 
-      makeEdge("A", "B","friend");
-      makeEdge("A", "D","friend");
-      makeEdge("A", "E","enemy");
-      makeEdge("A", "F","enemy");
+      makeEdge("A", "B", "friend");
+      makeEdge("A", "D", "friend");
+      makeEdge("A", "E", "enemy");
+      makeEdge("A", "F", "enemy");
 
-      makeEdge("B", "C","enemy");
-      makeEdge("B", "D","friend");
+      makeEdge("B", "C", "enemy");
+      makeEdge("B", "D", "friend");
 
-      makeEdge("E", "C","enemy");
-      makeEdge("E", "F","friend");
-      
-      makeEdge("C","A","friend");
+      makeEdge("E", "C", "enemy");
+      makeEdge("E", "F", "friend");
+
+      makeEdge("C", "A", "friend");
     },
 
-    tearDownAll : cleanUp,
+    tearDownAll: cleanUp,
 
-    testNonUniqueVerticesDefaultDepth : function() {
+    testNonUniqueVerticesDefaultDepth: function () {
       var query = `WITH ${vn}
         FOR v IN OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true}
         SORT v._key RETURN v._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 4);
-      assertEqual(actual, [ "B","D","E","F" ]);
+      assertEqual(actual, ["B", "D", "E", "F"]);
     },
-    
-    testNonUniqueVerticesMaxDepth2 : function() {
+
+    testNonUniqueVerticesMaxDepth2: function () {
       var query = `WITH ${vn}
         FOR v IN 1..2 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true}
         SORT v._key RETURN v._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 8);
-      assertEqual(actual, [ "B","C","C","D","D","E","F","F" ]);
+      assertEqual(actual, ["B", "C", "C", "D", "D", "E", "F", "F"]);
     },
-    
-    testNonUniqueVerticesMinDepth0 : function() {
+
+    testNonUniqueVerticesMinDepth0: function () {
       var query = `WITH ${vn}
         FOR v IN 0..2 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true}
         SORT v._key RETURN v._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 9);
-      assertEqual(actual, [ "A","B","C","C","D","D","E","F","F" ]);
+      assertEqual(actual, ["A", "B", "C", "C", "D", "D", "E", "F", "F"]);
     },
-    
-    testNonUniqueVerticesMinDepth2 : function() {
+
+    testNonUniqueVerticesMinDepth2: function () {
       var query = `WITH ${vn}
         FOR v IN 2..2 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true}
         SORT v._key RETURN v._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 4);
-      assertEqual(actual, [ "C","C","D","F" ]);
+      assertEqual(actual, ["C", "C", "D", "F"]);
     },
-    
-    testUniqueVerticesMaxDepth2 : function () {
+
+    testUniqueVerticesMaxDepth2: function () {
       var query = `WITH ${vn}
         FOR v IN 1..2 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueVertices: 'global'}
         SORT v._key RETURN v._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 5);
-      assertEqual(actual, [ "B","C","D","E","F" ]);
+      assertEqual(actual, ["B", "C", "D", "E", "F"]);
     },
-    
-    testUniqueVerticesMinDepth0 : function () {
+
+    testUniqueVerticesMinDepth0: function () {
       var query = `WITH ${vn}
         FOR v IN 0..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueVertices: 'global'}
         SORT v._key RETURN v._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 6);
-      assertEqual(actual, [ "A","B","C","D","E","F" ]);
+      assertEqual(actual, ["A", "B", "C", "D", "E", "F"]);
     },
-    
-    testUniqueVerticesMinDepth2 : function () {
+
+    testUniqueVerticesMinDepth2: function () {
       var query = `WITH ${vn}
         FOR v IN 2..2 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true, uniqueVertices: 'global'}
@@ -1001,50 +1188,50 @@ function ahuacatlQueryBreadthFirstTestSuite () {
       // So we expect only C to be returned.
       actual = getQueryResults(query);
       assertEqual(actual.length, 1);
-      assertEqual(actual, [ "C" ]);
+      assertEqual(actual, ["C"]);
     },
-    
-    testNonUniqueEdgesDefaultDepth : function() {
+
+    testNonUniqueEdgesDefaultDepth: function () {
       var query = `WITH ${vn}
         FOR v,e IN OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true}
         SORT e._key RETURN e._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 4);
-      assertEqual(actual, [ "AB","AD","AE","AF" ]);
+      assertEqual(actual, ["AB", "AD", "AE", "AF"]);
     },
-    
-    testNonUniqueEdgesMaxDepth2 : function() {
+
+    testNonUniqueEdgesMaxDepth2: function () {
       var query = `WITH ${vn}
         FOR v,e IN 1..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true}
         SORT e._key RETURN e._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 10);
-      assertEqual(actual, [ "AB","AD","AE","AF","BC","BD","CA","CA","EC","EF" ]);
+      assertEqual(actual, ["AB", "AD", "AE", "AF", "BC", "BD", "CA", "CA", "EC", "EF"]);
     },
-    
-    testNonUniqueEdgesMinDepth0 : function() {
+
+    testNonUniqueEdgesMinDepth0: function () {
       var query = `WITH ${vn}
         FOR v,e IN 0..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: false}
         SORT e._key RETURN e._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 11);
-      assertEqual(actual, [ null,"AB","AD","AE","AF","BC","BD","CA","CA","EC","EF" ]);
+      assertEqual(actual, [null, "AB", "AD", "AE", "AF", "BC", "BD", "CA", "CA", "EC", "EF"]);
     },
-    
-    testNonUniqueEdgesMinDepth2 : function() {
+
+    testNonUniqueEdgesMinDepth2: function () {
       var query = `WITH ${vn}
         FOR v,e IN 2..3 OUTBOUND "${center}" ${en}
         OPTIONS {bfs: true}
         SORT e._key RETURN e._key`;
       var actual = getQueryResults(query);
       assertEqual(actual.length, 6);
-      assertEqual(actual, [ "BC","BD","CA","CA","EC","EF" ]);
+      assertEqual(actual, ["BC", "BD", "CA", "CA", "EC", "EF"]);
     },
 
-    testPathUniqueVertices : function () {
+    testPathUniqueVertices: function () {
       // Only depth 2 can yield results
       // Depth 3 will return to the startVertex (A)
       // and thereby is non-unique and will be excluded
@@ -1066,7 +1253,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
       assertEqual(actual, expected);
     },
 
-    testPathUniqueEdges : function () {
+    testPathUniqueEdges: function () {
       // Only depth 4 and 5 can yield results
       // Depth 6 will have to reuse an edge (A->E or A->B)
       // and thereby is non-unique and will be excluded
@@ -1102,7 +1289,7 @@ function ahuacatlQueryBreadthFirstTestSuite () {
 /// @brief test suite for SHORTEST_PATH 
 ////////////////////////////////////////////////////////////////////////////////
 
-function ahuacatlQueryShortestPathTestSuite () {
+function ahuacatlQueryShortestPathTestSuite() {
   var vn = "UnitTestsTraversalVertices";
   var en = "UnitTestsTraversalEdges";
   var vertexCollection;
@@ -1114,22 +1301,22 @@ function ahuacatlQueryShortestPathTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUpAll : function () {
+    setUpAll: function () {
       db._drop(vn);
       db._drop(en);
 
       vertexCollection = db._create(vn, {numberOfShards: 4});
       edgeCollection = db._createEdgeCollection(en, {numberOfShards: 4});
 
-      [ "A", "B", "C", "D", "E", "F", "G", "H" ].forEach(function (item) {
-        vertexCollection.save({ _key: item, name: item });
+      ["A", "B", "C", "D", "E", "F", "G", "H"].forEach(function (item) {
+        vertexCollection.save({_key: item, name: item});
       });
 
-      [ [ "A", "B", 1 ], [ "B", "C", 5 ], [ "C", "D", 1 ], [ "A", "D", 12 ], [ "D", "C", 3 ], [ "C", "B", 2 ], [ "D", "E", 6 ], [ "B", "F", 1 ], [ "E", "G", 5 ], [ "G", "H", 2 ] ].forEach(function (item) {
+      [["A", "B", 1], ["B", "C", 5], ["C", "D", 1], ["A", "D", 12], ["D", "C", 3], ["C", "B", 2], ["D", "E", 6], ["B", "F", 1], ["E", "G", 5], ["G", "H", 2]].forEach(function (item) {
         var l = item[0];
         var r = item[1];
         var w = item[2];
-        edgeCollection.save(vn + "/" + l, vn + "/" + r, { _key: l + r, what : l + "->" + r, weight: w });
+        edgeCollection.save(vn + "/" + l, vn + "/" + r, {_key: l + r, what: l + "->" + r, weight: w});
       });
     },
 
@@ -1137,7 +1324,7 @@ function ahuacatlQueryShortestPathTestSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop(vn);
       db._drop(en);
 
@@ -1149,7 +1336,7 @@ function ahuacatlQueryShortestPathTestSuite () {
 /// @brief shortest path using dijkstra default config
 ////////////////////////////////////////////////////////////////////////////////
 
-    testShortestPathDijkstraOutbound : function () {
+    testShortestPathDijkstraOutbound: function () {
       var query = `WITH ${vn}
                    LET p = (FOR v, e IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en} RETURN {v: v._id, e: e._id})
                    LET edges = (FOR e IN p[*].e FILTER e != null RETURN e)
@@ -1183,7 +1370,7 @@ function ahuacatlQueryShortestPathTestSuite () {
 /// Regression test for missing skipSome implementation
 ////////////////////////////////////////////////////////////////////////////////
 
-    testShortestPathDijkstraOutboundSkipFirst : function () {
+    testShortestPathDijkstraOutboundSkipFirst: function () {
       const query = `WITH ${vn}
         FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en}
         LIMIT 1,4
@@ -1203,7 +1390,7 @@ function ahuacatlQueryShortestPathTestSuite () {
 /// @brief shortest path using dijkstra with includeData: true
 ////////////////////////////////////////////////////////////////////////////////
 
-    testShortestPathDijkstraOutboundIncludeData : function () {
+    testShortestPathDijkstraOutboundIncludeData: function () {
       var query = `WITH ${vn}
                    LET p = (FOR v, e IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en} RETURN {v, e})
                    LET edges = (FOR e IN p[*].e FILTER e != null RETURN e)
@@ -1233,54 +1420,54 @@ function ahuacatlQueryShortestPathTestSuite () {
 /// @brief shortest path using dijkstra
 ////////////////////////////////////////////////////////////////////////////////
 
-    testShortestPathDijkstraInbound : function () {
+    testShortestPathDijkstraInbound: function () {
       var query = `WITH ${vn} FOR v IN INBOUND SHORTEST_PATH "${vn}/H" TO "${vn}/A" ${en} RETURN v._id`;
       var actual = getQueryResults(query);
-      assertEqual([ vn + "/H", vn + "/G", vn + "/E", vn + "/D", vn + "/A" ], actual);
+      assertEqual([vn + "/H", vn + "/G", vn + "/E", vn + "/D", vn + "/A"], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortest path with custom distance function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testShortestPathDijkstraDistance : function () {
+    testShortestPathDijkstraDistance: function () {
       var query = `WITH ${vn} FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en} OPTIONS {weightAttribute: "weight"} RETURN v._key`;
       var actual = getQueryResults(query);
-      assertEqual([ "A", "B", "C", "D", "E", "G", "H" ], actual);
+      assertEqual(["A", "B", "C", "D", "E", "G", "H"], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortest path, with cycles
 ////////////////////////////////////////////////////////////////////////////////
 
-    testShortestPathDijkstraCycles : function () {
-      [ [ "B", "A" ], [ "C", "A" ], [ "D", "B" ] ].forEach(function (item) {
+    testShortestPathDijkstraCycles: function () {
+      [["B", "A"], ["C", "A"], ["D", "B"]].forEach(function (item) {
         var l = item[0];
         var r = item[1];
-        edgeCollection.save(vn + "/" + l, vn + "/" + r, { _key: l + r, what : l + "->" + r });
+        edgeCollection.save(vn + "/" + l, vn + "/" + r, {_key: l + r, what: l + "->" + r});
       });
 
       var query = `WITH ${vn} FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/H" ${en} RETURN v._key`;
       var actual = getQueryResults(query);
 
-      assertEqual(["A","D","E","G","H"], actual);
+      assertEqual(["A", "D", "E", "G", "H"], actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shortest path, non-connected vertices
 ////////////////////////////////////////////////////////////////////////////////
 
-    testShortestPathDijkstraNotConnected : function () {
+    testShortestPathDijkstraNotConnected: function () {
       // this item is not connected to any other
-      vertexCollection.save({ _key: "J", name: "J" });
+      vertexCollection.save({_key: "J", name: "J"});
 
       var query = `FOR v IN OUTBOUND SHORTEST_PATH "${vn}/A" TO "${vn}/J" ${en} RETURN v._key`;
       var actual = getQueryResults(query);
 
-      assertEqual([ ], actual);
+      assertEqual([], actual);
     },
 
-    testKPathsConnectedButInnerVertexDeleted : function () {
+    testKPathsConnectedButInnerVertexDeleted: function () {
       // Find the path(s): A -> B -> F (which is valid)
       // Case: B will be deleted before query execution.
       // This is valid, but the query needs to report an error!
@@ -1303,7 +1490,7 @@ function ahuacatlQueryShortestPathTestSuite () {
       }
 
       // re-add vertex to let environment stay as is has been before the test
-      vertexCollection.save({ _key: key, name: key });
+      vertexCollection.save({_key: key, name: key});
     }
   };
 }
@@ -1312,7 +1499,7 @@ function ahuacatlQueryShortestPathTestSuite () {
 /// @brief test suite for ShortestPath with intentional failures
 ////////////////////////////////////////////////////////////////////////////////
 
-function ahuacatlQueryShortestpathErrorsSuite () {
+function ahuacatlQueryShortestpathErrorsSuite() {
   var vn = "UnitTestsTraversalVertices";
   var en = "UnitTestsTraversalEdges";
   var vertexCollection;
@@ -1324,7 +1511,7 @@ function ahuacatlQueryShortestpathErrorsSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUpAll : function () {
+    setUpAll: function () {
       db._drop(vn);
       db._drop(en);
       internal.debugClearFailAt();
@@ -1332,14 +1519,14 @@ function ahuacatlQueryShortestpathErrorsSuite () {
       vertexCollection = db._create(vn, {numberOfShards: 4});
       edgeCollection = db._createEdgeCollection(en, {numberOfShards: 4});
 
-      [ "A", "B", "C", "D", "E"].forEach(function (item) {
-        vertexCollection.save({ _key: item, name: item });
+      ["A", "B", "C", "D", "E"].forEach(function (item) {
+        vertexCollection.save({_key: item, name: item});
       });
 
-      [ [ "A", "B" ], [ "B", "C" ], [ "A", "D" ], [ "D", "E" ], [ "E", "C"], [ "C", "A" ] ].forEach(function (item) {
+      [["A", "B"], ["B", "C"], ["A", "D"], ["D", "E"], ["E", "C"], ["C", "A"]].forEach(function (item) {
         var l = item[0];
         var r = item[1];
-        edgeCollection.save(vn + "/" + l, vn + "/" + r, { _key: l + r, what : l + "->" + r });
+        edgeCollection.save(vn + "/" + l, vn + "/" + r, {_key: l + r, what: l + "->" + r});
       });
     },
 
@@ -1347,7 +1534,7 @@ function ahuacatlQueryShortestpathErrorsSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDownAll : function () {
+    tearDownAll: function () {
       db._drop(vn);
       db._drop(en);
       internal.debugClearFailAt();
@@ -1357,7 +1544,7 @@ function ahuacatlQueryShortestpathErrorsSuite () {
 /// @brief checks error handling in SHORTEST_PATH
 ////////////////////////////////////////////////////////////////////////////////
 
-    testShortestPathOOM : function () {
+    testShortestPathOOM: function () {
       var s = vn + "/A";
       var m = vn + "/B";
       var t = vn + "/C";
@@ -1398,7 +1585,7 @@ function ahuacatlQueryShortestpathErrorsSuite () {
   };
 }
 
-function kPathsTestSuite () {
+function kPathsTestSuite() {
   const gn = "UnitTestGraph";
   const vn = "UnitTestV";
   const en = "UnitTestE";
@@ -1565,7 +1752,7 @@ jsunity.run(ahuacatlQueryEdgesTestSuite);
 jsunity.run(ahuacatlQueryNeighborsTestSuite);
 jsunity.run(ahuacatlQueryBreadthFirstTestSuite);
 jsunity.run(ahuacatlQueryShortestPathTestSuite);
-if (internal.debugCanUseFailAt() && ! cluster.isCluster()) {
+if (internal.debugCanUseFailAt() && !cluster.isCluster()) {
   jsunity.run(ahuacatlQueryShortestpathErrorsSuite);
 }
 jsunity.run(kPathsTestSuite);

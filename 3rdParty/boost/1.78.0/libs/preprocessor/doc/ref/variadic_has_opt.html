@@ -1,0 +1,63 @@
+<html>
+<head>
+  <title>BOOST_PP_VARIADIC_HAS_OPT</title>
+  <link rel="stylesheet" type="text/css" href="../styles.css">
+</head>
+<body>
+<div style="margin-left: 0px;"> The <b>BOOST_PP_VARIADIC_HAS_OPT</b> macro
+determines whether or not the C++20 __VA_OPT__ construct is supported for the compiler's preprocessor being used. 
+Expands to 1 if the __VA_OPT__ construct is supported, otherwise expands to 0.
+</div>
+<h4>Usage</h4>
+<div class="code"> <b>BOOST_PP_VARIADIC_HAS_OPT</b>() <br>
+  </div>
+<h4>Arguments</h4>
+<dl>
+  <dt>None<br>
+</dt>
+</dl>
+	<h4>Remarks</h4>
+		<div>
+			This macro only returns 1 if the compiler is compiling at its own C++20 level and
+			__VA_OPT__ is supported. It is possible for a compiler to support the __VA_OPT__
+			construct when not compiling at its own C++20 level, but this macro will return
+			0 in that case even if __VA_OPT__ is normally supported for that level. The reason
+			for this is that such a compiler may have a compiler switch, enforcing a strict
+			adherence to a particular C++ standard level, which	gives a warning or an error
+			if __VA_OPT__ is specified below the C++20 level, and the preprocessor library
+			wants to avoid that happening. Therefore the macro will only test to see whether
+			or not __VA_OPT__ is supported at the C++20 level, while otherwise always returning
+			0 for all lesser C++ standard levels.
+		</div>
+<h4>Requirements</h4>
+<div> <b>Header:</b> &nbsp;<a href="../headers/variadic/has_opt.html">&lt;boost/preprocessor/variadic/has_opt.hpp&gt;</a>
+</div>
+<h4>Sample Code</h4>
+<div>
+<pre>
+#include &lt;<a href="../headers/variadic/has_opt.html">boost/preprocessor/variadic/has_opt.hpp</a>&gt;<br>
+#if <a href="variadic_has_opt.html">BOOST_PP_VARIADIC_HAS_OPT</a>()
+// Preprocessor code which uses __VA_OPT__
+#else
+// Preprocessor code which does not use __VA_OPT__
+#endif
+</pre>
+<br>
+or within a macro definition<br><br>
+<pre>
+#include &lt;boost/preprocessor/control/iif.hpp&gt;
+#include &lt;<a href="../headers/variadic/has_opt.html">boost/preprocessor/variadic/has_opt.hpp</a>&gt;<br>
+#define USE_OPT(...) BOOST_PP_IIF(<a href="variadic_has_opt.html">BOOST_PP_VARIADIC_HAS_OPT</a>(),MACRO_USING_OPT,MACRO_NOT_USING_OPT)(__VA_ARGS__)
+#define MACRO_USING_OPT(...) __VA_OPT__( preprocessor tokens ) anything
+#define MACRO_NOT_USING_OPT(...) anything
+</pre>
+</div>
+<hr size="1">
+<div style="margin-left: 0px;"> <i></i><i>© Copyright Edward Diener 2019</i> </div>
+<div style="margin-left: 0px;">
+<p><small>Distributed under the Boost Software License, Version 1.0.
+(See accompanying file <a href="../../../../LICENSE_1_0.txt">LICENSE_1_0.txt</a>
+or copy at <a href="http://www.boost.org/LICENSE_1_0.txt">www.boost.org/LICENSE_1_0.txt</a>)</small></p>
+</div>
+</body>
+</html>

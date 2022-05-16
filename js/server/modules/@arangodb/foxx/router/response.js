@@ -27,7 +27,7 @@ const fs = require('fs');
 const vary = require('vary');
 const httperr = require('http-errors');
 const statuses = require('statuses');
-const mediaTyper = require('media-typer');
+const ct = require('content-type');
 const mimeTypes = require('mime-types');
 const typeIs = require('type-is');
 const contentDisposition = require('content-disposition');
@@ -98,6 +98,13 @@ module.exports =
       } else {
         this._raw.body = String(data);
       }
+    }
+
+    transformations(which) {
+      if (!this._raw.hasOwnProperty('transformations')) {
+        this._raw.transformations = [];
+      }
+      this._raw.transformations.push(which);
     }
 
     getHeader (name) {
@@ -372,9 +379,7 @@ module.exports =
       type = mimeTypes.lookup(type) || type;
 
       let handler;
-      for (const entry of this.context.service.types.entries()) {
-        const key = entry[0];
-        const value = entry[1];
+      for (const [key, value] of this.context.service.types.entries()) {
         let match;
         if (key instanceof RegExp) {
           match = type.test(key);
@@ -391,7 +396,7 @@ module.exports =
       }
 
       if (handler) {
-        const result = handler.forClient(body, this, mediaTyper.parse(contentType));
+        const result = handler.forClient(body, this, contentType);
         if (result.headers || result.data) {
           contentType = result.headers['content-type'] || contentType;
           this.set(result.headers);

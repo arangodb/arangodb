@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, Backbone, window, $, templateEngine, document, JSONEditor */
+/* global arangoHelper, Backbone, window, $, _, templateEngine, document, JSONEditor */
 
 (function () {
   'use strict';
@@ -63,7 +63,7 @@
 
     breadcrumb: function () {
       $('#subNavigationBar .breadcrumb').html(
-        'Collection: ' + (this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
+        'Collection: ' + _.escape(this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
       );
     },
 

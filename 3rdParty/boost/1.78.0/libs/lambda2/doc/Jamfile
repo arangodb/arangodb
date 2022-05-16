@@ -1,0 +1,21 @@
+# Copyright 2017, 2018 Peter Dimov
+# Distributed under the Boost Software License, Version 1.0.
+# https://www.boost.org/LICENSE_1_0.txt
+
+import asciidoctor ;
+
+html lambda2.html : lambda2.adoc ;
+
+install html_ : lambda2.html : <location>html ;
+
+pdf lambda2.pdf : lambda2.adoc ;
+explicit lambda2.pdf ;
+
+install pdf_ : lambda2.pdf : <location>pdf ;
+explicit pdf_ ;
+
+###############################################################################
+alias boostdoc ;
+explicit boostdoc ;
+alias boostrelease : html_ ;
+explicit boostrelease ;

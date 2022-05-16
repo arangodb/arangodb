@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,11 +26,22 @@
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
+
+namespace replication2 {
+namespace replicated_log {
+struct QuickLogStatus;
 }
+namespace replicated_state {
+struct StateStatus;
+}
+class LogId;
+}  // namespace replication2
+
 class HeartbeatThread;
 
 struct DBServerAgencySyncResult {
@@ -39,14 +50,14 @@ struct DBServerAgencySyncResult {
   uint64_t planIndex;
   uint64_t currentIndex;
 
-  DBServerAgencySyncResult()
-    : success(false), planIndex(0), currentIndex(0) {}
+  DBServerAgencySyncResult() : success(false), planIndex(0), currentIndex(0) {}
 
   DBServerAgencySyncResult(bool s, uint64_t pi, uint64_t ci)
-    : success(s), planIndex(pi), currentIndex(ci) {}
+      : success(s), planIndex(pi), currentIndex(ci) {}
 
-  DBServerAgencySyncResult(bool s, std::string const& e, uint64_t pi, uint64_t ci)
-    : success(s), errorMessage(e), planIndex(pi), currentIndex(ci) {}
+  DBServerAgencySyncResult(bool s, std::string const& e, uint64_t pi,
+                           uint64_t ci)
+      : success(s), errorMessage(e), planIndex(pi), currentIndex(ci) {}
 };
 
 class DBServerAgencySync {
@@ -54,27 +65,37 @@ class DBServerAgencySync {
   DBServerAgencySync& operator=(DBServerAgencySync const&) = delete;
 
  public:
-  explicit DBServerAgencySync(application_features::ApplicationServer& server,
+  explicit DBServerAgencySync(ArangodServer& server,
                               HeartbeatThread* heartbeat);
 
  public:
   void work();
+
+  using LocalLogsMap = std::unordered_map<
+      std::string, std::unordered_map<
+                       arangodb::replication2::LogId,
+                       arangodb::replication2::replicated_log::QuickLogStatus>>;
+  using LocalStatesMap = std::unordered_map<
+      std::string,
+      std::unordered_map<arangodb::replication2::LogId,
+                         std::optional<arangodb::replication2::
+                                           replicated_state::StateStatus>>>;
 
   /**
    * @brief Get copy of current local state
    * @param  collections  Builder to fill to
    */
   arangodb::Result getLocalCollections(
-    std::unordered_set<std::string> const& dirty,
-    std::unordered_map<std::string, std::shared_ptr<VPackBuilder>>& collections);
+      containers::FlatHashSet<std::string> const& dirty,
+      containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>>&
+          collections,
+      LocalLogsMap& replLogs, LocalStatesMap& replStates);
 
  private:
   DBServerAgencySyncResult execute();
 
  private:
-  application_features::ApplicationServer& _server;
+  ArangodServer& _server;
   HeartbeatThread* _heartbeat;
-
 };
 }  // namespace arangodb
-

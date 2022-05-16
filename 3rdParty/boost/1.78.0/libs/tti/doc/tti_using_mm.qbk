@@ -1,0 +1,559 @@
+[/ 
+  (C) Copyright Edward Diener 2011,2012,2020
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:tti_usingMM An example using the macro metafunctions]
+[#sectti_usingMM]
+
+Using the macro metafunctions can be illustrated by first creating some hypothetical
+user-defined type with corresponding nested types and other inner elements.
+With this type we can illustrate the use of the macro metafunctions. This is 
+just meant to serve as a model for what a type T might entail from within 
+a class or function template where 'T' is a type passed to the template.
+
+ // An enclosing type, this could also be a class or a union
+
+ struct AType
+   {
+   
+   // Type
+   
+   typedef int AnIntType; // as a typedef
+   
+   // Class/Struct
+   
+   struct BType // as a nested struct
+     {
+     struct CType
+       {
+       };
+     };
+     
+   class AClass // as a nested class
+     {
+     };
+     
+   // Enumeration
+   
+   enum EColor // as a nested enumeration
+     {
+     Red,
+     Blue,
+     Green
+     };
+     
+   // Union
+   
+   union AUnion // as a nested union
+     {
+     int i;
+     long l;
+     };
+   
+   // Class Template
+   
+   template <class> struct AMemberTemplate { };
+   template <class,class,class> struct AnotherMemberTemplate { };
+   template <class,class,int,class,template <class> class,class,long> struct ManyParameters { };
+   template <class,class,int,short,class,template <class,int> class,class> struct MoreParameters { };
+   
+   // Data
+   
+   BType IntBT;
+   
+   // Function
+   
+   int IntFunction(short) { return 0; }
+   
+   // Const Function
+   
+   long AnotherFunction(bool,double) const { return 0L; }
+   
+   // Function Template
+   
+   template<class X, class Y, int Z> int MyFunctionTemplate(X *, Y &) { return Z; }
+   
+   // Const Function Template
+   
+   template<class X, int Y, class Z> int AnotherFunctionTemplate(X &, Z **) const { return Y; }
+   
+   // Static Data
+   
+   static short DSMember;
+   
+   // Static Function
+   
+   static int SIntFunction(long,double) { return 2; }
+   
+   // Static Function Template
+   
+   template<class A, class B> static long SFunctionTemplate(long &,A **,B,float) { return 20L; }
+   
+   };
+  
+I will be using the type above just to illustrate the sort of 
+metaprogramming questions we can ask of some type T which is passed 
+to the template programmer in a class template. Here is what the 
+class template might look like:
+
+ #include <boost/tti/tti.hpp>
+
+ template<class T>
+ struct OurTemplateClass
+   {
+   
+   // compile-time template code regarding T
+   
+   };
+
+Now let us create and invoke the macro metafunctions for each of our inner element types, 
+to see if type T above corresponds to our hypothetical type above. Imagine this being 
+within 'OurTemplateClass' above. In the examples below the same macro is invoked just once 
+to avoid ODR violations. Also in these examples we are showing results which return
+the compile time boolean result of 'true' to illustrate how our macro metafunctions work.
+We could just as well create examples which return the compile time boolean result of
+'false' if we introspect for constructs that do not exist in our hypothetical type of T.
+We can validly return 'true' or 'false' without generating compiler errors as long as the
+types using in our macro metafunction invocations exist at the time we invoke the
+metafunction.
+ 
+[heading Type]
+
+C++ named types can be typedefs or type aliases, class, structs, unions, or enumerations
+
+Does T have a nested type called 'AnIntType' ?
+
+ BOOST_TTI_HAS_TYPE(AnIntType)
+ 
+ has_type_AnIntType
+   <
+   T
+   >
+   
+Does T have a nested type called 'BType' ?
+
+ BOOST_TTI_HAS_TYPE(BType)
+  
+ has_type_BType
+   <
+   T
+   >
+   
+Does T have a nested type called 'AClass' ?
+
+ BOOST_TTI_HAS_TYPE(AClass)
+  
+ has_type_ACLass
+   <
+   T
+   >
+   
+Does T have a nested type called 'EColor' ?
+
+ BOOST_TTI_HAS_TYPE(EColor)
+  
+ has_type_EColor
+   <
+   T
+   >
+   
+Does T have a nested type called 'AUnion' ?
+
+ BOOST_TTI_HAS_TYPE(AUnion)
+  
+ has_type_AUnion
+   <
+   T
+   >
+   
+[heading Type checking the typedef using an MPL lambda expression]
+
+Does T have a nested typedef called 'AnIntType' whose type is an 'int' ?
+
+ #include <boost/mpl/placeholders.hpp
+ #include <boost/type_traits/is_same.hpp
+ using namespace boost::mpl::placeholders;
+ 
+ has_type_AnIntType
+   <
+   T,
+   boost::is_same<_1,int>
+   >
+
+[heading Class/Struct]
+
+Does T have a nested class called 'AClass' ?
+
+ BOOST_TTI_HAS_CLASS(AClass)
+  
+ has_class_AClass
+   <
+   T
+   >
+   
+Does T have a nested struct called 'BType' ?
+
+ BOOST_TTI_HAS_CLASS(BType)
+  
+ has_class_BType
+   <
+   T
+   >
+   
+You can also use an MPL lambda expression with a class/struct just as you can with a general type.
+   
+[heading Enumeration]
+
+Does T have a nested enumeration called 'EColor' ?
+
+ BOOST_TTI_HAS_ENUM(EColor)
+  
+ has_enum_EColor
+   <
+   T
+   >
+   
+You can also use an MPL lambda expression with an enumeration just as you can with a general type.
+   
+[heading Union]
+
+Does T have a nested union called 'AUnion' ?
+
+ BOOST_TTI_HAS_UNION(AUnion)
+  
+ has_union_AUnion
+   <
+   T
+   >
+   
+You can also use an MPL lambda expression with a union just as you can with a general type.
+   
+[heading Template]
+
+Does T have a nested class template called 'AMemberTemplate' whose template 
+parameters are all types ('class' or 'typename') ?
+
+ BOOST_TTI_HAS_TEMPLATE(AMemberTemplate,BOOST_PP_NIL)
+ 
+ has_template_AMemberTemplate
+   <
+   T
+   >
+
+[heading Template using variadic macros]
+
+Does T have a nested class template called 'AMemberTemplate' whose template 
+parameters are all types ('class' or 'typename') ?
+
+ BOOST_TTI_HAS_TEMPLATE(AnotherMemberTemplate)
+ 
+ has_template_AnotherMemberTemplate
+   <
+   T
+   >
+
+[heading Template with params]
+
+Does T have a nested class template called 'MoreParameters' whose template 
+parameters are specified exactly ?
+
+ BOOST_TTI_HAS_TEMPLATE(MoreParameters,(8,(class,class,int,short,class,template <class,int> class,class)))
+ 
+ has_template_MoreParameters
+   <
+   T
+   >
+
+[heading Template with params using variadic macros]
+
+Does T have a nested class template called 'ManyParameters' whose template 
+parameters are specified exactly ?
+
+ BOOST_TTI_HAS_TEMPLATE(ManyParameters,class,class,int,class,template <class> class,class,long)
+ 
+ has_template_ManyParameters
+   <
+   T
+   >
+
+[heading Member data]
+
+Does T have a member data called 'IntBT' whose type is 'AType::BType' ?
+
+ BOOST_TTI_HAS_MEMBER_DATA(IntBT)
+ 
+ has_member_data_IntBT
+   <
+   T,
+   AType::BType
+   >
+
+[heading Member data with composite type]
+
+Does T have a member data called 'IntBT' whose type is 'AType::BType' ?
+
+ BOOST_TTI_HAS_MEMBER_DATA(IntBT)
+ 
+ has_member_data_IntBT
+   <
+   AType::BType T::*
+   >
+
+[heading Member function with individual types]
+
+Does T have a member function called 'IntFunction' whose type is 
+'int (short)' ?
+
+ BOOST_TTI_HAS_MEMBER_FUNCTION(IntFunction)
+ 
+ has_member_function_IntFunction
+   <
+   T,
+   int,
+   boost::mpl::vector<short>
+   >
+
+[heading Member function with composite type]
+
+Does T have a member function called 'IntFunction' whose type is 
+'int (short)' ?
+
+ BOOST_TTI_HAS_MEMBER_FUNCTION(IntFunction)
+ 
+ has_member_function_IntFunction
+   <
+   int (T::*) (short)
+   >
+
+[heading Const member function with individual types]
+
+Does T have a member function called 'AnotherFunction' whose type is 
+'long (bool,double) const' ?
+
+ BOOST_TTI_HAS_MEMBER_FUNCTION(AnotherFunction)
+ 
+ has_member_function_AnotherFunction
+   <
+   T,
+   long,
+   boost::mpl::vector<bool,double>,
+   boost::function_types::const_qualified
+   >
+
+[heading Const member function with composite type]
+
+Does T have a member function called 'AnotherFunction' whose type is 
+'long (bool,double) const' ?
+
+ BOOST_TTI_HAS_MEMBER_FUNCTION(AnotherFunction)
+ 
+ has_member_function_AnotherFunction
+   <
+   long (T::*) (bool,double) const
+   >
+
+[heading Member function template with individual types]
+
+Does T have a member function template called 'MyFunctionTemplate' woth an instantiated
+signature of 'int MyFunctionTemplate<short,float,579>(short *,float &)' ?
+
+ BOOST_TTI_HAS_MEMBER_FUNCTION_TEMPLATE(MyFunctionTemplate,short,float,579)
+ 
+ has_member_function_MyFunctionTemplate
+   <
+   T,
+   int,
+   boost::mpl::vector<short *,float &>
+   >
+
+[heading Member function template with composite type]
+
+Does T have a member function template called 'MyFunctionTemplate' woth an instantiated
+signature of 'int MyFunctionTemplate<int,long,183>(int *,long &)' ?
+
+ BOOST_TTI_HAS_MEMBER_FUNCTION_TEMPLATE(MyFunctionTemplate,int,long,183)
+ 
+ has_member_function_template_MyFunctionTemplate
+   <
+   int (T::*)(int *,long &)
+   >
+
+[heading Const member function template with individual types]
+
+Does T have a member function template called 'AnotherFunctionTemplate' with an instantiated
+signature of 'int AnotherFunctionTemplate<bool,8359,double>(bool &,double **) const' ?
+
+ BOOST_TTI_HAS_MEMBER_FUNCTION_TEMPLATE(AnotherFunctionTemplate,bool,8359,double)
+ 
+ has_member_function_AnotherFunctionTemplate
+   <
+   T,
+   int,
+   boost::mpl::vector<bool &,double **>,
+   boost::function_types::const_qualified
+   >
+
+[heading Const member function template with composite type]
+
+Does T have a member function template called 'AnotherFunctionTemplate' with an instantiated
+signature of 'int AnotherFunctionTemplate<bool,8359,double>(bool &,double **) const' ?
+
+ BOOST_TTI_HAS_MEMBER_FUNCTION_TEMPLATE(AnotherFunctionTemplate,bool,8359,double)
+ 
+ has_member_function_template_MyFunctionTemplate
+   <
+   int (T::*)(bool &,double **) const
+   >
+
+[heading Static member data]
+
+Does T have a static member data called 'DSMember' whose type is 'short' ?
+
+ BOOST_TTI_HAS_STATIC_MEMBER_DATA(DSMember)
+ 
+ has_static_member_data_DSMember
+   <
+   T,
+   short
+   >
+
+[heading Static member function with individual types]
+
+Does T have a static member function called 'SIntFunction' whose type 
+is 'int (long,double)' ?
+
+ BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION(SIntFunction)
+ 
+ has_static_member_function_SIntFunction
+   <
+   T,
+   int,
+   boost::mpl::vector<long,double>
+   >
+
+[heading Static member function with composite type]
+
+Does T have a static member function called 'SIntFunction' whose type 
+is 'int (long,double)' ?
+
+ BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION(SIntFunction)
+ 
+ has_static_member_function_SIntFunction
+   <
+   T,
+   int (long,double)
+   >
+
+[heading Static member function template with individual types]
+
+Does T have a static member function template called 'SFunctionTemplate' with an
+instantiated signature of 'long SFunctionTemplate<char,unsigned>(long &,char **,unsigned,float)' ?
+
+ BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION_TEMPLATE(SFunctionTemplate,char,unsigned)
+ 
+ has_static_member_function_template_SFunctionTemplate
+   <
+   T,
+   long,
+   boost::mpl::vector<long &,char **,unsigned,float>
+   >
+
+[heading Static member function template with composite type]
+
+Does T have a static member function template called 'SFunctionTemplate' with an
+instantiated signature of 'long SFunctionTemplate<bool,int>(long &,bool **,int,float)' ?
+
+ BOOST_TTI_HAS_STATIC_MEMBER_FUNCTION_TEMPLATE(SFunctionTemplate,bool,int)
+ 
+ has_static_member_function_template_SFunctionTemplate
+   <
+   T,
+   long (long &,bool **,int,float)
+   >
+
+[heading Data]
+
+Does T have a member data or static member data called 'DSMember' whose type is 'short' ?
+
+ BOOST_TTI_HAS_DATA(DSMember)
+ 
+ has_static_member_data_DSMember
+   <
+   T,
+   short
+   >
+
+[heading Function]
+
+Does T have a member function or a static member function called 'IntFunction' whose type is 
+'int (short)' ?
+
+ BOOST_TTI_HAS_FUNCTION(IntFunction)
+ 
+ has_function_IntFunction
+   <
+   T,
+   int,
+   boost::mpl::vector<short>
+   >
+
+[heading Function Template]
+
+Does T have a member function template or a static member function template called 'MyFunctionTemplate'
+with an instantiated signature of 'int MyFunctionTemplate<bool,short,3487>(bool *,short &)' ?
+
+ BOOST_TTI_HAS_FUNCTION_TEMPLATE(MyFunctionTemplate,bool,short,3487)
+ 
+ has_function_template_MyFunctionTemplate
+   <
+   T,
+   int,
+   boost::mpl::vector<bool *,short &>
+   >
+
+[heading Member type]
+
+Create a nested type T::BType::CType without creating a compiler error
+if T does not have the nested type BType::CType ?
+
+ BOOST_TTI_MEMBER_TYPE(BType)
+ BOOST_TTI_MEMBER_TYPE(CType)
+ 
+ typename
+ member_type_CType
+   <
+   typename
+   member_type_BType
+     <
+     T
+     >::type
+   >::type
+ 
+[heading Member type existence]
+
+Does a nested type T::BType::CType, created without creating a compiler error
+if T does not have the nested type BType::CType, actually exist ?
+
+ BOOST_TTI_MEMBER_TYPE(BType)
+ BOOST_TTI_MEMBER_TYPE(CType)
+ 
+ typedef typename
+ member_type_CType
+   <
+   typename
+   member_type_BType
+     <
+     T
+     >::type
+   >::type
+ AType;
+ 
+ boost::tti::valid_member_type
+   <
+   AType
+   >
+ 
+[endsect]

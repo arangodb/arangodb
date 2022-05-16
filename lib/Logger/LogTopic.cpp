@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@
 
 #include "LogTopic.h"
 
+#include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -51,7 +52,7 @@ class Topics {
     return INSTANCE;
   }
 
-  template <typename Visitor>
+  template<typename Visitor>
   bool visit(Visitor const& visitor) const {
     MUTEX_LOCKER(guard, _namesLock);
 
@@ -108,6 +109,9 @@ class Topics {
 
 }  // namespace
 
+// pseudo-topic to address all log topics
+std::string const LogTopic::ALL("all");
+
 LogTopic Logger::AGENCY("agency", LogLevel::INFO);
 LogTopic Logger::AGENCYCOMM("agencycomm", LogLevel::INFO);
 LogTopic Logger::AGENCYSTORE("agencystore", LogLevel::WARN);
@@ -115,6 +119,7 @@ LogTopic Logger::AQL("aql", LogLevel::INFO);
 LogTopic Logger::AUTHENTICATION("authentication", LogLevel::WARN);
 LogTopic Logger::AUTHORIZATION("authorization");
 LogTopic Logger::BACKUP("backup");
+LogTopic Logger::BENCH("bench");
 LogTopic Logger::CACHE("cache", LogLevel::INFO);
 LogTopic Logger::CLUSTER("cluster", LogLevel::INFO);
 LogTopic Logger::CLUSTERCOMM("clustercomm", LogLevel::INFO);
@@ -130,13 +135,16 @@ LogTopic Logger::FLUSH("flush", LogLevel::INFO);
 LogTopic Logger::GRAPHS("graphs", LogLevel::INFO);
 LogTopic Logger::HEARTBEAT("heartbeat", LogLevel::INFO);
 LogTopic Logger::HTTPCLIENT("httpclient", LogLevel::WARN);
-LogTopic Logger::MAINTENANCE("maintenance", LogLevel::WARN);
+LogTopic Logger::LICENSE("license", LogLevel::INFO);
+LogTopic Logger::MAINTENANCE("maintenance", LogLevel::INFO);
 LogTopic Logger::MEMORY("memory", LogLevel::INFO);
 LogTopic Logger::MMAP("mmap");
 LogTopic Logger::PERFORMANCE("performance", LogLevel::WARN);
 LogTopic Logger::PREGEL("pregel", LogLevel::INFO);
 LogTopic Logger::QUERIES("queries", LogLevel::INFO);
 LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
+LogTopic Logger::REPLICATION2("replication2", LogLevel::INFO);
+LogTopic Logger::REPLICATED_STATE("rep-state", LogLevel::DEBUG);
 LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress
 LogTopic Logger::RESTORE("restore", LogLevel::INFO);
 LogTopic Logger::ROCKSDB("rocksdb", LogLevel::WARN);
@@ -156,12 +164,14 @@ LogTopic Logger::VIEWS("views", LogLevel::FATAL);
 #ifdef USE_ENTERPRISE
 LogTopic LdapAuthProvider::LDAP_TOPIC("ldap", LogLevel::INFO);
 
-LogTopic AuditFeature::AUDIT_AUTHENTICATION("audit-authentication", LogLevel::DEBUG);
-LogTopic AuditFeature::AUDIT_AUTHORIZATION("audit-authorization", LogLevel::INFO);
+LogTopic AuditFeature::AUDIT_AUTHENTICATION("audit-authentication",
+                                            LogLevel::INFO);
+LogTopic AuditFeature::AUDIT_AUTHORIZATION("audit-authorization",
+                                           LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_DATABASE("audit-database", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_COLLECTION("audit-collection", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_VIEW("audit-view", LogLevel::INFO);
-LogTopic AuditFeature::AUDIT_DOCUMENT("audit-document", LogLevel::DEBUG);
+LogTopic AuditFeature::AUDIT_DOCUMENT("audit-document", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_SERVICE("audit-service", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_HOTBACKUP("audit-hotbackup", LogLevel::INFO);
 #endif
@@ -181,7 +191,8 @@ std::vector<std::pair<std::string, LogLevel>> LogTopic::logLevelTopics() {
 
 void LogTopic::setLogLevel(std::string const& name, LogLevel level) {
   if (!Topics::instance().setLogLevel(name, level)) {
-    LOG_TOPIC("5363d", WARN, arangodb::Logger::FIXME) << "strange topic '" << name << "'";
+    LOG_TOPIC("5363d", WARN, arangodb::Logger::FIXME)
+        << "strange topic '" << name << "'";
   }
 }
 
@@ -212,6 +223,9 @@ LogTopic::LogTopic(std::string const& name, LogLevel level)
     : _id(NEXT_TOPIC_ID.fetch_add(1, std::memory_order_seq_cst)),
       _name(name),
       _level(level) {
+  // "all" is only a pseudo-topic.
+  TRI_ASSERT(name != "all");
+
   if (name != "fixme" && name != "general") {
     // "fixme" is a remainder from ArangoDB < 3.2, when it was
     // allowed to log messages without a topic. From 3.2 onwards,

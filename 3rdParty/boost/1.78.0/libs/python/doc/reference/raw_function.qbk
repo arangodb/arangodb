@@ -1,0 +1,44 @@
+[section boost/python/raw_function.hpp]
+[section Introduction]
+`raw_function(...)` is used to convert a function taking a [link object_wrappers.boost_python_tuple_hpp.class_tuple `tuple`] and a [link object_wrappers.boost_python_dict_hpp.class_dict `dict`] into a Python callable object which accepts a variable number of arguments and arbitrary keyword arguments. 
+[endsect]
+[section Function `raw_function`]
+``
+template <class F>
+object raw_function(F f, std::size_t min_args = 0);
+``
+[variablelist
+[[Requires][f(tuple(), dict()) is well-formed.]]
+[[Returns][a callable object which requires at least min_args arguments. When called, the actual non-keyword arguments will be passed in a tuple as the first argument to f, and the keyword arguments will be passed in a dict as the second argument to f. ]]
+]
+[endsect]
+[section Example]
+C++:
+``
+#include <boost/python/def.hpp>
+#include <boost/python/tuple.hpp>
+#include <boost/python/dict.hpp>
+#include <boost/python/module.hpp>
+#include <boost/python/raw_function.hpp>
+
+using namespace boost::python;
+
+tuple raw(tuple args, dict kw)
+{
+    return make_tuple(args, kw);
+}
+
+BOOST_PYTHON_MODULE(raw_test)
+{
+    def("raw", raw_function(raw));
+}
+``
+Python:
+``
+>>> from raw_test import *
+
+>>> raw(3, 4, foo = 'bar', baz = 42)
+((3, 4), {'foo': 'bar', 'baz': 42})
+``
+[endsect]
+[endsect]

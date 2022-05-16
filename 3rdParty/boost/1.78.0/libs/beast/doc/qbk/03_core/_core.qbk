@@ -1,0 +1,103 @@
+[/
+    Copyright (c) 2016-2019 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section:using_io Networking]
+
+This library uses the
+[@http://cplusplus.github.io/networking-ts/draft.pdf Networking Technical Specification],
+scheduled to become an official part of C++ no sooner than the year
+2023. Three implementations exist, with cosmetic differences but
+otherwise using the same function signatures and type declarations:
+Boost.Asio, stand-alone Asio, and networking-ts-impl. This table shows
+how a variable of type `io_context` is declared in each implementation
+by including the appropriate header and using a suitable namespace alias:
+
+[table Networking Implementations
+[[Name][Namespace and Header Example ]]
+[
+    [__Asio__]
+    [
+```
+        #include <boost/asio/io_context.hpp>
+        namespace net = boost::asio;
+        net::io_context ioc;
+```
+    ]
+][
+    [[@https://think-async.com/Asio/ Asio (Standalone)]]
+    [
+```
+        #include <asio/io_context.hpp>
+        namespace net = asio;
+        net::io_context ioc;
+```
+    ]
+][
+    [[@https://github.com/chriskohlhoff/networking-ts-impl networking-ts-impl]]
+    [
+```
+        #include <experimental/io_context>
+        namespace net = std::experimental::net;
+        net::io_context ioc;
+```
+    ]
+]
+]
+
+This document refers to the three implementations above interchangeably and
+collectively as [*Networking] (or just ['networking]). The Boost.Asio and
+Asio flavors of Networking provide additional features not currently proposed
+for C++, but likely to appear in a future specification, such as:
+
+* [@boost:/doc/html/boost_asio/reference/serial_port.html Serial ports]
+* [@boost:/doc/html/boost_asio/reference/local__stream_protocol.html UNIX domain sockets]
+* [@boost:/doc/html/boost_asio/reference/signal_set.html POSIX signals] (e.g. SIGINT, SIGABORT)
+* [@boost:/doc/html/boost_asio/reference/ssl__stream.html TLS streams] (such as OpenSSL)
+
+Boost.Beast depends specifically on the Boost.Asio flavor of Networking,
+although this may change in the future.
+While this library offers performant implementations of the HTTP and
+WebSocket network protocols, it depends on the networking interfaces
+to perform general tasks such as performing domain name resolution
+(DNS lookup), establishing outgoing connections, and accepting incoming
+connections. Callers are responsible for interacting with networking
+to initialize objects to the correct state where they are usable by
+this library.
+
+In this documentation, the example code, and the implementation, the `net`
+namespace is used to qualify Networking identifiers. For Boost.Beast,
+`net` will be an alias for the `boost::asio` namespace.
+
+To further ease of use, this library provides an extensive collection
+of types and algorithms. This section of the documentation explains these
+types and algorithms, provides examples of usage, and also provides
+refreshers and tutorials for working with networking.
+
+[heading Abbreviations]
+
+This documentation assumes familiarity with __Asio__, which is
+required to work with Beast. Sample code and identifiers used
+throughout are written as if the following declarations are in
+effect:
+
+[snippet_core_1a]
+[snippet_core_1b]
+
+[include 1_refresher.qbk]
+[include 2_streams.qbk]
+[include 3_timeouts.qbk]
+[include 4__layers.qbk]
+[include 5_buffers.qbk]
+[include 6_files.qbk]
+[include 7_composed.qbk]
+[endsect]
+
+[section:config Configuration]
+[include 8_conf_macros.qbk]
+[endsect]

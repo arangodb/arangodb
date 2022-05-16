@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,13 +50,13 @@ class LoggerStreamBase {
 
   LoggerStreamBase& operator<<(LogTopic const& topic) noexcept;
 
-  LoggerStreamBase& operator<<(Logger::BINARY const& binary);
+  LoggerStreamBase& operator<<(Logger::BINARY const& binary) noexcept;
 
-  LoggerStreamBase& operator<<(Logger::CHARS const& chars);
+  LoggerStreamBase& operator<<(Logger::CHARS const& chars) noexcept;
 
-  LoggerStreamBase& operator<<(Logger::RANGE const& range);
+  LoggerStreamBase& operator<<(Logger::RANGE const& range) noexcept;
 
-  LoggerStreamBase& operator<<(Logger::FIXED const& duration);
+  LoggerStreamBase& operator<<(Logger::FIXED const& duration) noexcept;
 
   LoggerStreamBase& operator<<(Logger::LINE const& line) noexcept;
 
@@ -66,7 +66,7 @@ class LoggerStreamBase {
 
   LoggerStreamBase& operator<<(Logger::LOGID const& logid) noexcept;
 
-  template <typename T>
+  template<typename T>
   LoggerStreamBase& operator<<(T const& obj) noexcept {
     try {
       _out << obj;
@@ -99,4 +99,3 @@ class LoggerStream : public LoggerStreamBase {
 };
 
 }  // namespace arangodb
-

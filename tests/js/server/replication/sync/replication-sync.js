@@ -31,7 +31,7 @@
 const jsunity = require('jsunity');
 const arangodb = require('@arangodb');
 const analyzers = require("@arangodb/analyzers");
-const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+const { deriveTestSuite, getMetric } = require('@arangodb/test-helper');
 const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 const db = arangodb.db;
 const _ = require('lodash');
@@ -43,6 +43,7 @@ const followerEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 
 const cn = 'UnitTestsReplication';
 const sysCn = '_UnitTestsReplication';
+const userManager = require("@arangodb/users");
 
 const connectToLeader = function () {
   reconnectRetry(leaderEndpoint, db._name(), 'root', '');
@@ -63,7 +64,7 @@ const collectionCount = function (name) {
 };
 
 const compare = function (leaderFunc, followerInitFunc, followerCompareFunc, incremental, system) {
-  var state = {};
+  let state = {};
   
   db._flushCache();
   leaderFunc(state);
@@ -100,8 +101,8 @@ function BaseTestConfig () {
     
     testExistingPatchBrokenFollowerCounters1: function () {
       // can only use this with failure tests enabled
-      let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
-      if (String(r) === "false") {
+      let r = arango.GET("/_admin/debug/failat");
+      if (String(r) === "false" || r.error) {
         return;
       }
 
@@ -109,19 +110,23 @@ function BaseTestConfig () {
 
       compare(
         function (state) {
-          arango.PUT_RAW("/_admin/debug/failat/disableRevisionsAsDocumentIds", "");
+          try {
+            arango.PUT_RAW("/_admin/debug/failat/disableRevisionsAsDocumentIds", "");
 
-          let c = db._create(cn);
-          let docs = [];
+            let c = db._create(cn);
+            let docs = [];
 
-          for (let i = 0; i < 5000; ++i) {
-            docs.push({ value: i });
+            for (let i = 0; i < 5000; ++i) {
+              docs.push({ value: i });
+            }
+            c.insert(docs);
+
+            state.checksum = collectionChecksum(cn);
+            state.count = collectionCount(cn);
+            assertEqual(5000, state.count);
+          } finally {
+            arango.DELETE_RAW("/_admin/debug/failat", "");
           }
-          c.insert(docs);
-
-          state.checksum = collectionChecksum(cn);
-          state.count = collectionCount(cn);
-          assertEqual(5000, state.count);
         },
         function (state) {
           arango.PUT_RAW("/_admin/debug/failat/disableRevisionsAsDocumentIds", "");
@@ -135,9 +140,12 @@ function BaseTestConfig () {
           var c = db._collection(cn);
           assertEqual(5000, c.count());
           assertEqual(5000, c.toArray().length);
-          arango.PUT_RAW("/_admin/debug/failat/RocksDBCommitCounts", "");
-          c.insert({});
-          arango.DELETE_RAW("/_admin/debug/failat", "");
+          try {
+            arango.PUT_RAW("/_admin/debug/failat/RocksDBCommitCounts", "");
+            c.insert({});
+          } finally {
+            arango.DELETE_RAW("/_admin/debug/failat", "");
+          }
           assertEqual(5000, c.count());
           assertEqual(5001, c.toArray().length);
         },
@@ -155,8 +163,8 @@ function BaseTestConfig () {
     
     testExistingPatchBrokenFollowerCounters2: function () {
       // can only use this with failure tests enabled
-      let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
-      if (String(r) === "false") {
+      let r = arango.GET("/_admin/debug/failat");
+      if (String(r) === "false" || r.error) {
         return;
       }
 
@@ -164,40 +172,47 @@ function BaseTestConfig () {
 
       compare(
         function (state) {
-          arango.PUT_RAW("/_admin/debug/failat/disableRevisionsAsDocumentIds", "");
-          let c = db._create(cn);
-          let docs = [];
+          try {
+            arango.PUT_RAW("/_admin/debug/failat/disableRevisionsAsDocumentIds", "");
+            let c = db._create(cn);
+            let docs = [];
 
-          for (let i = 0; i < 10000; ++i) {
-            docs.push({ value: i, _key: "test" + i });
+            for (let i = 0; i < 10000; ++i) {
+              docs.push({ value: i, _key: "test" + i });
+            }
+            c.insert(docs);
+
+            state.checksum = collectionChecksum(cn);
+            state.count = collectionCount(cn);
+            assertEqual(10000, state.count);
+          } finally {
+            arango.DELETE_RAW("/_admin/debug/failat", "");
           }
-          c.insert(docs);
-
-          state.checksum = collectionChecksum(cn);
-          state.count = collectionCount(cn);
-          assertEqual(10000, state.count);
         },
         function (state) {
-          arango.PUT_RAW("/_admin/debug/failat/disableRevisionsAsDocumentIds", "");
+          try {
+            arango.PUT_RAW("/_admin/debug/failat/disableRevisionsAsDocumentIds", "");
 
-          //  already create the collection on the follower
-          replication.syncCollection(cn, {
-            endpoint: leaderEndpoint,
-            incremental: false
-          });
-          
-          // collection present on follower now
-          var c = db._collection(cn);
-          for (let i = 0; i < 10000; i += 10) {
-            c.remove("test" + i);
+            //  already create the collection on the follower
+            replication.syncCollection(cn, {
+              endpoint: leaderEndpoint,
+              incremental: false
+            });
+
+            // collection present on follower now
+            var c = db._collection(cn);
+            for (let i = 0; i < 10000; i += 10) {
+              c.remove("test" + i);
+            }
+            assertEqual(9000, c.count());
+            assertEqual(9000, c.toArray().length);
+            arango.PUT_RAW("/_admin/debug/failat/RocksDBCommitCounts", "");
+            for (let i = 0; i < 100; ++i) {
+              c.insert({ _key: "testmann" + i });
+            }
+          } finally {
+            arango.DELETE_RAW("/_admin/debug/failat", "");
           }
-          assertEqual(9000, c.count());
-          assertEqual(9000, c.toArray().length);
-          arango.PUT_RAW("/_admin/debug/failat/RocksDBCommitCounts", "");
-          for (let i = 0; i < 100; ++i) {
-            c.insert({ _key: "testmann" + i });
-          }
-          arango.DELETE_RAW("/_admin/debug/failat", "");
           assertEqual(9000, c.count());
           assertEqual(9100, c.toArray().length);
         },
@@ -705,14 +720,14 @@ function BaseTestConfig () {
 
     testUpdateHugeIntermediateCommits: function () {
       // can only use this with failure tests enabled
-      let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
-      if (String(r) === "false") {
+      let r = arango.GET("/_admin/debug/failat");
+      if (String(r) === "false" || r.error) {
         return;
       }
 
       connectToLeader();
 
-      var st;
+      let st;
 
       compare(
         function (state) {
@@ -753,7 +768,7 @@ function BaseTestConfig () {
       );
 
       connectToLeader();
-      var c = db._collection(cn);
+      let c = db._collection(cn);
       let selectors = [];
       let docs = [];
       //  update some documents at the 'front'
@@ -796,6 +811,200 @@ function BaseTestConfig () {
       assertEqual(st.checksum, collectionChecksum(cn));
 
       arango.DELETE_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
+    },
+    
+    testIntermediateCommitsUsageOnInsert: function () {
+      // can only use this with failure tests enabled
+      let r = arango.GET("/_admin/debug/failat");
+      if (String(r) === "false" || r.error) {
+        return;
+      }
+
+      connectToLeader();
+
+      let c = db._create(cn);
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ _key: "test" + i });
+      }
+      c.insert(docs);
+      
+      connectToFollower();
+      
+      // sync almost empty collection to follower
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+     
+      // add a lot more data on the leader
+      connectToLeader();
+      c = db._collection(cn);
+      docs = [];
+      for (let i = 0; i < 100000; ++i) {
+        docs.push({ _key: 'testmann' + i });
+        if (docs.length === 5000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+          
+      assertEqual(100100, collectionCount(cn));
+      let checksum = collectionChecksum(cn);
+
+      connectToFollower();
+          
+      // set intermediate commit count to 1000 on follower
+      arango.PUT_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
+
+      let intermediateCommitsBefore = getMetric(arango.getEndpoint(), "arangodb_intermediate_commits_total");
+
+      //  and sync again
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      assertEqual(100100, collectionCount(cn));
+      assertEqual(checksum, collectionChecksum(cn));
+      
+      arango.DELETE_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
+      
+      let intermediateCommitsAfter = getMetric(arango.getEndpoint(), "arangodb_intermediate_commits_total");
+      // unfortunately we don't know the exact number of intermediate commits that have
+      // been made. this is because the intermediate commits will not be triggered
+      // precisely at the specified intermediate commit count value of 1000, but only
+      // after each individual batch, which can contain arbitrary amounts of documents.
+      assertTrue(intermediateCommitsAfter > intermediateCommitsBefore, { intermediateCommitsBefore, intermediateCommitsAfter });
+    },
+    
+    testIntermediateCommitsUsageOnUpdate: function () {
+      // can only use this with failure tests enabled
+      let r = arango.GET("/_admin/debug/failat");
+      if (String(r) === "false" || r.error) {
+        return;
+      }
+
+      connectToLeader();
+
+      let c = db._create(cn);
+      let docs = [];
+      for (let i = 0; i < 100000; ++i) {
+        docs.push({ _key: 'testmann' + i });
+        if (docs.length === 5000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+      
+      connectToFollower();
+      
+      // sync collection to follower
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+     
+      // update documents on the leader
+      connectToLeader();
+      db._query("FOR doc IN " + cn + " UPDATE doc WITH { value: 42 } IN " + cn);
+          
+      assertEqual(100000, collectionCount(cn));
+      let checksum = collectionChecksum(cn);
+
+      connectToFollower();
+          
+      // set intermediate commit count to 1000 on follower
+      arango.PUT_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
+
+      let intermediateCommitsBefore = getMetric(arango.getEndpoint(), "arangodb_intermediate_commits_total");
+
+      //  and sync again
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      assertEqual(100000, collectionCount(cn));
+      assertEqual(checksum, collectionChecksum(cn));
+      
+      arango.DELETE_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
+      
+      let intermediateCommitsAfter = getMetric(arango.getEndpoint(), "arangodb_intermediate_commits_total");
+      // unfortunately we don't know the exact number of intermediate commits that have
+      // been made. this is because the intermediate commits will not be triggered
+      // precisely at the specified intermediate commit count value of 1000, but only
+      // after each individual batch, which can contain arbitrary amounts of documents.
+      assertTrue(intermediateCommitsAfter > intermediateCommitsBefore, { intermediateCommitsBefore, intermediateCommitsAfter });
+    },
+    
+    testIntermediateCommitsUsageOnRemove: function () {
+      // can only use this with failure tests enabled
+      let r = arango.GET("/_admin/debug/failat");
+      if (String(r) === "false" || r.error) {
+        return;
+      }
+
+      connectToLeader();
+
+      let c = db._create(cn);
+      let docs = [];
+      for (let i = 0; i < 100000; ++i) {
+        docs.push({ _key: 'testmann' + i, value: i });
+        if (docs.length === 5000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+      
+      connectToFollower();
+      
+      // sync collection to follower
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+     
+      // remove half the documents on the leader
+      connectToLeader();
+      db._query("FOR doc IN " + cn + " FILTER doc.value >= 50000 REMOVE doc IN " + cn);
+          
+      assertEqual(50000, collectionCount(cn));
+      let checksum = collectionChecksum(cn);
+
+      connectToFollower();
+          
+      // set intermediate commit count to 1000 on follower
+      arango.PUT_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
+
+      let intermediateCommitsBefore = getMetric(arango.getEndpoint(), "arangodb_intermediate_commits_total");
+
+      // and sync again
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      assertEqual(50000, collectionCount(cn));
+      assertEqual(checksum, collectionChecksum(cn));
+      
+      arango.DELETE_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
+      
+      let intermediateCommitsAfter = getMetric(arango.getEndpoint(), "arangodb_intermediate_commits_total");
+      // unfortunately we don't know the exact number of intermediate commits that have
+      // been made. this is because the intermediate commits will not be triggered
+      // precisely at the specified intermediate commit count value of 1000, but only
+      // after each individual batch, which can contain arbitrary amounts of documents.
+      assertTrue(intermediateCommitsAfter > intermediateCommitsBefore, { intermediateCommitsBefore, intermediateCommitsAfter });
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1928,6 +2137,12 @@ function ReplicationSuite () {
       try {
         analyzers.remove('smartCustom');
       } catch (e) { }
+      db._flushCache();
+      db._users.toArray().forEach(user => {
+        if (user.user !== "root") {
+          userManager.remove(user.user);
+        }
+      });
 
       connectToFollower();
       arango.DELETE_RAW("/_admin/debug/failat", "");
@@ -1945,6 +2160,12 @@ function ReplicationSuite () {
       try {
         analyzers.remove('smartCustom');
       } catch (e) { }
+      db._flushCache();
+      db._users.toArray().forEach(user => {
+        if (user.user !== "root") {
+          userManager.remove(user.user);
+        }
+      });
     }
   };
   
@@ -1956,16 +2177,10 @@ function ReplicationSuite () {
 // / @brief test suite on other database
 // //////////////////////////////////////////////////////////////////////////////
 
-function ReplicationOtherDBSuite () {
+function ReplicationOtherDBSuiteBase (dbName) {
   'use strict';
 
-  const dbName = 'UnitTestDB';
-
   let suite = {
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief set up
-    // //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       connectToLeader();
@@ -1984,10 +2199,6 @@ function ReplicationOtherDBSuite () {
       connectToLeader();
     },
 
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief tear down
-    // //////////////////////////////////////////////////////////////////////////////
-
     tearDown: function () {
       db._useDatabase('_system');
       connectToLeader();
@@ -1995,17 +2206,37 @@ function ReplicationOtherDBSuite () {
         db._dropDatabase(dbName);
       } catch (e) {
       }
+      db._flushCache();
+      db._users.toArray().forEach(user => {
+        if (user.user !== "root") {
+          userManager.remove(user.user);
+        }
+      });
 
       connectToFollower();
       try {
         db._dropDatabase(dbName);
       } catch (e) {
       }
+      db._flushCache();
+      db._users.toArray().forEach(user => {
+        if (user.user !== "root") {
+          userManager.remove(user.user);
+        }
+      });
     }
   };
 
-  deriveTestSuite(BaseTestConfig(), suite, '_OtherRepl');
+  deriveTestSuite(BaseTestConfig(), suite, '_' + dbName);
   return suite;
+}
+
+function ReplicationOtherDBTraditionalNameSuite () {
+  return ReplicationOtherDBSuiteBase('UnitTestDB');
+}
+
+function ReplicationOtherDBExtendedNameSuite () {
+  return ReplicationOtherDBSuiteBase("Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨");
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -2033,9 +2264,21 @@ function ReplicationIncrementalKeyConflict () {
     tearDown: function () {
       connectToLeader();
       db._drop(cn);
+      db._flushCache();
+      db._users.toArray().forEach(user => {
+        if (user.user !== "root") {
+          userManager.remove(user.user);
+        }
+      });
 
       connectToFollower();
       db._drop(cn);
+      db._flushCache();
+      db._users.toArray().forEach(user => {
+        if (user.user !== "root") {
+          userManager.remove(user.user);
+        }
+      });
     },
 
     testKeyConflictsIncremental: function () {
@@ -2340,9 +2583,21 @@ function ReplicationNonIncrementalKeyConflict () {
     tearDown: function () {
       connectToLeader();
       db._drop(cn);
+      db._flushCache();
+      db._users.toArray().forEach(user => {
+        if (user.user !== "root") {
+          userManager.remove(user.user);
+        }
+      });
 
       connectToFollower();
       db._drop(cn);
+      db._flushCache();
+      db._users.toArray().forEach(user => {
+        if (user.user !== "root") {
+          userManager.remove(user.user);
+        }
+      });
     },
 
     testKeyConflictsNonIncremental: function () {
@@ -2492,12 +2747,9 @@ function ReplicationNonIncrementalKeyConflict () {
   };
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief executes the test suite
-// //////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(ReplicationSuite);
-jsunity.run(ReplicationOtherDBSuite);
+jsunity.run(ReplicationOtherDBTraditionalNameSuite);
+jsunity.run(ReplicationOtherDBExtendedNameSuite);
 jsunity.run(ReplicationIncrementalKeyConflict);
 jsunity.run(ReplicationNonIncrementalKeyConflict);
 

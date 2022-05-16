@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,12 +46,13 @@ class AqlItemBlockInputRange;
 class RegisterInfos;
 class OutputAqlItemRow;
 class NoStats;
-template <BlockPassthrough>
+template<BlockPassthrough>
 class SingleRowFetcher;
 
 class EnumerateListExecutorInfos {
  public:
-  EnumerateListExecutorInfos(RegisterId inputRegister, RegisterId outputRegister);
+  EnumerateListExecutorInfos(RegisterId inputRegister,
+                             RegisterId outputRegister);
 
   EnumerateListExecutorInfos() = delete;
   EnumerateListExecutorInfos(EnumerateListExecutorInfos&&) = default;
@@ -76,7 +77,8 @@ class EnumerateListExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr BlockPassthrough allowsBlockPassthrough =
+        BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -89,7 +91,8 @@ class EnumerateListExecutor {
   /**
    * @brief Will fetch a new InputRow if necessary and store their local state
    *
-   * @return bool done in case we do not have any input and upstreamState is done
+   * @return bool done in case we do not have any input and upstreamState is
+   * done
    */
   void initializeNewRow(AqlItemBlockInputRange& inputRange);
 
@@ -106,7 +109,8 @@ class EnumerateListExecutor {
   /**
    * @brief produce the next Row of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
   [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
       AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output);
@@ -114,13 +118,15 @@ class EnumerateListExecutor {
   /**
    * @brief skip the next Row of Aql Values.
    *
-   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   * @return ExecutorState, the stats, and a new Call that needs to be send to
+   * upstream
    */
   [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
       AqlItemBlockInputRange& inputRange, AqlCall& call);
 
  private:
-  AqlValue getAqlValue(AqlValue const& inVarReg, size_t const& pos, bool& mustDestroy);
+  AqlValue getAqlValue(AqlValue const& inVarReg, size_t const& pos,
+                       bool& mustDestroy);
   void initialize();
 
  private:
@@ -133,4 +139,3 @@ class EnumerateListExecutor {
 
 }  // namespace aql
 }  // namespace arangodb
-

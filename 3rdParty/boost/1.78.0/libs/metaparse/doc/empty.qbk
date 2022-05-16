@@ -1,0 +1,66 @@
+[#empty]
+[section empty]
+
+[h1 Synopsis]
+
+  template <class Result>
+  struct empty;
+
+This is a [link parser parser].
+
+[table Arguments
+  [[Name]     [Type]]
+  [[`Result`] [[link metaprogramming_value template metaprogramming value]]]
+]
+
+[h1 Description]
+
+It accepts empty input only. The result of parsing is the `Result`
+argument.
+
+[h1 Header]
+
+  #include <boost/metaparse/empty.hpp>
+
+[h1 Expression semantics]
+
+For any `c` class the following are equivalent:
+
+  empty<c>
+  
+  except<one_char, c, error::end_of_input_expected>
+
+[h1 Example]
+
+  #include <boost/metaparse/empty.hpp>
+  #include <boost/metaparse/start.hpp>
+  #include <boost/metaparse/string.hpp>
+  #include <boost/metaparse/is_error.hpp>
+  #include <boost/metaparse/get_result.hpp>
+  
+  #include <type_traits>
+  
+  using namespace boost::metaparse;
+  
+  using want_empty = empty<BOOST_METAPARSE_STRING("result")>;
+  
+  static_assert(
+    !is_error<want_empty::apply<BOOST_METAPARSE_STRING(""), start>>::type::value,
+    "empty accepts the empty input"
+  );
+  
+  static_assert(
+    is_error<want_empty::apply<BOOST_METAPARSE_STRING("x"), start>>::type::value,
+    "empty should reject non-empty input"
+  );
+  
+  static_assert(
+    std::is_same<
+      get_result<want_empty::apply<BOOST_METAPARSE_STRING(""), start>>::type,
+      BOOST_METAPARSE_STRING("result")
+    >::type::value,
+    "the result of parsing should be the given value"
+  );
+
+[endsect]
+

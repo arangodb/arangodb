@@ -1,0 +1,210 @@
+[/
+ / Copyright (c) 2012 Marshall Clow
+ / Copyright (c) 2021, Alan Freitas
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[/===============]
+[section String View]
+[/===============]
+
+[section Introduction]
+
+The class __boost_string_view__ and other classes derived from __basic_string_view__ represent references to strings or substrings. When you are parsing/processing strings from some external source, frequently you want to pass a piece of text to a procedure for specialized processing. Before __std_string_view__, the canonical way to do this used to be a __std_string__, but that has certain drawbacks:
+
+1) If you are processing a buffer of text (say a HTTP response or the contents of a file), then you have to create the string from the text you want to pass, which involves memory allocation and copying of data.
+
+2) If a routine receives a constant __std_string__ and wants to pass a portion of that string to another routine, then it must create a new string of that substring.
+
+3) If a routine receives a constant __std_string__ and wants to return a portion of the string, then it must create a new string to return.
+
+__boost_string_view__ is designed to solve these efficiency problems. A __boost_string_view__ is a read-only reference to a contiguous sequence of characters, and provides much of the functionality of __std_string__. A __boost_string_view__ is cheap to create, copy and pass by value, because it does not actually own the storage that it points to.
+
+A __boost_string_view__ is implemented as a small struct that contains a pointer to the start of the character `data` and a `count`. A __boost_string_view__ is cheap to create and cheap to copy.
+
+__boost_string_view__ acts as a container; it includes all the methods that you would expect in a container, including iteration support, `operator[]`, `at` and `size`. It can be used with any of the iterator-based algorithms in the STL - as long as you do not need to change the underlying data. For example, __std_sort__ and __std_remove__ will not work.
+
+Besides generic container functionality, __boost_string_view__ provides a subset of the interface of __std_string__. This makes it easy to replace parameters of type `const __std_string__ &` with __boost_string_view__. Like __std_string__, __boost_string_view__ has a static member variable named `npos` to denote the result of failed searches, and to mean "the end".
+
+[caution Because a __boost_string_view__ does not own the data that it refers to, it introduces lifetime issues into code that uses it. The programmer must ensure that the data that a __string_view__ refers to exists as long as the __string_view__ does.]
+
+[note
+
+Boost.Utility also includes the class __string_ref__:
+
+- __string_ref__ is the initial implementation of Jeffrey Yaskin's [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3442.html N3442:
+string_ref: a non-owning reference to a string].
+
+- __string_view__ is an updated implementation to reflect the Library Fundamentals TS [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4480.html N4480: \[string.view\]]
+
+Please prefer __string_view__ / __basic_string_view__ over __string_ref__ / __basic_string_ref__:
+
+- The __basic_string_view__ class better matches __std_basic_string_view__
+
+- __basic_string_view__ has WAY more constexpr support.
+
+- Code that uses __basic_string_ref__ should continue to work.
+
+- No much code depends on __basic_string_ref__ anymore
+
+
+]
+[endsect]
+
+[/===============]
+[section Examples]
+[/===============]
+
+Integrating __string_view__ into your code is fairly simple. Wherever you pass a `const __std_string__ &` or __std_string__ as a parameter, that's a candidate for passing a __boost_string_view__.
+
+```
+__std_string__ extract_part ( const __std_string__ &bar ) {
+    return bar.substr ( 2, 3 );
+}
+
+if ( extract_part ( "ABCDEFG" ).front() == 'C' ) { /* do something */ }
+```
+
+Let's figure out what happens in this contrived example.
+
+* First, a temporary string is created from the string literal `"ABCDEFG"`, and it is passed (by reference) to the routine `extract_part`.
+* Then a second string is created in the call `__std_string__::substr` and returned to `extract_part` (this copy may be elided by RVO).
+* Then `extract_part` returns that string back to the caller (again this copy may be elided).
+* The first temporary string is deallocated, and `front` is called on the second string, and then it is deallocated as well.
+
+Two __std_string__ s are created, and two copy operations. That is potentially four memory allocations and deallocations, and the associated copying of data.
+
+Now let's look at the same code with __string_view__:
+
+```
+__boost_string_view__ extract_part ( __boost_string_view__ bar ) {
+    return bar.substr ( 2, 3 );
+}
+
+if ( extract_part ( "ABCDEFG" ).front() == "C" ) { /* do something */ }
+```
+
+No memory allocations. No copying of character data. No changes to the code other than the types. There are two __string_view__ s created, and two __string_view__ s copied, but those are cheap operations.
+[endsect]
+
+[/=================]
+[section:reference Synopsis]
+[/=================]
+
+The header file [@../../../include/boost/utility/string_view.hpp `<boost/utility/string_view.hpp>`] defines a template __boost_basic_string_view__, and four specializations __string_view__, __wstring_view__, __u16string_view__, __u32string_view__ - for `char` / `wchar_t` / `char16_t` / `char32_t`.
+
+`#include <boost/utility/string_view.hpp>`
+
+Construction and copying:
+
+```
+constexpr basic_string_view ();    // Constructs an empty string_view
+constexpr basic_string_view(const charT* str); // Constructs from a NULL-terminated string
+constexpr basic_string_view(const charT* str, size_type len); // Constructs from a pointer, length pair
+template<typename Allocator>
+basic_string_view(const __std_basic_string__<charT, traits, Allocator>& str); // Constructs from a std::string
+basic_string_view (const basic_string_view &rhs);
+basic_string_view& operator=(const basic_string_view &rhs);
+```
+
+__string_view__ does not define a move constructor nor a move-assignment operator because copying a __string_view__ is just a cheap as moving one.
+
+Basic container-like functions:
+
+```
+constexpr size_type size()     const ;
+constexpr size_type length()   const ;
+constexpr size_type max_size() const ;
+constexpr bool empty()         const ;
+
+// All iterators are const_iterators
+constexpr const_iterator  begin() const ;
+constexpr const_iterator cbegin() const ;
+constexpr const_iterator    end() const ;
+constexpr const_iterator   cend() const ;
+const_reverse_iterator         rbegin() const ;
+const_reverse_iterator        crbegin() const ;
+const_reverse_iterator           rend() const ;
+const_reverse_iterator          crend() const ;
+```
+
+Access to the individual elements (all of which are const):
+
+```
+constexpr const charT& operator[](size_type pos) const ;
+const charT& at(size_t pos) const ;
+constexpr const charT& front() const ;
+constexpr const charT& back()  const ;
+constexpr const charT* data()  const ;
+```
+
+Modifying the __string_view__ (but not the underlying data):
+
+```
+void clear();
+void remove_prefix(size_type n);
+void remove_suffix(size_type n);
+```
+
+Searching:
+
+```
+size_type find(basic_string_view s) const ;
+size_type find(charT c) const ;
+size_type rfind(basic_string_view s) const ;
+size_type rfind(charT c) const ;
+size_type find_first_of(charT c) const ;
+size_type find_last_of (charT c) const ;
+
+size_type find_first_of(basic_string_view s) const ;
+size_type find_last_of(basic_string_view s) const ;
+size_type find_first_not_of(basic_string_view s) const ;
+size_type find_first_not_of(charT c) const ;
+size_type find_last_not_of(basic_string_view s) const ;
+size_type find_last_not_of(charT c) const ;
+```
+
+String-like operations:
+
+```
+constexpr basic_string_view substr(size_type pos, size_type n=npos) const ; // Creates a new string_view
+bool starts_with(charT c) const ;
+bool starts_with(basic_string_view x) const ;
+bool ends_with(charT c) const ;
+bool ends_with(basic_string_view x) const ;
+```
+[endsect]
+
+
+[/===============]
+[section History]
+[/===============]
+
+[h5 boost 1.71]
+* Glen Fernandes updated the implementation of the stream insertion operator to
+write directly to the `basic_streambuf` and refactored that functionality into
+a common utility.
+
+[h5 boost 1.53]
+* Introduced
+
+[endsect]
+
+[/===============]
+[xinclude tmp/string_view_reference.xml]
+[/===============]
+
+[/===============]
+[section Acknowledgments]
+[/===============]
+
+Author: Clow, Marshall
+
+Copyright 2012 Marshall Clow
+
+[endsect]
+
+[endsect]
+

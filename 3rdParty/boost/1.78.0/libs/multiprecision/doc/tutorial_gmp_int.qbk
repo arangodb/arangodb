@@ -1,0 +1,52 @@
+[/
+  Copyright 2011 - 2020 John Maddock.
+  Copyright 2013 - 2019 Paul A. Bristow.
+  Copyright 2013 Christopher Kormanyos.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:gmp_int gmp_int]
+
+`#include <boost/multiprecision/gmp.hpp>`
+
+   namespace boost{ namespace multiprecision{
+
+   class gmp_int;
+
+   typedef number<gmp_int >         mpz_int;
+
+   }} // namespaces
+
+The `gmp_int` back-end is used via the typedef `boost::multiprecision::mpz_int`.  It acts as a thin wrapper around the [gmp] `mpz_t`
+to provide an integer type that is a drop-in replacement for the native C++ integer types, but with unlimited precision.
+
+As well as the usual conversions from arithmetic and string types, type `mpz_int` is copy constructible and assignable from:
+
+* The [gmp] native types: `mpf_t`, `mpz_t`, `mpq_t`.
+* Instances of `number<T>` that are wrappers around those types: `number<gmp_float<N> >`, `number<gmp_rational>`.
+
+It's also possible to access the underlying `mpz_t` via the `data()` member function of `gmp_int`.
+
+Things you should know when using this type:
+
+* No changes are made to the GMP library's global settings - so you can safely mix this type with
+existing code that uses [gmp].
+* Default constructed `gmp_int`s have the value zero (this is GMP's default behavior).
+* Formatted IO for this type does not support octal or hexadecimal notation for negative values,
+as a result performing formatted output on this type when the argument is negative and either of the flags
+`std::ios_base::oct` or `std::ios_base::hex` are set, will result in a `std::runtime_error` will be thrown.
+* Conversion from a string results in a `std::runtime_error` being thrown if the string can not be interpreted
+as a valid integer.
+* Division by zero results in a `std::overflow_error` being thrown.
+* Although this type is a wrapper around [gmp] it will work equally well with [mpir].  Indeed use of [mpir]
+is recommended on Win32.
+* This backend supports rvalue-references and is move-aware, making instantiations of `number` on this backend move aware.
+
+[h5 Example:]
+
+[mpz_eg]
+
+[endsect] [/section:gmp_int gmp_int]

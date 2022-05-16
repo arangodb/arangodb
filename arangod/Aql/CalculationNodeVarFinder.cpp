@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +28,7 @@ namespace aql {
 
 CalculationNodeVarFinder::CalculationNodeVarFinder(
     Variable const* lookingFor,
-    ::arangodb::containers::SmallVector<ExecutionNode*>& out) noexcept
+    containers::SmallVector<ExecutionNode*, 8>& out) noexcept
     : _lookingFor(lookingFor), _out(out) {}
 
 bool CalculationNodeVarFinder::before(ExecutionNode* en) {

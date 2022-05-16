@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,18 +24,19 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 
-class BootstrapFeature final : public application_features::ApplicationFeature {
+class BootstrapFeature final : public ArangodFeature {
  public:
-  explicit BootstrapFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "Bootstrap"; }
+
+  explicit BootstrapFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
   void unprepare() override final;
-
-  static std::string const& name() noexcept;
 
   bool isReady() const;
 
@@ -43,11 +44,10 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
   void waitForHealthEntry();
   /// @brief wait for databases to appear in Plan and Current
   void waitForDatabases() const;
- 
+
  private:
   bool _isReady;
   bool _bark;
 };
 
 }  // namespace arangodb
-

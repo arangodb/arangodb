@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,20 +34,23 @@ using namespace arangodb::aql;
 NoResultsExecutor::NoResultsExecutor(Fetcher&, Infos&) {}
 NoResultsExecutor::~NoResultsExecutor() = default;
 
-auto NoResultsExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output) const
-    noexcept -> std::tuple<ExecutorState, Stats, AqlCall> {
-  return {input.upstreamState(), NoStats{}, AqlCall{0, false, 0, AqlCall::LimitType::HARD}};
+auto NoResultsExecutor::produceRows(AqlItemBlockInputRange& input,
+                                    OutputAqlItemRow& output) const noexcept
+    -> std::tuple<ExecutorState, Stats, AqlCall> {
+  return {input.upstreamState(), NoStats{},
+          AqlCall{0, false, 0, AqlCall::LimitType::HARD}};
 }
 
-auto NoResultsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call) const
-    noexcept -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+auto NoResultsExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
+                                      AqlCall& call) const noexcept
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   return {inputRange.upstreamState(), NoStats{}, 0,
           AqlCall{0, false, 0, AqlCall::LimitType::HARD}};
 };
 
-[[nodiscard]] auto NoResultsExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
-                                                              AqlCall const& call) const
-    noexcept -> size_t {
+[[nodiscard]] auto NoResultsExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
+    -> size_t {
   // Well nevermind the input, but we will always return 0 rows here.
   return 0;
 }

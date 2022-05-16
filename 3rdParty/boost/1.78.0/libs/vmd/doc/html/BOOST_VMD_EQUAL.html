@@ -1,0 +1,55 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Macro BOOST_VMD_EQUAL</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Chapter 1. The Variadic Macro Data Library 1.10">
+<link rel="up" href="header/boost/vmd/equal_hpp.html" title="Header &lt;boost/vmd/equal.hpp&gt;">
+<link rel="prev" href="header/boost/vmd/equal_hpp.html" title="Header &lt;boost/vmd/equal.hpp&gt;">
+<link rel="next" href="BOOST_VMD_EQUAL_D.html" title="Macro BOOST_VMD_EQUAL_D">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="header/boost/vmd/equal_hpp.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="header/boost/vmd/equal_hpp.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="BOOST_VMD_EQUAL_D.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="BOOST_VMD_EQUAL"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Macro BOOST_VMD_EQUAL</span></h2>
+<p>BOOST_VMD_EQUAL — Tests any two sequences for equality. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="header/boost/vmd/equal_hpp.html" title="Header &lt;boost/vmd/equal.hpp&gt;">boost/vmd/equal.hpp</a>&gt;
+
+</span>BOOST_VMD_EQUAL(sequence, ...)</pre></div>
+<div class="refsect1">
+<a name="idm14005"></a><h2>Description</h2>
+<p>sequence = First sequence. <br>
+ ... = variadic parameters, maximum of 2.</p>
+<p>The first variadic parameter is required and is the second sequence to test. The optional second variadic parameter is a VMD type as a filter.</p>
+<p>The macro tests any two sequences for equality. For sequences to be equal the VMD types of each sequence must be equal and the individual elements of the sequence must be equal. For Boost PP composite types the macro tests that the composite types have the same size and then tests that each element of the composite type is equal. This means that all elements of a composite type must be a VMD type in order to use this macro successfully.</p>
+<p>The single optional parameter is a filter. The filter is a VMD type which specifies that both sequences to test must be of that VMD type, as well as being equal to each other, for the test to succeed.</p>
+<p>returns = 1 upon success or 0 upon failure. Success means that both sequences are equal and, if the optional parameter is specified, that the sequences are of the optional VMD type. </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2010-2017 Tropic Software
+      East Inc</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="header/boost/vmd/equal_hpp.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="header/boost/vmd/equal_hpp.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="BOOST_VMD_EQUAL_D.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

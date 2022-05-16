@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,16 +27,16 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/SkipResult.h"
-#include "Containers/SmallVector.h"
 
 #include <memory>
+#include <span>
 
 namespace arangodb {
 namespace aql {
 
 class AqlCallStack;
 class AqlItemBlock;
-template <BlockPassthrough>
+template<BlockPassthrough>
 class DependencyProxy;
 class ShadowAqlItemRow;
 
@@ -60,16 +60,19 @@ class ConstFetcher {
   /**
    * @brief Execute the given call stack
    *
-   * @param stack Call stack, on top of stack there is current subquery, bottom is the main query.
+   * @param stack Call stack, on top of stack there is current subquery, bottom
+   * is the main query.
    * @return std::tuple<ExecutionState, size_t, DataRange>
    *   ExecutionState => DONE, all queries are done, there will be no more
-   *   ExecutionState => HASMORE, there are more results for queries, might be on other subqueries
-   *   ExecutionState => WAITING, we need to do I/O to solve the request, save local state and return WAITING to caller immediately
+   *   ExecutionState => HASMORE, there are more results for queries, might be
+   * on other subqueries ExecutionState => WAITING, we need to do I/O to solve
+   * the request, save local state and return WAITING to caller immediately
    *
    *   size_t => Amount of documents skipped
    *   DataRange => Resulting data
    */
-  auto execute(AqlCallStack& stack) -> std::tuple<ExecutionState, SkipResult, DataRange>;
+  auto execute(AqlCallStack& stack)
+      -> std::tuple<ExecutionState, SkipResult, DataRange>;
 
   void injectBlock(SharedAqlItemBlockPtr block, SkipResult skipped);
 
@@ -102,10 +105,9 @@ class ConstFetcher {
  private:
   auto indexIsValid() const noexcept -> bool;
   auto numRowsLeft() const noexcept -> size_t;
-  auto canUseFullBlock(arangodb::containers::SmallVector<std::pair<size_t, size_t>> const& ranges) const
-      noexcept -> bool;
+  auto canUseFullBlock(
+      std::span<std::pair<size_t, size_t> const> ranges) const noexcept -> bool;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-

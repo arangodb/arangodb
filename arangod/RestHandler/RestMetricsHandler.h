@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,23 +24,18 @@
 #pragma once
 
 #include "RestHandler/RestBaseHandler.h"
-#include "RestServer/MetricsFeature.h"
 
 namespace arangodb {
+
 class RestMetricsHandler : public arangodb::RestBaseHandler {
  public:
-  RestMetricsHandler(application_features::ApplicationServer&, GeneralRequest*,
-                     GeneralResponse*);
+  RestMetricsHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
-  char const* name() const override final { return "RestMetricsHandler"; }
-  /// @brief must be on fast lane so that metrics can always be retrieved, 
+  char const* name() const final { return "RestMetricsHandler"; }
+  /// @brief must be on fast lane so that metrics can always be retrieved,
   /// even from otherwise totally busy servers
-  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
-  RestStatus execute() override;
-
+  RequestLane lane() const final { return RequestLane::CLIENT_FAST; }
+  RestStatus execute() final;
 };
 
-
-
 }  // namespace arangodb
-

@@ -1,0 +1,118 @@
+[/
+  Copyright 2021 John Maddock.
+
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:variable Variable Precision Arithmetic]
+
+There are a number of types in this library whose precision can be changed at runtime,
+the purpose of this section is to explain how these types interoperate with each other
+when two variables of the same type can have different precisions.
+
+The main variable precision types being discussed here are:
+
+* __mpf_float.
+* __mpfr_float_backend.
+* __mpfi_float.
+* __mpc_complex.
+
+Functions for setting the current working precision are as follows, with type `Num` being one of `mpf_float`, `mpfr_float`, `mpfi_float` or `mpc_float`, and `val` being an object of type `Num`:
+
+[table
+[[Expression][Returns][Comments]]
+[[`val.precision()`][`unsigned`][Returns the precision of variable `val`.]]
+[[`val.precision(n)`][`void`][Sets the precision of variable `val` to `n` decimal places.]]
+[[`Num::default_precision()`][`unsigned`][Returns the current global default precision, in decimal digits - this is the precision that all new threads will inherit.]]
+[[`Num::thread_default_precision()`][`unsigned`][Returns the current thread default precision, in decimal digits - this is the precision that the current thread will use when constructing new objects of type `Num`.]]
+[[`Num::default_precision(Digits10)`][`void`][Sets the global default precision to Digits10 decimal places, this is the precision that all new threads will inherit, also sets the working precision for the current thread.]]
+[[`Num::thread_default_precision(Digits10)`][`void`][Sets the default precision for the current thread to Digits10 decimal places.]]
+]
+
+We must now consider what happens in an expression such as:
+
+   variable = some_expression;
+
+There are basically 2 options here when the precision of `variable` and `some_expression` differ:
+
+* We can preserve the precision of the source, so that post assignment, source and target are equal.
+* We can preserve the precision of the target, so that the precision of `variable` doesn't change.
+
+In addition we must consider what happens if `some_expression` contains types other than `Num`.
+
+The behaviour of the library is controlled by the following enumerated values:
+
+   namespace boost::multiprecision {
+
+      enum struct variable_precision_options
+      {
+         assume_uniform_precision = -1,
+         preserve_target_precision = 0,
+         preserve_source_precision = 1,
+         preserve_component_precision = 2,
+         preserve_related_precision = 3,
+         preserve_all_precision = 4,
+      };
+
+   }
+
+The enumerated values have the following meanings, with `preserve_related_precision` being the default.
+
+[table
+[[Value][Meaning]]
+[[assume_uniform_precision][This is the most efficient option - it simply assumes that all variables in the current thread have the same precision, and ignores the precision of all other types.
+   Should these assumptions not hold, then strange unexpected things may happen.  No checks are made to ensure that all variables really are of the same precision.]]
+[[preserve_target_precision][All expressions are evaluated at the precision of the highest precision variable within the expression, and then rounded to the precision
+   of the target variable upon assignment.  The precision of other types (including related or component types - see preserve_component_precision/preserve_related_precision) 
+   contained within the expression are ignored.
+   This option has the unfortunate side effect, that moves may become full deep copies.]]
+[[preserve_source_precision][All expressions are evaluated at the precision of the highest precision variable within the expression, and that precision is preserved upon assignment.  
+   The precision of other types (including related or component types - see preserve_component_precision/preserve_related_precision) contained within the expression are ignored.
+   Moves, are true moves not copies.]]
+[[preserve_component_precision][All expressions are evaluated at the precision of the highest precision variable within the expression, and that precision is preserved upon assignment.  
+   If the expression contains component types then these are also considered when calculating the precision of the expression.  Component types are the types which make up the two 
+   components of the number when dealing with interval or complex numbers.  They are the same type as `Num::value_type`.
+   Moves, are true moves not copies.]]
+[[preserve_related_precision][All expressions are evaluated at the precision of the highest precision variable within the expression, and that precision is preserved upon assignment.  
+   If the expression contains component types then these are also considered when calculating the precision of the expression.  In addition to component types, 
+   all related types are considered when evaluating the precision of the expression.
+   Related types are considered to be instantiations of the same template, but with different parameters.  So for example `mpfr_float_100` would be a related type to `mpfr_float`, and all expressions
+   containing an `mpfr_float_100` variable would have at least 100 decimal digits of precision when evaluated as an `mpfr_float` expression.  Moves, are true moves not copies.]]
+[[preserve_all_precision][All expressions are evaluated at the precision of the highest precision variable within the expression, and that precision is preserved upon assignment.  
+   In addition to component and related types, all types are considered when evaluating the precision of the expression.
+   For example, if the expression contains an `mpz_int`, then the precision of the expression will be sufficient to store all of the digits in the integer unchanged.
+   This option should generally be used with extreme caution, as it can easily cause unintentional precision inflation.  Moves, are true moves not copies.]]
+]
+
+Note how the values `preserve_source_precision`, `preserve_component_precision`,
+`preserve_related_precision` and `preserve_all_precision` form a hierarchy, with each adding progressively more types to the one before to the list of types that are considered when calculating
+the precision of an expression:
+
+[table
+[[Value][Considers types (lowest in hierarchy first, each builds on the one before)]]
+[[preserve_source_precision][Considers types the same as the result in the expression only.]]
+[[preserve_component_precision][Also considers component types, ie `Num::value_type`.]]
+[[preserve_related_precision][Also considers all instantiations of the backend-template, not just the same type as the result.]]
+[[preserve_all_precision][Considers everything, including completely unrelated types such as (possibly arbitrary precision) integers.]]
+]
+
+As with working precision, the above options can be set or queried on either a global or thread-local level, note that these options can not be set on a 
+per-variable basis since they control whole expressions, not individual variables:
+
+[table
+[[Expression][Returns][Comments]]
+[[`Num::default_variable_precision_options()`][`variable_precision_options`][Returns the current global default options, these are the options that all new threads will inherit.]]
+[[`Num::thread_default_variable_precision_options()`][`variable_precision_options`][Returns the options in use in the current thread when evaluating expressions containing type `Num`.]]
+[[`Num::default_variable_precision_options(opts)`][`void`][Sets the global default options to `opts` which must be one of the enumerated `variable_precision_options` values, this is setting that all new threads will inherit, also sets the options for the current thread.]]
+[[`Num::thread_default_variable_precision_options(opts)`][`void`][Sets the options for the current thread to `opts` which must be one of the `variable_precision_options` enumerated values.]]
+]
+
+[h4 Examples]
+
+[import ../example/scoped_precision_example.cpp]
+
+[scoped_precision_1]
+
+[endsect] [/section:variable Variable Precision Arithmetic]

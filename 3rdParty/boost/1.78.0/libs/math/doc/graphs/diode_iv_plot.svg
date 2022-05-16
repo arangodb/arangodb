@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="400" height ="300" version="1.1"
+xmlns:svg ="http://www.w3.org/2000/svg"
+xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+xmlns:cc="http://web.resource.org/cc/"
+xmlns:dc="http://purl.org/dc/elements/1.1/"
+xmlns ="http://www.w3.org/2000/svg"
+>
+<!-- SVG plot written using Boost.Plot program (Creator Jacob Voytko) --> 
+<!-- Use, modification and distribution of Boost.Plot subject to the --> 
+<!-- Boost Software License, Version 1.0.--> 
+<!-- (See accompanying file LICENSE_1_0.txt --> 
+<!-- or copy at http://www.boost.org/LICENSE_1_0.txt) --> 
+
+<!-- SVG Plot Copyright Paul A. Bristow 2016 --> 
+<meta name="copyright" content="Paul A. Bristow" />
+<meta name="date" content="2016" />
+<clipPath id="plot_window"><rect x="85.2" y="54" width="151.1" height="186"/></clipPath>
+<g id="imageBackground" stroke="rgb(255,255,0)" fill="rgb(255,255,255)" stroke-width="2"><rect x="0" y="0" width="400" height="300"/></g>
+<g id="plotBackground" stroke="rgb(119,136,153)" fill="rgb(255,255,255)" stroke-width="2"><rect x="84.2" y="53" width="153.1" height="188"/></g>
+<g id="yMinorGrid" stroke="rgb(200,220,255)" stroke-width="0.5"></g>
+<g id="yMajorGrid" stroke="rgb(200,220,255)" stroke-width="1"><path d="M86.2,84.33 L235.3,84.33 M86.2,53 L235.3,53 M86.2,84.33 L235.3,84.33 M86.2,115.7 L235.3,115.7 M86.2,147 L235.3,147 M86.2,178.3 L235.3,178.3 M86.2,209.7 L235.3,209.7 M86.2,241 L235.3,241 " fill="none"/></g>
+<g id="xMinorGrid" stroke="rgb(200,220,255)" stroke-width="0.5"></g>
+<g id="xMajorGrid" stroke="rgb(200,220,255)" stroke-width="1"><path d="M94.41,53 L94.41,241 M114.8,53 L114.8,241 M135.2,53 L135.2,241 M155.6,53 L155.6,241 M176,53 L176,241 M196.5,53 L196.5,241 M216.9,53 L216.9,241 M237.3,53 L237.3,241 " fill="none"/></g>
+<g id="yAxis" stroke="rgb(0,0,0)" stroke-width="1"><line x1="84.2" y1="53" x2="84.2" y2="241"/></g>
+<g id="xAxis" stroke="rgb(0,0,0)" stroke-width="1"><line x1="79.2" y1="84.33" x2="237.3" y2="84.33"/><line x1="79.2" y1="241" x2="237.3" y2="241"/></g>
+<g id="yMinorTicks" stroke="rgb(0,0,0)" stroke-width="1"><path d="M82.2,78.07 L84.2,78.07 M82.2,71.8 L84.2,71.8 M82.2,65.53 L84.2,65.53 M82.2,59.27 L84.2,59.27 M82.2,84.33 L84.2,84.33 M82.2,90.6 L84.2,90.6 M82.2,96.87 L84.2,96.87 M82.2,103.1 L84.2,103.1 M82.2,109.4 L84.2,109.4 M82.2,115.7 L84.2,115.7 M82.2,121.9 L84.2,121.9 M82.2,128.2 L84.2,128.2 M82.2,134.5 L84.2,134.5 M82.2,140.7 L84.2,140.7 M82.2,147 L84.2,147 M82.2,147 L84.2,147 M82.2,153.3 L84.2,153.3 M82.2,159.5 L84.2,159.5 M82.2,165.8 L84.2,165.8 M82.2,172.1 L84.2,172.1 M82.2,178.3 L84.2,178.3 M82.2,184.6 L84.2,184.6 M82.2,190.9 L84.2,190.9 M82.2,197.1 L84.2,197.1 M82.2,203.4 L84.2,203.4 M82.2,209.7 L84.2,209.7 M82.2,215.9 L84.2,215.9 M82.2,222.2 L84.2,222.2 M82.2,228.5 L84.2,228.5 M82.2,234.7 L84.2,234.7 M82.2,241 L84.2,241 " fill="none"/></g>
+<g id="xMinorTicks" stroke="rgb(0,0,0)" stroke-width="1"><path d="M86.24,241 L86.24,243 M90.32,241 L90.32,243 M98.49,241 L98.49,243 M102.6,241 L102.6,243 M106.7,241 L106.7,243 M110.7,241 L110.7,243 M118.9,241 L118.9,243 M123,241 L123,243 M127.1,241 L127.1,243 M131.1,241 L131.1,243 M139.3,241 L139.3,243 M143.4,241 L143.4,243 M147.5,241 L147.5,243 M151.6,241 L151.6,243 M159.7,241 L159.7,243 M163.8,241 L163.8,243 M167.9,241 L167.9,243 M172,241 L172,243 M180.1,241 L180.1,243 M184.2,241 L184.2,243 M188.3,241 L188.3,243 M192.4,241 L192.4,243 M200.5,241 L200.5,243 M204.6,241 L204.6,243 M208.7,241 L208.7,243 M212.8,241 L212.8,243 M221,241 L221,243 M225,241 L225,243 M229.1,241 L229.1,243 M233.2,241 L233.2,243 " fill="none"/></g>
+<g id="yMajorTicks" stroke="rgb(0,0,0)" stroke-width="2"><path d="M79.2,84.33 L84.2,84.33 M79.2,53 L84.2,53 M79.2,84.33 L84.2,84.33 M79.2,115.7 L84.2,115.7 M79.2,147 L84.2,147 M79.2,178.3 L84.2,178.3 M79.2,209.7 L84.2,209.7 M79.2,241 L84.2,241 " fill="none"/></g>
+<g id="xMajorTicks" stroke="rgb(0,0,0)" stroke-width="2"><path d="M94.41,241 L94.41,246 M114.8,241 L114.8,246 M135.2,241 L135.2,246 M155.6,241 L155.6,246 M176,241 L176,246 M196.5,241 L196.5,246 M216.9,241 L216.9,246 M237.3,241 L237.3,246 " fill="none"/></g>
+<g id="xTicksValues">
+<text x="94.41" y="261.6" text-anchor="middle" font-size="12" font-family="Lucida Sans Unicode">0.3</text>
+<text x="114.8" y="261.6" text-anchor="middle" font-size="12" font-family="Lucida Sans Unicode">0.4</text>
+<text x="135.2" y="261.6" text-anchor="middle" font-size="12" font-family="Lucida Sans Unicode">0.5</text>
+<text x="155.6" y="261.6" text-anchor="middle" font-size="12" font-family="Lucida Sans Unicode">0.6</text>
+<text x="176" y="261.6" text-anchor="middle" font-size="12" font-family="Lucida Sans Unicode">0.7</text>
+<text x="196.5" y="261.6" text-anchor="middle" font-size="12" font-family="Lucida Sans Unicode">0.8</text>
+<text x="216.9" y="261.6" text-anchor="middle" font-size="12" font-family="Lucida Sans Unicode">0.9</text>
+<text x="237.3" y="261.6" text-anchor="middle" font-size="12" font-family="Lucida Sans Unicode">1</text></g>
+<g id="yTicksValues">
+<text x="73.2" y="86.73" text-anchor="end" font-size="12" font-family="Lucida Sans Unicode">0</text>
+<text x="73.2" y="55.4" text-anchor="end" font-size="12" font-family="Lucida Sans Unicode">4</text>
+<text x="73.2" y="86.73" text-anchor="end" font-size="12" font-family="Lucida Sans Unicode">0</text>
+<text x="73.2" y="118.1" text-anchor="end" font-size="12" font-family="Lucida Sans Unicode">-4</text>
+<text x="73.2" y="149.4" text-anchor="end" font-size="12" font-family="Lucida Sans Unicode">-8</text>
+<text x="73.2" y="180.7" text-anchor="end" font-size="12" font-family="Lucida Sans Unicode">-12</text>
+<text x="73.2" y="212.1" text-anchor="end" font-size="12" font-family="Lucida Sans Unicode">-16</text>
+<text x="73.2" y="243.4" text-anchor="end" font-size="12" font-family="Lucida Sans Unicode">-20</text></g>
+<g id="yLabel">
+<text x="42.9" y="147" text-anchor="middle" transform = "rotate(-90 42.9 147 )" font-size="14" font-family="Lucida Sans Unicode">log(current) (A)</text></g>
+<g id="xLabel">
+<text x="160.7" y="276.7" text-anchor="middle" font-size="14" font-family="Lucida Sans Unicode">voltage (V)</text></g>
+<g id="plotLines" stroke-width="2"><g clip-path="url(#plot_window)" stroke="rgb(0,0,0)" stroke-width="0.5"><path d="M94.41,238.3 L94.41,238.3 L114.8,207.7 L135.2,177.2 L155.6,146.8 L176,116.3 L196.5,84.49 L216.9,56.13 " fill="none"/></g>
+<g clip-path="url(#plot_window)" stroke="rgb(0,0,0)" stroke-width="0.5"><path d="M94.41,238.3 L94.41,238.3 L114.8,207.7 L135.2,177.2 L155.6,146.8 L176,117.2 L180.1,111.8 L184.2,106.3 L188.3,102.3 L192.4,100 " fill="none"/></g>
+<g clip-path="url(#plot_window)" stroke="rgb(0,0,255)" stroke-width="1"><path d="M94.41,238.2 L94.41,238.2 L96.45,235.2 L98.49,232.1 L100.5,229.1 L102.6,226.1 L104.6,223 L106.7,220 L108.7,216.9 L110.7,213.9 L112.8,210.8 L114.8,207.8 L116.9,204.7 L118.9,201.7 L120.9,198.6 L123,195.6 L125,192.5 L127.1,189.5 L129.1,186.4 L131.1,183.4 L133.2,180.3 L135.2,177.3 L137.3,174.2 L139.3,171.2 L141.3,168.2 L143.4,165.1 L145.4,162.1 L147.5,159.1 L149.5,156 L151.6,153 L153.6,150 L155.6,147 L157.7,144.1 L159.7,141.2 L161.8,138.4 L163.8,135.6 L165.8,133 L167.9,130.5 L169.9,128.1 L172,125.9 L174,123.9 L176,122 L178.1,120.3 L180.1,118.8 L182.2,117.4 L184.2,116.2 L186.3,115 L188.3,114 L190.3,113 L192.4,112.1 L194.4,111.3 L196.5,110.5 L198.5,109.8 L200.5,109.2 L202.6,108.6 L204.6,108 L206.7,107.4 L208.7,106.9 L210.7,106.4 L212.8,105.9 L214.8,105.5 L216.9,105.1 L218.9,104.7 L221,104.3 L223,103.9 L225,103.5 L227.1,103.2 L229.1,102.9 L231.2,102.6 L233.2,102.2 L235.2,101.9 " fill="none"/></g>
+<g clip-path="url(#plot_window)" stroke="rgb(128,0,128)" stroke-width="1"><path d="M94.41,238.2 L94.41,238.2 L96.45,235.2 L98.49,232.1 L100.5,229.1 L102.6,226.1 L104.6,223 L106.7,220 L108.7,216.9 L110.7,213.9 L112.8,210.8 L114.8,207.8 L116.9,204.7 L118.9,201.7 L120.9,198.6 L123,195.6 L125,192.5 L127.1,189.5 L129.1,186.4 L131.1,183.4 L133.2,180.4 L135.2,177.3 L137.3,174.3 L139.3,171.2 L141.3,168.2 L143.4,165.2 L145.4,162.2 L147.5,159.2 L149.5,156.3 L151.6,153.4 L153.6,150.5 L155.6,147.8 L157.7,145.1 L159.7,142.6 L161.8,140.2 L163.8,138 L165.8,135.9 L167.9,134 L169.9,132.3 L172,130.8 L174,129.4 L176,128.1 L178.1,126.9 L180.1,125.9 L182.2,124.9 L184.2,124 L186.3,123.2 L188.3,122.4 L190.3,121.7 L192.4,121 L194.4,120.4 L196.5,119.8 L198.5,119.2 L200.5,118.7 L202.6,118.2 L204.6,117.7 L206.7,117.3 L208.7,116.9 L210.7,116.5 L212.8,116.1 L214.8,115.7 L216.9,115.3 L218.9,115 L221,114.7 L223,114.3 L225,114 L227.1,113.7 L229.1,113.4 L231.2,113.2 L233.2,112.9 L235.2,112.6 " fill="none"/></g>
+<g clip-path="url(#plot_window)" stroke="rgb(0,128,0)" stroke-width="1"><path d="M94.41,238.2 L94.41,238.2 L96.45,235.2 L98.49,232.1 L100.5,229.1 L102.6,226.1 L104.6,223 L106.7,220 L108.7,216.9 L110.7,213.9 L112.8,210.8 L114.8,207.8 L116.9,204.7 L118.9,201.7 L120.9,198.6 L123,195.6 L125,192.5 L127.1,189.5 L129.1,186.5 L131.1,183.4 L133.2,180.4 L135.2,177.4 L137.3,174.4 L139.3,171.4 L141.3,168.5 L143.4,165.6 L145.4,162.8 L147.5,160 L149.5,157.4 L151.6,154.8 L153.6,152.5 L155.6,150.3 L157.7,148.2 L159.7,146.4 L161.8,144.7 L163.8,143.2 L165.8,141.8 L167.9,140.5 L169.9,139.4 L172,138.3 L174,137.4 L176,136.5 L178.1,135.6 L180.1,134.9 L182.2,134.2 L184.2,133.5 L186.3,132.9 L188.3,132.3 L190.3,131.7 L192.4,131.2 L194.4,130.7 L196.5,130.3 L198.5,129.8 L200.5,129.4 L202.6,129 L204.6,128.6 L206.7,128.2 L208.7,127.9 L210.7,127.5 L212.8,127.2 L214.8,126.9 L216.9,126.6 L218.9,126.3 L221,126 L223,125.7 L225,125.4 L227.1,125.2 L229.1,124.9 L231.2,124.7 L233.2,124.4 L235.2,124.2 " fill="none"/></g>
+<g clip-path="url(#plot_window)" stroke="rgb(255,0,0)" stroke-width="1"><path d="M94.41,238.2 L94.41,238.2 L96.45,235.2 L98.49,232.1 L100.5,229.1 L102.6,226.1 L104.6,223 L106.7,220 L108.7,216.9 L110.7,213.9 L112.8,210.8 L114.8,207.8 L116.9,204.7 L118.9,201.7 L120.9,198.7 L123,195.6 L125,192.6 L127.1,189.6 L129.1,186.6 L131.1,183.6 L133.2,180.7 L135.2,177.8 L137.3,175 L139.3,172.2 L141.3,169.6 L143.4,167.1 L145.4,164.7 L147.5,162.5 L149.5,160.5 L151.6,158.7 L153.6,157 L155.6,155.5 L157.7,154.1 L159.7,152.8 L161.8,151.7 L163.8,150.6 L165.8,149.7 L167.9,148.8 L169.9,148 L172,147.2 L174,146.5 L176,145.9 L178.1,145.2 L180.1,144.6 L182.2,144.1 L184.2,143.6 L186.3,143.1 L188.3,142.6 L190.3,142.2 L192.4,141.8 L194.4,141.3 L196.5,141 L198.5,140.6 L200.5,140.2 L202.6,139.9 L204.6,139.6 L206.7,139.2 L208.7,138.9 L210.7,138.6 L212.8,138.4 L214.8,138.1 L216.9,137.8 L218.9,137.5 L221,137.3 L223,137 L225,136.8 L227.1,136.6 L229.1,136.4 L231.2,136.1 L233.2,135.9 L235.2,135.7 " fill="none"/></g>
+</g>
+<g id="plotPoints" clip-path="url(#plot_window)"><g stroke="rgb(0,0,0)" fill="rgb(211,211,211)"><rect x="92.91" y="236.8" width="3" height="3"/><rect x="113.3" y="206.2" width="3" height="3"/><rect x="133.7" y="175.7" width="3" height="3"/><rect x="154.1" y="145.3" width="3" height="3"/><rect x="174.5" y="115.7" width="3" height="3"/><rect x="178.6" y="110.3" width="3" height="3"/><rect x="182.7" y="104.8" width="3" height="3"/><rect x="186.8" y="100.8" width="3" height="3"/><rect x="190.9" y="98.5" width="3" height="3"/></g>
+</g>
+<g id="legendBackground" stroke="rgb(255,255,0)" fill="rgb(255,255,255)" stroke-width="1"><rect x="251.3" y="53" width="122.7" height="182"/><rect x="251.3" y="53" width="122.7" height="182"/></g>
+<g id="legendPoints"><g stroke="rgb(0,0,0)" fill="rgb(211,211,211)" stroke-width="0.5"><line x1="265.3" y1="81" x2="279.3" y2="81"/></g>
+<g stroke="rgb(0,0,0)" fill="rgb(211,211,211)" stroke-width="0.5"><rect x="263.8" y="107.5" width="3" height="3"/><line x1="286.3" y1="109" x2="300.3" y2="109"/></g>
+<g stroke="rgb(0,0,255)" fill="rgb(255,255,255)" stroke-width="1"><line x1="265.3" y1="137" x2="279.3" y2="137"/></g>
+<g stroke="rgb(128,0,128)" fill="rgb(255,255,255)" stroke-width="1"><line x1="265.3" y1="165" x2="279.3" y2="165"/></g>
+<g stroke="rgb(0,128,0)" fill="rgb(255,255,255)" stroke-width="1"><line x1="265.3" y1="193" x2="279.3" y2="193"/></g>
+<g stroke="rgb(255,0,0)" fill="rgb(255,255,255)" stroke-width="1"><line x1="265.3" y1="221" x2="279.3" y2="221"/></g>
+</g>
+<g id="legendText">
+<text x="286.3" y="81" font-size="14" font-family="Lucida Sans Unicode">I&#x2080;(V)</text>
+<text x="307.3" y="109" font-size="14" font-family="Lucida Sans Unicode">Rs=0 &#x3A9;</text>
+<text x="286.3" y="137" font-size="14" font-family="Lucida Sans Unicode">Rs=2 &#x3A9;</text>
+<text x="286.3" y="165" font-size="14" font-family="Lucida Sans Unicode">Rs=10 &#x3A9;</text>
+<text x="286.3" y="193" font-size="14" font-family="Lucida Sans Unicode">Rs=51 &#x3A9;</text>
+<text x="286.3" y="221" font-size="14" font-family="Lucida Sans Unicode">Rs=249 &#x3A9;</text></g>
+<g id="title">
+<text x="200" y="36" text-anchor="middle" font-size="18" font-family="Lucida Sans Unicode">Diode current versus voltage</text></g>
+<g id="plotXValues"></g>
+<g id="plotYValues"></g>
+</svg>

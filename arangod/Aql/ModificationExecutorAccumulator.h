@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,11 +26,10 @@
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
 
-#include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 // Hack-i-ty-hack
 //
@@ -43,8 +42,10 @@ class ModificationExecutorAccumulator {
  public:
   ModificationExecutorAccumulator() { reset(); }
 
-  VPackSlice closeAndGetContents() {
+  [[nodiscard]] VPackSlice closeAndGetContents() {
+    TRI_ASSERT(_accumulator.isOpenArray());
     _accumulator.close();
+    TRI_ASSERT(_accumulator.isClosed());
     return _accumulator.slice();
   }
 
@@ -58,12 +59,13 @@ class ModificationExecutorAccumulator {
     _accumulator.openArray();
   }
 
-  size_t nrOfDocuments() const { return _accumulator.slice().length(); }
+  [[nodiscard]] size_t nrOfDocuments() const {
+    TRI_ASSERT(_accumulator.isClosed());
+    return _accumulator.slice().length();
+  }
 
  private:
-  VPackBuilder _accumulator;
+  VPackBuilder _accumulator{};
 };
 
-}  // namespace aql
-}  // namespace arangodb
-
+}  // namespace arangodb::aql

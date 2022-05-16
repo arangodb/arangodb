@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,17 +25,16 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cmath>
 #include <cstdint>
-#include <memory>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Basics/debugging.h"
+#include "RestServer/SharedPRNGFeature.h"
 
-namespace arangodb {
-namespace cache {
+namespace arangodb::cache {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Lockless structure to calculate approximate relative event
@@ -45,32 +44,14 @@ namespace cache {
 /// occurrences of each within a certain time-frame. Will write to randomized
 /// memory location inside the frequency buffer
 ////////////////////////////////////////////////////////////////////////////////
-template <class T, class Comparator = std::equal_to<T>, class Hasher = std::hash<T>>
+template<class T, class Comparator = std::equal_to<T>,
+         class Hasher = std::hash<T>>
 class FrequencyBuffer {
  public:
   typedef std::vector<std::pair<T, uint64_t>> stats_t;
 
   static_assert(sizeof(std::atomic<T>) == sizeof(T), "");
 
- private:
-  SharedPRNGFeature& _sharedPRNG;
-  std::size_t _capacity;
-  std::size_t _mask;
-  std::vector<std::atomic<T>> _buffer;
-  Comparator _cmp;
-  T _empty;
-
- private:
-  static std::size_t powerOf2(std::size_t capacity) {
-    // TODO maybe use
-    // https://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
-    std::size_t i = 0;
-    for (; (static_cast<size_t>(1) << i) < capacity; i++) {
-    }
-    return (static_cast<size_t>(1) << i);
-  }
-
- public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initialize with the given capacity.
   //////////////////////////////////////////////////////////////////////////////
@@ -88,23 +69,24 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reports the hidden allocation size (not captured by sizeof).
   //////////////////////////////////////////////////////////////////////////////
-  static std::size_t allocationSize(std::size_t capacity) {
+  static constexpr std::size_t allocationSize(std::size_t capacity) {
     return capacity * sizeof(T);
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reports the memory usage in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  std::size_t memoryUsage() const {
+  std::size_t memoryUsage() const noexcept {
     return ((_capacity * sizeof(T)) + sizeof(FrequencyBuffer<T>));
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Insert an individual event record.
   //////////////////////////////////////////////////////////////////////////////
-  void insertRecord(T record) {
+  void insertRecord(T record) noexcept {
     // we do not care about the order in which threads insert their values
-    _buffer[_sharedPRNG.rand() & _mask].store(record, std::memory_order_relaxed);
+    _buffer[_sharedPRNG.rand() & _mask].store(record,
+                                              std::memory_order_relaxed);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -114,7 +96,8 @@ class FrequencyBuffer {
     for (std::size_t i = 0; i < _capacity; i++) {
       auto tmp = _buffer[i].load(std::memory_order_relaxed);
       if (_cmp(tmp, record)) {
-        _buffer[i].compare_exchange_strong(tmp, _empty, std::memory_order_relaxed);
+        _buffer[i].compare_exchange_strong(tmp, _empty,
+                                           std::memory_order_relaxed);
       }
     }
   }
@@ -140,7 +123,8 @@ class FrequencyBuffer {
       data.emplace_back(std::pair<T, std::size_t>(f.first, f.second));
     }
     std::sort(data.begin(), data.end(),
-              [](std::pair<T, std::uint64_t> const& left, std::pair<T, std::size_t> const& right) {
+              [](std::pair<T, std::uint64_t> const& left,
+                 std::pair<T, std::size_t> const& right) {
                 return left.second < right.second;
               });
 
@@ -150,13 +134,25 @@ class FrequencyBuffer {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Clear the buffer, removing all event records.
   //////////////////////////////////////////////////////////////////////////////
-  void clear() {
+  void clear() noexcept {
     for (std::size_t i = 0; i < _capacity; i++) {
       _buffer[i].store(T(), std::memory_order_relaxed);
     }
   }
+
+ private:
+  static constexpr std::size_t powerOf2(std::size_t capacity) {
+    std::size_t bitPos =
+        static_cast<std::size_t>(std::ceil(std::log2(capacity)));
+    return (static_cast<std::size_t>(1) << bitPos);
+  }
+
+  SharedPRNGFeature& _sharedPRNG;
+  std::size_t const _capacity;
+  std::size_t const _mask;
+  std::vector<std::atomic<T>> _buffer;
+  Comparator _cmp;
+  T const _empty;
 };
 
-};  // end namespace cache
-};  // end namespace arangodb
-
+};  // end namespace arangodb::cache

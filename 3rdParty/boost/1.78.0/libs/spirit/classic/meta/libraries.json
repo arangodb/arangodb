@@ -1,0 +1,19 @@
+{
+    "key": "spirit/classic",
+    "name": "Spirit Classic",
+    "authors": [
+        "Joel de Guzman",
+        "Hartmut Kaiser",
+        "Dan Nuffer"
+    ],
+    "description": "LL parser framework represents parsers directly as EBNF grammars in inlined C++.",
+    "category": [
+        "Parsing",
+        "String"
+    ],
+    "maintainers": [
+        "Joel de Guzman <joel -at- boost-consulting.com>",
+        "Hartmut Kaiser <hartmut.kaiser -at- gmail.com>"
+    ],
+    "cxxstd": "03"
+}

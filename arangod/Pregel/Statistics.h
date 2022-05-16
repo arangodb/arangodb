@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +25,6 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include "Pregel/Utils.h"
 #include "Logger/LogMacros.h"
@@ -119,7 +118,8 @@ struct StatsManager {
       send += pair.second.sendCount;
       received += pair.second.receivedCount;
     }
-    LOG_TOPIC("26dad", TRACE, Logger::PREGEL) << send << " - " << received << " : " << send - received;
+    LOG_TOPIC("26dad", TRACE, Logger::PREGEL)
+        << send << " - " << received << " : " << send - received;
   }
 
   /// tests if active count is greater 0

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,11 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <velocypack/Builder.h>
-#include <velocypack/Collection.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
+#include "Basics/ScopeGuard.h"
 #include "Methods.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -34,13 +33,10 @@
 #include "Aql/AstNode.h"
 #include "Aql/Condition.h"
 #include "Aql/SortCondition.h"
-#include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/encoding.h"
 #include "Basics/system-compiler.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
@@ -48,7 +44,6 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
-#include "ClusterEngine/ClusterEngine.h"
 #include "Containers/SmallVector.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/RestHandler.h"
@@ -57,11 +52,10 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
+#include "Random/RandomGenerator.h"
+#include "Metrics/Counter.h"
 #include "Replication/ReplicationMetricsFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
-#include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
@@ -73,7 +67,6 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "VocBase/Methods/Indexes.h"
 #include "VocBase/ticks.h"
 
 #include <sstream>
@@ -89,8 +82,40 @@ namespace {
 
 enum class ReplicationType { NONE, LEADER, FOLLOWER };
 
-Result buildRefusalResult(LogicalCollection const& collection, char const* operation,
-                          OperationOptions const& options, std::string const& leader) {
+/// @brief choose a timeout for synchronous replication, based on the
+/// number of documents we ship over
+double chooseTimeoutForReplication(ReplicationTimeoutFeature const& feature,
+                                   size_t count, size_t totalBytes) {
+  // We essentially stop using a meaningful timeout for this operation.
+  // This is achieved by setting the default for the minimal timeout to 15m or
+  // 900s. The reason behind this is the following: We have to live with RocksDB
+  // stalls and write stops, which can happen in overload situations. Then, no
+  // meaningful timeout helps and it is almost certainly better to keep trying
+  // to not have to drop the follower and make matters worse. In case of an
+  // actual failure (or indeed a restart), the follower is marked as failed and
+  // its reboot id is increased. As a consequence, the connection is aborted and
+  // we run into an error anyway. This is when a follower will be dropped.
+
+  // We leave this code in place for now.
+
+  // We usually assume that a server can process at least 2500 documents
+  // per second (this is a low estimate), and use a low limit of 0.5s
+  // and a high timeout of 120s
+  double timeout = count / 2500.0;
+
+  // Really big documents need additional adjustment. Using total size
+  // of all messages to handle worst case scenario of constrained resource
+  // processing all
+  timeout += (totalBytes / 4096.0) * feature.timeoutPer4k();
+
+  return std::clamp(timeout, feature.lowerLimit(), feature.upperLimit()) *
+         feature.timeoutFactor();
+}
+
+Result buildRefusalResult(LogicalCollection const& collection,
+                          char const* operation,
+                          OperationOptions const& options,
+                          std::string const& leader) {
   std::stringstream msg;
   msg << TRI_errno_string(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION)
       << ": shard: " << collection.vocbase().name() << "/" << collection.name()
@@ -101,18 +126,23 @@ Result buildRefusalResult(LogicalCollection const& collection, char const* opera
 }
 
 // wrap vector inside a static function to ensure proper initialization order
-std::vector<arangodb::transaction::Methods::DataSourceRegistrationCallback>& getDataSourceRegistrationCallbacks() {
-  static std::vector<arangodb::transaction::Methods::DataSourceRegistrationCallback> callbacks;
+std::vector<arangodb::transaction::Methods::DataSourceRegistrationCallback>&
+getDataSourceRegistrationCallbacks() {
+  static std::vector<
+      arangodb::transaction::Methods::DataSourceRegistrationCallback>
+      callbacks;
 
   return callbacks;
 }
 
 /// @return the status change callbacks stored in state
 ///         or nullptr if none and !create
-std::vector<arangodb::transaction::Methods::StatusChangeCallback const*>* getStatusChangeCallbacks(
-    arangodb::TransactionState& state, bool create = false) {
+std::vector<arangodb::transaction::Methods::StatusChangeCallback const*>*
+getStatusChangeCallbacks(arangodb::TransactionState& state,
+                         bool create = false) {
   struct CookieType : public arangodb::TransactionState::Cookie {
-    std::vector<arangodb::transaction::Methods::StatusChangeCallback const*> _callbacks;
+    std::vector<arangodb::transaction::Methods::StatusChangeCallback const*>
+        _callbacks;
   };
 
   static const int key = 0;  // arbitrary location in memory, common for all
@@ -137,10 +167,11 @@ std::vector<arangodb::transaction::Methods::StatusChangeCallback const*>* getSta
 /// @brief notify callbacks of association of 'cid' with this TransactionState
 /// @note done separately from addCollection() to avoid creating a
 ///       TransactionCollection instance for virtual entities, e.g. View
-arangodb::Result applyDataSourceRegistrationCallbacks(LogicalDataSource& dataSource,
-                                                      arangodb::transaction::Methods& trx) {
+arangodb::Result applyDataSourceRegistrationCallbacks(
+    LogicalDataSource& dataSource, arangodb::transaction::Methods& trx) {
   for (auto& callback : getDataSourceRegistrationCallbacks()) {
-    TRI_ASSERT(callback);  // addDataSourceRegistrationCallback(...) ensures valid
+    TRI_ASSERT(
+        callback);  // addDataSourceRegistrationCallback(...) ensures valid
 
     try {
       auto res = callback(dataSource, trx);
@@ -164,10 +195,13 @@ void applyStatusChangeCallbacks(arangodb::transaction::Methods& trx,
   TRI_ASSERT(arangodb::transaction::Status::ABORTED == status ||
              arangodb::transaction::Status::COMMITTED == status ||
              arangodb::transaction::Status::RUNNING == status);
-//  TRI_ASSERT(!trx.state()  // for embeded transactions status is not always updated
-//             || (trx.state()->isTopLevelTransaction() && trx.state()->status() == status) ||
-//             (!trx.state()->isTopLevelTransaction() &&
-//              arangodb::transaction::Status::RUNNING == trx.state()->status()));
+  //  TRI_ASSERT(!trx.state()  // for embeded transactions status is not always
+  //  updated
+  //             || (trx.state()->isTopLevelTransaction() &&
+  //             trx.state()->status() == status) ||
+  //             (!trx.state()->isTopLevelTransaction() &&
+  //              arangodb::transaction::Status::RUNNING ==
+  //              trx.state()->status()));
   TRI_ASSERT(trx.isMainTransaction());
 
   auto* state = trx.state();
@@ -198,27 +232,33 @@ static void throwCollectionNotFound(char const* name) {
   if (name == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                 std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) +
-                                     ": " + name);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+      std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) +
+          ": " + name);
 }
 
 /// @brief Insert an error reported instead of the new document
-static void createBabiesError(VPackBuilder& builder,
-                              std::unordered_map<ErrorCode, size_t>& countErrorCodes,
-                              Result const& error) {
-  builder.openObject();
-  builder.add(StaticStrings::Error, VPackValue(true));
-  builder.add(StaticStrings::ErrorNum, VPackValue(error.errorNumber()));
-  builder.add(StaticStrings::ErrorMessage, VPackValue(error.errorMessage()));
-  builder.close();
-
-  auto it = countErrorCodes.find(error.errorNumber());
-  if (it == countErrorCodes.end()) {
-    countErrorCodes.emplace(error.errorNumber(), 1);
-  } else {
-    it->second++;
+static void createBabiesError(
+    VPackBuilder* builder,
+    std::unordered_map<ErrorCode, size_t>& countErrorCodes,
+    Result const& error) {
+  // on followers, builder will be a nullptr, so we can spare building
+  // the error result details in the response body, which the leader
+  // will ignore anyway.
+  if (builder != nullptr) {
+    // only build error detail results if we got a builder passed here.
+    builder->openObject(false);
+    builder->add(StaticStrings::Error, VPackValue(true));
+    builder->add(StaticStrings::ErrorNum, VPackValue(error.errorNumber()));
+    builder->add(StaticStrings::ErrorMessage, VPackValue(error.errorMessage()));
+    builder->close();
   }
+
+  // always (also on followers) increase error counter for the
+  // error code we got.
+  auto& value = countErrorCodes[error.errorNumber()];
+  ++value;
 }
 
 static OperationResult emptyResult(OperationOptions const& options) {
@@ -236,7 +276,8 @@ static OperationResult emptyResult(OperationOptions const& options) {
   }
 }
 
-bool transaction::Methods::addStatusChangeCallback(StatusChangeCallback const* callback) {
+bool transaction::Methods::addStatusChangeCallback(
+    StatusChangeCallback const* callback) {
   if (!callback || !*callback) {
     return true;  // nothing to call back
   } else if (!_state) {
@@ -253,7 +294,8 @@ bool transaction::Methods::addStatusChangeCallback(StatusChangeCallback const* c
   return true;
 }
 
-bool transaction::Methods::removeStatusChangeCallback(StatusChangeCallback const* callback) {
+bool transaction::Methods::removeStatusChangeCallback(
+    StatusChangeCallback const* callback) {
   if (!callback || !*callback) {
     return true;  // nothing to call back
   } else if (!_state) {
@@ -296,12 +338,15 @@ velocypack::Options const& transaction::Methods::vpackOptions() const {
 
 /// @brief Find out if any of the given requests has ended in a refusal
 /// by a leader.
-static bool findRefusal(std::vector<futures::Try<network::Response>> const& responses) {
+static bool findRefusal(
+    std::vector<futures::Try<network::Response>> const& responses) {
   for (auto const& it : responses) {
     if (it.hasValue() && it.get().ok() &&
         it.get().statusCode() == fuerte::StatusNotAcceptable) {
       auto r = it.get().combinedResult();
-      bool followerRefused = (r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+      bool followerRefused =
+          (r.errorNumber() ==
+           TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       if (followerRefused) {
         return true;
       }
@@ -310,17 +355,15 @@ static bool findRefusal(std::vector<futures::Try<network::Response>> const& resp
   return false;
 }
 
-transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& transactionContext,
+transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
                               transaction::Options const& options)
-    : _state(nullptr),
-      _transactionContext(transactionContext),
-      _mainTransaction(false) {
-
-  TRI_ASSERT(transactionContext != nullptr);
-  if (ADB_UNLIKELY(transactionContext == nullptr)) {
+    : _state(nullptr), _transactionContext(ctx), _mainTransaction(false) {
+  TRI_ASSERT(_transactionContext != nullptr);
+  if (ADB_UNLIKELY(_transactionContext == nullptr)) {
     // in production, we must not go on with undefined behavior, so we bail out
     // here with an exception as last resort
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid transaction context pointer");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "invalid transaction context pointer");
   }
 
   // initialize the transaction
@@ -328,14 +371,25 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& trans
   TRI_ASSERT(_state != nullptr);
 }
 
-/// @brief create the transaction, used to be UserTransaction
-transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
-                              std::vector<std::string> const& readCollections,
-                              std::vector<std::string> const& writeCollections,
-                              std::vector<std::string> const& exclusiveCollections,
-                              transaction::Options const& options)
-    : transaction::Methods(ctx, options) {
+transaction::Methods::Methods(std::shared_ptr<transaction::Context> ctx,
+                              std::string const& collectionName,
+                              AccessMode::Type type)
+    : transaction::Methods(std::move(ctx), transaction::Options{}) {
+  TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
+  Result res = Methods::addCollection(collectionName, type);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+}
 
+/// @brief create the transaction, used to be UserTransaction
+transaction::Methods::Methods(
+    std::shared_ptr<transaction::Context> const& ctx,
+    std::vector<std::string> const& readCollections,
+    std::vector<std::string> const& writeCollections,
+    std::vector<std::string> const& exclusiveCollections,
+    transaction::Options const& options)
+    : transaction::Methods(ctx, options) {
   Result res;
   for (auto const& it : exclusiveCollections) {
     res = Methods::addCollection(it, AccessMode::Type::EXCLUSIVE);
@@ -363,13 +417,19 @@ transaction::Methods::~Methods() {
     // unregister transaction from context
     _transactionContext->unregisterTransaction();
 
+    // auto abort a non-read-only and still running transaction
     if (_state->status() == transaction::Status::RUNNING) {
-      // auto abort a running transaction
-      try {
-        this->abort();
-        TRI_ASSERT(_state->status() != transaction::Status::RUNNING);
-      } catch (...) {
-        // must never throw because we are in a dtor
+      if (_state->isReadOnlyTransaction()) {
+        // read-only transactions are never comitted or aborted during their
+        // regular life cycle. we want now to properly clean up and count them.
+        _state->updateStatus(transaction::Status::COMMITTED);
+      } else {
+        try {
+          this->abort();
+          TRI_ASSERT(_state->status() != transaction::Status::RUNNING);
+        } catch (...) {
+          // must never throw because we are in a dtor
+        }
       }
     }
 
@@ -377,10 +437,9 @@ transaction::Methods::~Methods() {
     TRI_ASSERT(_state->status() != transaction::Status::RUNNING);
 
     // store result in context
-    _transactionContext->storeTransactionResult(_state->id(),
-                                                _state->wasRegistered(),
-                                                _state->isReadOnlyTransaction(),
-                                                _state->isFollowerTransaction());
+    _transactionContext->storeTransactionResult(
+        _state->id(), _state->wasRegistered(), _state->isReadOnlyTransaction(),
+        _state->isFollowerTransaction());
 
     _state = nullptr;
   }
@@ -392,8 +451,8 @@ CollectionNameResolver const* transaction::Methods::resolver() const {
 }
 
 /// @brief return the transaction collection for a document collection
-TransactionCollection* transaction::Methods::trxCollection(DataSourceId cid,
-                                                           AccessMode::Type type) const {
+TransactionCollection* transaction::Methods::trxCollection(
+    DataSourceId cid, AccessMode::Type type) const {
   TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING ||
              _state->status() == transaction::Status::CREATED);
@@ -401,8 +460,8 @@ TransactionCollection* transaction::Methods::trxCollection(DataSourceId cid,
 }
 
 /// @brief return the transaction collection for a document collection
-TransactionCollection* transaction::Methods::trxCollection(std::string const& name,
-                                                           AccessMode::Type type) const {
+TransactionCollection* transaction::Methods::trxCollection(
+    std::string const& name, AccessMode::Type type) const {
   TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING ||
              _state->status() == transaction::Status::CREATED);
@@ -419,7 +478,7 @@ std::string transaction::Methods::extractIdString(VPackSlice slice) {
 /// added to the builder in the argument as a single object.
 void transaction::Methods::buildDocumentIdentity(
     LogicalCollection* collection, VPackBuilder& builder, DataSourceId cid,
-    arangodb::velocypack::StringRef const& key, RevisionId rid, RevisionId oldRid,
+    std::string_view key, RevisionId rid, RevisionId oldRid,
     ManagedDocumentResult const* oldDoc, ManagedDocumentResult const* newDoc) {
   StringLeaser leased(_transactionContext.get());
   std::string& temp(*leased.get());
@@ -428,12 +487,12 @@ void transaction::Methods::buildDocumentIdentity(
   if (_state->isRunningInCluster()) {
     std::string resolved = resolver()->getCollectionNameCluster(cid);
 #ifdef USE_ENTERPRISE
-    if (resolved.compare(0, 7, "_local_") == 0) {
-      resolved.erase(0, 7);
-    } else if (resolved.compare(0, 6, "_from_") == 0) {
-      resolved.erase(0, 6);
-    } else if (resolved.compare(0, 4, "_to_") == 0) {
-      resolved.erase(0, 4);
+    if (resolved.starts_with(StaticStrings::FullLocalPrefix)) {
+      resolved.erase(0, StaticStrings::FullLocalPrefix.size());
+    } else if (resolved.starts_with(StaticStrings::FullFromPrefix)) {
+      resolved.erase(0, StaticStrings::FullFromPrefix.size());
+    } else if (resolved.starts_with(StaticStrings::FullToPrefix)) {
+      resolved.erase(0, StaticStrings::FullToPrefix.size());
     }
 #endif
     // build collection name
@@ -497,94 +556,29 @@ Result transaction::Methods::begin() {
   return Result();
 }
 
+Result Methods::commit() {
+  return commitInternal(MethodsApi::Synchronous).get();
+}
+
 /// @brief commit / finish the transaction
 Future<Result> transaction::Methods::commitAsync() {
-  TRI_IF_FAILURE("TransactionCommitFail") { return Result(TRI_ERROR_DEBUG); }
-
-  if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
-    // transaction not created or not running
-    return Result(TRI_ERROR_TRANSACTION_INTERNAL,
-                  "transaction not running on commit");
-  }
-
-  if (!_state->isReadOnlyTransaction()) {
-    auto const& exec = ExecContext::current();
-    bool cancelRW = ServerState::readOnly() && !exec.isSuperuser();
-    if (exec.isCanceled() || cancelRW) {
-      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
-    }
-  }
-
-  if (!_mainTransaction) {
-    return futures::makeFuture(Result());
-  }
-
-  auto f = futures::makeFuture(Result());
-  if (_state->isRunningInCluster()) {
-    // first commit transaction on subordinate servers
-    f = ClusterTrxMethods::commitTransaction(*this);
-  }
-
-  return std::move(f).thenValue([this](Result res) -> Result {
-    if (res.fail()) {  // do not commit locally
-      LOG_TOPIC("5743a", WARN, Logger::TRANSACTIONS)
-          << "failed to commit on subordinates: '" << res.errorMessage() << "'";
-      return res;
-    }
-
-    res = _state->commitTransaction(this);
-    if (res.ok()) {
-      applyStatusChangeCallbacks(*this, Status::COMMITTED);
-    }
-
-    return res;
-  });
+  return commitInternal(MethodsApi::Asynchronous);
 }
+
+Result Methods::abort() { return abortInternal(MethodsApi::Synchronous).get(); }
 
 /// @brief abort the transaction
 Future<Result> transaction::Methods::abortAsync() {
-  if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
-    // transaction not created or not running
-    return Result(TRI_ERROR_TRANSACTION_INTERNAL,
-                  "transaction not running on abort");
-  }
+  return abortInternal(MethodsApi::Asynchronous);
+}
 
-  if (!_mainTransaction) {
-    return futures::makeFuture(Result());
-  }
-
-  auto f = futures::makeFuture(Result());
-  if (_state->isRunningInCluster()) {
-    // first commit transaction on subordinate servers
-    f = ClusterTrxMethods::abortTransaction(*this);
-  }
-
-  return std::move(f).thenValue([this](Result res) -> Result {
-    if (res.fail()) {  // do not commit locally
-      LOG_TOPIC("d89a8", WARN, Logger::TRANSACTIONS)
-          << "failed to abort on subordinates: " << res.errorMessage();
-    }  // abort locally anyway
-
-    res = _state->abortTransaction(this);
-    if (res.ok()) {
-      applyStatusChangeCallbacks(*this, Status::ABORTED);
-    }
-
-    return res;
-  });
+Result Methods::finish(Result const& res) {
+  return finishInternal(res, MethodsApi::Synchronous).get();
 }
 
 /// @brief finish a transaction (commit or abort), based on the previous state
 Future<Result> transaction::Methods::finishAsync(Result const& res) {
-  if (res.ok()) {
-    // there was no previous error, so we'll commit
-    return this->commitAsync();
-  }
-
-  // there was a previous error, so we'll abort
-  return this->abortAsync().thenValue([res](Result ignore) {
-    return res;  // return original error
-  });
+  return finishInternal(res, MethodsApi::Asynchronous);
 }
 
 /// @brief return the transaction id
@@ -619,10 +613,10 @@ OperationResult transaction::Methods::anyCoordinator(std::string const&,
 }
 
 /// @brief fetches documents in a collection in random order, local
-OperationResult transaction::Methods::anyLocal(std::string const& collectionName,
-                                               OperationOptions const& options) {
-
-  DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
+OperationResult transaction::Methods::anyLocal(
+    std::string const& collectionName, OperationOptions const& options) {
+  DataSourceId cid =
+      addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TransactionCollection* trxColl = trxCollection(cid);
   if (trxColl == nullptr) {
     throwCollectionNotFound(collectionName.c_str());
@@ -630,7 +624,8 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
 
   VPackBuilder resultBuilder;
   if (_state->isDBServer()) {
-    std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
+    std::shared_ptr<LogicalCollection> const& collection =
+        trxCollection(cid)->collection();
     auto const& followerInfo = collection->followers();
     if (!followerInfo->getLeader().empty()) {
       return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
@@ -639,26 +634,27 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
 
   resultBuilder.openArray();
 
-  auto iterator = indexScan(collectionName, transaction::Methods::CursorType::ANY);
+  auto iterator = indexScan(
+      collectionName, transaction::Methods::CursorType::ANY, ReadOwnWrites::no);
 
   iterator->nextDocument(
       [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
         resultBuilder.add(slice);
         return true;
-      }, 1);
+      },
+      1);
 
   resultBuilder.close();
 
   return OperationResult(Result(), resultBuilder.steal(), options);
 }
 
-DataSourceId transaction::Methods::addCollectionAtRuntime(DataSourceId cid,
-                                                          std::string const& cname,
-                                                          AccessMode::Type type) {
+DataSourceId transaction::Methods::addCollectionAtRuntime(
+    DataSourceId cid, std::string const& cname, AccessMode::Type type) {
   auto collection = trxCollection(cid);
 
   if (collection == nullptr) {
-    Result res = _state->addCollection(cid, cname, type, /*lockUsage*/true);
+    Result res = _state->addCollection(cid, cname, type, /*lockUsage*/ true);
 
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -683,9 +679,11 @@ DataSourceId transaction::Methods::addCollectionAtRuntime(DataSourceId cid,
   } else {
     AccessMode::Type collectionAccessType = collection->accessType();
     if (AccessMode::isRead(collectionAccessType) && !AccessMode::isRead(type)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-                                     std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + cname +
-                                     " [" + AccessMode::typeString(type) + "]");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+          std::string(
+              TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
+              ": " + cname + " [" + AccessMode::typeString(type) + "]");
     }
   }
 
@@ -694,8 +692,8 @@ DataSourceId transaction::Methods::addCollectionAtRuntime(DataSourceId cid,
 }
 
 /// @brief add a collection to the transaction for read, at runtime
-DataSourceId transaction::Methods::addCollectionAtRuntime(std::string const& collectionName,
-                                                          AccessMode::Type type) {
+DataSourceId transaction::Methods::addCollectionAtRuntime(
+    std::string const& collectionName, AccessMode::Type type) {
   if (collectionName == _collectionCache.name && !collectionName.empty()) {
     return _collectionCache.cid;
   }
@@ -713,17 +711,14 @@ DataSourceId transaction::Methods::addCollectionAtRuntime(std::string const& col
 }
 
 /// @brief return the type of a collection
-bool transaction::Methods::isEdgeCollection(std::string const& collectionName) const {
+bool transaction::Methods::isEdgeCollection(
+    std::string const& collectionName) const {
   return getCollectionType(collectionName) == TRI_COL_TYPE_EDGE;
 }
 
 /// @brief return the type of a collection
-bool transaction::Methods::isDocumentCollection(std::string const& collectionName) const {
-  return getCollectionType(collectionName) == TRI_COL_TYPE_DOCUMENT;
-}
-
-/// @brief return the type of a collection
-TRI_col_type_e transaction::Methods::getCollectionType(std::string const& collectionName) const {
+TRI_col_type_e transaction::Methods::getCollectionType(
+    std::string const& collectionName) const {
   auto collection = resolver()->getCollection(collectionName);
 
   return collection ? collection->type() : TRI_COL_TYPE_UNKNOWN;
@@ -738,6 +733,7 @@ TRI_col_type_e transaction::Methods::getCollectionType(std::string const& collec
 ///        Does not care for revision handling!
 Result transaction::Methods::documentFastPath(std::string const& collectionName,
                                               VPackSlice value,
+                                              OperationOptions const& options,
                                               VPackBuilder& result) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
   if (!value.isObject() && !value.isString()) {
@@ -746,19 +742,21 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   }
 
   if (_state->isCoordinator()) {
-    OperationOptions options;
-    OperationResult opRes = documentCoordinator(collectionName, value, options).get();
+    OperationResult opRes = documentCoordinator(collectionName, value, options,
+                                                MethodsApi::Synchronous)
+                                .get();
     if (!opRes.fail()) {
       result.add(opRes.slice());
     }
     return opRes.result;
   }
 
-  auto translateName = [this](std::string const& collectionName) { 
+  auto translateName = [this](std::string const& collectionName) {
     if (_state->isDBServer()) {
       auto collection = resolver()->getCollectionStructCluster(collectionName);
       if (collection != nullptr) {
-        auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+        auto& ci =
+            vocbase().server().getFeature<ClusterFeature>().clusterInfo();
         auto shards = ci.getShardList(std::to_string(collection->id().id()));
         if (shards != nullptr && shards->size() == 1) {
           TRI_ASSERT(vocbase().isOneShard());
@@ -769,18 +767,22 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
     return collectionName;
   };
 
-  DataSourceId cid = addCollectionAtRuntime(translateName(collectionName), AccessMode::Type::READ);
+  DataSourceId cid = addCollectionAtRuntime(translateName(collectionName),
+                                            AccessMode::Type::READ);
   auto const& collection = trxCollection(cid)->collection();
 
-  arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(value));
+  std::string_view key(transaction::helpers::extractKeyPart(value));
   if (key.empty()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
-  return collection->getPhysical()->read(this, key, [&](LocalDocumentId const&, VPackSlice const& doc) {
-    result.add(doc);
-    return true;
-  });
+  return collection->getPhysical()->read(
+      this, key,
+      [&](LocalDocumentId const&, VPackSlice doc) {
+        result.add(doc);
+        return true;
+      },
+      ReadOwnWrites::no);
 }
 
 /// @brief return one document from a collection, fast path
@@ -790,13 +792,14 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 ///        If there was an error the code is returned
 ///        Does not care for revision handling!
 ///        Must only be called on a local server, not in cluster case!
-Result transaction::Methods::documentFastPathLocal(std::string const& collectionName,
-                                                   arangodb::velocypack::StringRef const& key,
-                                                   IndexIterator::DocumentCallback const& cb) {
+Result transaction::Methods::documentFastPathLocal(
+    std::string const& collectionName, std::string_view key,
+    IndexIterator::DocumentCallback const& cb) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
-  DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
+  DataSourceId cid =
+      addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TransactionCollection* trxColl = trxCollection(cid);
   TRI_ASSERT(trxColl != nullptr);
   std::shared_ptr<LogicalCollection> const& collection = trxColl->collection();
@@ -806,7 +809,9 @@ Result transaction::Methods::documentFastPathLocal(std::string const& collection
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
 
-  return collection->getPhysical()->read(this, key, cb);
+  // We never want to see our own writes here, otherwise we could observe
+  // documents which have been inserted by a currently running query.
+  return collection->getPhysical()->read(this, key, cb, ReadOwnWrites::no);
 }
 
 namespace {
@@ -818,37 +823,30 @@ Future<OperationResult> addTracking(Future<OperationResult>&& f, F&& func) {
   return std::move(f);
 #endif
 }
+}  // namespace
+
+OperationResult Methods::document(std::string const& collectionName,
+                                  VPackSlice value,
+                                  OperationOptions const& options) {
+  return documentInternal(collectionName, value, options,
+                          MethodsApi::Synchronous)
+      .get();
 }
 
 /// @brief return one or multiple documents from a collection
-Future<OperationResult> transaction::Methods::documentAsync(std::string const& cname,
-                                                            VPackSlice value,
-                                                            OperationOptions& options) {
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  if (!value.isObject() && !value.isArray()) {
-    // must provide a document object or an array of documents
-    events::ReadDocument(vocbase().name(), cname, value, options,
-                         TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-
-  if (_state->isCoordinator()) {
-    return addTracking(documentCoordinator(cname, value, options),
-                       [=](OperationResult&& opRes) {
-      events::ReadDocument(vocbase().name(), cname, value, opRes.options, opRes.errorNumber());
-      return std::move(opRes);
-    });
-  }
-  return documentLocal(cname, value, options);
+Future<OperationResult> transaction::Methods::documentAsync(
+    std::string const& cname, VPackSlice value,
+    OperationOptions const& options) {
+  return documentInternal(cname, value, options, MethodsApi::Asynchronous);
 }
 
 /// @brief read one or multiple documents in a collection, coordinator
 #ifndef USE_ENTERPRISE
 Future<OperationResult> transaction::Methods::documentCoordinator(
-    std::string const& collectionName, VPackSlice value, OperationOptions& options) {
+    std::string const& collectionName, VPackSlice value,
+    OperationOptions const& options, MethodsApi api) {
   if (!value.isArray()) {
-    arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(value));
+    std::string_view key(transaction::helpers::extractKeyPart(value));
     if (key.empty()) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, options);
     }
@@ -856,19 +854,23 @@ Future<OperationResult> transaction::Methods::documentCoordinator(
 
   auto colptr = resolver()->getCollectionStructCluster(collectionName);
   if (colptr == nullptr) {
-    return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
 
-  return arangodb::getDocumentOnCoordinator(*this, *colptr, value, options);
+  return arangodb::getDocumentOnCoordinator(*this, *colptr, value, options,
+                                            api);
 }
 #endif
 
 /// @brief read one or multiple documents in a collection, local
-Future<OperationResult> transaction::Methods::documentLocal(std::string const& collectionName,
-                                                            VPackSlice value,
-                                                            OperationOptions& options) {
-  DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
-  std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
+Future<OperationResult> transaction::Methods::documentLocal(
+    std::string const& collectionName, VPackSlice value,
+    OperationOptions const& options) {
+  DataSourceId cid =
+      addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
+  std::shared_ptr<LogicalCollection> const& collection =
+      trxCollection(cid)->collection();
 
   VPackBuilder resultBuilder;
   Result res;
@@ -877,43 +879,47 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
     auto const& followerInfo = collection->followers();
     if (!followerInfo->getLeader().empty()) {
       return futures::makeFuture(
-        OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options));
+          OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options));
     }
   }
 
   auto workForOneDocument = [&](VPackSlice value, bool isMultiple) -> Result {
     Result res;
 
-    arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(value));
+    std::string_view key(transaction::helpers::extractKeyPart(value));
     if (key.empty()) {
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
     } else {
       bool conflict = false;
-      res = collection->getPhysical()->read(this, key, [&](LocalDocumentId const&, VPackSlice const& doc) {
-        if (!options.ignoreRevs && value.isObject()) {
-          RevisionId expectedRevision = RevisionId::fromSlice(value);
-          if (expectedRevision.isSet()) {
-            RevisionId foundRevision =
-                transaction::helpers::extractRevFromDocument(doc);
-            if (expectedRevision != foundRevision) {
-              if (!isMultiple) {
-                // still return
-                buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
-                                      foundRevision, RevisionId::none(), nullptr, nullptr);
+      res = collection->getPhysical()->read(
+          this, key,
+          [&](LocalDocumentId const&, VPackSlice doc) {
+            if (!options.ignoreRevs && value.isObject()) {
+              RevisionId expectedRevision = RevisionId::fromSlice(value);
+              if (expectedRevision.isSet()) {
+                RevisionId foundRevision =
+                    transaction::helpers::extractRevFromDocument(doc);
+                if (expectedRevision != foundRevision) {
+                  if (!isMultiple) {
+                    // still return
+                    buildDocumentIdentity(collection.get(), resultBuilder, cid,
+                                          key, foundRevision,
+                                          RevisionId::none(), nullptr, nullptr);
+                  }
+                  conflict = true;
+                  return false;
+                }
               }
-              conflict = true;
-              return false;
             }
-          }
-        }
 
-        if (!options.silent) {
-          resultBuilder.add(doc);
-        } else if (isMultiple) {
-          resultBuilder.add(VPackSlice::nullSlice());
-        }
-        return true;
-      });
+            if (!options.silent) {
+              resultBuilder.add(doc);
+            } else if (isMultiple) {
+              resultBuilder.add(VPackSlice::nullSlice());
+            }
+            return true;
+          },
+          ReadOwnWrites::no);
 
       if (conflict) {
         res.reset(TRI_ERROR_ARANGO_CONFLICT);
@@ -930,122 +936,72 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
     for (VPackSlice s : VPackArrayIterator(value)) {
       res = workForOneDocument(s, true);
       if (res.fail()) {
-        createBabiesError(resultBuilder, countErrorCodes, res);
+        createBabiesError(&resultBuilder, countErrorCodes, res);
       }
     }
-    res.reset(); // With babies the reporting is handled somewhere else.
+    res.reset();  // With babies the reporting is handled somewhere else.
   }
 
   events::ReadDocument(vocbase().name(), collectionName, value, options,
                        res.errorNumber());
 
-  return futures::makeFuture(OperationResult(std::move(res), resultBuilder.steal(),
-                                             options, countErrorCodes));
+  return futures::makeFuture(OperationResult(
+      std::move(res), resultBuilder.steal(), options, countErrorCodes));
+}
+
+OperationResult Methods::insert(std::string const& cname, VPackSlice value,
+                                OperationOptions const& options) {
+  return insertInternal(cname, value, options, MethodsApi::Synchronous).get();
 }
 
 /// @brief create one or multiple documents in a collection
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
-Future<OperationResult> transaction::Methods::insertAsync(std::string const& cname,
-                                                          VPackSlice value,
-                                                          OperationOptions const& options) {
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  if (!value.isObject() && !value.isArray()) {
-    // must provide a document object or an array of documents
-    events::CreateDocument(vocbase().name(), cname, value, options,
-                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-  if (value.isArray() && value.length() == 0) {
-    events::CreateDocument(vocbase().name(), cname, value, options, TRI_ERROR_NO_ERROR);
-    return emptyResult(options);
-  }
-
-  auto f = Future<OperationResult>::makeEmpty();
-  if (_state->isCoordinator()) {
-    f = insertCoordinator(cname, value, options);
-  } else {
-    OperationOptions optionsCopy = options;
-    f = insertLocal(cname, value, optionsCopy);
-  }
-
-  return addTracking(std::move(f), [=](OperationResult&& opRes) {
-    events::CreateDocument(vocbase().name(), cname,
-                           (opRes.ok() && opRes.options.returnNew) ? opRes.slice() : value,
-                           opRes.options, opRes.errorNumber());
-    return std::move(opRes);
-  });
+Future<OperationResult> transaction::Methods::insertAsync(
+    std::string const& cname, VPackSlice value,
+    OperationOptions const& options) {
+  return insertInternal(cname, value, options, MethodsApi::Asynchronous);
 }
 
 /// @brief create one or multiple documents in a collection, coordinator
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
 #ifndef USE_ENTERPRISE
-Future<OperationResult> transaction::Methods::insertCoordinator(std::string const& collectionName,
-                                                                VPackSlice value,
-                                                                OperationOptions const& options) {
+Future<OperationResult> transaction::Methods::insertCoordinator(
+    std::string const& collectionName, VPackSlice value,
+    OperationOptions const& options, MethodsApi api) {
   auto colptr = resolver()->getCollectionStructCluster(collectionName);
   if (colptr == nullptr) {
-    return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
-  return arangodb::createDocumentOnCoordinator(*this, *colptr, value, options);
+  return arangodb::createDocumentOnCoordinator(*this, *colptr, value, options,
+                                               api);
 }
 #endif
-
-/// @brief choose a timeout for synchronous replication, based on the
-/// number of documents we ship over
-static double chooseTimeoutForReplication(size_t count, size_t totalBytes) {
-  // We essentially stop using a meaningful timeout for this operation.
-  // This is achieved by setting the default for the minimal timeout to 15m or
-  // 900s. The reason behind this is the following: We have to live with RocksDB
-  // stalls and write stops, which can happen in overload situations. Then, no
-  // meaningful timeout helps and it is almost certainly better to keep trying
-  // to not have to drop the follower and make matters worse. In case of an
-  // actual failure (or indeed a restart), the follower is marked as failed and
-  // its reboot id is increased. As a consequence, the connection is aborted and
-  // we run into an error anyway. This is when a follower will be dropped.
-
-  // We leave this code in place for now.
-
-  // We usually assume that a server can process at least 2500 documents
-  // per second (this is a low estimate), and use a low limit of 0.5s
-  // and a high timeout of 120s
-  double timeout = count / 2500.0;
-
-  // Really big documents need additional adjustment. Using total size
-  // of all messages to handle worst case scenario of constrained resource
-  // processing all
-  timeout += (totalBytes / 4096.0) * ReplicationTimeoutFeature::timeoutPer4k;
-
-  return std::clamp(timeout, ReplicationTimeoutFeature::lowerLimit,
-                    ReplicationTimeoutFeature::upperLimit) *
-         ReplicationTimeoutFeature::timeoutFactor;
-}
 
 /// @brief create one or multiple documents in a collection, local
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
-Future<OperationResult> transaction::Methods::insertLocal(std::string const& cname,
-                                                          VPackSlice value,
-                                                          OperationOptions& options) {
+Future<OperationResult> transaction::Methods::insertLocal(
+    std::string const& cname, VPackSlice value, OperationOptions& options) {
   DataSourceId cid = addCollectionAtRuntime(cname, AccessMode::Type::WRITE);
-  std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
+  std::shared_ptr<LogicalCollection> const& collection =
+      trxCollection(cid)->collection();
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
-    TRI_ASSERT(followers == nullptr);
-    followers = collection->followers()->get();
-
     // This failure point is to test the case that a former leader has
     // resigned in the meantime but still gets an insert request from
     // a coordinator who does not know this yet. That is, the test sets
     // the failure point on all servers, including the current leader.
     TRI_IF_FAILURE("documents::insertLeaderRefusal") {
-      if (value.isObject() && value.hasKey("ThisIsTheRetryOnLeaderRefusalTest")) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
+      if (value.isObject() &&
+          value.hasKey("ThisIsTheRetryOnLeaderRefusalTest")) {
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED,
+                               options);
       }
     }
 
@@ -1055,20 +1011,24 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     if (theLeader.empty()) {
       // This indicates that we believe to be the leader.
       if (!options.isSynchronousReplicationFrom.empty()) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
+        return OperationResult(
+            TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
 
       switch (followerInfo->allowedToWrite()) {
-      case FollowerInfo::WriteState::FORBIDDEN:
-        // We cannot fulfill minimum replication Factor. Reject write.
-        return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
-      case FollowerInfo::WriteState::STARTUP:
-        return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, options);
-      default:
-        break;
+        case FollowerInfo::WriteState::FORBIDDEN:
+          // We cannot fulfill minimum replication Factor. Reject write.
+          return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+        case FollowerInfo::WriteState::UNAVAILABLE:
+        case FollowerInfo::WriteState::STARTUP:
+          return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+                                 options);
+        default:
+          break;
       }
 
       replicationType = ReplicationType::LEADER;
+      followers = followerInfo->get();
       // We cannot be silent if we may have to replicate later.
       // If we need to get the followers under the single document operation's
       // lock, we don't know yet if we will have followers later and thus cannot
@@ -1081,21 +1041,53 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     } else {  // we are a follower following theLeader
       replicationType = ReplicationType::FOLLOWER;
       if (options.isSynchronousReplicationFrom.empty()) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED,
+                               options);
       }
-      if (options.isSynchronousReplicationFrom != theLeader) {
+
+      bool sendRefusal = (options.isSynchronousReplicationFrom != theLeader);
+      TRI_IF_FAILURE("synchronousReplication::neverRefuseOnFollower") {
+        sendRefusal = false;
+      }
+      TRI_IF_FAILURE("synchronousReplication::refuseOnFollower") {
+        sendRefusal = true;
+      }
+      TRI_IF_FAILURE("synchronousReplication::expectFollowingTerm") {
+        // expect a following term id or send a refusal
+        if (!options.isRestore) {
+          sendRefusal |= (options.isSynchronousReplicationFrom.find('_') ==
+                          std::string::npos);
+        }
+      }
+      if (sendRefusal) {
         return OperationResult(
             ::buildRefusalResult(*collection, "insert", options, theLeader),
             options);
       }
+
+      // we are a valid follower. we do not need to send a proper result with
+      // _key, _id, _rev back to the leader, because it will ignore all these
+      // data anyway. it is sufficient to send headers and the proper error
+      // codes back.
+      options.silent = true;
     }
   }  // isDBServer - early block
+
+  TRI_ASSERT((replicationType == ReplicationType::LEADER) ==
+             (followers != nullptr));
+  TRI_ASSERT(!options.silent || replicationType != ReplicationType::LEADER ||
+             followers->empty());
 
   VPackBuilder resultBuilder;
   ManagedDocumentResult docResult;
   ManagedDocumentResult prevDocResult;  // return OLD (with override option)
 
-  auto workForOneDocument = [&](VPackSlice const value, bool isBabies) -> Result {
+  [[maybe_unused]] size_t numExclusions = 0;
+
+  auto workForOneDocument = [&](VPackSlice value, bool isBabies,
+                                bool& excludeFromReplication) -> Result {
+    excludeFromReplication = false;
+
     if (!value.isObject()) {
       return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     }
@@ -1114,7 +1106,10 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       key = value.get(StaticStrings::KeyString);
       if (key.isString()) {
         std::pair<LocalDocumentId, RevisionId> lookupResult;
-        res = collection->getPhysical()->lookupKey(this, key.stringRef(), lookupResult);
+        // modifications always need to observe all changes in order to validate
+        // uniqueness constraints
+        res = collection->getPhysical()->lookupKey(
+            this, key.stringView(), lookupResult, ReadOwnWrites::yes);
         if (res.ok()) {
           TRI_ASSERT(lookupResult.first.isSet());
           TRI_ASSERT(lookupResult.second.isSet());
@@ -1128,31 +1123,60 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     TRI_ASSERT(!isPrimaryKeyConstraintViolation || !key.isNone());
 
     bool didReplace = false;
+
     if (!isPrimaryKeyConstraintViolation) {
-      // regular insert without overwrite option. the insert itself will check if the
-      // primary key already exists
+      // regular insert without overwrite option. the insert itself will check
+      // if the primary key already exists
       res = collection->insert(this, value, docResult, options);
     } else {
-      // RepSert Case - unique_constraint violated ->  try update, replace or ignore!
+      // RepSert Case - unique_constraint violated ->  try update, replace or
+      // ignore!
       TRI_ASSERT(options.isOverwriteModeSet());
-      TRI_ASSERT(options.overwriteMode != OperationOptions::OverwriteMode::Conflict);
+      TRI_ASSERT(options.overwriteMode !=
+                 OperationOptions::OverwriteMode::Conflict);
+      TRI_ASSERT(res.ok());
 
       if (options.overwriteMode == OperationOptions::OverwriteMode::Ignore) {
-        // in case of unique constraint violation: ignore and do nothing (no write!)
-        buildDocumentIdentity(collection.get(), resultBuilder, cid, key.stringRef(),
-                              oldRevisionId, RevisionId::none(), nullptr, nullptr);
+        // in case of unique constraint violation: ignore and do nothing (no
+        // write!)
+        if (replicationType != ReplicationType::FOLLOWER) {
+          buildDocumentIdentity(collection.get(), resultBuilder, cid,
+                                key.stringView(), oldRevisionId,
+                                RevisionId::none(), nullptr, nullptr);
+        }
+        // we have not written anything, so exclude this document from
+        // replication!
+        excludeFromReplication = true;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        numExclusions++;
+#endif
+
         return res;
       }
+
       if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
-        // in case of unique constraint violation: (partially) update existing document
-        res = collection->update(this, value, docResult, options, prevDocResult);
-      } else if (options.overwriteMode == OperationOptions::OverwriteMode::Replace) {
+        // in case of unique constraint violation: (partially) update existing
+        // document
+        res =
+            collection->update(this, value, docResult, options, prevDocResult);
+        if (res.ok() && prevDocResult.revisionId() == docResult.revisionId()) {
+          excludeFromReplication = true;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          numExclusions++;
+#endif
+        }
+      } else if (options.overwriteMode ==
+                 OperationOptions::OverwriteMode::Replace) {
         // in case of unique constraint violation: replace existing document
         // this is also the default behavior
-        res = collection->replace(this, value, docResult, options, prevDocResult);
+        res =
+            collection->replace(this, value, docResult, options, prevDocResult);
       } else {
         TRI_ASSERT(false);
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "internal overwriteMode state");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "internal overwriteMode state");
       }
 
       TRI_ASSERT(res.fail() || prevDocResult.revisionId().isSet());
@@ -1165,74 +1189,141 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
           prevDocResult.revisionId().isSet()) {
         TRI_ASSERT(didReplace);
 
-        buildDocumentIdentity(collection.get(), resultBuilder, cid,
-                              value.get(StaticStrings::KeyString).stringRef(),
-                              prevDocResult.revisionId(), RevisionId::none(),
-                              nullptr, nullptr);
+        if (replicationType != ReplicationType::FOLLOWER) {
+          buildDocumentIdentity(
+              collection.get(), resultBuilder, cid,
+              value.get(StaticStrings::KeyString).stringView(),
+              prevDocResult.revisionId(), RevisionId::none(), nullptr, nullptr);
+        }
       }
       return res;
     }
+
+    TRI_ASSERT(res.ok());
 
     if (!options.silent) {
       bool const showReplaced = (options.returnOld && didReplace);
       TRI_ASSERT(!options.returnNew || !docResult.empty());
       TRI_ASSERT(!showReplaced || !prevDocResult.empty());
 
-      arangodb::velocypack::StringRef keyString;
-      if (didReplace) {  // docResult may be empty, but replace requires '_key' in value
-        keyString = value.get(StaticStrings::KeyString);
+      std::string_view keyString;
+      if (didReplace) {  // docResult may be empty, but replace requires '_key'
+                         // in value
+        keyString = value.get(StaticStrings::KeyString).stringView();
         TRI_ASSERT(!keyString.empty());
       } else {
-        keyString =
-            transaction::helpers::extractKeyFromDocument(VPackSlice(docResult.vpack()));
+        keyString = transaction::helpers::extractKeyFromDocument(
+                        VPackSlice(docResult.vpack()))
+                        .stringView();
       }
 
-      buildDocumentIdentity(collection.get(), resultBuilder, cid, keyString,
-                            docResult.revisionId(), prevDocResult.revisionId(),
-                            showReplaced ? &prevDocResult : nullptr,
-                            options.returnNew ? &docResult : nullptr);
+      if (replicationType != ReplicationType::FOLLOWER) {
+        buildDocumentIdentity(collection.get(), resultBuilder, cid, keyString,
+                              docResult.revisionId(),
+                              prevDocResult.revisionId(),
+                              showReplaced ? &prevDocResult : nullptr,
+                              options.returnNew ? &docResult : nullptr);
+      }
     }
-    return Result();
+    return res;
   };
 
   Result res;
   std::unordered_map<ErrorCode, size_t> errorCounter;
+  std::unordered_set<size_t> excludePositions;
+
   if (value.isArray()) {
     VPackArrayBuilder b(&resultBuilder);
-    for (VPackSlice s : VPackArrayIterator(value)) {
-      res = workForOneDocument(s, true);
-      if (res.fail()) {
-        createBabiesError(resultBuilder, errorCounter, res);
+    VPackArrayIterator it(value);
+    while (it.valid()) {
+      bool excludeFromReplication = false;
+      VPackSlice s = it.value();
+      TRI_IF_FAILURE("insertLocal::fakeResult1") {
+        res.reset(TRI_ERROR_DEBUG);
+        createBabiesError(replicationType == ReplicationType::FOLLOWER
+                              ? nullptr
+                              : &resultBuilder,
+                          errorCounter, res);
+        it.next();
+        continue;
       }
+      res = workForOneDocument(s, true, excludeFromReplication);
+      if (res.fail()) {
+        createBabiesError(replicationType == ReplicationType::FOLLOWER
+                              ? nullptr
+                              : &resultBuilder,
+                          errorCounter, res);
+      } else if (excludeFromReplication) {
+        excludePositions.insert(it.index());
+      }
+      it.next();
     }
-    res.reset(); // With babies reporting is handled in the result body
+
+    // it is ok to clobber res here!
+    res.reset();
   } else {
-    res = workForOneDocument(value, false);
+    bool excludeFromReplication = false;
+    res = workForOneDocument(value, false, excludeFromReplication);
+    if (res.ok() && excludeFromReplication) {
+      excludePositions.insert(0);
+    }
+
+    // on a follower, our result should always be an empty object
+    if (replicationType == ReplicationType::FOLLOWER) {
+      TRI_ASSERT(resultBuilder.slice().isNone());
+      // add an empty object here so that when sending things back in JSON
+      // format, there is no "non-representable type 'none'" issue.
+      resultBuilder.add(VPackSlice::emptyObjectSlice());
+    }
   }
+
+  // on a follower, our result should always be an empty array or object
+  TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
+             (value.isArray() && resultBuilder.slice().isEmptyArray()) ||
+             (value.isObject() && resultBuilder.slice().isEmptyObject()));
+
+  TRI_ASSERT(res.ok() || !value.isArray());
+
+  TRI_IF_FAILURE("insertLocal::fakeResult2") { res.reset(TRI_ERROR_DEBUG); }
+
+  TRI_ASSERT(!value.isArray() || options.silent ||
+             resultBuilder.slice().length() == value.length());
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(numExclusions == excludePositions.size());
+#endif
 
   std::shared_ptr<VPackBufferUInt8> resDocs = resultBuilder.steal();
-  if (res.ok() && replicationType == ReplicationType::LEADER) {
-    TRI_ASSERT(collection != nullptr);
-    TRI_ASSERT(followers != nullptr);
+  if (res.ok()) {
+    if (replicationType == ReplicationType::LEADER && !followers->empty()) {
+      TRI_ASSERT(collection != nullptr);
 
-    // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
-    // get here, in the single document case, we do not try to replicate
-    // in case of an error.
+      // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
+      // get here, in the single document case, we do not try to replicate
+      // in case of an error.
 
-    // Now replicate the good operations on all followers:
-    return replicateOperations(collection.get(), followers, options, value,
-                               TRI_VOC_DOCUMENT_OPERATION_INSERT, resDocs)
-    .thenValue([options, errs = std::move(errorCounter), resDocs](Result res) mutable {
-      if (!res.ok()) {
-        return OperationResult{std::move(res), options};
-      }
-      if (options.silent && errs.empty()) {
-        // We needed the results, but do not want to report:
-        resDocs->clear();
-      }
-      return OperationResult(std::move(res), std::move(resDocs), options, std::move(errs));
-    });
+      // Now replicate the good operations on all followers:
+      return replicateOperations(collection, followers, options, value,
+                                 TRI_VOC_DOCUMENT_OPERATION_INSERT, resDocs,
+                                 std::move(excludePositions))
+          .thenValue([options, errs = std::move(errorCounter),
+                      resDocs](Result res) mutable {
+            if (!res.ok()) {
+              return OperationResult{std::move(res), options};
+            }
+            if (options.silent && errs.empty()) {
+              // We needed the results, but do not want to report:
+              resDocs->clear();
+            }
+            return OperationResult(std::move(res), std::move(resDocs), options,
+                                   std::move(errs));
+          });
+    }
+
+    // execute a deferred intermediate commit, if required.
+    res = performIntermediateCommitIfRequired(collection->id());
   }
+
   if (options.silent && errorCounter.empty()) {
     // We needed the results, but do not want to report:
     resDocs->clear();
@@ -1241,38 +1332,20 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
                                              options, std::move(errorCounter)));
 }
 
+OperationResult Methods::update(std::string const& cname,
+                                VPackSlice updateValue,
+                                OperationOptions const& options) {
+  return updateInternal(cname, updateValue, options, MethodsApi::Synchronous)
+      .get();
+}
+
 /// @brief update/patch one or multiple documents in a collection
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
-Future<OperationResult> transaction::Methods::updateAsync(std::string const& cname,
-                                                          VPackSlice newValue,
-                                                          OperationOptions const& options) {
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  if (!newValue.isObject() && !newValue.isArray()) {
-    // must provide a document object or an array of documents
-    events::ModifyDocument(vocbase().name(), cname, newValue, options,
-                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-  if (newValue.isArray() && newValue.length() == 0) {
-    events::ModifyDocument(vocbase().name(), cname, newValue, options,
-                           TRI_ERROR_NO_ERROR);
-    return emptyResult(options);
-  }
-
-  auto f = Future<OperationResult>::makeEmpty();
-  if (_state->isCoordinator()) {
-    f = modifyCoordinator(cname, newValue, options, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
-  } else {
-    OperationOptions optionsCopy = options;
-    f = modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
-  }
-  return addTracking(std::move(f), [=](OperationResult&& opRes) {
-    events::ModifyDocument(vocbase().name(), cname, newValue, opRes.options,
-                           opRes.errorNumber());
-    return std::move(opRes);
-  });
+Future<OperationResult> transaction::Methods::updateAsync(
+    std::string const& cname, VPackSlice newValue,
+    OperationOptions const& options) {
+  return updateInternal(cname, newValue, options, MethodsApi::Asynchronous);
 }
 
 /// @brief update one or multiple documents in a collection, coordinator
@@ -1281,9 +1354,10 @@ Future<OperationResult> transaction::Methods::updateAsync(std::string const& cna
 #ifndef USE_ENTERPRISE
 Future<OperationResult> transaction::Methods::modifyCoordinator(
     std::string const& cname, VPackSlice newValue,
-    OperationOptions const& options, TRI_voc_document_operation_e operation) {
+    OperationOptions const& options, TRI_voc_document_operation_e operation,
+    MethodsApi api) {
   if (!newValue.isArray()) {
-    arangodb::velocypack::StringRef key(transaction::helpers::extractKeyPart(newValue));
+    std::string_view key(transaction::helpers::extractKeyPart(newValue));
     if (key.empty()) {
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, options);
     }
@@ -1291,56 +1365,40 @@ Future<OperationResult> transaction::Methods::modifyCoordinator(
 
   auto colptr = resolver()->getCollectionStructCluster(cname);
   if (colptr == nullptr) {
-    return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
 
   const bool isPatch = (TRI_VOC_DOCUMENT_OPERATION_UPDATE == operation);
-  return arangodb::modifyDocumentOnCoordinator(*this, *colptr, newValue, options, isPatch);
+  return arangodb::modifyDocumentOnCoordinator(*this, *colptr, newValue,
+                                               options, isPatch, api);
 }
 #endif
+
+OperationResult Methods::replace(std::string const& cname,
+                                 VPackSlice replaceValue,
+                                 OperationOptions const& options) {
+  return replaceInternal(cname, replaceValue, options, MethodsApi::Synchronous)
+      .get();
+}
 
 /// @brief replace one or multiple documents in a collection
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
-Future<OperationResult> transaction::Methods::replaceAsync(std::string const& cname,
-                                              VPackSlice newValue,
-                                              OperationOptions const& options) {
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  if (!newValue.isObject() && !newValue.isArray()) {
-    // must provide a document object or an array of documents
-    events::ReplaceDocument(vocbase().name(), cname, newValue, options,
-                            TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-  if (newValue.isArray() && newValue.length() == 0) {
-    events::ReplaceDocument(vocbase().name(), cname, newValue, options,
-                            TRI_ERROR_NO_ERROR);
-    return futures::makeFuture(emptyResult(options));
-  }
-
-  auto f = Future<OperationResult>::makeEmpty();
-  if (_state->isCoordinator()) {
-    f = modifyCoordinator(cname, newValue, options, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
-  } else {
-    OperationOptions optionsCopy = options;
-    f = modifyLocal(cname, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
-  }
-  return addTracking(std::move(f), [=](OperationResult&& opRes) {
-    events::ReplaceDocument(vocbase().name(), cname, newValue, opRes.options,
-                            opRes.errorNumber());
-    return std::move(opRes);
-  });
+Future<OperationResult> transaction::Methods::replaceAsync(
+    std::string const& cname, VPackSlice newValue,
+    OperationOptions const& options) {
+  return replaceInternal(cname, newValue, options, MethodsApi::Asynchronous);
 }
 
 /// @brief replace one or multiple documents in a collection, local
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
-Future<OperationResult> transaction::Methods::modifyLocal(std::string const& collectionName,
-                                                          VPackSlice newValue,
-                                                          OperationOptions& options,
-                                                          TRI_voc_document_operation_e operation) {
-  DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
+Future<OperationResult> transaction::Methods::modifyLocal(
+    std::string const& collectionName, VPackSlice newValue,
+    OperationOptions& options, TRI_voc_document_operation_e operation) {
+  DataSourceId cid =
+      addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   auto* trxColl = trxCollection(cid);
   TRI_ASSERT(trxColl->isLocked(AccessMode::Type::WRITE));
   auto const& collection = trxColl->collection();
@@ -1352,28 +1410,29 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
-    TRI_ASSERT(followers == nullptr);
-    followers = collection->followers()->get();
-
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
+        return OperationResult(
+            TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
 
       switch (followerInfo->allowedToWrite()) {
-      case FollowerInfo::WriteState::FORBIDDEN:
-        // We cannot fulfill minimum replication Factor. Reject write.
-        return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
-      case FollowerInfo::WriteState::STARTUP:
-        return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, options);
-      default:
-        break;
+        case FollowerInfo::WriteState::FORBIDDEN:
+          // We cannot fulfill minimum replication Factor. Reject write.
+          return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+        case FollowerInfo::WriteState::UNAVAILABLE:
+        case FollowerInfo::WriteState::STARTUP:
+          return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+                                 options);
+        default:
+          break;
       }
 
       replicationType = ReplicationType::LEADER;
+      followers = followerInfo->get();
       // We cannot be silent if we may have to replicate later.
       // If we need to get the followers under the single document operation's
       // lock, we don't know yet if we will have followers later and thus cannot
@@ -1386,15 +1445,45 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     } else {  // we are a follower following theLeader
       replicationType = ReplicationType::FOLLOWER;
       if (options.isSynchronousReplicationFrom.empty()) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED,
+                               options);
       }
-      if (options.isSynchronousReplicationFrom != theLeader) {
+      bool sendRefusal = (options.isSynchronousReplicationFrom != theLeader);
+      TRI_IF_FAILURE("synchronousReplication::neverRefuseOnFollower") {
+        sendRefusal = false;
+      }
+      TRI_IF_FAILURE("synchronousReplication::refuseOnFollower") {
+        sendRefusal = true;
+      }
+      TRI_IF_FAILURE("synchronousReplication::expectFollowingTerm") {
+        // expect a following term id or send a refusal
+        if (!options.isRestore) {
+          sendRefusal |= (options.isSynchronousReplicationFrom.find('_') ==
+                          std::string::npos);
+        }
+      }
+      if (sendRefusal) {
         return OperationResult(
-            ::buildRefusalResult(*collection, (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ? "replace" : "update"), options, theLeader),
+            ::buildRefusalResult(
+                *collection,
+                (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ? "replace"
+                                                                 : "update"),
+                options, theLeader),
             options);
       }
+
+      // we are a valid follower. we do not need to send a proper result with
+      // _key, _id, _rev back to the leader, because it will ignore all these
+      // data anyway. it is sufficient to send headers and the proper error
+      // codes back.
+      options.silent = true;
     }
   }  // isDBServer - early block
+
+  TRI_ASSERT((replicationType == ReplicationType::LEADER) ==
+             (followers != nullptr));
+  TRI_ASSERT(!options.silent || replicationType != ReplicationType::LEADER ||
+             followers->empty());
 
   // Update/replace are a read and a write, let's get the write lock already
   // for the read operation:
@@ -1408,10 +1497,11 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
   ManagedDocumentResult previous;
   ManagedDocumentResult result;
 
+  [[maybe_unused]] size_t numExclusions = 0;
+
   // lambda //////////////
-  auto workForOneDocument = [this, &operation, &options, &collection,
-                             &resultBuilder, &cid, &previous,
-                             &result](VPackSlice const newVal, bool isBabies) -> Result {
+  auto workForOneDocument = [&](VPackSlice newVal, bool isBabies,
+                                bool& excludeFromReplication) -> Result {
     Result res;
     if (!newVal.isObject()) {
       res.reset(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
@@ -1434,7 +1524,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
         TRI_ASSERT(previous.revisionId().isSet());
-        arangodb::velocypack::StringRef key(newVal.get(StaticStrings::KeyString));
+        std::string_view key =
+            newVal.get(StaticStrings::KeyString).stringView();
         buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
                               previous.revisionId(), RevisionId::none(),
                               options.returnOld ? &previous : nullptr, nullptr);
@@ -1447,64 +1538,112 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
       TRI_ASSERT(!options.returnNew || !result.empty());
       TRI_ASSERT(result.revisionId().isSet() && previous.revisionId().isSet());
 
-      arangodb::velocypack::StringRef key(newVal.get(StaticStrings::KeyString));
+      std::string_view key = newVal.get(StaticStrings::KeyString).stringView();
       buildDocumentIdentity(collection.get(), resultBuilder, cid, key,
                             result.revisionId(), previous.revisionId(),
                             options.returnOld ? &previous : nullptr,
                             options.returnNew ? &result : nullptr);
+      if (result.revisionId() == previous.revisionId() &&
+          operation != TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
+        excludeFromReplication = true;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        numExclusions++;
+#endif
+      }
     }
 
     return res;  // must be ok!
   };             // workForOneDocument
   ///////////////////////
 
-  bool multiCase = newValue.isArray();
-  std::unordered_map<ErrorCode, size_t> errorCounter;
   Result res;
-  if (multiCase) {
-    {
-      VPackArrayBuilder guard(&resultBuilder);
-      VPackArrayIterator it(newValue);
-      while (it.valid()) {
-        res = workForOneDocument(it.value(), true);
-        if (res.fail()) {
-          createBabiesError(resultBuilder, errorCounter, res);
-        }
-        ++it;
+  std::unordered_map<ErrorCode, size_t> errorCounter;
+
+  std::unordered_set<size_t> excludePositions;
+  if (newValue.isArray()) {
+    VPackArrayBuilder guard(&resultBuilder);
+    VPackArrayIterator it(newValue);
+    while (it.valid()) {
+      bool excludeFromReplication = false;
+      res = workForOneDocument(it.value(), true, excludeFromReplication);
+      if (res.fail()) {
+        createBabiesError(replicationType == ReplicationType::FOLLOWER
+                              ? nullptr
+                              : &resultBuilder,
+                          errorCounter, res);
+      } else if (excludeFromReplication) {
+        excludePositions.insert(it.index());
       }
+      it.next();
     }
-    res.reset(); // With babies reporting is handled in the result body
+    // it is ok to clobber res here!
+    res.reset();
   } else {
-    res = workForOneDocument(newValue, false);
+    bool excludeFromReplication = false;
+    res = workForOneDocument(newValue, false, excludeFromReplication);
+    if (res.ok() && excludeFromReplication) {
+      excludePositions.insert(0);
+    }
+
+    // on a follower, our result should always be an empty object
+    if (replicationType == ReplicationType::FOLLOWER) {
+      TRI_ASSERT(resultBuilder.slice().isNone());
+      // add an empty object here so that when sending things back in JSON
+      // format, there is no "non-representable type 'none'" issue.
+      resultBuilder.add(VPackSlice::emptyObjectSlice());
+    }
   }
 
+  // on a follower, our result should always be an empty array or object
+  TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
+             (newValue.isArray() && resultBuilder.slice().isEmptyArray()) ||
+             (newValue.isObject() && resultBuilder.slice().isEmptyObject()));
+
+  TRI_ASSERT(!newValue.isArray() || options.silent ||
+             resultBuilder.slice().length() == newValue.length());
+
+  if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
+    TRI_ASSERT(excludePositions.empty());
+  }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(numExclusions == excludePositions.size());
+#endif
+
   auto resDocs = resultBuilder.steal();
-  if (res.ok() && replicationType == ReplicationType::LEADER) {
-    // We still hold a lock here, because this is update/replace and we're
-    // therefore not doing single document operations. But if we didn't hold it
-    // at the beginning of the method the followers may not be up-to-date.
-    TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::WRITE));
-    TRI_ASSERT(collection != nullptr);
-    TRI_ASSERT(followers != nullptr);
+  if (res.ok()) {
+    if (replicationType == ReplicationType::LEADER && !followers->empty()) {
+      // We still hold a lock here, because this is update/replace and we're
+      // therefore not doing single document operations. But if we didn't hold
+      // it at the beginning of the method the followers may not be up-to-date.
+      TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::WRITE));
+      TRI_ASSERT(collection != nullptr);
 
-    // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
-    // get here, in the single document case, we do not try to replicate
-    // in case of an error.
+      // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
+      // get here, in the single document case, we do not try to replicate
+      // in case of an error.
 
-    // Now replicate the good operations on all followers:
-    return replicateOperations(collection.get(), followers, options, newValue,
-                               operation, resDocs)
-    .thenValue([options, errs = std::move(errorCounter), resDocs](Result&& res) mutable {
-      if (!res.ok()) {
-        return OperationResult{std::move(res), options};
-      }
-      if (options.silent && errs.empty()) {
-        // We needed the results, but do not want to report:
-        resDocs->clear();
-      }
-      return OperationResult(std::move(res), std::move(resDocs),
-                             std::move(options), std::move(errs));
-    });
+      // Now replicate the good operations on all followers:
+      return replicateOperations(collection, followers, options, newValue,
+                                 operation, resDocs,
+                                 std::move(excludePositions))
+          .thenValue([options, errs = std::move(errorCounter),
+                      resDocs](Result&& res) mutable {
+            if (!res.ok()) {
+              return OperationResult{std::move(res), options};
+            }
+            if (options.silent && errs.empty()) {
+              // We needed the results, but do not want to report:
+              resDocs->clear();
+            }
+            return OperationResult(std::move(res), std::move(resDocs),
+                                   std::move(options), std::move(errs));
+          });
+    }
+
+    // execute a deferred intermediate commit, if required.
+    res = performIntermediateCommitIfRequired(collection->id());
   }
 
   if (options.silent && errorCounter.empty()) {
@@ -1512,65 +1651,51 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
     resDocs->clear();
   }
 
-  return OperationResult(std::move(res), std::move(resDocs),
-                         std::move(options), std::move(errorCounter));
+  return OperationResult(std::move(res), std::move(resDocs), std::move(options),
+                         std::move(errorCounter));
+}
+
+OperationResult Methods::remove(std::string const& collectionName,
+                                VPackSlice value,
+                                OperationOptions const& options) {
+  return removeInternal(collectionName, value, options, MethodsApi::Synchronous)
+      .get();
 }
 
 /// @brief remove one or multiple documents in a collection
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
-Future<OperationResult> transaction::Methods::removeAsync(std::string const& cname,
-                                                          VPackSlice value,
-                                                          OperationOptions const& options) {
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  if (!value.isObject() && !value.isArray() && !value.isString()) {
-    // must provide a document object or an array of documents
-    events::DeleteDocument(vocbase().name(), cname, value, options,
-                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
-  }
-  if (value.isArray() && value.length() == 0) {
-    events::DeleteDocument(vocbase().name(), cname, value, options, TRI_ERROR_NO_ERROR);
-    return emptyResult(options);
-  }
-
-  auto f = Future<OperationResult>::makeEmpty();
-  if (_state->isCoordinator()) {
-    f = removeCoordinator(cname, value, options);
-  } else {
-    OperationOptions optionsCopy = options;
-    f = removeLocal(cname, value, optionsCopy);
-  }
-  return addTracking(std::move(f), [=](OperationResult&& opRes) {
-    events::DeleteDocument(vocbase().name(), cname, value, opRes.options,
-                           opRes.errorNumber());
-    return std::move(opRes);
-  });
+Future<OperationResult> transaction::Methods::removeAsync(
+    std::string const& cname, VPackSlice value,
+    OperationOptions const& options) {
+  return removeInternal(cname, value, options, MethodsApi::Asynchronous);
 }
 
 /// @brief remove one or multiple documents in a collection, coordinator
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
 #ifndef USE_ENTERPRISE
-Future<OperationResult> transaction::Methods::removeCoordinator(std::string const& cname,
-                                                                VPackSlice value,
-                                                                OperationOptions const& options) {
+Future<OperationResult> transaction::Methods::removeCoordinator(
+    std::string const& cname, VPackSlice value, OperationOptions const& options,
+    MethodsApi api) {
   auto colptr = resolver()->getCollectionStructCluster(cname);
   if (colptr == nullptr) {
-    return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
-  return arangodb::removeDocumentOnCoordinator(*this, *colptr, value, options);
+  return arangodb::removeDocumentOnCoordinator(*this, *colptr, value, options,
+                                               api);
 }
 #endif
 
 /// @brief remove one or multiple documents in a collection, local
 /// the single-document variant of this operation will either succeed or,
 /// if it fails, clean up after itself
-Future<OperationResult> transaction::Methods::removeLocal(std::string const& collectionName,
-                                                          VPackSlice value,
-                                                          OperationOptions& options) {
-  DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
+Future<OperationResult> transaction::Methods::removeLocal(
+    std::string const& collectionName, VPackSlice value,
+    OperationOptions& options) {
+  DataSourceId cid =
+      addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   auto* trxColl = trxCollection(cid);
   TRI_ASSERT(trxColl->isLocked(AccessMode::Type::WRITE));
   auto const& collection = trxColl->collection();
@@ -1579,28 +1704,29 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
-    TRI_ASSERT(followers == nullptr);
-    followers = collection->followers()->get();
-
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
+        return OperationResult(
+            TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
 
       switch (followerInfo->allowedToWrite()) {
-      case FollowerInfo::WriteState::FORBIDDEN:
-        // We cannot fulfill minimum replication Factor. Reject write.
-        return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
-      case FollowerInfo::WriteState::STARTUP:
-        return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, options);
-      default:
-        break;
+        case FollowerInfo::WriteState::FORBIDDEN:
+          // We cannot fulfill minimum replication Factor. Reject write.
+          return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+        case FollowerInfo::WriteState::UNAVAILABLE:
+        case FollowerInfo::WriteState::STARTUP:
+          return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+                                 options);
+        default:
+          break;
       }
 
       replicationType = ReplicationType::LEADER;
+      followers = followerInfo->get();
       // We cannot be silent if we may have to replicate later.
       // If we need to get the followers under the single document operation's
       // lock, we don't know yet if we will have followers later and thus cannot
@@ -1613,28 +1739,55 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
     } else {  // we are a follower following theLeader
       replicationType = ReplicationType::FOLLOWER;
       if (options.isSynchronousReplicationFrom.empty()) {
-        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
+        return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED,
+                               options);
       }
-      if (options.isSynchronousReplicationFrom != theLeader) {
+      bool sendRefusal = (options.isSynchronousReplicationFrom != theLeader);
+      TRI_IF_FAILURE("synchronousReplication::neverRefuseOnFollower") {
+        sendRefusal = false;
+      }
+      TRI_IF_FAILURE("synchronousReplication::refuseOnFollower") {
+        sendRefusal = true;
+      }
+      TRI_IF_FAILURE("synchronousReplication::expectFollowingTerm") {
+        // expect a following term id or send a refusal
+        if (!options.isRestore) {
+          sendRefusal |= (options.isSynchronousReplicationFrom.find('_') ==
+                          std::string::npos);
+        }
+      }
+      if (sendRefusal) {
         return OperationResult(
             ::buildRefusalResult(*collection, "remove", options, theLeader),
             options);
       }
+
+      // we are a valid follower. we do not need to send a proper result with
+      // _key, _id, _rev back to the leader, because it will ignore all these
+      // data anyway. it is sufficient to send headers and the proper error
+      // codes back.
+      options.silent = true;
     }
   }  // isDBServer - early block
+
+  TRI_ASSERT((replicationType == ReplicationType::LEADER) ==
+             (followers != nullptr));
+  TRI_ASSERT(!options.silent || replicationType != ReplicationType::LEADER ||
+             followers->empty());
 
   VPackBuilder resultBuilder;
   ManagedDocumentResult previous;
 
   auto workForOneDocument = [&](VPackSlice value, bool isBabies) -> Result {
     transaction::BuilderLeaser builder(this);
-    arangodb::velocypack::StringRef key;
+    std::string_view key;
     if (value.isString()) {
-      key = value;
+      key = value.stringView();
       size_t pos = key.find('/');
       if (pos != std::string::npos) {
         key = key.substr(pos + 1);
-        builder->add(VPackValuePair(key.data(), key.length(), VPackValueType::String));
+        builder->add(
+            VPackValuePair(key.data(), key.length(), VPackValueType::String));
         value = builder->slice();
       }
     } else if (value.isObject()) {
@@ -1642,7 +1795,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
       if (!keySlice.isString()) {
         return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
       }
-      key = keySlice;
+      key = keySlice.stringView();
     } else {
       return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
     }
@@ -1684,38 +1837,64 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
     for (VPackSlice s : VPackArrayIterator(value)) {
       res = workForOneDocument(s, true);
       if (res.fail()) {
-        createBabiesError(resultBuilder, errorCounter, res);
+        createBabiesError(replicationType == ReplicationType::FOLLOWER
+                              ? nullptr
+                              : &resultBuilder,
+                          errorCounter, res);
       }
     }
-    res.reset(); // With babies reporting is handled in the result body
+
+    // it is ok to clobber res here!
+    res.reset();
   } else {
     res = workForOneDocument(value, false);
+
+    // on a follower, our result should always be an empty object
+    if (replicationType == ReplicationType::FOLLOWER) {
+      TRI_ASSERT(resultBuilder.slice().isNone());
+      // add an empty object here so that when sending things back in JSON
+      // format, there is no "non-representable type 'none'" issue.
+      resultBuilder.add(VPackSlice::emptyObjectSlice());
+    }
   }
 
+  // on a follower, our result should always be an empty array or object
+  TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
+             (value.isArray() && resultBuilder.slice().isEmptyArray()) ||
+             (value.isObject() && resultBuilder.slice().isEmptyObject()));
+
+  TRI_ASSERT(!value.isArray() || options.silent ||
+             resultBuilder.slice().length() == value.length());
+
   auto resDocs = resultBuilder.steal();
-  if (res.ok() && replicationType == ReplicationType::LEADER) {
-    TRI_ASSERT(collection != nullptr);
-    TRI_ASSERT(followers != nullptr);
-    // Now replicate the same operation on all followers:
+  if (res.ok()) {
+    if (replicationType == ReplicationType::LEADER && !followers->empty()) {
+      TRI_ASSERT(collection != nullptr);
+      // Now replicate the same operation on all followers:
 
-    // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
-    // get here, in the single document case, we do not try to replicate
-    // in case of an error.
+      // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
+      // get here, in the single document case, we do not try to replicate
+      // in case of an error.
 
-    // Now replicate the good operations on all followers:
-    return replicateOperations(collection.get(), followers, options, value,
-                               TRI_VOC_DOCUMENT_OPERATION_REMOVE, resDocs)
-    .thenValue([options, errs = std::move(errorCounter), resDocs](Result res) mutable {
-      if (!res.ok()) {
-        return OperationResult{std::move(res), options};
-      }
-      if (options.silent && errs.empty()) {
-        // We needed the results, but do not want to report:
-        resDocs->clear();
-      }
-      return OperationResult(std::move(res), std::move(resDocs),
-                             std::move(options), std::move(errs));
-    });
+      // Now replicate the good operations on all followers:
+      return replicateOperations(collection, followers, options, value,
+                                 TRI_VOC_DOCUMENT_OPERATION_REMOVE, resDocs, {})
+          .thenValue([options, errs = std::move(errorCounter),
+                      resDocs](Result res) mutable {
+            if (!res.ok()) {
+              return OperationResult{std::move(res), options};
+            }
+            if (options.silent && errs.empty()) {
+              // We needed the results, but do not want to report:
+              resDocs->clear();
+            }
+            return OperationResult(std::move(res), std::move(resDocs),
+                                   std::move(options), std::move(errs));
+          });
+    }
+
+    // execute a deferred intermediate commit, if required.
+    res = performIntermediateCommitIfRequired(collection->id());
   }
 
   if (options.silent && errorCounter.empty()) {
@@ -1723,8 +1902,8 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
     resDocs->clear();
   }
 
-  return OperationResult(std::move(res), std::move(resDocs),
-                         std::move(options), std::move(errorCounter));
+  return OperationResult(std::move(res), std::move(resDocs), std::move(options),
+                         std::move(errorCounter));
 }
 
 /// @brief fetches all documents in a collection
@@ -1743,23 +1922,25 @@ OperationResult transaction::Methods::all(std::string const& collectionName,
 }
 
 /// @brief fetches all documents in a collection, coordinator
-OperationResult transaction::Methods::allCoordinator(std::string const& collectionName,
-                                                     uint64_t skip, uint64_t limit,
-                                                     OperationOptions& options) {
+OperationResult transaction::Methods::allCoordinator(
+    std::string const& collectionName, uint64_t skip, uint64_t limit,
+    OperationOptions& options) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 /// @brief fetches all documents in a collection, local
-OperationResult transaction::Methods::allLocal(std::string const& collectionName,
-                                               uint64_t skip, uint64_t limit,
-                                               OperationOptions& options) {
-  DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
+OperationResult transaction::Methods::allLocal(
+    std::string const& collectionName, uint64_t skip, uint64_t limit,
+    OperationOptions& options) {
+  DataSourceId cid =
+      addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TRI_ASSERT(trxCollection(cid)->isLocked(AccessMode::Type::READ));
 
   VPackBuilder resultBuilder;
 
   if (_state->isDBServer()) {
-    std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
+    std::shared_ptr<LogicalCollection> const& collection =
+        trxCollection(cid)->collection();
     auto const& followerInfo = collection->followers();
     if (!followerInfo->getLeader().empty()) {
       return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options);
@@ -1767,81 +1948,79 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
   }
 
   resultBuilder.openArray();
-  
-  auto iterator = indexScan(collectionName, transaction::Methods::CursorType::ALL);
+
+  auto iterator = indexScan(
+      collectionName, transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
 
   iterator->allDocuments(
       [&resultBuilder](LocalDocumentId const& /*token*/, VPackSlice slice) {
         resultBuilder.add(slice);
         return true;
-      }, 1000);
+      });
 
   resultBuilder.close();
 
   return OperationResult(Result(), resultBuilder.steal(), options);
 }
 
+OperationResult Methods::truncate(std::string const& collectionName,
+                                  OperationOptions const& options) {
+  return truncateInternal(collectionName, options, MethodsApi::Synchronous)
+      .get();
+}
+
 /// @brief remove all documents in a collection
-Future<OperationResult> transaction::Methods::truncateAsync(std::string const& collectionName,
-                                                            OperationOptions const& options) {
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  OperationOptions optionsCopy = options;
-  auto cb = [this, collectionName](OperationResult res) {
-    events::TruncateCollection(vocbase().name(), collectionName, res);
-    return res;
-  };
-
-  if (_state->isCoordinator()) {
-    return truncateCoordinator(collectionName, optionsCopy).thenValue(cb);
-  }
-  return truncateLocal(collectionName, optionsCopy).thenValue(cb);
+Future<OperationResult> transaction::Methods::truncateAsync(
+    std::string const& collectionName, OperationOptions const& options) {
+  return truncateInternal(collectionName, options, MethodsApi::Asynchronous);
 }
 
 /// @brief remove all documents in a collection, coordinator
 #ifndef USE_ENTERPRISE
-Future<OperationResult> transaction::Methods::truncateCoordinator(std::string const& collectionName,
-                                                                  OperationOptions& options) {
-  return arangodb::truncateCollectionOnCoordinator(*this, collectionName, options);
+Future<OperationResult> transaction::Methods::truncateCoordinator(
+    std::string const& collectionName, OperationOptions& options,
+    MethodsApi api) {
+  return arangodb::truncateCollectionOnCoordinator(*this, collectionName,
+                                                   options, api);
 }
 #endif
 
 /// @brief remove all documents in a collection, local
-Future<OperationResult> transaction::Methods::truncateLocal(std::string const& collectionName,
-                                                            OperationOptions& options) {
-  DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
+Future<OperationResult> transaction::Methods::truncateLocal(
+    std::string const& collectionName, OperationOptions& options) {
+  DataSourceId cid =
+      addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   auto const& collection = trxCollection(cid)->collection();
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
-    TRI_ASSERT(followers == nullptr);
-    followers = collection->followers()->get();
-
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection->followers();
     std::string theLeader = followerInfo->getLeader();
     if (theLeader.empty()) {
       if (!options.isSynchronousReplicationFrom.empty()) {
-        return futures::makeFuture(
-            OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options));
+        return futures::makeFuture(OperationResult(
+            TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options));
       }
 
       switch (followerInfo->allowedToWrite()) {
-      case FollowerInfo::WriteState::FORBIDDEN:
-        // We cannot fulfill minimum replication Factor. Reject write.
-        return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
-      case FollowerInfo::WriteState::STARTUP:
-        return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, options);
-      default:
-        break;
+        case FollowerInfo::WriteState::FORBIDDEN:
+          // We cannot fulfill minimum replication Factor. Reject write.
+          return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+        case FollowerInfo::WriteState::UNAVAILABLE:
+        case FollowerInfo::WriteState::STARTUP:
+          return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+                                 options);
+        default:
+          break;
       }
 
       // fetch followers
+      replicationType = ReplicationType::LEADER;
       followers = followerInfo->get();
-      if (followers->size() > 0) {
-        replicationType = ReplicationType::LEADER;
+      if (!followers->empty()) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -1850,15 +2029,30 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
         return futures::makeFuture(
             OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options));
       }
-      if (options.isSynchronousReplicationFrom != theLeader) {
-        return futures::makeFuture(
-            OperationResult(
-                ::buildRefusalResult(*collection, "truncate", options, theLeader),
-                options));
+      bool sendRefusal = (options.isSynchronousReplicationFrom != theLeader);
+      TRI_IF_FAILURE("synchronousReplication::neverRefuseOnFollower") {
+        sendRefusal = false;
+      }
+      TRI_IF_FAILURE("synchronousReplication::refuseOnFollower") {
+        sendRefusal = true;
+      }
+      TRI_IF_FAILURE("synchronousReplication::expectFollowingTerm") {
+        // expect a following term id or send a refusal
+        if (!options.isRestore) {
+          sendRefusal |= (options.isSynchronousReplicationFrom.find('_') ==
+                          std::string::npos);
+        }
+      }
+      if (sendRefusal) {
+        return futures::makeFuture(OperationResult(
+            ::buildRefusalResult(*collection, "truncate", options, theLeader),
+            options));
       }
     }
   }  // isDBServer - early block
 
+  TRI_ASSERT((replicationType == ReplicationType::LEADER) ==
+             (followers != nullptr));
   TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::WRITE));
 
   Result res = collection->truncate(*this, options);
@@ -1868,18 +2062,15 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
   }
 
   // Now see whether or not we have to do synchronous replication:
-  if (replicationType == ReplicationType::LEADER) {
-    TRI_ASSERT(followers != nullptr);
-
-    TRI_ASSERT(!_state->hasHint(Hints::Hint::FROM_TOPLEVEL_AQL));
-
+  if (replicationType == ReplicationType::LEADER && !followers->empty()) {
     // Now replicate the good operations on all followers:
     NetworkFeature const& nf = vocbase().server().getFeature<NetworkFeature>();
     network::ConnectionPool* pool = nf.pool();
     if (pool != nullptr) {
       // nullptr only happens on controlled shutdown
       std::string path =
-          "/_api/collection/" + arangodb::basics::StringUtils::urlEncode(collectionName) +
+          "/_api/collection/" +
+          arangodb::basics::StringUtils::urlEncode(collectionName) +
           "/truncate";
       VPackBuffer<uint8_t> body;
       VPackSlice s = VPackSlice::emptyObjectSlice();
@@ -1892,14 +2083,33 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       network::RequestOptions reqOpts;
       reqOpts.database = vocbase().name();
       reqOpts.timeout = network::Timeout(600);
-      reqOpts.param(StaticStrings::IsSynchronousReplicationString, ServerState::instance()->getId());
-      reqOpts.param(StaticStrings::Compact, (options.truncateCompact ? "true" : "false"));
+      reqOpts.param(StaticStrings::Compact,
+                    (options.truncateCompact ? "true" : "false"));
 
       for (auto const& f : *followers) {
+        // check following term id for the follower:
+        // if it is 0, it means that the follower cannot handle following
+        // term ids safely, so we only pass the leader id string to id but
+        // no following term. this happens for followers < 3.8.3
+        // if the following term id is != 0, we will pass it on along with
+        // the leader id string, in format "LEADER_FOLLOWINGTERMID"
+        uint64_t followingTermId =
+            collection->followers()->getFollowingTermId(f);
+        if (followingTermId == 0) {
+          reqOpts.param(StaticStrings::IsSynchronousReplicationString,
+                        ServerState::instance()->getId());
+        } else {
+          reqOpts.param(StaticStrings::IsSynchronousReplicationString,
+                        ServerState::instance()->getId() + "_" +
+                            basics::StringUtils::itoa(followingTermId));
+        }
+        // reqOpts is copied deep in sendRequestRetry, so we are OK to
+        // change it in the loop!
         network::Headers headers;
         ClusterTrxMethods::addTransactionHeader(*this, f, headers);
-        auto future = network::sendRequestRetry(pool, "server:" + f, fuerte::RestVerb::Put,
-                                           path, body, reqOpts, std::move(headers));
+        auto future = network::sendRequestRetry(
+            pool, "server:" + f, fuerte::RestVerb::Put, path, body, reqOpts,
+            std::move(headers));
         futures.emplace_back(std::move(future));
       }
 
@@ -1914,22 +2124,33 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
           if (!vocbase().server().isStopping()) {
             auto const& followerInfo = collection->followers();
             LOG_TOPIC("0e2e0", WARN, Logger::REPLICATION)
-              << "truncateLocal: dropping follower " << (*followers)[i]
-              << " for shard " << collection->vocbase().name() << "/" << collectionName
-              << ": " << responses[i].get().combinedResult().errorMessage();
+                << "truncateLocal: dropping follower " << (*followers)[i]
+                << " for shard " << collection->vocbase().name() << "/"
+                << collectionName << ": "
+                << responses[i].get().combinedResult().errorMessage();
             res = followerInfo->remove((*followers)[i]);
-            if (res.ok()) {
-              _state->removeKnownServer((*followers)[i]);
-            } else {
+            // intentionally do NOT remove the follower from the list of
+            // known servers here. if we do, we will not be able to
+            // send the commit/abort to the follower later. However, we
+            // still need to send the commit/abort to the follower at
+            // transaction end, because the follower may be responsbile
+            // for _other_ shards as well.
+            // it does not matter if we later commit the writes of the shard
+            // from which we just removed the follower, because the follower
+            // is now dropped and will try to get back in sync anyway, so
+            // it will run the full shard synchronization process.
+            if (res.fail()) {
               LOG_TOPIC("359bc", WARN, Logger::REPLICATION)
-                << "truncateLocal: could not drop follower " << (*followers)[i]
-                << " for shard " << collection->vocbase().name() << "/" << collection->name()
-                << ": " << res.errorMessage();
+                  << "truncateLocal: could not drop follower "
+                  << (*followers)[i] << " for shard "
+                  << collection->vocbase().name() << "/" << collection->name()
+                  << ": " << res.errorMessage();
 
-              // Note: it is safe here to exit the loop early. We are losing the leadership here.
-              // No matter what happens next, the Current entry in the agency is rewritten and
-              // thus replication is restarted from the new leader. There is no need to keep
-              // trying to drop followers at this point.
+              // Note: it is safe here to exit the loop early. We are losing the
+              // leadership here. No matter what happens next, the Current entry
+              // in the agency is rewritten and thus replication is restarted
+              // from the new leader. There is no need to keep trying to drop
+              // followers at this point.
 
               if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
                 // In this case, we know that we are not or no longer
@@ -1941,14 +2162,16 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
                 // most likely are still the proper leader, so
                 // the error needs to be reported and the local
                 // transaction must be rolled back.
-                THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
+                THROW_ARANGO_EXCEPTION(
+                    TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
               }
             }
           } else {
             LOG_TOPIC("cb953", INFO, Logger::REPLICATION)
-              << "truncateLocal: shutting down and not replicating " << (*followers)[i]
-              << " for shard " << collection->vocbase().name() << "/" << collection->name()
-              << ": " << res.errorMessage();
+                << "truncateLocal: shutting down and not replicating "
+                << (*followers)[i] << " for shard "
+                << collection->vocbase().name() << "/" << collection->name()
+                << ": " << res.errorMessage();
             THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
           }
         }
@@ -1959,7 +2182,10 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       // error (note that we use the follower version, since we have
       // lost leadership):
       if (findRefusal(responses)) {
-        vocbase().server().getFeature<arangodb::ClusterFeature>().followersRefusedCounter()++;
+        ++vocbase()
+              .server()
+              .getFeature<arangodb::ClusterFeature>()
+              .followersRefusedCounter();
         return futures::makeFuture(
             OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options));
       }
@@ -1969,44 +2195,41 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
   return futures::makeFuture(OperationResult(res, options));
 }
 
+OperationResult Methods::count(std::string const& collectionName,
+                               CountType type,
+                               OperationOptions const& options) {
+  return countInternal(collectionName, type, options, MethodsApi::Synchronous)
+      .get();
+}
+
 /// @brief count the number of documents in a collection
 futures::Future<OperationResult> transaction::Methods::countAsync(
     std::string const& collectionName, transaction::CountType type,
     OperationOptions const& options) {
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  if (_state->isCoordinator()) {
-    return countCoordinator(collectionName, type, options);
-  }
-
-  if (type == CountType::Detailed) {
-    // we are a single-server... we cannot provide detailed per-shard counts,
-    // so just downgrade the request to a normal request
-    type = CountType::Normal;
-  }
-
-  return futures::makeFuture(countLocal(collectionName, type, options));
+  return countInternal(collectionName, type, options, MethodsApi::Asynchronous);
 }
 
 #ifndef USE_ENTERPRISE
 /// @brief count the number of documents in a collection
 futures::Future<OperationResult> transaction::Methods::countCoordinator(
     std::string const& collectionName, transaction::CountType type,
-    OperationOptions const& options) {
+    OperationOptions const& options, MethodsApi api) {
   // First determine the collection ID from the name:
   auto colptr = resolver()->getCollectionStructCluster(collectionName);
   if (colptr == nullptr) {
-    return futures::makeFuture(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+    return futures::makeFuture(
+        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
   }
 
-  return countCoordinatorHelper(colptr, collectionName, type, options);
+  return countCoordinatorHelper(colptr, collectionName, type, options, api);
 }
 
 #endif
 
 futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
-    std::shared_ptr<LogicalCollection> const& collinfo, std::string const& collectionName,
-    transaction::CountType type, OperationOptions const& options) {
+    std::shared_ptr<LogicalCollection> const& collinfo,
+    std::string const& collectionName, transaction::CountType type,
+    OperationOptions const& options, MethodsApi api) {
   TRI_ASSERT(collinfo != nullptr);
   auto& cache = collinfo->countCache();
 
@@ -2020,29 +2243,31 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
 
   if (documents == CountCache::NotPopulated) {
     // no cache hit, or detailed results requested
-    return arangodb::countOnCoordinator(*this, collectionName, options)
-        .thenValue([&cache, type, options](OperationResult&& res) -> OperationResult {
-          if (res.fail()) {
-            return std::move(res);
-          }
+    return arangodb::countOnCoordinator(*this, collectionName, options, api)
+        .thenValue(
+            [&cache, type, options](OperationResult&& res) -> OperationResult {
+              if (res.fail()) {
+                return std::move(res);
+              }
 
-          // reassemble counts from vpack
-          std::vector<std::pair<std::string, uint64_t>> counts;
-          TRI_ASSERT(res.slice().isArray());
-          for (VPackSlice count : VPackArrayIterator(res.slice())) {
-            TRI_ASSERT(count.isArray());
-            TRI_ASSERT(count[0].isString());
-            TRI_ASSERT(count[1].isNumber());
-            std::string key = count[0].copyString();
-            uint64_t value = count[1].getNumericValue<uint64_t>();
-            counts.emplace_back(std::move(key), value);
-          }
+              // reassemble counts from vpack
+              std::vector<std::pair<std::string, uint64_t>> counts;
+              TRI_ASSERT(res.slice().isArray());
+              for (VPackSlice count : VPackArrayIterator(res.slice())) {
+                TRI_ASSERT(count.isArray());
+                TRI_ASSERT(count[0].isString());
+                TRI_ASSERT(count[1].isNumber());
+                std::string key = count[0].copyString();
+                uint64_t value = count[1].getNumericValue<uint64_t>();
+                counts.emplace_back(std::move(key), value);
+              }
 
-          uint64_t total = 0;
-          OperationResult opRes = buildCountResult(options, counts, type, total);
-          cache.store(total);
-          return opRes;
-        });
+              uint64_t total = 0;
+              OperationResult opRes =
+                  buildCountResult(options, counts, type, total);
+              cache.store(total);
+              return opRes;
+            });
   }
 
   // cache hit!
@@ -2056,29 +2281,16 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
 }
 
 /// @brief count the number of documents in a collection
-OperationResult transaction::Methods::countLocal(std::string const& collectionName,
-                                                 transaction::CountType type,
-                                                 OperationOptions const& options) {
-  DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
+OperationResult transaction::Methods::countLocal(
+    std::string const& collectionName, transaction::CountType type,
+    OperationOptions const& options) {
+  DataSourceId cid =
+      addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   auto const& collection = trxCollection(cid)->collection();
-
-//  Result lockResult = lockRecursive(cid, AccessMode::Type::READ);
-//
-//  if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {
-//    return OperationResult(lockResult);
-//  }
 
   TRI_ASSERT(isLocked(collection.get(), AccessMode::Type::READ));
 
   uint64_t num = collection->numberDocuments(this, type);
-
-//  if (lockResult.is(TRI_ERROR_LOCKED)) {
-//    Result res = unlockRecursive(cid, AccessMode::Type::READ);
-//
-//    if (res.fail()) {
-//      return OperationResult(res);
-//    }
-//  }
 
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(num));
@@ -2087,11 +2299,10 @@ OperationResult transaction::Methods::countLocal(std::string const& collectionNa
 }
 
 /// @brief factory for IndexIterator objects from AQL
-/// note: the caller must have read-locked the underlying collection when
-/// calling this method
 std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
     IndexHandle const& idx, arangodb::aql::AstNode const* condition,
-    arangodb::aql::Variable const* var, IndexIteratorOptions const& opts) {
+    arangodb::aql::Variable const* var, IndexIteratorOptions const& opts,
+    ReadOwnWrites readOwnWrites, int mutableConditionIdx) {
   if (_state->isCoordinator()) {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
@@ -2109,14 +2320,16 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
 
   // Now create the Iterator
   TRI_ASSERT(!idx->inProgress());
-  return idx->iteratorForCondition(this, condition, var, opts);
+  return idx->iteratorForCondition(this, condition, var, opts, readOwnWrites,
+                                   mutableConditionIdx);
 }
 
 /// @brief factory for IndexIterator objects
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
-std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const& collectionName,
-                                                               CursorType cursorType) {
+std::unique_ptr<IndexIterator> transaction::Methods::indexScan(
+    std::string const& collectionName, CursorType cursorType,
+    ReadOwnWrites readOwnWrites) {
   // For now we assume indexId is the iid part of the index.
 
   if (ADB_UNLIKELY(_state->isCoordinator())) {
@@ -2124,7 +2337,8 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
   }
 
-  DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
+  DataSourceId cid =
+      addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TransactionCollection* trxColl = trxCollection(cid);
   if (trxColl == nullptr) {
     throwCollectionNotFound(collectionName.c_str());
@@ -2146,7 +2360,7 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const
       break;
     }
     case CursorType::ALL: {
-      iterator = logical->getAllIterator(this);
+      iterator = logical->getAllIterator(this, readOwnWrites);
       break;
     }
   }
@@ -2157,30 +2371,16 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(std::string const
 }
 
 /// @brief return the collection
-arangodb::LogicalCollection* transaction::Methods::documentCollection(DataSourceId cid) const {
-  TRI_ASSERT(_state != nullptr);
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  auto trxColl = trxCollection(cid, AccessMode::Type::READ);
-  if (trxColl == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "could not find collection");
-  }
-
-  TRI_ASSERT(trxColl != nullptr);
-  TRI_ASSERT(trxColl->collection() != nullptr);
-  return trxColl->collection().get();
-}
-
-/// @brief return the collection
-arangodb::LogicalCollection* transaction::Methods::documentCollection(std::string const& name) const {
+arangodb::LogicalCollection* transaction::Methods::documentCollection(
+    std::string const& name) const {
   TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   auto trxColl = trxCollection(name, AccessMode::Type::READ);
   if (trxColl == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   std::string("could not find collection '") + name + "'");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        std::string("could not find collection '") + name + "'");
   }
 
   TRI_ASSERT(trxColl != nullptr);
@@ -2189,7 +2389,8 @@ arangodb::LogicalCollection* transaction::Methods::documentCollection(std::strin
 }
 
 /// @brief add a collection by id, with the name supplied
-Result transaction::Methods::addCollection(DataSourceId cid, std::string const& cname,
+Result transaction::Methods::addCollection(DataSourceId cid,
+                                           std::string const& cname,
                                            AccessMode::Type type) {
   if (_state == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -2198,7 +2399,8 @@ Result transaction::Methods::addCollection(DataSourceId cid, std::string const& 
 
   Status const status = _state->status();
 
-  if (status == transaction::Status::COMMITTED || status == transaction::Status::ABORTED) {
+  if (status == transaction::Status::COMMITTED ||
+      status == transaction::Status::ABORTED) {
     // transaction already finished?
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
@@ -2219,7 +2421,8 @@ Result transaction::Methods::addCollection(DataSourceId cid, std::string const& 
 
   const bool lockUsage = !_mainTransaction;
 
-  auto addCollectionCallback = [this, &cname, type, lockUsage](DataSourceId cid) -> void {
+  auto addCollectionCallback = [this, &cname, type,
+                                lockUsage](DataSourceId cid) -> void {
     auto res = _state->addCollection(cid, cname, type, lockUsage);
 
     if (res.fail()) {
@@ -2230,7 +2433,8 @@ Result transaction::Methods::addCollection(DataSourceId cid, std::string const& 
   Result res;
   bool visited = false;
   std::function<bool(LogicalCollection&)> visitor(
-      [this, &addCollectionCallback, &res, cid, &visited](LogicalCollection& col) -> bool {
+      [this, &addCollectionCallback, &res, cid,
+       &visited](LogicalCollection& col) -> bool {
         addCollectionCallback(col.id());  // will throw on error
         res = applyDataSourceRegistrationCallbacks(col, *this);
         visited |= cid == col.id();
@@ -2244,7 +2448,8 @@ Result transaction::Methods::addCollection(DataSourceId cid, std::string const& 
       addCollectionCallback(cid);  // will throw on error
     }
 
-    return res.ok() ? Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) : res;  // return first error
+    return res.ok() ? Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)
+                    : res;  // return first error
   }
 
   // skip provided 'cid' if it was already done by the visitor
@@ -2259,12 +2464,14 @@ Result transaction::Methods::addCollection(DataSourceId cid, std::string const& 
 }
 
 /// @brief add a collection by name
-Result transaction::Methods::addCollection(std::string const& name, AccessMode::Type type) {
+Result transaction::Methods::addCollection(std::string const& name,
+                                           AccessMode::Type type) {
   return addCollection(resolver()->getCollectionId(name), name, type);
 }
 
 /// @brief test if a collection is already locked
-bool transaction::Methods::isLocked(LogicalCollection* document, AccessMode::Type type) const {
+bool transaction::Methods::isLocked(LogicalCollection* document,
+                                    AccessMode::Type type) const {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     return false;
   }
@@ -2281,11 +2488,12 @@ bool transaction::Methods::isLocked(LogicalCollection* document, AccessMode::Typ
   return trxColl->isLocked(type);
 }
 
-Result transaction::Methods::resolveId(char const* handle, size_t length,
-                                       std::shared_ptr<LogicalCollection>& collection,
-                                       char const*& key, size_t& outLength) {
-  char const* p =
-      static_cast<char const*>(memchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, length));
+Result transaction::Methods::resolveId(
+    char const* handle, size_t length,
+    std::shared_ptr<LogicalCollection>& collection, char const*& key,
+    size_t& outLength) {
+  char const* p = static_cast<char const*>(
+      memchr(handle, TRI_DOCUMENT_HANDLE_SEPARATOR_CHR, length));
 
   if (p == nullptr || *p == '\0') {
     return {TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD};
@@ -2307,24 +2515,20 @@ Result transaction::Methods::resolveId(char const* handle, size_t length,
 // Unified replication of operations. May be inserts (with or without
 // overwrite), removes, or modifies (updates/replaces).
 Future<Result> Methods::replicateOperations(
-    LogicalCollection* collection,
+    std::shared_ptr<LogicalCollection> collection,
     std::shared_ptr<const std::vector<ServerID>> const& followerList,
-    OperationOptions const& options, VPackSlice const value,
-    TRI_voc_document_operation_e const operation,
-    std::shared_ptr<VPackBuffer<uint8_t>> const& ops) {
+    OperationOptions const& options, VPackSlice value,
+    TRI_voc_document_operation_e operation,
+    std::shared_ptr<VPackBuffer<uint8_t>> const& ops,
+    std::unordered_set<size_t> excludePositions) {
   TRI_ASSERT(followerList != nullptr);
-
-  if (followerList->empty()) {
-    return Result();
-  }
+  TRI_ASSERT(!followerList->empty());
 
   // path and requestType are different for insert/remove/modify.
 
   network::RequestOptions reqOpts;
   reqOpts.database = vocbase().name();
   reqOpts.param(StaticStrings::IsRestoreString, "true");
-  reqOpts.param(StaticStrings::IsSynchronousReplicationString, ServerState::instance()->getId());
-
   std::string url = "/_api/document/";
   url.append(arangodb::basics::StringUtils::urlEncode(collection->name()));
   if (operation != TRI_VOC_DOCUMENT_OPERATION_INSERT && !value.isArray()) {
@@ -2341,17 +2545,33 @@ Future<Result> Methods::replicateOperations(
   switch (operation) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       requestType = arangodb::fuerte::RestVerb::Post;
+
+      opName = "insert";
+      // handle overwrite modes
       if (options.isOverwriteModeSet()) {
         if (options.overwriteMode != OperationOptions::OverwriteMode::Unknown) {
-          reqOpts.param(StaticStrings::OverwriteMode, OperationOptions::stringifyOverwriteMode(options.overwriteMode));
+          reqOpts.param(
+              StaticStrings::OverwriteMode,
+              OperationOptions::stringifyOverwriteMode(options.overwriteMode));
+          if (options.overwriteMode ==
+              OperationOptions::OverwriteMode::Update) {
+            opName = "insert w/ overwriteMode update";
+          } else if (options.overwriteMode ==
+                     OperationOptions::OverwriteMode::Replace) {
+            opName = "insert w/ overwriteMode replace";
+          } else if (options.overwriteMode ==
+                     OperationOptions::OverwriteMode::Ignore) {
+            opName = "insert w/ overwriteMode ingore";
+          }
         }
         if (options.overwriteMode == OperationOptions::OverwriteMode::Update) {
           // extra parameters only required for update
-          reqOpts.param(StaticStrings::KeepNullString, options.keepNull ? "true" : "false");
-          reqOpts.param(StaticStrings::MergeObjectsString, options.mergeObjects ? "true" : "false");
+          reqOpts.param(StaticStrings::KeepNullString,
+                        options.keepNull ? "true" : "false");
+          reqOpts.param(StaticStrings::MergeObjectsString,
+                        options.mergeObjects ? "true" : "false");
         }
       }
-      opName = "insert";
       break;
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
       requestType = arangodb::fuerte::RestVerb::Patch;
@@ -2371,14 +2591,15 @@ Future<Result> Methods::replicateOperations(
   }
 
   transaction::BuilderLeaser payload(this);
-  auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
+  auto doOneDoc = [&](VPackSlice doc, VPackSlice result) {
     VPackObjectBuilder guard(payload.get());
     VPackSlice s = result.get(StaticStrings::KeyString);
+    TRI_ASSERT(s.isString());
     payload->add(StaticStrings::KeyString, s);
     s = result.get(StaticStrings::RevString);
     payload->add(StaticStrings::RevString, s);
     if (operation != TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-      TRI_SanitizeObject(doc, *payload.get());
+      TRI_SanitizeObject(doc, *payload);
     }
   };
 
@@ -2389,17 +2610,27 @@ Future<Result> Methods::replicateOperations(
     VPackArrayIterator itValue(value);
     VPackArrayIterator itResult(ourResult);
     while (itValue.valid() && itResult.valid()) {
+      TRI_ASSERT(itValue.index() == itResult.index());
+
       TRI_ASSERT((*itResult).isObject());
       if (!(*itResult).hasKey(StaticStrings::Error)) {
-        doOneDoc(itValue.value(), itResult.value());
-        count++;
+        // not an error
+        // now check if document is explicitly excluded from replication
+        // this currently happens only for insert with overwriteMode=ignore
+        // for already-existing documents
+        if (excludePositions.find(itValue.index()) == excludePositions.end()) {
+          doOneDoc(itValue.value(), itResult.value());
+          count++;
+        }
       }
       itValue.next();
       itResult.next();
     }
   } else {
-    doOneDoc(value, ourResult);
-    count++;
+    if (excludePositions.find(0) == excludePositions.end()) {
+      doOneDoc(value, ourResult);
+      count++;
+    }
   }
 
   if (count == 0) {
@@ -2407,7 +2638,22 @@ Future<Result> Methods::replicateOperations(
     return Result();
   }
 
-  reqOpts.timeout = network::Timeout(chooseTimeoutForReplication(count, payload->size()));
+  ReplicationTimeoutFeature& timeouts =
+      vocbase().server().getFeature<ReplicationTimeoutFeature>();
+  reqOpts.timeout = network::Timeout(
+      ::chooseTimeoutForReplication(timeouts, count, payload->size()));
+  TRI_IF_FAILURE("replicateOperations_randomize_timeout") {
+    reqOpts.timeout = network::Timeout(
+        static_cast<double>(RandomGenerator::interval(uint32_t(60))));
+  }
+
+  TRI_IF_FAILURE("replicateOperationsDropFollowerBeforeSending") {
+    // drop all our followers, intentionally
+    for (auto const& f : *followerList) {
+      Result res = collection->followers()->remove(f);
+      TRI_ASSERT(res.ok());
+    }
+  }
 
   // Now prepare the requests:
   std::vector<Future<network::Response>> futures;
@@ -2417,15 +2663,33 @@ Future<Result> Methods::replicateOperations(
 
   auto* pool = vocbase().server().getFeature<NetworkFeature>().pool();
   for (auto const& f : *followerList) {
+    // check following term id for the follower:
+    // if it is 0, it means that the follower cannot handle following
+    // term ids safely, so we only pass the leader id string to id but
+    // no following term. this happens for followers < 3.8.3
+    // if the following term id is != 0, we will pass it on along with
+    // the leader id string, in format "LEADER_FOLLOWINGTERMID"
+    uint64_t followingTermId = collection->followers()->getFollowingTermId(f);
+    if (followingTermId == 0) {
+      reqOpts.param(StaticStrings::IsSynchronousReplicationString,
+                    ServerState::instance()->getId());
+    } else {
+      reqOpts.param(StaticStrings::IsSynchronousReplicationString,
+                    ServerState::instance()->getId() + "_" +
+                        basics::StringUtils::itoa(followingTermId));
+    }
+    // reqOpts is copied deep in sendRequestRetry, so we are OK to
+    // change it in the loop!
     network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(*this, f, headers);
-    futures.emplace_back(network::sendRequestRetry(pool, "server:" + f, requestType,
-                                                   url, *(payload->buffer()), reqOpts,
-                                                   std::move(headers)));
+    futures.emplace_back(network::sendRequestRetry(
+        pool, "server:" + f, requestType, url, *(payload->buffer()), reqOpts,
+        std::move(headers)));
 
-    LOG_TOPIC("fecaf", TRACE, Logger::REPLICATION) 
-      << "replicating " << count << " " << opName << " operations for shard " <<
-      collection->vocbase().name() << "/" << collection->name() << ", server:" << f;
+    LOG_TOPIC("fecaf", TRACE, Logger::REPLICATION)
+        << "replicating " << count << " " << opName << " operations for shard "
+        << collection->vocbase().name() << "/" << collection->name()
+        << ", server:" << f;
   }
 
   // If any would-be-follower refused to follow there are two possiblities:
@@ -2444,12 +2708,15 @@ Future<Result> Methods::replicateOperations(
   // we continue with the operation, since most likely, the follower was
   // simply dropped in the meantime.
   // In any case, we drop the follower here (just in case).
-  auto cb = [=](std::vector<futures::Try<network::Response>>&& responses) -> Result {
-
+  auto cb =
+      [=, this](
+          std::vector<futures::Try<network::Response>>&& responses) -> Result {
     auto duration = std::chrono::steady_clock::now() - startTimeReplication;
-    auto& replMetrics = vocbase().server().getFeature<ReplicationMetricsFeature>();
+    auto& replMetrics =
+        vocbase().server().getFeature<ReplicationMetricsFeature>();
     replMetrics.synchronousOpsTotal() += 1;
-    replMetrics.synchronousTimeTotal() += std::chrono::nanoseconds(duration).count();
+    replMetrics.synchronousTimeTotal() +=
+        std::chrono::nanoseconds(duration).count();
 
     bool didRefuse = false;
     // We drop all followers that were not successful:
@@ -2457,59 +2724,84 @@ Future<Result> Methods::replicateOperations(
       network::Response const& resp = responses[i].get();
       ServerID const& follower = (*followerList)[i];
 
-      bool replicationWorked = false;
+      std::string replicationFailureReason;
       if (resp.error == fuerte::Error::NoError) {
-        replicationWorked = resp.statusCode() == fuerte::StatusAccepted ||
-                            resp.statusCode() == fuerte::StatusCreated ||
-                            resp.statusCode() == fuerte::StatusOK;
-        if (replicationWorked) {
+        if (resp.statusCode() == fuerte::StatusAccepted ||
+            resp.statusCode() == fuerte::StatusCreated ||
+            resp.statusCode() == fuerte::StatusOK) {
           bool found;
-          resp.response().header.metaByKey(StaticStrings::ErrorCodes, found);
-          replicationWorked = !found;
+          std::string const& errors = resp.response().header.metaByKey(
+              StaticStrings::ErrorCodes, found);
+          if (found) {
+            replicationFailureReason =
+                "got error header from follower: " + errors;
+          }
+
         } else {
           auto r = resp.combinedResult();
-          bool followerRefused = (r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+          bool followerRefused =
+              (r.errorNumber() ==
+               TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
           didRefuse = didRefuse || followerRefused;
 
+          replicationFailureReason =
+              "got error from follower: " + std::string(r.errorMessage());
+
           if (followerRefused) {
-            vocbase().server().getFeature<arangodb::ClusterFeature>().followersRefusedCounter()++;
+            ++vocbase()
+                  .server()
+                  .getFeature<arangodb::ClusterFeature>()
+                  .followersRefusedCounter();
 
             LOG_TOPIC("3032c", WARN, Logger::REPLICATION)
-              << "synchronous replication of " << opName << " operation: "
-              << "follower " << follower << " for shard "
-              << collection->vocbase().name() << "/" << collection->name()
-              << " refused the operation: " << r.errorMessage();
+                << "synchronous replication of " << opName << " operation: "
+                << "follower " << follower << " for shard "
+                << collection->vocbase().name() << "/" << collection->name()
+                << " refused the operation: " << r.errorMessage();
           }
         }
+      } else {
+        replicationFailureReason = "no response from follower";
       }
 
       TRI_IF_FAILURE("replicateOperationsDropFollower") {
-        replicationWorked = false;
+        replicationFailureReason = "intentional debug error";
       }
 
-      if (!replicationWorked) {
+      if (!replicationFailureReason.empty()) {
         if (!vocbase().server().isStopping()) {
           LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
-            << "synchronous replication of " << opName << " operation: "
-            << ": dropping follower " << follower << " for shard "
-            << collection->vocbase().name() << "/" << collection->name()
-            << ": " << resp.combinedResult().errorMessage();
+              << "synchronous replication of " << opName << " operation "
+              << "(" << count << " doc(s)): "
+              << "dropping follower " << follower << " for shard "
+              << collection->vocbase().name() << "/" << collection->name()
+              << ": failure reason: " << replicationFailureReason
+              << ", http response code: " << (int)resp.statusCode()
+              << ", error message: " << resp.combinedResult().errorMessage();
 
           Result res = collection->followers()->remove(follower);
-          if (res.ok()) {
-            // simon: follower cannot be re-added without lock on collection
-            _state->removeKnownServer(follower);
-          } else {
+          // intentionally do NOT remove the follower from the list of
+          // known servers here. if we do, we will not be able to
+          // send the commit/abort to the follower later. However, we
+          // still need to send the commit/abort to the follower at
+          // transaction end, because the follower may be responsbile
+          // for _other_ shards as well.
+          // it does not matter if we later commit the writes of the shard
+          // from which we just removed the follower, because the follower
+          // is now dropped and will try to get back in sync anyway, so
+          // it will run the full shard synchronization process.
+          if (res.fail()) {
             LOG_TOPIC("db473", ERR, Logger::REPLICATION)
-              << "synchronous replication of " << opName << " operation: "
-              << "could not drop follower " << follower << " for shard "
-              << collection->vocbase().name() << "/" << collection->name()
-              << ": " << res.errorMessage();
+                << "synchronous replication of " << opName << " operation: "
+                << "could not drop follower " << follower << " for shard "
+                << collection->vocbase().name() << "/" << collection->name()
+                << ": " << res.errorMessage();
 
-            // Note: it is safe here to exit the loop early. We are losing the leadership here.
-            // No matter what happens next, the Current entry in the agency is rewritten and
-            // thus replication is restarted from the new leader. There is no need to keep
-            // trying to drop followers at this point.
+            // Note: it is safe here to exit the loop early. We are losing the
+            // leadership here. No matter what happens next, the Current entry
+            // in the agency is rewritten and thus replication is restarted from
+            // the new leader. There is no need to keep trying to drop followers
+            // at this point.
 
             if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
               // In this case, we know that we are not or no longer
@@ -2526,21 +2818,312 @@ Future<Result> Methods::replicateOperations(
           }
         } else {
           LOG_TOPIC("8921e", INFO, Logger::REPLICATION)
-            << "synchronous replication of " << opName << " operation: "
-            << "follower " << follower << " for shard "
-            << collection->vocbase().name() << "/" << collection->name()
-            << " stopped as we're shutting down";
+              << "synchronous replication of " << opName << " operation: "
+              << "follower " << follower << " for shard "
+              << collection->vocbase().name() << "/" << collection->name()
+              << " stopped as we're shutting down";
           THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
         }
       }
     }
 
+    Result res;
     if (didRefuse) {  // case (1), caller may abort this transaction
-      return Result(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+      res.reset(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED);
+    } else {
+      // execute a deferred intermediate commit, if required.
+      res = performIntermediateCommitIfRequired(collection->id());
     }
-    return Result();
+    return res;
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
+}
+
+Future<Result> Methods::commitInternal(MethodsApi api) {
+  TRI_IF_FAILURE("TransactionCommitFail") { return Result(TRI_ERROR_DEBUG); }
+
+  if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
+    // transaction not created or not running
+    return Result(TRI_ERROR_TRANSACTION_INTERNAL,
+                  "transaction not running on commit");
+  }
+
+  if (!_state->isReadOnlyTransaction()) {
+    auto const& exec = ExecContext::current();
+    bool cancelRW = ServerState::readOnly() && !exec.isSuperuser();
+    if (exec.isCanceled() || cancelRW) {
+      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
+    }
+  }
+
+  auto f = futures::makeFuture(Result());
+
+  if (!_mainTransaction) {
+    return f;
+  }
+
+  if (_state->isRunningInCluster()) {
+    // first commit transaction on subordinate servers
+    f = ClusterTrxMethods::commitTransaction(*this, api);
+  }
+
+  return std::move(f).thenValue([this](Result res) -> Result {
+    if (res.fail()) {  // do not commit locally
+      LOG_TOPIC("5743a", WARN, Logger::TRANSACTIONS)
+          << "failed to commit on subordinates: '" << res.errorMessage() << "'";
+      return res;
+    }
+
+    res = _state->commitTransaction(this);
+    if (res.ok()) {
+      applyStatusChangeCallbacks(*this, Status::COMMITTED);
+    }
+
+    return res;
+  });
+}
+
+Future<Result> Methods::abortInternal(MethodsApi api) {
+  if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
+    // transaction not created or not running
+    return Result(TRI_ERROR_TRANSACTION_INTERNAL,
+                  "transaction not running on abort");
+  }
+
+  auto f = futures::makeFuture(Result());
+
+  if (!_mainTransaction) {
+    return f;
+  }
+
+  if (_state->isRunningInCluster()) {
+    // first commit transaction on subordinate servers
+    f = ClusterTrxMethods::abortTransaction(*this, api);
+  }
+
+  return std::move(f).thenValue([this](Result res) -> Result {
+    if (res.fail()) {  // do not commit locally
+      LOG_TOPIC("d89a8", WARN, Logger::TRANSACTIONS)
+          << "failed to abort on subordinates: " << res.errorMessage();
+    }  // abort locally anyway
+
+    res = _state->abortTransaction(this);
+    if (res.ok()) {
+      applyStatusChangeCallbacks(*this, Status::ABORTED);
+    }
+
+    return res;
+  });
+}
+
+Future<Result> Methods::finishInternal(Result const& res, MethodsApi api) {
+  if (res.ok()) {
+    // there was no previous error, so we'll commit
+    return this->commitInternal(api);
+  }
+
+  // there was a previous error, so we'll abort
+  return this->abortInternal(api).thenValue([res](Result const& ignore) {
+    return res;  // return original error
+  });
+}
+
+Future<OperationResult> Methods::documentInternal(
+    std::string const& cname, VPackSlice value, OperationOptions const& options,
+    MethodsApi api) {
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  if (!value.isObject() && !value.isArray()) {
+    // must provide a document object or an array of documents
+    events::ReadDocument(vocbase().name(), cname, value, options,
+                         TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
+  if (_state->isCoordinator()) {
+    return addTracking(documentCoordinator(cname, value, options, api),
+                       [=, this](OperationResult&& opRes) {
+                         events::ReadDocument(vocbase().name(), cname, value,
+                                              opRes.options,
+                                              opRes.errorNumber());
+                         return std::move(opRes);
+                       });
+  }
+  return documentLocal(cname, value, options);
+}
+
+Future<OperationResult> Methods::insertInternal(std::string const& cname,
+                                                VPackSlice value,
+                                                OperationOptions const& options,
+                                                MethodsApi api) {
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  if (!value.isObject() && !value.isArray()) {
+    // must provide a document object or an array of documents
+    events::CreateDocument(vocbase().name(), cname, value, options,
+                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+  if (value.isArray() && value.length() == 0) {
+    events::CreateDocument(vocbase().name(), cname, value, options,
+                           TRI_ERROR_NO_ERROR);
+    return emptyResult(options);
+  }
+
+  auto f = Future<OperationResult>::makeEmpty();
+  if (_state->isCoordinator()) {
+    f = insertCoordinator(cname, value, options, api);
+  } else {
+    OperationOptions optionsCopy = options;
+    f = insertLocal(cname, value, optionsCopy);
+  }
+
+  return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
+    events::CreateDocument(
+        vocbase().name(), cname,
+        (opRes.ok() && opRes.options.returnNew) ? opRes.slice() : value,
+        opRes.options, opRes.errorNumber());
+    return std::move(opRes);
+  });
+}
+
+Future<OperationResult> Methods::updateInternal(std::string const& cname,
+                                                VPackSlice newValue,
+                                                OperationOptions const& options,
+                                                MethodsApi api) {
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  if (!newValue.isObject() && !newValue.isArray()) {
+    // must provide a document object or an array of documents
+    events::ModifyDocument(vocbase().name(), cname, newValue, options,
+                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+  if (newValue.isArray() && newValue.length() == 0) {
+    events::ModifyDocument(vocbase().name(), cname, newValue, options,
+                           TRI_ERROR_NO_ERROR);
+    return emptyResult(options);
+  }
+
+  auto f = Future<OperationResult>::makeEmpty();
+  if (_state->isCoordinator()) {
+    f = modifyCoordinator(cname, newValue, options,
+                          TRI_VOC_DOCUMENT_OPERATION_UPDATE, api);
+  } else {
+    OperationOptions optionsCopy = options;
+    f = modifyLocal(cname, newValue, optionsCopy,
+                    TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+  }
+  return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
+    events::ModifyDocument(vocbase().name(), cname, newValue, opRes.options,
+                           opRes.errorNumber());
+    return std::move(opRes);
+  });
+}
+
+Future<OperationResult> Methods::replaceInternal(
+    std::string const& cname, VPackSlice newValue,
+    OperationOptions const& options, MethodsApi api) {
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  if (!newValue.isObject() && !newValue.isArray()) {
+    // must provide a document object or an array of documents
+    events::ReplaceDocument(vocbase().name(), cname, newValue, options,
+                            TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+  if (newValue.isArray() && newValue.length() == 0) {
+    events::ReplaceDocument(vocbase().name(), cname, newValue, options,
+                            TRI_ERROR_NO_ERROR);
+    return futures::makeFuture(emptyResult(options));
+  }
+
+  auto f = Future<OperationResult>::makeEmpty();
+  if (_state->isCoordinator()) {
+    f = modifyCoordinator(cname, newValue, options,
+                          TRI_VOC_DOCUMENT_OPERATION_REPLACE, api);
+  } else {
+    OperationOptions optionsCopy = options;
+    f = modifyLocal(cname, newValue, optionsCopy,
+                    TRI_VOC_DOCUMENT_OPERATION_REPLACE);
+  }
+  return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
+    events::ReplaceDocument(vocbase().name(), cname, newValue, opRes.options,
+                            opRes.errorNumber());
+    return std::move(opRes);
+  });
+}
+
+Future<OperationResult> Methods::removeInternal(std::string const& cname,
+                                                VPackSlice value,
+                                                OperationOptions const& options,
+                                                MethodsApi api) {
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  if (!value.isObject() && !value.isArray() && !value.isString()) {
+    // must provide a document object or an array of documents
+    events::DeleteDocument(vocbase().name(), cname, value, options,
+                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+  if (value.isArray() && value.length() == 0) {
+    events::DeleteDocument(vocbase().name(), cname, value, options,
+                           TRI_ERROR_NO_ERROR);
+    return emptyResult(options);
+  }
+
+  auto f = Future<OperationResult>::makeEmpty();
+  if (_state->isCoordinator()) {
+    f = removeCoordinator(cname, value, options, api);
+  } else {
+    OperationOptions optionsCopy = options;
+    f = removeLocal(cname, value, optionsCopy);
+  }
+  return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
+    events::DeleteDocument(vocbase().name(), cname, value, opRes.options,
+                           opRes.errorNumber());
+    return std::move(opRes);
+  });
+}
+
+Future<OperationResult> Methods::truncateInternal(
+    std::string const& collectionName, OperationOptions const& options,
+    MethodsApi api) {
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  OperationOptions optionsCopy = options;
+  auto cb = [this, collectionName](OperationResult res) {
+    events::TruncateCollection(vocbase().name(), collectionName, res);
+    return res;
+  };
+
+  if (_state->isCoordinator()) {
+    return truncateCoordinator(collectionName, optionsCopy, api).thenValue(cb);
+  }
+  return truncateLocal(collectionName, optionsCopy).thenValue(cb);
+}
+
+futures::Future<OperationResult> Methods::countInternal(
+    std::string const& collectionName, CountType type,
+    OperationOptions const& options, MethodsApi api) {
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  if (_state->isCoordinator()) {
+    return countCoordinator(collectionName, type, options, api);
+  }
+
+  if (type == CountType::Detailed) {
+    // we are a single-server... we cannot provide detailed per-shard counts,
+    // so just downgrade the request to a normal request
+    type = CountType::Normal;
+  }
+
+  return futures::makeFuture(countLocal(collectionName, type, options));
+}
+
+// perform a (deferred) intermediate commit if required
+Result Methods::performIntermediateCommitIfRequired(DataSourceId collectionId) {
+  return _state->performIntermediateCommitIfRequired(collectionId);
 }
 
 #ifndef USE_ENTERPRISE

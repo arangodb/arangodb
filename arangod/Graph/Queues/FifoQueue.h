@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,11 +32,13 @@
 namespace arangodb {
 namespace graph {
 
-template <class StepType>
+template<class StepType>
 class FifoQueue {
  public:
+  static constexpr bool RequiresWeight = false;
   using Step = StepType;
-  // TODO: Add Sorting (Performance - will be implemented in the future - cluster relevant)
+  // TODO: Add Sorting (Performance - will be implemented in the future -
+  // cluster relevant)
   // -> loose ends to the front
 
   explicit FifoQueue(arangodb::ResourceMonitor& resourceMonitor)
@@ -55,9 +57,18 @@ class FifoQueue {
     // if push_front() throws, no harm is done, and the memory usage increase
     // will be rolled back
     _queue.push_back(std::move(step));
-    guard.steal(); // now we are responsible for tracking the memory
+    guard.steal();  // now we are responsible for tracking the memory
   }
 
+  bool firstIsVertexFetched() const {
+    if (not isEmpty()) {
+      auto const& first = _queue.front();
+      return first.vertexFetched();
+    }
+    return false;
+  }
+
+  // todo: rename to firstElementIsProcessable
   bool hasProcessableElement() const {
     if (!isEmpty()) {
       auto const& first = _queue.front();
@@ -84,10 +95,29 @@ class FifoQueue {
     return steps;
   }
 
+  std::vector<Step*> getStepsWithoutFetchedVertex() {
+    std::vector<Step*> steps;
+    for (auto& step : _queue) {
+      if (not step.vertexFetched()) {
+        steps.emplace_back(&step);
+      }
+    }
+    return steps;
+  }
+
+  void getStepsWithoutFetchedEdges(std::vector<Step*>& steps) {
+    for (auto& step : _queue) {
+      if (!step.edgeFetched()) {
+        steps.emplace_back(&step);
+      }
+    }
+  }
+
   Step pop() {
     TRI_ASSERT(!isEmpty());
     Step first = std::move(_queue.front());
-    LOG_TOPIC("9cd65", TRACE, Logger::GRAPHS) << "<FifoQueue> Pop: " << first.toString();
+    LOG_TOPIC("9cd65", TRACE, Logger::GRAPHS)
+        << "<FifoQueue> Pop: " << first.toString();
     _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
     _queue.pop_front();
     return first;
@@ -103,4 +133,3 @@ class FifoQueue {
 
 }  // namespace graph
 }  // namespace arangodb
-

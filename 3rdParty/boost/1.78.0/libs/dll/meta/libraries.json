@@ -1,0 +1,16 @@
+{
+  "key": "dll",
+  "name": "DLL",
+  "authors": [
+    "Antony Polukhin", "Renato Tegon Forti"
+  ],
+  "maintainers": [
+    "Antony Polukhin <antoshkka -at- gmail.com>"
+  ],
+  "description": "Library for comfortable work with DLL and DSO.",
+  "std": [ "proposal" ],
+  "category": [
+    "System"
+  ],
+  "cxxstd": "03"
+}

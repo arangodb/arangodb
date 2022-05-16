@@ -77,7 +77,7 @@ function CollectionRangeDeleteSuite () {
       }
     },
     
-    testRangeDeleteDontTriggerInCluster : function () {
+    testRangeDeleteTriggersInCluster : function () {
       if (!require("@arangodb/cluster").isCluster()) {
         return;
       }
@@ -94,9 +94,19 @@ function CollectionRangeDeleteSuite () {
       assertEqual(100000, c.count());
 
       internal.debugSetFailAt("RocksDBRemoveLargeRangeOn");
-      // should not fire
-      c.truncate({ compact: false });
+      // should fire!
+      try {
+        c.truncate({ compact: false });
+        fail();
+      } catch (err) {
+        assertTrue(err.errorNum === ERRORS.ERROR_DEBUG.code ||
+                   err.errorNum === ERRORS.ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION.code);
+      }
       
+      assertEqual(100000, c.count());
+      internal.debugClearFailAt();
+      
+      c.truncate({ compact: false });
       assertEqual(0, c.count());
     },
 

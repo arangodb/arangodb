@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,29 +21,33 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include "Containers/HashSet.h"
+#include "Containers/FlatHashSet.h"
+#include "Containers/FlatHashMap.h"
 #include "IResearch/IResearchViewMeta.h"
+#include "IResearch/IResearchKludge.h"
+#include "IResearch/ViewSnapshot.h"
 #include "Transaction/Status.h"
 #include "VocBase/LogicalView.h"
 
+#include <boost/thread/v2/shared_mutex.hpp>
+
+#include <atomic>
+#include <functional>
+#include <map>
+#include <memory>
+#include <mutex>
+
 namespace arangodb {
 
-struct ViewFactory;  // forward declaration
+struct ViewFactory;
 
-}  // namespace arangodb
-
-namespace arangodb {
 namespace transaction {
 
-class Methods;  // forward declaration
+class Methods;
 
 }  // namespace transaction
-}  // namespace arangodb
-
-namespace arangodb {
 namespace iresearch {
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -52,14 +56,14 @@ namespace iresearch {
 
 class IResearchFeature;
 class AsyncLinkHandle;
-template <typename T>
-class TypedResourceMutex;
+template<typename T>
+class AsyncValue;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                                   IResearchView
 ///////////////////////////////////////////////////////////////////////////////
 
-// Note, that currenly ArangoDB uses only 1 FlushThread for flushing the views
+// Note, that currently ArangoDB uses only 1 FlushThread for flushing the views
 // In case if number of threads will be increased each thread has to receive
 // it's own FlushTransaction object
 
@@ -69,51 +73,28 @@ class TypedResourceMutex;
 /// @note the responsibility of the IResearchView API is to only manage the
 ///       IResearch data store, i.e. insert/remove/query
 ///       the IResearchView API does not manage which and how the data gets
-///       populated into and removed from the datatstore
-///       therefore the API provides generic insert/remvoe/drop/query functions
+///       populated into and removed from the datastore
+///       therefore the API provides generic insert/remove/drop/query functions
 ///       which may be, but are not explicitly required to be, triggered via
 ///       the IResearchLink or IResearchViewBlock
 ///////////////////////////////////////////////////////////////////////////////
-class IResearchView final: public arangodb::LogicalView {
-  typedef std::shared_ptr<AsyncLinkHandle> AsyncLinkPtr;
+class IResearchView final : public LogicalView {
+  using AsyncLinkPtr = std::shared_ptr<AsyncLinkHandle>;
 
  public:
+  static constexpr std::pair<ViewType, std::string_view> typeInfo() noexcept {
+    return {ViewType::kSearch, StaticStrings::ViewType};
+  }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief a snapshot representation of the view with ability to query for cid
-  //////////////////////////////////////////////////////////////////////////////
-  class Snapshot : public irs::index_reader {
-   public:
-    // @return cid of the sub-reader at operator['offset'] or 0 if undefined
-    virtual DataSourceId cid(size_t offset) const noexcept = 0;
-  };
+  ~IResearchView() final;
 
-  /// @enum snapshot getting mode
-  enum class SnapshotMode {
-    /// @brief lookup existing snapshot from a transaction
-    Find,
-
-    /// @brief lookup existing snapshop from a transaction
-    /// or create if it doesn't exist
-    FindOrCreate,
-
-    /// @brief retrieve the latest view snapshot and cache
-    /// it in a transaction
-    SyncAndReplace
-  };
-
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief destructor to clean up resources
-  ///////////////////////////////////////////////////////////////////////////////
-  virtual ~IResearchView() override;
-
-  using arangodb::LogicalView::name;
+  using LogicalView::name;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief apply any changes to 'trx' required by this view
   /// @return success
   ///////////////////////////////////////////////////////////////////////////////
-  bool apply(arangodb::transaction::Methods& trx);
+  bool apply(transaction::Methods& trx);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the factory for this type of view
@@ -127,49 +108,32 @@ class IResearchView final: public arangodb::LogicalView {
   ///        also track 'cid' via the persisted list of tracked collection IDs
   /// @return the 'link' was newly added to the IResearch View
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result link(AsyncLinkPtr const& link);
+  Result link(AsyncLinkPtr const& link);
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief opens an existing view when the server is restarted
   ///////////////////////////////////////////////////////////////////////////////
-  void open() override;
+  void open() final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates properties of an existing view
   //////////////////////////////////////////////////////////////////////////////
   using LogicalDataSource::properties;
-  virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties,
-                                      bool partialUpdate) override final;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @param shards the list of shard to restrict the snapshot to
-  ///        nullptr == use all registered links
-  ///        !nullptr && shard not registred then return nullptr
-  ///        if mode == Find && list found doesn't match then return nullptr
-  /// @param key the specified key will be as snapshot indentifier
-  ///        in a transaction
-  ///        (nullptr == view address will be used)
-  /// @return pointer to an index reader containing the datastore record
-  ///         snapshot associated with 'state'
-  ///         (nullptr == no view snapshot associated with the specified state)
-  ///         if force == true && no snapshot -> associate current snapshot
-  ////////////////////////////////////////////////////////////////////////////////
-  Snapshot const* snapshot(transaction::Methods& trx, SnapshotMode mode = SnapshotMode::Find,
-                           ::arangodb::containers::HashSet<DataSourceId> const* shards = nullptr,
-                           void const* key = nullptr) const;
+  Result properties(velocypack::Slice properties, bool isUserRequest,
+                    bool partialUpdate) final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unlink remove 'cid' from the persisted list of tracked collection
   ///        IDs
   /// @return success == view does not track collection
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result unlink(DataSourceId cid) noexcept;
+  Result unlink(DataSourceId cid) noexcept;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief visit all collection IDs that were added to the view
   /// @return 'visitor' success
   ///////////////////////////////////////////////////////////////////////////////
-  bool visitCollections(CollectionVisitor const& visitor) const override;
+  bool visitCollections(CollectionVisitor const& visitor) const final;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @return primary sorting order of a view, empty -> use system order
@@ -181,7 +145,7 @@ class IResearchView final: public arangodb::LogicalView {
   ///////////////////////////////////////////////////////////////////////////////
   /// @return primary sort column compression method
   ///////////////////////////////////////////////////////////////////////////////
-  auto const& primarySortCompression() const noexcept {
+  irs::type_info::type_id const& primarySortCompression() const noexcept {
     return _meta._primarySortCompression;
   }
 
@@ -192,57 +156,57 @@ class IResearchView final: public arangodb::LogicalView {
     return _meta._storedValues;
   }
 
- protected:
+  auto linksReadLock() const noexcept {
+    return std::shared_lock<boost::upgrade_mutex>{_mutex};
+  }
 
+  LinkLock linkLock(std::shared_lock<boost::upgrade_mutex> const& guard,
+                    DataSourceId cid) const noexcept;
+
+  ViewSnapshot::Links getLinks() const noexcept;
+
+ private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchView object
   ///        only fields describing the view itself, not 'link' descriptions
   //////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::Result appendVelocyPackImpl(
-      arangodb::velocypack::Builder& builder,
-      Serialization context) const override;
+  Result appendVPackImpl(velocypack::Builder& build, Serialization ctx,
+                         bool safe) const final;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief drop this IResearch View
   ///////////////////////////////////////////////////////////////////////////////
-  arangodb::Result dropImpl() override;
+  Result dropImpl() final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief renames implementation-specific parts of an existing view
   ///        including persistance of properties
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result renameImpl(std::string const& oldName) override;
+  Result renameImpl(std::string const& oldName) final;
 
- private:
-  typedef std::shared_ptr<TypedResourceMutex<IResearchView>> AsyncViewPtr;
-  struct ViewFactory; // forward declaration
+  using AsyncViewPtr = std::shared_ptr<AsyncValue<IResearchView>>;
+  struct ViewFactory;
 
-  AsyncViewPtr _asyncSelf; // 'this' for the lifetime of the view (for use with asynchronous calls)
-  std::unordered_map<DataSourceId, AsyncLinkPtr> _links;  // registered links (value may be nullptr on single-server if link did not come up yet) FIXME TODO maybe this should be asyncSelf?
-  IResearchViewMeta _meta; // the view configuration
-  mutable irs::async_utils::read_write_mutex _mutex; // for use with member '_meta', '_links'
-  std::mutex _updateLinksLock; // prevents simultaneous 'updateLinks'
-  std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxCallback; // for snapshot(...)
+  AsyncViewPtr _asyncSelf;
+  // 'this' for the lifetime of the view (for use with asynchronous calls)
+  // (AsyncLinkPtr may be nullptr on single-server if link did not come up yet)
+  using Indexes = containers::FlatHashMap<DataSourceId, AsyncLinkPtr>;
+  Indexes _links;
+  IResearchViewMeta _meta;              // the view configuration
+  mutable boost::upgrade_mutex _mutex;  // for '_meta', '_links'
+  std::mutex _updateLinksLock;          // prevents simultaneous 'updateLinks'
+  std::function<void(transaction::Methods& trx, transaction::Status status)>
+      _trxCallback;  // for snapshot(...)
   std::atomic<bool> _inRecovery;
 
-  IResearchView( // constructor
-    TRI_vocbase_t& vocbase, // view vocbase
-    arangodb::velocypack::Slice const& info, // view definition
-    IResearchViewMeta&& meta // view meta
-  );
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief persist data store states for all known links to permanent storage
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result commit();
+  IResearchView(TRI_vocbase_t& vocbase, velocypack::Slice const& info,
+                IResearchViewMeta&& meta);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief called when a view's properties are updated (i.e. delta-modified)
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result updateProperties( // update properties
-    arangodb::velocypack::Slice const& slice, // the properties to apply
-    bool partialUpdate // delta or full update
-  );
+  Result updateProperties(velocypack::Slice slice, bool isUserRequest,
+                          bool partialUpdate);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Called in post-recovery to remove any dangling documents old links
@@ -250,6 +214,5 @@ class IResearchView final: public arangodb::LogicalView {
   void verifyKnownCollections();
 };
 
-} // iresearch
-} // arangodb
-
+}  // namespace iresearch
+}  // namespace arangodb

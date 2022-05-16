@@ -443,7 +443,7 @@ extern int read_token(struct tokeniser * t) {
                 }
                 t->get_depth++;
                 if (t->get_depth > 10) {
-                    fprintf(stderr, "get directives go 10 deep. Looping?\n");
+                    error1(t, "get directives go 10 deep. Looping?");
                     exit(1);
                 }
                 {

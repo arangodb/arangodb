@@ -1,0 +1,16 @@
+{
+    "key": "property_map_parallel",
+    "name": "Property Map (Parallel)",
+    "authors": [
+        "Jeremy Siek"
+    ],
+    "description": "Parallel extensions to Property Map for use with Parallel Graph.",
+    "category": [
+        "Containers",
+        "Generic"
+    ],
+    "maintainers": [
+        "Douglas Gregor <dgregor -at- cs.indiana.edu>"
+    ],
+    "cxxstd": "03"
+}

@@ -1,7 +1,7 @@
 name: rocksdb_mem_table_flush_pending
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "mem_table_flush_pending", sum over column families
+  Number of RocksDB column families awaiting memtable flush.
 unit: number
 type: gauge
 category: RocksDB

@@ -3,7 +3,7 @@
   <i class="collection-type-icon fa <%= model.get('picture') %>"></i>
   <div class="tileBadge">
     <span>
-    <% if(model.get('desc')) { %>
+    <% if (model.get('desc')) { %>
       <div class="corneredBadge inProgress">
         <%= model.get('desc') %>
       </div>
@@ -11,20 +11,6 @@
       <div class="corneredBadge <%= model.get('status') %>">
         <%= model.get('status') %>
       </div>
-    <% } else if (model.get('status') === "loaded" || model.get('status') === 'unloaded' || model.get('status') === 'loading' || model.get('status') === 'unloading') { %>
-      <% if (!model.get('locked') && model.get("status") !== "loading" && model.get("status") !== "unloading") { %>
-        <div class="corneredBadge <%= model.get('status') %>">
-          <%= model.get('status') %>
-        </div>
-      <% } else if (model.get('status') === 'loading' || model.get('status') === 'unloading') { %>
-        <div class="corneredBadge inProgress">
-          <%= model.get('status') %>
-        </div>
-      <% } else { %>
-        <div class="corneredBadge inProgress">
-          <%= model.get('status') %>
-        </div>
-      <% } %>
     <% } %>
     </span>
   </div>

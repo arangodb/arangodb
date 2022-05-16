@@ -1,0 +1,266 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Rate Limiting 💡</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Beast">
+<link rel="up" href="../using_io.html" title="Networking">
+<link rel="prev" href="timeouts.html" title="Timeouts 💡">
+<link rel="next" href="layered_streams.html" title="Layered Streams">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="timeouts.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_io.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="layered_streams.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.using_io.rate_limiting"></a><a class="link" href="rate_limiting.html" title="Rate Limiting 💡">Rate Limiting 💡</a>
+</h3></div></div></div>
+<p>
+        The <a class="link" href="../ref/boost__beast__basic_stream.html" title="basic_stream"><code class="computeroutput"><span class="identifier">basic_stream</span></code></a>
+        class template supports an additional <code class="computeroutput"><span class="identifier">RatePolicy</span></code>
+        template parameter. Objects of this type must meet the requirements of <a class="link" href="../concepts/RatePolicy.html" title="RatePolicy"><span class="emphasis"><em>RatePolicy</em></span></a>.
+        They are used to implement rate limiting or bandwidth management. The default
+        policy for <code class="computeroutput"><span class="identifier">basic_stream</span></code> and
+        <code class="computeroutput"><span class="identifier">tcp_stream</span></code> is <a class="link" href="../ref/boost__beast__unlimited_rate_policy.html" title="unlimited_rate_policy"><code class="computeroutput"><span class="identifier">unlimited_rate_policy</span></code></a>, which places
+        no limits on reading and writing. The library comes with the <a class="link" href="../ref/boost__beast__simple_rate_policy.html" title="simple_rate_policy"><code class="computeroutput"><span class="identifier">simple_rate_policy</span></code></a>, allowing for
+        independent control of read and write limits expressed in terms of bytes
+        per second. The follow code creates an instance of the basic stream with
+        a simple rate policy, and sets the read and write limits:
+      </p>
+<pre class="programlisting"><span class="comment">// To declare a stream with a rate policy, it is necessary to</span>
+<span class="comment">// write out all of the template parameter types.</span>
+<span class="comment">//</span>
+<span class="comment">// `simple_rate_policy` is default constructible, but</span>
+<span class="comment">// if the choice of RatePolicy is not DefaultConstructible,</span>
+<span class="comment">// an instance of the type may be passed to the constructor.</span>
+
+<span class="identifier">basic_stream</span><span class="special">&lt;</span><span class="identifier">net</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">,</span> <span class="identifier">net</span><span class="special">::</span><span class="identifier">any_io_executor</span><span class="special">,</span> <span class="identifier">simple_rate_policy</span><span class="special">&gt;</span> <span class="identifier">stream</span><span class="special">(</span><span class="identifier">ioc</span><span class="special">);</span>
+
+<span class="comment">// The policy object, which is default constructed, or</span>
+<span class="comment">// decay-copied upon construction, is attached to the stream</span>
+<span class="comment">// and may be accessed through the function `rate_policy`.</span>
+<span class="comment">//</span>
+<span class="comment">// Here we set individual rate limits for reading and writing</span>
+
+<span class="identifier">stream</span><span class="special">.</span><span class="identifier">rate_policy</span><span class="special">().</span><span class="identifier">read_limit</span><span class="special">(</span><span class="number">10000</span><span class="special">);</span> <span class="comment">// bytes per second</span>
+
+<span class="identifier">stream</span><span class="special">.</span><span class="identifier">rate_policy</span><span class="special">().</span><span class="identifier">write_limit</span><span class="special">(</span><span class="number">850000</span><span class="special">);</span> <span class="comment">// bytes per second</span>
+</pre>
+<p>
+        More sophisticated rate policies can be implemented as user-defined types
+        which meet the requirements of <a class="link" href="../concepts/RatePolicy.html" title="RatePolicy"><span class="emphasis"><em>RatePolicy</em></span></a>.
+        Here, we develop a rate policy that measures the instantaneous throughput
+        of reads and writes. First we write a small utility class that applies an
+        exponential smoothing function to a series of discrete rate samples, to calculate
+        instantaneous throughput.
+      </p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">window</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">value_</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+
+    <span class="comment">// The size of the exponential window, in seconds.</span>
+    <span class="comment">// This should be a power of two.</span>
+
+    <span class="keyword">static</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="keyword">constexpr</span> <span class="identifier">Window</span> <span class="special">=</span> <span class="number">4</span><span class="special">;</span>
+
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="comment">/** Returns the number of elapsed seconds since the given time, and adjusts the time.
+
+        This function returns the number of elapsed seconds since the
+        specified time point, rounding down. It also moves the specified
+        time point forward by the number of elapsed seconds.
+
+        @param since The time point from which to calculate elapsed time.
+        The function will modify the value, by adding the number of elapsed
+        seconds to it.
+
+        @return The number of elapsed seconds.
+    */</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Clock</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Duration</span><span class="special">&gt;</span>
+    <span class="keyword">static</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">seconds</span>
+    <span class="identifier">get_elapsed</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">time_point</span><span class="special">&lt;</span><span class="identifier">Clock</span><span class="special">,</span> <span class="identifier">Duration</span><span class="special">&gt;&amp;</span> <span class="identifier">since</span><span class="special">)</span> <span class="keyword">noexcept</span>
+    <span class="special">{</span>
+        <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">elapsed</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">duration_cast</span><span class="special">&lt;</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">seconds</span><span class="special">&gt;(</span><span class="identifier">Clock</span><span class="special">::</span><span class="identifier">now</span><span class="special">()</span> <span class="special">-</span> <span class="identifier">since</span><span class="special">);</span>
+        <span class="identifier">since</span> <span class="special">+=</span> <span class="identifier">elapsed</span><span class="special">;</span>
+        <span class="keyword">return</span> <span class="identifier">elapsed</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="comment">/// Returns the current value, after adding the given sample.</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+    <span class="identifier">update</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">sample</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">seconds</span> <span class="identifier">elapsed</span><span class="special">)</span> <span class="keyword">noexcept</span>
+    <span class="special">{</span>
+        <span class="comment">// Apply exponential decay.</span>
+        <span class="comment">//</span>
+        <span class="comment">// This formula is fast (no division or multiplication) but inaccurate.</span>
+        <span class="comment">// It overshoots by `n*(1-a)/(1-a^n), where a=(window-1)/window`.</span>
+        <span class="comment">// Could be good enough for a rough approximation, but if relying</span>
+        <span class="comment">// on this for production please perform tests!</span>
+
+        <span class="keyword">auto</span> <span class="identifier">count</span> <span class="special">=</span> <span class="identifier">elapsed</span><span class="special">.</span><span class="identifier">count</span><span class="special">();</span>
+        <span class="keyword">while</span><span class="special">(</span><span class="identifier">count</span><span class="special">--)</span>
+            <span class="identifier">value_</span> <span class="special">-=</span> <span class="special">(</span><span class="identifier">value_</span> <span class="special">+</span> <span class="identifier">Window</span> <span class="special">-</span> <span class="number">1</span><span class="special">)</span> <span class="special">/</span> <span class="identifier">Window</span><span class="special">;</span>
+        <span class="identifier">value_</span> <span class="special">+=</span> <span class="identifier">sample</span><span class="special">;</span>
+        <span class="keyword">return</span> <span class="identifier">value_</span> <span class="special">/</span> <span class="identifier">Window</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="comment">/// Returns the current value</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+    <span class="identifier">value</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span>
+    <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">value_</span> <span class="special">/</span> <span class="identifier">Window</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+</pre>
+<p>
+        Then we define our rate policy object. We friend the type <a class="link" href="../ref/boost__beast__rate_policy_access.html" title="rate_policy_access"><code class="computeroutput"><span class="identifier">rate_policy_access</span></code></a> to allow our
+        implementation to be private, but still allow the <code class="computeroutput"><span class="identifier">basic_stream</span></code>
+        access to call the required functions. This lets us avoid having to write
+        a cumbersome friend declaration for the <code class="computeroutput"><span class="identifier">basic_stream</span></code>
+        class template. Public members of rate policy objects become part of the
+        stream object's interface, through a call to <code class="computeroutput"><span class="identifier">rate_policy</span></code>.
+      </p>
+<pre class="programlisting"><span class="comment">/** A RatePolicy to measure instantaneous throughput.
+
+    This measures the rate of transfer for reading and writing
+    using a simple exponential decay function.
+*/</span>
+<span class="keyword">class</span> <span class="identifier">rate_gauge</span>
+<span class="special">{</span>
+    <span class="comment">// The clock used to measure elapsed time</span>
+    <span class="keyword">using</span> <span class="identifier">clock_type</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">steady_clock</span><span class="special">;</span>
+
+    <span class="comment">// This implements an exponential smoothing window function.</span>
+    <span class="comment">// The value `Seconds` is the size of the window in seconds.</span>
+
+    <span class="identifier">clock_type</span><span class="special">::</span><span class="identifier">time_point</span> <span class="identifier">when_</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">read_bytes_</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">write_bytes_</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+    <span class="identifier">window</span> <span class="identifier">read_window_</span><span class="special">;</span>
+    <span class="identifier">window</span> <span class="identifier">write_window_</span><span class="special">;</span>
+
+    <span class="comment">// Friending this type allows us to mark the</span>
+    <span class="comment">// member functions required by RatePolicy as private.</span>
+    <span class="keyword">friend</span> <span class="keyword">class</span> <span class="identifier">rate_policy_access</span><span class="special">;</span>
+
+    <span class="comment">// Returns the number of bytes available to read currently</span>
+    <span class="comment">// Required by RatePolicy</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+    <span class="identifier">available_read_bytes</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span>
+    <span class="special">{</span>
+        <span class="comment">// no limit</span>
+        <span class="keyword">return</span> <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">&gt;::</span><span class="identifier">max</span><span class="special">)();</span>
+    <span class="special">}</span>
+
+    <span class="comment">// Returns the number of bytes available to write currently</span>
+    <span class="comment">// Required by RatePolicy</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+    <span class="identifier">available_write_bytes</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span>
+    <span class="special">{</span>
+        <span class="comment">// no limit</span>
+        <span class="keyword">return</span> <span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">&gt;::</span><span class="identifier">max</span><span class="special">)();</span>
+    <span class="special">}</span>
+
+    <span class="comment">// Called every time bytes are read</span>
+    <span class="comment">// Required by RatePolicy</span>
+    <span class="keyword">void</span>
+    <span class="identifier">transfer_read_bytes</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">n</span><span class="special">)</span> <span class="keyword">noexcept</span>
+    <span class="special">{</span>
+        <span class="comment">// Add this to our running total of bytes read</span>
+        <span class="identifier">read_bytes_</span> <span class="special">+=</span> <span class="identifier">n</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="comment">// Called every time bytes are written</span>
+    <span class="comment">// Required by RatePolicy</span>
+    <span class="keyword">void</span>
+    <span class="identifier">transfer_write_bytes</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">n</span><span class="special">)</span> <span class="keyword">noexcept</span>
+    <span class="special">{</span>
+        <span class="comment">// Add this to our running total of bytes written</span>
+        <span class="identifier">write_bytes_</span> <span class="special">+=</span> <span class="identifier">n</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="comment">// Called approximately once per second</span>
+    <span class="comment">// Required by RatePolicy</span>
+    <span class="keyword">void</span>
+    <span class="identifier">on_timer</span><span class="special">()</span>
+    <span class="special">{</span>
+        <span class="comment">// Calculate elapsed time in seconds, and adjust our time point</span>
+        <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">elapsed</span> <span class="special">=</span> <span class="identifier">window</span><span class="special">::</span><span class="identifier">get_elapsed</span><span class="special">(</span><span class="identifier">when_</span><span class="special">);</span>
+
+        <span class="comment">// Skip the update when elapsed==0,</span>
+        <span class="comment">// otherwise the measurement will have jitter</span>
+        <span class="keyword">if</span><span class="special">(</span><span class="identifier">elapsed</span><span class="special">.</span><span class="identifier">count</span><span class="special">()</span> <span class="special">==</span> <span class="number">0</span><span class="special">)</span>
+            <span class="keyword">return</span><span class="special">;</span>
+
+        <span class="comment">// Add our samples and apply exponential decay</span>
+        <span class="identifier">read_window_</span><span class="special">.</span><span class="identifier">update</span><span class="special">(</span><span class="identifier">read_bytes_</span><span class="special">,</span> <span class="identifier">elapsed</span><span class="special">);</span>
+        <span class="identifier">write_window_</span><span class="special">.</span><span class="identifier">update</span><span class="special">(</span><span class="identifier">write_bytes_</span><span class="special">,</span> <span class="identifier">elapsed</span><span class="special">);</span>
+
+        <span class="comment">// Reset our counts of bytes transferred</span>
+        <span class="identifier">read_bytes_</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+        <span class="identifier">write_bytes_</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+    <span class="special">}</span>
+
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">rate_gauge</span><span class="special">()</span>
+        <span class="special">:</span> <span class="identifier">when_</span><span class="special">(</span><span class="identifier">clock_type</span><span class="special">::</span><span class="identifier">now</span><span class="special">())</span>
+    <span class="special">{</span>
+    <span class="special">}</span>
+
+    <span class="comment">/// Returns the current rate of reading in bytes per second</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+    <span class="identifier">read_bytes_per_second</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span>
+    <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">read_window_</span><span class="special">.</span><span class="identifier">value</span><span class="special">();</span>
+    <span class="special">}</span>
+
+    <span class="comment">/// Returns the current rate of writing in bytes per second</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+    <span class="identifier">write_bytes_per_second</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span>
+    <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">write_window_</span><span class="special">.</span><span class="identifier">value</span><span class="special">();</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+</pre>
+<p>
+        To use our new policy we declare an instance of the stream, and then use
+        it with stream algorithms as usual. At any time, we can determine the current
+        read or write rates by calling into the policy.
+      </p>
+<pre class="programlisting"><span class="comment">// This stream will use our new rate_gauge policy</span>
+<span class="identifier">basic_stream</span><span class="special">&lt;</span><span class="identifier">net</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">,</span> <span class="identifier">net</span><span class="special">::</span><span class="identifier">any_io_executor</span><span class="special">,</span> <span class="identifier">rate_gauge</span><span class="special">&gt;</span> <span class="identifier">stream</span><span class="special">(</span><span class="identifier">ioc</span><span class="special">);</span>
+
+<span class="comment">//...</span>
+
+<span class="comment">// Print the current rates</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span>
+    <span class="identifier">stream</span><span class="special">.</span><span class="identifier">rate_policy</span><span class="special">().</span><span class="identifier">read_bytes_per_second</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="string">" bytes/second read\n"</span> <span class="special">&lt;&lt;</span>
+    <span class="identifier">stream</span><span class="special">.</span><span class="identifier">rate_policy</span><span class="special">().</span><span class="identifier">write_bytes_per_second</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="string">" bytes/second written\n"</span><span class="special">;</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="timeouts.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_io.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="layered_streams.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

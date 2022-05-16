@@ -37,7 +37,7 @@ function runSetup () {
   internal.debugClearFailAt();
   db._drop('UnitTestsRecovery');
   var c = db._create('UnitTestsRecovery');
-  var idx = c.ensureHashIndex('value1');
+  let idx = c.ensureIndex({ type: "hash", fields: ["value1"] });
   c.dropIndex(idx);
 
   c.save({ _key: 'crashme' }, true);

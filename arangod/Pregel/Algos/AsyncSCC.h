@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,12 +44,13 @@ namespace algos {
 /// color as you.
 ///    All nodes visited belongs to the SCC identified by the root color.
 
-struct AsyncSCC : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {
+struct AsyncSCC
+    : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>> {
  public:
-  explicit AsyncSCC(application_features::ApplicationServer& server, VPackSlice userParams)
-      : SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>>(server,
-                                                                   "AsyncSCC",
-                                                                   userParams) {}
+  explicit AsyncSCC(application_features::ApplicationServer& server,
+                    VPackSlice userParams)
+      : SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_t>>(
+            server, "AsyncSCC", userParams) {}
 
   bool supportsAsyncMode() const override { return true; }
 
@@ -58,8 +59,8 @@ struct AsyncSCC : public SimpleAlgorithm<SCCValue, int8_t, SenderMessage<uint64_
     return new SenderMessageFormat<uint64_t>();
   }
 
-  VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>* createComputation(
-      WorkerConfig const*) const override;
+  VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>*
+  createComputation(WorkerConfig const*) const override;
 
   MasterContext* masterContext(VPackSlice userParams) const override;
 

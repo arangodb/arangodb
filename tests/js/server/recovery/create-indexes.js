@@ -34,17 +34,19 @@ var jsunity = require('jsunity');
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
-  var i, j, c;
-  for (i = 0; i < 5; ++i) {
+  let c;
+  for (let i = 0; i < 5; ++i) {
     db._drop('UnitTestsRecovery' + i);
     c = db._create('UnitTestsRecovery' + i);
 
-    for (j = 0; j < 100; ++j) {
-      c.save({ _key: 'test' + j, value1: 'foo' + j, value2: 'bar' + j });
+    let docs = [];
+    for (let j = 0; j < 100; ++j) {
+      docs.push({ _key: 'test' + j, value1: 'foo' + j, value2: 'bar' + j });
     }
+    c.insert(docs);
 
-    c.ensureUniqueConstraint('value1');
-    c.ensureUniqueSkiplist('value2');
+    c.ensureIndex({ type: "hash", fields: ["value1"], unique: true });
+    c.ensureIndex({ type: "skiplist", fields: ["value2"], unique: true });
   }
 
   db._drop('test');

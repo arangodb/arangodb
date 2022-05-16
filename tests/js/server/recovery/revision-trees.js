@@ -41,29 +41,36 @@ function runSetup () {
   internal.debugClearFailAt();
 
   db._drop(colName1);
-  var c = db._create(colName1), i;
-  c.ensureHashIndex('value');
+  let c = db._create(colName1);
+  c.ensureIndex({ type: "hash", fields: ["value"] });
 
-  for (i = 0; i < 1000; ++i) {
-    c.save({ _key: "test_" + i });
+  let docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ _key: "test_" + i });
   }
+  c.insert(docs);
 
   db._drop(colName2);
   c = db._create(colName2);
 
-  for (i = 0; i < 1000; ++i) {
-    c.save({ _key: "test_" + i });
+  docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ _key: "test_" + i });
   }
-  for (i = 0; i < 500; ++i) {
+  c.insert(docs);
+
+  for (let i = 0; i < 500; ++i) {
     c.remove({ _key: "test_" + i });
   }
 
   db._drop(colName3);
   c = db._create(colName3);
 
-  for (i = 0; i < 1000; ++i) {
-    c.save({ _key: "test_" + i });
+  docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ _key: "test_" + i });
   }
+  c.insert(docs);
   c.truncate();
 
   db._drop('test');
@@ -86,10 +93,6 @@ function recoverySuite () {
       internal.waitForEstimatorSync(); // make sure estimates are consistent
     },
     tearDown: function () {},
-
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test whether we can restore the trx data
-    // //////////////////////////////////////////////////////////////////////////////
 
     testRevisionTreeCounts: function() {
       const c1 = db._collection(colName1);

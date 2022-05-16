@@ -1,0 +1,737 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>value</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.JSON">
+<link rel="up" href="../dom.html" title="Document Model">
+<link rel="prev" href="../dom.html" title="Document Model">
+<link rel="next" href="string.html" title="string">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../dom.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../dom.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="string.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="json.dom.value"></a><a class="link" href="value.html" title="value">value</a>
+</h3></div></div></div>
+<p>
+        JSON documents are represented in memory as instances of <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>: a <a href="https://en.cppreference.com/w/cpp/concepts/regular" target="_top"><span class="emphasis"><em>Regular</em></span></a>
+        type which satisfies <a href="https://en.cppreference.com/w/cpp/named_req/DefaultConstructible" target="_top"><span class="emphasis"><em>DefaultConstructible</em></span></a>,
+        <a href="https://en.cppreference.com/w/cpp/named_req/CopyConstructible" target="_top"><span class="emphasis"><em>CopyConstructible</em></span></a>,
+        <a href="https://en.cppreference.com/w/cpp/named_req/CopyAssignable" target="_top"><span class="emphasis"><em>CopyAssignable</em></span></a>,
+        <a href="https://en.cppreference.com/w/cpp/named_req/MoveConstructible" target="_top"><span class="emphasis"><em>MoveConstructible</em></span></a>,
+        <a href="https://en.cppreference.com/w/cpp/named_req/MoveAssignable" target="_top"><span class="emphasis"><em>MoveAssignable</em></span></a>,
+        and many of the requirements of allocator-aware containers. It is implemented
+        as a <a href="https://en.wikipedia.org/wiki/Tagged_union" target="_top"><span class="emphasis"><em>variant</em></span></a>
+        internally, and can dynamically store any of the six defined JSON value types:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <span class="bold"><strong>null</strong></span>: A <a href="https://en.cppreference.com/w/cpp/utility/variant/monostate" target="_top"><span class="emphasis"><em>monostate</em></span></a>
+            value, equivalent to <code class="computeroutput"><span class="keyword">nullptr</span></code>.
+          </li>
+<li class="listitem">
+            <span class="bold"><strong>boolean</strong></span>: A boolean: either <code class="computeroutput"><span class="keyword">true</span></code> or <code class="computeroutput"><span class="keyword">false</span></code>.
+          </li>
+<li class="listitem">
+            <span class="bold"><strong>number</strong></span>: An integral or floating point
+            value.
+          </li>
+<li class="listitem">
+            <span class="bold"><strong>string</strong></span>: A sequence of zero or more Unicode
+            characters, similar to <a href="https://en.cppreference.com/w/cpp/string/basic_string" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code></a>.
+          </li>
+<li class="listitem">
+            <span class="bold"><strong>array</strong></span>: An ordered list of values, like
+            <a href="https://en.cppreference.com/w/cpp/container/vector" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span></code></a>.
+          </li>
+<li class="listitem">
+            <span class="bold"><strong>object</strong></span>: A collection of name/value pairs,
+            also known as an <a href="https://en.wikipedia.org/wiki/Associative_array" target="_top"><span class="emphasis"><em>associative
+            array</em></span></a>.
+          </li>
+</ul></div>
+<h5>
+<a name="json.dom.value.h0"></a>
+        <span class="phrase"><a name="json.dom.value.working_with_values"></a></span><a class="link" href="value.html#json.dom.value.working_with_values">Working
+        With Values</a>
+      </h5>
+<p>
+        A <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>
+        constructed from <code class="computeroutput"><span class="keyword">nullptr</span></code> or
+        default constructed represents a null JSON element:
+      </p>
+<pre class="programlisting"><span class="identifier">value</span> <span class="identifier">jv1</span><span class="special">;</span>
+<span class="identifier">value</span> <span class="identifier">jv2</span><span class="special">(</span> <span class="keyword">nullptr</span> <span class="special">);</span>
+
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">jv1</span><span class="special">.</span><span class="identifier">is_null</span><span class="special">()</span> <span class="special">);</span>
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">jv2</span><span class="special">.</span><span class="identifier">is_null</span><span class="special">()</span> <span class="special">);</span>
+</pre>
+<p>
+        The member function <a class="link" href="../ref/boost__json__value/kind.html" title="value::kind"><code class="computeroutput"><span class="identifier">value</span><span class="special">::</span><span class="identifier">kind</span></code></a> may be used to query the kind
+        stored in the value. Alternatively, member functions like <a class="link" href="../ref/boost__json__value/is_object.html" title="value::is_object"><code class="computeroutput"><span class="identifier">value</span><span class="special">::</span><span class="identifier">is_object</span></code></a> or <a class="link" href="../ref/boost__json__value/is_number.html" title="value::is_number"><code class="computeroutput"><span class="identifier">value</span><span class="special">::</span><span class="identifier">is_number</span></code></a> may be used to check whether
+        or not the value is a particular kind:
+      </p>
+<pre class="programlisting"><span class="identifier">value</span> <span class="identifier">jv</span><span class="special">(</span> <span class="identifier">object_kind</span> <span class="special">);</span>
+
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">kind</span><span class="special">()</span> <span class="special">==</span> <span class="identifier">kind</span><span class="special">::</span><span class="identifier">object</span> <span class="special">);</span>
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">is_object</span><span class="special">()</span> <span class="special">);</span>
+<span class="identifier">assert</span><span class="special">(</span> <span class="special">!</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">is_number</span><span class="special">()</span> <span class="special">);</span>
+</pre>
+<p>
+        Functions like <a class="link" href="../ref/boost__json__value/if_object.html" title="value::if_object"><code class="computeroutput"><span class="identifier">value</span><span class="special">::</span><span class="identifier">if_object</span></code></a> actually return a pointer
+        to the object if the value is an object, otherwise they return null. This
+        allows them to be used both in boolean contexts as above, and in assignments
+        or conditional expressions to capture the value of the pointer:
+      </p>
+<pre class="programlisting"><span class="identifier">value</span> <span class="identifier">jv</span><span class="special">(</span> <span class="identifier">object_kind</span> <span class="special">);</span>
+
+<span class="keyword">if</span><span class="special">(</span> <span class="keyword">auto</span> <span class="identifier">p</span> <span class="special">=</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">if_object</span><span class="special">()</span> <span class="special">)</span>
+    <span class="keyword">return</span> <span class="identifier">p</span><span class="special">-&gt;</span><span class="identifier">size</span><span class="special">();</span>
+</pre>
+<p>
+        After a <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>
+        is constructed, its kind can change depending on what is assigned to it,
+        or by calling functions such as <a class="link" href="../ref/boost__json__value/emplace_array.html" title="value::emplace_array"><code class="computeroutput"><span class="identifier">value</span><span class="special">::</span><span class="identifier">emplace_array</span></code></a> or <a class="link" href="../ref/boost__json__value/emplace_bool.html" title="value::emplace_bool"><code class="computeroutput"><span class="identifier">value</span><span class="special">::</span><span class="identifier">emplace_bool</span></code></a>. If the assignment
+        is successful, in other words it completes without any exceptions then the
+        value is replaced. Otherwise, the value is unchanged. All operations which
+        can fail to modify a value offer the strong exception safety guarantee.
+      </p>
+<pre class="programlisting"><span class="identifier">value</span> <span class="identifier">jv</span><span class="special">;</span>
+<span class="identifier">jv</span> <span class="special">=</span> <span class="identifier">value</span><span class="special">(</span> <span class="identifier">array_kind</span> <span class="special">);</span>
+
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">is_array</span><span class="special">()</span> <span class="special">);</span>
+
+<span class="identifier">jv</span><span class="special">.</span><span class="identifier">emplace_string</span><span class="special">();</span>
+
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">is_string</span><span class="special">()</span> <span class="special">);</span>
+</pre>
+<p>
+        The following table shows all of the ways to determine and access the contents
+        of a <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>:
+      </p>
+<div class="table">
+<a name="json.dom.value.link_json_ref_boost_json_value_v"></a><p class="title"><b>Table 1.2. <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>
+        Accessors</b></p>
+<div class="table-contents"><table class="table" summary="value
+        Accessors">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Kind
+                </p>
+              </th>
+<th>
+                <p>
+                  Representation
+                </p>
+              </th>
+<th>
+                <p>
+                  Emplacement
+                </p>
+              </th>
+<th>
+                <p>
+                  Kind Test
+                </p>
+              </th>
+<th>
+                <p>
+                  Pointer Access
+                </p>
+              </th>
+<th>
+                <p>
+                  Checked Access
+                </p>
+              </th>
+<th>
+                <p>
+                  Unchecked Access
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__kind.html" title="kind"><code class="computeroutput"><span class="identifier">kind</span><span class="special">::</span><span class="identifier">array</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__array.html" title="array"><code class="computeroutput"><span class="identifier">array</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/emplace_array.html" title="value::emplace_array"><code class="computeroutput"><span class="identifier">emplace_array</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/is_array.html" title="value::is_array"><code class="computeroutput"><span class="identifier">is_array</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/if_array.html" title="value::if_array"><code class="computeroutput"><span class="identifier">if_array</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/as_array.html" title="value::as_array"><code class="computeroutput"><span class="identifier">as_array</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/get_array.html" title="value::get_array"><code class="computeroutput"><span class="identifier">get_array</span></code></a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__kind.html" title="kind"><code class="computeroutput"><span class="identifier">kind</span><span class="special">::</span><span class="identifier">object</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__object.html" title="object"><code class="computeroutput"><span class="identifier">object</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/emplace_object.html" title="value::emplace_object"><code class="computeroutput"><span class="identifier">emplace_object</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/is_object.html" title="value::is_object"><code class="computeroutput"><span class="identifier">is_object</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/if_object.html" title="value::if_object"><code class="computeroutput"><span class="identifier">if_object</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/as_object.html" title="value::as_object"><code class="computeroutput"><span class="identifier">as_object</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/get_object.html" title="value::get_object"><code class="computeroutput"><span class="identifier">get_object</span></code></a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__kind.html" title="kind"><code class="computeroutput"><span class="identifier">kind</span><span class="special">::</span><span class="identifier">string</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__string.html" title="string"><code class="computeroutput"><span class="identifier">string</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/emplace_string.html" title="value::emplace_string"><code class="computeroutput"><span class="identifier">emplace_string</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/is_string.html" title="value::is_string"><code class="computeroutput"><span class="identifier">is_string</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/if_string.html" title="value::if_string"><code class="computeroutput"><span class="identifier">if_string</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/as_string.html" title="value::as_string"><code class="computeroutput"><span class="identifier">as_string</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/get_string.html" title="value::get_string"><code class="computeroutput"><span class="identifier">get_string</span></code></a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__kind.html" title="kind"><code class="computeroutput"><span class="identifier">kind</span><span class="special">::</span><span class="identifier">int64</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="https://en.cppreference.com/w/cpp/types/integer" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">int64_t</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/emplace_int64.html" title="value::emplace_int64"><code class="computeroutput"><span class="identifier">emplace_int64</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/is_int64.html" title="value::is_int64"><code class="computeroutput"><span class="identifier">is_int64</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/if_int64.html" title="value::if_int64"><code class="computeroutput"><span class="identifier">if_int64</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/as_int64.html" title="value::as_int64"><code class="computeroutput"><span class="identifier">as_int64</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/get_int64.html" title="value::get_int64"><code class="computeroutput"><span class="identifier">get_int64</span></code></a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__kind.html" title="kind"><code class="computeroutput"><span class="identifier">kind</span><span class="special">::</span><span class="identifier">uint64</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="https://en.cppreference.com/w/cpp/types/integer" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/emplace_uint64.html" title="value::emplace_uint64"><code class="computeroutput"><span class="identifier">emplace_uint64</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/is_uint64.html" title="value::is_uint64"><code class="computeroutput"><span class="identifier">is_uint64</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/if_uint64.html" title="value::if_uint64"><code class="computeroutput"><span class="identifier">if_uint64</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/as_uint64.html" title="value::as_uint64"><code class="computeroutput"><span class="identifier">as_uint64</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/get_uint64.html" title="value::get_uint64"><code class="computeroutput"><span class="identifier">get_uint64</span></code></a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__kind.html" title="kind"><code class="computeroutput"><span class="identifier">kind</span><span class="special">::</span><span class="identifier">double_</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="https://en.cppreference.com/w/cpp/language/types" target="_top"><code class="computeroutput"><span class="keyword">double</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/emplace_double.html" title="value::emplace_double"><code class="computeroutput"><span class="identifier">emplace_double</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/is_double.html" title="value::is_double"><code class="computeroutput"><span class="identifier">is_double</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/if_double.html" title="value::if_double"><code class="computeroutput"><span class="identifier">if_double</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/as_double.html" title="value::as_double"><code class="computeroutput"><span class="identifier">as_double</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/get_double.html" title="value::get_double"><code class="computeroutput"><span class="identifier">get_double</span></code></a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__kind.html" title="kind"><code class="computeroutput"><span class="identifier">kind</span><span class="special">::</span><span class="identifier">bool_</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="https://en.cppreference.com/w/cpp/language/types" target="_top"><code class="computeroutput"><span class="keyword">bool</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/emplace_bool.html" title="value::emplace_bool"><code class="computeroutput"><span class="identifier">emplace_bool</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/is_bool.html" title="value::is_bool"><code class="computeroutput"><span class="identifier">is_bool</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/if_bool.html" title="value::if_bool"><code class="computeroutput"><span class="identifier">if_bool</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/as_bool.html" title="value::as_bool"><code class="computeroutput"><span class="identifier">as_bool</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/get_bool.html" title="value::get_bool"><code class="computeroutput"><span class="identifier">get_bool</span></code></a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__kind.html" title="kind"><code class="computeroutput"><span class="identifier">kind</span><span class="special">::</span><span class="identifier">null</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="https://en.cppreference.com/w/cpp/language/nullptr" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">nullptr_t</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/emplace_null.html" title="value::emplace_null"><code class="computeroutput"><span class="identifier">emplace_null</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__value/is_null.html" title="value::is_null"><code class="computeroutput"><span class="identifier">is_null</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="emphasis"><em>---</em></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="emphasis"><em>---</em></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="emphasis"><em>---</em></span>
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+        The emplace members of <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a> return a typed reference to
+        the underlying representation. For example, the call to <a class="link" href="../ref/boost__json__value/emplace_string.html" title="value::emplace_string"><code class="computeroutput"><span class="identifier">value</span><span class="special">::</span><span class="identifier">emplace_string</span></code></a> in the previous example
+        returns a <a class="link" href="../ref/boost__json__string.html" title="string"><code class="computeroutput"><span class="identifier">string</span><span class="special">&amp;</span></code></a>. This table shows the underlying
+        type for each kind:
+      </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Kind
+                </p>
+              </th>
+<th>
+                <p>
+                  Type
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__kind.html" title="kind"><code class="computeroutput"><span class="identifier">kind</span><span class="special">::</span><span class="identifier">object</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__object.html" title="object"><code class="computeroutput"><span class="identifier">object</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  An associative array of string keys mapping to <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a> elements with an
+                  interface similar to <a href="https://en.cppreference.com/w/cpp/container/unordered_map" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">unordered_map</span></code></a>, that remembers
+                  insertion order.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__kind.html" title="kind"><code class="computeroutput"><span class="identifier">kind</span><span class="special">::</span><span class="identifier">array</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__array.html" title="array"><code class="computeroutput"><span class="identifier">array</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  An ordered list of <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a> elements with an
+                  interface similar to <a href="https://en.cppreference.com/w/cpp/container/vector" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span></code></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__kind.html" title="kind"><code class="computeroutput"><span class="identifier">kind</span><span class="special">::</span><span class="identifier">string</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__string.html" title="string"><code class="computeroutput"><span class="identifier">string</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  A <a href="https://en.wikipedia.org/wiki/UTF-8" target="_top"><span class="emphasis"><em>UTF-8</em></span></a>
+                  encoded <a href="https://en.wikipedia.org/wiki/Unicode" target="_top">Unicode</a>
+                  <a href="https://en.wikipedia.org/wiki/String_(computer_science)" target="_top">string</a>
+                  of characters with an interface similar to <a href="https://en.cppreference.com/w/cpp/string/basic_string" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__kind.html" title="kind"><code class="computeroutput"><span class="identifier">kind</span><span class="special">::</span><span class="identifier">int64</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">int64_t</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  A 64 bit signed integer.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__kind.html" title="kind"><code class="computeroutput"><span class="identifier">kind</span><span class="special">::</span><span class="identifier">uint64</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  A 64 bit unsigned integer.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__kind.html" title="kind"><code class="computeroutput"><span class="identifier">kind</span><span class="special">::</span><span class="identifier">double_</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">double</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  A <code class="computeroutput"><span class="keyword">double</span></code> holding a
+                  floating-point value.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__kind.html" title="kind"><code class="computeroutput"><span class="identifier">kind</span><span class="special">::</span><span class="identifier">bool_</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <a href="https://en.cppreference.com/w/cpp/keyword/bool" target="_top"><code class="computeroutput"><span class="keyword">bool</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  A <code class="computeroutput"><span class="keyword">bool</span></code> holding <code class="computeroutput"><span class="keyword">true</span></code> or <code class="computeroutput"><span class="keyword">false</span></code>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__json__kind.html" title="kind"><code class="computeroutput"><span class="identifier">kind</span><span class="special">::</span><span class="identifier">null</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="emphasis"><em>---</em></span>
+                </p>
+              </td>
+<td>
+                <p>
+                  A monostate value representing null.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+        The return value from emplace can be used to perform assignment or to capture
+        a reference to the underlying element for later inspection or modification:
+      </p>
+<pre class="programlisting"><span class="identifier">value</span> <span class="identifier">jv</span><span class="special">;</span>
+<span class="identifier">jv</span><span class="special">.</span><span class="identifier">emplace_string</span><span class="special">()</span> <span class="special">=</span> <span class="string">"Hello, world!"</span><span class="special">;</span>
+
+<span class="identifier">int64_t</span><span class="special">&amp;</span> <span class="identifier">num</span> <span class="special">=</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">emplace_int64</span><span class="special">();</span>
+<span class="identifier">num</span> <span class="special">=</span> <span class="number">1</span><span class="special">;</span>
+
+<span class="identifier">assert</span><span class="special">(</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">is_int64</span><span class="special">()</span> <span class="special">);</span>
+</pre>
+<p>
+        If the <a class="link" href="../ref/boost__json__kind.html" title="kind"><code class="computeroutput"><span class="identifier">kind</span></code></a>
+        of a <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>
+        is known, functions such as <a class="link" href="../ref/boost__json__value/as_bool.html" title="value::as_bool"><code class="computeroutput"><span class="identifier">value</span><span class="special">::</span><span class="identifier">as_bool</span></code></a> or <a class="link" href="../ref/boost__json__value/as_string.html" title="value::as_string"><code class="computeroutput"><span class="identifier">value</span><span class="special">::</span><span class="identifier">as_string</span></code></a> may be used to obtain
+        a reference to the underlying representation without changing the existing
+        value:
+      </p>
+<pre class="programlisting"><span class="identifier">value</span> <span class="identifier">jv</span><span class="special">(</span> <span class="keyword">true</span> <span class="special">);</span>
+<span class="identifier">jv</span><span class="special">.</span><span class="identifier">as_bool</span><span class="special">()</span> <span class="special">=</span> <span class="keyword">true</span><span class="special">;</span>
+
+<span class="identifier">jv</span><span class="special">.</span><span class="identifier">as_string</span><span class="special">()</span> <span class="special">=</span> <span class="string">"Hello, world!"</span><span class="special">;</span> <span class="comment">// throws an exception</span>
+</pre>
+<p>
+        However, as shown above these functions throw an exception if the kind in
+        the <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>
+        does not match the kind denoted by the function signature. This can be used
+        as a concise form of validation: access values as if they were the right
+        type, but handle the resulting exception indicating if the schema of the
+        JSON is not valid.
+      </p>
+<p>
+        We can query a value for its underlying representation of a particular kind
+        in a way that does not throw exceptions by requesting a pointer which may
+        be null, instead of a reference. Here we use <a class="link" href="../ref/boost__json__value/if_string/overload1.html" title="value::if_string (1 of 2 overloads)"><code class="computeroutput"><span class="identifier">value</span><span class="special">::</span><span class="identifier">if_string</span></code></a> to conditionally perform
+        an assignment without using exceptions:
+      </p>
+<pre class="programlisting"><span class="identifier">value</span> <span class="identifier">jv</span><span class="special">(</span> <span class="identifier">string_kind</span> <span class="special">);</span>
+<span class="keyword">if</span><span class="special">(</span> <span class="identifier">string</span><span class="special">*</span> <span class="identifier">str</span> <span class="special">=</span> <span class="identifier">jv</span><span class="special">.</span><span class="identifier">if_string</span><span class="special">()</span> <span class="special">)</span>
+    <span class="special">*</span><span class="identifier">str</span> <span class="special">=</span> <span class="string">"Hello, world!"</span><span class="special">;</span>
+</pre>
+<div class="tip"><table border="0" summary="Tip">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../../../../../../doc/src/images/tip.png"></td>
+<th align="left">Tip</th>
+</tr>
+<tr><td align="left" valign="top">
+<p>
+          If the value's kind is known statically, a reference to the underlying
+          representation may be obtained by dereferencing the pointer without checking.
+          This avoids the code overhead of the possible exception when using, for
+          example <a class="link" href="../ref/boost__json__value/as_string.html" title="value::as_string"><code class="computeroutput"><span class="identifier">value</span><span class="special">::</span><span class="identifier">as_string</span></code></a>:
+        </p>
+<pre class="programlisting"><span class="identifier">value</span> <span class="identifier">jv</span><span class="special">(</span> <span class="identifier">string_kind</span> <span class="special">);</span>
+
+<span class="comment">// The compiler's static analysis can see that</span>
+<span class="comment">// a null pointer is never dereferenced.</span>
+<span class="special">*</span><span class="identifier">jv</span><span class="special">.</span><span class="identifier">if_string</span><span class="special">()</span> <span class="special">=</span> <span class="string">"Hello, world!"</span><span class="special">;</span>
+</pre>
+</td></tr>
+</table></div>
+<h5>
+<a name="json.dom.value.h1"></a>
+        <span class="phrase"><a name="json.dom.value.formatted_output"></a></span><a class="link" href="value.html#json.dom.value.formatted_output">Formatted
+        Output</a>
+      </h5>
+<p>
+        When a <a class="link" href="../ref/boost__json__value.html" title="value"><code class="computeroutput"><span class="identifier">value</span></code></a>
+        is formatted to a <a href="https://en.cppreference.com/w/cpp/io/basic_ostream" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span></code></a>,
+        the result is serialized JSON as if by calling <a class="link" href="../ref/boost__json__serialize.html" title="serialize"><code class="computeroutput"><span class="identifier">serialize</span></code></a>.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2019, 2020 Vinnie Falco<br>Copyright © 2020 Krystian Stasiowski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../dom.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../dom.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="string.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

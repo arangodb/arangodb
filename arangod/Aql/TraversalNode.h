@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,10 +23,13 @@
 
 #pragma once
 
+#include <Graph/Types/UniquenessLevel.h>
 #include "Aql/Condition.h"
 #include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
 #include "VocBase/LogicalCollection.h"
+#include "PruneExpressionEvaluator.h"
+#include "TraversalExecutor.h"
 
 namespace arangodb {
 
@@ -36,7 +39,8 @@ struct Collection;
 
 namespace graph {
 struct BaseOptions;
-}
+struct IndexAccessor;
+}  // namespace graph
 
 namespace traverser {
 struct TraverserOptions;
@@ -61,9 +65,11 @@ class TraversalNode : public virtual GraphNode {
    public:
     explicit TraversalEdgeConditionBuilder(TraversalNode const*);
 
-    TraversalEdgeConditionBuilder(TraversalNode const*, arangodb::velocypack::Slice const&);
+    TraversalEdgeConditionBuilder(TraversalNode const*,
+                                  arangodb::velocypack::Slice const&);
 
-    TraversalEdgeConditionBuilder(TraversalNode const*, TraversalEdgeConditionBuilder const*);
+    TraversalEdgeConditionBuilder(TraversalNode const*,
+                                  TraversalEdgeConditionBuilder const*);
 
     ~TraversalEdgeConditionBuilder() = default;
 
@@ -76,7 +82,8 @@ class TraversalNode : public virtual GraphNode {
  public:
   TraversalNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                 AstNode const* direction, AstNode const* start,
-                AstNode const* graph, std::unique_ptr<Expression> pruneExpression,
+                AstNode const* graph,
+                std::unique_ptr<Expression> pruneExpression,
                 std::unique_ptr<graph::BaseOptions> options);
 
   TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
@@ -86,10 +93,12 @@ class TraversalNode : public virtual GraphNode {
   /// @brief Internal constructor to clone the node.
   TraversalNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                 std::vector<Collection*> const& edgeColls,
-                std::vector<Collection*> const& vertexColls, Variable const* inVariable,
-                std::string const& vertexId, TRI_edge_direction_e defaultDirection,
+                std::vector<Collection*> const& vertexColls,
+                Variable const* inVariable, std::string vertexId,
+                TRI_edge_direction_e defaultDirection,
                 std::vector<TRI_edge_direction_e> const& directions,
-                std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph);
+                std::unique_ptr<graph::BaseOptions> options,
+                graph::Graph const* graph);
 
  protected:
   /// @brief Clone constructor, used for constructors of derived classes.
@@ -106,14 +115,24 @@ class TraversalNode : public virtual GraphNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return TRAVERSAL; }
 
-  /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
-
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
+      const override;
+
+  std::unique_ptr<ExecutionBlock> createRefactoredBlock(
+      ExecutionEngine& engine,
+      std::vector<std::pair<Variable const*, RegisterId>>&&,
+      std::function<
+          void(bool, std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&,
+      std::function<
+          void(bool, std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&,
+      const std::unordered_map<TraversalExecutorInfosHelper::OutputName,
+                               RegisterId,
+                               TraversalExecutorInfosHelper::OutputNameHash>&,
+      RegisterId, RegisterInfos,
+      std::unordered_map<ServerID, aql::EngineId> const*) const;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -122,7 +141,8 @@ class TraversalNode : public virtual GraphNode {
   /// @brief Test if this node uses an in variable or constant
   bool usesInVariable() const { return _inVariable != nullptr; }
 
-  void replaceVariables(std::unordered_map<VariableId, Variable const*> const& replacements) override;
+  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
+                            replacements) override;
 
   /// @brief getVariablesUsedHere
   void getVariablesUsedHere(VarSet& result) const override final;
@@ -154,7 +174,7 @@ class TraversalNode : public virtual GraphNode {
   /// @brief return the in variable
   Variable const* inVariable() const;
 
-  std::string const getStartVertex() const;
+  std::string getStartVertex() const;
 
   void setInVariable(Variable const* inVariable);
 
@@ -180,7 +200,8 @@ class TraversalNode : public virtual GraphNode {
   ///        The condition will contain the local variable for it's accesses.
   void registerGlobalCondition(bool, AstNode const*);
 
-  /// @brief register a filter condition to be applied before the result is returned.
+  /// @brief register a filter condition to be applied before the result is
+  /// returned.
   ///        This condition validates the edge
   void registerPostFilterCondition(AstNode const* condition);
 
@@ -197,16 +218,31 @@ class TraversalNode : public virtual GraphNode {
   ///        of blocks.
   void prepareOptions() override;
 
+  std::vector<arangodb::graph::IndexAccessor> buildIndexAccessor(
+      TraversalEdgeConditionBuilder& conditionBuilder) const;
+  std::vector<arangodb::graph::IndexAccessor> buildUsedIndexes() const;
+  std::unordered_map<uint64_t, std::vector<arangodb::graph::IndexAccessor>>
+  buildUsedDepthBasedIndexes() const;
+  std::pair<arangodb::graph::VertexUniquenessLevel,
+            arangodb::graph::EdgeUniquenessLevel>
+  convertUniquenessLevels() const;
+
   /// @brief Overrides GraphNode::options() with a more specific return type
   ///  (casts graph::BaseOptions* into traverser::TraverserOptions*)
   auto options() const -> traverser::TraverserOptions*;
+
+ protected:
+  /// @brief export to VelocyPack
+  void doToVelocyPack(arangodb::velocypack::Builder&,
+                      unsigned flags) const override final;
 
  private:
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void checkConditionsDefined() const;
 #endif
 
-  void traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c, bool withProperties) const;
+  void traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
+                            bool withProperties) const;
 
   // @brief Get reference to the Prune expression.
   //        You are not responsible for it!
@@ -249,7 +285,8 @@ class TraversalNode : public virtual GraphNode {
   std::vector<AstNode const*> _globalVertexConditions;
 
   /// @brief List of all depth specific conditions for edges
-  std::unordered_map<uint64_t, std::unique_ptr<TraversalEdgeConditionBuilder>> _edgeConditions;
+  std::unordered_map<uint64_t, std::unique_ptr<TraversalEdgeConditionBuilder>>
+      _edgeConditions;
 
   /// @brief List of all depth specific conditions for vertices
   std::unordered_map<uint64_t, AstNode*> _vertexConditions;
@@ -265,6 +302,15 @@ class TraversalNode : public virtual GraphNode {
 
   /// @brief the hashSet for variables used in postFilter
   VarSet _postFilterVariables;
+
+  graph::ClusterBaseProviderOptions getClusterBaseProviderOptions(
+      traverser::TraverserOptions* opts,
+      std::vector<std::pair<Variable const*, RegisterId>> const&
+          filterConditionVariables) const;
+  graph::SingleServerBaseProviderOptions getSingleServerBaseProviderOptions(
+      traverser::TraverserOptions* opts,
+      std::vector<std::pair<Variable const*, RegisterId>> const&
+          filterConditionVariables) const;
 };
 
 }  // namespace aql

@@ -1,0 +1,122 @@
+[/
+    Boost.Optional
+
+    Copyright (c) 2015 - 2018 Andrzej Krzemienski
+
+    Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or copy at
+    http://www.boost.org/LICENSE_1_0.txt)
+]
+
+
+[section:relnotes Release Notes]
+
+[heading Boost Release 1.76]
+
+* Fixed MSVC warning C4702.
+
+[heading Boost Release 1.75]
+
+* `boost::none` is `constexpr`-declared.
+
+* Fixed [@https://github.com/boostorg/optional/issues/78 issue #78].
+
+[heading Boost Release 1.73]
+
+* Fixed [@https://github.com/boostorg/optional/issues/78 issue #78].
+* `boost::none` is now declared as an inline variable (on compilers that support it): there is only one instance of `boost::none` across all translation units.
+* Fixed a number of compilation errors in GCC 4.4.7 in `optional<T>` for trivial `T`s. Thanks to Robert Leahy for the fix. For details see [@https://github.com/boostorg/optional/pull/80 pr #78].
+* Now surpressing warning `-Wweak-vtables`.
+
+[heading Boost Release 1.69]
+
+* Remove deprecation mark from `reset()` method (without arguments).
+* Fixed [@https://github.com/boostorg/optional/issues/59 issue #59].
+* Fixed bug with initialization of certain wrapper types in clang with -std=c++03. See [@https://github.com/boostorg/optional/pull/64 pr #64].
+
+[heading Boost Release 1.68]
+
+* Added member function `has_value()` for compatibility with `std::optional` ([@https://github.com/boostorg/optional/issues/52 issue #52]).
+* Added member function `map()` for transforming `optional<T>` into `optional<U>` using a function of type `T -> U`.
+* Added member function `flat_map()` for transforming `optional<T>` into `optional<U>` using a function of type `T -> optonal<U>`.
+
+
+[heading Boost Release 1.67]
+
+* Fixed [@https://github.com/boostorg/optional/issues/46 issue #46].
+* Fixed `-Wzero-as-null-pointer-constant` warnings.
+
+
+[heading Boost Release 1.66]
+
+* On newer compilers `optional` is now trivially-copyable for scalar `T`s. This uses a different storage (just `T` rather than `aligned_storage`). We require the compiler to support defaulted functions.
+* Changed the implementation of `operator==` to get rid of the `-Wmaybe-uninitialized` false-positive warning from GCC.
+
+[heading Boost Release 1.63]
+* Added two new in-place constructors. They work similarly to `emplace()` functions: they initialize the contained value by perfect-forwarding the obtained arguments. One constructor always initializes the contained value, the other based on a boolean condition.
+* Syntax `o = {}` now correctly un-initializes optional, just like in `std::optional`.
+* Fixed [@https://svn.boost.org/trac/boost/ticket/12203 Trac #12203].
+* Fixed [@https://svn.boost.org/trac/boost/ticket/12563 Trac #12563].
+
+
+[heading Boost Release 1.62]
+
+* Fixed [@https://svn.boost.org/trac/boost/ticket/12179 Trac #12179].
+
+
+[heading Boost Release 1.61]
+
+* Now `boost::optional` is specialized for reference parameters. This addresses a couple of issues:
+  * the `sizeof` of optional reference is that of a pointer,
+  * some bugs connected to copying optional references are gone,
+  * all run-time bugs caused by incorrect reference binding on some compilers are now turned into compile-time errors,
+  * you can swap optional references: it is like swapping pointers: shalow, underlying objects are not affected,
+  * optional references to abstract types work.
+* Documented nested typedefs ([@https://svn.boost.org/trac/boost/ticket/5193 Trac #5193]).
+* Made the perfect-forwarding constructor SFINAE-friendly, which fixes [@https://svn.boost.org/trac/boost/ticket/12002 Trac #12002]. However, this only works in the newer platforms that correctly implement C++11 `<type_traits>`.
+* Fixed [@https://svn.boost.org/trac/boost/ticket/10445 Trac #10445].
+
+
+[heading Boost Release 1.60]
+
+* Changed the implementation of `boost::none` again. Now it is a const object with internal linkage (as any other tag). This fixes [@https://svn.boost.org/trac/boost/ticket/11203 Trac #11203].
+
+
+[heading Boost Release 1.59]
+
+* For C++03 compilers, added 0-argument overload for member function `emplace()`, and therewith removed the dependency on `<boost/utility/in_place_factory.hpp>`.
+* Fixed [@https://svn.boost.org/trac/boost/ticket/11241 Trac #11241].
+
+[heading Boost Release 1.58]
+
+* `boost::none_t` is no longer convertible from literal `0`. This avoids a bug where `optional<rational<int>> oi = 0;` would initialize an optional object with no contained value.
+* Improved the trick that prevents streaming out `optional` without header `optional_io.hpp` by using safe-bool idiom. This addresses [@https://svn.boost.org/trac/boost/ticket/10825 Trac #10825].
+* IOStream operators are now mentioned in documentation.
+* Added a way to manually disable move semantics: just define macro `BOOST_OPTIONAL_CONFIG_NO_RVALUE_REFERENCES`. This can be used to work around [@https://svn.boost.org/trac/boost/ticket/10399 Trac #10399].
+* It is no longer possible to assign `optional<U>` to `optional<T>` when `U` is not assignable or convertible to `T` ([@https://svn.boost.org/trac/boost/ticket/11087 Trac #11087]).
+* Value accessors now work correctly on rvalues of `optional<T&>` ([@https://svn.boost.org/trac/boost/ticket/10839 Trac #10839]).
+
+
+[heading Boost Release 1.57]
+
+* [@https://github.com/boostorg/optional/pull/9 Git pull #9]: ['"Supply `<string>` to fix C++03 compile error on `logic_error("...")`"].
+
+
+[heading Boost Release 1.56]
+
+* Added support for rvalue references. Now `optional<T>` works with moveable but non-copyable `T`'s,
+* Improved `swap` (now uses move operations),
+* Added function `emplace()`. This is the last of the requests from [@https://svn.boost.org/trac/boost/ticket/1841 Trac #1841],
+* `optional` is moveable, including conditional `noexcept` specifications, which make it `move_if_noexcept`-friendly,
+* Using explicit operator bool() on platforms that support it ([@https://svn.boost.org/trac/boost/ticket/4227 Trac #4227]) (breaking change),
+* Forward declaration of `operator<<(ostream&, optional const&)` to prevent inadvertent incorrect serialization of optional objects,
+* Removed deprecated function `reset()` from examples ([@https://svn.boost.org/trac/boost/ticket/9005 Trac #9005]),
+* Equality comparison with `boost::none` does not require that `T` be EqualityComparable,
+* Optional rvalue references are explicitly disallowed,
+* Binding temporaries to optional references is explicitly disallowed (breaking change),
+* More ways to access the contained value, functions `value()`, `value_or()`, `value_or_eval()`,
+* Updated and reorganized documentation, added tutorial and quick guide sections.
+
+
+
+[endsect][/ relnotes]

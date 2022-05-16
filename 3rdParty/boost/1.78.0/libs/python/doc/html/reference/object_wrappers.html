@@ -1,0 +1,249 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Chapter 3. Object Wrappers</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Boost.Python Reference Manual">
+<link rel="up" href="index.html" title="Boost.Python Reference Manual">
+<link rel="prev" href="high_level_components/boost_python_wrapper_hpp.html" title="boost/python/wrapper.hpp">
+<link rel="next" href="object_wrappers/boost_python_list_hpp.html" title="boost_python_list.hpp">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="high_level_components/boost_python_wrapper_hpp.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="object_wrappers/boost_python_list_hpp.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="chapter">
+<div class="titlepage"><div><div><h1 class="title">
+<a name="object_wrappers"></a>Chapter 3. Object Wrappers</h1></div></div></div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="section"><a href="object_wrappers.html#object_wrappers.boost_python_dict_hpp">boost/python/dict.hpp</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="object_wrappers.html#object_wrappers.boost_python_dict_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="object_wrappers.html#object_wrappers.boost_python_dict_hpp.class_dict">Class
+        <code class="computeroutput"><span class="identifier">dict</span></code></a></span></dt>
+<dt><span class="section"><a href="object_wrappers.html#object_wrappers.boost_python_dict_hpp.example">Example</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="object_wrappers/boost_python_list_hpp.html">boost_python_list.hpp</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="object_wrappers/boost_python_list_hpp.html#object_wrappers.boost_python_list_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_list_hpp.html#object_wrappers.boost_python_list_hpp.class_list">Class
+        <code class="computeroutput"><span class="identifier">list</span></code></a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_list_hpp.html#object_wrappers.boost_python_list_hpp.example">Example</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="object_wrappers/boost_python_long_hpp.html">boost/python/long.hpp</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="object_wrappers/boost_python_long_hpp.html#object_wrappers.boost_python_long_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_long_hpp.html#object_wrappers.boost_python_long_hpp.class_long">Class
+        <code class="computeroutput"><span class="identifier">long_</span></code></a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_long_hpp.html#object_wrappers.boost_python_long_hpp.example">Example</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html">boost/python/object.hpp</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_slice_nil">Class
+        <code class="computeroutput"><span class="identifier">slice_nil</span></code></a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_const_attribute_policies">Class
+        <code class="computeroutput"><span class="identifier">const_attribute_policies</span></code></a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_const_attribute_policies_s">Class
+        <code class="computeroutput"><span class="identifier">const_attribute_policies</span></code>
+        static functions</a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_attribute_policies">Class
+        <code class="computeroutput"><span class="identifier">attribute_policies</span></code></a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_attribute_policies_static_">Class
+        <code class="computeroutput"><span class="identifier">attribute_policies</span></code> static
+        functions</a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_const_objattribute_policie">Class
+        <code class="computeroutput"><span class="identifier">const_objattribute_policies</span></code></a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_const_objattribute_polici0">Class
+        <code class="computeroutput"><span class="identifier">const_objattribute_policies</span></code>
+        static functions</a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_objattribute_policies">Class
+        <code class="computeroutput"><span class="identifier">objattribute_policies</span></code></a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_objattribute_policies_stat">Class
+        <code class="computeroutput"><span class="identifier">objattribute_policies</span></code> static
+        functions</a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_const_item_policies">Class
+        <code class="computeroutput"><span class="identifier">const_item_policies</span></code></a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_const_item_policies_static">Class
+        <code class="computeroutput"><span class="identifier">const_item_policies</span></code> static
+        functions</a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_item_policies">Class
+        <code class="computeroutput"><span class="identifier">item_policies</span></code></a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_item_policies_static_funct">Class
+        <code class="computeroutput"><span class="identifier">item_policies</span></code> static functions</a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_const_slice_policies">Class
+        <code class="computeroutput"><span class="identifier">const_slice_policies</span></code></a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_const_slice_policies_stati">Class
+        <code class="computeroutput"><span class="identifier">const_slice_policies</span></code> static
+        functions</a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_slice_policies">Class
+        <code class="computeroutput"><span class="identifier">slice_policies</span></code></a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_slice_policies_static_func">Class
+        <code class="computeroutput"><span class="identifier">slice_policies</span></code> static functions</a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_template_object_operators">Class
+        template <code class="computeroutput"><span class="identifier">object_operators</span></code></a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_template_object_operators_">Class
+        template <code class="computeroutput"><span class="identifier">object_operators</span></code>
+        observer functions</a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_object">Class
+        <code class="computeroutput"><span class="identifier">object</span></code></a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_object_constructors_and_de">Class
+        <code class="computeroutput"><span class="identifier">object</span></code> constructors and destructor</a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_object_modifiers">Class
+        <code class="computeroutput"><span class="identifier">object</span></code> modifiers</a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_template_proxy">Class
+        template <code class="computeroutput"><span class="identifier">proxy</span></code></a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_template_proxy_observer_fu">Class
+        template <code class="computeroutput"><span class="identifier">proxy</span></code> observer functions</a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_template_proxy_modifier_fu">Class
+        template <code class="computeroutput"><span class="identifier">proxy</span></code> modifier functions</a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.functions">Functions</a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.example">Example</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="object_wrappers/boost_python_str_hpp.html">boost/python/str.hpp</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="object_wrappers/boost_python_str_hpp.html#object_wrappers.boost_python_str_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_str_hpp.html#object_wrappers.boost_python_str_hpp.class_str">Class
+        <code class="computeroutput"><span class="identifier">str</span></code></a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_str_hpp.html#object_wrappers.boost_python_str_hpp.example">Example</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="object_wrappers/boost_python_slice_hpp.html">boost/python/slice.hpp</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="object_wrappers/boost_python_slice_hpp.html#object_wrappers.boost_python_slice_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_slice_hpp.html#object_wrappers.boost_python_slice_hpp.class_slice">Class
+        <code class="computeroutput"><span class="identifier">slice</span></code></a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_slice_hpp.html#object_wrappers.boost_python_slice_hpp.class_slice_constructors">Class
+        <code class="computeroutput"><span class="identifier">slice</span></code> constructors</a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_slice_hpp.html#object_wrappers.boost_python_slice_hpp.class_slice_observer_functions">Class
+        <code class="computeroutput"><span class="identifier">slice</span></code> observer functions</a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_slice_hpp.html#object_wrappers.boost_python_slice_hpp.example">Example</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="object_wrappers/boost_python_tuple_hpp.html">boost/python/tuple.hpp</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="object_wrappers/boost_python_tuple_hpp.html#object_wrappers.boost_python_tuple_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_tuple_hpp.html#object_wrappers.boost_python_tuple_hpp.class_tuple">Class
+        <code class="computeroutput"><span class="identifier">tuple</span></code></a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_tuple_hpp.html#object_wrappers.boost_python_tuple_hpp.function_make_tuple">Function
+        <code class="computeroutput"><span class="identifier">make_tuple</span></code></a></span></dt>
+<dt><span class="section"><a href="object_wrappers/boost_python_tuple_hpp.html#object_wrappers.boost_python_tuple_hpp.example">Example</a></span></dt>
+</dl></dd>
+</dl>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="object_wrappers.boost_python_dict_hpp"></a><a class="link" href="object_wrappers.html#object_wrappers.boost_python_dict_hpp" title="boost/python/dict.hpp">boost/python/dict.hpp</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="object_wrappers.html#object_wrappers.boost_python_dict_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="object_wrappers.html#object_wrappers.boost_python_dict_hpp.class_dict">Class
+        <code class="computeroutput"><span class="identifier">dict</span></code></a></span></dt>
+<dt><span class="section"><a href="object_wrappers.html#object_wrappers.boost_python_dict_hpp.example">Example</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="object_wrappers.boost_python_dict_hpp.introduction"></a><a class="link" href="object_wrappers.html#object_wrappers.boost_python_dict_hpp.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+          Exposes a <a class="link" href="concepts/objectwrapper.html#concepts.objectwrapper.typewrapper_concept_requirements" title="TypeWrapper Concept Requirements">TypeWrapper</a>
+          for the Python <a href="http://www.python.org/dev/doc/devel/lib/typesmapping.html" target="_top"><code class="computeroutput"><span class="identifier">dict</span></code></a> type.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="object_wrappers.boost_python_dict_hpp.class_dict"></a><a class="link" href="object_wrappers.html#object_wrappers.boost_python_dict_hpp.class_dict" title="Class dict">Class
+        <code class="computeroutput"><span class="identifier">dict</span></code></a>
+</h3></div></div></div>
+<p>
+          Exposes the <a href="http://www.python.org/dev/doc/devel/lib/typesmapping.html" target="_top">mapping
+          protocol</a> of Python's built-in <code class="computeroutput"><span class="identifier">dict</span></code>
+          type. The semantics of the constructors and member functions defined below
+          can be fully understood by reading the <a class="link" href="concepts/objectwrapper.html#concepts.objectwrapper.typewrapper_concept_requirements" title="TypeWrapper Concept Requirements">TypeWrapper</a>
+          concept definition. Since <code class="computeroutput"><span class="identifier">dict</span></code>
+          is publicly derived from <a class="link" href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_object" title="Class object"><code class="computeroutput"><span class="identifier">object</span></code></a>, the public <code class="computeroutput"><span class="identifier">object</span></code> interface applies to <code class="computeroutput"><span class="identifier">dict</span></code> instances as well.
+        </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">python</span>
+<span class="special">{</span>
+   <span class="keyword">class</span> <span class="identifier">dict</span> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">object</span>
+   <span class="special">{</span>
+      <span class="identifier">dict</span><span class="special">();</span>
+
+      <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+      <span class="identifier">dict</span><span class="special">(</span><span class="identifier">T</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">data</span><span class="special">);</span>
+
+      <span class="comment">// modifiers</span>
+      <span class="keyword">void</span> <span class="identifier">clear</span><span class="special">();</span>
+      <span class="identifier">dict</span> <span class="identifier">copy</span><span class="special">();</span>
+
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T2</span><span class="special">&gt;</span>
+      <span class="identifier">tuple</span> <span class="identifier">popitem</span><span class="special">();</span>
+
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+      <span class="identifier">object</span> <span class="identifier">setdefault</span><span class="special">(</span><span class="identifier">T</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">k</span><span class="special">);</span>
+
+      <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T2</span><span class="special">&gt;</span>
+      <span class="identifier">object</span> <span class="identifier">setdefault</span><span class="special">(</span><span class="identifier">T1</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">k</span><span class="special">,</span> <span class="identifier">T2</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">d</span><span class="special">);</span>
+
+      <span class="keyword">void</span> <span class="identifier">update</span><span class="special">(</span><span class="identifier">object_cref</span> <span class="identifier">E</span><span class="special">);</span>
+
+      <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+      <span class="keyword">void</span> <span class="identifier">update</span><span class="special">(</span><span class="identifier">T</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">E</span><span class="special">);</span>
+
+      <span class="comment">// observers</span>
+      <span class="identifier">list</span> <span class="identifier">values</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+
+      <span class="identifier">object</span> <span class="identifier">get</span><span class="special">(</span><span class="identifier">object_cref</span> <span class="identifier">k</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+      <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+      <span class="identifier">object</span> <span class="identifier">get</span><span class="special">(</span><span class="identifier">T</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">k</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+      <span class="identifier">object</span> <span class="identifier">get</span><span class="special">(</span><span class="identifier">object_cref</span> <span class="identifier">k</span><span class="special">,</span> <span class="identifier">object_cref</span> <span class="identifier">d</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="identifier">object</span> <span class="identifier">get</span><span class="special">(</span><span class="identifier">T1</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">k</span><span class="special">,</span> <span class="identifier">T2</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">d</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+      <span class="keyword">bool</span> <span class="identifier">has_key</span><span class="special">(</span><span class="identifier">object_cref</span> <span class="identifier">k</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+      <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+      <span class="keyword">bool</span> <span class="identifier">has_key</span><span class="special">(</span><span class="identifier">T</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">k</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+      <span class="identifier">list</span> <span class="identifier">items</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="identifier">object</span> <span class="identifier">iteritems</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="identifier">object</span> <span class="identifier">iterkeys</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="identifier">object</span> <span class="identifier">itervalues</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="identifier">list</span> <span class="identifier">keys</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="special">};</span>
+<span class="special">}}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="object_wrappers.boost_python_dict_hpp.example"></a><a class="link" href="object_wrappers.html#object_wrappers.boost_python_dict_hpp.example" title="Example">Example</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span><span class="special">;</span>
+<span class="identifier">dict</span> <span class="identifier">swap_object_dict</span><span class="special">(</span><span class="identifier">object</span> <span class="identifier">target</span><span class="special">,</span> <span class="identifier">dict</span> <span class="identifier">d</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">dict</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">extract</span><span class="special">&lt;</span><span class="identifier">dict</span><span class="special">&gt;(</span><span class="identifier">target</span><span class="special">.</span><span class="identifier">attr</span><span class="special">(</span><span class="string">"__dict__"</span><span class="special">));</span>
+    <span class="identifier">target</span><span class="special">.</span><span class="identifier">attr</span><span class="special">(</span><span class="string">"__dict__"</span><span class="special">)</span> <span class="special">=</span> <span class="identifier">d</span><span class="special">;</span>
+    <span class="keyword">return</span> <span class="identifier">result</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2002-2005, 2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="high_level_components/boost_python_wrapper_hpp.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="object_wrappers/boost_python_list_hpp.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

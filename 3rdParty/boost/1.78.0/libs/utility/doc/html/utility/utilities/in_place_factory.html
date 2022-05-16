@@ -1,0 +1,389 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>In-place Factory</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Utility">
+<link rel="up" href="../utilities.html" title="Utilities">
+<link rel="prev" href="compressed_pair.html" title="Compressed Pair">
+<link rel="next" href="operators.html" title="Operators">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="compressed_pair.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../utilities.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="operators.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="utility.utilities.in_place_factory"></a><a name="sec:in_place_factory"></a><a class="link" href="in_place_factory.html" title="In-place Factory">In-place
+      Factory</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="in_place_factory.html#utility.utilities.in_place_factory.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="in_place_factory.html#utility.utilities.in_place_factory.framework">Framework</a></span></dt>
+<dt><span class="section"><a href="in_place_factory.html#utility.utilities.in_place_factory.specification">Specification</a></span></dt>
+<dt><span class="section"><a href="in_place_factory.html#utility.utilities.in_place_factory.container_side_usage">Container-side
+        Usage</a></span></dt>
+<dt><span class="section"><a href="in_place_factory.html#utility.utilities.in_place_factory.user_side_usage">User-side
+        Usage</a></span></dt>
+<dt><span class="section"><a href="in_place_factory.html#in_place_factory.reference">Reference</a></span></dt>
+<dt><span class="section"><a href="in_place_factory.html#utility.utilities.in_place_factory.acknowledgments">Acknowledgments</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="utility.utilities.in_place_factory.introduction"></a><a class="link" href="in_place_factory.html#utility.utilities.in_place_factory.introduction" title="Introduction">Introduction</a>
+</h4></div></div></div>
+<p>
+          Suppose we have a class
+        </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">X</span>
+<span class="special">{</span>
+  <span class="identifier">X</span> <span class="special">(</span> <span class="keyword">int</span><span class="special">,</span> <span class="identifier">_std__string_</span> <span class="special">)</span> <span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<p>
+          And a container for it which supports an empty state. That is, a container
+          which can contain zero objects:
+        </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">C</span>
+<span class="special">{</span>
+   <span class="identifier">C</span><span class="special">()</span> <span class="special">:</span> <span class="identifier">contained_</span><span class="special">(</span><span class="number">0</span><span class="special">)</span> <span class="special">{}</span>
+  <span class="special">~</span><span class="identifier">C</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">delete</span> <span class="identifier">contained_</span> <span class="special">;</span> <span class="special">}</span>
+  <span class="identifier">X</span><span class="special">*</span> <span class="identifier">contained_</span> <span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<p>
+          A container designed to support an empty state typically does not require
+          the contained type to be <a href="https://en.cppreference.com/w/cpp/named_req/DefaultConstructible" target="_top"><span class="emphasis"><em>DefaultConstructible</em></span></a>,
+          but it typically requires it to be <a href="https://en.cppreference.com/w/cpp/named_req/CopyConstructible" target="_top"><span class="emphasis"><em>CopyConstructible</em></span></a>
+          as a mechanism to initialize the object to store:
+        </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">C</span>
+<span class="special">{</span>
+   <span class="identifier">C</span><span class="special">()</span> <span class="special">:</span> <span class="identifier">contained_</span><span class="special">(</span><span class="number">0</span><span class="special">)</span> <span class="special">{}</span>
+   <span class="identifier">C</span> <span class="special">(</span> <span class="identifier">X</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">v</span> <span class="special">)</span> <span class="special">:</span> <span class="identifier">contained_</span> <span class="special">(</span> <span class="keyword">new</span> <span class="identifier">X</span><span class="special">(</span><span class="identifier">v</span><span class="special">)</span> <span class="special">)</span> <span class="special">{}</span>
+  <span class="special">~</span><span class="identifier">C</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">delete</span> <span class="identifier">contained_</span> <span class="special">;</span> <span class="special">}</span>
+  <span class="identifier">X</span><span class="special">*</span> <span class="identifier">contained_</span> <span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<p>
+          There is a subtle problem with this: since the mechanism used to initialize
+          the stored object is copy construction, there must exist a previously constructed
+          source object to copy from. This object is likely to be temporary and serve
+          no purpose besides being the source:
+        </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">foo</span><span class="special">()</span>
+<span class="special">{</span>
+  <span class="comment">// Temporary object created.</span>
+  <span class="identifier">C</span> <span class="identifier">c</span><span class="special">(</span> <span class="identifier">X</span><span class="special">(</span><span class="number">123</span><span class="special">,</span><span class="string">"hello"</span><span class="special">)</span> <span class="special">)</span> <span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+          A solution to this problem is to support direct construction of the contained
+          object right in the container's storage.
+        </p>
+<p>
+          In this scheme, the user supplies the arguments for the <code class="computeroutput"><span class="identifier">X</span></code>
+          constructor directly to the container:
+        </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">C</span>
+<span class="special">{</span>
+   <span class="identifier">C</span><span class="special">()</span> <span class="special">:</span> <span class="identifier">contained_</span><span class="special">(</span><span class="number">0</span><span class="special">)</span> <span class="special">{}</span>
+   <span class="identifier">C</span> <span class="special">(</span> <span class="identifier">X</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">v</span> <span class="special">)</span> <span class="special">:</span> <span class="identifier">contained_</span> <span class="special">(</span> <span class="keyword">new</span> <span class="identifier">X</span><span class="special">(</span><span class="identifier">v</span><span class="special">)</span> <span class="special">)</span> <span class="special">{}</span>
+   <span class="identifier">C</span> <span class="special">(</span> <span class="keyword">int</span> <span class="identifier">a0</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">a1</span> <span class="special">)</span> <span class="special">:</span> <span class="identifier">contained_</span> <span class="special">(</span> <span class="keyword">new</span> <span class="identifier">X</span><span class="special">(</span><span class="identifier">a0</span><span class="special">,</span><span class="identifier">a1</span><span class="special">)</span> <span class="special">)</span> <span class="special">{}</span>
+  <span class="special">~</span><span class="identifier">C</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">delete</span> <span class="identifier">contained_</span> <span class="special">;</span> <span class="special">}</span>
+  <span class="identifier">X</span><span class="special">*</span> <span class="identifier">contained_</span> <span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">foo</span><span class="special">()</span>
+<span class="special">{</span>
+  <span class="comment">// Wrapped object constructed in-place</span>
+  <span class="comment">// No temporary created.</span>
+  <span class="identifier">C</span> <span class="identifier">c</span><span class="special">(</span><span class="number">123</span><span class="special">,</span><span class="string">"hello"</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+          Clearly, this solution does not scale well since the container must duplicate
+          all the constructor overloads from the contained type, or at least all
+          those which are to be supported directly in the container.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="utility.utilities.in_place_factory.framework"></a><a class="link" href="in_place_factory.html#utility.utilities.in_place_factory.framework" title="Framework">Framework</a>
+</h4></div></div></div>
+<p>
+          This library proposes a framework to allow some containers to directly
+          construct contained objects in-place without requiring the entire set of
+          constructor overloads from the contained type. It also allows the container
+          to remove the <a href="https://en.cppreference.com/w/cpp/named_req/CopyConstructible" target="_top"><span class="emphasis"><em>CopyConstructible</em></span></a>
+          requirement from the contained type since objects can be directly constructed
+          in-place without need of a copy.
+        </p>
+<p>
+          The only requirement on the container is that it must provide proper storage.
+          That is, the container should be correctly aligned and sized. Naturally,
+          the container will typically support uninitialized storage to avoid the
+          in-place construction to override a fully-constructed object, as this would
+          defeat the purpose of in-place construction.
+        </p>
+<p>
+          For this purpose, the framework provides two concepts called: InPlaceFactories
+          and TypedInPlaceFactories. Helpers to declare these classes are declared
+          in <a href="../../../../../include/boost/utility/in_place_factory.hpp" target="_top"><code class="computeroutput"><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">utility</span><span class="special">/</span><span class="identifier">in_place_factory</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code></a> and <a href="../../../../../include/boost/utility/typed_in_place_factory.hpp" target="_top"><code class="computeroutput"><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">utility</span><span class="special">/</span><span class="identifier">typed_in_place_factory</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code></a>.
+        </p>
+<p>
+          Essentially, these classes hold a sequence of actual parameters and a method
+          to construct an object in place using these parameters. Each member of
+          the family differs only in the number and type of the parameter list. The
+          first family takes the type of the object to construct directly in method
+          provided for that purpose, whereas the second family incorporates that
+          type in the factory class itself. From the container point of view, using
+          the framework amounts to calling the factory's method to contruct the object
+          in place. From the user point of view, it amounts to creating the right
+          factory object to hold the parameters and pass it to the container.
+        </p>
+<p>
+          The following simplified example shows the basic idea. A complete example
+          follows the formal specification of the framework:
+        </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">C</span>
+<span class="special">{</span>
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">InPlaceFactory</span><span class="special">&gt;</span>
+   <span class="identifier">C</span> <span class="special">(</span> <span class="identifier">InPlaceFactory</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">aFactory</span> <span class="special">)</span>
+    <span class="special">:</span>
+    <span class="identifier">contained_</span> <span class="special">(</span> <span class="identifier">uninitialized_storage</span><span class="special">()</span> <span class="special">)</span>
+   <span class="special">{</span>
+     <span class="identifier">aFactory</span><span class="special">.</span><span class="keyword">template</span> <span class="identifier">apply</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;(</span><span class="identifier">contained_</span><span class="special">);</span>
+   <span class="special">}</span>
+
+  <span class="special">~</span><span class="identifier">C</span><span class="special">()</span>
+  <span class="special">{</span>
+    <span class="identifier">contained_</span> <span class="special">-&gt;</span> <span class="identifier">X</span><span class="special">::~</span><span class="identifier">X</span><span class="special">();</span>
+    <span class="keyword">delete</span><span class="special">[]</span> <span class="identifier">contained_</span> <span class="special">;</span>
+  <span class="special">}</span>
+
+  <span class="keyword">char</span><span class="special">*</span> <span class="identifier">uninitialized_storage</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="keyword">new</span> <span class="keyword">char</span><span class="special">[</span><span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">X</span><span class="special">)]</span> <span class="special">;</span> <span class="special">}</span>
+
+  <span class="keyword">char</span><span class="special">*</span> <span class="identifier">contained_</span> <span class="special">;</span>
+<span class="special">};</span>
+
+<span class="keyword">void</span> <span class="identifier">foo</span><span class="special">()</span>
+<span class="special">{</span>
+  <span class="identifier">C</span> <span class="identifier">c</span><span class="special">(</span> <span class="identifier">in_place</span><span class="special">(</span><span class="number">123</span><span class="special">,</span><span class="string">"hello"</span><span class="special">)</span> <span class="special">)</span> <span class="special">;</span>
+<span class="special">}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="utility.utilities.in_place_factory.specification"></a><a class="link" href="in_place_factory.html#utility.utilities.in_place_factory.specification" title="Specification">Specification</a>
+</h4></div></div></div>
+<p>
+          The following is the first member of the family of <code class="computeroutput"><span class="identifier">InPlaceFactory</span></code>
+          classes, along with its corresponding helper template function. The rest
+          of the family varies only in the number and type of template and constructor
+          parameters.
+        </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+
+<span class="keyword">struct</span> <a class="link" href="../../"><code class="computeroutput"><span class="identifier">in_place_factory_base</span></code></a> <span class="special">{};</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A0</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">in_place_factory</span> <span class="special">:</span> <span class="keyword">public</span> <a class="link" href="../../"><code class="computeroutput"><span class="identifier">in_place_factory_base</span></code></a>
+<span class="special">{</span>
+  <span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">in_place_factory</span> <span class="special">(</span> <span class="identifier">A0</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">a0</span> <span class="special">)</span> <span class="special">:</span> <span class="identifier">m_a0</span><span class="special">(</span><span class="identifier">a0</span><span class="special">)</span> <span class="special">{}</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">class</span> <span class="identifier">T</span> <span class="special">&gt;</span>
+    <span class="keyword">void</span> <span class="identifier">apply</span> <span class="special">(</span> <span class="keyword">void</span><span class="special">*</span> <span class="identifier">address</span> <span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+      <span class="keyword">new</span> <span class="special">(</span><span class="identifier">address</span><span class="special">)</span> <span class="identifier">T</span><span class="special">(</span><span class="identifier">m_a0</span><span class="special">);</span>
+    <span class="special">}</span>
+
+  <span class="keyword">private</span><span class="special">:</span>
+      <span class="identifier">A0</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">m_a0</span> <span class="special">;</span>
+<span class="special">};</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">A0</span><span class="special">&gt;</span>
+<span class="identifier">in_place_factory</span><span class="special">&lt;</span><span class="identifier">A0</span><span class="special">&gt;</span> <span class="identifier">in_place</span> <span class="special">(</span> <span class="identifier">A0</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">a0</span> <span class="special">)</span>
+<span class="special">{</span>
+  <span class="keyword">return</span> <span class="identifier">in_place_factory</span><span class="special">&lt;</span><span class="identifier">A0</span><span class="special">&gt;(</span><span class="identifier">a0</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="special">}</span>
+</pre>
+<p>
+          Similarly, the following is the first member of the family of <code class="computeroutput"><span class="identifier">typed_in_place_factory</span></code> classes, along
+          with its corresponding helper template function. The rest of the family
+          varies only in the number and type of template and constructor parameters.
+        </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+
+<span class="keyword">struct</span> <a class="link" href="in_place_factory.html#boost.typed_in_place_factory_base"><code class="computeroutput"><span class="identifier">typed_in_place_factory_base</span></code></a> <span class="special">{};</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A0</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">typed_in_place_factory</span> <span class="special">:</span> <span class="keyword">public</span> <a class="link" href="in_place_factory.html#boost.typed_in_place_factory_base"><code class="computeroutput"><span class="identifier">typed_in_place_factory_base</span></code></a>
+<span class="special">{</span>
+  <span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">typed_in_place_factory</span> <span class="special">(</span> <span class="identifier">A0</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">a0</span> <span class="special">)</span> <span class="special">:</span> <span class="identifier">m_a0</span><span class="special">(</span><span class="identifier">a0</span><span class="special">)</span> <span class="special">{}</span>
+
+    <span class="keyword">void</span> <span class="identifier">apply</span> <span class="special">(</span> <span class="keyword">void</span><span class="special">*</span> <span class="identifier">address</span> <span class="special">)</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+      <span class="keyword">new</span> <span class="special">(</span><span class="identifier">address</span><span class="special">)</span> <span class="identifier">T</span><span class="special">(</span><span class="identifier">m_a0</span><span class="special">);</span>
+    <span class="special">}</span>
+
+  <span class="keyword">private</span><span class="special">:</span>
+    <span class="identifier">A0</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">m_a0</span> <span class="special">;</span>
+<span class="special">};</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A0</span><span class="special">&gt;</span>
+<span class="identifier">typed_in_place_factory</span><span class="special">&lt;</span><span class="identifier">A0</span><span class="special">&gt;</span> <span class="identifier">in_place</span> <span class="special">(</span> <span class="identifier">A0</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">a0</span> <span class="special">)</span>
+<span class="special">{</span>
+  <span class="keyword">return</span> <span class="identifier">typed_in_place_factory</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span><span class="identifier">A0</span><span class="special">&gt;(</span><span class="identifier">a0</span><span class="special">);</span>
+<span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+          As you can see, the <code class="computeroutput"><span class="identifier">in_place_factory</span></code>
+          and <code class="computeroutput"><span class="identifier">typed_in_place_factory</span></code>
+          template classes vary only in the way they specify the target type: in
+          the first family, the type is given as a template argument to the apply
+          member function while in the second it is given directly as part of the
+          factory class.
+        </p>
+<p>
+          When the container holds a unique non-polymorphic type, such as the case
+          of <a href="../../../../../../doc/html/optional/index.html" target="_top">Boost.Optional</a>,
+          it knows the exact dynamic-type of the contained object and can pass it
+          to the <code class="computeroutput"><span class="identifier">apply</span><span class="special">()</span></code>
+          method of a non-typed factory. In this case, end users can use an <code class="computeroutput"><span class="identifier">in_place_factory</span></code> instance which can be
+          constructed without the type of the object to construct.
+        </p>
+<p>
+          However, if the container holds heterogeneous or polymorphic objects, such
+          as the case of <a href="../../../../../../doc/html/variant/index.html" target="_top">Boost.Variant</a>,
+          the dynamic-type of the object to be constructed must be known by the factory.
+          In this case, end users must use a <code class="computeroutput"><span class="identifier">typed_in_place_factory</span></code>
+          instead.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="utility.utilities.in_place_factory.container_side_usage"></a><a class="link" href="in_place_factory.html#utility.utilities.in_place_factory.container_side_usage" title="Container-side Usage">Container-side
+        Usage</a>
+</h4></div></div></div>
+<p>
+          As shown in the introductory simplified example, the container class must
+          contain methods that accept an instance of these factories and pass the
+          object's storage to the factory's apply method.
+        </p>
+<p>
+          However, the type of the factory class cannot be completely specified in
+          the container class because that would defeat the whole purpose of the
+          factories which is to allow the container to accept a variadic argument
+          list for the constructor of its contained object.
+        </p>
+<p>
+          The correct function overload must be based on the only distinctive and
+          common characteristic of all the classes in each family: the base class.
+        </p>
+<p>
+          Depending on the container class, you can use <code class="computeroutput"><span class="identifier">enable_if</span></code>
+          to generate the right overload, or use the following dispatch technique,
+          which is used in the <a href="../../../../../../doc/html/optional/index.html" target="_top">Boost.Optional</a>
+          class:
+        </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">C</span>
+<span class="special">{</span>
+   <span class="identifier">C</span><span class="special">()</span> <span class="special">:</span> <span class="identifier">contained_</span><span class="special">(</span><span class="number">0</span><span class="special">)</span> <span class="special">{}</span>
+   <span class="identifier">C</span> <span class="special">(</span> <span class="identifier">X</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">v</span> <span class="special">)</span> <span class="special">:</span> <span class="identifier">contained_</span> <span class="special">(</span> <span class="keyword">new</span> <span class="identifier">X</span><span class="special">(</span><span class="identifier">v</span><span class="special">)</span> <span class="special">)</span> <span class="special">{}</span>
+
+   <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Expr</span><span class="special">&gt;</span>
+   <span class="identifier">C</span> <span class="special">(</span> <span class="identifier">Expr</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">expr</span> <span class="special">)</span>
+    <span class="special">:</span>
+    <span class="identifier">contained_</span> <span class="special">(</span> <span class="identifier">uninitialized_storage</span><span class="special">()</span> <span class="special">)</span>
+   <span class="special">{</span>
+    <span class="identifier">construct</span><span class="special">(</span><span class="identifier">expr</span><span class="special">,&amp;</span><span class="identifier">expr</span><span class="special">);</span>
+   <span class="special">}</span>
+
+  <span class="special">~</span><span class="identifier">C</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">delete</span> <span class="identifier">contained_</span> <span class="special">;</span> <span class="special">}</span>
+
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">InPlaceFactory</span><span class="special">&gt;</span>
+  <span class="keyword">void</span> <span class="identifier">construct</span> <span class="special">(</span> <span class="identifier">InPlaceFactory</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">aFactory</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><a class="link" href="../../"><code class="computeroutput"><span class="identifier">in_place_factory_base</span></code></a><span class="special">*</span> <span class="special">)</span>
+  <span class="special">{</span>
+    <span class="identifier">aFactory</span><span class="special">.</span><span class="keyword">template</span> <span class="identifier">apply</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;(</span><span class="identifier">contained_</span><span class="special">);</span>
+  <span class="special">}</span>
+
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">TypedInPlaceFactory</span><span class="special">&gt;</span>
+  <span class="keyword">void</span> <span class="identifier">construct</span> <span class="special">(</span> <span class="identifier">TypedInPlaceFactory</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">aFactory</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><a class="link" href="in_place_factory.html#boost.typed_in_place_factory_base"><code class="computeroutput"><span class="identifier">typed_in_place_factory_base</span></code></a><span class="special">*</span> <span class="special">)</span>
+  <span class="special">{</span>
+    <span class="identifier">aFactory</span><span class="special">.</span><span class="identifier">apply</span><span class="special">(</span><span class="identifier">contained_</span><span class="special">);</span>
+  <span class="special">}</span>
+
+  <span class="identifier">X</span><span class="special">*</span> <span class="identifier">uninitialized_storage</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="keyword">static_cast</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">*&gt;(</span><span class="keyword">new</span> <span class="keyword">char</span><span class="special">[</span><span class="keyword">sizeof</span><span class="special">(</span><span class="identifier">X</span><span class="special">)])</span> <span class="special">;</span> <span class="special">}</span>
+
+  <span class="identifier">X</span><span class="special">*</span> <span class="identifier">contained_</span> <span class="special">;</span>
+<span class="special">};</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="utility.utilities.in_place_factory.user_side_usage"></a><a class="link" href="in_place_factory.html#utility.utilities.in_place_factory.user_side_usage" title="User-side Usage">User-side
+        Usage</a>
+</h4></div></div></div>
+<p>
+          End users pass to the container an instance of a factory object holding
+          the actual parameters needed to construct the contained object directly
+          within the container. For this, the helper template function <code class="computeroutput"><span class="identifier">in_place</span></code> is used.
+        </p>
+<p>
+          The call <code class="computeroutput"><span class="identifier">in_place</span><span class="special">(</span><span class="identifier">a0</span><span class="special">,</span><span class="identifier">a1</span><span class="special">,</span><span class="identifier">a2</span><span class="special">,...,</span><span class="identifier">an</span><span class="special">)</span></code> constructs
+          a (non-typed) <code class="computeroutput"><span class="identifier">in_place_factory</span></code>
+          instance with the given argument list.
+        </p>
+<p>
+          The call <code class="computeroutput"><span class="identifier">in_place</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;(</span><span class="identifier">a0</span><span class="special">,</span><span class="identifier">a1</span><span class="special">,</span><span class="identifier">a2</span><span class="special">,...,</span><span class="identifier">an</span><span class="special">)</span></code> constructs
+          a <code class="computeroutput"><span class="identifier">typed_in_place_factory</span></code>
+          instance with the given argument list for the type <code class="computeroutput"><span class="identifier">T</span></code>.
+        </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">foo</span><span class="special">()</span>
+<span class="special">{</span>
+  <span class="identifier">C</span> <span class="identifier">a</span><span class="special">(</span> <span class="identifier">in_place</span><span class="special">(</span><span class="number">123</span><span class="special">,</span> <span class="string">"hello"</span><span class="special">)</span> <span class="special">)</span> <span class="special">;</span>    <span class="comment">// in_place_factory passed</span>
+  <span class="identifier">C</span> <span class="identifier">b</span><span class="special">(</span> <span class="identifier">in_place</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;(</span><span class="number">456</span><span class="special">,</span> <span class="string">"world"</span><span class="special">)</span> <span class="special">)</span> <span class="special">;</span> <span class="comment">// typed_in_place_factory passed</span>
+<span class="special">}</span>
+</pre>
+</div>
+<a name="boost.typed_in_place_factory_base"></a><div class="section"><div class="titlepage"><div><div><h4 class="title">
+<a name="in_place_factory.reference"></a>Reference</h4></div></div></div></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="utility.utilities.in_place_factory.acknowledgments"></a><a class="link" href="in_place_factory.html#utility.utilities.in_place_factory.acknowledgments" title="Acknowledgments">Acknowledgments</a>
+</h4></div></div></div>
+<p>
+          Copyright Fernando Luis Cacciola Carballal, 2004
+        </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2001 Beman Dawes<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="compressed_pair.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../utilities.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="operators.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

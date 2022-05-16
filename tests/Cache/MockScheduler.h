@@ -22,8 +22,7 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef UNITTESTS_CACHE_MOCK_SCHEDULER_H
-#define UNITTESTS_CACHE_MOCK_SCHEDULER_H
+#pragma once
 
 #include <memory>
 #include <thread>
@@ -50,5 +49,3 @@ class MockScheduler {
 
 };  // end namespace cache
 };  // end namespace arangodb
-
-#endif

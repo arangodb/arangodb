@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,9 +36,9 @@ class SpinLocker {
 
  public:
   SpinLocker(Mode mode, ReadWriteSpinLock& lock, bool doLock = true,
-             Effort effort = Effort::Succeed)
+             Effort effort = Effort::Succeed) noexcept
       : _lock(lock), _mode(mode), _locked(false) {
-    if (doLock) {      
+    if (doLock) {
       if (effort == Effort::Succeed) {
         if (_mode == Mode::Read) {
           _lock.lockRead();
@@ -56,7 +56,8 @@ class SpinLocker {
     }
   }
 
-  SpinLocker(Mode mode, ReadWriteSpinLock& lock, std::size_t maxAttempts)
+  SpinLocker(Mode mode, ReadWriteSpinLock& lock,
+             std::size_t maxAttempts) noexcept
       : _lock(lock), _mode(mode), _locked(false) {
     if (_mode == Mode::Read) {
       _locked = _lock.lockRead(maxAttempts);
@@ -65,12 +66,10 @@ class SpinLocker {
     }
   }
 
-  ~SpinLocker() {
-    release();
-  }
+  ~SpinLocker() { release(); }
 
-  SpinLocker(SpinLocker&& other)
-    : _lock(other._lock), _mode(other._mode), _locked(other._locked) {
+  SpinLocker(SpinLocker&& other) noexcept
+      : _lock(other._lock), _mode(other._mode), _locked(other._locked) {
     other._locked = false;
   }
 
@@ -81,9 +80,9 @@ class SpinLocker {
   SpinLocker(SpinLocker const&) = delete;
   SpinLocker& operator=(SpinLocker const&) = delete;
 
-  bool isLocked() const { return _locked; }
+  bool isLocked() const noexcept { return _locked; }
 
-  void release() {
+  void release() noexcept {
     if (_locked) {
       if (_mode == Mode::Read) {
         _lock.unlockRead();
@@ -101,4 +100,3 @@ class SpinLocker {
 };
 
 }  // namespace arangodb::basics
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,9 @@
 
 #pragma once
 
+#include <utility>
+#include <mutex>
+
 #include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
@@ -35,31 +38,30 @@ class ClusterSelectivityEstimates {
  public:
   explicit ClusterSelectivityEstimates(LogicalCollection& collection);
   void flush();
-  
+
   /// @brief fetch estimates from cache or server
   /// @param allowUpdate allow cluster communication
   /// @param tid specify ongoing transaction this is a part of
-  IndexEstMap get(bool allowUpdating, TransactionId tid);
-  void set(IndexEstMap const& estimates);
+  IndexEstMap get(bool allowUpdate, TransactionId tid);
+  void set(IndexEstMap estimates);
 
  private:
   struct InternalData {
     IndexEstMap estimates;
     double expireStamp;
-    
-    InternalData(IndexEstMap const& estimates, double expireStamp) 
-        : estimates(estimates), expireStamp(expireStamp) {}
+
+    InternalData(IndexEstMap estimates, double expireStamp)
+        : estimates(std::move(estimates)), expireStamp(expireStamp) {}
   };
 
   LogicalCollection& _collection;
   // the current estimates, only load and stored using atomic operations
   std::shared_ptr<InternalData> _data;
   // whether or not a thread is currently updating the estimates
-  std::atomic<bool> _updating;
+  std::mutex _update;
 
-  static constexpr double defaultTtl = 90.0;
+  static constexpr double defaultTtl = 180.0;
   static constexpr double systemCollectionTtl = 900.0;
 };
 
 }  // namespace arangodb
-

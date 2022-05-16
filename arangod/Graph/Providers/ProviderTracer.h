@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,8 @@
 
 #include "Basics/ResourceUsage.h"
 
-#include <unordered_map>
+#include "Containers/FlatHashMap.h"
+
 #include <vector>
 
 namespace arangodb {
@@ -38,11 +39,11 @@ namespace arangodb {
 namespace aql {
 class QueryContext;
 class TraversalStats;
-}
+}  // namespace aql
 
 namespace graph {
 
-template <class ProviderImpl>
+template<class ProviderImpl>
 class ProviderTracer {
  public:
   using Step = typename ProviderImpl::Step;
@@ -59,15 +60,24 @@ class ProviderTracer {
   ProviderTracer& operator=(ProviderTracer const&) = delete;
   ProviderTracer& operator=(ProviderTracer&&) = default;
 
-  auto startVertex(VertexType vertex) -> Step;
+  auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0)
+      -> Step;
+  auto fetchVertices(std::vector<Step*> const& looseEnds)
+      -> futures::Future<std::vector<Step*>>;
+  auto fetchEdges(const std::vector<Step*>& fetchedVertices) -> Result;
   auto fetch(std::vector<Step*> const& looseEnds)
-      -> futures::Future<std::vector<Step*>>;                           // rocks
-  auto expand(Step const& from, size_t previous, std::function<void(Step)> callback) -> void; // index
+      -> futures::Future<std::vector<Step*>>;
+  auto expand(Step const& from, size_t previous,
+              std::function<void(Step)> callback) -> void;
+
+  auto clear() -> void;
 
   void addVertexToBuilder(typename Step::Vertex const& vertex,
                           arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(typename Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
+
+  void prepareIndexExpressions(aql::Ast* ast);
 
   // Note: ClusterProvider will need to implement destroyEngines
   void destroyEngines();
@@ -76,14 +86,16 @@ class ProviderTracer {
 
   [[nodiscard]] transaction::Methods* trx();
 
+  void prepareContext(aql::InputAqlItemRow input);
+  void unPrepareContext();
+
  private:
   ProviderImpl _impl;
 
   // Mapping MethodName => Statistics
   // We make this mutable to not violate the captured API
-  mutable std::unordered_map<std::string, TraceEntry> _stats;
+  mutable containers::FlatHashMap<std::string, TraceEntry> _stats;
 };
 
 }  // namespace graph
 }  // namespace arangodb
-

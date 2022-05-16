@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,14 +30,13 @@
 #include "VocBase/Methods/Ttl.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestTtlHandler::RestTtlHandler(application_features::ApplicationServer& server,
-                               GeneralRequest* request, GeneralResponse* response)
+RestTtlHandler::RestTtlHandler(ArangodServer& server, GeneralRequest* request,
+                               GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestTtlHandler::execute() {
@@ -55,7 +54,7 @@ RestStatus RestTtlHandler::execute() {
       return handleStatistics();
     }
   }
-   
+
   generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
   return RestStatus::DONE;
 }
@@ -65,8 +64,8 @@ RestStatus RestTtlHandler::handleProperties() {
   rest::RequestType const type = _request->requestType();
   if (type == rest::RequestType::GET) {
     VPackBuilder builder;
-    Result result =
-        methods::Ttl::getProperties(_vocbase.server().getFeature<TtlFeature>(), builder);
+    Result result = methods::Ttl::getProperties(
+        _vocbase.server().getFeature<TtlFeature>(), builder);
 
     if (result.fail()) {
       generateError(result);
@@ -83,10 +82,10 @@ RestStatus RestTtlHandler::handleProperties() {
       // error message generated in parseVPackBody
       return RestStatus::DONE;
     }
-    
+
     VPackBuilder builder;
-    Result result =
-        methods::Ttl::setProperties(_vocbase.server().getFeature<TtlFeature>(), body, builder);
+    Result result = methods::Ttl::setProperties(
+        _vocbase.server().getFeature<TtlFeature>(), body, builder);
 
     if (result.fail()) {
       generateError(result);
@@ -96,8 +95,9 @@ RestStatus RestTtlHandler::handleProperties() {
 
     return RestStatus::DONE;
   }
- 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
@@ -106,8 +106,8 @@ RestStatus RestTtlHandler::handleStatistics() {
   rest::RequestType const type = _request->requestType();
   if (type == rest::RequestType::GET) {
     VPackBuilder builder;
-    Result result =
-        methods::Ttl::getStatistics(_vocbase.server().getFeature<TtlFeature>(), builder);
+    Result result = methods::Ttl::getStatistics(
+        _vocbase.server().getFeature<TtlFeature>(), builder);
 
     if (result.fail()) {
       generateError(result);
@@ -117,7 +117,8 @@ RestStatus RestTtlHandler::handleStatistics() {
 
     return RestStatus::DONE;
   }
- 
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }

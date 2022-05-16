@@ -317,24 +317,13 @@ ArangoCollection.prototype.name = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.status = function () {
-  if (this._status === null ||
-      this._status === ArangoCollection.STATUS_UNLOADING ||
-      this._status === ArangoCollection.STATUS_UNLOADED) {
+  if (this._status === null) {
     this._status = null;
     this.refresh();
   }
 
   // save original status
-  var result = this._status;
-
-  if (this._status === ArangoCollection.STATUS_UNLOADING ||
-      this._status === ArangoCollection.STATUS_UNLOADED) {
-    // if collection is currently unloading, we must not cache this info
-    this._status = null;
-  }
-
-  // return the correct result
-  return result;
+  return this._status;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -372,6 +361,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'cacheEnabled': true,
     'syncByRevision': true,
     'schema' : true,
+    'isDisjoint': true,
   };
   var a;
 

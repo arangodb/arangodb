@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +28,6 @@
 #include "Cluster/ClusterTypes.h"
 
 #include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
 #include <utility>
 
 using namespace arangodb;
@@ -43,8 +42,8 @@ ClusterCollectionCreationInfo::ClusterCollectionCreationInfo(
       writeConcern(writeConcern),
       waitForReplication(waitForRep),
       json(slice),
-      name(basics::VelocyPackHelper::getStringValue(json, StaticStrings::DataSourceName,
-                                                              StaticStrings::Empty)),
+      name(basics::VelocyPackHelper::getStringValue(
+          json, StaticStrings::DataSourceName, StaticStrings::Empty)),
       state(ClusterCollectionCreationState::INIT),
       creator(std::in_place, std::move(coordinatorId), rebootId) {
   TRI_ASSERT(creator);
@@ -56,8 +55,8 @@ ClusterCollectionCreationInfo::ClusterCollectionCreationInfo(
 // shard collections (non-smart). We do not want to loose these test.
 // So we will loose this assertion for now.
 #ifndef ARANGODB_USE_GOOGLE_TESTS
-    TRI_ASSERT(basics::VelocyPackHelper::getBooleanValue(json, StaticStrings::IsSmart,
-                                                                   false));
+    TRI_ASSERT(basics::VelocyPackHelper::getBooleanValue(
+        json, StaticStrings::IsSmart, false));
 #endif
     state = ClusterCollectionCreationState::DONE;
   }
@@ -74,6 +73,19 @@ ClusterCollectionCreationInfo::ClusterCollectionCreationInfo(
   }
 }
 
+ClusterCollectionCreationInfo::ClusterCollectionCreationInfo(
+    ClusterCollectionCreationInfo const& r)
+    : collectionID(r.collectionID),
+      numberOfShards(r.numberOfShards),
+      replicationFactor(r.replicationFactor),
+      writeConcern(r.writeConcern),
+      waitForReplication(r.waitForReplication),
+      json(r.json),
+      name(r.name),
+      state(r.state.load(std::memory_order_relaxed)),
+      creator(r.creator),
+      _isBuildingJson(r._isBuildingJson) {}
+
 VPackSlice ClusterCollectionCreationInfo::isBuildingSlice() const {
   if (needsBuildingFlag()) {
     return _isBuildingJson.slice();
@@ -88,7 +100,8 @@ bool ClusterCollectionCreationInfo::needsBuildingFlag() const {
   // So we will loose the more precise check for now.
   /*
   return numberOfShards > 0 ||
-         basics::VelocyPackHelper::getBooleanValue(json, StaticStrings::IsSmart, false);
+         basics::VelocyPackHelper::getBooleanValue(json, StaticStrings::IsSmart,
+  false);
   */
   return numberOfShards > 0;
 }
@@ -97,17 +110,19 @@ void ClusterCollectionCreationInfo::CreatorInfo::toVelocyPack(
     velocypack::Builder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(StaticStrings::AttrCoordinator, VPackValue(coordinatorId()));
-  builder.add(StaticStrings::AttrCoordinatorRebootId, VPackValue(rebootId().value()));
+  builder.add(StaticStrings::AttrCoordinatorRebootId,
+              VPackValue(rebootId().value()));
 }
 
-ClusterCollectionCreationInfo::CreatorInfo::CreatorInfo(std::string coordinatorId,
-                                                                  RebootId rebootId)
+ClusterCollectionCreationInfo::CreatorInfo::CreatorInfo(
+    std::string coordinatorId, RebootId rebootId)
     : _coordinatorId(std::move(coordinatorId)), _rebootId(rebootId) {}
 
 RebootId ClusterCollectionCreationInfo::CreatorInfo::rebootId() const noexcept {
   return _rebootId;
 }
 
-std::string const& ClusterCollectionCreationInfo::CreatorInfo::coordinatorId() const noexcept {
+std::string const& ClusterCollectionCreationInfo::CreatorInfo::coordinatorId()
+    const noexcept {
   return _coordinatorId;
 }

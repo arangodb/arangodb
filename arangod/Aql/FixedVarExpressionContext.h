@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,8 +25,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/QueryExpressionContext.h"
-
-#include <unordered_map>
+#include "Containers/FlatHashSet.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -42,23 +41,40 @@ class FixedVarExpressionContext final : public QueryExpressionContext {
                                      QueryContext& query,
                                      AqlFunctionsInternalCache& cache);
 
-  ~FixedVarExpressionContext() override = default;
-
-  bool isDataFromCollection(Variable const* variable) const override;
+  ~FixedVarExpressionContext() = default;
 
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;
 
-  void clearVariableValues();
+  void clearVariableValues() noexcept;
 
+  // @brief This method will set the given variable to the given AQL value
+  // if the variable already holds a value, this method will keep the old value.
   void setVariableValue(Variable const*, AqlValue const&);
+
+  // @brief This method will only clear the given variable, and keep
+  // all others intact. If the variable does not exist, this is a noop.
+  void clearVariableValue(Variable const*) noexcept;
 
   void serializeAllVariables(velocypack::Options const& opts,
                              arangodb::velocypack::Builder&) const;
 
  private:
-  /// @brief temporary storage for expression data context
-  std::unordered_map<Variable const*, AqlValue> _vars;
+  // temporary storage for expression data context
+  containers::FlatHashMap<Variable const*, AqlValue> _vars;
 };
+
+class NoVarExpressionContext final : public QueryExpressionContext {
+ public:
+  explicit NoVarExpressionContext(transaction::Methods& trx,
+                                  QueryContext& query,
+                                  AqlFunctionsInternalCache& cache);
+
+  ~NoVarExpressionContext() = default;
+
+  AqlValue getVariableValue(Variable const* variable, bool doCopy,
+                            bool& mustDestroy) const override;
+};
+
 }  // namespace aql
 }  // namespace arangodb

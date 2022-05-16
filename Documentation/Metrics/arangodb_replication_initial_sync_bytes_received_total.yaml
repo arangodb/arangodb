@@ -2,7 +2,7 @@ name: arangodb_replication_initial_sync_bytes_received_total
 renamedFrom: arangodb_replication_initial_sync_bytes_received
 introducedIn: "3.8.0"
 help: |
-  Accumulated amount of bytes received in initial sync
+  Accumulated amount of bytes received in initial sync.
 unit: bytes
 type: counter
 category: Replication

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,20 +61,19 @@ struct IResearchViewMeta {
    public:
     ConsolidationPolicy() = default;
     ConsolidationPolicy(irs::index_writer::consolidation_policy_t&& policy,
-                        arangodb::velocypack::Builder&& properties) noexcept
+                        VPackBuilder&& properties) noexcept
         : _policy(std::move(policy)), _properties(std::move(properties)) {}
 
     irs::index_writer::consolidation_policy_t const& policy() const noexcept {
       return _policy;
     }
 
-    arangodb::velocypack::Slice properties() const noexcept {
-      return _properties.slice();
-    }
+    VPackSlice properties() const noexcept { return _properties.slice(); }
 
    private:
-    irs::index_writer::consolidation_policy_t _policy;  // policy instance (false == disable)
-    arangodb::velocypack::Builder _properties;  // normalized policy definition
+    irs::index_writer::consolidation_policy_t
+        _policy;               // policy instance (false == disable)
+    VPackBuilder _properties;  // normalized policy definition
   };
 
   struct Mask {
@@ -82,7 +81,6 @@ struct IResearchViewMeta {
     bool _commitIntervalMsec;
     bool _consolidationIntervalMsec;
     bool _consolidationPolicy;
-    bool _locale;
     bool _version;
     bool _writebufferActive;
     bool _writebufferIdle;
@@ -93,18 +91,24 @@ struct IResearchViewMeta {
     explicit Mask(bool mask = false) noexcept;
   };
 
-  size_t _cleanupIntervalStep; // issue cleanup after <count> commits (0 == disable)
-  size_t _commitIntervalMsec; // issue commit after <interval> milliseconds (0 == disable)
-  size_t _consolidationIntervalMsec; // issue consolidation after <interval> milliseconds (0 == disable)
-  ConsolidationPolicy _consolidationPolicy; // the consolidation policy to use
-  std::locale _locale; // locale used for ordering processed attribute names
-  uint32_t _version; // the version of the iresearch interface e.g. which how data is stored in iresearch (default == latest)
-  size_t _writebufferActive; // maximum number of concurrent segments before segment aquisition blocks, e.g. max number of concurrent transacitons) (0 == unlimited)
-  size_t _writebufferIdle; // maximum number of segments cached in the pool
-  size_t _writebufferSizeMax; // maximum memory byte size per segment before a segment flush is triggered (0 == unlimited)
+  size_t _cleanupIntervalStep{};
+  // issue cleanup after <count> commits (0 == disable)
+  size_t _commitIntervalMsec{};
+  // issue commit after <interval> milliseconds (0 == disable)
+  size_t _consolidationIntervalMsec{};
+  // issue consolidation after <interval> milliseconds (0 == disable)
+  ConsolidationPolicy _consolidationPolicy;  // the consolidation policy to use
+  uint32_t _version{};  // the version of the iresearch interface e.g. which
+                        // how data is stored in iresearch (default == latest)
+  size_t _writebufferActive{};  // maximum number of concurrent segments
+  // before segment acquisition blocks,
+  // e.g. max number of concurrent transactions (0 == unlimited)
+  size_t _writebufferIdle{};  // maximum number of segments cached in the pool
+  size_t _writebufferSizeMax{};  // maximum memory byte size per segment
+  // before a segment flush is triggered (0 == unlimited)
   IResearchViewSort _primarySort;
   IResearchViewStoredValues _storedValues;
-  irs::type_info::type_id _primarySortCompression;
+  irs::type_info::type_id _primarySortCompression{};
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!
@@ -116,12 +120,27 @@ struct IResearchViewMeta {
   // function !!! NOTE: if adding fields don't forget to modify the memory()
   // function !!!
 
+  IResearchViewMeta(IResearchViewMeta&& other) noexcept = delete;
+  IResearchViewMeta& operator=(IResearchViewMeta&& other) noexcept = delete;
+  IResearchViewMeta& operator=(IResearchViewMeta const& other) = delete;
+
   IResearchViewMeta();
   IResearchViewMeta(IResearchViewMeta const& other);
-  IResearchViewMeta(IResearchViewMeta&& other) noexcept;
 
-  IResearchViewMeta& operator=(IResearchViewMeta&& other) noexcept;
-  IResearchViewMeta& operator=(IResearchViewMeta const& other);
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ctor with '*Tag' not thread-safe for '&& other'
+  //////////////////////////////////////////////////////////////////////////////
+  struct FullTag {};
+  IResearchViewMeta(FullTag, IResearchViewMeta&& other) noexcept;
+  struct PartialTag {};
+  IResearchViewMeta(PartialTag, IResearchViewMeta&& other) noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief store methods not thread-safe for 'this', and not for '&& other'
+  //////////////////////////////////////////////////////////////////////////////
+  void storeFull(IResearchViewMeta const& other);
+  void storeFull(IResearchViewMeta&& other) noexcept;
+  void storePartial(IResearchViewMeta&& other) noexcept;
 
   bool operator==(IResearchViewMeta const& other) const noexcept;
   bool operator!=(IResearchViewMeta const& other) const noexcept;
@@ -137,8 +156,9 @@ struct IResearchViewMeta {
   ///        on failure state is undefined
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(arangodb::velocypack::Slice const& slice, std::string& errorField,
-            IResearchViewMeta const& defaults = DEFAULT(), Mask* mask = nullptr) noexcept;
+  bool init(velocypack::Slice slice, std::string& errorField,
+            IResearchViewMeta const& defaults = DEFAULT(),
+            Mask* mask = nullptr) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchViewMeta object
@@ -147,8 +167,9 @@ struct IResearchViewMeta {
   ///        elements are appended to an existing object
   ///        return success or set TRI_set_errno(...) and return false
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::velocypack::Builder& builder,
-            IResearchViewMeta const* ignoreEqual = nullptr, Mask const* mask = nullptr) const;
+  bool json(velocypack::Builder& builder,
+            IResearchViewMeta const* ignoreEqual = nullptr,
+            Mask const* mask = nullptr) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this iResearch Link meta
@@ -166,8 +187,9 @@ struct IResearchViewMetaState {
     explicit Mask(bool mask = false) noexcept;
   };
 
-  std::unordered_set<DataSourceId> _collections;  // collection links added to this view via IResearchLink
-                                                  // creation (may contain no-longer valid cids)
+  // collection links added to this view via IResearchLink
+  // creation (may contain no-longer valid cids)
+  std::unordered_set<DataSourceId> _collections;
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!
@@ -179,7 +201,7 @@ struct IResearchViewMetaState {
   // forget to modify the json(...) function !!! NOTE: if adding fields don't
   // forget to modify the memory() function !!!
 
-  IResearchViewMetaState();
+  IResearchViewMetaState() = default;
   IResearchViewMetaState(IResearchViewMetaState const& other);
   IResearchViewMetaState(IResearchViewMetaState&& other) noexcept;
 
@@ -190,18 +212,12 @@ struct IResearchViewMetaState {
   bool operator!=(IResearchViewMetaState const& other) const noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief return default IResearchViewMeta values
-  ////////////////////////////////////////////////////////////////////////////////
-  static const IResearchViewMetaState& DEFAULT();
-
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize IResearchViewMeta with values from a JSON description
   ///        return success or set 'errorField' to specific field with error
   ///        on failure state is undefined
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(arangodb::velocypack::Slice const& slice, std::string& errorField,
-            IResearchViewMetaState const& defaults = DEFAULT(), Mask* mask = nullptr);
+  bool init(VPackSlice slice, std::string& errorField, Mask* mask = nullptr);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchViewMeta object
@@ -210,7 +226,7 @@ struct IResearchViewMetaState {
   ///        elements are appended to an existing object
   ///        return success or set TRI_set_errno(...) and return false
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::velocypack::Builder& builder,
+  bool json(VPackBuilder& builder,
             IResearchViewMetaState const* ignoreEqual = nullptr,
             Mask const* mask = nullptr) const;
 
@@ -222,4 +238,3 @@ struct IResearchViewMetaState {
 
 }  // namespace iresearch
 }  // namespace arangodb
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,8 +32,6 @@
 
 #include <cmath>
 
-#include <velocypack/StringRef.h>
-
 using namespace arangodb;
 
 SimpleAttributeEqualityMatcher::SimpleAttributeEqualityMatcher(
@@ -42,16 +40,15 @@ SimpleAttributeEqualityMatcher::SimpleAttributeEqualityMatcher(
 
 /// @brief match a single of the attributes
 /// this is used for the primary index and the edge index
-Index::FilterCosts SimpleAttributeEqualityMatcher::matchOne(arangodb::Index const* index,
-                                                            arangodb::aql::AstNode const* node,
-                                                            arangodb::aql::Variable const* reference,
-                                                            size_t itemsInIndex) {
+Index::FilterCosts SimpleAttributeEqualityMatcher::matchOne(
+    arangodb::Index const* index, arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference, size_t itemsInIndex) {
   size_t postFilterConditions = 0;
-  std::unordered_set<std::string> nonNullAttributes;
+  arangodb::containers::FlatHashSet<std::string> nonNullAttributes;
   _found.clear();
-  
+
   Index::FilterCosts costs = Index::FilterCosts::defaultCosts(itemsInIndex);
-  
+
   size_t const n = node->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
@@ -63,24 +60,27 @@ Index::FilterCosts SimpleAttributeEqualityMatcher::matchOne(arangodb::Index cons
     if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       TRI_ASSERT(op->numMembers() == 2);
       // EQ is symmetric
-      if (accessFitsIndex(index, op->getMemberUnchecked(0), op->getMemberUnchecked(1), op,
-                          reference, nonNullAttributes, false)) {
+      if (accessFitsIndex(index, op->getMemberUnchecked(0),
+                          op->getMemberUnchecked(1), op, reference,
+                          nonNullAttributes, false)) {
         which = op->getMemberUnchecked(0);
-      } else if (accessFitsIndex(index, op->getMemberUnchecked(1), op->getMemberUnchecked(0), op,
-                                 reference, nonNullAttributes, false)) {
+      } else if (accessFitsIndex(index, op->getMemberUnchecked(1),
+                                 op->getMemberUnchecked(0), op, reference,
+                                 nonNullAttributes, false)) {
         which = op->getMemberUnchecked(1);
       }
     } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       TRI_ASSERT(op->numMembers() == 2);
-      if (accessFitsIndex(index, op->getMemberUnchecked(0), op->getMemberUnchecked(1), op,
-                          reference, nonNullAttributes, false)) {
+      if (accessFitsIndex(index, op->getMemberUnchecked(0),
+                          op->getMemberUnchecked(1), op, reference,
+                          nonNullAttributes, false)) {
         // we can use the index
         // use slightly different cost calculation for IN than for EQ
         which = op->getMemberUnchecked(0);
         values = estimateNumberOfArrayMembers(op->getMemberUnchecked(1));
       }
     }
-      
+
     if (which != nullptr) {
       // we can use the index for the condition
       costs = calculateIndexCosts(index, which, itemsInIndex, values, 1);
@@ -97,97 +97,13 @@ Index::FilterCosts SimpleAttributeEqualityMatcher::matchOne(arangodb::Index cons
   return costs;
 }
 
-/// @brief match all of the attributes, in any order
-/// this is used for the hash index
-Index::FilterCosts SimpleAttributeEqualityMatcher::matchAll(arangodb::Index const* index,
-                                                            arangodb::aql::AstNode const* node,
-                                                            arangodb::aql::Variable const* reference,
-                                                            size_t itemsInIndex) {
-  std::unordered_set<std::string> nonNullAttributes;
-  _found.clear();
-  arangodb::aql::AstNode const* which = nullptr;
-  
-  size_t postFilterConditions = 0;
-  size_t values = 1;
-  size_t const n = node->numMembers();
-
-  for (size_t i = 0; i < n; ++i) {
-    bool matches = false;
-    auto op = node->getMemberUnchecked(i);
-
-    if (index->sparse() && (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE ||
-                            op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT)) {
-      TRI_ASSERT(op->numMembers() == 2);
-
-      // track != null && > null, though no index will use them directly
-      // however, we need to track which attributes are null in order to
-      // use sparse indexes properly
-      accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference,
-                      nonNullAttributes, false);
-      accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference,
-                      nonNullAttributes, false);
-    } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
-      TRI_ASSERT(op->numMembers() == 2);
-
-      if (accessFitsIndex(index, op->getMemberUnchecked(0), op->getMemberUnchecked(1), op,
-                          reference, nonNullAttributes, false)) {
-        which = op->getMemberUnchecked(1);
-        matches = true;
-      } else if (accessFitsIndex(index, op->getMemberUnchecked(1), op->getMemberUnchecked(0), op,
-                                 reference, nonNullAttributes, false)) {
-        which = op->getMemberUnchecked(0);
-        matches = true;
-      }
-    } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-      TRI_ASSERT(op->numMembers() == 2);
-
-      if (accessFitsIndex(index, op->getMemberUnchecked(0), op->getMemberUnchecked(1), op,
-                          reference, nonNullAttributes, false)) {
-        which = op->getMemberUnchecked(0);
-        values *= estimateNumberOfArrayMembers(op->getMember(1));
-        matches = true;
-      }
-    }
-
-    if (!matches) {
-      // we cannot use the index for this part of the condition
-      ++postFilterConditions;
-    }
-  }
-    
-  if (values == 0) {
-    values = 1;
-  }
-  
-  Index::FilterCosts costs = Index::FilterCosts::defaultCosts(itemsInIndex);
-
-  if (_found.size() == _attributes.size()) {
-    // can only use this index if all index attributes are covered by the
-    // condition
-    if (_found.size() == 1) {
-      // single-attribute index
-      TRI_ASSERT(which != nullptr);
-    } else {
-      // multi-attribute index
-      which = nullptr;
-    }
-
-    costs = calculateIndexCosts(index, which, itemsInIndex, values, _found.size());
-  }
-  
-  // honor the costs of post-index filter conditions
-  costs.estimatedCosts += costs.estimatedItems * postFilterConditions;
-
-  return costs;
-}
-
 /// @brief specialize the condition for the index
 /// this is used for the primary index and the edge index
 /// requires that a previous matchOne() returned true
 arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
     arangodb::Index const* index, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) {
-  std::unordered_set<std::string> nonNullAttributes;
+  arangodb::containers::FlatHashSet<std::string> nonNullAttributes;
   _found.clear();
 
   // must edit in place, no access to AST
@@ -232,88 +148,6 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
   return node;
 }
 
-/// @brief specialize the condition for the index
-/// this is used for the hash index
-/// requires that a previous matchAll() returned true
-arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
-    arangodb::Index const* index, arangodb::aql::AstNode* node,
-    arangodb::aql::Variable const* reference) {
-  std::unordered_set<std::string> nonNullAttributes;
-  _found.clear();
-
-  // must edit in place, no access to AST; TODO change so we can replace with
-  // copy
-  TEMPORARILY_UNLOCK_NODE(node);
-
-  size_t const n = node->numMembers();
-
-  for (size_t i = 0; i < n; ++i) {
-    auto op = node->getMember(i);
-
-    if (index->sparse() && (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE ||
-                            op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT)) {
-      TRI_ASSERT(op->numMembers() == 2);
-
-      // track != null && > null, though no index will use them directly
-      // however, we need to track which attributes are null in order to
-      // use sparse indexes properly
-      accessFitsIndex(index, op->getMember(0), op->getMember(1), op, reference,
-                      nonNullAttributes, false);
-      accessFitsIndex(index, op->getMember(1), op->getMember(0), op, reference,
-                      nonNullAttributes, false);
-    } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
-      TRI_ASSERT(op->numMembers() == 2);
-      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
-                          reference, nonNullAttributes, false) ||
-          accessFitsIndex(index, op->getMember(1), op->getMember(0), op,
-                          reference, nonNullAttributes, false)) {
-        TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenEQ") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        if (_found.size() == _attributes.size()) {
-          // got enough attributes
-          break;
-        }
-      }
-    } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-      TRI_ASSERT(op->numMembers() == 2);
-      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
-                          reference, nonNullAttributes, false)) {
-        TRI_IF_FAILURE("SimpleAttributeMatcher::specializeAllChildrenIN") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        if (_found.size() == _attributes.size()) {
-          // got enough attributes
-          break;
-        }
-      }
-    }
-  }
-
-  if (_found.size() == _attributes.size()) {
-    // remove node's existing members
-    node->clearMembers();
-
-    // found contains all nodes required for this condition sorted by
-    // _attributes
-    // now re-add only those
-    for (size_t i = 0; i < _attributes.size(); ++i) {
-      // This is always save due to
-      auto it = _found.find(i);
-      TRI_ASSERT(it != _found.end());  // Found contains by def. 1 Element for
-                                       // each _attribute
-
-      TRI_ASSERT(it->second->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE);
-      node->addMember(it->second);
-    }
-
-    return node;
-  }
-
-  TRI_ASSERT(false);
-  return node;
-}
-
 /// @brief determine the costs of using this index and the number of items
 /// that will return in average
 /// cost values have no special meaning, except that multiple cost values are
@@ -334,17 +168,19 @@ Index::FilterCosts SimpleAttributeEqualityMatcher::calculateIndexCosts(
     // the index mocks do not have a selectivity estimate...
     if (idx->hasSelectivityEstimate()) {
       // use index selectivity estimate
-      arangodb::velocypack::StringRef att;
-      if (attribute != nullptr && attribute->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-        att = arangodb::velocypack::StringRef(attribute->getStringValue(), attribute->getStringLength());
+      std::string_view att;
+      if (attribute != nullptr &&
+          attribute->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
+        att = attribute->getStringView();
       }
       double estimate = idx->selectivityEstimate(att);
       if (estimate > 0.0) {
         costs.estimatedItems = static_cast<size_t>(1.0 / estimate * values);
       }
     } else {
-      // no selectivity estimate present. this should only happen for mock indexes.
-      // anyway, use a hard-coded formula for determining the number of results
+      // no selectivity estimate present. this should only happen for mock
+      // indexes. anyway, use a hard-coded formula for determining the number of
+      // results
       double equalityReductionFactor = 20.0;
       for (size_t i = 0; i < coveredAttributes; ++i) {
         costs.estimatedItems /= static_cast<size_t>(equalityReductionFactor);
@@ -356,28 +192,9 @@ Index::FilterCosts SimpleAttributeEqualityMatcher::calculateIndexCosts(
         }
       }
     }
-      
-    // costs.estimatedItems is always set here, make it at least 1
-    costs.estimatedItems = std::max(size_t(1), costs.estimatedItems);
 
-    // seek cost is O(log(n)) for RocksDB
-    costs.estimatedCosts = std::max(double(1.0),
-                                  std::log2(double(itemsInIndex)) * values);
-    if (idx->unique()) {
-      costs.estimatedCosts = std::max(double(1.0), double(itemsInIndex) * values);
-    }
-    // add per-document processing cost
-    costs.estimatedCosts += costs.estimatedItems * 0.05;
-    // slightly prefer indexes that cover more attributes
-    costs.estimatedCosts -= (idx->fields().size() - 1) * 0.02;
-    
-    // cost is already low... now slightly prioritize unique indexes
-    if (idx->unique() || idx->implicitlyUnique()) {
-      costs.estimatedCosts *= 0.995 - 0.05 * (idx->fields().size() - 1);
-     }
-
-    // box the estimated costs to [0 - inf
-    costs.estimatedCosts = std::max(double(0.0), costs.estimatedCosts);
+    // normalizes costs
+    Index::normalizeFilterCosts(costs, idx, itemsInIndex, values);
   }
 
   return costs;
@@ -388,13 +205,15 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex(
     arangodb::Index const* index, arangodb::aql::AstNode const* access,
     arangodb::aql::AstNode const* other, arangodb::aql::AstNode const* op,
     arangodb::aql::Variable const* reference,
-    std::unordered_set<std::string>& nonNullAttributes, bool isExecution) {
+    arangodb::containers::FlatHashSet<std::string>& nonNullAttributes,
+    bool isExecution) {
   // op can be  ==, IN, >, <, !=, even though we do not support all of these
   // operators however, canUseConditionPart will help us fill the
   // "nonNullAttributes" set even for the not-supported operators, and we want
   // to make use of that so we can simply exit after canUseConditionPart for all
   // operators we actually don't support
-  if (!index->canUseConditionPart(access, other, op, reference, nonNullAttributes, isExecution)) {
+  if (!index->canUseConditionPart(access, other, op, reference,
+                                  nonNullAttributes, isExecution)) {
     return false;
   }
 
@@ -406,14 +225,18 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex(
   }
 
   arangodb::aql::AstNode const* what = access;
-  std::pair<arangodb::aql::Variable const*, std::vector<arangodb::basics::AttributeName>> attributeData;
+  std::pair<arangodb::aql::Variable const*,
+            std::vector<arangodb::basics::AttributeName>>
+      attributeData;
 
   if (op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-    if (!what->isAttributeAccessForVariable(attributeData) || attributeData.first != reference) {
+    if (!what->isAttributeAccessForVariable(attributeData) ||
+        attributeData.first != reference) {
       // this access is not referencing this collection
       return false;
     }
-    if (arangodb::basics::TRI_AttributeNamesHaveExpansion(attributeData.second)) {
+    if (arangodb::basics::TRI_AttributeNamesHaveExpansion(
+            attributeData.second)) {
       // doc.value[*] == 'value'
       return false;
     }
@@ -427,15 +250,18 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex(
     TRI_ASSERT(op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN);
     bool canUse = false;
 
-    if (what->isAttributeAccessForVariable(attributeData) && attributeData.first == reference &&
-        !arangodb::basics::TRI_AttributeNamesHaveExpansion(attributeData.second)) {
+    if (what->isAttributeAccessForVariable(attributeData) &&
+        attributeData.first == reference &&
+        !arangodb::basics::TRI_AttributeNamesHaveExpansion(
+            attributeData.second)) {
       // doc.value IN 'value'
       // can use this index
       canUse = true;
     } else {
       // check for  'value' IN doc.value  AND  'value' IN doc.value[*]
       what = other;
-      if (what->isAttributeAccessForVariable(attributeData) && attributeData.first == reference &&
+      if (what->isAttributeAccessForVariable(attributeData) &&
+          attributeData.first == reference &&
           index->isAttributeExpanded(attributeData.second) &&
           index->attributeMatches(attributeData.second)) {
         canUse = true;
@@ -447,14 +273,16 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex(
     }
   }
 
-  std::vector<arangodb::basics::AttributeName> const& fieldNames = attributeData.second;
+  std::vector<arangodb::basics::AttributeName> const& fieldNames =
+      attributeData.second;
 
   for (size_t i = 0; i < _attributes.size(); ++i) {
     if (_attributes[i].size() != fieldNames.size()) {
       // attribute path length differs
       continue;
     }
-    if (index->isAttributeExpanded(i) && op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+    if (index->isAttributeExpanded(i) &&
+        op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       // If this attribute is correct or not, it could only serve for IN
       continue;
     }
@@ -489,7 +317,8 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex(
   return false;
 }
 
-size_t SimpleAttributeEqualityMatcher::estimateNumberOfArrayMembers(aql::AstNode const* value) {
+size_t SimpleAttributeEqualityMatcher::estimateNumberOfArrayMembers(
+    aql::AstNode const* value) {
   if (value->isArray()) {
     // attr IN [ a, b, c ]  =>  this will produce multiple items, so count
     // them!

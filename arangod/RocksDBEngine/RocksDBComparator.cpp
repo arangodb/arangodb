@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +32,6 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
@@ -45,28 +44,31 @@ int compareIndexedValues(arangodb::velocypack::Slice const& lhs,
 
   arangodb::velocypack::ArrayIterator lhsIter(lhs);
   arangodb::velocypack::ArrayIterator rhsIter(rhs);
-  size_t const lLength = lhsIter.size();
-  size_t const rLength = rhsIter.size();
 
-  while (lhsIter.valid() || rhsIter.valid()) {
-    size_t i = lhsIter.index();
+  do {
+    bool lhsValid = lhsIter.valid();
+    bool rhsValid = rhsIter.valid();
+
+    if (!lhsValid && !rhsValid) {
+      return static_cast<int>(lhsIter.size() - rhsIter.size());
+    }
+
     int res = arangodb::basics::VelocyPackHelper::compare(
-        (i < lLength ? *lhsIter : VPackSlice::noneSlice()),
-        (i < rLength ? *rhsIter : VPackSlice::noneSlice()), true);
+        (lhsValid ? *lhsIter : VPackSlice::noneSlice()),
+        (rhsValid ? *rhsIter : VPackSlice::noneSlice()), true);
     if (res != 0) {
       return res;
     }
+
     ++lhsIter;
     ++rhsIter;
-  }
-
-  return static_cast<int>(lLength - rLength);
+  } while (true);
 }
 
-} // namespace
+}  // namespace
 
-int RocksDBVPackComparator::compareIndexValues(rocksdb::Slice const& lhs,
-                                               rocksdb::Slice const& rhs) const {
+int RocksDBVPackComparator::compareIndexValues(
+    rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const {
   constexpr size_t objectIDLength = RocksDBKey::objectIdSize();
 
   int r = memcmp(lhs.data(), rhs.data(), objectIDLength);
@@ -74,9 +76,10 @@ int RocksDBVPackComparator::compareIndexValues(rocksdb::Slice const& lhs,
   if (r != 0) {
     // different object ID
     return r;
-  } 
+  }
 
-  if (ADB_UNLIKELY(lhs.size() == objectIDLength || rhs.size() == objectIDLength)) {
+  if (ADB_UNLIKELY(lhs.size() == objectIDLength ||
+                   rhs.size() == objectIDLength)) {
     if (lhs.size() == rhs.size()) {
       return 0;
     }
@@ -86,8 +89,10 @@ int RocksDBVPackComparator::compareIndexValues(rocksdb::Slice const& lhs,
   TRI_ASSERT(lhs.size() > sizeof(uint64_t));
   TRI_ASSERT(rhs.size() > sizeof(uint64_t));
 
-  VPackSlice const lSlice = VPackSlice(reinterpret_cast<uint8_t const*>(lhs.data()) + sizeof(uint64_t));
-  VPackSlice const rSlice = VPackSlice(reinterpret_cast<uint8_t const*>(rhs.data()) + sizeof(uint64_t));
+  VPackSlice const lSlice = VPackSlice(
+      reinterpret_cast<uint8_t const*>(lhs.data()) + sizeof(uint64_t));
+  VPackSlice const rSlice = VPackSlice(
+      reinterpret_cast<uint8_t const*>(rhs.data()) + sizeof(uint64_t));
 
   r = ::compareIndexedValues(lSlice, rSlice);
 

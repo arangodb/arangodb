@@ -1,0 +1,15 @@
+{
+    "key": "nowide",
+    "name": "Nowide",
+    "authors": [
+        "Artyom Beilis"
+    ],
+    "maintainers": [
+        "Alexander Grund <alex -at- grundis.de>"
+    ],
+    "description": "Standard library functions with UTF-8 API on Windows.",
+    "category": [
+        "System"
+    ],
+    "cxxstd": "11"
+}

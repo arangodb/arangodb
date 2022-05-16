@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,26 +35,18 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 namespace transaction {
-  
-SmartContext::SmartContext(TRI_vocbase_t& vocbase,
-                           TransactionId globalId,
+
+SmartContext::SmartContext(TRI_vocbase_t& vocbase, TransactionId globalId,
                            std::shared_ptr<TransactionState> state)
-  : Context(vocbase), _globalId(globalId), _state(std::move(state)) {
+    : Context(vocbase), _globalId(globalId), _state(std::move(state)) {
   TRI_ASSERT(_globalId.isSet());
 }
-  
-SmartContext::~SmartContext() {
-//  if (_state) {
-//    if (_state->isTopLevelTransaction()) {
-//      std::this_thread::sleep_for(std::chrono::seconds(60));
-//      TRI_ASSERT(false); // probably should not happen
-//      delete _state;
-//    }
-//  }
-}
+
+SmartContext::~SmartContext() = default;
 
 /// @brief order a custom type handler for the collection
-arangodb::velocypack::CustomTypeHandler* transaction::SmartContext::orderCustomTypeHandler() {
+arangodb::velocypack::CustomTypeHandler*
+transaction::SmartContext::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
     _customTypeHandler =
         transaction::Context::createCustomTypeHandler(_vocbase, resolver());
@@ -65,48 +57,60 @@ arangodb::velocypack::CustomTypeHandler* transaction::SmartContext::orderCustomT
   return _customTypeHandler.get();
 }
 
-/// @brief return the resolver
-CollectionNameResolver const& transaction::SmartContext::resolver() {
-  if (_resolver == nullptr) {
-    createResolver();
-  }
-  TRI_ASSERT(_resolver != nullptr);
-  return *_resolver;
-}
-
 TransactionId transaction::SmartContext::generateId() const {
   return _globalId;
 }
-  
+
 //  ============= ManagedContext =============
-  
+
 ManagedContext::ManagedContext(TransactionId globalId,
                                std::shared_ptr<TransactionState> state,
                                bool responsibleForCommit, bool cloned)
-  : SmartContext(state->vocbase(), globalId, state),
-    _responsibleForCommit(responsibleForCommit), _cloned(cloned) {}
-  
+    : SmartContext(state->vocbase(), globalId, state),
+      _responsibleForCommit(responsibleForCommit),
+      _cloned(cloned),
+      _isSideUser(false) {}
+
+ManagedContext::ManagedContext(TransactionId globalId,
+                               std::shared_ptr<TransactionState> state,
+                               TransactionContextSideUser /*sideUser*/)
+    : SmartContext(state->vocbase(), globalId, state),
+      _responsibleForCommit(false),
+      _cloned(true),
+      _isSideUser(true) {}
+
 ManagedContext::~ManagedContext() {
+  bool doReturn = false;
+
   if (_state != nullptr && !_cloned) {
     TRI_ASSERT(!_responsibleForCommit);
-    
+    TRI_ASSERT(!_isSideUser);
+    doReturn = true;
+  } else if (_isSideUser) {
+    TRI_ASSERT(!_responsibleForCommit);
+    TRI_ASSERT(_cloned);
+    doReturn = true;
+  }
+
+  if (doReturn) {
+    // we are responsible for returning the lease for the managed transaction
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
-    mgr->returnManagedTrx(_globalId);
-    _state = nullptr;
+    mgr->returnManagedTrx(_globalId, _isSideUser);
   }
 }
 
 /// @brief get transaction state, determine commit responsiblity
-/*virtual*/ std::shared_ptr<TransactionState> transaction::ManagedContext::acquireState(transaction::Options const& options,
-                                                                                        bool& responsibleForCommit) {
+/*virtual*/ std::shared_ptr<TransactionState>
+transaction::ManagedContext::acquireState(transaction::Options const& options,
+                                          bool& responsibleForCommit) {
   TRI_ASSERT(_state);
   // single document transaction should never be leased out
   TRI_ASSERT(!_state->hasHint(Hints::Hint::SINGLE_OPERATION));
   responsibleForCommit = _responsibleForCommit;
   return _state;
 }
-  
+
 void ManagedContext::unregisterTransaction() noexcept {
   TRI_ASSERT(_responsibleForCommit);
   _state = nullptr;
@@ -114,17 +118,19 @@ void ManagedContext::unregisterTransaction() noexcept {
 
 std::shared_ptr<transaction::Context> ManagedContext::clone() const {
   // cloned transactions may never be responsible for commits
-  auto clone = std::make_shared<transaction::ManagedContext>(_globalId, _state,
-                                                             /*responsibleForCommit*/false, /*cloned*/true);
-  clone->_state = _state;
+  auto clone = std::make_shared<transaction::ManagedContext>(
+      _globalId, _state,
+      /*responsibleForCommit*/ false, /*cloned*/ true);
+  TRI_ASSERT(clone->_state == _state);
   return clone;
 }
-  
+
 // ============= AQLStandaloneContext =============
 
 /// @brief get transaction state, determine commit responsiblity
-/*virtual*/ std::shared_ptr<TransactionState> transaction::AQLStandaloneContext::acquireState(transaction::Options const& options,
-                                                                                              bool& responsibleForCommit) {
+/*virtual*/ std::shared_ptr<TransactionState>
+transaction::AQLStandaloneContext::acquireState(
+    transaction::Options const& options, bool& responsibleForCommit) {
   if (!_state) {
     responsibleForCommit = true;
     _state = transaction::Context::createState(options);
@@ -148,7 +154,8 @@ void AQLStandaloneContext::unregisterTransaction() noexcept {
 }
 
 std::shared_ptr<transaction::Context> AQLStandaloneContext::clone() const {
-  auto clone = std::make_shared<transaction::AQLStandaloneContext>(_vocbase, _globalId);
+  auto clone =
+      std::make_shared<transaction::AQLStandaloneContext>(_vocbase, _globalId);
   clone->_state = _state;
   return clone;
 }

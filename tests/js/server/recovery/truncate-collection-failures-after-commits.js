@@ -38,8 +38,8 @@ const runSetup = function () {
 
   db._drop(colName);
   const c = db._create(colName);
-  c.ensureHashIndex("value");
-  c.ensureSkiplist("value2");
+  c.ensureIndex({ type: "hash", fields: ["value"] });
+  c.ensureIndex({ type: "skiplist", fields: ["value2"] });
 
   const docs = [];
   for (let i = 0; i < 10000; ++i) {
@@ -47,8 +47,8 @@ const runSetup = function () {
   }
   // Add two packs of 10.000 Documents.
   // Intermediate commits will commit after 10.000 removals
-  c.save(docs);
-  c.save(docs);
+  c.insert(docs);
+  c.insert(docs);
 
   internal.debugSetFailAt("SegfaultAfterAllCommits");
 

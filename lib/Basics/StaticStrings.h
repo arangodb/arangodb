@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 
 namespace arangodb {
 class StaticStrings {
@@ -48,6 +49,8 @@ class StaticStrings {
   static std::string const AttachmentString;
   static std::string const IdString;
   static std::string const KeyString;
+  static std::string const PrefixOfKeyString;
+  static std::string const PostfixOfKeyString;
   static std::string const RevString;
   static std::string const FromString;
   static std::string const ToString;
@@ -70,6 +73,7 @@ class StaticStrings {
   static std::string const Overwrite;
   static std::string const OverwriteMode;
   static std::string const Compact;
+  static std::string const DontWaitForCommit;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
@@ -114,22 +118,28 @@ class StaticStrings {
   static std::string const DataSourceDeleted;  // data-source deletion marker
   static std::string const DataSourceGuid;     // data-source globaly-unique id
   static std::string const DataSourceId;       // data-source id
+  static std::string const DataSourceCid;      // data-source collection id
   static std::string const DataSourceName;     // data-source name
   static std::string const DataSourcePlanId;   // data-source plan id
   static std::string const DataSourceSystem;   // data-source system marker
   static std::string const DataSourceType;     // data-source type
+  static std::string const DataSourceParameters;
 
   // Index definition fields
-  static std::string const IndexExpireAfter;   // ttl index expire value
-  static std::string const IndexFields;        // index fields
-  static std::string const IndexId;            // index id
-  static std::string const IndexInBackground;  // index in background
-  static std::string const IndexIsBuilding;    // index build in-process
-  static std::string const IndexName;          // index name
-  static std::string const IndexSparse;        // index sparsity marker
-  static std::string const IndexType;          // index type
-  static std::string const IndexUnique;        // index uniqueness marker
-  static std::string const IndexEstimates;     // index estimates flag
+  static std::string const
+      IndexDeduplicate;  // index deduplicate flag (for array indexes)
+  static std::string const IndexExpireAfter;     // ttl index expire value
+  static std::string const IndexFields;          // index fields
+  static std::string const IndexId;              // index id
+  static std::string const IndexInBackground;    // index in background
+  static std::string const IndexIsBuilding;      // index build in-process
+  static std::string const IndexName;            // index name
+  static std::string const IndexSparse;          // index sparsity marker
+  static std::string const IndexStoredValues;    // index stored values
+  static std::string const IndexType;            // index type
+  static std::string const IndexUnique;          // index uniqueness marker
+  static std::string const IndexEstimates;       // index estimates flag
+  static std::string const IndexLegacyPolygons;  // index legacyPolygons flag
 
   // static index names
   static std::string const IndexNameEdge;
@@ -140,15 +150,16 @@ class StaticStrings {
   static std::string const IndexNameTime;
 
   // index hint strings
-  static std::string const IndexHintAny;
-  static std::string const IndexHintCollection;
-  static std::string const IndexHintHint;
-  static std::string const IndexHintDepth;
-  static std::string const IndexHintInbound;
+  static std::string const IndexHintDisableIndex;
   static std::string const IndexHintOption;
   static std::string const IndexHintOptionForce;
-  static std::string const IndexHintOutbound;
-  static std::string const IndexHintWildcard;
+
+  // query options
+  static std::string const Filter;
+  static std::string const MaxProjections;
+  static std::string const ProducesResult;
+  static std::string const ReadOwnWrites;
+  static std::string const UseCache;
 
   // HTTP headers
   static std::string const Accept;
@@ -188,6 +199,7 @@ class StaticStrings {
   static std::string const KeepAlive;
   static std::string const LeaderEndpoint;
   static std::string const Location;
+  static std::string const LockLocation;
   static std::string const NoSniff;
   static std::string const Origin;
   static std::string const PotentialDirtyRead;
@@ -200,6 +212,7 @@ class StaticStrings {
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
   static std::string const XArangoFrontend;
+  static std::string const XArangoQueueTimeSeconds;
 
   // mime types
   static std::string const MimeTypeDump;
@@ -219,11 +232,13 @@ class StaticStrings {
   static std::string const ParsedBody;
 
   // collection attributes
-  static std::string const CacheEnabled;
+  static std::string const AllowUserKeys;
+  static std::string const CacheEnabled;  // also used for indexes
   static std::string const DistributeShardsLike;
   static std::string const Indexes;
   static std::string const IsSmart;
   static std::string const IsSmartChild;
+  static std::string const KeyOptions;
   static std::string const MinReplicationFactor;
   static std::string const NumberOfShards;
   static std::string const ObjectId;
@@ -240,26 +255,43 @@ class StaticStrings {
   static std::string const Version;
   static std::string const WriteConcern;
   static std::string const ShardingSingle;
+  static std::string const ReplicationVersion;
+  static std::string const ReplicatedLogs;
+  static std::string_view const SoftWriteConcern;
+  static std::string_view const EffectiveWriteConcern;
 
   // graph attribute names
   static std::string const GraphCollection;
-  static std::string const IsDisjoint;
-  static std::string const GraphIsSatellite;
-  static std::string const GraphIsSmart;
   static std::string const GraphFrom;
   static std::string const GraphTo;
   static std::string const GraphOptions;
   static std::string const GraphSmartGraphAttribute;
   static std::string const GraphDropCollections;
   static std::string const GraphDropCollection;
-  static std::string const GraphCreateCollections;
   static std::string const GraphCreateCollection;
   static std::string const GraphEdgeDefinitions;
+  static std::string const GraphEdgeDefinitionType;
   static std::string const GraphOrphans;
-  static std::string const GraphInitial;
-  static std::string const GraphInitialCid;
   static std::string const GraphName;
   static std::string const GraphTraversalProfileLevel;
+
+  // smart graph relevant attributes
+  static std::string const IsDisjoint;
+  static std::string const IsHybrid;
+  static std::string const GraphIsSatellite;
+  static std::string const GraphSatellites;
+  static std::string const GraphIsSmart;
+  static std::string const GraphInitial;
+  static std::string const GraphInitialCid;
+  static std::string const ShadowCollections;
+  static std::string const FullLocalPrefix;
+  static std::string const FullFromPrefix;
+  static std::string const FullToPrefix;
+
+  // Graph directions
+  static std::string const GraphDirection;
+  static std::string const GraphDirectionInbound;
+  static std::string const GraphDirectionOutbound;
 
   // Pregel Section Start
 
@@ -312,6 +344,26 @@ class StaticStrings {
   static std::string const RevisionTreeRanges;
   static std::string const RevisionTreeResume;
   static std::string const RevisionTreeVersion;
+  static std::string const FollowingTermId;
+
+  // Replication 2.0
+  static std::string const Config;
+  static std::string const CurrentTerm;
+  static std::string const Follower;
+  static std::string const Id;
+  static std::string const Index;
+  static std::string const Leader;
+  static std::string const LocalStatus;
+  static std::string const Participants;
+  static std::string const ServerId;
+  static std::string const Spearhead;
+  static std::string const TargetConfig;
+  static std::string const Term;
+  static std::string const CommitIndex;
+  static std::string const FirstIndex;
+  static std::string const ReleaseIndex;
+  static std::string const LowestIndexToKeep;
+  static std::string const Outcome;
 
   // generic attribute names
   static std::string const AttrCoordinator;
@@ -331,6 +383,7 @@ class StaticStrings {
 
   // aql api strings
   static std::string const SerializationFormat;
+  static std::string const AqlDocumentCall;
   static std::string const AqlRemoteExecute;
   static std::string const AqlRemoteCallStack;
   static std::string const AqlRemoteLimit;
@@ -366,8 +419,12 @@ class StaticStrings {
   static std::string const ValidationParameterRule;
   static std::string const ValidationParameterType;
 
+  // API Strings
+  static std::string_view const ApiLogInternal;
+  static std::string_view const ApiLogExternal;
+  static std::string_view const ApiReplicatedStateExternal;
+
   // TODO: remove me after refactor is done
   static std::string const GraphRefactorFlag;
 };
 }  // namespace arangodb
-

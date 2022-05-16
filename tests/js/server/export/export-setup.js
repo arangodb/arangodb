@@ -1,7 +1,7 @@
 /*jshint globalstrict:false, strict:false, maxlen:4000, unused:false */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief setup collections for dump/reload tests
+/// @brief setup collections for export tests
 ///
 /// @file
 ///
@@ -32,19 +32,31 @@
 {
   const db = require("@arangodb").db;
 
-  try {
-    db._dropDatabase("UnitTestsExport");
-  } catch (e) {}
+  let databases = [
+    "UnitTestsExport",
+    "اسم قاعدة بيانات يونيكود",
+    "имя базы данных юникода !\"23 ää"
+  ];
 
-  db._createDatabase("UnitTestsExport");
+  databases.forEach((name) => {
+    db._useDatabase("_system");
 
-  db._useDatabase("UnitTestsExport");
+    try {
+      db._dropDatabase(name);
+    } catch (e) {}
 
-  const col = db._create("UnitTestsExport");
-  for (let i = 0; i < 100; ++i) {
-    col.save({ _key: "export" + i, value1: i, value2: "this is export", value3: "export" + i, value4: "%<>\"'" });
-  }
-  col.save({ _key: "special", value1: "abc \"def\" ghi", value2: [1, 2], value3: { foo: "bar" }, value4: "abc\r\ncd" }); 
+    db._createDatabase(name);
+
+    db._useDatabase(name);
+
+    const col = db._create("UnitTestsExport");
+    let docs = [];
+    for (let i = 0; i < 100; ++i) {
+      docs.push({ _key: "export" + i, value1: i, value2: "this is export", value3: "export" + i, value4: "%<>\"'" });
+    }
+    docs.push({ _key: "special", value1: "abc \"def\" ghi", value2: [1, 2], value3: { foo: "bar" }, value4: "abc\r\ncd" }); 
+    col.insert(docs);
+  });
 }
 
 return {

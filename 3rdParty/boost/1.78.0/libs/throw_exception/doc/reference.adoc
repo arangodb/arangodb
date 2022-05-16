@@ -1,0 +1,98 @@
+////
+Copyright 2019 Peter Dimov
+Distributed under the Boost Software License, Version 1.0.
+http://www.boost.org/LICENSE_1_0.txt
+////
+
+[#reference]
+# Reference
+:toc:
+:toc-title:
+:idprefix:
+
+[#synopsis]
+## <boost/throw_exception.hpp> Synopsis
+
+```
+#include <boost/assert/source_location.hpp>
+#include <boost/config.hpp>
+#include <exception>
+
+namespace boost
+{
+
+#if defined( BOOST_NO_EXCEPTIONS )
+
+BOOST_NORETURN void throw_exception( std::exception const & e ); // user defined
+
+BOOST_NORETURN void throw_exception( std::exception const & e,
+  boost::source_location const & loc ); // user defined
+
+#else
+
+template<class E> BOOST_NORETURN void throw_exception( E const & e );
+
+template<class E> BOOST_NORETURN void throw_exception( E const & e,
+  boost::source_location const & loc );
+
+#endif
+
+} // namespace boost
+
+#define BOOST_THROW_EXCEPTION(x) \
+  ::boost::throw_exception(x, BOOST_CURRENT_LOCATION)
+```
+
+## throw_exception
+
+```
+#if defined( BOOST_NO_EXCEPTIONS )
+
+BOOST_NORETURN void throw_exception( std::exception const & e ); // user defined
+
+#else
+
+template<class E> BOOST_NORETURN void throw_exception( E const & e );
+
+#endif
+```
+
+Requires: :: `E` must have `std::exception` as a public and unambiguous base
+  class.
+
+Effects: ::
+  * When exceptions aren't available, the function is declared, but
+    not defined. The user is expected to supply an appropriate definition.
+  * Otherwise, if `BOOST_EXCEPTION_DISABLE` is defined, the function
+    throws `e`.
+  * Otherwise, the function throws an object of a type derived from `E`,
+    derived from `boost::exception`, if `E` doesn't already derive from
+    it, and containing the necessary support for `boost::exception_ptr`.
+
+```
+#if defined( BOOST_NO_EXCEPTIONS )
+
+BOOST_NORETURN void throw_exception( std::exception const & e,
+  boost::source_location const & loc ); // user defined
+
+#else
+
+template<class E> BOOST_NORETURN void throw_exception( E const & e,
+  boost::source_location const & loc );
+
+#endif
+```
+
+Requires: :: `E` must have `std::exception` as a public and unambiguous base
+  class.
+
+Effects: ::
+  * When exceptions aren't available, the function is declared, but
+    not defined. The user is expected to supply an appropriate definition.
+  * Otherwise, if `BOOST_EXCEPTION_DISABLE` is defined, the function
+    throws `e`.
+  * Otherwise, the function throws an object of a type derived from `E`,
+    derived from `boost::exception`, if `E` doesn't already derive from
+    it, and containing the necessary support for `boost::exception_ptr`. The
+    `boost::exception` base class is initialized to contain the source
+    location `loc`.

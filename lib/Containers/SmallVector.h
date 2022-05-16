@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,19 +20,20 @@
 ///
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include <vector>
+#include <boost/container/small_vector.hpp>
 
-#include "Containers/details/short_alloc.h"
+#include <memory>
+#include <cstddef>
 
-namespace arangodb {
-namespace containers {
+namespace arangodb::containers {
 
-template <class T, std::size_t BufSize = 64, std::size_t ElementAlignment = alignof(T)>
-using SmallVector = std::vector<T, detail::short_alloc<T, BufSize, ElementAlignment>>;
+template<typename T, std::size_t N, typename A = std::allocator<T>>
+using SmallVector = boost::container::small_vector<T, N, A>;
 
-}  // namespace containers
-}  // namespace arangodb
+// We cannot use absl::InlinedVector while they don't fix this issue:
+// absl::InlinedVector::data() contains branch
+// https://github.com/abseil/abseil-cpp/issues/1165
 
+}  // namespace arangodb::containers

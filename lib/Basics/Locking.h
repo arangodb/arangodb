@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,9 +25,6 @@
 
 #include "Basics/Common.h"
 
-#undef ARANGODB_SHOW_LOCK_TIME
-#define TRI_SHOW_LOCK_THRESHOLD 0.000199
-
 namespace arangodb {
 namespace basics {
 
@@ -44,4 +41,3 @@ static constexpr bool DoNotLock = false;
 
 }  // namespace basics
 }  // namespace arangodb
-

@@ -1,0 +1,52 @@
+[/ 
+  (C) Copyright Edward Diener 2011-2015
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:vmd_naming Naming conventions]
+
+All of the macros in the library begin with the prefix BOOST_VMD_, 
+where VMD stands for 'Variadic Macro Data'.
+
+Following the prefix, certain names in the macros refer to data types 
+in this library or Boost PP. These names and their data types are:
+
+# TUPLE      = Boost PP tuple data type.
+# ARRAY      = Boost PP array data type.
+# LIST       = Boost PP list data type.
+# SEQ        = Boost PP seq data type.
+# IDENTIFIER = A VMD identifier
+# NUMBER     = A VMD number, which is a Boost PP number with some enhancements
+# TYPE       = A VMD type
+
+I have used most of these names in order to mimic the naming of Boost PP 
+as closely as possible. Subsequent use of the words 'array', 'list',
+'seq', and 'tuple' refer to these Boost PP data types unless otherwise
+noted. See the help for Boost PP for any explanation of these
+data types.
+
+The term 'sequence' refers to a sequence of VMD data types and is not the
+same as a Boost PP sequence which is always referred to in this documentation
+as a 'seq'.
+
+The term 'return' refers to the expansion of a macro. I use the terminology
+of a macro "returning some data" rather than the terminology of a macro
+"expanding to some data", even if the latter is more accurate, because it
+more closely corresponds to the way I believe C++ programmers think about
+macro programming.
+
+The term 'emptiness' refers to no preprocessor data being passed to or returned
+from a macro. I have avoided the word 'nothing' because it has too vague a meaning.
+
+The term 'data type' refers to the various preprocessor input types
+which VMD can parse and which are listed above, also including emptiness.
+
+The term 'v-type' refers to a VMD type, the term 'number' returns to a VMD number
+and the term 'identifier' refers to a VMD identifier. All these will be explained
+in their proper place.
+
+The term "UB" stands for "undefined behavior" as it is specified in the C++ standard.
+
+[endsect]

@@ -1,0 +1,179 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Class template reference_wrapper</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter 1. Boost.Core">
+<link rel="up" href="../core/ref.html#header.boost.core.ref_hpp" title="Header &lt;boost/core/ref.hpp&gt;">
+<link rel="prev" href="is_reference_wrapper.html" title="Struct template is_reference_wrapper">
+<link rel="next" href="unwrap_reference.html" title="Struct template unwrap_reference">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="is_reference_wrapper.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../core/ref.html#header.boost.core.ref_hpp"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="unwrap_reference.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.reference_wrapper"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class template reference_wrapper</span></h2>
+<p>boost::reference_wrapper — Contains a reference to an object of type <code class="computeroutput">T</code>. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../core/ref.html#header.boost.core.ref_hpp" title="Header &lt;boost/core/ref.hpp&gt;">boost/core/ref.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> 
+<span class="keyword">class</span> <a class="link" href="reference_wrapper.html" title="Class template reference_wrapper">reference_wrapper</a> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// <a class="link" href="reference_wrapper.html#boost.reference_wrappertypes">types</a></span>
+  <span class="keyword">typedef</span> <span class="identifier">T</span> <a class="link" href="reference_wrapper.html#boost.reference_wrapper.type"><span class="identifier">type</span></a><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="reference_wrapper.html#boost.reference_wrapperconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <span class="keyword">explicit</span> <a class="link" href="reference_wrapper.html#idm10033-bb"><span class="identifier">reference_wrapper</span></a><span class="special">(</span><span class="identifier">T</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="reference_wrapper.html#idm10043-bb"><span class="identifier">reference_wrapper</span></a><span class="special">(</span><span class="identifier">T</span> <span class="special">&amp;&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Y<span class="special">&gt;</span> 
+    <a class="link" href="reference_wrapper.html#idm10049-bb"><span class="identifier">reference_wrapper</span></a><span class="special">(</span><a class="link" href="reference_wrapper.html" title="Class template reference_wrapper">reference_wrapper</a><span class="special">&lt;</span> <span class="identifier">Y</span> <span class="special">&gt;</span><span class="special">,</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <span class="special">=</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="reference_wrapper.html#idm10011-bb">public member functions</a></span>
+  <a class="link" href="reference_wrapper.html#idm10012-bb"><span class="keyword">operator</span> <span class="identifier">T</span> <span class="special">&amp;</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">T</span> <span class="special">&amp;</span> <a class="link" href="reference_wrapper.html#idm10019-bb"><span class="identifier">get</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">T</span> <span class="special">*</span> <a class="link" href="reference_wrapper.html#idm10026-bb"><span class="identifier">get_pointer</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idm10235"></a><h2>Description</h2>
+<p><code class="computeroutput"><a class="link" href="reference_wrapper.html" title="Class template reference_wrapper">reference_wrapper</a></code> is primarily used to "feed" references to function templates (algorithms) that take their parameter by value. It provides an implicit conversion to <code class="computeroutput">T&amp;</code>, which usually allows the function templates to work on references unmodified. </p>
+<div class="refsect2">
+<a name="idm10241"></a><h3>
+<a name="boost.reference_wrappertypes"></a><code class="computeroutput">reference_wrapper</code> 
+        public
+       types</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem">
+<p>
+<span class="keyword">typedef</span> <span class="identifier">T</span> <a name="boost.reference_wrapper.type"></a><span class="identifier">type</span><span class="special">;</span></p>
+<p>Type <code class="computeroutput">T</code>. </p>
+</li></ol></div>
+</div>
+<div class="refsect2">
+<a name="idm10255"></a><h3>
+<a name="boost.reference_wrapperconstruct-copy-destruct"></a><code class="computeroutput">reference_wrapper</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idm10033-bb"></a><span class="identifier">reference_wrapper</span><span class="special">(</span><span class="identifier">T</span> <span class="special">&amp;</span> t<span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs a <code class="computeroutput"><code class="computeroutput"><a class="link" href="reference_wrapper.html" title="Class template reference_wrapper">reference_wrapper</a></code></code> object that stores a reference to <code class="computeroutput">t</code>.</p>
+<p>Does not throw. </p>
+<p>
+
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idm10043-bb"></a><span class="identifier">reference_wrapper</span><span class="special">(</span><span class="identifier">T</span> <span class="special">&amp;&amp;</span> t<span class="special">)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span></pre>
+<p>Construction from a temporary object is disabled. </p>
+<p>
+
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Y<span class="special">&gt;</span> 
+  <a name="idm10049-bb"></a><span class="identifier">reference_wrapper</span><span class="special">(</span><a class="link" href="reference_wrapper.html" title="Class template reference_wrapper">reference_wrapper</a><span class="special">&lt;</span> <span class="identifier">Y</span> <span class="special">&gt;</span> r<span class="special">,</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <span class="special">=</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs a <code class="computeroutput"><code class="computeroutput"><a class="link" href="reference_wrapper.html" title="Class template reference_wrapper">reference_wrapper</a></code></code> object that stores the reference stored in the compatible <code class="computeroutput"><code class="computeroutput"><a class="link" href="reference_wrapper.html" title="Class template reference_wrapper">reference_wrapper</a></code></code> <code class="computeroutput">r</code>.</p>
+<p>Only enabled when <code class="computeroutput">Y*</code> is convertible to <code class="computeroutput">T*</code>. </p>
+<p>
+
+</p>
+<p>Does not throw. </p>
+<p>
+
+</p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="idm10327"></a><h3>
+<a name="idm10011-bb"></a><code class="computeroutput">reference_wrapper</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><a name="idm10012-bb"></a><span class="keyword">operator</span> <span class="identifier">T</span> <span class="special">&amp;</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>
+</p>
+<p>Does not throw. </p>
+<p>
+
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>The stored reference. </p></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">T</span> <span class="special">&amp;</span> <a name="idm10019-bb"></a><span class="identifier">get</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>
+</p>
+<p>Does not throw. </p>
+<p>
+
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>The stored reference. </p></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">T</span> <span class="special">*</span> <a name="idm10026-bb"></a><span class="identifier">get_pointer</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>
+</p>
+<p>Does not throw. </p>
+<p>
+
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>A pointer to the object referenced by the stored reference. </p></td>
+</tr></tbody>
+</table></div>
+</li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2014 Peter Dimov<br>Copyright © 2014 Glen Fernandes<br>Copyright © 2014 Andrey Semashev<p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="is_reference_wrapper.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../core/ref.html#header.boost.core.ref_hpp"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="unwrap_reference.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

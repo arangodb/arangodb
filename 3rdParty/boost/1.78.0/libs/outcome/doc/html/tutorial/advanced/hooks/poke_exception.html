@@ -1,0 +1,100 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Custom exception ptr - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/advanced/hooks/hook_result.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/advanced/hooks.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/advanced/hooks/hook_outcome.html"><img src="../../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both">Custom exception ptr</h1></div></div></div>
+  <p>If you merely want <code>result</code> to capture stack backtraces without calling a memory allocator
+and retaining any triviality of copy which is important for optimisation,
+you already have everything you need.</p>
+
+<p>But let&rsquo;s keep going by intercepting any
+construction of our localised <code>outcome</code> from our localised <code>result</code>, retrieving any
+stored backtrace and using it to synthesise an exception ptr with a message text
+including the backtrace. Firstly let us look at the function which synthesises
+the exception ptr:</p>
+
+<div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="k">namespace</span> <span class="n">error_code_extended</span>
+<span class="p">{</span>
+  <span class="c1">// Synthesise a custom exception_ptr from the TLS slot and write it into the outcome
+</span><span class="c1"></span>  <span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span><span class="err"> </span><span class="nc">R</span><span class="o">&gt;</span> <span class="kr">inline</span> <span class="kt">void</span> <span class="n">poke_exception</span><span class="p">(</span><span class="n">outcome</span><span class="o">&lt;</span><span class="n">R</span><span class="o">&gt;</span> <span class="o">*</span><span class="n">o</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">o</span><span class="o">-&gt;</span><span class="n">has_error</span><span class="p">())</span>
+    <span class="p">{</span>
+      <span class="n">extended_error_info</span> <span class="o">*</span><span class="n">eei</span> <span class="o">=</span> <span class="n">mythreadlocaldata</span><span class="p">().</span><span class="n">get</span><span class="p">(</span><span class="n">BOOST_OUTCOME_V2_NAMESPACE</span><span class="o">::</span><span class="n">hooks</span><span class="o">::</span><span class="n">spare_storage</span><span class="p">(</span><span class="n">o</span><span class="p">));</span>
+      <span class="k">if</span><span class="p">(</span><span class="n">eei</span> <span class="o">!=</span> <span class="k">nullptr</span><span class="p">)</span>
+      <span class="p">{</span>
+        <span class="c1">// Make a custom string for the exception
+</span><span class="c1"></span>        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">str</span><span class="p">(</span><span class="n">o</span><span class="o">-&gt;</span><span class="n">error</span><span class="p">().</span><span class="n">message</span><span class="p">());</span>
+        <span class="n">str</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#34; [&#34;</span><span class="p">);</span>
+        <span class="k">struct</span> <span class="n">unsymbols</span>  <span class="c1">// RAII cleaner for symbols
+</span><span class="c1"></span>        <span class="p">{</span>
+          <span class="kt">char</span> <span class="o">**</span><span class="n">_</span><span class="p">{</span><span class="k">nullptr</span><span class="p">};</span>
+          <span class="o">~</span><span class="n">unsymbols</span><span class="p">()</span> <span class="p">{</span> <span class="o">::</span><span class="n">free</span><span class="p">(</span><span class="n">_</span><span class="p">);</span> <span class="p">}</span>
+        <span class="p">}</span> <span class="n">symbols</span><span class="p">{</span><span class="o">::</span><span class="n">backtrace_symbols</span><span class="p">(</span><span class="n">eei</span><span class="o">-&gt;</span><span class="n">backtrace</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span> <span class="n">eei</span><span class="o">-&gt;</span><span class="n">items</span><span class="p">)};</span>
+        <span class="k">if</span><span class="p">(</span><span class="n">symbols</span><span class="p">.</span><span class="n">_</span> <span class="o">!=</span> <span class="k">nullptr</span><span class="p">)</span>
+        <span class="p">{</span>
+          <span class="k">for</span><span class="p">(</span><span class="n">size_t</span> <span class="n">n</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">n</span> <span class="o">&lt;</span> <span class="n">eei</span><span class="o">-&gt;</span><span class="n">items</span><span class="p">;</span> <span class="n">n</span><span class="o">++</span><span class="p">)</span>
+          <span class="p">{</span>
+            <span class="k">if</span><span class="p">(</span><span class="n">n</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="p">{</span>
+              <span class="n">str</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#34;; &#34;</span><span class="p">);</span>
+            <span class="p">}</span>
+            <span class="n">str</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="n">symbols</span><span class="p">.</span><span class="n">_</span><span class="p">[</span><span class="n">n</span><span class="p">]);</span>
+          <span class="p">}</span>
+        <span class="p">}</span>
+        <span class="n">str</span><span class="p">.</span><span class="n">append</span><span class="p">(</span><span class="s">&#34;]&#34;</span><span class="p">);</span>
+
+        <span class="c1">// Override the payload/exception member in the outcome with our synthesised exception ptr
+</span><span class="c1"></span>        <span class="n">BOOST_OUTCOME_V2_NAMESPACE</span><span class="o">::</span><span class="n">hooks</span><span class="o">::</span><span class="n">override_outcome_exception</span><span class="p">(</span><span class="n">o</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">make_exception_ptr</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">runtime_error</span><span class="p">(</span><span class="n">str</span><span class="p">)));</span>
+      <span class="p">}</span>
+    <span class="p">}</span>
+  <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/error_code_extended.cpp#L142" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<p>If the localised <code>outcome</code> being constructed is errored, try fetching the TLS slot
+for the unique 16-bit value in its spare storage. If that is valid, symbolise the
+stack backtrace into a string and make an exception ptr with a runtime error with
+that string. Finally, override the payload/exception member in our just-copy-constructed
+localised <code>outcome</code> with the new exception ptr.</p>
+
+<hr>
+
+<p>As the reference documentation for <a href="../../../reference/functions/hooks/override_outcome_exception.html" class="api-reference"><code>void override_outcome_exception(basic_outcome&lt;T, EC, EP, NoValuePolicy&gt; *, U &amp;&amp;) noexcept</code></a>
+
+points out, you <em>almost certainly</em> never want to use this function if there is any
+other alternative. It is worth explaining what is meant by this.</p>
+
+<p>In this section, we <em>always</em> synthesise an exception ptr from the stored state and
+error code at the exact point of transition from <code>result</code> based APIs to <code>outcome</code>
+based APIs. This is acceptable only because we know that our code enforces that
+discipline.</p>
+
+<p>If one were designing a library facility, one could not assume such discipline in the
+library user. One would probably be better off making the exception ptr synthesis
+<em>lazy</em> via a custom no-value policy which generates the stacktrace-containing error
+message only on demand e.g. <code>.exception()</code> observation, or a <code>.value()</code> observation
+where no value is available.</p>
+
+<p>Such a design is however more indeterminate than the design presented in this section,
+because the indeterminacy is less predictable than in this design. Ultimately which
+strategy you adopt depends on how important absolute determinism is to your Outcome-based
+application.</p>
+
+
+        </div><p><small>Last revised: December 15, 2020 at 12:22:39 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/advanced/hooks/hook_result.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/advanced/hooks.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/advanced/hooks/hook_outcome.html"><img src="../../../images/next.png" alt="Next"></a></div></body>
+</html>

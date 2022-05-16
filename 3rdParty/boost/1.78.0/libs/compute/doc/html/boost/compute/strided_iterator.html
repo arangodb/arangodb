@@ -1,0 +1,124 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Class template strided_iterator</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Compute">
+<link rel="up" href="../../boost_compute/reference.html#header.boost.compute.iterator.strided_iterator_hpp" title="Header &lt;boost/compute/iterator/strided_iterator.hpp&gt;">
+<link rel="prev" href="make_permutation_iterator.html" title="Function template make_permutation_iterator">
+<link rel="next" href="make_strided_iterator.html" title="Function template make_strided_iterator">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="make_permutation_iterator.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_compute/reference.html#header.boost.compute.iterator.strided_iterator_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="make_strided_iterator.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.compute.strided_iterator"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class template strided_iterator</span></h2>
+<p>boost::compute::strided_iterator — An iterator adaptor with adjustable iteration step. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../boost_compute/reference.html#header.boost.compute.iterator.strided_iterator_hpp" title="Header &lt;boost/compute/iterator/strided_iterator.hpp&gt;">boost/compute/iterator/strided_iterator.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Iterator<span class="special">&gt;</span> 
+<span class="keyword">class</span> <a class="link" href="strided_iterator.html" title="Class template strided_iterator">strided_iterator</a> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// types</span>
+  <span class="keyword">typedef</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span>                 <a name="boost.compute.strided_iterator.super_type"></a><span class="identifier">super_type</span><span class="special">;</span>     
+  <span class="keyword">typedef</span> <span class="identifier">super_type</span><span class="special">::</span><span class="identifier">value_type</span>      <a name="boost.compute.strided_iterator.value_type"></a><span class="identifier">value_type</span><span class="special">;</span>     
+  <span class="keyword">typedef</span> <span class="identifier">super_type</span><span class="special">::</span><span class="identifier">reference</span>       <a name="boost.compute.strided_iterator.reference"></a><span class="identifier">reference</span><span class="special">;</span>      
+  <span class="keyword">typedef</span> <span class="identifier">super_type</span><span class="special">::</span><span class="identifier">base_type</span>       <a name="boost.compute.strided_iterator.base_type"></a><span class="identifier">base_type</span><span class="special">;</span>      
+  <span class="keyword">typedef</span> <span class="identifier">super_type</span><span class="special">::</span><span class="identifier">difference_type</span> <a name="boost.compute.strided_iterator.difference_type"></a><span class="identifier">difference_type</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="strided_iterator.html#boost.compute.strided_iteratorconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="strided_iterator.html#idm10340-bb"><span class="identifier">strided_iterator</span></a><span class="special">(</span><span class="identifier">Iterator</span><span class="special">,</span> <span class="identifier">difference_type</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="strided_iterator.html#idm10345-bb"><span class="identifier">strided_iterator</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="strided_iterator.html" title="Class template strided_iterator">strided_iterator</a><span class="special">&lt;</span> <span class="identifier">Iterator</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="strided_iterator.html" title="Class template strided_iterator">strided_iterator</a><span class="special">&lt;</span> <span class="identifier">Iterator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> 
+  <a class="link" href="strided_iterator.html#idm10349-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="strided_iterator.html" title="Class template strided_iterator">strided_iterator</a><span class="special">&lt;</span> <span class="identifier">Iterator</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="strided_iterator.html#idm10355-bb"><span class="special">~</span><span class="identifier">strided_iterator</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="strided_iterator.html#idm10328-bb">public member functions</a></span>
+  <span class="identifier">size_t</span> <a class="link" href="strided_iterator.html#idm10329-bb"><span class="identifier">get_index</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">const</span> <span class="identifier">buffer</span> <span class="special">&amp;</span> <a class="link" href="strided_iterator.html#idm10331-bb"><span class="identifier">get_buffer</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> IndexExpression<span class="special">&gt;</span> 
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="strided_iterator.html#idm10333-bb"><span class="keyword">operator</span><span class="special">[</span><span class="special">]</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">IndexExpression</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="strided_iterator.html#idm10356-bb">private member functions</a></span>
+  <span class="identifier">reference</span> <a class="link" href="strided_iterator.html#idm10357-bb"><span class="identifier">dereference</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="strided_iterator.html#idm10359-bb"><span class="identifier">equal</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="strided_iterator.html" title="Class template strided_iterator">strided_iterator</a><span class="special">&lt;</span> <span class="identifier">Iterator</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="strided_iterator.html#idm10364-bb"><span class="identifier">increment</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="strided_iterator.html#idm10366-bb"><span class="identifier">decrement</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="strided_iterator.html#idm10368-bb"><span class="identifier">advance</span></a><span class="special">(</span><span class="keyword">typename</span> <span class="identifier">super_type</span><span class="special">::</span><span class="identifier">difference_type</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">difference_type</span> <a class="link" href="strided_iterator.html#idm10372-bb"><span class="identifier">distance_to</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="strided_iterator.html" title="Class template strided_iterator">strided_iterator</a><span class="special">&lt;</span> <span class="identifier">Iterator</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idm33200"></a><h2>Description</h2>
+<p>The strided iterator adaptor skips over multiple elements each time it is incremented or decremented.</p>
+<p><span class="bold"><strong>See Also:</strong></span></p>
+<p><a class="link" href="buffer_iterator.html" title="Class template buffer_iterator">buffer_iterator</a>, make_strided_iterator(), make_strided_iterator_end() </p>
+<p>
+</p>
+<p>
+</p>
+<div class="refsect2">
+<a name="idm33208"></a><h3>
+<a name="boost.compute.strided_iteratorconstruct-copy-destruct"></a><code class="computeroutput">strided_iterator</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><pre class="literallayout"><a name="idm10340-bb"></a><span class="identifier">strided_iterator</span><span class="special">(</span><span class="identifier">Iterator</span> iterator<span class="special">,</span> <span class="identifier">difference_type</span> stride<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a name="idm10345-bb"></a><span class="identifier">strided_iterator</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="strided_iterator.html" title="Class template strided_iterator">strided_iterator</a><span class="special">&lt;</span> <span class="identifier">Iterator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> other<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a class="link" href="strided_iterator.html" title="Class template strided_iterator">strided_iterator</a><span class="special">&lt;</span> <span class="identifier">Iterator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> 
+<a name="idm10349-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="strided_iterator.html" title="Class template strided_iterator">strided_iterator</a><span class="special">&lt;</span> <span class="identifier">Iterator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> other<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a name="idm10355-bb"></a><span class="special">~</span><span class="identifier">strided_iterator</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="idm33267"></a><h3>
+<a name="idm10328-bb"></a><code class="computeroutput">strided_iterator</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><pre class="literallayout"><span class="identifier">size_t</span> <a name="idm10329-bb"></a><span class="identifier">get_index</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">const</span> <span class="identifier">buffer</span> <span class="special">&amp;</span> <a name="idm10331-bb"></a><span class="identifier">get_buffer</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> IndexExpression<span class="special">&gt;</span> 
+  <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="idm10333-bb"></a><span class="keyword">operator</span><span class="special">[</span><span class="special">]</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">IndexExpression</span> <span class="special">&amp;</span> expr<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="idm33314"></a><h3>
+<a name="idm10356-bb"></a><code class="computeroutput">strided_iterator</code> private member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><pre class="literallayout"><span class="identifier">reference</span> <a name="idm10357-bb"></a><span class="identifier">dereference</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">bool</span> <a name="idm10359-bb"></a><span class="identifier">equal</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="strided_iterator.html" title="Class template strided_iterator">strided_iterator</a><span class="special">&lt;</span> <span class="identifier">Iterator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> other<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">void</span> <a name="idm10364-bb"></a><span class="identifier">increment</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">void</span> <a name="idm10366-bb"></a><span class="identifier">decrement</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">void</span> <a name="idm10368-bb"></a><span class="identifier">advance</span><span class="special">(</span><span class="keyword">typename</span> <span class="identifier">super_type</span><span class="special">::</span><span class="identifier">difference_type</span> n<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="identifier">difference_type</span> <a name="idm10372-bb"></a><span class="identifier">distance_to</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="strided_iterator.html" title="Class template strided_iterator">strided_iterator</a><span class="special">&lt;</span> <span class="identifier">Iterator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> other<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2013, 2014 Kyle Lutz<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="make_permutation_iterator.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_compute/reference.html#header.boost.compute.iterator.strided_iterator_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="make_strided_iterator.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

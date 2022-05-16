@@ -36,16 +36,7 @@ const jsunity = require('jsunity');
 const errors = require('@arangodb').errors;
 const internal = require('internal');
 const db = internal.db;
-
-function getMetric(name) {
-  let res = arango.GET_RAW("/_admin/metrics");
-  let re = new RegExp("^" + name + " ");
-  let matches = res.body.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
-  if (!matches.length) {
-    throw "Metric " + name + " not found";
-  }
-  return Number(matches[0].replace(/^.*? (\d+.*?)$/, '$1'));
-}
+const getMetric = require('@arangodb/test-helper').getMetricSingle;
 
 function testSuite() {
   return {
@@ -62,12 +53,12 @@ function testSuite() {
       let value = getMetric("arangodb_process_statistics_resident_set_size");
       assertTrue(value > 0, value);
       
-      value = getMetric("arangodb_server_statistics_server_uptime");
+      value = getMetric("arangodb_server_statistics_server_uptime_total");
       assertTrue(value > 0, value);
     },
     
     testHttpMetrics : function() {
-      let oldValue = getMetric("arangodb_http_request_statistics_total_requests");
+      let oldValue = getMetric("arangodb_http_request_statistics_total_requests_total");
       for (let i = 0; i < 10; ++i) {
         arango.GET("/_api/version");
       }
@@ -75,7 +66,7 @@ function testSuite() {
       let newValue;
       let tries = 0;
       while (++tries < 4 * 10) {
-        newValue = getMetric("arangodb_http_request_statistics_total_requests");
+        newValue = getMetric("arangodb_http_request_statistics_total_requests_total");
         if (newValue - oldValue >= 10) {
           break;
         }

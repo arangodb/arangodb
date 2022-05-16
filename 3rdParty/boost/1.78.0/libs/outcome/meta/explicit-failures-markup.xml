@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<explicit-failures-markup xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+ xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/boostorg/boost/master/status/explicit-failures.xsd">
+    <!-- outcome -->
+    <library name="outcome">
+        <mark-unusable>
+            <toolset name="*c++98"/>
+            <toolset name="*c++11"/>
+            <toolset name="*gnu++98"/>
+            <toolset name="*gnu++11"/>
+            <toolset name="*gnu98"/>
+            <toolset name="*gnu11"/>
+            <toolset name="clang-linux-3*"/>
+            <toolset name="gcc-3*"/>
+            <toolset name="gcc-4*"/>
+            <toolset name="gcc-5*"/>
+            <toolset name="gcc-mngw-3*"/>
+            <toolset name="gcc-mngw-4*"/>
+            <toolset name="gcc-mngw-5*"/>
+            <toolset name="msvc-7*"/>
+            <toolset name="msvc-8*"/>
+            <toolset name="msvc-9*"/>
+            <toolset name="msvc-10*"/>
+            <toolset name="msvc-11*"/>
+            <toolset name="msvc-12*"/>
+            <toolset name="msvc-13*"/>
+            <toolset name="msvc-14.0"/>
+            <toolset name="msvc-14.0*"/>
+            <note author="Niall Douglas">Complete C++14 support is the minimum requirement.</note>
+        </mark-unusable>
+        <mark-unusable>
+            <toolset name="clang-linux-4.0~c++14"/>
+            <toolset name="clang-linux-5.0~c++14"/>
+            <toolset name="clang-linux-6.0~c++17"/>
+            <note author="Niall Douglas">libstdc++ 6 is the minimum version which works.</note>
+        </mark-unusable>
+    </library>
+</explicit-failures-markup>

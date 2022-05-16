@@ -49,27 +49,19 @@ function singleAttributeTestSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
     setUpAll : function () {
       db._drop(cn);
       c = db._create(cn);
 
-      var i;
-
-      for (i = 0; i < 100; ++i) {
-        c.save({ value1: "test" + i, value2: i });
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ value1: "test" + i, value2: i });
       }
+      c.insert(docs);
 
-      c.ensureSkiplist("value1");
-      c.ensureSkiplist("value2");
+      c.ensureIndex({ type: "skiplist", fields: ["value1"] });
+      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDownAll : function () {
       db._drop(cn);
@@ -147,26 +139,18 @@ function nonIndexedAttributeTestSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
     setUp : function () {
       db._drop(cn);
       c = db._create(cn);
 
-      var i;
-
-      for (i = 0; i < 100; ++i) {
-        c.save({ value1: i * 10, value2: i });
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ value1: i * 10, value2: i });
       }
+      c.insert(docs);
 
-      c.ensureSkiplist("value1", "value2");
+      c.ensureIndex({ type: "skiplist", fields: ["value1", "value2"] });
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       db._drop(cn);
@@ -238,26 +222,18 @@ function nestedAttributeTestSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
     setUp : function () {
       db._drop(cn);
       c = db._create(cn);
 
-      var i;
-
-      for (i = 0; i < 100; ++i) {
-        c.save({ value1: { value2: i } });
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({ value1: { value2: i } });
       }
+      c.insert(docs);
 
-      c.ensureSkiplist("value1.value2");
+      c.ensureIndex({ type: "skiplist", fields: ["value1.value2"] });
     },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       db._drop(cn);

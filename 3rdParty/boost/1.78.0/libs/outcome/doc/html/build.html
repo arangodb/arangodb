@@ -1,0 +1,220 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Build and install - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="./css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="./images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="./requirements.html"><img src="./images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="./index.html"><img src="./images/up.png" alt="Up"></a>
+    <a accesskey="h" href="./index.html"><img src="./images/home.png" alt="Home"></a><a accesskey="n" href="./motivation.html"><img src="./images/next.png" alt="Next"></a></div><div id="content">
+
+  <div class="titlepage"><div><div><h1 style="clear: both">Build and install</h1></div></div></div>
+
+
+<h2 id="usage-as-a-single-header-file">Usage as a single header file</h2>
+
+<p>Outcome v2 comes in single header file form. This is regenerated per commit. To fetch
+on Linux:</p>
+
+<pre><code>wget https://github.com/ned14/outcome/raw/master/single-header/outcome.hpp
+</code></pre>
+
+<p>On BSD:</p>
+
+<pre><code>fetch https://github.com/ned14/outcome/raw/master/single-header/outcome.hpp
+</code></pre>
+
+<p>If you have <code>curl</code> installed:</p>
+
+<pre><code>curl -O -J -L https://github.com/ned14/outcome/raw/master/single-header/outcome.hpp
+</code></pre>
+
+<p>Otherwise, simply download the raw file from above and place it wherever it suits you.
+If you might be debugging using Microsoft Visual Studio, you may find the debugger
+visualisation file at <a href="https://github.com/ned14/outcome/raw/master/include/outcome/outcome.natvis">https://github.com/ned14/outcome/raw/master/include/outcome/outcome.natvis</a>
+useful to include into your build.</p>
+
+<h2 id="usage-from-the-vcpkg-package-manager">Usage from the vcpkg package manager</h2>
+
+<p>This is particularly easy, and works on Mac OS, Linux and Microsoft Windows:</p>
+
+<pre><code>vcpkg install outcome
+</code></pre>
+
+<p>Outcome appears at <code>&lt;boost/outcome/outcome.hpp&gt;</code>. This is a full copy of Outcome, so
+Experimental Outcome and all the usual headers are where you would expect.</p>
+
+<h2 id="usage-from-the-conan-package-manager">Usage from the Conan package manager</h2>
+
+<p><em>(thanks to Théo Delrieu for contributing this support)</em></p>
+
+<p>At the command line, add the bintray repo for Outcome to conan:</p>
+
+<pre><code>conan remote add outcome https://api.bintray.com/conan/ned14/Outcome
+</code></pre>
+
+<p>Now simply add this to your Conan build:</p>
+
+<pre><code>[requires]
+Outcome/master@ned14/stable
+</code></pre>
+
+<p>Outcome will be made available by Conan at <code>&lt;outcome.hpp&gt;</code>.</p>
+
+<h2 id="usage-from-the-cmake-hunter-package-manager">Usage from the cmake hunter package manager</h2>
+
+<p>Outcome has not been submitted to the main cmake hunter package manager repo yet.
+You can however add it as a git submodule:</p>
+
+<pre><code>cd yourthirdpartyrepodir
+git submodule add https://github.com/ned14/quickcpplib
+git submodule add https://github.com/ned14/outcome
+cd ..
+git submodule update --init --recursive
+</code></pre>
+
+<p>Now tell cmake hunter about a git submoduled cmake hunter package by
+adding to your project&rsquo;s <code>cmake/Hunter/config.cmake</code>:</p>
+
+<pre><code>hunter_config(quickcpplib GIT_SUBMODULE &quot;yourthirdpartyrepodir/quickcpplib&quot;)
+hunter_config(outcome GIT_SUBMODULE &quot;yourthirdpartyrepodir/outcome&quot;)
+</code></pre>
+
+<p>&hellip; and finally to your <code>CMakeLists.txt</code>, now add outcome as if it were
+an ordinary cmake hunter package:</p>
+
+<pre><code>hunter_add_package(quickcpplib)
+find_package(quickcpplib CONFIG REQUIRED)
+hunter_add_package(outcome)
+find_package(outcome CONFIG REQUIRED)
+</code></pre>
+
+<p>Now you tell cmake to link to outcome as usual (see below for cmake targets):</p>
+
+<pre><code>target_link_libraries(mytarget outcome::hl)
+</code></pre>
+
+<h2 id="usage-as-a-git-submodule">Usage as a git submodule</h2>
+
+<p>If you are very keen on tracking very latest Outcome, you can add it as a git
+submodule to your project so you can keep abreast of bug fixes. Here is how:</p>
+
+<pre><code>git submodule add https://github.com/ned14/outcome
+cd outcome
+git checkout master
+git submodule update --init --recursive
+</code></pre>
+
+<p>After this you can bring Outcome into your code using:</p>
+
+<pre><code>#include &quot;outcome/single-header/outcome.hpp&quot;
+</code></pre>
+
+<p>That&rsquo;s it, you are ready to go. From time to time, you may wish to update to
+latest:</p>
+
+<pre><code>cd outcome
+git pull
+git submodule update
+</code></pre>
+
+<h2 id="usage-as-a-stable-source-tarball">Usage as a stable source tarball</h2>
+
+<p>If you would prefer a single source tarball of the stable and develop branches
+known to have had all unit tests passing on all platforms, containing all the
+documentation, tests and sources, this can always be retrieved from:</p>
+
+<p><a href="https://github.com/ned14/outcome/releases">https://github.com/ned14/outcome/releases</a></p>
+
+<p>This tarball is automatically generated when Outcome fully compiles and passes
+all unit tests on all platforms tested by the CIs. This currently includes:</p>
+
+<ul>
+<li>Linux: GCC 7.5, clang 9, clang 11</li>
+<li>MacOS: XCode 12</li>
+<li>Windows: VS2019.7</li>
+</ul>
+
+<p>All unit tests are executed under the Address and Undefined Behaviour sanitisers.</p>
+
+<p>It should be emphasised that newer compilers are not tested, so there is
+an unlikely chance that the tarball may not work on a newer compiler.</p>
+
+<hr>
+
+<h1 id="running-the-unit-test-suite">Running the unit test suite</h1>
+
+<p>To run the unit test suite you will need cmake 3.3 or later installed.</p>
+
+<pre><code>mkdir build
+cd build
+cmake ..
+cmake --build .
+ctest
+</code></pre>
+
+<p>On some cmake generators (Visual Studio, Xcode) you may need to tell cmake build a configuration
+like Release or Debug. Similarly, ctest needs to be told the same e.g.</p>
+
+<pre><code>mkdir build
+cd build
+cmake ..
+cmake --build . --config Release
+ctest -C Release
+</code></pre>
+
+<p><a href="http://my.cdash.org/index.php?project=Boost.Outcome">Per commit, tests are run by Travis and uploaded to a CDash dashboard here</a>.</p>
+
+<hr>
+
+<h1 id="cmake-find-package-imported-targets-support">CMake <code>find_package()</code> imported targets support</h1>
+
+<p>Outcome fully complies with cmake install, so by installing Outcome, it can be
+found by cmake&rsquo;s <code>find_package()</code>.</p>
+
+<pre><code>mkdir build
+cd build
+cmake ..
+cmake --build .
+sudo cmake --build . --target install
+</code></pre>
+
+<h1 id="modular-cmake-build-support">Modular CMake build support</h1>
+
+<p>If you are using Outcome in a CMake project, Outcome is a &ldquo;modular cmake&rdquo; project
+using only modern cmake 3 throughout. This lets you add the Outcome directory as a
+cmake subdirectory with no unexpected consequence on the rest of your cmake. You will need
+to be using cmake 3.3 or better.</p>
+
+<pre><code>add_subdirectory(
+  &quot;${CMAKE_CURRENT_SOURCE_DIR}/outcome&quot;  # path to outcome source
+  &quot;${CMAKE_CURRENT_BINARY_DIR}/outcome&quot;  # your choice of where to put binaries
+  EXCLUDE_FROM_ALL                       # please only lazy build outcome on demand
+)
+</code></pre>
+
+<p>Outcome&rsquo;s cmake has the following useful products:</p>
+
+<ul>
+<li><code>outcome::hl</code> (target): the Outcome header-only library. Add this to any
+<code>target_link_libraries()</code> in your cmake to bring in Outcome as a header-only library. This will also
+add to your link (via <code>PUBLIC</code>) any debugger visualisation support files, any system library
+dependencies and also force all consuming executables to be configured with a minimum
+of C++ 14 as Outcome requires a minimum of that.</li>
+<li><code>outcome_TEST_TARGETS</code> (list): a list of targets which generate Outcome&rsquo;s test
+suite. You can append this to your own test suite if you wish to run Outcome&rsquo;s test
+suite along with your own.</li>
+</ul>
+
+
+
+        </div><p><small>Last revised: April 02, 2021 at 11:06:20 &#43;0100</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="./requirements.html"><img src="./images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="./index.html"><img src="./images/up.png" alt="Up"></a>
+    <a accesskey="h" href="./index.html"><img src="./images/home.png" alt="Home"></a><a accesskey="n" href="./motivation.html"><img src="./images/next.png" alt="Next"></a></div></body>
+</html>

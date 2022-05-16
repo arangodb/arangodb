@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,8 @@
 
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
+#include <cstddef>
+#include <limits>
 
 #include "Basics/Common.h"
 #include "Containers/SmallVector.h"
@@ -38,14 +40,14 @@
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include <atomic>
+#endif
+
 struct TRI_vocbase_t;
 
 namespace rocksdb {
-
-class Transaction;
-class Slice;
 class Iterator;
-
 }  // namespace rocksdb
 
 namespace arangodb {
@@ -55,99 +57,69 @@ struct Transaction;
 }
 
 class LogicalCollection;
-class RocksDBMethods;
+class RocksDBTransactionMethods;
 
 /// @brief transaction type
-class RocksDBTransactionState final : public TransactionState {
-  friend class RocksDBMethods;
-  friend class RocksDBReadOnlyMethods;
-  friend class RocksDBTrxMethods;
-  friend class RocksDBBatchedMethods;
-  friend class RocksDBBatchedWithIndexMethods;
+class RocksDBTransactionState : public TransactionState {
+  friend class RocksDBTrxBaseMethods;
 
  public:
   RocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                           transaction::Options const& options);
-  ~RocksDBTransactionState();
+  ~RocksDBTransactionState() override;
 
   /// @brief begin a transaction
-  Result beginTransaction(transaction::Hints hints) override;
+  [[nodiscard]] Result beginTransaction(transaction::Hints hints) override;
 
   /// @brief commit a transaction
-  Result commitTransaction(transaction::Methods* trx) override;
+  [[nodiscard]] Result commitTransaction(transaction::Methods* trx) override;
 
   /// @brief abort a transaction
-  Result abortTransaction(transaction::Methods* trx) override;
+  [[nodiscard]] Result abortTransaction(transaction::Methods* trx) override;
 
-  /// @brief number of commits, including intermediate commits
-  uint64_t numCommits() const override { return _numCommits; }
+  [[nodiscard]] virtual bool hasOperations() const noexcept = 0;
 
-  /// @brief number of insert operations
-  uint64_t numInserts() const { return _numInserts; }
-  /// @brief number of update/replace operations
-  uint64_t numUpdates() const { return _numUpdates; }
-  /// @brief number of remove operations
-  uint64_t numRemoves() const { return _numRemoves; }
-  
-  inline bool hasOperations() const {
-    return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0);
-  }
+  [[nodiscard]] virtual uint64_t numOperations() const noexcept = 0;
 
-  uint64_t numOperations() const {
-    return _numInserts + _numUpdates + _numRemoves;
-  }
+  [[nodiscard]] bool hasFailedOperations() const override;
 
-  bool hasFailedOperations() const override {
-    return (_status == transaction::Status::ABORTED) && hasOperations();
-  }
+  [[nodiscard]] bool iteratorMustCheckBounds(DataSourceId cid,
+                                             ReadOwnWrites readOwnWrites) const;
 
   void prepareOperation(DataSourceId cid, RevisionId rid,
                         TRI_voc_document_operation_e operationType);
 
-  /// @brief undo the effects of the previous prepareOperation call
-  void rollbackOperation(TRI_voc_document_operation_e operationType);
-
   /// @brief add an operation for a transaction collection
-  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
-  /// performed
-  Result addOperation(DataSourceId collectionId, RevisionId revisionId,
-                      TRI_voc_document_operation_e opType,
-                      bool& hasPerformedIntermediateCommit);
+  [[nodiscard]] Result addOperation(DataSourceId collectionId,
+                                    RevisionId revisionId,
+                                    TRI_voc_document_operation_e opType);
+
+  [[nodiscard]] Result performIntermediateCommitIfRequired(
+      DataSourceId collectionId) override;
 
   /// @brief return wrapper around rocksdb transaction
-  RocksDBMethods* rocksdbMethods() {
-    TRI_ASSERT(_rocksMethods);
-    return _rocksMethods.get();
-  }
-  
-  /// @brief Rocksdb sequence number of snapshot. Works while trx
-  ///        has either a snapshot or a transaction
-  rocksdb::SequenceNumber sequenceNumber() const;
-  
-  /// @brief acquire a database snapshot
-  bool setSnapshotOnReadOnly();
+  [[nodiscard]] virtual RocksDBTransactionMethods* rocksdbMethods(
+      DataSourceId collectionId) const = 0;
 
-  static RocksDBTransactionState* toState(transaction::Methods* trx) {
-    TRI_ASSERT(trx != nullptr);
-    TransactionState* state = trx->state();
-    TRI_ASSERT(state != nullptr);
-    return static_cast<RocksDBTransactionState*>(state);
-  }
+  /// @brief acquire a database snapshot if we do not yet have one.
+  /// Returns true if a snapshot was acquired, otherwise false (i.e., if we
+  /// already had a snapshot)
+  [[nodiscard]] virtual bool ensureSnapshot() = 0;
 
-  static RocksDBMethods* toMethods(transaction::Methods* trx) {
-    TRI_ASSERT(trx != nullptr);
-    TransactionState* state = trx->state();
-    TRI_ASSERT(state != nullptr);
-    return static_cast<RocksDBTransactionState*>(state)->rocksdbMethods();
-  }
+  [[nodiscard]] static RocksDBTransactionState* toState(
+      transaction::Methods* trx);
+
+  [[nodiscard]] static RocksDBTransactionMethods* toMethods(
+      transaction::Methods* trx, DataSourceId collectionId);
 
   /// @brief make some internal preparations for accessing this state in
   /// parallel from multiple threads. READ-ONLY transactions
-  void prepareForParallelReads() { _parallel = true; }
+  void prepareForParallelReads();
   /// @brief in parallel mode. READ-ONLY transactions
-  bool inParallelMode() const { return _parallel; }
+  [[nodiscard]] bool inParallelMode() const;
 
-  RocksDBTransactionCollection::TrackedOperations& trackedOperations(DataSourceId cid);
+  [[nodiscard]] RocksDBTransactionCollection::TrackedOperations&
+  trackedOperations(DataSourceId cid);
 
   /// @brief Track documents inserted to the collection
   ///        Used to update the revision tree for replication after commit
@@ -165,63 +137,57 @@ class RocksDBTransactionState final : public TransactionState {
   ///        Used to update the estimate after the trx committed
   void trackIndexRemove(DataSourceId cid, IndexId idxObjectId, uint64_t hash);
 
-  bool isOnlyExclusiveTransaction() const;
+  /// @brief whether or not a transaction only has exclusive or read accesses
+  bool isOnlyExclusiveTransaction() const noexcept;
 
-  rocksdb::SequenceNumber beginSeq() const;
+  [[nodiscard]] virtual rocksdb::SequenceNumber beginSeq() const = 0;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  /// @brief only needed for RocksDBTransactionStateGuard
+  void use() noexcept;
+  void unuse() noexcept;
+#endif
+
+ protected:
+  virtual Result doCommit() = 0;
+  virtual Result doAbort() = 0;
 
  private:
-  /// @brief create a new rocksdb transaction
-  void createTransaction();
-
-  void prepareCollections();
+  rocksdb::SequenceNumber prepareCollections();
   void commitCollections(rocksdb::SequenceNumber lastWritten);
   void cleanupCollections();
 
+  void maybeDisableIndexing();
+
   /// @brief delete transaction, snapshot and cache trx
   void cleanupTransaction() noexcept;
-  /// @brief internally commit a transaction
-  arangodb::Result internalCommit();
-
-  /// @brief Trigger an intermediate commit.
-  /// Handle with care if failing after this commit it will only
-  /// be rolled back until this point of time.
-  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
-  /// performed Not thread safe
-  Result triggerIntermediateCommit(bool& hasPerformedIntermediateCommit);
-
-  /// @brief check sizes and call internalCommit if too big
-  /// sets hasPerformedIntermediateCommit to true if an intermediate commit was
-  /// performed
-  Result checkIntermediateCommit(uint64_t newSize, bool& hasPerformedIntermediateCommit);
-
-  /// @brief rocksdb transaction may be null for read only transactions
-  rocksdb::Transaction* _rocksTransaction;
-  /// @brief used for read-only trx and intermediate commits
-  /// For intermediate commits this MUST ONLY be used for iteratos
-  rocksdb::Snapshot const* _readSnapshot;
-  /// @brief shared read options which can be used by operations
-  /// For intermediate commits iterators MUST use the _readSnapshot
-  rocksdb::ReadOptions _rocksReadOptions;
 
   /// @brief cache transaction to unblock banished keys
   cache::Transaction* _cacheTx;
-  /// @brief wrapper to use outside this class to access rocksdb
-  std::unique_ptr<RocksDBMethods> _rocksMethods;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  /// store the number of log entries in WAL
-  uint64_t _numLogdata = 0;
+  std::atomic<uint32_t> _users;
 #endif
-  /// @brief number of commits, including intermediate commits
-  uint64_t _numCommits;
-  // if a transaction gets bigger than these values then an automatic
-  // intermediate commit will be done
-  uint64_t _numInserts;
-  uint64_t _numUpdates;
-  uint64_t _numRemoves;
 
   /// @brief if true there key buffers will no longer be shared
   bool _parallel;
+};
+
+/// @brief a struct that makes sure that the same RocksDBTransactionState
+/// is not used by different write operations in parallel. will only do
+/// something in maintainer mode, and do nothing in release mode!
+struct RocksDBTransactionStateGuard {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  explicit RocksDBTransactionStateGuard(
+      RocksDBTransactionState* state) noexcept;
+  ~RocksDBTransactionStateGuard();
+
+  RocksDBTransactionState* _state;
+#else
+  explicit RocksDBTransactionStateGuard(
+      RocksDBTransactionState* /*state*/) noexcept {}
+  ~RocksDBTransactionStateGuard() = default;
+#endif
 };
 
 class RocksDBKeyLeaser {
@@ -242,4 +208,3 @@ class RocksDBKeyLeaser {
 };
 
 }  // namespace arangodb
-

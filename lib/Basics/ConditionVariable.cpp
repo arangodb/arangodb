@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,25 +35,27 @@ ConditionVariable::ConditionVariable() : _condition() {
 ConditionVariable::~ConditionVariable() { TRI_DestroyCondition(&_condition); }
 
 /// @brief locks the condition variable
-void ConditionVariable::lock() { TRI_LockCondition(&_condition); }
+void ConditionVariable::lock() noexcept { TRI_LockCondition(&_condition); }
 
 /// @brief releases the lock on the condition variable
-void ConditionVariable::unlock() { TRI_UnlockCondition(&_condition); }
+void ConditionVariable::unlock() noexcept { TRI_UnlockCondition(&_condition); }
 
 /// @brief waits for an event
-void ConditionVariable::wait() { TRI_WaitCondition(&_condition); }
+void ConditionVariable::wait() noexcept { TRI_WaitCondition(&_condition); }
 
 /// @brief waits for an event with timeout in micro seconds
 /// returns true when the condition was signaled, false on timeout
-bool ConditionVariable::wait(uint64_t delay) {
+bool ConditionVariable::wait(uint64_t delay) noexcept {
   return TRI_TimedWaitCondition(&_condition, delay);
 }
-bool ConditionVariable::wait(std::chrono::microseconds delay_us) {
+bool ConditionVariable::wait(std::chrono::microseconds delay_us) noexcept {
   return TRI_TimedWaitCondition(&_condition, delay_us.count());
 }
 
 /// @brief signals all waiting threads
-void ConditionVariable::broadcast() { TRI_BroadcastCondition(&_condition); }
+void ConditionVariable::broadcast() noexcept {
+  TRI_BroadcastCondition(&_condition);
+}
 
 /// @brief signals a waiting thread
-void ConditionVariable::signal() { TRI_SignalCondition(&_condition); }
+void ConditionVariable::signal() noexcept { TRI_SignalCondition(&_condition); }

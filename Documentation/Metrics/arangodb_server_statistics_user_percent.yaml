@@ -1,7 +1,7 @@
 name: arangodb_server_statistics_user_percent
 introducedIn: "3.8.0"
 help: |
-  Percentage of time that the system CPUs have spent in user mode
+  Percentage of time that the system CPUs have spent in user mode.
 unit: percentage
 type: gauge
 category: Statistics

@@ -1,0 +1,48 @@
+[/
+ / Copyright (c) 2003-2021 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:AsyncWriteStream Buffer-oriented asynchronous write stream requirements]
+
+A type `X` meets the `AsyncWriteStream` requirements if it satisfies the
+requirements listed below.
+
+In the table below, `a` denotes a value of type `X`, `cb` denotes a (possibly
+const) value satisfying the [link boost_asio.reference.ConstBufferSequence
+`ConstBufferSequence`] requirements, and `t` is a completion token.
+
+[table AsyncWriteStream requirements
+  [[operation] [type] [semantics, pre/post-conditions]]
+  [
+    [`a.get_executor()`]
+    [A type satisfying the [link boost_asio.reference.Executor1 Executor requirements].]
+    [Returns the associated I/O executor.]
+  ]
+  [
+    [`a.async_write_some(cb,t)`]
+    [
+      The return type is determined according to the requirements for an
+      [link boost_asio.reference.asynchronous_operations asynchronous operation].
+    ]
+    [
+      Meets the requirements for a [link boost_asio.reference.read_write_operations
+      write operation] and an [link boost_asio.reference.asynchronous_operations
+      asynchronous operation] with completion signature `void(error_code ec,
+      size_t n)`.[br]
+      [br]
+      If `buffer_size(cb) > 0`, initiates an asynchronous operation to write
+      one or more bytes of data to the stream `a` from the buffer sequence
+      `cb`. If successful, `ec` is set such that `!ec` is `true`, and `n` is
+      the number of bytes written. If an error occurred, `ec` is set such that
+      `!!ec` is `true`, and `n` is 0.[br]
+      [br]
+      If `buffer_size(cb) == 0`, the operation completes immediately. `ec` is
+      set such that `!ec` is `true`, and `n` is 0.
+    ]
+  ]
+]
+
+[endsect]

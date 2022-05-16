@@ -38,7 +38,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <cmath>
 
@@ -141,9 +140,8 @@ TEST(DateFunctionsTest, IS_DATESTRING) {
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&fun));
 
+  containers::SmallVector<AqlValue, 4> params;
   for (auto const& testee : testees) {
-    SmallVector<AqlValue>::allocator_type::arena_type arena;
-    SmallVector<AqlValue> params{arena};
     testee.buildParams(params);
     AqlValue res = Functions::IsDatestring(&expressionContext, node, params);
     testee.validateResult(res);
@@ -152,6 +150,7 @@ TEST(DateFunctionsTest, IS_DATESTRING) {
     for (auto& it : params) {
       it.destroy();
     }
+    params.clear();
   }
 }
 
@@ -169,7 +168,8 @@ struct TestDate {
   }
 
   std::string const testName() const {
-    return "Input: " + _argBuilder.toJson() + " => " + (_isValid ? "true" : "false");
+    return "Input: " + _argBuilder.toJson() + " => " +
+           (_isValid ? "true" : "false");
   }
 
   void buildParams(VPackFunctionParameters& input) const {
@@ -195,14 +195,13 @@ TEST(DateFunctionsTest, DATE_COMPARE) {
   std::vector<TestDate> testees = {
 #include "DATE_COMPARE.testcases"
   };
-  
+
   arangodb::aql::Function fun("DATE_COMPARE", &Functions::DateCompare);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&fun));
 
+  containers::SmallVector<AqlValue, 4> params;
   for (auto const& testee : testees) {
-    SmallVector<AqlValue>::allocator_type::arena_type arena;
-    SmallVector<AqlValue> params{arena};
     testee.buildParams(params);
     AqlValue res = Functions::DateCompare(&expressionContext, node, params);
     testee.validateResult(res);
@@ -210,6 +209,7 @@ TEST(DateFunctionsTest, DATE_COMPARE) {
     for (auto& it : params) {
       it.destroy();
     }
+    params.clear();
   }
 }
 
@@ -238,8 +238,7 @@ class DateFunctionsTestDateDiff : public ::testing::Test {
   double dateDiffMillis;
   // Average number of days per month in the given dates
   double avgDaysPerMonth;
-  SmallVector<AqlValue>::allocator_type::arena_type arena;
-  SmallVector<AqlValue> params;
+  containers::SmallVector<AqlValue, 4> params;
   VPackBuilder dateBuilder;
   VPackBuilder flagBuilder;
   VPackBuilder switchBuilder;
@@ -250,8 +249,7 @@ class DateFunctionsTestDateDiff : public ::testing::Test {
         earlierDate("2000-04-01T02:48:42.123"),
         laterDate("2001-06-13T06:53:48.246"),
         dateDiffMillis(37857906123),
-        avgDaysPerMonth(365.0/12.0),
-        params(arena) {
+        avgDaysPerMonth(365.0 / 12.0) {
     dateBuilder.openArray();
     dateBuilder.add(VPackValue(earlierDate));
     dateBuilder.add(VPackValue(laterDate));
@@ -333,7 +331,6 @@ class DateFunctionsTestDateDiff : public ::testing::Test {
         it.destroy();
       }
     }
-
   }
 };
 
@@ -392,7 +389,8 @@ TEST_F(DateFunctionsTestDateDiff, checking_weeks) {
 }
 
 TEST_F(DateFunctionsTestDateDiff, checking_months) {
-  double expectedDiff = dateDiffMillis / (1000 * 60 * 60 * 24) / avgDaysPerMonth;
+  double expectedDiff =
+      dateDiffMillis / (1000 * 60 * 60 * 24) / avgDaysPerMonth;
   auto allFlags = TestDateModifierFlagFactory::createAllFlags(
       TestDateModifierFlagFactory::FLAGS::MONTH);
   for (auto const& f : allFlags) {
@@ -456,14 +454,13 @@ TEST(DateFunctionsTest, DATE_SUBTRACT) {
   std::vector<TestDate> testees = {
 #include "DATE_SUBTRACT.testcases"
   };
-      
+
   arangodb::aql::Function fun("DATE_SUBTRACT", &Functions::DateSubtract);
   arangodb::aql::AstNode node(NODE_TYPE_FCALL);
   node.setData(static_cast<void const*>(&fun));
 
   for (auto const& testee : testees) {
-    SmallVector<AqlValue>::allocator_type::arena_type arena;
-    SmallVector<AqlValue> params{arena};
+    containers::SmallVector<AqlValue, 4> params;
     testee.buildParams(params);
     AqlValue res = Functions::DateSubtract(&expressionContext, node, params);
     testee.validateResult(res);

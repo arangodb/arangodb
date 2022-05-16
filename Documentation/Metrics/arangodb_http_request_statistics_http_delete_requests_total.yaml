@@ -2,7 +2,7 @@ name: arangodb_http_request_statistics_http_delete_requests_total
 renamedFrom: arangodb_http_request_statistics_http_delete_requests
 introducedIn: "3.8.0"
 help: |
-  Number of HTTP DELETE requests
+  Number of HTTP DELETE requests.
 unit: number
 type: counter
 category: Statistics

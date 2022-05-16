@@ -23,31 +23,33 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
-const joi = require('joi');
 const statuses = require('statuses');
 const mimeTypes = require('mime-types');
-const mediaTyper = require('media-typer');
+const ct = require('content-type');
 const check = require('@arangodb/foxx/check-args');
 const joiToJsonSchema = require('joi-to-json-schema');
 const tokenize = require('@arangodb/foxx/router/tokenize');
 const { uuidv4 } = require('@arangodb/crypto');
 
 const MIME_JSON = 'application/json; charset=utf-8';
-const DEFAULT_ERROR_SCHEMA = joi.object().keys({
-  error: joi.allow(true).required(),
-  errorNum: joi.number().integer().optional(),
-  errorMessage: joi.string().optional(),
-  code: joi.number().integer().optional()
-});
+const MATCH_ALL_MODEL = check.validateModel({schema:true, optional: true}).value;
+const MATCH_REQ_STRINGS_MODEL = check.validateModel({schema: {type: 'string'}, optional: false}).value;
+const MATCH_OPT_STRINGS_MODEL = check.validateModel({schema: {type: 'string'}, optional: true}).value;
+const DEFAULT_ERROR_MODEL = check.validateSchema({
+  type: 'object',
+  properties: {
+    error: {const: true},
+    errorNum: {type: 'integer'},
+    errorMessage: {type: 'string'},
+    code: {type: 'integer'}
+  },
+  required: ['error']
+}).value;
 
 const PARSED_JSON_MIME = (function (mime) {
   const contentType = mimeTypes.contentType(mime) || mime;
-  const parsed = mediaTyper.parse(contentType);
-  return mediaTyper.format(_.pick(parsed, [
-    'type',
-    'subtype',
-    'suffix'
-  ]));
+  const parsed = ct.parse(contentType);
+  return parsed.type;
 }(MIME_JSON));
 
 const repeat = (times, value) => {
@@ -57,6 +59,19 @@ const repeat = (times, value) => {
   }
   return arr;
 };
+
+function isNullSchema(schema) {
+  if (schema.isJoi) {
+    return schema._flags.presence  === 'forbidden';
+  }
+  if (typeof schema === 'boolean') {
+    return !schema;
+  }
+  if (!schema.not || Object.keys(schema).length > 1) {
+    return false;
+  }
+  return typeof schema.not === 'object' && !Object.keys(schema.not).length;
+}
 
 module.exports = exports =
   class SwaggerContext {
@@ -90,97 +105,93 @@ module.exports = exports =
     }
 
     header (...args) {
-      const argv = check(
+      const {
+        name,
+        model = MATCH_OPT_STRINGS_MODEL,
+        description
+      } = check(
         'endpoint.header',
         args,
-        [['name', 'string'], ['schema', check.validateSchema], ['description', 'string']],
+        [['name', 'string'], ['model', check.validateModel], ['description', 'string']],
         [['name', 'string'], ['description', 'string']],
-        [['name', 'string'], ['schema', check.validateSchema]],
+        [['name', 'string'], ['model', check.validateModel]],
         [['name', 'string']]
       );
-      let schema = argv.schema;
-      let description = argv.description;
-      this._headers.set(argv.name.toLowerCase(), {schema, description});
+      this._headers.set(name.toLowerCase(), {...model, description});
       return this;
     }
 
     pathParam (...args) {
-      const argv = check(
+      const {
+        name,
+        model = MATCH_REQ_STRINGS_MODEL,
+        description
+      } = check(
         'endpoint.pathParam',
         args,
-        [['name', 'string'], ['schema', check.validateSchema], ['description', 'string']],
+        [['name', 'string'], ['model', check.validateModel], ['description', 'string']],
         [['name', 'string'], ['description', 'string']],
-        [['name', 'string'], ['schema', check.validateSchema]],
+        [['name', 'string'], ['model', check.validateModel]],
         [['name', 'string']]
       );
-      let schema = argv.schema;
-      let description = argv.description;
-      this._pathParams.set(argv.name, {schema, description});
+      this._pathParams.set(name, {...model, description});
       return this;
     }
 
     queryParam  (...args) {
-      const argv = check(
+      const {
+        name,
+        model = MATCH_OPT_STRINGS_MODEL,
+        description
+      } = check(
         'endpoint.queryParam',
         args,
-        [['name', 'string'], ['schema', check.validateSchema], ['description', 'string']],
+        [['name', 'string'], ['model', check.validateModel], ['description', 'string']],
         [['name', 'string'], ['description', 'string']],
-        [['name', 'string'], ['schema', check.validateSchema]],
+        [['name', 'string'], ['model', check.validateModel]],
         [['name', 'string']]
       );
-      let schema = argv.schema;
-      let description = argv.description;
-      this._queryParams.set(argv.name, {schema, description});
+      this._queryParams.set(name, {...model, description});
       return this;
     }
 
     body  (...args) {
-      const argv = check(
+      const {
+        model = MATCH_ALL_MODEL,
+        mimes = [],
+        description
+      } = check(
         'endpoint.body',
         args,
         [['model', check.validateModel], ['mimes', check.validateMimes], ['description', 'string']],
-        [['model', check.validateModel], ['description', 'string']],
         [['mimes', check.validateMimes], ['description', 'string']],
         [['model', check.validateModel], ['mimes', check.validateMimes]],
+        [['model', check.validateModel], ['description', 'string']],
         [['model', check.validateModel]],
         [['mimes', check.validateMimes]],
         [['description', 'string']]
       );
-      let model = argv.model;
-      let mimes = argv.mimes;
-      let description = argv.description;
 
-      if (!model) {
-        model = {multiple: false};
-      }
-
-      if (model.model === null) {
-        this._bodyParam = {
-          model: null,
-          multiple: model.multiple,
-          contentTypes: null,
-        description};
+      if (isNullSchema(model.schema)) {
+        this._bodyParam = {model, contentTypes: null, description};
         return this;
       }
 
-      if (!mimes) {
-        mimes = [];
-      }
-
-      if (!mimes.length && model.model) {
+      if (!mimes.length && model !== MATCH_ALL_MODEL) {
         mimes.push(PARSED_JSON_MIME);
       }
 
-      this._bodyParam = {
-        model: model.model,
-        multiple: model.multiple,
-        contentTypes: mimes,
-      description};
+      this._bodyParam = {model, contentTypes: mimes, description};
       return this;
     }
 
     response (...args) {
-      const argv = check(
+      const {
+        status,
+        model = MATCH_ALL_MODEL,
+        mimes = [],
+        description
+      } = check(
         'endpoint.response',
         args,
         [['status', check.validateStatus], ['model', check.validateModel], ['mimes', check.validateMimes], ['description', 'string']],
@@ -198,87 +209,69 @@ module.exports = exports =
         [['mimes', check.validateMimes]],
         [['description', 'string']]
       );
-      let status = argv.status;
-      let model = argv.model;
-      let mimes = argv.mimes;
-      let description = argv.description;
 
-      if (!model) {
-        model = {multiple: false};
-      }
-
-      if (!status) {
-        status = model.model === null ? 204 : 200;
-      }
-
-      if (model.model === null) {
-        this._responses.set(status, {
-          model: null,
-          multiple: model.multiple,
-          contentTypes: null,
-        description});
+      if (isNullSchema(model.schema)) {
+        this._responses.set(
+          status || 204,
+          {model, contentTypes: null, description}
+        );
         return this;
       }
 
-      if (!mimes) {
-        mimes = [];
-      }
-
-      if (!mimes.length && model.model) {
+      if (!mimes.length && model.schema) {
         mimes.push(PARSED_JSON_MIME);
       }
 
-      this._responses.set(status, {
-        model: model.model,
-        multiple: model.multiple,
-        contentTypes: mimes,
-      description});
+      this._responses.set(
+        status || 200,
+        {model, contentTypes: mimes, description}
+      );
       return this;
     }
 
     error (...args) {
-      const argv = check(
+      const {
+        status,
+        description
+      } = check(
         'endpoint.error',
         args,
         [['status', check.validateStatus], ['description', 'string']],
         [['status', check.validateStatus]]
       );
-      let status = argv.status;
-      let description = argv.description;
       this._responses.set(status, {
-        model: DEFAULT_ERROR_SCHEMA,
-        multiple: false,
+        model: DEFAULT_ERROR_MODEL,
         contentTypes: [PARSED_JSON_MIME],
         description
       });
       return this;
     }
 
-    summary (text) {
-      [text] = check(
+    summary (...args) {
+      const [text] = check(
         'endpoint.summary',
-        [text],
+        args,
         [['text', 'string']]
       );
       this._summary = text;
       return this;
     }
 
-    description (text) {
-      [text] = check(
+    description (...args) {
+      const [text] = check(
         'endpoint.description',
-        [text],
+        args,
         [['text', 'string']]
       );
       this._description = text;
       return this;
     }
 
-    tag (...tags) {
-      tags = check(
+    tag (...args) {
+      const tags = check(
         'endpoint.tag',
-        tags,
-        [...repeat(Math.max(1, tags.length), ['tag', 'string'])]
+        args,
+        [...repeat(Math.max(1, args.length), ['tag', 'string'])]
       );
       for (const tag of tags) {
         this._tags.add(tag);
@@ -287,7 +280,11 @@ module.exports = exports =
     }
 
     securityScheme(...args) {
-      const {type, options, description} = check(
+      const {
+        type,
+        options,
+        description
+      } = check(
         'endpoint.security',
         args,
         [
@@ -470,114 +467,92 @@ module.exports = exports =
         operation.produces.push('application/json');
       }
 
-      for (const param of this._pathParams.entries()) {
-        const name = param[0];
-        const def = param[1];
-        const parameter = (
-        def.schema
-          ? swaggerifyParam(def.schema.isJoi ? def.schema : joi.object(def.schema))
-          : {type: 'string'}
-        );
-        parameter.name = name;
-        parameter.in = 'path';
-        parameter.required = true;
-        if (def.description) {
-          parameter.description = def.description;
+      for (const [name, def] of this._pathParams.entries()) {
+        const parameter = swaggerifyParam(def.schema, false);
+        if (parameter) {
+          parameter.name = name;
+          parameter.in = 'path';
+          if (def.description) {
+            parameter.description = def.description;
+          }
+          operation.parameters.push(parameter);
         }
-        operation.parameters.push(parameter);
       }
 
-      for (const param of this._queryParams.entries()) {
-        const name = param[0];
-        const def = param[1];
-        const parameter = (
-        def.schema
-          ? swaggerifyParam(def.schema.isJoi ? def.schema : joi.object(def.schema))
-          : {type: 'string'}
-        );
-        parameter.name = name;
-        parameter.in = 'query';
-        if (def.description) {
-          parameter.description = def.description;
+      for (const [name, def] of this._queryParams.entries()) {
+        const parameter = swaggerifyParam(def.schema, def.optional);
+        if (parameter) {
+          parameter.name = name;
+          parameter.in = 'query';
+          if (def.description) {
+            parameter.description = def.description;
+          }
+          operation.parameters.push(parameter);
         }
-        operation.parameters.push(parameter);
       }
 
-      for (const param of this._headers.entries()) {
-        const name = param[0];
-        const def = param[1];
-        const parameter = (
-        def.schema
-          ? swaggerifyParam(def.schema.isJoi ? def.schema : joi.object(def.schema))
-          : {type: 'string'}
-        );
-        parameter.name = name;
-        parameter.in = 'header';
-        if (def.description) {
-          parameter.description = def.description;
+      for (const [name, def] of this._headers.entries()) {
+        const parameter = swaggerifyParam(def.schema, def.optional);
+        if (parameter) {
+          parameter.name = name;
+          parameter.in = 'header';
+          if (def.description) {
+            parameter.description = def.description;
+          }
+          operation.parameters.push(parameter);
         }
-        operation.parameters.push(parameter);
       }
 
-      if (this._bodyParam && this._bodyParam.contentTypes) {
-        const def = this._bodyParam;
-        const schema = (
-        def.model
-          ? (def.model.isJoi ? def.model : def.model.schema)
-          : null
-        );
-        const parameter = (
-        schema
-          ? swaggerifyBody(schema, def.multiple)
-          : {schema: {type: 'string'}}
-        );
-        parameter.name = 'body';
-        parameter.in = 'body';
-        if (def.description) {
-          parameter.description = def.description;
+      if (this._bodyParam) {
+        if (this._bodyParam.contentTypes) {
+          const def = this._bodyParam;
+          const parameter = swaggerifyBody(def.model.schema, def.model.optional);
+          if (parameter) {
+            parameter.name = 'body';
+            parameter.in = 'body';
+            if (def.description) {
+              parameter.description = def.description;
+            }
+            operation.parameters.push(parameter);
+          }
         }
-        operation.parameters.push(parameter);
+      } else {
+        const parameter = swaggerifyBody(MATCH_ALL_MODEL.schema, true);
+        if (parameter) {
+          parameter.name = 'body';
+          parameter.in = 'body';
+          operation.parameters.push(parameter);
+        }
       }
 
       operation.responses = {
         500: {
           description: 'Default error response.',
-          schema: joi2schema(DEFAULT_ERROR_SCHEMA)
+          schema: joi2schema(DEFAULT_ERROR_MODEL.schema)
         }
       };
 
-      for (const entry of this._responses.entries()) {
-        const code = entry[0];
-        const def = entry[1];
-        const schema = (
-        def.model
-          ? (def.model.isJoi ? def.model : def.model.schema)
-          : null
-        );
+      for (const [status, def] of this._responses.entries()) {
         const response = {};
         if (def.contentTypes && def.contentTypes.length) {
-          response.schema = (
-            schema
-              ? joi2schema(schema, def.multiple)
-              : {type: 'string'}
-          );
+          response.schema = joi2schema(def.model.schema);
         }
-        if (schema && schema._description) {
-          response.description = schema._description;
+        if (def.model.schema._description) {
+          response.description = def.model.schema._description;
           delete response.schema.description;
         }
         if (def.description) {
           response.description = def.description;
         }
         if (!response.description) {
-          const message = statuses[code];
-          response.description = message ? `HTTP ${code} ${message}.` : (
+          const message = statuses[status];
+          response.description = message ? `HTTP ${status} ${message}.` : (
             response.schema
-              ? `Nondescript ${code} response.`
-              : `Nondescript ${code} response without body.`
+              ? `Nondescript ${status} response.`
+              : `Nondescript ${status} response without body.`
             );
         }
-        operation.responses[code] = response;
+        operation.responses[status] = response;
       }
 
       if (this._securitySchemes.size) {
@@ -597,7 +572,7 @@ module.exports = exports =
 function swaggerifyType (joi) {
   switch (joi._type) {
     default:
-      return ['string'];
+      return [];
     case 'binary':
       return ['string', 'binary'];
     case 'boolean':
@@ -623,43 +598,64 @@ function swaggerifyType (joi) {
   }
 }
 
-function swaggerifyParam (joi) {
+function swaggerifyParam (schema, optional) {
+  if (schema === false) {
+    return false;
+  }
+  if (!schema || typeof schema !== "object") {
+    return {required: typeof optional === "boolean" ? !optional : false};
+  }
+  if (!schema.isJoi) {
+    return {...schema, required: !optional};
+  }
   const param = {
-    required: joi._presence === 'required',
-    description: joi._description || undefined
+    required: typeof optional === "boolean" ? !optional : schema._flags.presence === 'required',
+    description: schema._description || undefined
   };
   let item = param;
-  if (joi._meta.some((meta) => meta.allowMultiple)) {
+  if (schema._meta.some((meta) => meta.allowMultiple)) {
     param.type = 'array';
     param.collectionFormat = 'multi';
     param.items = {};
     item = param.items;
   }
-  const type = swaggerifyType(joi);
-  item.type = type[0];
+  const type = swaggerifyType(schema);
+  if (type.length) {
+    item.type = type[0];
+  }
   if (type.length > 1) {
     item.format = type[1];
   }
-  if (joi._valids._set && joi._valids._set.length) {
-    item.enum = joi._valids._set;
+  const valids = [...schema._valids._set];
+  if (valids.length) {
+    item.enum = valids;
   }
-  if (joi._flags.hasOwnProperty('default')) {
-    item.default = joi._flags.default;
+  if (schema._flags.hasOwnProperty('default')) {
+    item.default = schema._flags.default;
   }
   return param;
 }
 
-function swaggerifyBody (joi, multiple) {
+function swaggerifyBody (schema, optional) {
+  if (schema === false) {
+    return false;
+  }
+  if (!schema || typeof schema !== "object") {
+    return {required: typeof optional === "boolean" ? !optional : false};
+  }
+  if (!schema.isJoi) {
+    return {schema, required: !optional};
+  }
   return {
-    required: joi._presence === 'required',
-    description: joi._description || undefined,
-    schema: joi2schema(joi, multiple)
+    required: typeof optional === "boolean" ? !optional : schema._flags.presence === 'required',
+    description: schema._description || undefined,
+    schema: joiToJsonSchema(schema)
   };
 }
 
-function joi2schema (schema, multiple) {
-  if (multiple) {
-    schema = joi.array().items(schema);
+function joi2schema (schema) {
+  if (!schema.isJoi) {
+    return schema;
   }
   return joiToJsonSchema(schema);
 }

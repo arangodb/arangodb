@@ -1,0 +1,23 @@
+# Copyright 2017 Peter Dimov
+# 
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+import asciidoctor ;
+
+html throw_exception.html : index.adoc ;
+
+install html_ : throw_exception.html : <location>html ;
+
+pdf throw_exception.pdf : index.adoc ;
+explicit throw_exception.pdf ;
+
+install pdf_ : throw_exception.pdf : <location>pdf ;
+explicit pdf_ ;
+
+###############################################################################
+alias boostdoc ;
+explicit boostdoc ;
+alias boostrelease : html_ ;
+explicit boostrelease ;

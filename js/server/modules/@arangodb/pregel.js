@@ -112,6 +112,9 @@ var startExecution = function(algo, data, params) {
 exports.start = startExecution;
 exports.status = function (executionID) {
   let db = internal.db;
+  if (executionID === undefined) {
+    return db._pregelStatus();
+  }
   return db._pregelStatus(executionID);
 };
 exports.cancel = function (executionID) {

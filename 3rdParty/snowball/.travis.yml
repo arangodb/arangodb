@@ -1,13 +1,26 @@
 language: minimal
-dist: trusty
+arch: arm64
+dist: xenial
+env:
+  global: MAKE=make
 matrix:
   include:
+    - name: "C distribution build"
+      language: c
+      dist: focal
+      compiler: gcc
+      env: CFLAGS_DIST_BUILD='-O2 -Wall -W -std=c90 -Wdeclaration-after-statement -Werror'
+    - name: "C distribution build (clang)"
+      language: c
+      dist: focal
+      compiler: clang
+      env: CFLAGS_DIST_BUILD='-O2 -Wall -W -std=c90 -Wdeclaration-after-statement -Werror'
     - language: c
       compiler: gcc
-      env: c_tests=y cc_append=' -std=c90 -Wdeclaration-after-statement -Werror'
+      env: c_tests=y CFLAGS='-O2 -Wall -W -std=c99 -Werror'
     - language: c
       compiler: clang
-      env: c_tests=y cc_append=' -std=c90 -Wdeclaration-after-statement -Werror'
+      env: c_tests=y CFLAGS='-O2 -Wall -W -std=c99 -Werror'
     - language: java
       env: JAVA=java JAVAC=javac
     - language: go
@@ -15,7 +28,7 @@ matrix:
       env: GO=go
     - language: go
       dist: bionic
-      go: "1.12"
+      go: "1.17"
       env: GO=go
     - language: node_js
       node_js: "node"
@@ -27,7 +40,9 @@ matrix:
       dist: bionic
       env: RUST=rust
     - language: csharp
+      arch: amd64 # csharp doesn't seem to work on arm64
       env: MCS=mcs
+      dist: bionic
     - name: Pascal
       env: FPC=fpc
       dist: bionic
@@ -40,27 +55,33 @@ matrix:
     # hits the travis time limit.  With pypy, it's enough faster than we
     # can run the full tests.
     - language: python
+      python: "3.9"
+      env: PYTHON=python THIN_FACTOR=10
+    - language: python
       python: "3.7"
       env: PYTHON=python THIN_FACTOR=10
-      dist: xenial
     - language: python
       python: "3.6"
       env: PYTHON=python THIN_FACTOR=10
     - language: python
-      python: "3.4"
-      env: PYTHON=python THIN_FACTOR=10
-    - language: python
-      python: "2.7"
-      env: PYTHON=python THIN_FACTOR=10
-    - language: python
-      python: "2.6"
-      env: PYTHON=python THIN_FACTOR=10
-    - language: python
-      python: "pypy"
+      python: "pypy3.7-7.3.5"
       env: PYTHON=python
-    - language: python
-      python: "pypy3.5"
-      env: PYTHON=python
+      dist: bionic
+    - name: "Ada"
+      env: gprbuild=gprbuild
+      dist: bionic
+      addons:
+        apt:
+          packages:
+            - gnat
+            - gprbuild
+    - os: windows
+      language: c
+      env: c_tests=y MAKE=mingw32-make
+    - os: windows
+      language: go
+      env: GO=go MAKE=mingw32-make
+
 before_install:
   # Try to check out a branch of the same name from the snowball-data repo
   # sibling of this snowball repo, so that PRs requiring changes to both can be
@@ -72,14 +93,19 @@ before_install:
   - GH_REPO_URL=https://github.com/${GH_REPO_SLUG%%/*}/snowball-data.git
   - echo "Trying branch $GH_BRANCH from $GH_REPO_URL"
   - git clone --depth=1 -b "$GH_BRANCH" "$GH_REPO_URL" || git clone --depth=1 https://github.com/snowballstem/snowball-data.git
+
 script:
-  - make CC="${CC:-gcc}$cc_append"
-  - test -z "$c_tests" || make check CC="${CC:-gcc}$cc_append" STEMMING_DATA=snowball-data
-  - test -z "$PYTHON" || make check_python python="$PYTHON" STEMMING_DATA=snowball-data
-  - test -z "$JAVA" -o -z "$JAVAC" || make check_java STEMMING_DATA=snowball-data
-  - test -z "$MCS" || make check_csharp MCS="$MCS" STEMMING_DATA=snowball-data
-  - test -z "$NODE" || make check_js STEMMING_DATA=snowball-data
-  - test -z "$RUST" || make check_rust STEMMING_DATA=snowball-data
-  - test -z "$RUST" || make check_rust cargoflags=--release STEMMING_DATA=snowball-data
-  - test -z "$GO" || make check_go STEMMING_DATA=snowball-data
-  - test -z "$FPC" || make check_pascal STEMMING_DATA=snowball-data
+  # Ensure CC is set for building the compiler in non-C builds.
+  - test -n "$CC" || export CC=gcc
+  - $MAKE CC="$CC"
+  - test -z "$CFLAGS_DIST_BUILD" || { pip install setuptools && $MAKE dist && mkdir tmp && cd tmp && tar xf ../dist/libstemmer_c-*.tar.gz && cd libstemmer_c-* && $MAKE CFLAGS="$CFLAGS_DIST_BUILD" ; }
+  - test -z "$c_tests" || $MAKE check CC="$CC" STEMMING_DATA=snowball-data
+  - test -z "$PYTHON" || $MAKE check_python python="$PYTHON" STEMMING_DATA=snowball-data
+  - test -z "$JAVA" -o -z "$JAVAC" || $MAKE check_java STEMMING_DATA=snowball-data
+  - test -z "$MCS" || $MAKE check_csharp MCS="$MCS" STEMMING_DATA=snowball-data
+  - test -z "$NODE" || $MAKE check_js STEMMING_DATA=snowball-data
+  - test -z "$RUST" || $MAKE check_rust STEMMING_DATA=snowball-data
+  - test -z "$RUST" || $MAKE check_rust STEMMING_DATA=snowball-data
+  - test -z "$GO" || $MAKE check_go STEMMING_DATA=snowball-data
+  - test -z "$FPC" || $MAKE check_pascal STEMMING_DATA=snowball-data
+  - test -z "$gprbuild" || $MAKE check_ada STEMMING_DATA=snowball-data

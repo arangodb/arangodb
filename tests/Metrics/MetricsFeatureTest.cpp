@@ -25,42 +25,41 @@
 #include "gtest/gtest.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/Metric.h"
+#include "Metrics/MetricsFeature.h"
 #include "MetricsFeatureTest.h"
 
 using namespace arangodb;
 
 auto opts = std::make_shared<arangodb::options::ProgramOptions>(
-  "metrics_feature_test", std::string(), std::string(), "path");
-application_features::ApplicationServer server(opts, nullptr);
-MetricsFeature feature(server);
+    "metrics_feature_test", std::string(), std::string(), "path");
+
+ArangodServer server(opts, nullptr);
+metrics::MetricsFeature feature(server);
 
 class MetricsFeatureTest : public ::testing::Test {
-protected:
+ protected:
   MetricsFeatureTest() {}
 };
 
-Metric* thisMetric;
-Metric* thatMetric;
+metrics::Metric* thisMetric;
+metrics::Metric* thatMetric;
 
 TEST_F(MetricsFeatureTest, test_counter) {
-
   auto& counter = feature.add(COUNTER{});
   auto& labeledCounter = feature.add(COUNTER{}.withLabel("label", "label"));
 
   ASSERT_EQ(counter.load(), 0);
   std::string s;
-  counter.toPrometheus(s, "", "");
+  counter.toPrometheus(s, "");
   std::cout << s << std::endl;
   s.clear();
-  labeledCounter.toPrometheus(s, "", "");
+  labeledCounter.toPrometheus(s, "");
   std::cout << s << std::endl;
 
   thisMetric = &counter;
   thatMetric = &labeledCounter;
-
 }
-
 
 TEST_F(MetricsFeatureTest, fail_recreate_counter) {
   try {
@@ -72,24 +71,21 @@ TEST_F(MetricsFeatureTest, fail_recreate_counter) {
   }
 }
 
-
 TEST_F(MetricsFeatureTest, test_histogram) {
-
   auto& histogram = feature.add(HISTOGRAMLIN{});
-  auto& labeledHistogram = feature.add(HISTOGRAMLIN{}.withLabel("label", "label"));
+  auto& labeledHistogram =
+      feature.add(HISTOGRAMLIN{}.withLabel("label", "label"));
 
   std::string s;
-  histogram.toPrometheus(s, "", "");
+  histogram.toPrometheus(s, "");
   std::cout << s << std::endl;
   s.clear();
-  labeledHistogram.toPrometheus(s, "", "");
+  labeledHistogram.toPrometheus(s, "");
   std::cout << s << std::endl;
 
   thisMetric = &histogram;
   thatMetric = &labeledHistogram;
-
 }
-
 
 TEST_F(MetricsFeatureTest, fail_recreate_histogram) {
   try {
@@ -101,22 +97,17 @@ TEST_F(MetricsFeatureTest, fail_recreate_histogram) {
   }
 }
 
-
 TEST_F(MetricsFeatureTest, test_gauge) {
-
   auto& gauge = feature.add(GAUGE{});
   auto& labeledGauge = feature.add(GAUGE{}.withLabel("label", "label"));
 
   std::string s;
-  gauge.toPrometheus(s, "", "");
+  gauge.toPrometheus(s, "");
   std::cout << s << std::endl;
   s.clear();
-  labeledGauge.toPrometheus(s, "", "");
+  labeledGauge.toPrometheus(s, "");
   std::cout << s << std::endl;
 
   thisMetric = &gauge;
   thatMetric = &labeledGauge;
-
 }
-
-

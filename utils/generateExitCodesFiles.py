@@ -109,30 +109,24 @@ FunctionEnd
 
 # generate C header file from errors
 def genCHeaderFile(errors):
-  wiki = "/// Exit codes and meanings\n"\
-       + "/// The following codes might be returned when exiting ArangoDB:\n"
+  wiki = "// Exit codes and meanings\n"\
+       + "// The following codes might be returned when exiting ArangoDB:\n"
 
-  header =   "#ifndef ARANGODB_BASICS_EXIT_CODES_H\n"\
-           + "#define ARANGODB_BASICS_EXIT_CODES_H 1\n"\
+  header =   "#pragma once\n"\
            + "\n"\
            + "#include \"Basics/error.h\"\n"\
            + "\n"\
-           + wiki\
-           + "\n"
+           + "/* clang-format off */\n"\
+           + wiki
 
   # print individual errors
   for e in errors:
     header = header\
+           + "\n"\
            + "/// " + e[1] + ": " + e[0] + "\n"\
            + wrap(e[2], 80, 0, 0, "/// ") + "\n"\
            + wrap(e[3], 80, 0, 0, "/// ") + "\n"\
-           + "constexpr int TRI_" + e[0].ljust(61) + " = " + e[1] + ";\n"\
-           + "\n"
-
-  header = header\
-         + "\n"\
-         + "#endif\n"\
-         + "\n"
+           + "constexpr int TRI_" + e[0].ljust(61) + " = " + e[1] + ";\n"
 
   return header
 

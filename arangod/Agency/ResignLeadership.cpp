@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,26 +33,27 @@
 using namespace arangodb::consensus;
 
 ResignLeadership::ResignLeadership(Node const& snapshot, AgentInterface* agent,
-                               std::string const& jobId, std::string const& creator,
-                               std::string const& server)
+                                   std::string const& jobId,
+                                   std::string const& creator,
+                                   std::string const& server)
     : Job(NOTFOUND, snapshot, agent, jobId, creator), _server(id(server)) {}
 
 ResignLeadership::ResignLeadership(Node const& snapshot, AgentInterface* agent,
-                               JOB_STATUS status, std::string const& jobId)
+                                   JOB_STATUS status, std::string const& jobId)
     : Job(status, snapshot, agent, jobId) {
   // Get job details from agency:
   std::string path = pos[status] + _jobId + "/";
   auto tmp_server = _snapshot.hasAsString(path + "server");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
 
-  if (tmp_server.second && tmp_creator.second) {
-    _server = tmp_server.first;
-    _creator = tmp_creator.first;
+  if (tmp_server && tmp_creator) {
+    _server = tmp_server.value();
+    _creator = tmp_creator.value();
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency.";
     LOG_TOPIC("dead5", ERR, Logger::SUPERVISION) << err.str();
-    finish(tmp_server.first, "", false, err.str());
+    finish(tmp_server.value(), "", false, err.str());
     _status = FAILED;
   }
 }
@@ -66,8 +67,8 @@ JOB_STATUS ResignLeadership::status() {
     return _status;
   }
 
-  auto const& todos = _snapshot.hasAsChildren(toDoPrefix).first;
-  auto const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
+  auto const& todos = _snapshot.hasAsChildren(toDoPrefix).value().get();
+  auto const& pends = _snapshot.hasAsChildren(pendingPrefix).value().get();
   size_t found = 0;
 
   for (auto const& subJob : todos) {
@@ -85,17 +86,18 @@ JOB_STATUS ResignLeadership::status() {
     // timeout here:
     auto tmp_time =
         _snapshot.hasAsString(pendingPrefix + _jobId + "/timeCreated");
-    std::string timeCreatedString = tmp_time.first;
+    std::string timeCreatedString = tmp_time.value();
     Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
     Supervision::TimePoint now(std::chrono::system_clock::now());
-    if (now - timeCreated > std::chrono::duration<double>(86400.0)) { // 1 day
+    if (now - timeCreated > std::chrono::duration<double>(86400.0)) {  // 1 day
       abort("timed out");
       return FAILED;
     }
     return PENDING;
   }
 
-  Node::Children const& failed = _snapshot.hasAsChildren(failedPrefix).first;
+  Node::Children const& failed =
+      _snapshot.hasAsChildren(failedPrefix).value().get();
   size_t failedFound = 0;
   for (auto const& subJob : failed) {
     if (!subJob.first.compare(0, _jobId.size() + 1, _jobId + "-")) {
@@ -124,7 +126,7 @@ JOB_STATUS ResignLeadership::status() {
       }
       addRemoveJobFromSomewhere(reportTrx, "Pending", _jobId);
       Builder job;
-      _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
+      std::ignore = _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
       addPutJobIntoSomewhere(reportTrx, "Finished", job.slice(), "");
       addReleaseServer(reportTrx, _server);
     }
@@ -137,8 +139,7 @@ JOB_STATUS ResignLeadership::status() {
     return FINISHED;
   }
 
-  LOG_TOPIC("dead6", ERR, Logger::SUPERVISION)
-      << "Failed to report " << _jobId;
+  LOG_TOPIC("dead6", ERR, Logger::SUPERVISION) << "Failed to report " << _jobId;
   return FAILED;
 }
 
@@ -185,7 +186,8 @@ bool ResignLeadership::create(std::shared_ptr<VPackBuilder> envelope) {
 
   _status = NOTFOUND;
 
-  LOG_TOPIC("dead8", INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
+  LOG_TOPIC("dead8", INFO, Logger::SUPERVISION)
+      << "Failed to insert job " + _jobId;
   return false;
 }
 
@@ -219,8 +221,8 @@ bool ResignLeadership::start(bool& aborts) {
   // Check that _to is not in `Target/CleanedServers`:
   VPackBuilder cleanedServersBuilder;
   auto const& cleanedServersNode = _snapshot.hasAsNode(cleanedPrefix);
-  if (cleanedServersNode.second) {
-    cleanedServersNode.first.toBuilder(cleanedServersBuilder);
+  if (cleanedServersNode) {
+    cleanedServersNode->get().toBuilder(cleanedServersBuilder);
   } else {
     // ignore this check
     cleanedServersBuilder.clear();
@@ -242,8 +244,8 @@ bool ResignLeadership::start(bool& aborts) {
   VPackBuilder failedServersBuilder;
   if (_snapshot.has(failedServersPrefix)) {
     auto const& failedServersNode = _snapshot.hasAsNode(failedServersPrefix);
-    if (failedServersNode.second) {
-      failedServersNode.first.toBuilder(failedServersBuilder);
+    if (failedServersNode) {
+      failedServersNode->get().toBuilder(failedServersBuilder);
     } else {
       // ignore this check
       failedServersBuilder.clear();
@@ -253,7 +255,7 @@ bool ResignLeadership::start(bool& aborts) {
     // ignore this check
     failedServersBuilder.clear();
     { VPackObjectBuilder guard(&failedServersBuilder); }
-  } // if
+  }  // if
 
   VPackSlice failedServers = failedServersBuilder.slice();
   if (failedServers.isObject()) {
@@ -282,11 +284,12 @@ bool ResignLeadership::start(bool& aborts) {
     // in _jb:
     if (_jb == nullptr) {
       auto tmp_todo = _snapshot.hasAsBuilder(toDoPrefix + _jobId, todo);
-      if (!tmp_todo.second) {
+      if (!tmp_todo) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
-        LOG_TOPIC("deadb", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
-                                                    " from agency snapshot";
+        LOG_TOPIC("deadb", INFO, Logger::SUPERVISION)
+            << "Failed to get key " + toDoPrefix + _jobId +
+                   " from agency snapshot";
         return false;
       }
     } else {
@@ -295,8 +298,7 @@ bool ResignLeadership::start(bool& aborts) {
       } catch (std::exception const& e) {
         // Just in case, this is never going to happen, since when _jb is
         // set, then the current job is stored under ToDo.
-        LOG_TOPIC("deadc", WARN, Logger::SUPERVISION)
-            << e.what() << ": " << __FILE__ << ":" << __LINE__;
+        LOG_TOPIC("deadc", WARN, Logger::SUPERVISION) << e.what();
         return false;
       }
     }
@@ -344,7 +346,8 @@ bool ResignLeadership::start(bool& aborts) {
   write_ret_t res = singleWriteTransaction(_agent, *pending, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC("deadd", DEBUG, Logger::SUPERVISION) << "Pending: Clean out server " + _server;
+    LOG_TOPIC("deadd", DEBUG, Logger::SUPERVISION)
+        << "Pending: Clean out server " + _server;
 
     return true;
   }
@@ -358,7 +361,8 @@ bool ResignLeadership::start(bool& aborts) {
 bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
   std::vector<std::string> servers = availableServers(_snapshot);
 
-  Node::Children const& databases = _snapshot.hasAsChildren("/Plan/Collections").first;
+  Node::Children const& databases =
+      _snapshot.hasAsChildren("/Plan/Collections").value().get();
   size_t sub = 0;
 
   for (auto const& database : databases) {
@@ -370,7 +374,8 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         continue;
       }
 
-      for (auto const& shard : collection.hasAsChildren("shards").first) {
+      for (auto const& shard :
+           collection.hasAsChildren("shards").value().get()) {
         // Only shards, which are affected
         int found = -1;
         int count = 0;
@@ -388,24 +393,27 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         bool isLeader = (found == 0);
 
         if (isLeader) {
-
           std::string toServer = Job::findNonblockedCommonHealthyInSyncFollower(
-            _snapshot, database.first, collptr.first, shard.first, _server);
+              _snapshot, database.first, collptr.first, shard.first, _server);
 
           if (toServer.empty()) {
-            continue ; // can not resign from that shard
+            continue;  // can not resign from that shard
           }
 
           MoveShard(_snapshot, _agent, _jobId + "-" + std::to_string(sub++),
-                  _jobId, database.first, collptr.first, shard.first, _server,
-                  toServer, isLeader, true).withParent(_jobId)
-            .create(trx);
+                    _jobId, database.first, collptr.first, shard.first, _server,
+                    toServer, isLeader, true)
+              .withParent(_jobId)
+              .create(trx);
 
         } else {
-          // Intentionally do nothing. RemoveServer will remove the failed follower
-          LOG_TOPIC("deadf", DEBUG, Logger::SUPERVISION) <<
-            "Do nothing for resign leadership of follower of the collection " << collection.hasAsString("id").first;
-          continue ;
+          // Intentionally do nothing. RemoveServer will remove the failed
+          // follower
+          LOG_TOPIC("deadf", DEBUG, Logger::SUPERVISION)
+              << "Do nothing for resign leadership of follower of the "
+                 "collection "
+              << collection.hasAsString("id").value();
+          continue;
         }
       }
     }
@@ -444,19 +452,23 @@ arangodb::Result ResignLeadership::abort(std::string const& reason) {
   }
 
   // Abort all our subjobs:
-  Node::Children const& todos = _snapshot.hasAsChildren(toDoPrefix).first;
-  Node::Children const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
+  Node::Children const& todos =
+      _snapshot.hasAsChildren(toDoPrefix).value().get();
+  Node::Children const& pends =
+      _snapshot.hasAsChildren(pendingPrefix).value().get();
 
   std::string moveShardAbortReason = "resign leadership aborted: " + reason;
 
   for (auto const& subJob : todos) {
     if (subJob.first.compare(0, _jobId.size() + 1, _jobId + "-") == 0) {
-      JobContext(TODO, subJob.first, _snapshot, _agent).abort(moveShardAbortReason);
+      JobContext(TODO, subJob.first, _snapshot, _agent)
+          .abort(moveShardAbortReason);
     }
   }
   for (auto const& subJob : pends) {
     if (subJob.first.compare(0, _jobId.size() + 1, _jobId + "-") == 0) {
-      JobContext(PENDING, subJob.first, _snapshot, _agent).abort(moveShardAbortReason);
+      JobContext(PENDING, subJob.first, _snapshot, _agent)
+          .abort(moveShardAbortReason);
     }
   }
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -65,35 +65,53 @@ struct QueryOptions {
   TEST_VIRTUAL ~QueryOptions() = default;
 
   void fromVelocyPack(arangodb::velocypack::Slice slice);
-  void toVelocyPack(arangodb::velocypack::Builder& builder, bool disableOptimizerRules) const;
+  void toVelocyPack(arangodb::velocypack::Builder& builder,
+                    bool disableOptimizerRules) const;
   TEST_VIRTUAL ProfileLevel getProfileLevel() const { return profile; }
-  TEST_VIRTUAL TraversalProfileLevel getTraversalProfileLevel() const { return traversalProfile; }
+  TEST_VIRTUAL TraversalProfileLevel getTraversalProfileLevel() const {
+    return traversalProfile;
+  }
 
   size_t memoryLimit;
   size_t maxNumberOfPlans;
   size_t maxWarningCount;
-  double maxRuntime; // query has to execute within the given time or will be killed
+  size_t maxNodesPerCallstack;
+  double maxRuntime;  // query has to execute within the given time or will be
+                      // killed
   double satelliteSyncWait;
-  double ttl; // time until query cursor expires - avoids coursors to
-              // stick around for ever if client does not collect the data
+  double ttl;  // time until query cursor expires - avoids coursors to
+               // stick around for ever if client does not collect the data
   /// Level 0 nothing, Level 1 profile, Level 2,3 log tracing info
   ProfileLevel profile;
   TraversalProfileLevel traversalProfile;
+  // make explain return all generated query executed plans
   bool allPlans;
+  // add more detail to query execution plans
   bool verbosePlans;
+  // add even more detail (internals) to query execution plans
+  bool explainInternals;
   bool stream;
+  // do not return query results
   bool silent;
+  // make the query fail if a warning is produced
   bool failOnWarning;
+  // whether or not the query result is allowed to be stored in the
+  // query results cache
   bool cache;
+  // whether or not the fullCount should be returned
   bool fullCount;
   bool count;
-  bool verboseErrors;
-  bool skipAudit; // skips audit logging - used only internally
+  // skips audit logging - used only internally
+  bool skipAudit;
   ExplainRegisterPlan explainRegisters;
+
+  /// @brief shard key attribute value used to push a query down
+  /// to a single server
+  std::string forceOneShardAttributeValue;
 
   /// @brief optimizer rules to turn off/on manually
   std::vector<std::string> optimizerRules;
-  
+
   /// @brief manual restriction to certain shards
   std::unordered_set<std::string> restrictToShards;
 
@@ -103,9 +121,10 @@ struct QueryOptions {
 #endif
 
   transaction::Options transactionOptions;
-  
+
   static size_t defaultMemoryLimit;
   static size_t defaultMaxNumberOfPlans;
+  static size_t defaultMaxNodesPerCallstack;
   static double defaultMaxRuntime;
   static double defaultTtl;
   static bool defaultFailOnWarning;
@@ -114,4 +133,3 @@ struct QueryOptions {
 
 }  // namespace aql
 }  // namespace arangodb
-

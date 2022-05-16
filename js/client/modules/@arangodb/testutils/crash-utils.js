@@ -301,7 +301,7 @@ function checkMonitorAlive (binary, instanceInfo, options, res) {
       if (rc.status !== 'RUNNING') {
         print(RED + "Procdump of " + instanceInfo.pid + " is gone: " + rc + RESET);
         instanceInfo.monitor = rc;
-        // procdump doesn't set propper exit codes, check for
+        // procdump doesn't set proper exit codes, check for
         // dumps that may exist:
         if (fs.exists(instanceInfo.coreFilePattern)) {
           print("checkMonitorAlive: marking crashy");

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,12 +26,11 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/application-exit.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/MetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
+#include "Metrics/CounterBuilder.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -41,65 +40,39 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-namespace {
-void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
-                            std::function<void(bool)>& gcfunc) {
-  bool queued = false;
-  {
-    std::lock_guard<std::mutex> guard(mutex);
-    std::tie(queued, workItem) =
-        arangodb::basics::function_utils::retryUntilTimeout<arangodb::Scheduler::WorkHandle>(
-            [&gcfunc]() -> std::pair<bool, arangodb::Scheduler::WorkHandle> {
-              auto off = std::chrono::seconds(2);
-              // The RequestLane needs to be something which is `HIGH` priority, otherwise
-              // all threads executing this might be blocking, waiting for a lock to be
-              // released.
-              return arangodb::SchedulerFeature::SCHEDULER->queueDelay(arangodb::RequestLane::CLUSTER_INTERNAL,
-                                                                       off, gcfunc);
-            },
-            arangodb::Logger::TRANSACTIONS,
-            "queue transaction garbage collection");
-  }
-  if (!queued) {
-    LOG_TOPIC("f8b3d", FATAL, arangodb::Logger::TRANSACTIONS)
-        << "Failed to queue transaction garbage collection, for 5 minutes, "
-           "exiting.";
-    FATAL_ERROR_EXIT();
-  }
-}
-}  // namespace
-
 namespace arangodb {
 namespace transaction {
 
-DECLARE_COUNTER(arangodb_transactions_expired_total, "Total number of expired transactions");
+DECLARE_COUNTER(arangodb_transactions_expired_total,
+                "Total number of expired transactions");
 
 std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
-ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "TransactionManager"),
-      _workItem(nullptr),
-      _gcfunc(),
+ManagerFeature::ManagerFeature(Server& server)
+    : ArangodFeature{server, *this},
       _streamingLockTimeout(8.0),
       _streamingIdleTimeout(defaultStreamingIdleTimeout),
-      _numExpiredTransactions(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_transactions_expired_total{})) {
+      _numExpiredTransactions(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_transactions_expired_total{})) {
+  static_assert(
+      Server::isCreatedAfter<ManagerFeature, metrics::MetricsFeature>());
+
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
   startsAfter<EngineSelectorFeature>();
-  startsAfter<MetricsFeature>();
+  startsAfter<metrics::MetricsFeature>();
   startsAfter<SchedulerFeature>();
   startsBefore<DatabaseFeature>();
 
-  _gcfunc = [this] (bool canceled) {
+  _gcfunc = [this](bool canceled) {
     if (canceled) {
       return;
     }
-    
-    MANAGER->garbageCollect(/*abortAll*/false);
+
+    MANAGER->garbageCollect(/*abortAll*/ false);
 
     if (!this->server().isStopping()) {
-      ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc);
+      queueGarbageCollection();
     }
   };
 }
@@ -107,43 +80,53 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
 void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("transaction", "transactions");
 
-  options->addOption("--transaction.streaming-lock-timeout", "lock timeout in seconds "
-		     "in case of parallel access to the same streaming transaction",
-                     new DoubleParameter(&_streamingLockTimeout),
-		     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-    .setIntroducedIn(30605).setIntroducedIn(30701);
-  
-  options->addOption("--transaction.streaming-idle-timeout", "idle timeout for streaming "
-         "transactions in seconds",
-                     new DoubleParameter(&_streamingIdleTimeout),
-         arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
-                                      arangodb::options::Flags::OnCoordinator,
-                                      arangodb::options::Flags::OnSingle))
-    .setIntroducedIn(30800);
-}
+  options
+      ->addOption(
+          "--transaction.streaming-lock-timeout",
+          "lock timeout in seconds "
+          "in case of parallel access to the same streaming transaction",
+          new DoubleParameter(&_streamingLockTimeout),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(30605)
+      .setIntroducedIn(30701);
 
-void ManagerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-  if (_streamingIdleTimeout > maxStreamingIdleTimeout) {
-    LOG_TOPIC("7fb2d", FATAL, Logger::TRANSACTIONS) 
-        << "invalid value for --transaction.streaming-idle-timeout. "
-        << "value should be at most " << maxStreamingIdleTimeout;
-    FATAL_ERROR_EXIT();
-  }
+  options
+      ->addOption("--transaction.streaming-idle-timeout",
+                  "idle timeout for streaming "
+                  "transactions in seconds",
+                  new DoubleParameter(&_streamingIdleTimeout, /*base*/ 1.0,
+                                      /*minValue*/ 0.0,
+                                      /*maxValue*/ maxStreamingIdleTimeout),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30800);
 }
 
 void ManagerFeature::prepare() {
   TRI_ASSERT(MANAGER.get() == nullptr);
   TRI_ASSERT(server().getFeature<EngineSelectorFeature>().selected());
-  MANAGER = server().getFeature<EngineSelectorFeature>().engine().createTransactionManager(*this);
+  MANAGER = server()
+                .getFeature<EngineSelectorFeature>()
+                .engine()
+                .createTransactionManager(*this);
 }
-  
+
 void ManagerFeature::start() {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   if (scheduler != nullptr) {  // is nullptr in catch tests
-    ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc);
+    queueGarbageCollection();
   }
 }
-  
+
+void ManagerFeature::initiateSoftShutdown() {
+  if (MANAGER != nullptr) {
+    MANAGER->initiateSoftShutdown();
+  }
+}
+
 void ManagerFeature::beginShutdown() {
   {
     // when we get here, ApplicationServer::isStopping() will always return
@@ -153,7 +136,7 @@ void ManagerFeature::beginShutdown() {
     // directly afterwards, it will check isStopping(), which will return
     // false, so no rescheduled will be performed
     // if it doesn't hold the mutex, we will cancel it here (under the mutex)
-    // and when the callback is executed, it will check isStopping(), which 
+    // and when the callback is executed, it will check isStopping(), which
     // will always return false
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
@@ -161,10 +144,11 @@ void ManagerFeature::beginShutdown() {
 
   MANAGER->disallowInserts();
   // at this point all cursors should have been aborted already
-  MANAGER->garbageCollect(/*abortAll*/true);
+  MANAGER->garbageCollect(/*abortAll*/ true);
   // make sure no lingering managed trx remain
-  while (MANAGER->garbageCollect(/*abortAll*/true)) {
-    LOG_TOPIC("96298", INFO, Logger::TRANSACTIONS) << "still waiting for managed transaction";
+  while (MANAGER->garbageCollect(/*abortAll*/ true)) {
+    LOG_TOPIC("96298", INFO, Logger::TRANSACTIONS)
+        << "still waiting for managed transaction";
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 }
@@ -178,11 +162,20 @@ void ManagerFeature::stop() {
   }
 
   // at this point all cursors should have been aborted already
-  MANAGER->garbageCollect(/*abortAll*/true);
+  MANAGER->garbageCollect(/*abortAll*/ true);
 }
 
-void ManagerFeature::unprepare() {
-  MANAGER.reset();
+void ManagerFeature::unprepare() { MANAGER.reset(); }
+
+void ManagerFeature::queueGarbageCollection() {
+  // The RequestLane needs to be something which is `HIGH` priority, otherwise
+  // all threads executing this might be blocking, waiting for a lock to be
+  // released.
+  auto workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(
+      arangodb::RequestLane::CLUSTER_INTERNAL, std::chrono::seconds(2),
+      _gcfunc);
+  std::lock_guard<std::mutex> guard(_workItemMutex);
+  _workItem = std::move(workItem);
 }
 
 void ManagerFeature::trackExpired(uint64_t numExpired) {

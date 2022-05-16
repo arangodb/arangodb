@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,6 +54,8 @@ class Result final {
   Result(ErrorCode errorNumber, std::string_view errorMessage);
 
   Result(ErrorCode errorNumber, const char* errorMessage);
+
+  Result(result::Error error);
 
   /**
    * @brief Construct as copy
@@ -151,7 +153,10 @@ class Result final {
   [[nodiscard]] auto errorMessage() const& noexcept -> std::string_view;
   [[nodiscard]] auto errorMessage() && noexcept -> std::string;
 
-  template <typename F, std::enable_if_t<std::is_invocable_r_v<void, F, arangodb::result::Error&>, int> = 0>
+  template<
+      typename F,
+      std::enable_if_t<std::is_invocable_r_v<void, F, arangodb::result::Error&>,
+                       int> = 0>
   auto withError(F&& f) -> Result& {
     if (_error != nullptr) {
       std::forward<F>(f)(*_error);
@@ -160,10 +165,14 @@ class Result final {
     return *this;
   }
 
-  template <typename F, std::enable_if_t<std::is_invocable_r_v<arangodb::result::Error, F, arangodb::result::Error const&>, int> = 0>
+  template<
+      typename F,
+      std::enable_if_t<std::is_invocable_r_v<arangodb::result::Error, F,
+                                             arangodb::result::Error const&>,
+                       int> = 0>
   auto mapError(F&& f) -> Result {
     if (_error != nullptr) {
-      return Result{errorNumber(), std::forward<F>(f)(*_error)};
+      return Result{std::forward<F>(f)(*_error)};
     }
 
     return *this;
@@ -177,6 +186,7 @@ class Result final {
  * @brief  Print to output stream
  * @return Said output stream
  */
-auto operator<<(std::ostream& out, arangodb::Result const& result) -> std::ostream&;
+auto operator<<(std::ostream& out, arangodb::Result const& result)
+    -> std::ostream&;
 
 }  // namespace arangodb

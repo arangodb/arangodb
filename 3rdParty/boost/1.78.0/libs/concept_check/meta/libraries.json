@@ -1,0 +1,16 @@
+{
+    "key": "concept_check",
+    "name": "Concept Check",
+    "authors": [
+        "Jeremy Siek"
+    ],
+    "description": "Tools for generic programming.",
+    "category": [
+        "Correctness",
+        "Generic"
+    ],
+    "maintainers": [
+        "Jeremy Siek <jeremy.siek -at- gmail.com>"
+    ],
+    "cxxstd": "03"
+}

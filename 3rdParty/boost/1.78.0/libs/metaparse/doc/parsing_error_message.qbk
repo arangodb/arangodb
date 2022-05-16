@@ -1,0 +1,22 @@
+[#parsing_error_message]
+[section Parsing error message]
+
+A ['parsing error message] is a
+[link metaprogramming_value template metaprogramming value] with a
+`static std::string get_value()` member function. This function returns the
+pretty-printed version of the error the class represents. For example:
+
+  struct example_error
+  {
+    using type = example_error;
+  
+    static std::string get_value()
+    {
+      return "This is a formatted example error."
+    }
+  };
+
+Failing [link parser parser]s return parsing error messages as error messages.
+
+[endsect]
+

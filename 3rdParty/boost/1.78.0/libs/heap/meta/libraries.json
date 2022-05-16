@@ -1,0 +1,15 @@
+{
+    "key": "heap",
+    "name": "Heap",
+    "authors": [
+        "Tim Blechmann"
+    ],
+    "description": "Priority queue data structures.",
+    "category": [
+        "Data"
+    ],
+    "maintainers": [
+        "Tim Blechmann <tim -at- klingt.org>"
+    ],
+    "cxxstd": "03"
+}

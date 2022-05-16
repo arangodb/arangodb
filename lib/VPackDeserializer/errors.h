@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,7 +47,8 @@ struct error {
     explicit hint(std::string msg) : msg(std::move(msg)) {}
   };
 
-  using access_type = std::variant<field_name, index, key_value_annotation, hint>;
+  using access_type =
+      std::variant<field_name, index, key_value_annotation, hint>;
 
   error(error&&) noexcept = default;
   error(error const&) = default;
@@ -196,4 +197,3 @@ struct error {
 
 // TODO: ?
 using deserialize_error = arangodb::velocypack::deserializer::error;
-

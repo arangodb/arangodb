@@ -1,0 +1,121 @@
+[/==============================================================================
+    Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+    Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+    Copyright (c) 2009-2012 Mateusz Loskot, London, UK., London, UK
+
+    Use, modification and distribution is subject to the Boost Software License,
+    Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+    http://www.boost.org/LICENSE_1_0.txt)
+===============================================================================/]
+
+[section Compilation]
+
+[def __msvc__ MSVC]
+[def __stlport__ [@http://sourceforge.net/projects/stlport STLport]]
+
+[caution Boost.Geometry in Boost 1.73 deprecates support for the C++03 and will require C++14 from Boost 1.75 onwards]
+
+__boost_geometry__ is a headers-only library. Users only need to include the 
+library headers in their programs in order to be able to access definitions 
+and algorithms provided by the __boost_geometry__ library. No linking against 
+any binaries is required. 
+
+__boost_geometry__ is only dependant on headers-only __boost__ libraries.
+It does not introduce indirect dependencies on any binary libraries.
+
+In order to be able to use __boost_geometry__, the only thing users need to do 
+is to download and/or install Boost  and specify location to include 
+directories, so `include` directives of this scheme will work:
+
+    #include <boost/...>
+
+[heading Supported Compilers]
+
+__boost_geometry__ library source code should successfully compile using any compiler with complete C++14 support.
+
+For the actual list of currently tested compilers, check results of the library CI builds linked
+from the [@https://github.com/boostorg/geometry/blob/develop/README.md README.md]
+or inspect the CI services configuration files in the [@https://github.com/boostorg/geometry/tree/develop develop branch]
+of the library repository.
+
+__boost_geometry__ uses __boost_bb__, a text-based system for developing and 
+testing software, to configure, build and execute unit tests and example 
+programs. The build configuration is provided as a collection of `Jamfile` 
+files.
+
+For gcc, flag [^-Wno-long-long] can be used to surpress some warnings 
+originating from Boost.
+
+[heading Includes]
+
+The most convenient headerfile including all algorithms and strategies is 
+`geometry.hpp`:
+
+    #include <boost/geometry.hpp>
+
+This is the main header of the __boost_geometry__ library and it is 
+recommended to include this file.
+
+Alternatively, it is possible to include __boost_geometry__ header files 
+separately. However, this may be inconvenient as header files might be renamed 
+or moved occasionaly in future.
+
+Another often used header is `geometries.hpp`:
+
+    #include <boost/geometry/geometries/geometries.hpp>
+
+This includes definitions of all provided geometry types:
+
+* point, 
+* linestring,
+* polygon,
+* ring,
+* multi_point,
+* multi_linestring,
+* multi_polygon,
+* box,
+* segment.
+
+The file `geometries.hpp` is not included in 
+the `geometry.hpp` headerfile because users should be given the liberty to use 
+their own geometries and not the provided ones. However, for the 
+__boost_geometry__ users who want to use the provided geometries it is useful 
+to include.
+
+[heading Advanced Includes]
+
+Users who have their own geometries and want to use algorithms from 
+__boost_geometry__ might include the files containing registration 
+macro's, like:
+
+    #include <boost/geometry/geometries/register/point.hpp>
+
+[heading Performance]
+
+The enumeration below is not exhaustive but can contain hints to improve the 
+performance:
+
+* For Microsoft __msvc__, set define `_SECURE_SCL=0` for preprocessor.
+* For Microsoft __msvc__, set define `_HAS_ITERATOR_DEBUGGING=0` for preprocessor.
+* Use of __stlport__, a popular open-source implementation of the STL, may result in
+  significantly faster code than use of the C++ standard library provided by __msvc__.
+* Turn on compiler optimizations, compile in release mode.
+
+[heading Problems with Intellisense]
+
+Both versions of __msvc__, 2005 and 2008 (including Express Editions) can hang 
+trying to resolve symbols and give [@http://en.wikipedia.org/wiki/IntelliSense 
+IntelliSense] suggestions while typing in a bracket or angle bracket.
+This is not directly related to __boost_geometry__, but is caused by problems 
+with handling by this IDE large C++ code base with intensively used templates, 
+such as Boost and __boost_geometry__. If this is inconvenient, IntelliSense 
+can be turned off:
+
+[:['["(...)disabling IntelliSense in VC++. There is a file called `feacp.dll` in
+`<VS8INSTALL>/VC/vcpackages` folder. Renaming this file will disable Intellisense feature.]]
+
+-- [@http://blogs.msdn.com/yash/archive/2007/09/19/intellisense-issues-in-visual-c-2005.aspx Intellisense issues in Visual C++ 2005] 
+]
+
+
+[endsect] [/ end of Compilation]

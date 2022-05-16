@@ -21,8 +21,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef TESTS_AQL_EXECUTIONBLOCKPIPELINE_H
-#define TESTS_AQL_EXECUTIONBLOCKPIPELINE_H
+#pragma once
 
 #include "Aql/ExecutionBlock.h"
 
@@ -84,4 +83,3 @@ struct Pipeline {
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
-#endif

@@ -1,0 +1,74 @@
+[#lit]
+[section lit]
+
+[h1 Synopsis]
+
+  template <class C>
+  struct lit;
+
+This is a [link parser parser].
+
+[table Arguments
+  [[Name] [Type]]
+  [[`C`]  [[link boxed_value boxed] character value]]
+]
+
+[h1 Description]
+
+Parser accepting only the `C` character. The result of parsing is the accepted
+character.
+
+[h1 Header]
+
+  #include <boost/metaparse/lit.hpp>
+
+[h1 Expression semantics]
+
+For any `c` boxed character the following are equivalent:
+
+  lit<c>
+  
+  accept_when<
+    one_char,
+    boost::mpl::lambda<boost::mpl::equal_to<boost::mpl::_1, c>>::type,
+    error::literal_expected<c::type::value>
+  >
+
+[h1 Example]
+
+  #include <boost/metaparse/lit.hpp>
+  #include <boost/metaparse/start.hpp>
+  #include <boost/metaparse/string.hpp>
+  #include <boost/metaparse/is_error.hpp>
+  #include <boost/metaparse/get_result.hpp>
+  
+  #include <type_traits>
+  
+  using namespace boost::metaparse;
+  
+  static_assert(
+    is_error<
+      lit<std::integral_constant<char, 'x'>>
+        ::apply<BOOST_METAPARSE_STRING("a"), start>
+    >::type::value,
+    "a different character should be an error"
+  );
+  
+  static_assert(
+    is_error<
+      lit<std::integral_constant<char, 'x'>>
+        ::apply<BOOST_METAPARSE_STRING(""), start>
+    >::type::value,
+    "empty input should be an error"
+  );
+  
+  static_assert(
+    get_result<
+      lit<std::integral_constant<char, 'x'>>
+        ::apply<BOOST_METAPARSE_STRING("x"), start>
+    >::type::value == 'x',
+    "result of parsing should be the accepted character"
+  );
+
+[endsect]
+

@@ -1,7 +1,7 @@
 name: rocksdb_total_disk_space
 introducedIn: "3.8.0"
 help: |
-  Used disk space in bytes on volume used by RocksDB
+  Used disk space in bytes on volume used by RocksDB.
 unit: bytes
 type: gauge
 category: RocksDB

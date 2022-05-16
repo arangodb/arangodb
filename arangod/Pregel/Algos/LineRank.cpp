@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,7 +53,8 @@ struct LRMasterContext : MasterContext {
     TRI_ASSERT(!_stopNext || *diff == 0);
     if (_stopNext) {
       // return false;
-      LOG_TOPIC("cc466", INFO, Logger::PREGEL) << "should stop " << globalSuperstep();
+      LOG_TOPIC("cc466", INFO, Logger::PREGEL)
+          << "should stop " << globalSuperstep();
     } else if (globalSuperstep() > 0 && *diff < EPS) {
       aggregate<bool>(kLastIteration, true);
       _stopNext = true;
@@ -94,7 +95,8 @@ struct LRComputation : public VertexComputation<float, float, float> {
           newScore = 0;
         } else {
           newScore /= getEdgeCount();
-          newScore = ctx->startAtNodeProb * RESTART_PROB + newScore * (1.0f - RESTART_PROB);
+          newScore = ctx->startAtNodeProb * RESTART_PROB +
+                     newScore * (1.0f - RESTART_PROB);
         }
 
         float diff = fabsf(newScore - *vertexValue);
@@ -107,7 +109,8 @@ struct LRComputation : public VertexComputation<float, float, float> {
   }
 };
 
-VertexComputation<float, float, float>* LineRank::createComputation(WorkerConfig const* config) const {
+VertexComputation<float, float, float>* LineRank::createComputation(
+    WorkerConfig const* config) const {
   return new LRComputation();
 }
 

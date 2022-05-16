@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,28 +24,13 @@
 #include "ApplicationFeatures/ShutdownFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
 using namespace arangodb::options;
 
 namespace arangodb {
-
-ShutdownFeature::ShutdownFeature(application_features::ApplicationServer& server,
-                                 std::vector<std::type_index> const& features)
-    : ApplicationFeature(server, "Shutdown") {
-  setOptional(true);
-  startsAfter<application_features::GreetingsFeaturePhase>();
-
-  for (auto feature : features) {
-    if (feature != std::type_index(typeid(LoggerFeature))) {
-      startsAfter(feature);
-    }
-  }
-}
 
 void ShutdownFeature::start() { server().beginShutdown(); }
 

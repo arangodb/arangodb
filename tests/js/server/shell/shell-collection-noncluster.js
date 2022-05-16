@@ -66,8 +66,8 @@ function CollectionSuite() {
 
     testTruncateSelectivityEstimates : function () {
       let c = db._create(cn);
-      c.ensureHashIndex("value");
-      c.ensureSkiplist("value2");
+      c.ensureIndex({ type: "hash", fields: ["value"] });
+      c.ensureIndex({ type: "skiplist", fields: ["value2"] });
 
       // add enough docs to trigger RangeDelete in truncate
       const docs = [];

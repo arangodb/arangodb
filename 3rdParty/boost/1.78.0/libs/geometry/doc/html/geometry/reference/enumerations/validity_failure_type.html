@@ -1,0 +1,322 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>validity_failure_type</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter 1. Geometry">
+<link rel="up" href="../enumerations.html" title="Enumerations">
+<link rel="prev" href="result_code.html" title="result_code">
+<link rel="next" href="../exceptions.html" title="Exceptions">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="result_code.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../enumerations.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../exceptions.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="geometry.reference.enumerations.validity_failure_type"></a><a class="link" href="validity_failure_type.html" title="validity_failure_type">validity_failure_type</a>
+</h4></div></div></div>
+<p>
+          <a class="indexterm" name="idm71693"></a>
+<a class="indexterm" name="idm71695"></a>
+<a class="indexterm" name="idm71697"></a>
+<a class="indexterm" name="idm71699"></a>
+<a class="indexterm" name="idm71701"></a>
+<a class="indexterm" name="idm71703"></a>
+<a class="indexterm" name="idm71705"></a>
+<a class="indexterm" name="idm71707"></a>
+<a class="indexterm" name="idm71709"></a>
+<a class="indexterm" name="idm71711"></a>
+<a class="indexterm" name="idm71713"></a>
+<a class="indexterm" name="idm71715"></a>
+<a class="indexterm" name="idm71717"></a>
+<a class="indexterm" name="idm71719"></a>
+<a class="indexterm" name="idm71721"></a>
+Enumerates the possible validity failure types for a geometry.
+        </p>
+<h6>
+<a name="geometry.reference.enumerations.validity_failure_type.h0"></a>
+          <span class="phrase"><a name="geometry.reference.enumerations.validity_failure_type.description"></a></span><a class="link" href="validity_failure_type.html#geometry.reference.enumerations.validity_failure_type.description">Description</a>
+        </h6>
+<p>
+          The enumeration validity_failure_type enumerates the possible reasons for
+          which a geometry may be found as invalid by the is_valid algorithm. Besides
+          the values that indicate invalidity, there is an additional value (no_failure)
+          that indicates validity.
+        </p>
+<h6>
+<a name="geometry.reference.enumerations.validity_failure_type.h1"></a>
+          <span class="phrase"><a name="geometry.reference.enumerations.validity_failure_type.synopsis"></a></span><a class="link" href="validity_failure_type.html#geometry.reference.enumerations.validity_failure_type.synopsis">Synopsis</a>
+        </h6>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">enum</span> <span class="identifier">validity_failure_type</span>
+<span class="special">{</span>
+    <span class="identifier">no_failure</span> <span class="special">=</span> <span class="number">0</span><span class="special">,</span>
+    <span class="identifier">failure_few_points</span> <span class="special">=</span> <span class="number">10</span><span class="special">,</span>
+    <span class="identifier">failure_wrong_topological_dimension</span> <span class="special">=</span> <span class="number">11</span><span class="special">,</span>
+    <span class="identifier">failure_spikes</span> <span class="special">=</span> <span class="number">12</span><span class="special">,</span>
+    <span class="identifier">failure_duplicate_points</span> <span class="special">=</span> <span class="number">13</span><span class="special">,</span>
+    <span class="identifier">failure_not_closed</span> <span class="special">=</span> <span class="number">20</span><span class="special">,</span>
+    <span class="identifier">failure_self_intersections</span> <span class="special">=</span> <span class="number">21</span><span class="special">,</span>
+    <span class="identifier">failure_wrong_orientation</span> <span class="special">=</span> <span class="number">22</span><span class="special">,</span>
+    <span class="identifier">failure_interior_rings_outside</span> <span class="special">=</span> <span class="number">30</span><span class="special">,</span>
+    <span class="identifier">failure_nested_interior_rings</span> <span class="special">=</span> <span class="number">31</span><span class="special">,</span>
+    <span class="identifier">failure_disconnected_interior</span> <span class="special">=</span> <span class="number">32</span><span class="special">,</span>
+    <span class="identifier">failure_intersecting_interiors</span> <span class="special">=</span> <span class="number">40</span><span class="special">,</span>
+    <span class="identifier">failure_wrong_corner_order</span> <span class="special">=</span> <span class="number">50</span><span class="special">,</span>
+    <span class="identifier">failure_invalid_coordinate</span> <span class="special">=</span> <span class="number">60</span>
+<span class="special">};</span></pre>
+<p>
+        </p>
+<h6>
+<a name="geometry.reference.enumerations.validity_failure_type.h2"></a>
+          <span class="phrase"><a name="geometry.reference.enumerations.validity_failure_type.values"></a></span><a class="link" href="validity_failure_type.html#geometry.reference.enumerations.validity_failure_type.values">Values</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Value
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    no_failure
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The geometry is valid
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    failure_few_points
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The geometry has a very small number of points, e.g., less than
+                    2 for linestrings, less than 3 for open rings, a closed multi-polygon
+                    that contains a polygon with less than 4 points, etc. (applies
+                    to linestrings, rings, polygons, multi-linestrings and multi-polygons)
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    failure_wrong_topological_dimension
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The topological dimension of the geometry is smaller than its
+                    dimension, e.g., a linestring with 3 identical points, an open
+                    polygon with an interior ring consisting of 3 collinear points,
+                    etc. (applies to linear and areal geometries, including segments
+                    and boxes)
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    failure_spikes
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The geometry contains spikes (applies to linear and areal geometries)
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    failure_duplicate_points
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The geometry has (consecutive) duplicate points (applies to areal
+                    geometries only)
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    failure_not_closed
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The geometry is defined as closed, the starting/ending points
+                    are not equal (applies to areal geometries only)
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    failure_self_intersections
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The geometry has invalid self-intersections. (applies to areal
+                    geometries only)
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    failure_wrong_orientation
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The actual orientation of the geometry is different from the
+                    one defined (applies to areal geometries only)
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    failure_interior_rings_outside
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The geometry contains interior rings that lie outside the exterior
+                    ring (applies to polygons and multi-polygons only)
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    failure_nested_interior_rings
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The geometry has nested interior rings (applies to polygons and
+                    multi-polygons only)
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    failure_disconnected_interior
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The interior of the geometry is disconnected (applies to polygons
+                    and multi-polygons only)
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    failure_intersecting_interiors
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The multi-polygon contains polygons whose interiors are not disjoint
+                    (applies to multi-polygons only)
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    failure_wrong_corner_order
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The top-right corner of the box is lexicographically smaller
+                    than its bottom-left corner (applies to boxes only)
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    failure_invalid_coordinate
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The geometry has at least one point with an invalid coordinate
+                    (for example, the coordinate is a NaN)
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<h6>
+<a name="geometry.reference.enumerations.validity_failure_type.h3"></a>
+          <span class="phrase"><a name="geometry.reference.enumerations.validity_failure_type.header"></a></span><a class="link" href="validity_failure_type.html#geometry.reference.enumerations.validity_failure_type.header">Header</a>
+        </h6>
+<p>
+          <code class="computeroutput"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">geometry</span><span class="special">/</span><span class="identifier">algorithms</span><span class="special">/</span><span class="identifier">validity_failure_type</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+        </p>
+<h6>
+<a name="geometry.reference.enumerations.validity_failure_type.h4"></a>
+          <span class="phrase"><a name="geometry.reference.enumerations.validity_failure_type.see_also"></a></span><a class="link" href="validity_failure_type.html#geometry.reference.enumerations.validity_failure_type.see_also">See
+          also</a>
+        </h6>
+<p>
+          <a class="link" href="../algorithms/is_valid.html" title="is_valid">The is_valid algorithm
+          taking a reference to validity_failure_type as second argument</a>
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2009-2021 Barend Gehrels,
+      Bruno Lalande, Mateusz Loskot, Adam Wulkiewicz, Oracle and/or its affiliates<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="result_code.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../enumerations.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../exceptions.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

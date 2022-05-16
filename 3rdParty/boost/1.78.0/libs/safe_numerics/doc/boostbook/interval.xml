@@ -1,0 +1,414 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE section PUBLIC "-//Boost//DTD BoostBook XML V1.1//EN"
+"http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<section id="safe_numerics.interval">
+  <title>interval&lt;R&gt;</title>
+
+  <?dbhtml stop-chunking?>
+
+  <section>
+    <title>Description</title>
+
+    <para>A closed arithmetic interval represented by a pair of elements of
+    type R. In principle, one should be able to use Boost.Interval library for
+    this. But the functions in this library are not <code>constexpr</code>.
+    Also, this Boost.Interval is more complex and does not support certain
+    operations such bit operations. Perhaps some time in the future,
+    Boost.Interval will be used instead of this <code>interval&lt;R&gt;</code>
+    type.</para>
+  </section>
+
+  <section>
+    <title>Template Parameters</title>
+
+    <para>R must model the type requirements of <link
+    linkend="safe_numerics.numeric">Numeric</link>. Note this in principle
+    includes any numeric type including floating point numbers and instances
+    of <link
+    linkend="safenumerics.checked_result"><code>checked_result&lt;R&gt;</code></link>.</para>
+  </section>
+
+  <section>
+    <title>Notation</title>
+
+    <informaltable>
+      <tgroup cols="2">
+        <colspec align="left" colwidth="1*"/>
+
+        <colspec align="left" colwidth="4*"/>
+
+        <thead>
+          <row>
+            <entry align="left">Symbol</entry>
+
+            <entry align="left">Description</entry>
+          </row>
+        </thead>
+
+        <tbody>
+          <row>
+            <entry><code>I</code></entry>
+
+            <entry>An interval type</entry>
+          </row>
+
+          <row>
+            <entry><code>i, j</code></entry>
+
+            <entry>An instance of interval type</entry>
+          </row>
+
+          <row>
+            <entry><code>R</code></entry>
+
+            <entry>Numeric types which can be used to make an interval</entry>
+          </row>
+
+          <row>
+            <entry><code>r</code></entry>
+
+            <entry>An instance of type R</entry>
+          </row>
+
+          <row>
+            <entry><code>p</code></entry>
+
+            <entry>An instance of std::pair&lt;R, R&gt;</entry>
+          </row>
+
+          <row>
+            <entry><code>l, u</code></entry>
+
+            <entry>Lowermost and uppermost values in an interval</entry>
+          </row>
+
+          <row>
+            <entry><code>os</code></entry>
+
+            <entry>std::basic_ostream&lt;class CharT, class Traits =
+            std::char_traits&lt;CharT&gt;&gt;</entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </informaltable>
+  </section>
+
+  <section>
+    <title>Associated Types</title>
+
+    <informaltable>
+      <tgroup cols="2">
+        <colspec align="left" colwidth="1*"/>
+
+        <colspec align="left" colwidth="4*"/>
+
+        <tbody>
+          <row>
+            <entry><link
+            linkend="safenumerics.checked_result"><code>checked_result</code></link></entry>
+
+            <entry>holds either the result of an operation or information as
+            to why it failed</entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </informaltable>
+  </section>
+
+  <section>
+    <title>Valid Expressions</title>
+
+    <para>Note that all expressions are constexpr.</para>
+
+    <para><informaltable>
+        <tgroup cols="3">
+          <colspec align="left" colwidth="1*"/>
+
+          <colspec align="left" colwidth="1*"/>
+
+          <colspec align="left" colwidth="3*"/>
+
+          <thead>
+            <row>
+              <entry align="left">Expression</entry>
+
+              <entry>Return Type</entry>
+
+              <entry>Semantics</entry>
+            </row>
+          </thead>
+
+          <tbody>
+            <row>
+              <entry><code>interval&lt;R&gt;(l, u)</code></entry>
+
+              <entry><code>interval&lt;R&gt;</code></entry>
+
+              <entry>construct a new interval from a pair of limits</entry>
+            </row>
+
+            <row>
+              <entry><code>interval&lt;R&gt;(p)</code></entry>
+
+              <entry><code>interval&lt;R&gt;</code></entry>
+
+              <entry>construct a new interval from a pair of limits</entry>
+            </row>
+
+            <row>
+              <entry><code>interval&lt;R&gt;(i)</code></entry>
+
+              <entry><code>interval&lt;R&gt;</code></entry>
+
+              <entry>copy constructor</entry>
+            </row>
+
+            <row>
+              <entry><code>make_interval&lt;R&gt;()</code></entry>
+
+              <entry><code>interval&lt;R&gt;</code></entry>
+
+              <entry>return new interval with
+              std::numric_limits&lt;R&gt;::min() and
+              std::numric_limits&lt;R&gt;::max()</entry>
+            </row>
+
+            <row>
+              <entry><code>make_interval&lt;R&gt;(const R
+              &amp;r)</code></entry>
+
+              <entry><code>interval&lt;R&gt;</code></entry>
+
+              <entry>return new interval with
+              std::numric_limits&lt;R&gt;::min() and
+              std::numric_limits&lt;R&gt;::max()</entry>
+            </row>
+
+            <row>
+              <entry><code>i.l</code></entry>
+
+              <entry><code>R</code></entry>
+
+              <entry>lowermost value in the interval i</entry>
+            </row>
+
+            <row>
+              <entry><code>i.u</code></entry>
+
+              <entry><code>R</code></entry>
+
+              <entry>uppermost value in the interval i</entry>
+            </row>
+
+            <row>
+              <entry><code>i.includes(j)</code></entry>
+
+              <entry><code>boost::logic::tribool</code></entry>
+
+              <entry>return true if interval i includes interval j</entry>
+            </row>
+
+            <row>
+              <entry><code>i.excludes(j)</code></entry>
+
+              <entry><code>boost::logic::tribool</code></entry>
+
+              <entry>return true if interval i includes interval j</entry>
+            </row>
+
+            <row>
+              <entry><code>i.includes(t)</code></entry>
+
+              <entry><code>bool</code></entry>
+
+              <entry>return true if interval i includes value t</entry>
+            </row>
+
+            <row>
+              <entry><code>i.excludes(t)</code></entry>
+
+              <entry><code>bool</code></entry>
+
+              <entry>return true if interval i includes value t</entry>
+            </row>
+
+            <row>
+              <entry><code>i + j</code></entry>
+
+              <entry><code>interval&lt;R&gt;</code></entry>
+
+              <entry>add two intervals and return the result</entry>
+            </row>
+
+            <row>
+              <entry><code>i - j</code></entry>
+
+              <entry><code>interval&lt;R&gt;</code></entry>
+
+              <entry>subtract two intervals and return the result</entry>
+            </row>
+
+            <row>
+              <entry><code>i * j</code></entry>
+
+              <entry><code>interval&lt;R&gt;</code></entry>
+
+              <entry>multiply two intervals and return the result</entry>
+            </row>
+
+            <row>
+              <entry><code>i / j</code></entry>
+
+              <entry><code>interval&lt;R&gt;</code></entry>
+
+              <entry>divide one interval by another and return the
+              result</entry>
+            </row>
+
+            <row>
+              <entry><code>i % j</code></entry>
+
+              <entry><code>interval&lt;R&gt;</code></entry>
+
+              <entry>calculate modulus of one interval by another and return
+              the result</entry>
+            </row>
+
+            <row>
+              <entry><code>i &lt;&lt; j</code></entry>
+
+              <entry><code>interval&lt;R&gt;</code></entry>
+
+              <entry>calculate the range that would result from shifting one
+              interval by another</entry>
+            </row>
+
+            <row>
+              <entry><code>i &gt;&gt; j</code></entry>
+
+              <entry><code>interval&lt;R&gt;</code></entry>
+
+              <entry>calculate the range that would result from shifting one
+              interval by another</entry>
+            </row>
+
+            <row>
+              <entry><code>i | j</code></entry>
+
+              <entry><code>interval&lt;R&gt;</code></entry>
+
+              <entry>range of values which can result from applying | to any
+              pair of operands from I and j</entry>
+            </row>
+
+            <row>
+              <entry><code>i &amp; j</code></entry>
+
+              <entry><code>interval&lt;R&gt;</code></entry>
+
+              <entry>range of values which can result from applying &amp; to
+              any pair of operands from I and j</entry>
+            </row>
+
+            <row>
+              <entry><code>i ^ j</code></entry>
+
+              <entry><code>interval&lt;R&gt;</code></entry>
+
+              <entry>range of values which can result from applying ^ to any
+              pair of operands from I and j</entry>
+            </row>
+
+            <row>
+              <entry><code>t &lt; u</code></entry>
+
+              <entry><code>boost::logic::tribool</code></entry>
+
+              <entry>true if every element in t is less than every element in
+              u</entry>
+            </row>
+
+            <row>
+              <entry><code>t &gt; u</code></entry>
+
+              <entry><code>boost::logic::tribool</code></entry>
+
+              <entry>true if every element in t is greater than every element
+              in u</entry>
+            </row>
+
+            <row>
+              <entry><code>t &lt;= u</code></entry>
+
+              <entry><code>boost::logic::tribool</code></entry>
+
+              <entry>true if every element in t is less than or equal to every
+              element in u</entry>
+            </row>
+
+            <row>
+              <entry><code>t &gt;= u</code></entry>
+
+              <entry><code>boost::logic::tribool</code></entry>
+
+              <entry>true if every element in t is greater than or equal to
+              every element in u</entry>
+            </row>
+
+            <row>
+              <entry><code>t == u</code></entry>
+
+              <entry><code>bool</code></entry>
+
+              <entry>true if limits are equal</entry>
+            </row>
+
+            <row>
+              <entry><code>t != u</code></entry>
+
+              <entry><code>bool</code></entry>
+
+              <entry>true if limits are not equal</entry>
+            </row>
+
+            <row>
+              <entry><code>os &lt;&lt; i</code></entry>
+
+              <entry><code>os &amp;</code></entry>
+
+              <entry>print interval to output stream</entry>
+            </row>
+          </tbody>
+        </tgroup>
+      </informaltable></para>
+  </section>
+
+  <section>
+    <title>Example of use</title>
+
+    <programlisting>#include &lt;iostream&gt;
+#include &lt;cstdint&gt;
+#include &lt;cassert&gt;
+#include &lt;boost/numeric/safe_numerics/interval.hpp&gt;
+
+int main(){
+    std::cout &lt;&lt; "test1" &lt;&lt; std::endl;
+    interval&lt;std::int16_t&gt; x = {-64, 63};
+    std::cout &lt;&lt; "x = " &lt;&lt; x &lt;&lt; std::endl;
+    interval&lt;std::int16_t&gt; y(-128, 126);
+    std::cout &lt;&lt; "y = " &lt;&lt; y &lt;&lt; std::endl;
+    assert(static_cast&lt;interval&lt;std::int16_t&gt;&gt;(add&lt;std::int16_t&gt;(x,x)) == y);
+    std::cout &lt;&lt; "x + x =" &lt;&lt; add&lt;std::int16_t&gt;(x, x) &lt;&lt; std::endl;
+    std::cout &lt;&lt; "x - x = " &lt;&lt; subtract&lt;std::int16_t&gt;(x, x) &lt;&lt; std::endl;
+    return 0;
+}</programlisting>
+  </section>
+
+  <section>
+    <title>Header</title>
+
+    <para><ulink
+    url="../../include/boost/safe_numerics/interval.hpp"><code>#include
+    &lt;boost/numeric/safe_numerics/interval.hpp&gt;</code></ulink></para>
+  </section>
+</section>

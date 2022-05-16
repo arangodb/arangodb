@@ -1,0 +1,58 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Function opengl_enqueue_release_gl_objects</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter 1. Boost.Compute">
+<link rel="up" href="../../boost_compute/reference.html#header.boost.compute.interop.opengl.acquire_hpp" title="Header &lt;boost/compute/interop/opengl/acquire.hpp&gt;">
+<link rel="prev" href="opengl_enqueue_acq_idm9416.html" title="Function opengl_enqueue_acquire_gl_objects">
+<link rel="next" href="opengl_enqueue_acq_idm9450.html" title="Function opengl_enqueue_acquire_buffer">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="opengl_enqueue_acq_idm9416.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_compute/reference.html#header.boost.compute.interop.opengl.acquire_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="opengl_enqueue_acq_idm9450.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.compute.opengl_enqueue_rel_idm9433"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Function opengl_enqueue_release_gl_objects</span></h2>
+<p>boost::compute::opengl_enqueue_release_gl_objects</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../boost_compute/reference.html#header.boost.compute.interop.opengl.acquire_hpp" title="Header &lt;boost/compute/interop/opengl/acquire.hpp&gt;">boost/compute/interop/opengl/acquire.hpp</a>&gt;
+
+</span>
+<span class="identifier">event</span> <span class="identifier">opengl_enqueue_release_gl_objects</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">uint_</span> num_objects<span class="special">,</span> 
+                                        <span class="keyword">const</span> <span class="identifier">cl_mem</span> <span class="special">*</span> mem_objects<span class="special">,</span> 
+                                        <span class="identifier">command_queue</span> <span class="special">&amp;</span> queue<span class="special">,</span> 
+                                        <span class="keyword">const</span> <a class="link" href="wait_list.html" title="Class wait_list">wait_list</a> <span class="special">&amp;</span> events <span class="special">=</span> <a class="link" href="wait_list.html" title="Class wait_list">wait_list</a><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idm29303"></a><h2>Description</h2>
+<p>Enqueues a command to release the specified OpenGL memory objects.</p>
+<p>See the documentation for <a href="http://www.khronos.org/registry/cl/sdk/1.2/docs/man/xhtml/clEnqueueReleaseGLObjects.html" target="_top">clEnqueueReleaseGLObjects()</a> for more information. </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2013, 2014 Kyle Lutz<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="opengl_enqueue_acq_idm9416.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_compute/reference.html#header.boost.compute.interop.opengl.acquire_hpp"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="opengl_enqueue_acq_idm9450.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

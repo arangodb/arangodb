@@ -1,0 +1,13 @@
+name: arangodb_replication2_replicated_log_deletion_total
+introducedIn: "3.9.0"
+help: |
+  Number of replicated log instances deleted on this server since its start.
+unit: number
+type: counter
+category: Replication
+complexity: simple
+exposedBy:
+  - dbserver
+  - single
+description: |
+  Number of replicated log instances deleted on this server since its start.

@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global arango, db */
+/*global arango, db, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Helper for JavaScript Tests
@@ -42,6 +42,7 @@ let {
   isEqual,
   compareStringIds,
     } = require('@arangodb/test-helper-common');
+const clusterInfo = global.ArangoClusterInfo;
 
 exports.getServerById = getServerById;
 exports.getServersByType = getServersByType;
@@ -110,15 +111,74 @@ exports.getChecksum = function (endpoint, name) {
   return JSON.parse(res.body).checksum;
 };
 
-exports.getMetric = function (endpoint, name) {
-
-  let res = request.get({
-    url: endpoint + '/_admin/metrics',
-  });
+function getMetricName(text, name) {
   let re = new RegExp("^" + name);
-  let matches = res.body.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
+  let matches = text.split("\n").filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
   if (!matches.length) {
     throw "Metric " + name + " not found";
   }
-  return Number(matches[0].replace(/^.* (\d+)$/, '$1'));
+  return Number(matches[0].replace(/^.*{.*}([0-9.]+)$/, "$1"));
+}
+
+exports.getMetric = function (endpoint, name) {
+  let res = request.get({
+    url: endpoint + "/_admin/metrics",
+  });
+  return getMetricName(res.body, name);
+};
+
+exports.getMetricSingle = function (name) {
+  let res = arango.GET_RAW("/_admin/metrics");
+  if (res.code !== 200) {
+    throw "error fetching metric";
+  }
+  return getMetricName(res.body, name);
+};
+
+exports.waitForShardsInSync = function(cn, timeout) {
+  if (!timeout) {
+    timeout = 300;
+  }
+  // The client variant has the database name inside it's scope.
+  // TODO: Need to figure out how to get that done on server api. As soon as
+  // this is necessary. We can always hand it in as parameter, but then we have
+  // differences for client / server on this helper methods api ;(
+  let dbName = "_system";
+  let start = internal.time();
+  const setsAreEqual = (left, right) => {
+    // Sets have to be equal in size
+    if (left.size !== right.size) {
+      return false;
+    }
+    // Every entry in left, needs to be in right.
+    // THere can be no duplicates in a set, so this
+    // is equivalent to left and right having exactly the
+    // same entries.
+    for (const entry of left) {
+      if (!right.has(entry)) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  while (internal.time() - start < timeout) {
+    let insync = 0;
+    const { shards } = clusterInfo.getCollectionInfo(dbName, cn);
+    for (const [shard, plannedServers] of Object.entries(shards)) {
+      const { servers } = clusterInfo.getCollectionInfoCurrent(dbName, cn, shard);
+      if (setsAreEqual(new Set(servers), new Set(plannedServers))) {
+        ++insync;
+      }
+    }
+    if (insync === Object.keys(shards).length) {
+      return;
+    }
+    if ((internal.time() - start) * 2 > timeout) {
+      console.warn(`Only ${insync} in-sync out of ${Object.keys(shards).length} after ${internal.time() - start}, waiting until ${timeout}`);
+    }
+    internal.wait(1);
+  }
+  assertTrue(false, "Shards were not getting in sync in time, giving up!");
+  return;
 };

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,7 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Iterator.h>
+#include <atomic>
 
 namespace arangodb {
 
@@ -69,9 +70,14 @@ class Cursor {
 
   inline double ttl() const { return _ttl; }
 
-  inline double expires() const { return _expires; }
-  
-  inline bool isUsed() const { return _isUsed; }
+  inline double expires() const {
+    return _expires.load(std::memory_order_relaxed);
+  }
+
+  inline bool isUsed() const {
+    // (1) - this release-store synchronizes-with the acquire-load (2)
+    return _isUsed.load(std::memory_order_acquire);
+  }
 
   inline bool isDeleted() const { return _isDeleted; }
 
@@ -81,13 +87,14 @@ class Cursor {
     TRI_ASSERT(!_isDeleted);
     TRI_ASSERT(!_isUsed);
 
-    _isUsed = true;
+    _isUsed.store(true, std::memory_order_relaxed);
   }
 
-  void release() {
+  void release() noexcept {
     TRI_ASSERT(_isUsed);
-    _isUsed = false;
-    _expires = TRI_microtime() + _ttl;
+    _expires.store(TRI_microtime() + _ttl, std::memory_order_relaxed);
+    // (2) - this release-store synchronizes-with the acquire-load (1)
+    _isUsed.store(false, std::memory_order_release);
   }
 
   virtual void kill() {}
@@ -114,7 +121,8 @@ class Cursor {
    * free this thread on DONE we have a result. Second: Result If State==DONE
    * this contains Error information or NO_ERROR. On NO_ERROR result is filled.
    */
-  virtual std::pair<aql::ExecutionState, Result> dump(velocypack::Builder& result) = 0;
+  virtual std::pair<aql::ExecutionState, Result> dump(
+      velocypack::Builder& result) = 0;
 
   /**
    * @brief Dump the cursor result. This is guaranteed to return the result in
@@ -125,7 +133,7 @@ class Cursor {
    * @return ErrorResult, if something goes wrong
    */
   virtual Result dumpSync(velocypack::Builder& result) = 0;
-  
+
   /// Set wakeup handler on streaming cursor
   virtual void setWakeupHandler(std::function<bool()> const& cb) {}
   virtual void resetWakeupHandler() {}
@@ -134,10 +142,9 @@ class Cursor {
   CursorId const _id;
   size_t const _batchSize;
   double _ttl;
-  double _expires;
+  std::atomic<double> _expires;
   bool const _hasCount;
   bool _isDeleted;
   std::atomic<bool> _isUsed;
 };
 }  // namespace arangodb
-

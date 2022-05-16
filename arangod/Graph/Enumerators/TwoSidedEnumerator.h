@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,12 +47,14 @@ class HashedStringRef;
 
 namespace graph {
 
+class PathValidatorOptions;
 struct TwoSidedEnumeratorOptions;
 
-template <class ProviderType, class Step>
+template<class ProviderType, class Step>
 class PathResult;
 
-template <class QueueType, class PathStoreType, class ProviderType, class PathValidatorType>
+template<class QueueType, class PathStoreType, class ProviderType,
+         class PathValidatorType>
 class TwoSidedEnumerator {
  public:
   using Step = typename ProviderType::Step;  // public due to tracer access
@@ -69,10 +71,11 @@ class TwoSidedEnumerator {
   class Ball {
    public:
     Ball(Direction dir, ProviderType&& provider, GraphOptions const& options,
+         PathValidatorOptions validatorOptions,
          arangodb::ResourceMonitor& resourceMonitor);
     ~Ball();
     auto clear() -> void;
-    auto reset(VertexRef center) -> void;
+    auto reset(VertexRef center, size_t depth = 0) -> void;
     auto startNextDepth() -> void;
     [[nodiscard]] auto noPathLeft() const -> bool;
     [[nodiscard]] auto getDepth() const -> size_t;
@@ -80,10 +83,14 @@ class TwoSidedEnumerator {
     [[nodiscard]] auto doneWithDepth() const -> bool;
     auto testDepthZero(Ball& other, ResultList& results) -> void;
 
-    auto buildPath(Step const& vertexInShell, PathResult<ProviderType, Step>& path) -> void;
+    auto buildPath(Step const& vertexInShell,
+                   PathResult<ProviderType, Step>& path) -> void;
 
-    auto matchResultsInShell(Step const& match, ResultList& results, PathValidatorType const& otherSideValidator) -> void;
-    auto computeNeighbourhoodOfNextVertex(Ball& other, ResultList& results) -> void;
+    auto matchResultsInShell(Step const& match, ResultList& results,
+                             PathValidatorType const& otherSideValidator)
+        -> void;
+    auto computeNeighbourhoodOfNextVertex(Ball& other, ResultList& results)
+        -> void;
 
     // Ensure that we have fetched all vertices
     // in the _results list.
@@ -92,6 +99,9 @@ class TwoSidedEnumerator {
     auto fetchResults(ResultList& results) -> void;
 
     auto provider() -> ProviderType&;
+
+   private:
+    auto clearProvider() -> void;
 
    private:
     // Fast path, to test if we find a connecting vertex between left and right.
@@ -114,18 +124,23 @@ class TwoSidedEnumerator {
     size_t _searchIndex{std::numeric_limits<size_t>::max()};
     Direction _direction;
     size_t _minDepth{0};
+    GraphOptions _graphOptions;
   };
 
  public:
-  TwoSidedEnumerator(ProviderType&& forwardProvider, ProviderType&& backwardProvider,
+  TwoSidedEnumerator(ProviderType&& forwardProvider,
+                     ProviderType&& backwardProvider,
                      TwoSidedEnumeratorOptions&& options,
+                     PathValidatorOptions validatorOptions,
                      arangodb::ResourceMonitor& resourceMonitor);
   TwoSidedEnumerator(TwoSidedEnumerator const& other) = delete;
-  TwoSidedEnumerator(TwoSidedEnumerator&& other) noexcept = default;
+  TwoSidedEnumerator& operator=(TwoSidedEnumerator const& other) = delete;
+  TwoSidedEnumerator(TwoSidedEnumerator&& other) = delete;
+  TwoSidedEnumerator& operator=(TwoSidedEnumerator&& other) = delete;
 
   ~TwoSidedEnumerator();
 
-  void clear();
+  auto clear() -> void;
 
   /**
    * @brief Quick test if the finder can prove there is no more data available.
@@ -139,13 +154,13 @@ class TwoSidedEnumerator {
    * @brief Reset to new source and target vertices.
    * This API uses string references, this class will not take responsibility
    * for the referenced data. It is caller's responsibility to retain the
-   * underlying data and make sure the StringRefs stay valid until next
+   * underlying data and make sure the strings stay valid until next
    * call of reset.
    *
    * @param source The source vertex to start the paths
    * @param target The target vertex to end the paths
    */
-  void reset(VertexRef source, VertexRef target);
+  void reset(VertexRef source, VertexRef target, size_t depth = 0);
 
   /**
    * @brief Get the next path, if available written into the result build.
@@ -204,4 +219,3 @@ class TwoSidedEnumerator {
 };
 }  // namespace graph
 }  // namespace arangodb
-

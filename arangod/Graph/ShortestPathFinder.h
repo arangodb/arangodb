@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 
 #include "Basics/Common.h"
 
+#include <utility>
 #include <velocypack/Slice.h>
 
 namespace arangodb {
@@ -39,8 +40,8 @@ class ShortestPathFinder {
  public:
   virtual ~ShortestPathFinder() = default;
 
-  virtual bool shortestPath(arangodb::velocypack::Slice const& start,
-                            arangodb::velocypack::Slice const& target,
+  virtual bool shortestPath(arangodb::velocypack::Slice start,
+                            arangodb::velocypack::Slice target,
                             arangodb::graph::ShortestPathResult& result) = 0;
 
   void destroyEngines();
@@ -50,11 +51,7 @@ class ShortestPathFinder {
   virtual void clear() = 0;
 
   /// @brief return number of HTTP requests made, and reset it to 0
-  size_t getAndResetHttpRequests() {
-    size_t value = _httpRequests;
-    _httpRequests = 0;
-    return value;
-  }
+  size_t getAndResetHttpRequests() { return std::exchange(_httpRequests, 0); }
 
   void incHttpRequests(size_t requests) { _httpRequests += requests; }
 
@@ -72,4 +69,3 @@ class ShortestPathFinder {
 
 }  // namespace graph
 }  // namespace arangodb
-

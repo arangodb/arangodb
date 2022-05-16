@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,6 @@
 #include "Basics/ResultT.h"
 
 #include <velocypack/Buffer.h>
-#include <velocypack/velocypack-aliases.h>
 
 #include <cstdint>
 #include <type_traits>
@@ -52,22 +51,10 @@ enum Operation {
   READ_UNLOCK,
   WRITE_LOCK,
   WRITE_UNLOCK,
+  PUSH_QUEUE,
 };
 
 using namespace arangodb::velocypack;
-
-class StoreException : public std::exception {
- public:
-  explicit StoreException(std::string const& message) : _message(message) {}
-  virtual char const* what() const noexcept override final {
-    return _message.c_str();
-  }
-
- private:
-  std::string _message;
-};
-
-enum NODE_EXCEPTION { PATH_NOT_FOUND };
 
 typedef std::chrono::system_clock::time_point TimePoint;
 typedef std::chrono::steady_clock::time_point SteadyTimePoint;
@@ -77,6 +64,7 @@ class Store;
 class SmallBuffer {
   uint8_t* _start;
   size_t _size;
+
  public:
   SmallBuffer() noexcept : _start(nullptr), _size(0) {}
   explicit SmallBuffer(size_t size) : SmallBuffer() {
@@ -88,8 +76,7 @@ class SmallBuffer {
   explicit SmallBuffer(uint8_t const* data, size_t size) : SmallBuffer(size) {
     memcpy(_start, data, size);
   }
-  SmallBuffer(SmallBuffer const& other) 
-      : SmallBuffer() {
+  SmallBuffer(SmallBuffer const& other) : SmallBuffer() {
     if (!other.empty()) {
       _start = new uint8_t[other._size];
       _size = other._size;
@@ -129,9 +116,7 @@ class SmallBuffer {
     }
     return *this;
   }
-  ~SmallBuffer() {
-    delete[] _start;
-  }
+  ~SmallBuffer() { delete[] _start; }
   uint8_t* data() const { return _start; }
   size_t size() const { return _size; }
   bool empty() const { return _start == nullptr || _size == 0; }
@@ -199,10 +184,11 @@ class Node final {
   NodeType type() const;
 
   /// @brief Get node specified by path vector
-  Node& operator()(std::vector<std::string> const& pv);
+  Node& getOrCreate(std::vector<std::string> const& pv);
 
   /// @brief Get node specified by path vector
-  Node const& operator()(std::vector<std::string> const& pv) const;
+  std::optional<std::reference_wrapper<Node const>> get(
+      std::vector<std::string> const& pv) const;
 
   /// @brief Get root node
   Node const& root() const;
@@ -213,21 +199,20 @@ class Node final {
   /// @brief Dump to ostream
   std::ostream& print(std::ostream&) const;
 
-  /// #brief Get path of this node
-  std::string path();
-
   /// @brief Apply single operation as defined by "op"
-  ResultT<std::shared_ptr<Node>> applyOp(arangodb::velocypack::Slice const&);
+  ResultT<std::shared_ptr<Node>> applyOp(arangodb::velocypack::Slice);
 
   /// @brief Apply single slice
-  bool applies(arangodb::velocypack::Slice const&);
+  bool applies(arangodb::velocypack::Slice);
 
-  /// @brief Return all keys of an object node. Result will be empty for non-objects.
+  /// @brief Return all keys of an object node. Result will be empty for
+  /// non-objects.
   std::vector<std::string> keys() const;
 
   /// @brief handle "op" keys in write json
-  template <Operation Oper>
-  arangodb::ResultT<std::shared_ptr<Node>> handle(arangodb::velocypack::Slice const&);
+  template<Operation Oper>
+  arangodb::ResultT<std::shared_ptr<Node>> handle(
+      arangodb::velocypack::Slice const&);
 
   /// @brief Create Builder representing this store
   void toBuilder(Builder&, bool showHidden = false) const;
@@ -292,79 +277,78 @@ class Node final {
   void timeToLive(TimePoint const& ttl);
 
   /// @brief accessor to Node object
-  /// @return  second is true if url exists, first populated if second true
-  std::pair<Node const&, bool> hasAsNode(std::string const&) const;
+  /// @return  returns nullopt if not found or type doesn't match
+  std::optional<std::reference_wrapper<Node const>> hasAsNode(
+      std::string const&) const noexcept;
 
   /// @brief accessor to Node object
-  /// @return  second is true if url exists, first populated if second true
-  std::pair<Node&, bool> hasAsWritableNode(std::string const&);
+  Node& hasAsWritableNode(std::string const&);
 
   /// @brief accessor to Node's type
-  /// @return  second is true if url exists, first populated if second true
-  std::pair<NodeType, bool> hasAsType(std::string const&) const;
+  /// @return  returns nullopt if not found or type doesn't match
+  std::optional<NodeType> hasAsType(std::string const&) const noexcept;
 
   /// @brief accessor to Node's Slice value
-  /// @return  second is true if url exists, first populated if second true
-  std::pair<Slice, bool> hasAsSlice(std::string const&) const;
+  /// @return  returns nullopt if not found or type doesn't match
+  std::optional<Slice> hasAsSlice(std::string const&) const noexcept;
 
   /// @brief accessor to Node's uint64_t value
-  /// @return  second is true if url exists, first populated if second true
-  std::pair<uint64_t, bool> hasAsUInt(std::string const&) const;
+  /// @return  returns nullopt if not found or type doesn't match
+  std::optional<uint64_t> hasAsUInt(std::string const&) const noexcept;
 
   /// @brief accessor to Node's bool value
-  /// @return  second is true if url exists, first populated if second true
-  std::pair<bool, bool> hasAsBool(std::string const&) const;
+  /// @return  returns nullopt if not found or type doesn't match
+  std::optional<bool> hasAsBool(std::string const&) const noexcept;
 
   /// @brief accessor to Node's std::string value
-  /// @return  second is true if url exists, first populated if second true
-  std::pair<std::string, bool> hasAsString(std::string const&) const;
+  /// @return  returns nullopt if not found or type doesn't match
+  std::optional<std::string> hasAsString(std::string const&) const;
 
   /// @brief accessor to Node's _children
-  /// @return  second is true if url exists, first populated if second true
-  std::pair<Children const&, bool> hasAsChildren(std::string const&) const;
+  /// @return  returns nullopt if not found or type doesn't match
+  std::optional<std::reference_wrapper<Children const>> hasAsChildren(
+      std::string const&) const;
 
   /// @brief accessor to Node then write to builder
-  /// @return  second is true if url exists, first is ignored
-  std::pair<void*, bool> hasAsBuilder(std::string const&, Builder&,
-                                      bool showHidden = false) const;
+  /// @return  returns true if url exists
+  [[nodiscard]] bool hasAsBuilder(std::string const&, Builder&,
+                                  bool showHidden = false) const;
 
   /// @brief accessor to Node's value as a Builder object
-  /// @return  second is true if url exists, first populated if second true
-  std::pair<Builder, bool> hasAsBuilder(std::string const&) const;
+  /// @return  returns nullopt if not found or type doesn't match
+  std::optional<Builder> hasAsBuilder(std::string const&) const;
 
   /// @brief accessor to Node's Array
-  /// @return  second is true if url exists, first populated if second true
-  std::pair<Slice, bool> hasAsArray(std::string const&) const;
+  /// @return  returns nullopt if not found or type doesn't match
+  std::optional<Slice> hasAsArray(std::string const&) const;
 
   // These two operator() functions could be "protected" once
   //  unit tests updated.
   //
   /// @brief Get node specified by path string
-  Node& operator()(std::string const& path);
+  Node& getOrCreate(std::string const& path);
 
   /// @brief Get node specified by path string
-  Node const& operator()(std::string const& path) const;
+  std::optional<std::reference_wrapper<Node const>> get(
+      std::string const& path) const;
 
   /// @brief Get string value (throws if type NODE or if conversion fails)
-  std::string getString() const;
+  std::optional<std::string> getString() const;
 
   /// @brief Get array value
-  Slice getArray() const;
+  std::optional<Slice> getArray() const;
 
-  /// @brief Get insigned value (throws if type NODE or if conversion fails)
-  uint64_t getUInt() const;
-
-  /// @brief Get node specified by path string, always throw if not there
-  Node const& get(std::string const& path) const;
+  /// @brief Get unsigned value (throws if type NODE or if conversion fails)
+  std::optional<uint64_t> getUInt() const noexcept;
 
   /// @brief Get integer value (throws if type NODE or if conversion fails)
-  int64_t getInt() const;
+  std::optional<int64_t> getInt() const noexcept;
 
   /// @brief Get bool value (throws if type NODE or if conversion fails)
-  bool getBool() const;
+  std::optional<bool> getBool() const noexcept;
 
   /// @brief Get double value (throws if type NODE or if conversion fails)
-  double getDouble() const;
+  std::optional<double> getDouble() const noexcept;
 
   template<typename T>
   auto getNumberUnlessExpiredWithDefault() -> T {
@@ -378,24 +362,22 @@ class Node final {
     return T{0};
   }
 
-  static auto getIntWithDefault(Slice slice, std::string_view key, std::int64_t def) -> std::int64_t;
+  static auto getIntWithDefault(Slice slice, std::string_view key,
+                                std::int64_t def) -> std::int64_t;
 
-  bool isReadLockable(const VPackStringRef& by) const;
-  bool isWriteLockable(const VPackStringRef& by) const;
+  bool isReadLockable(std::string_view by) const;
+  bool isWriteLockable(std::string_view by) const;
 
   /// @brief Clear key value store
   void clear();
 
   // @brief Helper function to return static instance of dummy node below
-  static Node const& dummyNode() {
-    return _dummyNode;
-  }
- 
+  static Node const& dummyNode() { return _dummyNode; }
+
  private:
-  
-  bool isReadUnlockable(const VPackStringRef& by) const;
-  bool isWriteUnlockable(const VPackStringRef& by) const;
-  
+  bool isReadUnlockable(std::string_view by) const;
+  bool isWriteUnlockable(std::string_view by) const;
+
   /// @brief  Remove child by name
   /// @return shared pointer to removed child
   arangodb::ResultT<std::shared_ptr<Node>> removeChild(std::string const& key);
@@ -412,25 +394,25 @@ class Node final {
   bool lifetimeExpired() const;
 
   /// @brief Add time to live entry
-  bool addTimeToLive(std::chrono::time_point<std::chrono::system_clock> const& tp);
+  bool addTimeToLive(
+      std::chrono::time_point<std::chrono::system_clock> const& tp);
 
   /// @brief Remove time to live entry
   bool removeTimeToLive();
 
   void rebuildVecBuf() const;
 
-  std::string _nodeName;                ///< @brief my name
-  Node* _parent;                        ///< @brief parent
-  Store* _store;                        ///< @brief Store
-  mutable std::unique_ptr<Children> _children;  ///< @brief child nodes
-  TimePoint _ttl;                       ///< @brief my expiry
+  std::string _nodeName;                             ///< @brief my name
+  Node* _parent;                                     ///< @brief parent
+  Store* _store;                                     ///< @brief Store
+  mutable std::unique_ptr<Children> _children;       ///< @brief child nodes
+  TimePoint _ttl;                                    ///< @brief my expiry
   std::unique_ptr<std::vector<SmallBuffer>> _value;  ///< @brief my value
   mutable std::unique_ptr<SmallBuffer> _vecBuf;
   mutable bool _vecBufDirty;
   bool _isArray;
   static Children const dummyChildren;
   static Node const _dummyNode;
-
 };
 
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {
@@ -438,4 +420,3 @@ inline std::ostream& operator<<(std::ostream& o, Node const& n) {
 }
 
 }  // namespace arangodb::consensus
-

@@ -101,21 +101,10 @@ function EdgeIndexBucketsSuite () {
         }
       }
 
-      // unload collections
-      edge2.unload();
-      edge3.unload();
       edge2 = null;
       edge3 = null;
 
       internal.wal.flush(true, true);
-      while (db._collection(en2).status() !== ArangoCollection.STATUS_UNLOADED) {
-        db._collection(en2).unload();
-        wait(0.5);
-      }
-      while (db._collection(en3).status() !== ArangoCollection.STATUS_UNLOADED) {
-        db._collection(en3).unload();
-        wait(0.5);
-      }
 
       edge2 = db._collection(en2);
       edge3 = db._collection(en3);
@@ -159,21 +148,10 @@ function EdgeIndexBucketsSuite () {
         edge3.remove(key);
       }
 
-      // unload collections
-      edge2.unload();
-      edge3.unload();
       edge2 = null;
       edge3 = null;
 
       internal.wal.flush(true, true);
-      while (db._collection(en2).status() !== ArangoCollection.STATUS_UNLOADED) {
-        db._collection(en2).unload();
-        wait(0.5);
-      }
-      while (db._collection(en3).status() !== ArangoCollection.STATUS_UNLOADED) {
-        db._collection(en3).unload();
-        wait(0.5);
-      }
 
       edge2 = db._collection(en2);
       edge3 = db._collection(en3);

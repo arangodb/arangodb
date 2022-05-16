@@ -1,0 +1,120 @@
+[/==============================================================================
+    Copyright (C) 2015 John Fletcher
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+===============================================================================/]
+
+[/ January 2015]
+[/ February 2015]
+
+[section Maintenance]
+
+The experience of the maintenance of Boost Phoenix during 2014 and 2015.
+
+[/section Introduction]
+[/ This is the text which is under the index of sections. ]
+
+This section is being used to set out the maintenance policy for Boost Phoenix and how it is being carried out. One reason for doing this is that in January 2015 there is a lot of discussion within Boost about how best to do this. There are also a number of issues for which the answers are not clear to me and I am going to set those out here.
+
+Phoenix is a complicated library and the current version 3 is built on two other libraries __proto__ and __fusion__ which are themselves quite complicated. Version 3 of Phoenix is a rebuilding of the previous version using __proto__.
+
+There are two ways to work with Phoenix.
+
+* One is to ignore the previous statement and assume everything works.
+* The second is to understand the relationships between the libraries.
+
+Unfortunately, while most things now work, there are a number of subtle bugs where things do not work as expected, and that is the challenge which is there for the maintainer who did not write any version of the library.
+
+The remainder of this page is found from the index above.
+
+John Fletcher
+
+January and February 2015
+
+[/endsect]
+
+[section Background]
+
+Almost exactly a year ago, Joel de Guzman asked me to take on the lead maintenance of Boost Phoenix and I agreed to do so, not really knowing what I was taking  on. In the first few months I fixed a lot of the things which could be fixed easily, while at the same time learning how to use git to keep things in order. Then things got tougher as I started to meet things which are not so easy to fix. I also found there were things I did not understand well enough.
+
+At the end of 2014 I came back to the task anew. In the meantime I have learned a lot, particularly about Boost Fusion and Boost Proto which are used a lot by Boost Phoenix. I have also learned how to edit the QuickBooks files and regenerate them.
+
+I have still not solved all the problems in Boost Phoenix. I think I am closing in on some of the remaining ones. I now know that some of the problems in Phoenix V3 were also present in Phoenix V2. This has changed the approach to how to solve them as I know that the problems cannot be in the use of Boost Proto as it was not used in V2.
+
+I have made further progress during 2015 on understanding what the problems are and how to avoid them or work around them. That has given me the confidence to explore further applications of the code, which I expect will develop a lot in the next few months.
+
+I want in this document to share some of what I have been doing and how I have solved some of the problems. One reason for doing this is that there may be other people who are considering taking on library maintenance of a library they did not themselves write. I hope I can make that easier for people to do.
+
+[endsect]
+
+[section My Understanding of how maintenance works]
+
+There has been some discussion on the mailing list of how best to get patches available to users of libraries. This is the understanding I have been using. I posted this and have had no comments on it.
+
+* Maintainers can have write access to the particular library for which they have responsibility.  This includes all the branches and in particular both develop and master.
+* It is up to the maintainer to put patches and tests onto develop and see whether there are any remaining problems.
+* It is then up to the maintainer to move the patches and tests from develop to master.
+   * This does not have to wait for a release of Boost.
+   * It can be done any time and at some point master will then become the next release.
+* I do not think that develop is moved to master in any other way.  It is the maintainer who will know when that is the correct action.
+
+If there is more than one maintainer then any of them can do this. Each will be able to see what has happened from the git log.
+
+[endsect]
+
+[section Method in use]
+
+* I have been using the __git_branching_model__ to maintain the Boost Phoenix.
+* I have been making most of the changes on branch develop or on branches from it.
+  * I test the changes on the develop branch.
+* When I want to move things from develop to master I first branch from develop a new branch which I give a version number of my own within Phoenix.
+  * I can then test that before merging it into master.
+* I now also have a separate branch for developing and testing documentation changes.
+  * I move selected changes from documentation onto the develop branch and then onto master branch.
+ 
+[endsect]
+
+[section Experience]
+
+A summary of experience during testing of Boost Phoenix.
+
+[section Maintenance Tools]
+
+My experience has been that not all the tools and knowledge to be a maintainer are available in one place to a new maintainer.  A lot of things which are well known to experienced maintainers are just not readily available.  In some cases they are buried in the detailed manuals of several different tools. One reason for writing up my experience as a maintainer to help others.
+
+[endsect]
+
+[section Bugs to be fixed]
+
+The bugs to be fixed have come from several sources.
+
+One type of bug which has been very difficult to understand has been that some test cases failed when compiled with optimisation and not without it. I now believe that this is related to the use of references in the arguments passed back, and I have one test where the cure is demonstrated, lazy_make_pair_tests.
+
+[endsect]
+
+[section Compilers]
+
+I have been attempting to understand the differences between compilers and environments when running tests on Boost Phoenix.
+
+* Some environments are limited in the memory available for testing and I have broken some large tests into smaller pieces.
+* Some of the problems experienced in testing are specific to particular compilers being used.
+* Some problems have occurred with several more recent compilers.
+* One problem is that I do not have access to all of the compilers used in the tests or by users.
+  * My system is __ubuntu__ 12.04
+  * I have expanded the compilers I have available to include the following
+  * __gcc__ 4.6,  4.8.2,  4.9.0 &  4.9.2 (I will add 5.0 when released)
+  * __clang__ 3.4,  3.5 &  3.6 (pre-release in the last case)
+[/* That means I do not have any __intel__ of __VC__ compilers.
+  * For these I have to rely on the tests run by others. ]
+* The most difficult problems to diagnose have been some which occur when the compilation uses optimization.
+  * Some of the boost tests use optimization but most do not.
+  * It is not usually documented which tests are optimized.
+  * This means that a lot of tests run there which fail when optimized.
+  * This has made the identification of the cause of the problems more difficult.
+
+[endsect]
+
+[endsect]
+
+[endsect]

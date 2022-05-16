@@ -1,0 +1,156 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Complex (Several Types)</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Sort">
+<link rel="up" href="../windows_single.html" title="2.6.- Windows Benchmarks">
+<link rel="prev" href="../windows_single.html" title="2.6.- Windows Benchmarks">
+<link rel="next" href="../../parallel.html" title="3.- Parallel Algorithms">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../windows_single.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../windows_single.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../parallel.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="sort.single_thread.windows_single.complex_benchmarks"></a><a class="link" href="complex_benchmarks.html" title="Complex (Several Types)">Complex
+        (Several Types)</a>
+</h4></div></div></div>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+            The next results are obtained from more complex benchmarks, not include
+            in the library because they use non free SW (If you are interested in
+            the details, contact fjtapia@gmail.com)
+          </p>
+<p>
+            There are 3 types of benchmarks,
+          </p>
+<div class="blockquote"><blockquote class="blockquote">
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                  64 bits integers
+                </li>
+<li class="listitem">
+                  strings
+                </li>
+<li class="listitem">
+                  objects of several sizes.
+                </li>
+</ul></div>
+<p>
+              The objects are arrays of integers. The heavy comparison sums all the
+              elements in each, and the light comparison uses only the first number
+              of the array.
+            </p>
+</blockquote></div>
+<h5>
+<a name="sort.single_thread.windows_single.complex_benchmarks.h0"></a>
+            <span class="phrase"><a name="sort.single_thread.windows_single.complex_benchmarks.100_000_000_numbers_of_64_bits_r"></a></span><a class="link" href="complex_benchmarks.html#sort.single_thread.windows_single.complex_benchmarks.100_000_000_numbers_of_64_bits_r"><span class="underline">100 000 000 Numbers of 64 bits Randomly Filled</span></a>
+          </h5>
+<p>
+            <span class="bold"><strong>
+<pre class="programlisting">                      |              |              |
+                      |              |   Maximum    |
+                      | Time ( secs) | Memory Used  |
+----------------------+--------------+--------------+
+ std::sort            |    12.381    |     783 MB   |
+ pdqsort              |     9.760    |     783 MB   |
+                      |              |              |
+ std::stable_sort     |    13.311    |    1174 MB   |
+ spinsort             |    11.541    |    1174 MB   |
+ flat_stable_sort     |    13.664    |     787 MB   |
+ spreadsort           |     8.507    |     783 MB   |
+                      |              |              |
+</pre>
+            </strong></span>
+          </p>
+<h5>
+<a name="sort.single_thread.windows_single.complex_benchmarks.h1"></a>
+            <span class="phrase"><a name="sort.single_thread.windows_single.complex_benchmarks.10_000_000_strings_randomly_fill"></a></span><a class="link" href="complex_benchmarks.html#sort.single_thread.windows_single.complex_benchmarks.10_000_000_strings_randomly_fill"><span class="underline">10 000 000 Strings Randomly Filled</span></a>
+          </h5>
+<p>
+            <span class="bold"><strong>
+<pre class="programlisting">                      |              |              |
+                      |              |   Maximum    |
+                      | Time ( secs) | Memory Used  |
+----------------------+--------------+--------------+
+ std::sort            |    9.658     |     885 MB   |
+ pdqsort              |   15.247     |    1605 MB   |
+                      |              |              |
+ std::stable_sort     |   19.753     |    1041 MB   |
+ spinsort             |   17.596     |    1041 MB   |
+ flat_stable_sort     |   19.159     |     887 MB   |
+ spreadsort           |    5.221     |     885 MB   |
+                      |              |              |
+</pre>
+            </strong></span>
+          </p>
+<h5>
+<a name="sort.single_thread.windows_single.complex_benchmarks.h2"></a>
+            <span class="phrase"><a name="sort.single_thread.windows_single.complex_benchmarks.objects_randomly_filled"></a></span><a class="link" href="complex_benchmarks.html#sort.single_thread.windows_single.complex_benchmarks.objects_randomly_filled"><span class="underline">Objects Randomly Filled</span></a>
+          </h5>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+              The objects are arrays of 64 bits numbers
+            </p>
+<p>
+              They are compared in two ways :
+            </p>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+                (H) Heavy : The comparison is the sum of all the numbers of the array.
+              </p>
+<p>
+                (L) Light : The comparison is using only the first element of the
+                array, as a key
+              </p>
+</blockquote></div>
+</blockquote></div>
+<p>
+            <span class="bold"><strong>
+<pre class="programlisting">                 |           |           |           |           |           |           |             |
+                 | 100000000 |  50000000 |  25000000 |  12500000 |   6250000 |   1562500 |             |
+                 | objects of| objects of| objects of| objects of| objects of| objects of|   Maximum   |
+                 |  8 bytes  | 16 bytes  | 32 bytes  | 64 bytes  | 128 bytes | 512 bytes |   Memory    |
+                 |           |           |           |           |           |           |   Used      |
+                 |  H     L  |  H     L  |  H     L  |  H     L  |  H     L  |  H     L  |             |
+-----------------+-----------+-----------+-----------+-----------+-----------+-----------+-------------+
+std::sort        |11.86 12.00| 6.53  6.10| 3.85  3.21| 2.79  1.97| 3.17  1.37| 2.04  1.30|    783 MB   |
+pdqsort          |  9.80 9.39| 5.39  4.98| 3.11  2.51| 2.14  1.61| 2.50  1.10| 1.92  1.03|    783 MB   |
+                 |           |           |           |           |           |           |             |
+std::stable_sort |12.91 13.58| 7.73  7.32| 5.16  4.52| 4.22  3.67| 4.31  3.18| 3.46  2.89|   1174 MB   |
+spinsort         |11.58 11.37| 6.88  6.40| 4.43  3.76| 3.58  3.06| 3.84  2.41| 2.76  2.17|   1174 MB   |
+flat_stable_sort |13.31 13.87| 8.35  7.83| 5.32  4.46| 4.16  3.14| 3.63  2.27| 2.67  2.13|    787 MB   |
+spreadsort       | 8.37  8.37| 6.51  6.62| 3.72  3.16| 2.75  1.69| 2.56  1.20| 1.38  0.80|    783 MB   |
+                 |           |           |           |           |           |           |             |
+</pre>
+            </strong></span>
+          </p>
+</blockquote></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright © 2014-2017 Steven
+      Ross, Francisco Tapia, Orson Peters<p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../windows_single.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../windows_single.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../parallel.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

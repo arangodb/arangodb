@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,9 +44,9 @@ LocalTask::~LocalTask() = default;
 /// @brief dispatch this task to the scheduler
 ////////////////////////////////////////////////////////////////////////////////
 
-bool LocalTask::dispatch() {
+void LocalTask::dispatch() {
   // only called once by _queue, while _queue->_mutex is held
-  return _queue->post([self = shared_from_this(), this]() {
+  _queue->post([self = shared_from_this(), this]() {
     _queue->startTask();
     try {
       run();
@@ -58,7 +58,7 @@ bool LocalTask::dispatch() {
     return true;
   });
 }
-  
+
 LambdaTask::LambdaTask(std::shared_ptr<LocalTaskQueue> const& queue,
                        std::function<Result()>&& fn)
     : LocalTask(queue), _fn(std::move(fn)) {}
@@ -74,7 +74,8 @@ void LambdaTask::run() {
 /// @brief create a queue
 ////////////////////////////////////////////////////////////////////////////////
 
-LocalTaskQueue::LocalTaskQueue(application_features::ApplicationServer& server, PostFn poster)
+LocalTaskQueue::LocalTaskQueue(application_features::ApplicationServer& server,
+                               PostFn poster)
     : _server(server),
       _poster(poster),
       _queue(),
@@ -102,9 +103,10 @@ void LocalTaskQueue::stopTask() {
   TRI_ASSERT(old > 0);
 
   // Notify the dispatching thread that new tasks can be scheduled.
-  // Note: we are deliberately not using a mutex here to avoid contention, but that means that
-  // the notification can potentially be missed. However, this should only happen very rarely
-  // and the dispatching thread is only waiting for a limited time.
+  // Note: we are deliberately not using a mutex here to avoid contention, but
+  // that means that the notification can potentially be missed. However, this
+  // should only happen very rarely and the dispatching thread is only waiting
+  // for a limited time.
   _condition.notify_one();
 }
 
@@ -122,7 +124,9 @@ void LocalTaskQueue::enqueue(std::shared_ptr<LocalTask> task) {
 /// by task dispatch.
 //////////////////////////////////////////////////////////////////////////////
 
-bool LocalTaskQueue::post(std::function<bool()>&& fn) { return _poster(std::move(fn)); }
+void LocalTaskQueue::post(std::function<bool()>&& fn) {
+  return _poster(std::move(fn));
+}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief dispatch all tasks, including those that are queued while running,
@@ -144,17 +148,19 @@ void LocalTaskQueue::dispatchAndWait() {
 
     // dispatch all newly queued tasks
     if (_status.ok()) {
-      while (_dispatched.load(std::memory_order_acquire) < _concurrency && !_queue.empty()) {
+      while (_dispatched.load(std::memory_order_acquire) < _concurrency &&
+             !_queue.empty()) {
         // all your task are belong to us
         auto task = std::move(_queue.front());
         _queue.pop();
 
-        // increase _dispatched by one, now. if dispatching fails, we will count it
-        // down again
+        // increase _dispatched by one, now. if dispatching fails, we will count
+        // it down again
         _dispatched.fetch_add(1, std::memory_order_release);
         bool dispatched = false;
         try {
-          dispatched = task->dispatch();
+          task->dispatch();
+          dispatched = true;
         } catch (basics::Exception const& ex) {
           TRI_ASSERT(!dispatched);
           _status.reset({ex.code(), ex.what()});
@@ -169,12 +175,13 @@ void LocalTaskQueue::dispatchAndWait() {
         if (!dispatched) {
           // dispatching the task has failed.
           // count down _dispatched again
-          std::size_t old = _dispatched.fetch_sub(1, std::memory_order_release);;
+          std::size_t old = _dispatched.fetch_sub(1, std::memory_order_release);
+          ;
           TRI_ASSERT(old > 0);
-          
+
           if (_status.ok()) {
             // now register an error in the queue
-           _status.reset({TRI_ERROR_QUEUE_FULL, "could not post task"});
+            _status.reset({TRI_ERROR_QUEUE_FULL, "could not post task"});
           }
         }
       }
@@ -188,8 +195,9 @@ void LocalTaskQueue::dispatchAndWait() {
       break;
     }
 
-    // We must only wait for a limited time here, since the notify operation in stopTask
-    // does not use a mutex, so there is a (rare) chance that we might miss a notification.
+    // We must only wait for a limited time here, since the notify operation in
+    // stopTask does not use a mutex, so there is a (rare) chance that we might
+    // miss a notification.
     _condition.wait_for(guard, std::chrono::milliseconds(50));
   }
 }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,44 +31,66 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-bool FixedVarExpressionContext::isDataFromCollection(Variable const* variable) const {
-  return false;
-}
+FixedVarExpressionContext::FixedVarExpressionContext(
+    transaction::Methods& trx, QueryContext& context,
+    AqlFunctionsInternalCache& cache)
+    : QueryExpressionContext(trx, context, cache) {}
 
-AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
+AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable,
+                                                     bool doCopy,
                                                      bool& mustDestroy) const {
-  mustDestroy = false;
-  auto it = _vars.find(variable);
-  if (it == _vars.end()) {
-    TRI_ASSERT(false);
-    return AqlValue(AqlValueHintNull());
-  }
-  if (doCopy) {
-    mustDestroy = true;
-    return it->second.clone();
-  }
-  return it->second;
+  return QueryExpressionContext::getVariableValue(
+      variable, doCopy, mustDestroy,
+      [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
+        // now check our own temporary variables
+        auto it = _vars.find(variable);
+        if (it == _vars.end()) {
+          TRI_ASSERT(false);
+          return AqlValue(AqlValueHintNull());
+        }
+        mustDestroy = doCopy;
+        if (doCopy) {
+          return it->second.clone();
+        }
+        return it->second;
+      });
 }
 
-void FixedVarExpressionContext::clearVariableValues() { _vars.clear(); }
-
-void FixedVarExpressionContext::setVariableValue(Variable const* var, AqlValue const& value) {
-  _vars.try_emplace(var, value);
+void FixedVarExpressionContext::clearVariableValues() noexcept {
+  _vars.clear();
 }
 
-void FixedVarExpressionContext::serializeAllVariables(velocypack::Options const& opts,
-                                                      velocypack::Builder& builder) const {
+void FixedVarExpressionContext::setVariableValue(Variable const* var,
+                                                 AqlValue const& value) {
+  TRI_ASSERT(!_vars.contains(var));
+  // always overwrite current map value if it exists.
+  _vars.insert_or_assign(var, value);
+}
+
+void FixedVarExpressionContext::clearVariableValue(
+    Variable const* var) noexcept {
+  _vars.erase(var);
+}
+
+void FixedVarExpressionContext::serializeAllVariables(
+    velocypack::Options const& opts, velocypack::Builder& builder) const {
   TRI_ASSERT(builder.isOpenArray());
   for (auto const& it : _vars) {
     builder.openArray();
     it.first->toVelocyPack(builder);
-    it.second.toVelocyPack(&opts, builder, /*resolveExternals*/true,
-                           /*allowUnindexed*/false);
+    it.second.toVelocyPack(&opts, builder, /*resolveExternals*/ true,
+                           /*allowUnindexed*/ false);
     builder.close();
   }
 }
 
-FixedVarExpressionContext::FixedVarExpressionContext(transaction::Methods& trx,
-                                                     QueryContext& context,
-                                                     AqlFunctionsInternalCache& cache)
+NoVarExpressionContext::NoVarExpressionContext(transaction::Methods& trx,
+                                               QueryContext& context,
+                                               AqlFunctionsInternalCache& cache)
     : QueryExpressionContext(trx, context, cache) {}
+
+AqlValue NoVarExpressionContext::getVariableValue(Variable const* /*variable*/,
+                                                  bool /*doCopy*/,
+                                                  bool& /*mustDestroy*/) const {
+  return AqlValue(AqlValueHintNull());
+}

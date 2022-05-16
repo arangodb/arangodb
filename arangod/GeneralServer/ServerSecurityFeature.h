@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,13 +23,15 @@
 
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 
-class ServerSecurityFeature final : public application_features::ApplicationFeature {
+class ServerSecurityFeature final : public ArangodFeature {
  public:
-  explicit ServerSecurityFeature(application_features::ApplicationServer& server);
+  static constexpr std::string_view name() noexcept { return "ServerSecurity"; }
+
+  explicit ServerSecurityFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
@@ -37,12 +39,13 @@ class ServerSecurityFeature final : public application_features::ApplicationFeat
   bool isFoxxApiDisabled() const;
   bool isFoxxStoreDisabled() const;
   bool canAccessHardenedApi() const;
+  bool foxxAllowInstallFromRemote() const;
 
  private:
   bool _enableFoxxApi;
   bool _enableFoxxStore;
   bool _hardenedRestApi;
+  bool _foxxAllowInstallFromRemote;
 };
 
 }  // namespace arangodb
-

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +28,6 @@
 
 #include "VocBase/voc-types.h"
 
-
 #include "search/sort.hpp"
 
 namespace arangodb {
@@ -44,6 +43,7 @@ struct Variable;
 
 namespace iresearch {
 
+class IResearchViewNode;
 struct QueryContext;
 
 }  // namespace iresearch
@@ -62,14 +62,16 @@ namespace iresearch {
 struct OrderFactory {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief determine if the 'node' can be converted into an iresearch scorer
-  ///        if 'scorer' != nullptr then also append build iresearch scorer there
+  ///        if 'scorer' != nullptr then also append build iresearch scorer
+  ///        there
   ////////////////////////////////////////////////////////////////////////////////
   static bool scorer(irs::sort::ptr* scorer, aql::AstNode const& node,
                      iresearch::QueryContext const& ctx);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief determine if the 'node' can be converted into an iresearch scorer
-  ///        if 'scorer' != nullptr then also append build iresearch comparer there
+  ///        if 'scorer' != nullptr then also append build iresearch comparer
+  ///        there
   ////////////////////////////////////////////////////////////////////////////////
   static bool comparer(irs::sort::ptr* scorer, aql::AstNode const& node);
 
@@ -108,7 +110,8 @@ class ScorerReplacer {
   ScorerReplacer() = default;
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief replaces all occurences of IResearch scorers in a specified node with
+  /// @brief replaces all occurences of IResearch scorers in a specified node
+  /// with
   ///        corresponding reference access
   ////////////////////////////////////////////////////////////////////////////////
   void replace(aql::CalculationNode& node);
@@ -116,7 +119,7 @@ class ScorerReplacer {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief extracts replacement results for a given variable
   ////////////////////////////////////////////////////////////////////////////////
-  void extract(aql::Variable const& var, std::vector<Scorer>& scorers);
+  void extract(IResearchViewNode const& viewNode, std::vector<Scorer>& scorers);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @returns true if no scorers were replaced
@@ -126,7 +129,7 @@ class ScorerReplacer {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief visits all replaced scorer entries
   ////////////////////////////////////////////////////////////////////////////////
-  template <typename Visitor>
+  template<typename Visitor>
   bool visit(Visitor visitor) const {
     for (auto& entry : _dedup) {
       if (!visitor(entry.first)) {
@@ -156,11 +159,12 @@ class ScorerReplacer {
     }
   };  // ScorerEqualTo
 
-  typedef std::unordered_map<HashedScorer, aql::Variable const*, ScorerHash, ScorerEqualTo> DedupScorers;
+  typedef std::unordered_map<HashedScorer, aql::Variable const*, ScorerHash,
+                             ScorerEqualTo>
+      DedupScorers;
 
   DedupScorers _dedup;
 };  // ScorerReplacer
 
 }  // namespace iresearch
 }  // namespace arangodb
-

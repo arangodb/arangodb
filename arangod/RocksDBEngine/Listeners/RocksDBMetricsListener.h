@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,24 +26,25 @@
 // public rocksdb headers
 #include <rocksdb/listener.h>
 
-#include "RestServer/Metrics.h"
+#include "Metrics/Fwd.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
 
-/// @brief Gathers better metrics from RocksDB than we can get by scraping alone.
+/// @brief Gathers better metrics from RocksDB than we can get by scraping
+/// alone.
 class RocksDBMetricsListener : public rocksdb::EventListener {
  public:
-  explicit RocksDBMetricsListener(application_features::ApplicationServer&);
+  explicit RocksDBMetricsListener(ArangodServer&);
 
   void OnStallConditionsChanged(const rocksdb::WriteStallInfo& info) override;
 
  protected:
-  Counter& _writeStalls;
-  Counter& _writeStops;
+  metrics::Counter& _writeStalls;
+  metrics::Counter& _writeStops;
 };
 
 }  // namespace arangodb
-

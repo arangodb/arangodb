@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +29,6 @@
 #include "IResearch/IResearchCommon.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Slice.h"
-#include "velocypack/velocypack-aliases.h"
 
 namespace arangodb {
 namespace iresearch {
@@ -45,22 +44,22 @@ bool parseShape(VPackSlice slice, geo::ShapeContainer& shape, bool onlyPoint) {
         shape.resetCoordinates(ll);
       }
     } else {
-      res = geo::geojson::parseRegion(slice, shape);
+      res = geo::geojson::parseRegion(slice, shape, false);
     }
   } else if (slice.isArray() && slice.length() >= 2) {
     res = shape.parseCoordinates(slice, /*geoJson*/ true);
   } else {
     LOG_TOPIC("4449c", WARN, arangodb::iresearch::TOPIC)
-      << "Geo JSON or array of coordinates expected, got '"
-      << slice.typeName() << "'";
+        << "Geo JSON or array of coordinates expected, got '"
+        << slice.typeName() << "'";
 
     return false;
   }
 
   if (res.fail()) {
     LOG_TOPIC("4549c", WARN, arangodb::iresearch::TOPIC)
-      << "Failed to parse value as GEO JSON or array of coordinates, error '"
-      << res.errorMessage() << "'";
+        << "Failed to parse value as GEO JSON or array of coordinates, error '"
+        << res.errorMessage() << "'";
 
     return false;
   }
@@ -71,7 +70,8 @@ bool parseShape(VPackSlice slice, geo::ShapeContainer& shape, bool onlyPoint) {
 bool parsePoint(VPackSlice latSlice, VPackSlice lngSlice, S2LatLng& out) {
   if (!latSlice.isNumber() || !lngSlice.isNumber()) {
     LOG_TOPIC("4579a", WARN, arangodb::iresearch::TOPIC)
-      << "Failed to parse value as GEO POINT, error 'Invalid latitude/longitude pair type'.";
+        << "Failed to parse value as GEO POINT, error 'Invalid "
+           "latitude/longitude pair type'.";
 
     return false;
   }
@@ -82,7 +82,8 @@ bool parsePoint(VPackSlice latSlice, VPackSlice lngSlice, S2LatLng& out) {
     lng = lngSlice.getNumber<double_t>();
   } catch (...) {
     LOG_TOPIC("4579c", WARN, arangodb::iresearch::TOPIC)
-      << "Failed to parse value as GEO POINT, error 'Failed to parse latitude/longitude pair' as double.";
+        << "Failed to parse value as GEO POINT, error 'Failed to parse "
+           "latitude/longitude pair' as double.";
     return false;
   }
 
@@ -91,7 +92,8 @@ bool parsePoint(VPackSlice latSlice, VPackSlice lngSlice, S2LatLng& out) {
 
   if (!out.is_valid()) {
     LOG_TOPIC("4279c", WARN, arangodb::iresearch::TOPIC)
-      << "Failed to parse value as GEO POINT, error 'Invalid latitude/longitude pair'.";
+        << "Failed to parse value as GEO POINT, error 'Invalid "
+           "latitude/longitude pair'.";
     return false;
   }
 
@@ -105,5 +107,5 @@ void toVelocyPack(velocypack::Builder& builder, S2LatLng const& point) {
   builder.close();
 }
 
-} // iresearch
-} // arangodb
+}  // namespace iresearch
+}  // namespace arangodb

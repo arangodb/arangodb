@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,25 +34,29 @@ constexpr char const* KShortestPathsName = "K_SHORTEST_PATHS";
 constexpr char const* KPathsName = "K_PATHS";
 
 /// @brief get the type from a string
-/*static*/ ShortestPathType::Type ShortestPathType::fromString(char const* value) {
+/*static*/ ShortestPathType::Type ShortestPathType::fromString(
+    char const* value) {
   if (strcmp(value, KShortestPathsName) == 0) {
     return Type::KShortestPaths;
   }
   if (strcmp(value, KPathsName) == 0) {
     return Type::KPaths;
   }
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid shortest path type");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "invalid shortest path type");
 }
 
 /// @brief return the type as a string
-/*static*/ char const* ShortestPathType::toString(ShortestPathType::Type value) {
+/*static*/ char const* ShortestPathType::toString(
+    ShortestPathType::Type value) {
   switch (value) {
     case Type::KShortestPaths:
       return KShortestPathsName;
     case Type::KPaths:
       return KPathsName;
   }
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid shortest path type");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "invalid shortest path type");
 }
 
 }  // namespace graph

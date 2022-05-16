@@ -28,11 +28,9 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const arangodb = require('@arangodb');
-const internal = require('internal');
 const ArangoCollection = arangodb.ArangoCollection;
 const ArangoError = arangodb.ArangoError;
 const db = arangodb.db;
-const errors = arangodb.errors;
 const users = require('@arangodb/users');
 const _ = require('lodash');
 
@@ -71,21 +69,31 @@ var isValidCollectionsParameter = function (x) {
   return true;
 };
 
+var checkROPermission = function(c) {
+  if (!users.isAuthActive()) {
+    return;
+  }
+
+  let user = users.currentUser();
+  if (user) {
+    let p = users.permission(user, db._name(), c);
+    var err = new ArangoError();
+    if (p === 'none') {
+      err.errorNum = arangodb.errors.ERROR_FORBIDDEN.code;
+      err.errorMessage = arangodb.errors.ERROR_FORBIDDEN.message;
+      throw err;
+    }
+  }
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief find or create a collection by name
 // //////////////////////////////////////////////////////////////////////////////
 
-var findOrCreateCollectionByName = function (name, type, noCreate, options) {
+var findCollectionByName = function (name, type) {
   let col = db._collection(name);
   let res = false;
-  if (col === null && !noCreate) {
-    if (type === ArangoCollection.TYPE_DOCUMENT) {
-      col = db._create(name, options);
-    } else {
-      col = db._createEdgeCollection(name, options);
-    }
-    res = true;
-  } else if (!(col instanceof ArangoCollection)) {
+  if (!(col instanceof ArangoCollection)) {
     var err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code;
     err.errorMessage = name + arangodb.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.message;
@@ -104,7 +112,7 @@ var findOrCreateCollectionByName = function (name, type, noCreate, options) {
 // / @brief find or create a collection by name
 // //////////////////////////////////////////////////////////////////////////////
 
-var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCreate, options) {
+var findCollectionsByEdgeDefinitions = function (edgeDefinitions) {
   let vertexCollections = {};
   let edgeCollections = {};
   edgeDefinitions.forEach(function (e) {
@@ -120,15 +128,15 @@ var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCrea
     }
 
     e.from.forEach(function (v) {
-      findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT, noCreate, options);
+      findCollectionByName(v, ArangoCollection.TYPE_DOCUMENT);
       vertexCollections[v] = db[v];
     });
     e.to.forEach(function (v) {
-      findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT, noCreate, options);
+      findCollectionByName(v, ArangoCollection.TYPE_DOCUMENT);
       vertexCollections[v] = db[v];
     });
 
-    findOrCreateCollectionByName(e.collection, ArangoCollection.TYPE_EDGE, noCreate, options);
+    findCollectionByName(e.collection, ArangoCollection.TYPE_EDGE);
     edgeCollections[e.collection] = db[e.collection];
   });
   return [
@@ -315,14 +323,6 @@ var sortEdgeDefinitionInplace = function (edgeDefinition) {
   edgeDefinition.from.sort();
   edgeDefinition.to.sort();
   return edgeDefinition;
-};
-
-var sortEdgeDefinition = function (edgeDefinition) {
-  return {
-    collection: edgeDefinition.collection,
-    from: edgeDefinition.from.slice().sort(),
-    to: edgeDefinition.to.slice().sort(),
-  };
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -577,166 +577,6 @@ var updateBindCollections = function (graph) {
   bindVertexCollections(graph, graph.__orphanCollections);
 };
 
-var checkRWPermission = function (c) {
-  if (!users.isAuthActive()) {
-    return;
-  }
-
-  let user = users.currentUser();
-  if (user) {
-    let p = users.permission(user, db._name(), c);
-    if (p !== 'rw') {
-      var err = new ArangoError();
-      err.errorNum = arangodb.errors.ERROR_FORBIDDEN.code;
-      err.errorMessage = arangodb.errors.ERROR_FORBIDDEN.message;
-      throw err;
-    }
-  }
-};
-
-var checkROPermission = function(c) {
-  if (!users.isAuthActive()) {
-    return;
-  }
-
-  let user = users.currentUser();
-  if (user) {
-    let p = users.permission(user, db._name(), c);
-    var err = new ArangoError();
-    if (p === 'none') {
-      err.errorNum = arangodb.errors.ERROR_FORBIDDEN.code;
-      err.errorMessage = arangodb.errors.ERROR_FORBIDDEN.message;
-      throw err;
-    }
-  }
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief internal function for editing edge definitions
-// //////////////////////////////////////////////////////////////////////////////
-
-var changeEdgeDefinitionsForGraph = function (graph, edgeDefinition, newCollections, possibleOrphans, self) {
-  var graphCollections = [];
-  var graphObj = exports._graph(graph._key);
-  var eDs = graph.edgeDefinitions;
-  var gotAHit = false;
-
-  // replace edgeDefintion
-  eDs.forEach(
-    function (eD, id) {
-      if (eD.collection === edgeDefinition.collection) {
-        gotAHit = true;
-        eDs[id].from = edgeDefinition.from;
-        eDs[id].to = edgeDefinition.to;
-        db._graphs.update(graph._key, {edgeDefinitions: eDs});
-        if (graph._key === self.__name) {
-          self.__edgeDefinitions[id].from = edgeDefinition.from;
-          self.__edgeDefinitions[id].to = edgeDefinition.to;
-        }
-      } else {
-        // collect all used collections
-        graphCollections = _.union(graphCollections, eD.from);
-        graphCollections = _.union(graphCollections, eD.to);
-      }
-    }
-  );
-  if (!gotAHit) {
-    return;
-  }
-
-  // remove used collection from orphanage
-  if (graph._key === self.__name) {
-    newCollections.forEach(
-      function (nc) {
-        if (self.__vertexCollections[nc] === undefined) {
-          self.__vertexCollections[nc] = db[nc];
-        }
-        try {
-          self._removeVertexCollection(nc, false);
-        } catch (ignore) {}
-      }
-    );
-    possibleOrphans.forEach(
-      function (po) {
-        if (graphCollections.indexOf(po) === -1) {
-          delete self.__vertexCollections[po];
-          self._addVertexCollection(po);
-        }
-      }
-    );
-  } else {
-    newCollections.forEach(
-      function (nc) {
-        try {
-          graphObj._removeVertexCollection(nc, false);
-        } catch (ignore) {}
-      }
-    );
-    possibleOrphans.forEach(
-      function (po) {
-        if (graphCollections.indexOf(po) === -1) {
-          delete graphObj.__vertexCollections[po];
-          graphObj._addVertexCollection(po);
-        }
-      }
-    );
-  }
-
-// move unused collections to orphanage
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief Helper for dropping collections of a graph.
-// //////////////////////////////////////////////////////////////////////////////
-
-var checkIfMayBeDropped = function (colName, graphName, graphs) {
-  var result = true;
-
-  graphs.forEach(
-    function (graph) {
-      if (result === false) {
-        // Short circuit
-        return;
-      }
-      if (graph._key === graphName) {
-        return;
-      }
-      var edgeDefinitions = graph.edgeDefinitions;
-      if (edgeDefinitions) {
-        edgeDefinitions.forEach(
-          function (edgeDefinition) {
-            var from = edgeDefinition.from;
-            var to = edgeDefinition.to;
-            var collection = edgeDefinition.collection;
-            if (collection === colName ||
-              from.indexOf(colName) !== -1 ||
-              to.indexOf(colName) !== -1
-            ) {
-              result = false;
-            }
-          }
-        );
-      }
-
-      var orphanCollections = graph.orphanCollections;
-      if (orphanCollections) {
-        if (orphanCollections.indexOf(colName) !== -1) {
-          result = false;
-        }
-      }
-    }
-  );
-
-  return result;
-};
-
-const edgeDefinitionsEqual = function (leftEdgeDef, rightEdgeDef) {
-  leftEdgeDef = sortEdgeDefinition(leftEdgeDef);
-  rightEdgeDef = sortEdgeDefinition(rightEdgeDef);
-  const stringify = obj => JSON.stringify(obj, Object.keys(obj).sort());
-  return stringify(leftEdgeDef) === stringify(rightEdgeDef);
-};
-
 // @brief Class Graph. Defines a graph in the Database.
 class Graph {
   constructor (info) {
@@ -747,14 +587,14 @@ class Graph {
 
     info.edgeDefinitions.forEach((e) => {
       // Link the edge collection
-      edgeCollections[e.collection] = db[e.collection];
+      edgeCollections[e.collection] = db._collection(e.collection);
       // Link from collections
       e.from.forEach((v) => {
-        vertexCollections[v] = db[v];
+        vertexCollections[v] = db._collection(v);
       });
       // Link to collections
       e.to.forEach((v) => {
-        vertexCollections[v] = db[v];
+        vertexCollections[v] = db._collection(v);
       });
     });
 
@@ -1672,10 +1512,6 @@ exports._relation = function (relationName, fromVertexCollections, toVertexColle
   };
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_graph
-// //////////////////////////////////////////////////////////////////////////////
-
 exports._graph = function (graphName) {
   let gdb = getGraphCollection();
   let g;
@@ -1683,7 +1519,7 @@ exports._graph = function (graphName) {
   try {
     g = gdb.document(graphName);
   } catch (e) {
-    if (e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
+    if (e.errorNum !== arangodb.errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
       throw e;
     }
     let err = new ArangoError();
@@ -1704,7 +1540,7 @@ exports._graph = function (graphName) {
     throw err;
   }
 
-  findOrCreateCollectionsByEdgeDefinitions(g.edgeDefinitions, true);
+  findCollectionsByEdgeDefinitions(g.edgeDefinitions);
   return new Graph(g);
 };
 
@@ -1742,181 +1578,6 @@ exports._extendEdgeDefinitions = function (edgeDefinition) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_create
-// //////////////////////////////////////////////////////////////////////////////
-
-exports._create = function (graphName, edgeDefinitions, orphanCollections, options) {
-  if (!Array.isArray(orphanCollections)) {
-    orphanCollections = [];
-  }
-  options = options || {};
-  let gdb = getGraphCollection();
-  let graphAlreadyExists = true;
-  if (!graphName) {
-    let err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_NAME.code;
-    err.errorMessage = arangodb.errors.ERROR_GRAPH_CREATE_MISSING_NAME.message;
-    throw err;
-  }
-  edgeDefinitions = edgeDefinitions || [];
-  if (!Array.isArray(edgeDefinitions)) {
-    let err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.code;
-    err.errorMessage = arangodb.errors.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.message;
-    throw err;
-  }
-
-  edgeDefinitions = _.cloneDeep(edgeDefinitions);
-
-  // check, if a collection is already used in a different edgeDefinition
-  let tmpCollections = [];
-  let tmpEdgeDefinitions = {};
-  edgeDefinitions.forEach(
-    (edgeDefinition) => {
-      let col = edgeDefinition.collection;
-      if (tmpCollections.indexOf(col) !== -1) {
-        let err = new ArangoError();
-        err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.code;
-        err.errorMessage = arangodb.errors.ERROR_GRAPH_COLLECTION_MULTI_USE.message;
-        throw err;
-      }
-      tmpCollections.push(col);
-      tmpEdgeDefinitions[col] = edgeDefinition;
-    }
-  );
-  gdb.toArray().forEach(
-    (singleGraph) => {
-      var sGEDs = singleGraph.edgeDefinitions;
-      if (!Array.isArray(sGEDs)) {
-        return;
-      }
-      sGEDs.forEach(
-        (sGED) => {
-          var col = sGED.collection;
-          if (tmpCollections.indexOf(col) !== -1) {
-            if (!edgeDefinitionsEqual(sGED, tmpEdgeDefinitions[col])) {
-              let err = new ArangoError();
-              err.errorNum = arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.code;
-              err.errorMessage = col + ' ' +
-                                 arangodb.errors.ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS.message;
-              throw err;
-            }
-          }
-        }
-      );
-    }
-  );
-
-  try {
-    gdb.document(graphName);
-  } catch (e) {
-    if (e.errorNum !== errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code) {
-      throw e;
-    }
-    graphAlreadyExists = false;
-  }
-
-  if (graphAlreadyExists) {
-    let err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_GRAPH_DUPLICATE.code;
-    err.errorMessage = arangodb.errors.ERROR_GRAPH_DUPLICATE.message;
-    throw err;
-  }
-
-  db._flushCache();
-  let collections = findOrCreateCollectionsByEdgeDefinitions(edgeDefinitions, false, options);
-  orphanCollections.forEach(
-    (oC) => {
-      findOrCreateCollectionByName(oC, ArangoCollection.TYPE_DOCUMENT, false, options);
-    }
-  );
-
-  edgeDefinitions.forEach(sortEdgeDefinitionInplace);
-  orphanCollections = orphanCollections.sort();
-
-  var data = gdb.save({
-    'orphanCollections': orphanCollections,
-    'edgeDefinitions': edgeDefinitions,
-    '_key': graphName,
-    'numberOfShards': options.numberOfShards || undefined,
-    'replicationFactor': options.replicationFactor || undefined,
-  }, options);
-  data.orphanCollections = orphanCollections;
-  data.edgeDefinitions = edgeDefinitions;
-  return new Graph(data);
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_general_graph_drop
-// //////////////////////////////////////////////////////////////////////////////
-
-exports._drop = function (graphId, dropCollections) {
-  let gdb = getGraphCollection();
-  let graphs;
-
-  if (!gdb.exists(graphId)) {
-    let err = new ArangoError();
-    err.errorNum = arangodb.errors.ERROR_GRAPH_NOT_FOUND.code;
-    err.errorMessage = arangodb.errors.ERROR_GRAPH_NOT_FOUND.message;
-    throw err;
-  }
-
-  checkRWPermission("_graphs");
-  var graph = gdb.document(graphId);
-  if (dropCollections === true) {
-    graphs = exports._listObjects();
-    // Here we collect all collections
-    // that are leading for distribution
-    let leaderCollections = new Set();
-    let followerCollections = new Set();
-    let dropColCB = (name) => {
-      if (checkIfMayBeDropped(name, graph._key, graphs)) {
-        checkRWPermission(name);
-        let colObj = db[name];
-        if (colObj !== undefined) {
-          // If it is undefined the collection is gone already
-          if (colObj.properties().distributeShardsLike === undefined) {
-            leaderCollections.add(name);
-          } else {
-            followerCollections.add(name);
-          }
-        }
-      }
-    };
-    // drop orphans
-    if (!graph.orphanCollections) {
-      graph.orphanCollections = [];
-    }
-    graph.orphanCollections.forEach(dropColCB);
-    var edgeDefinitions = graph.edgeDefinitions;
-    edgeDefinitions.forEach(
-      function (edgeDefinition) {
-        var from = edgeDefinition.from;
-        var to = edgeDefinition.to;
-        var collection = edgeDefinition.collection;
-        dropColCB(edgeDefinition.collection);
-        from.forEach(dropColCB);
-        to.forEach(dropColCB);
-      }
-    );
-    let dropColl = (c) => {
-      try {
-        db._drop(c);
-      } catch (e) {
-        internal.print("Failed to Drop: '" + c + "' reason: " + e.message);
-      }
-    };
-    followerCollections.forEach(dropColl);
-    leaderCollections.forEach(dropColl);
-  }
-
-  gdb.remove(graphId);
-  db._flushCache();
-
-  return true;
-};
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief check if a graph exists.
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -1926,72 +1587,8 @@ exports._exists = function (graphId) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief rename a collection inside the _graphs collections
-// //////////////////////////////////////////////////////////////////////////////
-
-exports._renameCollection = function (oldName, newName) {
-  db._executeTransaction({
-    collections: {
-      write: '_graphs'
-    },
-    action: function (params) {
-      var gdb = getGraphCollection();
-      if (!gdb) {
-        return;
-      }
-      gdb.toArray().forEach(function (doc) {
-        if (doc.isSmart) {
-          return;
-        }
-        let c = Object.assign({}, doc);
-        let changed = false;
-        if (c.edgeDefinitions) {
-          for (let i = 0; i < c.edgeDefinitions.length; ++i) {
-            var def = c.edgeDefinitions[i];
-            if (def.collection === params.oldName) {
-              c.edgeDefinitions[i].collection = params.newName;
-              changed = true;
-            }
-            for (let j = 0; j < def.from.length; ++j) {
-              if (def.from[j] === params.oldName) {
-                c.edgeDefinitions[i].from[j] = params.newName;
-                changed = true;
-              }
-            }
-            for (let j = 0; j < def.to.length; ++j) {
-              if (def.to[j] === params.oldName) {
-                c.edgeDefinitions[i].to[j] = params.newName;
-                changed = true;
-              }
-            }
-          }
-        }
-        for (let i = 0; i < c.orphanCollections.length; ++i) {
-          if (c.orphanCollections[i] === params.oldName) {
-            c.orphanCollections[i] = params.newName;
-            changed = true;
-          }
-        }
-
-        if (changed) {
-          gdb.update(doc._key, c);
-        }
-      });
-    },
-    params: {
-      oldName: oldName,
-      newName: newName
-    }
-  });
-};
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_general_graph_list
 // //////////////////////////////////////////////////////////////////////////////
-
-exports._list = function () {
-  return db._query(`FOR x IN _graphs RETURN x._key`).toArray();
-};
 
 exports._listObjects = function () {
   return db._query(`FOR x IN _graphs RETURN x`).toArray();

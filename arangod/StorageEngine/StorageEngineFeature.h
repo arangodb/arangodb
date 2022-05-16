@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,20 +26,21 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "RestServer/arangod.h"
 
 namespace arangodb {
 
 // a stub class that other features can use to check whether a storage
 // engine (no matter what type) is ready
-class StorageEngineFeature : public application_features::ApplicationFeature {
+class StorageEngineFeature final : public ArangodFeature {
  public:
-  explicit StorageEngineFeature(application_features::ApplicationServer& server)
-      : application_features::ApplicationFeature(server, "StorageEngine") {
+  static constexpr std::string_view name() noexcept { return "StorageEngine"; }
+
+  explicit StorageEngineFeature(Server& server)
+      : ArangodFeature(server, Server::id<StorageEngineFeature>(), name()) {
     setOptional(false);
     startsAfter<application_features::BasicFeaturePhaseServer>();
   }
 };
 
 }  // namespace arangodb
-

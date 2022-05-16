@@ -1,7 +1,7 @@
 name: rocksdb_compression_ratio_at_level0
 introducedIn: "3.6.1"
 help: |
-  RocksDB metric "rocksdb-compression-ratio-at-level0"
+  RocksDB compression ratio at level 0.
 unit: ratio
 type: gauge
 category: RocksDB
