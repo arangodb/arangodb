@@ -29,12 +29,21 @@ import {
 
 export class GraphView extends React.Component {
 
+  shouldComponentUpdate(nextProps, nextState) {
+    if (this.props.data === nextProps.data) {
+      return false;
+    } else {
+      return true;
+    }
+  }
+
   constructor(props) {
     super(props)
     this.ref = React.createRef();
   }
 
   componentDidMount() {
+    console.log("GraphView did MOUNT with this data: ", this.props.data);
     const contextMenu = new G6.Menu({
       getContent(evt) {
         let header = '';
@@ -166,18 +175,19 @@ export class GraphView extends React.Component {
       //width: container.offsetWidth,
       width: 1200,
       //height: container.offsetHeight,
-      height: 400,
-      fitCenter: true,
+      height: 800,
+      //fitCenter: true,
       plugins: [toolbar, contextMenu],
       enabledStack: true,
       layout: {
         type: 'force',
+        //type: 'force',
 
         //minMovement: 0.01,
         //maxIteration: 100,
         preventOverlap: true,
         //damping: 0.99,
-        fitView: true
+        fitView: true,
         //linkDistance: 100
       },
       modes: {
@@ -190,7 +200,7 @@ export class GraphView extends React.Component {
           {
             type: 'tooltip', // Tooltip
             formatText(model) {
-              console.log("model (node): ", model);
+              //console.log("model (node): ", model);
               // The content of tooltip
               //const text = 'Label: ' + model.label + ((model.population !== undefined) ? ('<br />population: ' + model.population) : ('<br/> population: No information '));
               const text = '<strong>Label:</strong> ' + model.label;
@@ -200,7 +210,7 @@ export class GraphView extends React.Component {
           {
             type: 'edge-tooltip', // Edge tooltip
             formatText(model) {
-              console.log("model (edge): ", model);
+              //console.log("model (edge): ", model);
               // The content of the edge tooltip
               const text =
                 '<strong>id:</strong> ' +
@@ -444,6 +454,7 @@ export class GraphView extends React.Component {
   }
 
   componentDidUpdate() {
+    console.log("GraphView did UPDATE with this data: ", this.props.data);
     const container = ReactDOM.findDOMNode(this.ref.current);
     this.graph.changeSize(container.offsetWidth, container.offsetHeight);
     this.graph.data(this.props.data);
@@ -813,9 +824,9 @@ export class GraphView extends React.Component {
 
   //<Tag color="cyan" key={key.toString()}><strong>{key}:</strong> {JSON.stringify(this.props.vertexCollectionsColors[key])}</Tag>
 
-  render() {
-    return <>
-      <button onClick={this.updateNodeModel}>Show collection to nodes</button>
+  /*
+  // Test Buttons
+  <button onClick={this.updateNodeModel}>Show collection to nodes</button>
       <button onClick={this.updateEdgeModel}>Show collection to edges</button>
       <button onClick={() => this.printVertexCollections()}>Print vertex collections</button>
       <button onClick={() => {
@@ -823,15 +834,14 @@ export class GraphView extends React.Component {
         console.log("this.props.vertexCollectionsColors.frenchCity: ", this.props.vertexCollectionsColors.frenchCity);
         console.log("this.props.vertexCollectionsColors.germanCity: ", this.props.vertexCollectionsColors.germanCity);
         /*
-        {
-          Object.keys(this.props.vertexCollectionsColors)
-          .map((key, i) => {
-            console.log("key.toString(): ", key.toString());
-            console.log("key: ", key);
-            console.log("JSON.stringify(this.props.vertexCollectionsColors[key]): ", JSON.stringify(this.props.vertexCollectionsColors[key]));
-          })
-        }
-        */
+        //{
+          //Object.keys(this.props.vertexCollectionsColors)
+          //.map((key, i) => {
+            //console.log("key.toString(): ", key.toString());
+            //console.log("key: ", key);
+            //console.log("JSON.stringify(this.props.vertexCollectionsColors[key]): ", JSON.stringify(this.props.vertexCollectionsColors[key]));
+          //})
+        //}
         this.props.data.nodes.forEach(node => {
           Object.keys(this.props.vertexCollectionsColors)
           .map((key, i) => {
@@ -865,6 +875,10 @@ export class GraphView extends React.Component {
           duration: 100,
         });
       }}>Find node Paris</button>
+  */
+ 
+  render() {
+    return <>
       <Headerinfo
         graphName={this.props.graphName}
         graphData={this.props.data}
