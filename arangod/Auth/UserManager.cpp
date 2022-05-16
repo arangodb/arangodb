@@ -177,7 +177,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(ArangodServer& server) {
   } else if (!usersSlice.isArray()) {
     LOG_TOPIC("4b11d", ERR, arangodb::Logger::AUTHENTICATION)
         << "cannot read users from _users collection";
-    return std::shared_ptr<VPackBuilder>();
+    return {};
   }
 
   return queryResult.data;
@@ -446,7 +446,7 @@ void auth::UserManager::triggerGlobalReload() {
         agency.sendTransactionWithFailover(incrementVersion);
     if (result.successful()) {
       _globalVersion.fetch_add(1, std::memory_order_release);
-      _internalVersion.fetch_add(1, std::memory_order_release);
+      _internalVersion.store(0, std::memory_order_release);
       return;
     }
   }

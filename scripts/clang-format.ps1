@@ -14,8 +14,12 @@ if (![bool]$git_for_windows.InstallPath) {
     throw 'Could not find Git InstallPath in registry'
 }
 
-$git_bash = Join-Path ($git_for_windows).InstallPath 'git-bash.exe'
-$params = './scripts/clang-format.sh'
-& $git_bash $params
+# Using bash.exe because git-bash.exe would open a new window
+$git_bash = Join-Path ($git_for_windows).InstallPath 'bin' 'bash.exe'
+$files = ''
+if ($args.length -gt 0) {
+    $files = $args.Replace('\', '/')
+}
+& $git_bash './scripts/clang-format.sh' $files
 
 Pop-Location
