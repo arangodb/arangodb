@@ -47,7 +47,7 @@ function runSetup () {
   db._view(vn).properties(meta);
   
   internal.wal.flush(true, true);
-  internal.debugSetFailAt("FlushThreadDisableAll");
+  internal.debugSetFailAt("RocksDBBackgroundThread::run");
   internal.wait(2); // make sure failure point takes effect
 
   // 35k to overcome RocksDB optimization and force use truncate
