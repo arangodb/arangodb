@@ -471,6 +471,7 @@ class instanceManager {
       print("Error checking cluster health " + e);
       return false;
     }
+    return true;
   }
 
 
