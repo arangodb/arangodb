@@ -102,7 +102,6 @@ Result partiallyCommitInsertions(rocksdb::WriteBatchBase& batch,
   // docsProcessed.fetch_add(docsInBatch, std::memory_order_relaxed);
   return {};
 }
-
 }  // namespace
 
 IndexCreatorThread::IndexCreatorThread(
@@ -293,11 +292,22 @@ void IndexCreatorThread::run() {
       std::vector<std::string> fileNames;
       rocksdb::Status s = static_cast<RocksDBSstFileMethods*>(_methods.get())
                               ->stealFileNames(fileNames);
-      if (s.ok()) {
-        s = _rootDB->IngestExternalFile(_ridx.columnFamily(), fileNames, {});
-      }
-      if (!s.ok()) {
-        LOG_DEVEL << "Error: " << s.ToString();
+      if (s.ok() && !fileNames.empty()) {
+        rocksdb::IngestExternalFileOptions ingestOptions;
+        ingestOptions.move_files = true;
+        ingestOptions.failed_move_fall_back_to_copy = true;
+        //     ingestOptions.write_global_seqno = false;
+        s = _rootDB->IngestExternalFile(_ridx.columnFamily(), fileNames,
+                                        std::move(ingestOptions));
+        if (!s.ok()) {
+          LOG_TOPIC("9f945", WARN, Logger::ENGINES)
+              << "Cannot ingest index files";
+          _sharedWorkEnv->registerError(rocksutils::convertStatus(s));
+        }
+      } else if (!s.ok()) {
+        LOG_TOPIC("e2c28", WARN, Logger::ENGINES)
+            << "Error in file handling in index creation";
+        _sharedWorkEnv->registerError(rocksutils::convertStatus(s));
       }
     }
   } catch (std::exception const& ex) {
@@ -795,7 +805,6 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, RocksDBMethods& batched,
                rocksdb::WriteBatchBase& wb, AccessMode::Type mode,
                rocksdb::SequenceNumber startingFrom,
                rocksdb::SequenceNumber& lastScannedTick, uint64_t& numScanned,
-               bool haveExclusiveAccess,
                std::function<void(uint64_t)> const& reportProgress) {
   LogicalCollection& coll = ridx.collection();
   trx::BuilderTrx trx(transaction::StandaloneContext::Create(coll.vocbase()),
@@ -991,7 +1000,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
       rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
       RocksDBBatchedWithIndexMethods methods(engine.db(), &batch);
       res = ::catchup(db, *internal, methods, batch, AccessMode::Type::WRITE,
-                      scanFrom, lastScanned, numScanned, false, reportProgress);
+                      scanFrom, lastScanned, numScanned, reportProgress);
     } else {
       // non-unique index. all index keys will be unique anyway because they
       // contain the document id we can therefore get away with a cheap
@@ -999,7 +1008,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
       rocksdb::WriteBatch batch(32 * 1024 * 1024);
       RocksDBBatchedMethods methods(&batch);
       res = ::catchup(db, *internal, methods, batch, AccessMode::Type::WRITE,
-                      scanFrom, lastScanned, numScanned, false, reportProgress);
+                      scanFrom, lastScanned, numScanned, reportProgress);
     }
 
     if (res.fail() && !res.is(TRI_ERROR_ARANGO_TRY_AGAIN)) {
@@ -1023,7 +1032,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
     RocksDBBatchedWithIndexMethods methods(engine.db(), &batch);
     res = ::catchup(db, *internal, methods, batch, AccessMode::Type::EXCLUSIVE,
-                    scanFrom, lastScanned, numScanned, true, reportProgress);
+                    scanFrom, lastScanned, numScanned, reportProgress);
   } else {
     // non-unique index. all index keys will be unique anyway because they
     // contain the document id we can therefore get away with a cheap
@@ -1031,7 +1040,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     rocksdb::WriteBatch batch(32 * 1024 * 1024);
     RocksDBBatchedMethods methods(&batch);
     res = ::catchup(db, *internal, methods, batch, AccessMode::Type::EXCLUSIVE,
-                    scanFrom, lastScanned, numScanned, true, reportProgress);
+                    scanFrom, lastScanned, numScanned, reportProgress);
   }
 
   return res;

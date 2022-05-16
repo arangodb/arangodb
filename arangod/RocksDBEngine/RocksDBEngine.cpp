@@ -659,18 +659,6 @@ void RocksDBEngine::start() {
   auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
 
   _path = databasePathFeature.subdirectoryName("engine-rocksdb");
-  _idxPath = basics::FileUtils::buildFilename(_path, "tmp-idx-creation");
-  if (basics::FileUtils::isDirectory(_idxPath.data())) {
-    ::cleanUpExtFiles(_idxPath.data());
-  } else {
-    LOG_DEVEL << "_idxPath " << _idxPath;
-    auto errorMsg = TRI_ERROR_NO_ERROR;
-    if (!basics::FileUtils::createDirectory(_idxPath.data(), &errorMsg)) {
-      LOG_TOPIC("6d10f", ERR, Logger::ENGINES)
-          << "Cannot create tmp-idx-creation directory, error: code '"
-          << errorMsg << "'";
-    }
-  }
 
   [[maybe_unused]] bool createdEngineDir = false;
   if (!basics::FileUtils::isDirectory(_path)) {
@@ -688,6 +676,20 @@ void RocksDBEngine::start() {
       LOG_TOPIC("a5ae3", FATAL, arangodb::Logger::ENGINES)
           << "unable to create RocksDB data directory '" << _path
           << "': " << systemErrorStr;
+      FATAL_ERROR_EXIT();
+    }
+  }
+
+  _idxPath = basics::FileUtils::buildFilename(_path, "tmp-idx-creation");
+  if (basics::FileUtils::isDirectory(_idxPath.data())) {
+    ::cleanUpExtFiles(_idxPath.data());
+  } else {
+    LOG_DEVEL << "_idxPath " << _idxPath;
+    auto errorMsg = TRI_ERROR_NO_ERROR;
+    if (!basics::FileUtils::createDirectory(_idxPath.data(), &errorMsg)) {
+      LOG_TOPIC("6d10f", FATAL, Logger::ENGINES)
+          << "Cannot create tmp-idx-creation directory, error: code '"
+          << TRI_last_error() << "'";
       FATAL_ERROR_EXIT();
     }
   }
