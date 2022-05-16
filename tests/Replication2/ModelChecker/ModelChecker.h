@@ -294,7 +294,6 @@ struct DFSEnumerator {
                                   buildPathVector());
             return result;
           }
-          v->outgoing.emplace_back(std::move(transition), step);
           if (step->isActive()) {
             v->searchIndex = v->outgoing.size();
             auto cycle = decltype(path)();
@@ -310,6 +309,7 @@ struct DFSEnumerator {
             result.failed->cycle.emplace(buildPathVector());
             return result;
           }
+          v->outgoing.emplace_back(std::move(transition), step);
         }
       } else if (v->outgoing.size() == v->searchIndex) {
         v->searchIndex += 1;  // make this vertex complete
@@ -509,7 +509,6 @@ struct RandomEnumerator {
                                   buildPathVector());
             return result;
           }
-          v->outgoing.emplace_back(std::move(transition), step);
           if (step->isActive()) {
             v->searchIndex = v->outgoing.size() - 1;
             auto cycle = decltype(path)();
@@ -525,6 +524,7 @@ struct RandomEnumerator {
             result.failed->cycle.emplace(buildPathVector());
             return result;
           }
+          v->outgoing.emplace_back(std::move(transition), step);
         }
       } else if (v->outgoing.empty() || v->searchIndex.has_value()) {
         path.pop_back();
