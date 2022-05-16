@@ -340,6 +340,7 @@ auto OneSidedEnumerator<Configuration>::fetchResults() -> void {
         // fetch as fetched. This works, but we might create a batch limit here
         // in the future. Also discuss: Do we want (re-)fetch logic here?
         // TODO: maybe we can combine this with prefetching of paths
+        // Ticket ID: [GORDO-1394]
       }
     }
   }
