@@ -559,8 +559,11 @@ struct RandomEnumerator {
     // didn't want to touch RandomGenerator/RandomDevice for now.
 
     auto gen = std::mt19937(randomParameters.seed);
-    auto const numThreads =
-        std::min(NumberOfCores::getValue(), randomParameters.iterations);
+    // `std::size_t` and `std::uint64_t` are different on some systems. Make use
+    // of integral promotion to get the larger of the two.
+    auto const numThreads = std::min<decltype(NumberOfCores::getValue() +
+                                              randomParameters.iterations)>(
+        NumberOfCores::getValue(), randomParameters.iterations);
     auto threads = std::vector<std::thread>();
     threads.reserve(numThreads);
     auto results = std::vector<std::optional<Result>>(numThreads, std::nullopt);
