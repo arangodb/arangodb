@@ -53,24 +53,17 @@ class PrimaryKeyFilter final : public irs::filter,
         _pk(DocumentPrimaryKey::encode(value)),
         _pkSeen(false) {}
 
-  // ----------------------------------------------------------------------------
-  // --SECTION-- irs::filter::prepared
-  // ----------------------------------------------------------------------------
-
   virtual irs::doc_iterator::ptr execute(
-      irs::sub_reader const& segment, irs::order::prepared const& /*order*/,
+      irs::sub_reader const& segment, irs::Order const& /*order*/,
+      irs::ExecutionMode,
       irs::attribute_provider const* /*ctx*/) const override;
-
-  // ----------------------------------------------------------------------------
-  // --SECTION-- irs::filter
-  // ----------------------------------------------------------------------------
 
   virtual size_t hash() const noexcept override;
 
   using irs::filter::prepare;
   virtual filter::prepared::ptr prepare(
-      irs::index_reader const& index, irs::order::prepared const& /*ord*/,
-      irs::boost_t /*boost*/,
+      irs::index_reader const& index, irs::Order const& /*ord*/,
+      irs::score_t /*boost*/,
       irs::attribute_provider const* /*ctx*/) const override;
 
  protected:
@@ -141,8 +134,8 @@ class PrimaryKeyFilterContainer final : public irs::filter {
   void clear() noexcept { _filters.clear(); }
 
   virtual filter::prepared::ptr prepare(
-      irs::index_reader const& rdr, irs::order::prepared const& ord,
-      irs::boost_t boost, irs::attribute_provider const* ctx) const override;
+      irs::index_reader const& rdr, irs::Order const& ord, irs::score_t boost,
+      irs::attribute_provider const* ctx) const override;
 
  private:
   std::deque<PrimaryKeyFilter> _filters;  // pointers remain valid

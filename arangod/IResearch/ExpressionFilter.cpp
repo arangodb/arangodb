@@ -41,8 +41,8 @@ namespace {
 template<typename T>
 inline irs::filter::prepared::ptr compileQuery(
     arangodb::iresearch::ExpressionCompilationContext const& ctx,
-    irs::index_reader const& index, irs::order::prepared const& order,
-    irs::boost_t boost) {
+    irs::index_reader const& index, irs::Order const& order,
+    irs::score_t boost) {
   typedef
       typename std::enable_if<std::is_base_of<irs::filter::prepared, T>::value,
                               T>::type type_t;
@@ -64,10 +64,10 @@ class NondeterministicExpressionIterator final
  public:
   NondeterministicExpressionIterator(
       irs::sub_reader const& reader, irs::byte_type const* stats,
-      irs::order::prepared const& order, uint64_t docs_count,
+      irs::Order const& order, uint64_t docs_count,
       arangodb::iresearch::ExpressionCompilationContext const& cctx,
       arangodb::iresearch::ExpressionExecutionContext const& ectx,
-      irs::boost_t boost)
+      irs::score_t boost)
       : attributes{{
             {irs::type<irs::document>::id(), &doc_},
             {irs::type<irs::cost>::id(), &cost_},
@@ -82,9 +82,9 @@ class NondeterministicExpressionIterator final
 
     // set scorers
     if (!order.empty()) {
-      irs::order::prepared::scorers scorers(order, reader,
-                                            irs::empty_term_reader(docs_count),
-                                            stats, score_.data(), *this, boost);
+      irs::Order::scorers scorers(order, reader,
+                                  irs::empty_term_reader(docs_count), stats,
+                                  score_.data(), *this, boost);
 
       irs::reset(score_, std::move(scorers));
     }
@@ -139,11 +139,11 @@ class NondeterministicExpressionQuery final : public irs::filter::prepared {
  public:
   explicit NondeterministicExpressionQuery(
       arangodb::iresearch::ExpressionCompilationContext const& ctx,
-      irs::bstring&& stats, irs::boost_t boost) noexcept
+      irs::bstring&& stats, irs::score_t boost) noexcept
       : irs::filter::prepared(boost), _ctx(ctx), stats_(std::move(stats)) {}
 
   virtual irs::doc_iterator::ptr execute(
-      const irs::sub_reader& rdr, const irs::order::prepared& order,
+      const irs::sub_reader& rdr, const irs::Order& order, irs::ExecutionMode,
       const irs::attribute_provider* ctx) const override {
     if (ADB_UNLIKELY(!ctx)) {
       // no context provided
@@ -177,12 +177,12 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
  public:
   explicit DeterministicExpressionQuery(
       arangodb::iresearch::ExpressionCompilationContext const& ctx,
-      irs::bstring&& stats, irs::boost_t boost) noexcept
+      irs::bstring&& stats, irs::score_t boost) noexcept
       : irs::filter::prepared(boost), _ctx(ctx), stats_(std::move(stats)) {}
 
   virtual irs::doc_iterator::ptr execute(
-      const irs::sub_reader& segment, const irs::order::prepared& order,
-      const irs::attribute_provider* ctx) const override {
+      const irs::sub_reader& segment, const irs::Order& order,
+      irs::ExecutionMode, const irs::attribute_provider* ctx) const override {
     if (ADB_UNLIKELY(!ctx)) {
       // no context provided
       return irs::doc_iterator::empty();
@@ -252,8 +252,8 @@ bool ByExpression::equals(irs::filter const& rhs) const noexcept {
 size_t ByExpression::hash() const noexcept { return _ctx.hash(); }
 
 irs::filter::prepared::ptr ByExpression::prepare(
-    irs::index_reader const& index, irs::order::prepared const& order,
-    irs::boost_t filter_boost, irs::attribute_provider const* ctx) const {
+    irs::index_reader const& index, irs::Order const& order,
+    irs::score_t filter_boost, irs::attribute_provider const* ctx) const {
   if (!bool(*this)) {
     // uninitialized filter
     return irs::filter::prepared::empty();

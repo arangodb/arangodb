@@ -58,9 +58,9 @@ using Disjunction = irs::disjunction_iterator<irs::doc_iterator::ptr>;
 /// @brief returns a filter matching all documents with a given geo field
 ////////////////////////////////////////////////////////////////////////////////
 irs::filter::prepared::ptr match_all(irs::index_reader const& index,
-                                     irs::order::prepared const& order,
+                                     irs::Order const& order,
                                      irs::string_ref field,
-                                     irs::boost_t boost) {
+                                     irs::score_t boost) {
   // Return everything we've stored
   irs::by_column_existence filter;
   *filter.mutable_field() = field;
@@ -90,7 +90,7 @@ class GeoIterator : public irs::doc_iterator {
   GeoIterator(doc_iterator::ptr&& approx, doc_iterator::ptr&& columnIt,
               Acceptor& acceptor, const irs::sub_reader& reader,
               const irs::term_reader& field, const irs::byte_type* query_stats,
-              irs::order::prepared const& order, irs::boost_t boost)
+              irs::Order const& order, irs::score_t boost)
       : _approx(std::move(approx)),
         _columnIt(std::move(columnIt)),
         _storedValue(irs::get<irs::payload>(*_columnIt)),
@@ -103,8 +103,8 @@ class GeoIterator : public irs::doc_iterator {
         }},
         _acceptor(acceptor) {
     if (!order.empty()) {
-      irs::order::prepared::scorers scorers(order, reader, field, query_stats,
-                                            _score.data(), *this, boost);
+      irs::Order::scorers scorers(order, reader, field, query_stats,
+                                  _score.data(), *this, boost);
 
       irs::reset(_score, std::move(scorers));
     }
@@ -183,7 +183,7 @@ irs::doc_iterator::ptr make_iterator(
     typename Disjunction::doc_iterators_t&& itrs,
     irs::doc_iterator::ptr&& columnIt, const irs::sub_reader& reader,
     const irs::term_reader& field, const irs::byte_type* query_stats,
-    irs::order::prepared const& order, irs::boost_t boost, Acceptor& acceptor) {
+    irs::Order const& order, irs::score_t boost, Acceptor& acceptor) {
   return irs::memory::make_managed<GeoIterator<Acceptor>>(
       irs::make_disjunction<Disjunction>(std::move(itrs)), std::move(columnIt),
       acceptor, reader, field, query_stats, order, boost);
@@ -222,14 +222,14 @@ template<typename Acceptor>
 class GeoQuery final : public irs::filter::prepared {
  public:
   GeoQuery(GeoStates&& states, irs::bstring&& stats, Acceptor&& acceptor,
-           irs::boost_t boost) noexcept
+           irs::score_t boost) noexcept
       : prepared(boost),
         _states(std::move(states)),
         _stats(std::move(stats)),
         _acceptor(std::move(acceptor)) {}
 
   virtual irs::doc_iterator::ptr execute(
-      const irs::sub_reader& segment, const irs::order::prepared& ord,
+      const irs::sub_reader& segment, const irs::Order& ord,
       const irs::attribute_provider* /*ctx*/) const override {
     // get term state for the specified reader
     auto state = _states.find(segment);
@@ -302,13 +302,13 @@ struct GeoDistanceAcceptor {
 
 template<typename Acceptor>
 irs::filter::prepared::ptr make_query(GeoStates&& states, irs::bstring&& stats,
-                                      irs::boost_t boost, Acceptor&& acceptor) {
+                                      irs::score_t boost, Acceptor&& acceptor) {
   return irs::memory::make_managed<GeoQuery<Acceptor>>(
       std::move(states), std::move(stats), std::move(acceptor), boost);
 }
 
 std::pair<GeoStates, irs::bstring> prepareStates(
-    irs::index_reader const& index, irs::order::prepared const& order,
+    irs::index_reader const& index, irs::Order const& order,
     std::vector<std::string> const& geoTerms, irs::string_ref field) {
   assert(!geoTerms.empty());
 
@@ -379,9 +379,8 @@ std::pair<S2Cap, bool> getBound(irs::BoundType type, S2Point origin,
 }
 
 irs::filter::prepared::ptr prepareOpenInterval(
-    irs::index_reader const& index, irs::order::prepared const& order,
-    irs::boost_t boost, irs::string_ref field,
-    GeoDistanceFilterOptions const& opts, bool greater) {
+    irs::index_reader const& index, irs::Order const& order, irs::score_t boost,
+    irs::string_ref field, GeoDistanceFilterOptions const& opts, bool greater) {
   auto const& range = opts.range;
   auto const& origin = opts.origin;
 
@@ -484,9 +483,8 @@ irs::filter::prepared::ptr prepareOpenInterval(
 }
 
 irs::filter::prepared::ptr prepareInterval(
-    irs::index_reader const& index, irs::order::prepared const& order,
-    irs::boost_t boost, irs::string_ref field,
-    GeoDistanceFilterOptions const& opts) {
+    irs::index_reader const& index, irs::Order const& order, irs::score_t boost,
+    irs::string_ref field, GeoDistanceFilterOptions const& opts) {
   auto const& range = opts.range;
   TRI_ASSERT(irs::BoundType::UNBOUNDED != range.min_type);
   TRI_ASSERT(irs::BoundType::UNBOUNDED != range.max_type);
@@ -591,8 +589,8 @@ namespace iresearch {
 // ----------------------------------------------------------------------------
 
 irs::filter::prepared::ptr GeoFilter::prepare(
-    const irs::index_reader& index, const irs::order::prepared& order,
-    irs::boost_t boost, const irs::attribute_provider* /*ctx*/) const {
+    const irs::index_reader& index, const irs::Order& order, irs::score_t boost,
+    const irs::attribute_provider* /*ctx*/) const {
   auto& shape = const_cast<geo::ShapeContainer&>(options().shape);
 
   if (shape.empty()) {
@@ -648,8 +646,8 @@ DEFINE_FACTORY_DEFAULT(GeoFilter)
 // ----------------------------------------------------------------------------
 
 irs::filter::prepared::ptr GeoDistanceFilter::prepare(
-    irs::index_reader const& index, irs::order::prepared const& order,
-    irs::boost_t boost, irs::attribute_provider const* /*ctx*/) const {
+    irs::index_reader const& index, irs::Order const& order, irs::score_t boost,
+    irs::attribute_provider const* /*ctx*/) const {
   auto const& range = options().range;
   auto const lowerBound = irs::BoundType::UNBOUNDED != range.min_type;
   auto const upperBound = irs::BoundType::UNBOUNDED != range.max_type;
