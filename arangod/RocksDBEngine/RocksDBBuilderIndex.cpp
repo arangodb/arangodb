@@ -297,7 +297,7 @@ void IndexCreatorThread::run() {
         rocksdb::IngestExternalFileOptions ingestOptions;
         ingestOptions.move_files = true;
         ingestOptions.failed_move_fall_back_to_copy = true;
-        ingestOptions.snapshot_consistency = false;
+        // ingestOptions.snapshot_consistency = false;
         ingestOptions.write_global_seqno = false;
         ingestOptions.verify_checksums_before_ingest = false;
 

@@ -45,8 +45,9 @@ RocksDBSstFileMethods::RocksDBSstFileMethods(
       _rootDB(rootDB),
       _trxColl(trxColl),
       _ridx(ridx),
-      _sstFileWriter(rocksdb::EnvOptions(), dbOptions),
-      _cf(nullptr),
+      _sstFileWriter(rocksdb::EnvOptions(dbOptions), dbOptions,
+                     ridx.columnFamily()->GetComparator(), ridx.columnFamily()),
+      _cf(ridx.columnFamily()),
       _idxPath(idxPath) {}
 
 RocksDBSstFileMethods::~RocksDBSstFileMethods() { cleanUpFiles(); }
