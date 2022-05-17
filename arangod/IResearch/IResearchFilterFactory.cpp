@@ -503,8 +503,8 @@ using ConvertionHandler = Result (*)(char const* funcName, irs::boolean_filter*,
                                      aql::AstNode const&);
 
 // forward declaration
-Result filter(irs::boolean_filter* filter, QueryContext const& queryCtx,
-              FilterContext const& filterCtx, aql::AstNode const& node);
+Result makeFilter(irs::boolean_filter* filter, QueryContext const& queryCtx,
+                  FilterContext const& filterCtx, aql::AstNode const& node);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends value tokens to a phrase filter
@@ -2119,7 +2119,7 @@ Result fromNegation(irs::boolean_filter* filter, QueryContext const& ctx,
                                    filterCtx.isSearchFilter(),
                                    filterCtx.analyzerProvider()};
 
-  return ::filter(filter, ctx, subFilterCtx, *member);
+  return ::makeFilter(filter, ctx, subFilterCtx, *member);
 }
 
 /*
@@ -2205,7 +2205,7 @@ Result fromGroup(irs::boolean_filter* filter, QueryContext const& ctx,
     auto const* valueNode = node.getMemberUnchecked(i);
     TRI_ASSERT(valueNode);
 
-    auto const rv = ::filter(filter, ctx, subFilterCtx, *valueNode);
+    auto const rv = ::makeFilter(filter, ctx, subFilterCtx, *valueNode);
     if (rv.fail()) {
       return rv;
     }
@@ -2283,7 +2283,7 @@ Result fromFuncAnalyzer(char const* funcName, irs::boolean_filter* filter,
       analyzerValue, filterCtx.boost(), filterCtx.isSearchFilter(),
       nullptr);  // override analyzer and throw away provider
 
-  rv = ::filter(filter, ctx, subFilterContext, *expressionArg);
+  rv = ::makeFilter(filter, ctx, subFilterContext, *expressionArg);
 
   if (rv.fail()) {
     return {rv.errorNumber(),
@@ -2333,7 +2333,7 @@ Result fromFuncBoost(char const* funcName, irs::boolean_filter* filter,
       filterCtx.boost() * static_cast<float_t>(boostValue),
       filterCtx.isSearchFilter(), filterCtx.analyzerProvider()};
 
-  rv = ::filter(filter, ctx, subFilterContext, *expressionArg);
+  rv = ::makeFilter(filter, ctx, subFilterContext, *expressionArg);
 
   if (rv.fail()) {
     return {rv.errorNumber(),
@@ -2558,7 +2558,7 @@ Result fromFuncMinMatch(char const* funcName, irs::boolean_filter* filter,
 
     irs::boolean_filter* subFilter = filter ? &filter->add<irs::Or>() : nullptr;
 
-    rv = ::filter(subFilter, ctx, subFilterCtx, *subFilterExpression);
+    rv = ::makeFilter(subFilter, ctx, subFilterCtx, *subFilterExpression);
     if (rv.fail()) {
       return {TRI_ERROR_BAD_PARAMETER,
               "'"s.append(funcName)
@@ -4247,15 +4247,15 @@ Result fromFilter(irs::boolean_filter* filter, QueryContext const& ctx,
   auto const* member = node.getMemberUnchecked(0);
 
   if (member) {
-    return ::filter(filter, ctx, filterCtx, *member);
+    return ::makeFilter(filter, ctx, filterCtx, *member);
   } else {
     return {TRI_ERROR_INTERNAL,
             "could not get node member"};  // wrong number of members
   }
 }
 
-Result filter(irs::boolean_filter* filter, QueryContext const& queryCtx,
-              FilterContext const& filterCtx, aql::AstNode const& node) {
+Result makeFilter(irs::boolean_filter* filter, QueryContext const& queryCtx,
+                  FilterContext const& filterCtx, aql::AstNode const& node) {
   switch (node.type) {
     case aql::NODE_TYPE_FILTER:  // FILTER
       return fromFilter(filter, queryCtx, filterCtx, node);
@@ -4329,11 +4329,11 @@ namespace iresearch {
   }
 
   // The analyzer is referenced in the FilterContext and used during the
-  // following ::filter() call, so may not be a temporary.
+  // following ::makeFilter() call, so may not be a temporary.
   FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
   FilterContext const filterCtx(analyzer, irs::kNoBoost, forSearch, provider);
 
-  const auto res = ::filter(filter, ctx, filterCtx, node);
+  const auto res = ::makeFilter(filter, ctx, filterCtx, node);
 
   if (res.fail()) {
     LOG_TOPIC("dfa15", WARN, TOPIC) << res.errorMessage();
