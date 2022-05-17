@@ -1,6 +1,9 @@
 v3.9.2 (XXXX-XX-XX)
 -------------------
 
+* Very verbose warning from failing to parse GEO JSON in search. Has lead to
+  billions of log lines on deployed services.
+
 * Fixed Github issue #16279: assertion failure/crash in AQL query optimizer when
   permuting adjacent FOR loops that depended on each other.
 
