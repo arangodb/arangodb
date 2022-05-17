@@ -1,6 +1,8 @@
 v3.7.18 (XXXX-XX-XX)
 --------------------
 
+* Fix documentation of collection's `cacheEnabled` property default.
+
 * Fixed Github issue #16279: assertion failure/crash in AQL query optimizer when
   permuting adjacent FOR loops that depended on each other.
 
