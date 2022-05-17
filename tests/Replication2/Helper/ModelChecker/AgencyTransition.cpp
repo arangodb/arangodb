@@ -206,6 +206,18 @@ void ReplaceServerTargetState::apply(AgencyState& agency) const {
   target.version.emplace(target.version.value_or(0) + 1);
 }
 
+auto SetLeaderInTargetAction::toString() const -> std::string {
+  return fmt::format("setting `{}` as leader in target", newLeader);
+}
+
+SetLeaderInTargetAction::SetLeaderInTargetAction(ParticipantId newLeader)
+    : newLeader(newLeader) {}
+void SetLeaderInTargetAction::apply(AgencyState& agency) const {
+  TRI_ASSERT(agency.replicatedLog.has_value());
+  auto& target = agency.replicatedLog->target;
+  target.leader.emplace(newLeader);
+}
+
 AddLogParticipantAction::AddLogParticipantAction(
     replication2::ParticipantId server)
     : server(std::move(server)) {}

@@ -319,4 +319,12 @@ auto ReplaceSpecificServerActor::step(AgencyState const& agency) const
 
   return {ReplaceServerTargetState{oldServer, newServer}};
 }
+
+SetLeaderActor::SetLeaderActor(ParticipantId leader) : newLeader(leader) {}
+
+auto SetLeaderActor::step(AgencyState const& agency) const
+    -> std::vector<AgencyTransition> {
+  return {SetLeaderInTargetAction(newLeader)};
+}
+
 }  // namespace arangodb::test
