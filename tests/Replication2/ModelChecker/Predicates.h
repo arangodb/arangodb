@@ -265,8 +265,6 @@ struct StringWrapper<std::index_sequence<Idxs...>> {
   const char buffer[sizeof...(Idxs)];
 };
 
-#define WrapString(s) StringWrapper<std::make_index_sequence<sizeof(s)>>(s)
-
 template<std::size_t FilenameLen,
          StringWrapper<std::make_index_sequence<FilenameLen>> Filename,
          std::size_t Line>
@@ -279,9 +277,12 @@ struct FileLine {
   }
 };
 
-#define MC_HERE                                                            \
-  ([] {                                                                    \
-    return ::FileLine<sizeof(__FILE__), WrapString(__FILE__), __LINE__>{}; \
+#define MC_HERE                                                              \
+  ([] {                                                                      \
+    return ::FileLine<                                                       \
+        sizeof(__FILE__),                                                    \
+        StringWrapper<std::make_index_sequence<sizeof(__FILE__)>>(__FILE__), \
+        __LINE__>{};                                                         \
   }())
 #endif
 
