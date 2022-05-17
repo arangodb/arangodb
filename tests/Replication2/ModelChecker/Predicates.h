@@ -241,34 +241,49 @@ combined(Os...) -> combined<Os...>;
 
 }  // namespace arangodb::test::model_checker
 
-template<const char File[], std::size_t FileLen, typename>
-struct StringBuffer;
-template<const char File[], std::size_t FileLen, std::size_t... Idxs>
-struct StringBuffer<File, FileLen, std::index_sequence<Idxs...>> {
-  static inline constexpr char buffer[FileLen] = {File[Idxs]...};
-};
+#if defined(__APPLE__) && defined(__clang__)
+// We had issues with AppleClang when we tried to use the
+// filename as a template parameter, so it is going to be just the line number
+// for now.
 
-template<const char File[], std::size_t FileLen, std::size_t Line>
-struct FileLineType {
-  static inline constexpr auto filename =
-      StringBuffer<File, FileLen, std::make_index_sequence<FileLen>>::buffer;
+template<std::size_t Line>
+struct FileLine {
   static inline constexpr std::size_t line = Line;
-
   static auto annotate(std::string_view message) -> std::string {
-    return std::string{filename};
+    return std::to_string(line) + std::string{message};
   }
 };
 
-#define CONCAT_TOKEN(x, y) x##y
-#define LINE_TOKEN(x, y) CONCAT_TOKEN(x, y)
+#define MC_HERE ([] { return ::FileLine<__LINE__>{}; }())
+#else
+template<typename>
+struct StringWrapper;
+template<std::size_t... Idxs>
+struct StringWrapper<std::index_sequence<Idxs...>> {
+  constexpr StringWrapper(const char* filename) : buffer{filename[Idxs]...} {}
 
-#define MC_HERE                                                           \
-  std::invoke([]() {                                                      \
-    static constexpr char LINE_TOKEN(data_, __LINE__)[sizeof(__FILE__)] = \
-        __FILE__;                                                         \
-    return ::FileLineType<LINE_TOKEN(data_, __LINE__), sizeof(__FILE__),  \
-                          __LINE__>{};                                    \
-  })
+  const char buffer[sizeof...(Idxs)];
+};
+
+#define WrapString(s) StringWrapper<std::make_index_sequence<sizeof(s)>>(s)
+
+template<std::size_t FilenameLen,
+         StringWrapper<std::make_index_sequence<FilenameLen>> Filename,
+         std::size_t Line>
+struct FileLine {
+  static inline constexpr auto filename = Filename.buffer;
+  static inline constexpr std::size_t line = Line;
+
+  static auto annotate(std::string_view message) -> std::string {
+    return std::string{filename} + std::to_string(line) + std::string{message};
+  }
+};
+
+#define MC_HERE                                                            \
+  ([] {                                                                    \
+    return ::FileLine<sizeof(__FILE__), WrapString(__FILE__), __LINE__>{}; \
+  }())
+#endif
 
 #define MC_GTEST_PRED(name, pred)           \
   model_checker::gtest_predicate {          \
