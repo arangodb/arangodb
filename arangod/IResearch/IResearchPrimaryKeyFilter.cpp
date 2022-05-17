@@ -54,7 +54,7 @@ namespace iresearch {
 // ----------------------------------------------------------------------------
 
 irs::doc_iterator::ptr PrimaryKeyFilter::execute(
-    irs::sub_reader const& segment, irs::order::prepared const& /*order*/,
+    irs::sub_reader const& segment, irs::Order const& /*order*/,
     irs::attribute_provider const* /*ctx*/) const {
   TRI_ASSERT(!_pkSeen);  // re-execution of a fiter is not expected to ever
                          // occur without a call to prepare(...)

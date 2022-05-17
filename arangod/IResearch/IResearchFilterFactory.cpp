@@ -257,7 +257,7 @@ Result malformedNode(aql::AstNodeType type) {
 }  // namespace error
 
 void setupAllTypedFilter(irs::Or& disjunction, std::string&& mangledName,
-                         irs::boost_t boost) {
+                         irs::score_t boost) {
   auto& allDocs = disjunction.add<irs::by_column_existence>();
   *allDocs.mutable_field() = std::move(mangledName);
   allDocs.boost(boost);
@@ -457,7 +457,7 @@ Result extractAnalyzerFromArg(FieldMeta::Analyzer& out, char const* funcName,
 
 class FilterContext {
  public:
-  FilterContext(FieldMeta::Analyzer const& analyzer, irs::boost_t boost,
+  FilterContext(FieldMeta::Analyzer const& analyzer, irs::score_t boost,
                 bool search, AnalyzerProvider const* provider) noexcept
       : _analyzerProvider(provider),
         _analyzer(analyzer),
@@ -471,7 +471,7 @@ class FilterContext {
 
   bool isSearchFilter() const noexcept { return _isSearchFilter; }
 
-  irs::boost_t boost() const noexcept { return _boost; }
+  irs::score_t boost() const noexcept { return _boost; }
 
   FieldMeta::Analyzer const& analyzer() const noexcept { return _analyzer; }
 
@@ -494,7 +494,7 @@ class FilterContext {
   AnalyzerProvider const* _analyzerProvider;
   // need shared_ptr since pool could be deleted from the feature
   FieldMeta::Analyzer const& _analyzer;
-  irs::boost_t _boost;
+  irs::score_t _boost;
   bool _isSearchFilter;  // filter is building for SEARCH clause
 };
 
@@ -802,25 +802,25 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
 }
 
 using TypeRangeHandler = void (*)(irs::Or& rangeOr, std::string name,
-                                  irs::boost_t boost);
+                                  irs::score_t boost);
 
 std::array<TypeRangeHandler, 4> constexpr TypeRangeHandlers{
-    {[](irs::Or& rangeOr, std::string name, irs::boost_t boost) {
+    {[](irs::Or& rangeOr, std::string name, irs::score_t boost) {
        auto nullName = name;  // intentional copy as mangling is inplace!
        kludge::mangleNull(nullName);
        setupAllTypedFilter(rangeOr, std::move(nullName), boost);
      },
-     [](irs::Or& rangeOr, std::string name, irs::boost_t boost) {
+     [](irs::Or& rangeOr, std::string name, irs::score_t boost) {
        auto boolName = name;  // intentional copy as mangling is inplace!
        kludge::mangleBool(boolName);
        setupAllTypedFilter(rangeOr, std::move(boolName), boost);
      },
-     [](irs::Or& rangeOr, std::string name, irs::boost_t boost) {
+     [](irs::Or& rangeOr, std::string name, irs::score_t boost) {
        auto numberName = name;  // intentional copy as mangling is inplace!
        kludge::mangleNumeric(numberName);
        setupAllTypedFilter(rangeOr, std::move(numberName), boost);
      },
-     [](irs::Or& rangeOr, std::string name, irs::boost_t boost) {
+     [](irs::Or& rangeOr, std::string name, irs::score_t boost) {
        auto stringName = name;  // intentional copy as mangling is inplace!
        kludge::mangleString(stringName);
        setupAllTypedFilter(rangeOr, std::move(stringName), boost);
@@ -828,7 +828,7 @@ std::array<TypeRangeHandler, 4> constexpr TypeRangeHandlers{
 
 template<bool Min, size_t typeIdx>
 void setupTypeOrderRangeFilter(irs::Or& rangeOr, std::string name,
-                               irs::boost_t boost) {
+                               irs::score_t boost) {
   static_assert(typeIdx < TypeRangeHandlers.size());
   static_assert(typeIdx >= 0);
   if constexpr (Min) {
@@ -1716,7 +1716,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
       return {};
     }
     FilterContext const subFilterCtx{filterCtx.analyzer(),
-                                     irs::no_boost(),  // reset boost
+                                     irs::kNoBoost,  // reset boost
                                      filterCtx.isSearchFilter(),
                                      filterCtx.analyzerProvider()};
     // Expand array interval as several binaryInterval nodes ('array' feature is
@@ -1808,7 +1808,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
         return {};
       }
       FilterContext const subFilterCtx{filterCtx.analyzer(),
-                                       irs::no_boost(),  // reset boost
+                                       irs::kNoBoost,  // reset boost
                                        filterCtx.isSearchFilter(),
                                        filterCtx.analyzerProvider()};
 
@@ -1900,7 +1900,7 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
   }
 
   FilterContext const subFilterCtx{filterCtx.analyzer(),
-                                   irs::no_boost(),  // reset boost
+                                   irs::kNoBoost,  // reset boost
                                    filterCtx.isSearchFilter(),
                                    filterCtx.analyzerProvider()};
 
@@ -2052,7 +2052,7 @@ Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
       filter->boost(filterCtx.boost());
 
       FilterContext const subFilterCtx{filterCtx.analyzer(),
-                                       irs::no_boost(),  // reset boost
+                                       irs::kNoBoost,  // reset boost
                                        filterCtx.isSearchFilter(),
                                        filterCtx.analyzerProvider()};
 
@@ -2115,7 +2115,7 @@ Result fromNegation(irs::boolean_filter* filter, QueryContext const& ctx,
   }
 
   FilterContext const subFilterCtx{filterCtx.analyzer(),
-                                   irs::no_boost(),  // reset boost
+                                   irs::kNoBoost,  // reset boost
                                    filterCtx.isSearchFilter(),
                                    filterCtx.analyzerProvider()};
 
@@ -2197,7 +2197,7 @@ Result fromGroup(irs::boolean_filter* filter, QueryContext const& ctx,
   }
 
   FilterContext const subFilterCtx{filterCtx.analyzer(),
-                                   irs::no_boost(),  // reset boost
+                                   irs::kNoBoost,  // reset boost
                                    filterCtx.isSearchFilter(),
                                    filterCtx.analyzerProvider()};
 
@@ -2539,7 +2539,7 @@ Result fromFuncMinMatch(char const* funcName, irs::boolean_filter* filter,
   }
 
   FilterContext const subFilterCtx{filterCtx.analyzer(),
-                                   irs::no_boost(),  // reset boost
+                                   irs::kNoBoost,  // reset boost
                                    filterCtx.isSearchFilter(),
                                    filterCtx.analyzerProvider()};
 
@@ -3029,11 +3029,11 @@ Result fromFuncPhraseLevenshteinMatch(
           collector.prepare(segment, field, terms);
         }
 
-        virtual void visit(irs::boost_t boost) override {
+        virtual void visit(irs::score_t boost) override {
           collector.visit(boost);
         }
 
-        irs::top_terms_collector<irs::top_term<irs::boost_t>> collector;
+        irs::top_terms_collector<irs::top_term<irs::score_t>> collector;
       } collector(opts.max_terms);
 
       irs::visit(*ctx.index, filter->field(),
@@ -3041,7 +3041,7 @@ Result fromFuncPhraseLevenshteinMatch(
 
       auto& terms = phrase->push_back<irs::by_terms_options>(firstOffset).terms;
       collector.collector.visit(
-          [&terms](const irs::top_term<irs::boost_t>& term) {
+          [&terms](const irs::top_term<irs::score_t>& term) {
             terms.emplace(term.term, term.key);
           });
     } else {
@@ -4301,10 +4301,6 @@ Result filter(irs::boolean_filter* filter, QueryContext const& queryCtx,
 namespace arangodb {
 namespace iresearch {
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                      FilerFactory implementation
-// ----------------------------------------------------------------------------
-
 /*static*/ Result FilterFactory::filter(
     irs::boolean_filter* filter, QueryContext const& ctx,
     aql::AstNode const& node, bool forSearch /*= true*/,
@@ -4317,7 +4313,7 @@ namespace iresearch {
   // The analyzer is referenced in the FilterContext and used during the
   // following ::filter() call, so may not be a temporary.
   FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-  FilterContext const filterCtx(analyzer, irs::no_boost(), forSearch, provider);
+  FilterContext const filterCtx(analyzer, irs::kNoBoost, forSearch, provider);
 
   const auto res = ::filter(filter, ctx, filterCtx, node);
 
@@ -4330,7 +4326,3 @@ namespace iresearch {
 
 }  // namespace iresearch
 }  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
