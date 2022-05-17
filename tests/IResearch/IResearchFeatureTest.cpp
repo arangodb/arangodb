@@ -1763,7 +1763,8 @@ TEST_F(IResearchFeatureTest, test_start) {
 
   auto& functions = server.addFeatureUntracked<aql::AqlFunctionFeature>();
   auto& iresearch = server.addFeatureUntracked<IResearchFeature>();
-  auto cleanup = irs::make_finally([&functions]() { functions.unprepare(); });
+  auto cleanup =
+      irs::make_finally([&functions]() noexcept { functions.unprepare(); });
 
   auto waitForStats = [&](std::tuple<size_t, size_t, size_t> expectedStats,
                           arangodb::iresearch::ThreadGroup group,
@@ -1881,9 +1882,10 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_no_directory) {
   // ensure test data is stored in a unique directory
   arangodb::tests::setDatabasePath(dbPathFeature);
   auto versionFilename = StorageEngineMock::versionFilenameResult;
-  auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
-    StorageEngineMock::versionFilenameResult = versionFilename;
-  });
+  auto versionFilenameRestore =
+      irs::make_finally([&versionFilename]() noexcept {
+        StorageEngineMock::versionFilenameResult = versionFilename;
+      });
   StorageEngineMock::versionFilenameResult =
       (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
   ASSERT_TRUE(irs::file_utils::mkdir(
@@ -1989,9 +1991,10 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1_with_directory) {
   arangodb::tests::setDatabasePath(
       dbPathFeature);  // ensure test data is stored in a unique directory
   auto versionFilename = StorageEngineMock::versionFilenameResult;
-  auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
-    StorageEngineMock::versionFilenameResult = versionFilename;
-  });
+  auto versionFilenameRestore =
+      irs::make_finally([&versionFilename]() noexcept {
+        StorageEngineMock::versionFilenameResult = versionFilename;
+      });
   StorageEngineMock::versionFilenameResult =
       (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
   ASSERT_TRUE(irs::file_utils::mkdir(
@@ -2741,9 +2744,10 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_no_directory) {
   arangodb::tests::setDatabasePath(
       dbPathFeature);  // ensure test data is stored in a unique directory
   auto versionFilename = StorageEngineMock::versionFilenameResult;
-  auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
-    StorageEngineMock::versionFilenameResult = versionFilename;
-  });
+  auto versionFilenameRestore =
+      irs::make_finally([&versionFilename]() noexcept {
+        StorageEngineMock::versionFilenameResult = versionFilename;
+      });
   StorageEngineMock::versionFilenameResult =
       (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
   ASSERT_TRUE(irs::file_utils::mkdir(
@@ -2836,9 +2840,10 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade0_1_with_directory) {
   arangodb::tests::setDatabasePath(
       dbPathFeature);  // ensure test data is stored in a unique directory
   auto versionFilename = StorageEngineMock::versionFilenameResult;
-  auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
-    StorageEngineMock::versionFilenameResult = versionFilename;
-  });
+  auto versionFilenameRestore =
+      irs::make_finally([&versionFilename]() noexcept {
+        StorageEngineMock::versionFilenameResult = versionFilename;
+      });
   StorageEngineMock::versionFilenameResult =
       (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
   ASSERT_TRUE(irs::file_utils::mkdir(
@@ -2943,9 +2948,10 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
   arangodb::tests::setDatabasePath(
       dbPathFeature);  // ensure test data is stored in a unique directory
   auto versionFilename = StorageEngineMock::versionFilenameResult;
-  auto versionFilenameRestore = irs::make_finally([&versionFilename]() -> void {
-    StorageEngineMock::versionFilenameResult = versionFilename;
-  });
+  auto versionFilenameRestore =
+      irs::make_finally([&versionFilename]() noexcept {
+        StorageEngineMock::versionFilenameResult = versionFilename;
+      });
   StorageEngineMock::versionFilenameResult =
       (irs::utf8_path(dbPathFeature.directory()) /= "version").string();
   ASSERT_TRUE(irs::file_utils::mkdir(

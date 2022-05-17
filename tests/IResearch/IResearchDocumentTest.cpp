@@ -2661,7 +2661,7 @@ TEST_F(IResearchDocumentTest, test_rid_encoding) {
             segment.column(arangodb::iresearch::DocumentPrimaryKey::PK());
         ASSERT_TRUE(column);
 
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, value);
@@ -2845,7 +2845,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
             segment.column(arangodb::iresearch::DocumentPrimaryKey::PK());
         ASSERT_TRUE(column);
 
-        auto values = column->iterator(false);
+        auto values = column->iterator(irs::ColumnHint::kNormal);
         ASSERT_NE(nullptr, values);
         auto* value = irs::get<irs::payload>(*values);
         ASSERT_NE(nullptr, value);
@@ -2912,7 +2912,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     auto beforeRecovery = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restoreRecovery = irs::make_finally([&beforeRecovery]() -> void {
+    auto restoreRecovery = irs::make_finally([&beforeRecovery]() noexcept {
       StorageEngineMock::recoveryStateResult = beforeRecovery;
     });
 
@@ -2955,7 +2955,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
               segment.column(arangodb::iresearch::DocumentPrimaryKey::PK());
           ASSERT_TRUE(column);
 
-          auto values = column->iterator(false);
+          auto values = column->iterator(irs::ColumnHint::kNormal);
           ASSERT_NE(nullptr, values);
           auto* value = irs::get<irs::payload>(*values);
           ASSERT_NE(nullptr, value);
@@ -3023,7 +3023,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
     auto beforeRecovery = StorageEngineMock::recoveryStateResult;
     StorageEngineMock::recoveryStateResult =
         arangodb::RecoveryState::IN_PROGRESS;
-    auto restoreRecovery = irs::make_finally([&beforeRecovery]() -> void {
+    auto restoreRecovery = irs::make_finally([&beforeRecovery]() noexcept {
       StorageEngineMock::recoveryStateResult = beforeRecovery;
     });
 
@@ -3066,7 +3066,7 @@ TEST_F(IResearchDocumentTest, test_rid_filter) {
               segment.column(arangodb::iresearch::DocumentPrimaryKey::PK());
           ASSERT_TRUE(column);
 
-          auto values = column->iterator(false);
+          auto values = column->iterator(irs::ColumnHint::kNormal);
           ASSERT_NE(nullptr, values);
           auto* value = irs::get<irs::payload>(*values);
           ASSERT_NE(nullptr, value);
@@ -3158,8 +3158,9 @@ TEST_F(IResearchDocumentTest, FieldIterator_dbServer_index_id_attr) {
   auto oldRole = arangodb::ServerState::instance()->getRole();
   arangodb::ServerState::instance()->setRole(
       arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
-  auto roleRestorer = irs::make_finally(
-      [oldRole]() { arangodb::ServerState::instance()->setRole(oldRole); });
+  auto roleRestorer = irs::make_finally([oldRole]() noexcept {
+    arangodb::ServerState::instance()->setRole(oldRole);
+  });
   auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
   auto sysVocbase = sysDatabase.use();
 

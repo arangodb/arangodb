@@ -75,6 +75,9 @@
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+using iterator =
+    irs::ptr_iterator<std::vector<irs::filter::ptr>::const_iterator>;
+
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 
@@ -1637,7 +1640,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   // Auxilary check lambdas. Need them to check root part of expected filterd
   // direct == check is not possible as we will have byExpresssion filters
   // generated on the fly
-  auto checkAny = [](irs::Or& actual, iresearch::boost_t boost) {
+  auto checkAny = [](irs::Or& actual, irs::score_t boost) {
     EXPECT_EQ(1, actual.size());
     auto& root = dynamic_cast<const irs::Or&>(*actual.begin());
     EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
@@ -1645,7 +1648,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     EXPECT_EQ(boost, root.boost());
     return root.begin();
   };
-  auto checkAll = [](irs::Or& actual, iresearch::boost_t boost) {
+  auto checkAll = [](irs::Or& actual, irs::score_t boost) {
     EXPECT_EQ(1, actual.size());
     auto& root = dynamic_cast<const irs::And&>(*actual.begin());
     EXPECT_EQ(irs::type<irs::And>::id(), root.type());
@@ -1653,7 +1656,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     EXPECT_EQ(boost, root.boost());
     return root.begin();
   };
-  auto checkNone = [](irs::Or& actual, iresearch::boost_t boost) {
+  auto checkNone = [](irs::Or& actual, irs::score_t boost) {
     EXPECT_EQ(1, actual.size());
     auto& notFilter = dynamic_cast<irs::Not&>(*actual.begin());
     auto& root = dynamic_cast<const irs::Or&>(*notFilter.filter());
@@ -1666,8 +1669,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   // nondeterministic value
   {
     std::vector<std::pair<
-        std::string, std::function<irs::boolean_filter::const_iterator(
-                         irs::Or&, iresearch::boost_t)>>> const testCases = {
+        std::string,
+        std::function<iterator(irs::Or&, irs::score_t)>>> const testCases = {
         {"FOR d IN collection FILTER [ '1', RAND(), '3' ] ANY IN d.a.b.c.e.f "
          "RETURN d ",
          checkAny},
@@ -1793,8 +1796,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   // self-referenced value
   {
     std::vector<std::pair<
-        std::string, std::function<irs::boolean_filter::const_iterator(
-                         irs::Or&, iresearch::boost_t)>>> const testCases = {
+        std::string,
+        std::function<iterator(irs::Or&, irs::score_t)>>> const testCases = {
         {"FOR d IN collection FILTER [ '1', d, '3' ] ANY IN d.a.b.c.e.f RETURN "
          "d",
          checkAny},
@@ -1929,27 +1932,27 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   // self-referenced value
   {
     std::vector<std::pair<
-        std::string, std::function<irs::boolean_filter::const_iterator(
-                         irs::Or&, iresearch::boost_t)>>> const testCases = {
-        {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] ANY IN "
-         "d.a.b.c.e.f RETURN d",
-         checkAny},
-        {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] ALL IN "
-         "d.a.b.c.e.f RETURN d",
-         checkAll},
-        {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] NONE IN "
-         "d.a.b.c.e.f RETURN d",
-         checkNone},
-        {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] ANY == "
-         "d.a.b.c.e.f RETURN d",
-         checkAny},
-        {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] ALL == "
-         "d.a.b.c.e.f RETURN d",
-         checkAll},
-        {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] NONE == "
-         "d.a.b.c.e.f RETURN d",
-         checkNone},
-    };
+        std::string, std::function<iterator(irs::Or&, irs::score_t)>>> const
+        testCases = {
+            {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] ANY IN "
+             "d.a.b.c.e.f RETURN d",
+             checkAny},
+            {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] ALL IN "
+             "d.a.b.c.e.f RETURN d",
+             checkAll},
+            {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] NONE IN "
+             "d.a.b.c.e.f RETURN d",
+             checkNone},
+            {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] ANY == "
+             "d.a.b.c.e.f RETURN d",
+             checkAny},
+            {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] ALL == "
+             "d.a.b.c.e.f RETURN d",
+             checkAll},
+            {"FOR d IN collection FILTER [ '1', d.e, d.a.b.c.e.f ] NONE == "
+             "d.a.b.c.e.f RETURN d",
+             checkNone},
+        };
     for (auto caseData : testCases) {
       const auto& queryString = caseData.first;
       SCOPED_TRACE(
@@ -2065,27 +2068,27 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   // self-referenced value
   {
     std::vector<std::pair<
-        std::string, std::function<irs::boolean_filter::const_iterator(
-                         irs::Or&, iresearch::boost_t)>>> const testCases = {
-        {"FOR d IN collection FILTER BOOST([ '1', 1+d.b, '3' ] ANY IN "
-         "d.a.b.c.e.f, 2.5) RETURN d",
-         checkAny},
-        {"FOR d IN collection FILTER BOOST([ '1', 1+d.b, '3' ] ALL IN "
-         "d.a.b.c.e.f, 2.5) RETURN d",
-         checkAll},
-        {"FOR d IN collection FILTER BOOST([ '1', 1+d.b, '3' ] NONE IN "
-         "d.a.b.c.e.f, 2.5) RETURN d",
-         checkNone},
-        {"FOR d IN collection FILTER BOOST([ '1', 1+d.b, '3' ] ANY == "
-         "d.a.b.c.e.f, 2.5) RETURN d",
-         checkAny},
-        {"FOR d IN collection FILTER BOOST([ '1', 1+d.b, '3' ] ALL == "
-         "d.a.b.c.e.f, 2.5) RETURN d",
-         checkAll},
-        {"FOR d IN collection FILTER BOOST([ '1', 1+d.b, '3' ] NONE == "
-         "d.a.b.c.e.f, 2.5) RETURN d",
-         checkNone},
-    };
+        std::string, std::function<iterator(irs::Or&, irs::score_t)>>> const
+        testCases = {
+            {"FOR d IN collection FILTER BOOST([ '1', 1+d.b, '3' ] ANY IN "
+             "d.a.b.c.e.f, 2.5) RETURN d",
+             checkAny},
+            {"FOR d IN collection FILTER BOOST([ '1', 1+d.b, '3' ] ALL IN "
+             "d.a.b.c.e.f, 2.5) RETURN d",
+             checkAll},
+            {"FOR d IN collection FILTER BOOST([ '1', 1+d.b, '3' ] NONE IN "
+             "d.a.b.c.e.f, 2.5) RETURN d",
+             checkNone},
+            {"FOR d IN collection FILTER BOOST([ '1', 1+d.b, '3' ] ANY == "
+             "d.a.b.c.e.f, 2.5) RETURN d",
+             checkAny},
+            {"FOR d IN collection FILTER BOOST([ '1', 1+d.b, '3' ] ALL == "
+             "d.a.b.c.e.f, 2.5) RETURN d",
+             checkAll},
+            {"FOR d IN collection FILTER BOOST([ '1', 1+d.b, '3' ] NONE == "
+             "d.a.b.c.e.f, 2.5) RETURN d",
+             checkNone},
+        };
     for (auto caseData : testCases) {
       const auto& queryString = caseData.first;
       SCOPED_TRACE(
@@ -3596,7 +3599,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   // Auxilary check lambdas. Need them to check root part of expected filterd
   // direct == check is not possible as we will have byExpresssion filters
   // generated on the fly
-  auto checkNotAny = [](irs::Or& actual, iresearch::boost_t boost) {
+  auto checkNotAny = [](irs::Or& actual, irs::score_t boost) {
     EXPECT_EQ(1, actual.size());
     auto& notFilter = dynamic_cast<irs::Not&>(*actual.begin());
     auto& root = dynamic_cast<const irs::And&>(*notFilter.filter());
@@ -3605,7 +3608,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     EXPECT_EQ(boost, root.boost());
     return root.begin();
   };
-  auto checkNotAll = [](irs::Or& actual, iresearch::boost_t boost) {
+  auto checkNotAll = [](irs::Or& actual, irs::score_t boost) {
     EXPECT_EQ(1, actual.size());
     auto& notFilter = dynamic_cast<irs::Not&>(*actual.begin());
     auto& root = dynamic_cast<const irs::Or&>(*notFilter.filter());
@@ -3614,7 +3617,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     EXPECT_EQ(boost, root.boost());
     return root.begin();
   };
-  auto checkNotNone = [](irs::Or& actual, iresearch::boost_t boost) {
+  auto checkNotNone = [](irs::Or& actual, irs::score_t boost) {
     EXPECT_EQ(1, actual.size());
     auto& root = dynamic_cast<const irs::And&>(*actual.begin());
     EXPECT_EQ(irs::type<irs::And>::id(), root.type());
@@ -3625,8 +3628,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   // nondeterministic value
   {
     std::vector<std::pair<
-        std::string, std::function<irs::boolean_filter::const_iterator(
-                         irs::Or&, iresearch::boost_t)>>> const testCases = {
+        std::string,
+        std::function<iterator(irs::Or&, irs::score_t)>>> const testCases = {
         {"FOR d IN collection FILTER [ '1', RAND(), '3' ] ANY NOT IN "
          "d.a.b.c.e.f RETURN d",
          checkNotAny},
@@ -3758,8 +3761,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   // self-referenced value
   {
     std::vector<std::pair<
-        std::string, std::function<irs::boolean_filter::const_iterator(
-                         irs::Or&, iresearch::boost_t)>>> const testCases = {
+        std::string,
+        std::function<iterator(irs::Or&, irs::score_t)>>> const testCases = {
         {"FOR d IN collection FILTER [ '1', d.a, '3' ] ANY NOT IN d.a.b.c.e.f "
          "RETURN d",
          checkNotAny},
@@ -3892,26 +3895,26 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   // self-referenced value, boost
   {
     std::vector<std::pair<
-        std::string, std::function<irs::boolean_filter::const_iterator(
-                         irs::Or&, iresearch::boost_t)>>> const testCases = {
-        {"FOR d IN collection FILTER boost([ '1', 1+d.a, '3'] ANY NOT IN "
-         "d.a.b.c.e.f, 1.5) RETURN d",
-         checkNotAny},
-        {"FOR d IN collection FILTER boost([ '1', 1+d.a, '3'] ALL NOT IN "
-         "d.a.b.c.e.f, 1.5) RETURN d",
-         checkNotAll},
-        {"FOR d IN collection FILTER boost([ '1', 1+d.a, '3'] NONE NOT IN "
-         "d.a.b.c.e.f, 1.5) RETURN d",
-         checkNotNone},
-        {"FOR d IN collection FILTER boost([ '1', 1+d.a, '3'] ANY NOT IN "
-         "d.a.b.c.e.f, 1.5) RETURN d",
-         checkNotAny},
-        {"FOR d IN collection FILTER boost([ '1', 1+d.a, '3'] ALL NOT IN "
-         "d.a.b.c.e.f, 1.5) RETURN d",
-         checkNotAll},
-        {"FOR d IN collection FILTER boost([ '1', 1+d.a, '3'] NONE NOT IN "
-         "d.a.b.c.e.f, 1.5) RETURN d",
-         checkNotNone}};
+        std::string, std::function<iterator(irs::Or&, irs::score_t)>>> const
+        testCases = {
+            {"FOR d IN collection FILTER boost([ '1', 1+d.a, '3'] ANY NOT IN "
+             "d.a.b.c.e.f, 1.5) RETURN d",
+             checkNotAny},
+            {"FOR d IN collection FILTER boost([ '1', 1+d.a, '3'] ALL NOT IN "
+             "d.a.b.c.e.f, 1.5) RETURN d",
+             checkNotAll},
+            {"FOR d IN collection FILTER boost([ '1', 1+d.a, '3'] NONE NOT IN "
+             "d.a.b.c.e.f, 1.5) RETURN d",
+             checkNotNone},
+            {"FOR d IN collection FILTER boost([ '1', 1+d.a, '3'] ANY NOT IN "
+             "d.a.b.c.e.f, 1.5) RETURN d",
+             checkNotAny},
+            {"FOR d IN collection FILTER boost([ '1', 1+d.a, '3'] ALL NOT IN "
+             "d.a.b.c.e.f, 1.5) RETURN d",
+             checkNotAll},
+            {"FOR d IN collection FILTER boost([ '1', 1+d.a, '3'] NONE NOT IN "
+             "d.a.b.c.e.f, 1.5) RETURN d",
+             checkNotNone}};
 
     for (auto testData : testCases) {
       auto const& queryString = testData.first;
