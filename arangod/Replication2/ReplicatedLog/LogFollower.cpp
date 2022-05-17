@@ -170,7 +170,11 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
   // Setting it to false does not require the mutex.
   _appendEntriesInFlight = true;
   auto inFlightScopeGuard =
-      ScopeGuard([&flag = _appendEntriesInFlight]() noexcept { flag = false; });
+      ScopeGuard([&flag = _appendEntriesInFlight,
+                  &cv = _appendEntriesInFlightCondVar]() noexcept {
+        flag = false;
+        cv.notify_one();
+      });
 
   {
     // Transactional Code Block
@@ -208,6 +212,7 @@ auto replicated_log::LogFollower::appendEntries(AppendEntriesRequest req)
     auto result = AppendEntriesResult::withOk(dataGuard->_follower._currentTerm,
                                               req.messageId);
     dataGuard.unlock();  // unlock here, action must be executed after
+    inFlightScopeGuard.fire();
     action.fire();
     static_assert(std::is_nothrow_move_constructible_v<AppendEntriesResult>);
     return {std::move(result)};
@@ -352,7 +357,7 @@ auto replicated_log::LogFollower::GuardedFollowerData::checkCommitIndex(
         << newLITK << ".";
     _lowestIndexToKeep = newLITK;
     // TODO do we want to call checkCompaction here?
-    std::ignore = checkCompaction();
+    // std::ignore = checkCompaction();
   }
 
   if (_commitIndex < newCommitIndex && !_inMemoryLog.empty()) {
@@ -598,17 +603,19 @@ replicated_log::LogFollower::~LogFollower() {
 }
 
 auto LogFollower::release(LogIndex doneWithIdx) -> Result {
-  return _guardedFollowerData.doUnderLock(
-      [&](GuardedFollowerData& self) -> Result {
-        TRI_ASSERT(doneWithIdx <= self._inMemoryLog.getLastIndex());
-        if (doneWithIdx <= self._releaseIndex) {
-          return {};
-        }
-        self._releaseIndex = doneWithIdx;
-        LOG_CTX("a0c95", TRACE, _loggerContext)
-            << "new release index set to " << self._releaseIndex;
-        return self.checkCompaction();
-      });
+  auto guard = _guardedFollowerData.getLockedGuard();
+
+  guard.wait(_appendEntriesInFlightCondVar,
+             [&] { return !_appendEntriesInFlight; });
+
+  TRI_ASSERT(doneWithIdx <= guard->_inMemoryLog.getLastIndex());
+  if (doneWithIdx <= guard->_releaseIndex) {
+    return {};
+  }
+  guard->_releaseIndex = doneWithIdx;
+  LOG_CTX("a0c95", TRACE, _loggerContext)
+      << "new release index set to " << guard->_releaseIndex;
+  return guard->checkCompaction();
 }
 
 auto LogFollower::waitForLeaderAcked() -> WaitForFuture {
@@ -625,8 +632,12 @@ auto LogFollower::getCommitIndex() const noexcept -> LogIndex {
 }
 
 auto LogFollower::waitForResign() -> futures::Future<futures::Unit> {
-  return _guardedFollowerData.getLockedGuard()
-      ->_waitForResignQueue.addWaitFor();
+  auto&& [future, action] =
+      _guardedFollowerData.getLockedGuard()->waitForResign();
+
+  action.fire();
+
+  return std::move(future);
 }
 
 auto LogFollower::construct(LoggerContext const& loggerContext,
@@ -669,6 +680,7 @@ auto replicated_log::LogFollower::GuardedFollowerData::getLocalStatistics()
   result.commitIndex = _commitIndex;
   result.firstIndex = _inMemoryLog.getFirstIndex();
   result.spearHead = _inMemoryLog.getLastTermIndexPair();
+  result.releaseIndex = _releaseIndex;
   return result;
 }
 
@@ -692,4 +704,23 @@ auto LogFollower::GuardedFollowerData::checkCompaction() -> Result {
   LOG_CTX("f1028", TRACE, _follower._loggerContext)
       << "compaction result = " << res.errorMessage();
   return res;
+}
+auto LogFollower::GuardedFollowerData::waitForResign()
+    -> std::pair<futures::Future<futures::Unit>, DeferredAction> {
+  if (!didResign()) {
+    auto future = _waitForResignQueue.addWaitFor();
+    return {std::move(future), DeferredAction{}};
+  } else {
+    TRI_ASSERT(_waitForResignQueue.empty());
+    auto promise = futures::Promise<futures::Unit>{};
+    auto future = promise.getFuture();
+
+    auto action =
+        DeferredAction([promise = std::move(promise)]() mutable noexcept {
+          TRI_ASSERT(promise.valid());
+          promise.setValue();
+        });
+
+    return {std::move(future), std::move(action)};
+  }
 }
