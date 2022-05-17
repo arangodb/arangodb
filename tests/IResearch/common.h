@@ -155,7 +155,7 @@ inline arangodb::aql::AstNode* wrappedExpressionExtractor(
 
 void assertExpressionFilter(
     TRI_vocbase_t& vocbase, std::string const& queryString,
-    irs::boost_t boost = irs::no_boost(),
+    irs::score_t boost = irs::kNoBoost,
     std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const&
         expressionExtractor = &defaultExpressionExtractor,
     std::string const& refName = "d");
