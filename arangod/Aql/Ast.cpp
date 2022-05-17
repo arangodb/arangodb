@@ -1098,6 +1098,33 @@ AstNode* Ast::createNodeArrayLimit(AstNode const* offset,
   return node;
 }
 
+/// @brief create an AST boolean expansion node, with or without a filter
+AstNode* Ast::createNodeBooleanExpansion(int64_t levels,
+                                         AstNode const* iterator,
+                                         AstNode const* expanded,
+                                         AstNode const* filter) {
+  AstNode* node = createNode(NODE_TYPE_EXPANSION);
+  node->reserve(5);
+  node->setFlag(FLAG_BOOLEAN_EXPANSION);
+  node->setIntValue(levels);
+
+  node->addMember(iterator);
+  node->addMember(expanded);
+
+  if (filter == nullptr) {
+    node->addMember(createNodeNop());
+  } else {
+    node->addMember(filter);
+  }
+
+  node->addMember(createNodeNop());
+  node->addMember(createNodeNop());
+
+  TRI_ASSERT(node->numMembers() == 5);
+
+  return node;
+}
+
 /// @brief create an AST expansion node, with or without a filter
 AstNode* Ast::createNodeExpansion(int64_t levels, AstNode const* iterator,
                                   AstNode const* expanded,
@@ -1106,6 +1133,7 @@ AstNode* Ast::createNodeExpansion(int64_t levels, AstNode const* iterator,
   AstNode* node = createNode(NODE_TYPE_EXPANSION);
   node->reserve(5);
   node->setIntValue(levels);
+  TRI_ASSERT(!node->hasFlag(FLAG_BOOLEAN_EXPANSION));
 
   node->addMember(iterator);
   node->addMember(expanded);

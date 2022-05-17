@@ -505,6 +505,10 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
     }
     case NODE_TYPE_EXPANSION: {
       setIntValue(slice.get("levels").getNumericValue<int64_t>());
+      VPackSlice b = slice.get("booleanize");
+      if (b.isBoolean() && b.getBoolean()) {
+        setFlag(FLAG_BOOLEAN_EXPANSION);
+      }
       break;
     }
     case NODE_TYPE_OPERATOR_BINARY_IN:
@@ -1070,6 +1074,7 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
 
   if (type == NODE_TYPE_EXPANSION) {
     builder.add("levels", VPackValue(getIntValue(true)));
+    builder.add("booleanize", VPackValue(hasFlag(FLAG_BOOLEAN_EXPANSION)));
   }
 
   // dump sub-nodes
