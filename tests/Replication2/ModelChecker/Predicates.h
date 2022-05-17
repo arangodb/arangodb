@@ -258,6 +258,7 @@ struct FileLineType {
     return std::string{filename};
   }
 };
+
 #define MC_HERE                                                \
   ([] {                                                        \
     static constexpr char data[sizeof(__FILE__)] = __FILE__;   \

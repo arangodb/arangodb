@@ -27,6 +27,7 @@
 #include "Random/RandomGenerator.h"
 
 #include <chrono>
+#include <cstdint>
 #include <deque>
 #include <iostream>
 #include <memory>
@@ -293,7 +294,6 @@ struct DFSEnumerator {
                                   buildPathVector());
             return result;
           }
-          v->outgoing.emplace_back(std::move(transition), step);
           if (step->isActive()) {
             v->searchIndex = v->outgoing.size();
             auto cycle = decltype(path)();
@@ -309,6 +309,7 @@ struct DFSEnumerator {
             result.failed->cycle.emplace(buildPathVector());
             return result;
           }
+          v->outgoing.emplace_back(std::move(transition), step);
         }
       } else if (v->outgoing.size() == v->searchIndex) {
         v->searchIndex += 1;  // make this vertex complete
@@ -441,7 +442,9 @@ struct RandomEnumerator {
 
   struct Result {
     std::optional<ObserverError> failed;
-    std::optional<unsigned long> seed;
+    std::optional<std::uint_fast32_t> seed;
+    static_assert(std::is_same_v<std::mt19937::result_type,
+                                 typename decltype(seed)::value_type>);
   };
 
   template<typename Driver>
@@ -506,7 +509,6 @@ struct RandomEnumerator {
                                   buildPathVector());
             return result;
           }
-          v->outgoing.emplace_back(std::move(transition), step);
           if (step->isActive()) {
             v->searchIndex = v->outgoing.size() - 1;
             auto cycle = decltype(path)();
@@ -522,6 +524,7 @@ struct RandomEnumerator {
             result.failed->cycle.emplace(buildPathVector());
             return result;
           }
+          v->outgoing.emplace_back(std::move(transition), step);
         }
       } else if (v->outgoing.empty() || v->searchIndex.has_value()) {
         path.pop_back();
@@ -556,8 +559,11 @@ struct RandomEnumerator {
     // didn't want to touch RandomGenerator/RandomDevice for now.
 
     auto gen = std::mt19937(randomParameters.seed);
-    auto const numThreads =
-        std::min(NumberOfCores::getValue(), randomParameters.iterations);
+    // `std::size_t` and `std::uint64_t` are different on some systems. Make use
+    // of integral promotion to get the larger of the two.
+    auto const numThreads = std::min<decltype(NumberOfCores::getValue() +
+                                              randomParameters.iterations)>(
+        NumberOfCores::getValue(), randomParameters.iterations);
     auto threads = std::vector<std::thread>();
     threads.reserve(numThreads);
     auto results = std::vector<std::optional<Result>>(numThreads, std::nullopt);

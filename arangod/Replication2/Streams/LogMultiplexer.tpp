@@ -416,9 +416,10 @@ struct LogMultiplexerImplementation
     // circumvented by first inserting the entry but
     // not triggering replication immediately. We
     // trigger it here instead.
+    // Note that the MSVC STL has a #define interface... macro.
     return std::make_pair(index,
-                          DeferredAction([interface = _interface]() noexcept {
-                            interface->triggerAsyncReplication();
+                          DeferredAction([interface_ = _interface]() noexcept {
+                            interface_->triggerAsyncReplication();
                           }));
   }
 
