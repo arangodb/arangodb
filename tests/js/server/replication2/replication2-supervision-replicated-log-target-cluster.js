@@ -681,7 +681,7 @@ const replicatedLogSuite = function () {
       );
 
       // the new leader is excluded
-      const errorCode = 1; // TARGET_LEADER_EXCLUDED
+      const errorCode = "TargetLeaderExcluded";
       waitFor(replicatedLogSupervisionError(database, logId, errorCode));
 
       // now remove the excluded flag
@@ -720,7 +720,7 @@ const replicatedLogSuite = function () {
       setReplicatedLogLeaderTarget(database, logId, otherServer);
       // The supervision should complain about the server not being a leader
 
-      const errorCode = 0; // TARGET_LEADER_INVALID
+      const errorCode = "TargetLeaderInvalid";
       waitFor(replicatedLogSupervisionError(database, logId, errorCode));
 
       // nothing should have happend
@@ -739,7 +739,7 @@ const replicatedLogSuite = function () {
       setReplicatedLogLeaderTarget(database, logId, otherServer);
       // The supervision should complain about the server not being a leader
 
-      const errorCode = 0; // TARGET_LEADER_INVALID
+      const errorCode = "TargetLeaderInvalid";
       waitFor(replicatedLogSupervisionError(database, logId, errorCode));
       //
       // nothing should have happend
@@ -755,7 +755,7 @@ const replicatedLogSuite = function () {
       // now change the leader
       const otherServers = _.difference(dbservers, servers);
       const targetVersion = 1;
-      Success;
+
       {
         let { target } = readReplicatedLogAgency(database, logId);
         // delete old leader from target

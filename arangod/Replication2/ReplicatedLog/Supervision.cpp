@@ -95,7 +95,12 @@ auto isLeaderFailed(LogPlanTermSpecification::Leader const& leader,
 // not even a way to elect a new one we want to replace the leader
 // with a new one (gracefully); this is as opposed to just
 // rip out the old leader and waiting for failover to occur
-
+//
+// TODO: should this have some kind of preference?
+//       consider the case where all participants are replaced; ideally
+//       leadership should be handed to a participant that is in target
+//       Yet, is there a case where it is necessary to hand leadership to
+//       an otherwise healthy participant that is not in target anymore?
 auto getParticipantsAcceptableAsLeaders(
     ParticipantId const& currentLeader,
     ParticipantsFlagsMap const& participants) -> std::vector<ParticipantId> {
@@ -729,6 +734,14 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
   // In the next round this will lead to a leadership election.
   checkLeaderHealthy(ctx, log, health);
 
+  // Check whether a participant was added in Target that is not in Plan.
+  // If so, add it to Plan.
+  //
+  // This has to happen before checkLeaderRemovedFromTargetParticipants,
+  // because we don't want to make anyone leader who is not in participants
+  // anymore
+  checkParticipantToAdd(ctx, log, health);
+
   // If the participant who is leader has been removed from target,
   // gracefully remove it by selecting a different eligible participant
   // as leader
@@ -746,10 +759,6 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
   // This operation can fail and
   // TODO: Report if leaderInTarget fails.
   checkLeaderSetInTarget(ctx, log, health);
-
-  // Check whether a participant was added in Target that is not in Plan.
-  // If so, add it to Plan.
-  checkParticipantToAdd(ctx, log, health);
 
   // If a participant is in Plan but not in Target, gracefully
   // remove it
