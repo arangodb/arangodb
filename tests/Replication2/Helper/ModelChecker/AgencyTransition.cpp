@@ -20,6 +20,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <fmt/ostream.h>
 #include <fmt/core.h>
 
 #include "Replication2/Helper/AgencyLogBuilder.h"

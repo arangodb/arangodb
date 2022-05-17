@@ -377,6 +377,8 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
                          .leadershipEstablished = true,
                          .commitStatus = std::nullopt};
 
+  current.supervision.emplace(LogCurrentSupervision{});
+
   auto const& log = Log{.target = target, .plan = plan, .current = current};
 
   auto const& health = ParticipantsHealth{
@@ -451,6 +453,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
                          .committedParticipantsConfig = participantsConfigOld,
                          .leadershipEstablished = true,
                          .commitStatus = std::nullopt};
+  current.supervision.emplace(LogCurrentSupervision{});
 
   auto const& log = Log{.target = target, .plan = plan, .current = current};
 
@@ -511,6 +514,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
                          .committedParticipantsConfig = participantsConfig,
                          .leadershipEstablished = true,
                          .commitStatus = std::nullopt};
+  current.supervision.emplace(LogCurrentSupervision{});
 
   auto const& log = Log{.target = target, .plan = plan, .current = current};
 
@@ -590,6 +594,7 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
                                  TermIndexPair(LogTerm(3), LogIndex(44)))},
       {"D", LogCurrentLocalState(LogTerm(2),
                                  TermIndexPair(LogTerm(1), LogIndex(44)))}};
+  current.supervision.emplace(LogCurrentSupervision{});
 
   auto const& log = Log{.target = target, .plan = plan, .current = current};
 

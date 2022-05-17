@@ -31,6 +31,7 @@
 #include <velocypack/Iterator.h>
 
 #include "LogStatus.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
@@ -365,10 +366,13 @@ void GlobalStatus::SupervisionStatus::toVelocyPack(
 auto GlobalStatus::SupervisionStatus::fromVelocyPack(
     arangodb::velocypack::Slice s) -> GlobalStatus::SupervisionStatus {
   auto connection = Connection::fromVelocyPack(s.get("connection"));
-  auto response = std::optional<agency::LogCurrentSupervision>{};
-  if (auto rs = s.get("response"); !rs.isNone()) {
-    response = agency::LogCurrentSupervision::fromVelocyPack(rs);
-  }
+  auto const response =
+      std::invoke([&s]() -> std::optional<agency::LogCurrentSupervision> {
+        if (auto rs = s.get("response"); !rs.isNone()) {
+          return agency::LogCurrentSupervision::fromVelocyPack(rs);
+        }
+        return std::nullopt;
+      });
   return SupervisionStatus{.connection = std::move(connection),
                            .response = std::move(response)};
 }

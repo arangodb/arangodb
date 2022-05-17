@@ -22,6 +22,9 @@
 
 #include <gtest/gtest.h>
 
+#include <fmt/ostream.h>
+#include <fmt/core.h>
+
 #include "Replication2/Helper/AgencyLogBuilder.h"
 #include "Replication2/Helper/AgencyStateBuilder.h"
 #include "Replication2/ModelChecker/ActorModel.h"
@@ -38,7 +41,6 @@
 #include "Replication2/Helper/ModelChecker/Predicates.h"
 
 #include <utility>
-#include <fmt/core.h>
 
 using namespace arangodb;
 using namespace arangodb::test;
