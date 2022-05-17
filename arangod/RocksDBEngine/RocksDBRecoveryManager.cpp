@@ -583,26 +583,31 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
 
     rocksdb::SequenceNumber earliest =
         engine.settingsManager()->earliestSeqNeeded();
-    auto minTick = std::min(earliest, engine.releasedTick());
+    auto recoveryStartSequence = std::min(earliest, engine.releasedTick());
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+    engine.recoveryStartSequence(recoveryStartSequence);
+#endif
 
     if (engine.dbExisted()) {
       LOG_TOPIC("fe333", INFO, Logger::ENGINES)
           << "RocksDB recovery starting, scanning WAL starting from sequence "
              "number "
-          << minTick
+          << recoveryStartSequence
           << ", latest sequence number: " << _db->GetLatestSequenceNumber();
     }
 
     TRI_ASSERT(_tick == 0);
     // Tell the WriteBatch reader the transaction markers to look for
-    WBReader handler(server, minTick, _tick);
+    WBReader handler(server, recoveryStartSequence, _tick);
 
     // prevent purging of WAL files while we are in here
     RocksDBFilePurgePreventer purgePreventer(engine.disallowPurging());
 
     std::unique_ptr<rocksdb::TransactionLogIterator> iterator;
     rocksdb::Status s = _db->GetUpdatesSince(
-        minTick, &iterator, rocksdb::TransactionLogIterator::ReadOptions(true));
+        recoveryStartSequence, &iterator,
+        rocksdb::TransactionLogIterator::ReadOptions(true));
 
     rv = rocksutils::convertStatus(s);
 

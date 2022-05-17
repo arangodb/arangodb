@@ -1158,7 +1158,7 @@ function ahuacatlQueryCacheViewTestSuite () {
       assertEqual([ 1, 2, 3, 4, 5 ], result.json);
 
       try {
-        internal.debugSetFailAt("FlushThreadDisableAll");
+        internal.debugSetFailAt("RocksDBBackgroundThread::run");
         internal.sleep(5); // give FlushThread some time
 
         // explicitly without waitForSync here
