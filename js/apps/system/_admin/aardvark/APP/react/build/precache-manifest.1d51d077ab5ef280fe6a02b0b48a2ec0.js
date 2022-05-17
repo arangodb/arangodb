@@ -40,12 +40,12 @@ self.__precacheManifest = [
     "url": "static/media/OpenSansLight.11bbcff6.woff"
   },
   {
-    "revision": "2af7a71056d6f2fe2cb2e35c358b59de",
-    "url": "static/media/OpenSansBold.2af7a710.woff"
-  },
-  {
     "revision": "f71094988de2d6567eb9caba78f61041",
     "url": "static/media/OpenSans.f7109498.woff"
+  },
+  {
+    "revision": "2af7a71056d6f2fe2cb2e35c358b59de",
+    "url": "static/media/OpenSansBold.2af7a710.woff"
   },
   {
     "revision": "403dee4359ca42b1d096976fda3ef95c",
@@ -72,10 +72,6 @@ self.__precacheManifest = [
     "url": "static/media/fontawesome-webfont.c8ddf1e5.woff"
   },
   {
-    "revision": "1dc35d25e61d819a9c357074014867ab",
-    "url": "static/media/fontawesome-webfont.1dc35d25.ttf"
-  },
-  {
     "revision": "c3547b2ec6f5eb324b44d8a0c6b2dd31",
     "url": "static/media/Roboto-300.c3547b2e.eot"
   },
@@ -88,16 +84,28 @@ self.__precacheManifest = [
     "url": "static/media/Roboto-300.7e2d32e7.woff"
   },
   {
-    "revision": "d7c639084f684d66a1bc66855d193ed8",
-    "url": "static/media/fontawesome-webfont.d7c63908.svg"
+    "revision": "1dc35d25e61d819a9c357074014867ab",
+    "url": "static/media/fontawesome-webfont.1dc35d25.ttf"
+  },
+  {
+    "revision": "634f53eb79efa455a9e9d85d608b3447",
+    "url": "static/media/Roboto-300.634f53eb.ttf"
+  },
+  {
+    "revision": "1edaa6e50c2302bf0221d252e1caebb4",
+    "url": "static/media/Roboto-300.1edaa6e5.svg"
   },
   {
     "revision": "9f916e330c478bbfa2a0dd6614042046",
     "url": "static/media/Roboto-regular.9f916e33.eot"
   },
   {
-    "revision": "634f53eb79efa455a9e9d85d608b3447",
-    "url": "static/media/Roboto-300.634f53eb.ttf"
+    "revision": "f84cb1bf9be983133497000554605b4d",
+    "url": "static/media/Roboto-regular.f84cb1bf.woff2"
+  },
+  {
+    "revision": "d7c639084f684d66a1bc66855d193ed8",
+    "url": "static/media/fontawesome-webfont.d7c63908.svg"
   },
   {
     "revision": "f94d5e5102359961c44a1da1b58d37c9",
@@ -106,14 +114,6 @@ self.__precacheManifest = [
   {
     "revision": "38861cba61c66739c1452c3a71e39852",
     "url": "static/media/Roboto-regular.38861cba.ttf"
-  },
-  {
-    "revision": "1edaa6e50c2302bf0221d252e1caebb4",
-    "url": "static/media/Roboto-300.1edaa6e5.svg"
-  },
-  {
-    "revision": "f84cb1bf9be983133497000554605b4d",
-    "url": "static/media/Roboto-regular.f84cb1bf.woff2"
   },
   {
     "revision": "3d3a53586bd78d1069ae4b89a3b9aa98",
@@ -132,16 +132,16 @@ self.__precacheManifest = [
     "url": "static/media/Roboto-500.0f3b7101.woff"
   },
   {
-    "revision": "128879da78c6c8eb4e2c07fa3732cea7",
-    "url": "static/media/Roboto-700.128879da.eot"
-  },
-  {
     "revision": "88f29ea5a372d06f521395134f62ab91",
     "url": "static/media/Roboto-500.88f29ea5.ttf"
   },
   {
     "revision": "f1d811cdfaea49c969500d4bbe52251b",
     "url": "static/media/Roboto-500.f1d811cd.svg"
+  },
+  {
+    "revision": "128879da78c6c8eb4e2c07fa3732cea7",
+    "url": "static/media/Roboto-700.128879da.eot"
   },
   {
     "revision": "3b38c16e4b39e5fd4017cd5055b0d505",

@@ -1,4 +1,4 @@
-v3.7.18 (XXXX-XX-XX)
+v3.7.18 (2022-05-17)
 --------------------
 
 * Fixed Github issue #16279: assertion failure/crash in AQL query optimizer when
