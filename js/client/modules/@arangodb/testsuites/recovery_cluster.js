@@ -35,6 +35,8 @@ const fs = require('fs');
 const internal = require('internal');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const im = require('@arangodb/testutils/instance-manager');
+const inst = require('@arangodb/testutils/instance');
 const _ = require('lodash');
 
 const toArgv = require('internal').toArgv;
@@ -110,7 +112,7 @@ function runArangodRecovery (params) {
     params.options.disableMonitor = true;
     params.options =  ensureServers(params.options);
     let args = {};
-    args['temp.path'] = params.instanceInfo.rootDir;
+    args['temp.path'] = params.instanceManager.rootDir;
     
     // enable development debugging if extremeVerbosity is set
     if (params.options.extremeVerbosity === true) {
@@ -152,37 +154,52 @@ function runArangodRecovery (params) {
 
   if (params.setup) {
     params.args = Object.assign(params.args, additionalParams);
-    params.instanceInfo = pu.startInstance(params.options.protocol,
+    params.instanceManager = pu.startInstance(params.options.protocol,
                                            params.options,
                                            params.args,
                                            fs.join('recovery_cluster', params.count.toString()));
+    params.instanceManager.prepareInstance();
+    params.instanceManager.launchTcpDump("");
+    if (!params.instanceManager.launchInstance()) {
+      return {
+        export: {
+          status: false,
+          message: 'failed to start server!'
+        }
+      };
+    }
   } else {
     print(BLUE + "Restarting cluster " + RESET);
-    pu.reStartInstance(params.options, params.instanceInfo, {});
+    params.instanceManager.restartInstance();
     let tryCount = 10;
-    while(tryCount > 0 && !pu.checkServersGOOD(params.instanceInfo)) {
+    while(tryCount > 0 && !params.instanceManager.checkServersGOOD()) {
       print(RESET + "Waiting for all servers to go GOOD");
       internal.sleep(3); // give agency time to bootstrap DBServers
       --tryCount;
     }
   }
+  params.instanceManager.reconnect();
   let agentArgs = pu.makeArgs.arangosh(params.options);
   agentArgs['server.endpoint'] = params.instanceManager.findEndpoint();
   if (params.args['log.level']) {
     agentArgs['log.level'] = params.args['log.level'];
   }
-  agentArgs['temp.path'] = params.instanceInfo.rootDir;
+  agentArgs['temp.path'] = params.instanceManager.rootDir;
   Object.assign(agentArgs, additionalTestParams);
-  require('internal').env.INSTANCEINFO = JSON.stringify(params.instanceInfo);
+  require('internal').env.INSTANCEINFO = JSON.stringify(params.instanceManager.getStructure());
   try {
-    pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(agentArgs), params.options, 'arangosh', params.instanceInfo.rootDir, false);
+    pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(agentArgs), params.options, 'arangosh', params.instanceManager.rootDir, false);
   } catch(err) {
     print('Error while launching test:' + err);
-    pu.shutdownInstance(params.instanceInfo, params.options, false);
+    params.instanceManager.shutdownInstance(false);
     return; // without test server test will for sure fail
   }
   if (params.setup) {
-    let dbServers = params.instanceInfo.arangods.slice().filter((a) => {return a.role === 'dbserver' || a.role === 'coordinator';});
+    let dbServers = params.instanceManager.arangods.slice().filter(
+      (a) => {
+        return a.isRole(inst.instanceRole.dbServer) ||
+          a.isRole(inst.instanceRole.coordinator);
+      });
     print(BLUE + "killing " + dbServers.length + " DBServers/Coordinators " + RESET);
     dbServers.forEach((arangod) => {
       internal.debugTerminateInstance(arangod.endpoint);
@@ -191,7 +208,7 @@ function runArangodRecovery (params) {
       arangod.pid = 0;
     });
   } else {
-    pu.shutdownInstance(params.instanceInfo, params.options, false);
+    params.instanceManager.shutdownInstance(false);
   }
 }
 
