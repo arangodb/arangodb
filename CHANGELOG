@@ -7,6 +7,10 @@ devel
   parameters `numThreads` and `threadBatchSize` on index creation. Default:
   2 threads, 5000 batch size. 
 
+* No good reason to fatal error in agency state, when local database entries
+  lack local timestamp (legacy). In that situation, we will record epoch begin
+  as local time.
+
 * Put hotbackup requests on the HIGH priority queue to make hotbackups work
   under high load (BTS-865).
 
