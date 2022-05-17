@@ -247,29 +247,26 @@ combined(Os...) -> combined<Os...>;
 // for now.
 
 template<std::size_t Line>
-struct FileLine {
+struct FileLineType {
   static inline constexpr std::size_t line = Line;
   static auto annotate(std::string_view message) -> std::string {
     return std::to_string(line) + std::string{message};
   }
 };
 
-#define MC_HERE ([] { return ::FileLine<__LINE__>{}; }())
+#define MC_HERE ([] { return ::FileLineType<__LINE__>{}; }())
 #else
-template<typename>
-struct StringWrapper;
-template<std::size_t... Idxs>
-struct StringWrapper<std::index_sequence<Idxs...>> {
-  constexpr StringWrapper(const char* filename) : buffer{filename[Idxs]...} {}
-
-  const char buffer[sizeof...(Idxs)];
+template<const char File[], std::size_t FileLen, typename>
+struct StringBuffer;
+template<const char File[], std::size_t FileLen, std::size_t... Idxs>
+struct StringBuffer<File, FileLen, std::index_sequence<Idxs...>> {
+  static inline constexpr char buffer[FileLen] = {File[Idxs]...};
 };
 
-template<std::size_t FilenameLen,
-         StringWrapper<std::make_index_sequence<FilenameLen>> Filename,
-         std::size_t Line>
-struct FileLine {
-  static inline constexpr auto filename = Filename.buffer;
+template<const char File[], std::size_t FileLen, std::size_t Line>
+struct FileLineType {
+  static inline constexpr auto filename =
+      StringBuffer<File, FileLen, std::make_index_sequence<FileLen>>::buffer;
   static inline constexpr std::size_t line = Line;
 
   static auto annotate(std::string_view message) -> std::string {
@@ -277,12 +274,10 @@ struct FileLine {
   }
 };
 
-#define MC_HERE                                                              \
-  ([] {                                                                      \
-    return ::FileLine<                                                       \
-        sizeof(__FILE__),                                                    \
-        StringWrapper<std::make_index_sequence<sizeof(__FILE__)>>(__FILE__), \
-        __LINE__>{};                                                         \
+#define MC_HERE                                                \
+  ([] {                                                        \
+    static constexpr char data[sizeof(__FILE__)] = __FILE__;   \
+    return ::FileLineType<data, sizeof(__FILE__), __LINE__>{}; \
   }())
 #endif
 
