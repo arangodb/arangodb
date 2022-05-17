@@ -180,7 +180,7 @@ struct AsyncAgencyCommTest
     : public ::testing::Test,
       public arangodb::tests::LogSuppressor<arangodb::Logger::THREADS,
                                             arangodb::LogLevel::FATAL> {
-  AsyncAgencyCommTest() : server(false) {
+  AsyncAgencyCommTest() : server("CRDN_0001", false) {
     server.addFeature<SchedulerFeature>(true);
     server.startFeatures();
   }

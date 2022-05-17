@@ -23,8 +23,6 @@
 
 #include "gtest/gtest.h"
 
-#include "fakeit.hpp"
-
 #include "Aql/AqlValue.h"
 #include "Aql/Query.h"
 #include "Aql/QueryWarnings.h"

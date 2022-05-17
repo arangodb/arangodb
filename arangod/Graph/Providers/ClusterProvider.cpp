@@ -515,6 +515,33 @@ auto ClusterProvider<StepImpl>::addEdgeToBuilder(
 }
 
 template<class StepImpl>
+auto ClusterProvider<StepImpl>::addEdgeIDToBuilder(
+    typename Step::Edge const& edge, arangodb::velocypack::Builder& builder)
+    -> void {
+  builder.add(VPackValue(edge.getID().begin()));
+}
+
+template<class StepImpl>
+void ClusterProvider<StepImpl>::addEdgeToLookupMap(
+    typename Step::Edge const& edge, arangodb::velocypack::Builder& builder) {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add(VPackValue(edge.getID().begin()));
+  builder.add(_opts.getCache()->getCachedEdge(edge.getID()));
+}
+
+template<class StepImpl>
+auto ClusterProvider<StepImpl>::getEdgeId(typename Step::Edge const& edge)
+    -> std::string {
+  return edge.getID().toString();
+}
+
+template<class StepImpl>
+auto ClusterProvider<StepImpl>::getEdgeIdRef(typename Step::Edge const& edge)
+    -> EdgeType {
+  return edge.getID();
+}
+
+template<class StepImpl>
 auto ClusterProvider<StepImpl>::readEdge(EdgeType const& edgeID) -> VPackSlice {
   return _opts.getCache()->getCachedEdge(edgeID);
 }
@@ -545,6 +572,12 @@ void ClusterProvider<StepImpl>::prepareContext(aql::InputAqlItemRow input) {
 template<class StepImpl>
 void ClusterProvider<StepImpl>::unPrepareContext() {
   _opts.unPrepareContext();
+}
+
+template<class StepImpl>
+bool ClusterProvider<StepImpl>::hasDepthSpecificLookup(
+    uint64_t depth) const noexcept {
+  return _opts.hasDepthSpecificLookup(depth);
 }
 
 template class graph::ClusterProvider<ClusterProviderStep>;

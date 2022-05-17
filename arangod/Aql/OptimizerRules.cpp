@@ -3564,6 +3564,8 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
   std::vector<size_t> starts;
   std::vector<ExecutionNode*> nn;
 
+  VarSet inputVars;
+
   // We use that the order of the nodes is such that a node B that is among the
   // recursive dependencies of a node A is later in the vector.
   for (auto const& n : nodes) {
@@ -3571,6 +3573,8 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
       nn.clear();
       nn.emplace_back(n);
       nodesSet.erase(n);
+
+      inputVars.clear();
 
       // Now follow the dependencies as long as we see further such nodes:
       auto nwalker = n;
@@ -3582,6 +3586,9 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
 
         auto dep = nwalker->getFirstDependency();
 
+        // track variables that we rely on
+        nwalker->getVariablesUsedHere(inputVars);
+
         if (dep->getType() != EN::ENUMERATE_COLLECTION &&
             dep->getType() != EN::ENUMERATE_LIST) {
           break;
@@ -3589,6 +3596,26 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
 
         if (n->getType() == EN::ENUMERATE_LIST &&
             dep->getType() == EN::ENUMERATE_LIST) {
+          break;
+        }
+
+        // check if nodes depend on each other (i.e. node C consumes a variable
+        // introduced by node B or A):
+        // - FOR a IN A
+        // -   FOR b IN a.values
+        // -     FOR c IN b.values
+        //   or
+        // - FOR a IN A
+        // -   FOR b IN ...
+        // -     FOR c IN a.values
+        bool foundDependency = false;
+        for (auto const& outVar : dep->getVariablesSetHere()) {
+          if (inputVars.contains(outVar)) {
+            foundDependency = true;
+            break;
+          }
+        }
+        if (foundDependency) {
           break;
         }
 

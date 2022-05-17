@@ -49,6 +49,15 @@ class HashedStringRef;
 
 namespace graph {
 
+class ValidationResult;
+struct VertexDescription;
+
+namespace enterprise {
+class SmartGraphStep;
+template<class Provider>
+struct SmartGraphResponse;
+}  // namespace enterprise
+
 struct OneSidedEnumeratorOptions;
 class PathValidatorOptions;
 
@@ -64,7 +73,9 @@ class OneSidedEnumerator : public TraversalEnumerator {
  private:
   using VertexRef = arangodb::velocypack::HashedStringRef;
 
-  using ResultList = std::vector<Step>;
+  using ResultList = typename std::conditional_t<
+      std::is_same_v<Step, enterprise::SmartGraphStep>,
+      enterprise::SmartGraphResponse<Provider>, std::vector<Step>>;
   using GraphOptions = arangodb::graph::OneSidedEnumeratorOptions;
 
  public:
@@ -104,6 +115,8 @@ class OneSidedEnumerator : public TraversalEnumerator {
   void reset(VertexRef source, size_t depth = 0, double weight = 0.0,
              bool keepPathStore = false) override;
 
+  void resetManyStartVertices(std::vector<VertexDescription> const&) override;
+
   /**
    * @brief Get the next path, if available written into the result build.
    * The given builder will be not be cleared, this function requires a
@@ -119,15 +132,23 @@ class OneSidedEnumerator : public TraversalEnumerator {
    */
   auto getNextPath() -> std::unique_ptr<PathResultInterface> override;
 
+#ifdef USE_ENTERPRISE
+  auto smartSearch(size_t amountOfExpansions, arangodb::velocypack::Builder&)
+      -> void override;
+#endif
+
   /**
    * @brief Skip the next Path, like getNextPath, but does not return the path.
    *
    * @return true Found and skipped a path.
    * @return false No path found.
    */
-
   bool skipPath() override;
   auto destroyEngines() -> void override;
+
+  template<typename =
+               std::enable_if<std::is_same_v<Step, enterprise::SmartGraphStep>>>
+  auto getSmartSearch() -> ResultPathType const&;
 
   auto prepareIndexExpressions(aql::Ast* ast) -> void override;
 
@@ -158,9 +179,16 @@ class OneSidedEnumerator : public TraversalEnumerator {
   auto searchMoreResults() -> void;
   void clearProvider();
 
+#ifdef USE_ENTERPRISE
+  auto smartExpand(Step const& step, size_t posPrevious,
+                   ValidationResult const& res) -> void;
+#endif
+
+ private:
+  auto initResultList() -> ResultList;
+
  private:
   GraphOptions _options;
-  ResultList _results{};
   bool _resultsFetched{false};
   aql::TraversalStats _stats{};
 
@@ -168,6 +196,7 @@ class OneSidedEnumerator : public TraversalEnumerator {
   typename Configuration::Provider _provider;
   typename Configuration::Store _interior;  // This stores all paths processed
   typename Configuration::Validator _validator;
+  ResultList _results;
 };
 }  // namespace graph
 }  // namespace arangodb
