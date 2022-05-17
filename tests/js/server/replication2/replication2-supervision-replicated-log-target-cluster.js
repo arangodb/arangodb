@@ -57,11 +57,24 @@ const replicatedLogLeaderElectionFailed = function (database, logId, term, serve
       return Error("current not yet defined");
     }
 
-    if (current.supervision === undefined || current.supervision.election === undefined) {
+    if (current.supervision === undefined || current.supervision.StatusReport === undefined) {
       return Error("supervision not yet updated");
     }
 
-    let election = current.supervision.election;
+    if (!Array.isArray(current.supervision.StatusReport)) {
+      return Error("StatusReport is not an array");
+    }
+
+    if (current.supervision.StatusReport.length === 0) {
+      return Error("StatusReport is empty");
+    }
+
+    let statusReport = current.supervision.StatusReport[0];
+    if (statusReport.type !== "LeaderElectionQuorumNotReached") {
+      return Error("StatusReport is not the correct type " + `found = ${statusReport.type}, expected LeaderElectionQuorumNotReached`);
+    }
+
+    let election = statusReport.detail.election;
     if (election.term !== term) {
       return Error("supervision report not yet available for current term; "
         + `found = ${election.term}; expected = ${term}`);
@@ -79,7 +92,6 @@ const replicatedLogLeaderElectionFailed = function (database, logId, term, serve
         }
       }
     }
-
     return true;
   };
 };
@@ -231,7 +243,7 @@ const replicatedLogSuite = function () {
       {
         // check election result
         const {current} = readReplicatedLogAgency(database, logId);
-        const election = current.supervision.election;
+        const election = current.supervision.StatusReport[0].detail.election;
         assertEqual(election.term, term + 1);
         assertEqual(election.participantsRequired, 2);
         assertEqual(election.participantsAvailable, 1);
@@ -240,7 +252,6 @@ const replicatedLogSuite = function () {
         assertEqual(detail[followers[0]].code, 1);
         assertEqual(detail[followers[1]].code, 0);
       }
-
       // now resume, followers[1] has to become leader, because it's the only server with log entry 1 available
       continueServer(followers[0]);
       waitFor(replicatedLogIsReady(database, logId, term + 2, [followers[0], followers[1]], followers[1]));
@@ -575,7 +586,7 @@ const replicatedLogSuite = function () {
       // now change the leader
       const otherServers = _.difference(dbservers, servers);
       const targetVersion = 1;
-
+      Success
       {
         let {target} = readReplicatedLogAgency(database, logId);
         // delete old leader from target
