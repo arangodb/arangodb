@@ -126,7 +126,6 @@ const replicatedLogSupervisionError = function (database, logId, errorCode) {
       return Error(`no StatusReport available supervision`);
     }
     let statusReport = current.supervision.StatusReport[0];
-    console.log("StatusReport " + JSON.stringify(statusReport));
     if (statusReport.type !== errorCode) {
       return Error(
         `reported supervision errorCode ${statusReport.type} not as expected ${errorCode}`
