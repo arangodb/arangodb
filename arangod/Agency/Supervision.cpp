@@ -1743,6 +1743,10 @@ bool Supervision::handleJobs() {
   LOG_TOPIC("f7d05", TRACE, Logger::SUPERVISION) << "Begin checkReplicatedLogs";
   checkReplicatedLogs();
 
+  LOG_TOPIC("83676", TRACE, Logger::SUPERVISION)
+      << "Begin cleanupReplicatedLogs";
+  cleanupReplicatedLogs();  // TODO do this only every x seconds?
+
   LOG_TOPIC("00aab", TRACE, Logger::SUPERVISION) << "Begin workJobs";
   workJobs();
 
@@ -2851,6 +2855,54 @@ void Supervision::readyOrphanedIndexCreations() {
           }
         }
       }
+    }
+  }
+}
+
+void Supervision::cleanupReplicatedLogs() {
+  _lock.assertLockedByCurrentThread();
+
+  using namespace replication2::agency;
+
+  // check if Plan has replicated logs
+  auto const& planNode = snapshot().hasAsNode(planRepLogPrefix);
+  if (!planNode) {
+    return;
+  }
+
+  auto const& targetNode = snapshot().hasAsNode(targetRepLogPrefix);
+
+  auto builder = std::make_shared<Builder>();
+  auto envelope = arangodb::agency::envelope::into_builder(*builder);
+
+  for (auto const& [dbName, db] : planNode->get().children()) {
+    for (auto const& [idString, node] : db->children()) {
+      // check if this node has an owner and the owner is 'target'
+      if (auto owner = node->hasAsString("owner");
+          !owner.has_value() || owner != "target") {
+        continue;
+      }
+
+      // now check if there is a replicated log in target with that id
+      if (targetNode.has_value() &&
+          targetNode->get().has(std::vector{dbName, idString})) {
+        continue;
+      }
+
+      // delete plan and target
+      auto logId = replication2::LogId{basics::StringUtils::uint64(idString)};
+      envelope =
+          methods::deleteReplicatedLogTrx(std::move(envelope), dbName, logId);
+    }
+  }
+
+  envelope.done();
+  if (builder->slice().length() > 0) {
+    write_ret_t res = _agent->write(builder);
+    if (!res.successful()) {
+      LOG_TOPIC("df4b1", WARN, Logger::SUPERVISION)
+          << "failed to update term in agency. Will retry. "
+          << builder->toJson();
     }
   }
 }

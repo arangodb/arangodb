@@ -53,6 +53,7 @@ auto constexpr MaxActionsTraceLength =
     std::string_view{"maxActionsTraceLength"};
 auto constexpr Code = std::string_view{"code"};
 auto constexpr Message = std::string_view{"message"};
+auto constexpr Owner = std::string_view{"owner"};
 }  // namespace static_strings
 
 template<class Inspector>
@@ -73,6 +74,7 @@ auto inspect(Inspector& f, LogPlanSpecification& x) {
   return f.object(x).fields(
       f.field(StaticStrings::Id, x.id),
       f.field(StaticStrings::CurrentTerm, x.currentTerm),
+      f.field(static_strings::Owner, x.owner),
       f.field(static_strings::ParticipantsConfig, x.participantsConfig));
 };
 
