@@ -777,6 +777,33 @@ const replicatedLogSuite = function () {
       replicatedLogDeleteTarget(database, logId);
     },
 
+
+    // This test excludes all participants from quorum. This is uncommittable. Wait for the leader to complain.
+    // then allow two servers. We exepect the log to commit this config.
+    testExcludeAllServers: function () {
+      const {logId, servers} = createReplicatedLogAndWaitForLeader(database);
+
+      // now exclude all participants
+      const [first, second, third] = servers;
+      replicatedLogUpdateTargetParticipants(database, logId, {
+        [first]: {allowedInQuorum: false},
+        [second]: {allowedInQuorum: false},
+        [third]: {allowedInQuorum: false},
+      });
+
+      waitFor(lpreds.replicatedLogLeaderCommitFail(database, logId, "NonEligibleServerRequiredForQuorum"));
+
+      replicatedLogUpdateTargetParticipants(database, logId, {
+        [first]: {allowedInQuorum: true},
+        [second]: {allowedInQuorum: true},
+        [third]: {allowedInQuorum: true},
+      });
+      // service should continue as normal
+      waitFor(lpreds.replicatedLogLeaderCommitFail(database, logId, undefined));
+
+      replicatedLogDeleteTarget(database, logId);
+    },
+
     testLogStatus: function () {
       const { logId, servers, leader, term, followers } =
         createReplicatedLogAndWaitForLeader(database);
