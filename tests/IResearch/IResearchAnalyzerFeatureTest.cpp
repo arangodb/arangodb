@@ -1367,7 +1367,7 @@ class IResearchAnalyzerFeatureCoordinatorTest
 
  protected:
   IResearchAnalyzerFeatureCoordinatorTest()
-      : server(),
+      : server("CRDN_0001"),
         _dbName("TestVocbase"),
         _system(server.getFeature<arangodb::SystemDatabaseFeature>().use()),
         _feature(

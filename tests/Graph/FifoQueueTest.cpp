@@ -177,6 +177,76 @@ TEST_F(FifoQueueTest, it_should_pop_all_loose_ends) {
   ASSERT_FALSE(queue.hasProcessableElement());
 }
 
+TEST_F(FifoQueueTest, it_should_allow_to_inject_many_start_vertices) {
+  auto queue = FifoQueue<Step>(_resourceMonitor);
+  std::vector<Step> input;
+  input.emplace_back(Step{1, 1, false});
+  input.emplace_back(Step{2, 1, false});
+  input.emplace_back(Step{3, 1, false});
+  input.emplace_back(Step{4, 1, false});
+  auto memorySizeBefore = _resourceMonitor.current();
+  queue.setStartContent(std::move(input));
+  // Account for all 4 added steps.
+  EXPECT_EQ(memorySizeBefore + sizeof(Step) * 4, _resourceMonitor.current());
+  ASSERT_EQ(queue.size(), 4);
+  ASSERT_TRUE(queue.hasProcessableElement());
+
+  size_t id = 1;
+  while (!queue.isEmpty()) {
+    auto step = queue.pop();
+    ASSERT_EQ(step.id(), id);
+    id++;
+  }
+  ASSERT_EQ(queue.size(), 0);
+  // Memory is reduced fully again
+  EXPECT_EQ(memorySizeBefore, _resourceMonitor.current());
+}
+
+TEST_F(FifoQueueTest,
+       on_many_start_vertices_it_should_handle_appends_correctly) {
+  auto queue = FifoQueue<Step>(_resourceMonitor);
+  std::vector<Step> input;
+  input.emplace_back(Step{1, 1, false});
+  input.emplace_back(Step{2, 1, false});
+  input.emplace_back(Step{3, 1, false});
+  input.emplace_back(Step{4, 1, false});
+  auto memorySizeBefore = _resourceMonitor.current();
+  queue.setStartContent(std::move(input));
+  // Account for all 4 added steps.
+  EXPECT_EQ(memorySizeBefore + sizeof(Step) * 4, _resourceMonitor.current());
+  ASSERT_EQ(queue.size(), 4);
+  ASSERT_TRUE(queue.hasProcessableElement());
+
+  size_t id = 1;
+  {
+    // Pop First entry, add two more new ones
+    auto step = queue.pop();
+    ASSERT_EQ(step.id(), id);
+    id++;
+    queue.append(Step{5, 1, false});
+    queue.append(Step{6, 1, false});
+  }
+  {
+    // Pop Second entry, add two more new ones
+    auto step = queue.pop();
+    ASSERT_EQ(step.id(), id);
+    id++;
+    queue.append(Step{7, 1, false});
+    queue.append(Step{8, 1, false});
+  }
+  // Ids are increasing in order of FIFO sorting.
+  // so lets now pull everything from queue in expected order
+  ASSERT_EQ(queue.size(), 6);
+  while (!queue.isEmpty()) {
+    auto step = queue.pop();
+    ASSERT_EQ(step.id(), id);
+    id++;
+  }
+  ASSERT_EQ(queue.size(), 0);
+  // Memory is reduced fully again
+  EXPECT_EQ(memorySizeBefore, _resourceMonitor.current());
+}
+
 }  // namespace fifo_queue_graph_cache_test
 }  // namespace tests
 }  // namespace arangodb
