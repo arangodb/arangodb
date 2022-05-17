@@ -288,6 +288,7 @@ void IndexCreatorThread::run() {
         break;
       }
     }
+
     if (res.ok()) {
       std::vector<std::string> fileNames;
       rocksdb::Status s = static_cast<RocksDBSstFileMethods*>(_methods.get())
@@ -296,26 +297,28 @@ void IndexCreatorThread::run() {
         rocksdb::IngestExternalFileOptions ingestOptions;
         ingestOptions.move_files = true;
         ingestOptions.failed_move_fall_back_to_copy = true;
-        //     ingestOptions.write_global_seqno = false;
+        ingestOptions.snapshot_consistency = false;
+        ingestOptions.write_global_seqno = false;
+        ingestOptions.verify_checksums_before_ingest = false;
+
         s = _rootDB->IngestExternalFile(_ridx.columnFamily(), fileNames,
                                         std::move(ingestOptions));
-        if (!s.ok()) {
-          LOG_TOPIC("9f945", WARN, Logger::ENGINES)
-              << "Cannot ingest index files";
-          _sharedWorkEnv->registerError(rocksutils::convertStatus(s));
-        }
-      } else if (!s.ok()) {
+      }
+      if (!s.ok()) {
+        res = rocksutils::convertStatus(s);
         LOG_TOPIC("e2c28", WARN, Logger::ENGINES)
-            << "Error in file handling in index creation";
-        _sharedWorkEnv->registerError(rocksutils::convertStatus(s));
+            << "Error in file handling in index creation: "
+            << res.errorMessage();
+        _sharedWorkEnv->registerError(std::move(res));
       }
     }
   } catch (std::exception const& ex) {
     _sharedWorkEnv->registerError(Result(TRI_ERROR_INTERNAL, ex.what()));
   }
-  if (_sharedWorkEnv->getResponse().ok()) {  // required so iresearch commits
 
+  if (_sharedWorkEnv->getResponse().ok()) {  // required so iresearch commits
     Result res = _trx.commit();
+
     if (res.ok()) {
       if (_ridx.estimator() != nullptr) {
         _ridx.estimator()->updateAppliedSeq(_rootDB->GetLatestSequenceNumber());
@@ -828,6 +831,7 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, RocksDBMethods& batched,
   std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
   // no need verifying the WAL contents
   rocksdb::TransactionLogIterator::ReadOptions ro(false);
+
   rocksdb::Status s = rootDB->GetUpdatesSince(startingFrom, &iterator, ro);
   if (!s.ok()) {
     return res.reset(convertStatus(s, rocksutils::StatusHint::wal));
@@ -942,6 +946,9 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
                               .getFeature<EngineSelectorFeature>()
                               .engine<RocksDBEngine>();
   rocksdb::DB* rootDB = engine.db()->GetRootDB();
+
+  RocksDBFilePurgePreventer nonPurger(&engine);
+
   rocksdb::Snapshot const* snap = rootDB->GetSnapshot();
   auto scope = scopeGuard([&]() noexcept {
     if (snap) {
