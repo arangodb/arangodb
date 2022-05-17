@@ -164,6 +164,7 @@ class instance {
     if (! PORTMANAGER) {
       PORTMANAGER = new portManager(options);
     }
+    this.pm = PORTMANAGER;
     this.options = options;
     this.instanceRole = instanceRole;
     this.rootDir = rootDir;
@@ -572,6 +573,8 @@ class instance {
         throw new Error("launching procdump failed, aborting.");
       }
     }
+    this.endpoint = this.args['server.endpoint'];
+    this.url = pu.endpointToURL(this.endpoint);
   };
 
   restartOneInstance(moreArgs) {
@@ -621,6 +624,26 @@ class instance {
     }
     return ret;
   }
+  checkArangoConnection(count) {
+    this.endpoint = this.args['server.endpoint'];
+    while (count > 0) {
+      try {
+        if(this.options.extremeVerbosity) {
+          print('tickeling ' + this.endpoint);
+        }
+        arango.reconnect(this.endpoint, '_system', 'root', '');
+        return;
+      } catch (e) {
+        if(this.options.extremeVerbosity) {
+          print('no...');
+        }
+        sleep(0.5);
+      }
+      count --;
+    }
+    throw new Error(`unable to connect in ${count}s`);
+  }
+
   dumpAgent(path, method, fn) {
     let opts = {
       method: method
@@ -654,7 +677,7 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   shutdownArangod (forceTerminate) {
-    print('stopping ' + this.name + ' force terminate: ' + forceTerminate);
+    print('stopping ' + this.name + ' force terminate: ' + forceTerminate + ' ' + this.protocol);
     if (forceTerminate === undefined) {
       forceTerminate = false;
     }
@@ -680,6 +703,29 @@ class instance {
         let sockStat = this.getSockStat("Shutdown by kill - sockstat before: ");
         this.exitStatus = killExternal(this.pid);
         print(sockStat);
+      } else if (this.protocol === 'unix') {
+        let sockStat = this.getSockStat("Sock stat for: ");
+        let reply = {code: 555};
+        try {
+          reply = arango.DELETE_RAW('/_admin/shutdown');
+        } catch(ex) {
+          print(RED + 'while invoking shutdown via unix domain socket: ' + ex + RESET);
+        };
+        if ((reply.code !== 200) && // if the server should reply, we expect 200 - if not:
+            !((reply.code === 500) &&
+              (
+                (reply.parsedBody === "Connection closed by remote") || // http connection
+                  reply.parsedBody.includes('failed with #111')           // https connection
+              ))) {
+          this.serverCrashedLocal = true;
+          print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
+          this.shutdownArangod(true);
+        } else if (!this.options.noStartStopLogs) {
+          print(sockStat);
+        }
+        if (this.options.extremeVerbosity) {
+          print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
+        }
       } else {
         const requestOptions = pu.makeAuthorizationHeaders(this.options);
         requestOptions.method = 'DELETE';
@@ -711,8 +757,22 @@ class instance {
     }
   }
 
+  waitForInstanceShutdown(timeout) {
+    while (timeout > 0) {
+      this.exitStatus = statusExternal(this.pid, false);
+      if (!crashUtils.checkMonitorAlive(pu.ARANGOD_BIN, this, this.options, this.exitStatus)) {
+        print(Date() + ' Server "' + this.name + '" shutdown: detected irregular death by monitor: pid', this.pid);
+      }
+      if (this.exitStatus.status === 'TERMINATED') {
+        return;
+      }
+      sleep(1);
+      timeout--;
+    }
+    this.shutDownOneInstance({nonAgenciesCount: 1}, true, 0);
+  }
 
-  shutDownOneInstance(fullInstance, counters, forceTerminate, timeout) {
+  shutDownOneInstance(counters, forceTerminate, timeout) {
     let shutdownTime = internal.time();
     if (this.exitStatus === null) {
       this.shutdownArangod(forceTerminate);
