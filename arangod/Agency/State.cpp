@@ -1194,15 +1194,8 @@ bool State::loadRemaining(index_t cind) {
       if (auto milliSlice = ii.get("epoch_millis"); milliSlice.isNumber()) {
         try {
           millis = milliSlice.getNumber<uint64_t>();
-        } catch (std::exception const& e) {
-          LOG_TOPIC("2ee75", FATAL, Logger::AGENCY)
-              << "Failed to parse integer value for epoch_millis: " << e.what();
-          FATAL_ERROR_EXIT();
+        } catch (...) {
         }
-      } else {
-        LOG_TOPIC("52ee7", FATAL, Logger::AGENCY)
-            << "epoch_millis is not an integer type";
-        FATAL_ERROR_EXIT();
       }
 
       // Empty patches :
