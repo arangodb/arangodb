@@ -119,15 +119,17 @@ const replicatedLogSupervisionError = function (database, logId, errorCode) {
     if (current.supervision === undefined) {
       return Error(`supervision not yet defined`);
     }
-    if (current.supervision.error === undefined) {
-      return Error(`no error reported in supervision`);
+    if (current.supervision.StatusReport === undefined || current.supervision.StatusReport.length === 0) {
+      return Error(`no StatusReport available supervision`);
     }
-    if (current.supervision.error.code !== errorCode) {
+    let statusReport = current.supervision.StatusReport[0];
+    console.log("StatusReport " + JSON.stringify(statusReport));
+    if (statusReport.type !== errorCode) {
       return Error(
-        `reported supervision errorCode ${current.supervision.error.code} not as expected ${errorCode}`
+        `reported supervision errorCode ${statusReport.type} not as expected ${errorCode}`
       );
     }
-    if (current.supervision.error.code === errorCode) {
+    if (statusReport.type === errorCode) {
       return true;
     }
     return false;
@@ -494,7 +496,7 @@ const replicatedLogSuite = function () {
       setReplicatedLogLeaderTarget(database, logId, newLeader);
 
       // nothing should happen (supervision should not elect leader)
-      const errorCode = 1; // TARGET_LEADER_EXCLUDED
+      const errorCode = "TargetLeaderExcluded";
       waitFor(replicatedLogSupervisionError(database, logId, errorCode));
 
       replicatedLogUpdateTargetParticipants(database, logId, {
