@@ -42,6 +42,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
+#include "Enterprise/Graph/Steps/SmartGraphStep.h"
 #endif
 
 #include "Graph/algorithm-aliases.h"

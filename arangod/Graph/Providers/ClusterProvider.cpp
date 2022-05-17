@@ -522,6 +522,14 @@ auto ClusterProvider<StepImpl>::addEdgeIDToBuilder(
 }
 
 template<class StepImpl>
+void ClusterProvider<StepImpl>::addEdgeToLookupMap(
+    typename Step::Edge const& edge, arangodb::velocypack::Builder& builder) {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add(VPackValue(edge.getID().begin()));
+  builder.add(_opts.getCache()->getCachedEdge(edge.getID()));
+}
+
+template<class StepImpl>
 auto ClusterProvider<StepImpl>::getEdgeId(typename Step::Edge const& edge)
     -> std::string {
   return edge.getID().toString();

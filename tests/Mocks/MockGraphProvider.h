@@ -289,6 +289,9 @@ class MockGraphProvider {
                         arangodb::velocypack::Builder& builder);
   void addEdgeIDToBuilder(Step::Edge const& edge,
                           arangodb::velocypack::Builder& builder);
+  void addEdgeToLookupMap(typename Step::Edge const& edge,
+                          arangodb::velocypack::Builder& builder);
+
   std::string getEdgeId(Step::Edge const& edge);
   velocypack::HashedStringRef getEdgeIdRef(Step::Edge const& edge);
 

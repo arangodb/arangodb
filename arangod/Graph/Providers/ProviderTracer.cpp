@@ -145,6 +145,16 @@ void ProviderTracer<ProviderImpl>::addEdgeIDToBuilder(
 }
 
 template<class ProviderImpl>
+void ProviderTracer<ProviderImpl>::addEdgeToLookupMap(
+    typename Step::Edge const& edge, arangodb::velocypack::Builder& builder) {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["addEdgeToLookupMap"].addTiming(TRI_microtime() - start);
+  });
+  return _impl.addEdgeToLookupMap(edge, builder);
+}
+
+template<class ProviderImpl>
 auto ProviderTracer<ProviderImpl>::getEdgeId(typename Step::Edge const& edge)
     -> std::string {
   double start = TRI_microtime();

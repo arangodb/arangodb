@@ -97,6 +97,9 @@ class ClusterProvider {
   void addEdgeIDToBuilder(typename Step::Edge const& edge,
                           arangodb::velocypack::Builder& builder);
 
+  void addEdgeToLookupMap(typename Step::Edge const& edge,
+                          arangodb::velocypack::Builder& builder);
+
   auto getEdgeId(typename Step::Edge const& edge) -> std::string;
 
   auto getEdgeIdRef(typename Step::Edge const& edge) -> EdgeType;

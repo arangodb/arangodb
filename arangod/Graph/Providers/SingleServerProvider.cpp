@@ -66,6 +66,14 @@ void SingleServerProvider<Step>::addEdgeIDToBuilder(
 };
 
 template<class Step>
+void SingleServerProvider<Step>::addEdgeToLookupMap(
+    typename Step::Edge const& edge, arangodb::velocypack::Builder& builder) {
+  if (edge.isValid()) {
+    _cache.insertEdgeIntoLookupMap(edge.getID(), builder);
+  }
+}
+
+template<class Step>
 SingleServerProvider<Step>::SingleServerProvider(
     arangodb::aql::QueryContext& queryContext,
     SingleServerBaseProviderOptions opts,

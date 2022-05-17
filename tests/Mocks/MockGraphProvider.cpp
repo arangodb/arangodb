@@ -22,8 +22,6 @@
 
 #include "MockGraphProvider.h"
 
-#include "./MockGraph.h"
-
 #include "Basics/StaticStrings.h"
 
 #include "Aql/QueryContext.h"
@@ -181,6 +179,22 @@ auto MockGraphProvider::addEdgeIDToBuilder(
   std::string toId = edge.getEdge()._to;
   std::string keyId = fromId.substr(2) + "-" + toId.substr(2);
   builder.add(VPackValue("e/" + keyId));
+}
+
+void MockGraphProvider::addEdgeToLookupMap(
+    typename Step::Edge const& edge, arangodb::velocypack::Builder& builder) {
+  TRI_ASSERT(builder.isOpenObject());
+  std::string fromId = edge.getEdge()._from;
+  std::string toId = edge.getEdge()._to;
+  std::string keyId = fromId.substr(2) + "-" + toId.substr(2);
+  builder.add(VPackValue("e/" + keyId));
+  builder.openObject();
+  builder.add(StaticStrings::IdString, VPackValue("e/" + keyId));
+  builder.add(StaticStrings::KeyString, VPackValue(keyId));
+  builder.add(StaticStrings::FromString, VPackValue(fromId));
+  builder.add(StaticStrings::ToString, VPackValue(toId));
+  builder.add("weight", VPackValue(edge.getEdge()._weight));
+  builder.close();
 }
 
 auto MockGraphProvider::getEdgeId(const Step::Edge& edge) -> std::string {
