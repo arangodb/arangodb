@@ -4,6 +4,16 @@ v3.8.7 (XXXX-XX-XX)
 * Very verbose warning from failing to parse GEO JSON in search. Has lead to
   billions of log lines on deployed services.
 
+* Fixed Github issue #16279: assertion failure/crash in AQL query optimizer when
+  permuting adjacent FOR loops that depended on each other.
+
+* Fixed a potential hang on shutdown, when there were still document operations
+  queued.
+
+* No good reason to fatal error in agency state, when local database entries
+  lack local timestamp (legacy). In that situation, we will record epoch begin
+  as local time.
+
 * Fixed BTS-860. Changed ArangoSearch index recovery procedure to remove
   necessity to always fully recreate index if IndexCreation marker encountered.
 
