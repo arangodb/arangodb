@@ -1581,9 +1581,16 @@ std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {
 
 void TRI_vocbase_t::processCollectionsOnShutdown(
     std::function<void(LogicalCollection*)> const& cb) {
-  RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+  std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
 
-  for (auto const& it : _collections) {
+  // make a copy of _collections, so we can call the callback function without
+  // the lock
+  {
+    RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+    collections = _collections;
+  }
+
+  for (auto const& it : collections) {
     cb(it.get());
   }
 }
