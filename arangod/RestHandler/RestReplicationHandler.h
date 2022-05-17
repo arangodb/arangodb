@@ -62,7 +62,9 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
     if (len >= 1) {
       std::string const& command = suffixes[0];
       if (command == AddFollower || command == HoldReadLockCollection ||
-          command == RemoveFollower || command == LoggerFollow) {
+          command == RemoveFollower || command == LoggerFollow ||
+          command == Batch || command == Inventory || command == Revisions ||
+          command == Dump) {
         return RequestLane::SERVER_REPLICATION_CATCHUP;
       }
     }
