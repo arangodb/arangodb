@@ -68,6 +68,8 @@ class MockGraph {
       return "<EdgeDef>(_from: " + _from + ", to: " + _to + ")";
     }
 
+    std::string generateId() const;
+
     void addToBuilder(arangodb::velocypack::Builder& builder) const;
   };
 
@@ -134,6 +136,13 @@ class MockGraph {
                  std::vector<EdgeDef> const& secondEdges = {}) const;
 
  protected:
+  void storeVertexData(
+      TRI_vocbase_t& vocbase, std::string const& vertexShardName,
+      std::unordered_set<VertexDef, hashVertexDef> const& vertexData) const;
+
+  void storeEdgeData(TRI_vocbase_t& vocbase, std::string const& edgeShardName,
+                     std::vector<EdgeDef> const& edgeData) const;
+
   std::vector<std::pair<std::string, std::string>> const&
   getVertexShardNameServerPairs() const {
     return _vertexShards;
