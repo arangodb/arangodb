@@ -2181,7 +2181,8 @@ bool Supervision::verifyServerRebootID(Node const& snapshot,
   return rebootID && *rebootID == wantedRebootID;
 }
 
-void Supervision::deleteBrokenDatabase(std::string const& database,
+void Supervision::deleteBrokenDatabase(AgentInterface* agent,
+                                       std::string const& database,
                                        std::string const& coordinatorID,
                                        uint64_t rebootID,
                                        bool coordinatorFound) {
@@ -2243,7 +2244,7 @@ void Supervision::deleteBrokenDatabase(std::string const& database,
     }
   }
 
-  write_ret_t res = _agent->write(envelope);
+  write_ret_t res = agent->write(envelope);
   if (!res.successful()) {
     LOG_TOPIC("38482", DEBUG, Logger::SUPERVISION)
         << "failed to delete broken database in agency. Will retry "
@@ -2251,7 +2252,8 @@ void Supervision::deleteBrokenDatabase(std::string const& database,
   }
 }
 
-void Supervision::deleteBrokenCollection(std::string const& database,
+void Supervision::deleteBrokenCollection(AgentInterface* agent,
+                                         std::string const& database,
                                          std::string const& collection,
                                          std::string const& coordinatorID,
                                          uint64_t rebootID,
@@ -2302,7 +2304,7 @@ void Supervision::deleteBrokenCollection(std::string const& database,
     }
   }
 
-  write_ret_t res = _agent->write(envelope);
+  write_ret_t res = agent->write(envelope);
   if (!res.successful()) {
     LOG_TOPIC("38485", DEBUG, Logger::SUPERVISION)
         << "failed to delete broken collection in agency. Will retry. "
@@ -2437,7 +2439,7 @@ void Supervision::checkBrokenCreatedDatabases() {
              "name "
           << dbpair.first;
       // delete this database and all of its collections
-      deleteBrokenDatabase(dbpair.first, ev.coordinatorId,
+      deleteBrokenDatabase(_agent, dbpair.first, ev.coordinatorId,
                            ev.coordinatorRebootId, ev.coordinatorFound);
     });
   }
@@ -2471,8 +2473,8 @@ void Supervision::checkBrokenCollections() {
                 << "checkBrokenCollections: removing broken collection with "
                    "name "
                 << dbpair.first;
-            // delete this database and all of its collections
-            deleteBrokenCollection(dbpair.first, collectionPair.first,
+            // delete this collection
+            deleteBrokenCollection(_agent, dbpair.first, collectionPair.first,
                                    ev.coordinatorId, ev.coordinatorRebootId,
                                    ev.coordinatorFound);
           });
@@ -2508,9 +2510,11 @@ void Supervision::checkBrokenCollections() {
                 snapshot(), coordinatorID, rebootID, coordinatorFound);
 
             if (!keepResource) {
-              // delete this index
-              deleteBrokenIndex(dbpair.first, collectionPair.first, planIndex,
-                                coordinatorID, rebootID, coordinatorFound);
+              // index creation still ongoing, but started by a coordinator that
+              // has failed by now. delete this index
+              deleteBrokenIndex(_agent, dbpair.first, collectionPair.first,
+                                planIndex, coordinatorID, rebootID,
+                                coordinatorFound);
             }
           }
         }
@@ -2550,7 +2554,8 @@ void Supervision::checkBrokenAnalyzers() {
   }
 }
 
-void Supervision::deleteBrokenIndex(std::string const& database,
+void Supervision::deleteBrokenIndex(AgentInterface* agent,
+                                    std::string const& database,
                                     std::string const& collection,
                                     arangodb::velocypack::Slice index,
                                     std::string const& coordinatorID,
@@ -2598,7 +2603,7 @@ void Supervision::deleteBrokenIndex(std::string const& database,
     }
   }
 
-  write_ret_t res = _agent->write(envelope);
+  write_ret_t res = agent->write(envelope);
   if (!res.successful()) {
     LOG_TOPIC("01598", DEBUG, Logger::SUPERVISION)
         << "failed to delete broken index in agency. Will retry. "
@@ -2902,7 +2907,8 @@ void Supervision::readyOrphanedIndexCreations() {
           }
         }
 
-        // We have some indexes, that have been built and are isBuilding still
+        // We have some indexes, that have been fully built and have their
+        // isBuilding attribute still set.
         if (!built.empty()) {
           auto envelope = std::make_shared<Builder>();
           {

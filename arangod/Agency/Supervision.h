@@ -163,6 +163,27 @@ class Supervision : public arangodb::Thread {
   static void cleanupLostCollections(Node const& snapshot,
                                      AgentInterface* agent, uint64_t& jobId);
 
+  // public only for unit testing:
+  static void deleteBrokenDatabase(AgentInterface* agent,
+                                   std::string const& database,
+                                   std::string const& coordinatorID,
+                                   uint64_t rebootID, bool coordinatorFound);
+
+  // public only for unit testing:
+  static void deleteBrokenCollection(AgentInterface* agent,
+                                     std::string const& database,
+                                     std::string const& collection,
+                                     std::string const& coordinatorID,
+                                     uint64_t rebootID, bool coordinatorFound);
+
+  // public only for unit testing:
+  static void deleteBrokenIndex(AgentInterface* agent,
+                                std::string const& database,
+                                std::string const& collection,
+                                arangodb::velocypack::Slice index,
+                                std::string const& coordinatorID,
+                                uint64_t rebootID, bool coordinatorFound);
+
   void setOkThreshold(double d) { _okThreshold = d; }
 
   void setGracePeriod(double d) { _gracePeriod = d; }
@@ -275,25 +296,12 @@ class Supervision : public arangodb::Thread {
 
   void handleJobs();
   void handleShutdown();
-  void deleteBrokenDatabase(std::string const& database,
-                            std::string const& coordinatorID, uint64_t rebootID,
-                            bool coordinatorFound);
-  void deleteBrokenCollection(std::string const& database,
-                              std::string const& collection,
-                              std::string const& coordinatorID,
-                              uint64_t rebootID, bool coordinatorFound);
 
   void restoreBrokenAnalyzersRevision(
       std::string const& database, AnalyzersRevision::Revision revision,
       AnalyzersRevision::Revision buildingRevision,
       std::string const& coordinatorID, uint64_t rebootID,
       bool coordinatorFound);
-
-  void deleteBrokenIndex(std::string const& database,
-                         std::string const& collection,
-                         arangodb::velocypack::Slice index,
-                         std::string const& coordinatorID, uint64_t rebootID,
-                         bool coordinatorFound);
 
   /// @brief Migrate chains of distributeShardsLike to depth 1
   void fixPrototypeChain(VPackBuilder&);
