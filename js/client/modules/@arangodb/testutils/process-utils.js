@@ -491,7 +491,7 @@ function runArangoshCmd (options, instanceInfo, addArgs, cmds, coreCheck = false
     args = Object.assign(args, addArgs);
   }
 
-  internal.env.INSTANCEINFO = JSON.stringify(instanceInfo);
+  internal.env.INSTANCEINFO = JSON.stringify(instanceInfo.getStructure());
   const argv = toArgv(args).concat(cmds);
   return executeAndWait(ARANGOSH_BIN, argv, options, 'arangoshcmd', instanceInfo.rootDir, coreCheck);
 }

@@ -447,6 +447,7 @@ class runInArangoshRunner extends testRunnerBase{
     return this.instanceManager.rootDir;
   }
   runOneTest(file) {
+    require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
     let args = pu.makeArgs.arangosh(this.options);
     args['server.endpoint'] = this.getEndpoint();
 
