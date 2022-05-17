@@ -218,21 +218,25 @@ static void throwCollectionNotFound(char const* name) {
 
 /// @brief Insert an error reported instead of the new document
 static void createBabiesError(
-    VPackBuilder& builder,
+    VPackBuilder* builder,
     std::unordered_map<ErrorCode, size_t>& countErrorCodes,
     Result const& error) {
-  builder.openObject();
-  builder.add(StaticStrings::Error, VPackValue(true));
-  builder.add(StaticStrings::ErrorNum, VPackValue(error.errorNumber()));
-  builder.add(StaticStrings::ErrorMessage, VPackValue(error.errorMessage()));
-  builder.close();
-
-  auto it = countErrorCodes.find(error.errorNumber());
-  if (it == countErrorCodes.end()) {
-    countErrorCodes.emplace(error.errorNumber(), 1);
-  } else {
-    it->second++;
+  // on followers, builder will be a nullptr, so we can spare building
+  // the error result details in the response body, which the leader
+  // will ignore anyway.
+  if (builder != nullptr) {
+    // only build error detail results if we got a builder passed here.
+    builder->openObject(false);
+    builder->add(StaticStrings::Error, VPackValue(true));
+    builder->add(StaticStrings::ErrorNum, VPackValue(error.errorNumber()));
+    builder->add(StaticStrings::ErrorMessage, VPackValue(error.errorMessage()));
+    builder->close();
   }
+
+  // always (also on followers) increase error counter for the
+  // error code we got.
+  auto& value = countErrorCodes[error.errorNumber()];
+  ++value;
 }
 
 static OperationResult emptyResult(OperationOptions const& options) {
@@ -921,7 +925,7 @@ Future<OperationResult> transaction::Methods::documentLocal(
     for (VPackSlice s : VPackArrayIterator(value)) {
       res = workForOneDocument(s, true);
       if (res.fail()) {
-        createBabiesError(resultBuilder, countErrorCodes, res);
+        createBabiesError(&resultBuilder, countErrorCodes, res);
       }
     }
     res.reset();  // With babies the reporting is handled somewhere else.
@@ -1059,7 +1063,11 @@ Future<OperationResult> transaction::Methods::insertLocal(
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED,
                                options);
       }
+
       bool sendRefusal = (options.isSynchronousReplicationFrom != theLeader);
+      TRI_IF_FAILURE("synchronousReplication::neverRefuseOnFollower") {
+        sendRefusal = false;
+      }
       TRI_IF_FAILURE("synchronousReplication::refuseOnFollower") {
         sendRefusal = true;
       }
@@ -1075,6 +1083,12 @@ Future<OperationResult> transaction::Methods::insertLocal(
             ::buildRefusalResult(*collection, "insert", options, theLeader),
             options);
       }
+
+      // we are a valid follower. we do not need to send a proper result with
+      // _key, _id, _rev back to the leader, because it will ignore all these
+      // data anyway. it is sufficient to send headers and the proper error
+      // codes back.
+      options.silent = true;
     }
   }  // isDBServer - early block
 
@@ -1142,9 +1156,11 @@ Future<OperationResult> transaction::Methods::insertLocal(
       if (options.overwriteMode == OperationOptions::OverwriteMode::Ignore) {
         // in case of unique constraint violation: ignore and do nothing (no
         // write!)
-        buildDocumentIdentity(collection.get(), resultBuilder, cid,
-                              key.stringRef(), oldRevisionId,
-                              RevisionId::none(), nullptr, nullptr);
+        if (replicationType != ReplicationType::FOLLOWER) {
+          buildDocumentIdentity(collection.get(), resultBuilder, cid,
+                                key.stringRef(), oldRevisionId,
+                                RevisionId::none(), nullptr, nullptr);
+        }
         // we have not written anything, so exclude this document from
         // replication!
         excludeFromReplication = true;
@@ -1178,10 +1194,12 @@ Future<OperationResult> transaction::Methods::insertLocal(
           prevDocResult.revisionId().isSet()) {
         TRI_ASSERT(didReplace);
 
-        buildDocumentIdentity(collection.get(), resultBuilder, cid,
-                              value.get(StaticStrings::KeyString).stringRef(),
-                              prevDocResult.revisionId(), RevisionId::none(),
-                              nullptr, nullptr);
+        if (replicationType != ReplicationType::FOLLOWER) {
+          buildDocumentIdentity(collection.get(), resultBuilder, cid,
+                                value.get(StaticStrings::KeyString).stringRef(),
+                                prevDocResult.revisionId(), RevisionId::none(),
+                                nullptr, nullptr);
+        }
       }
       return res;
     }
@@ -1203,10 +1221,13 @@ Future<OperationResult> transaction::Methods::insertLocal(
             VPackSlice(docResult.vpack()));
       }
 
-      buildDocumentIdentity(collection.get(), resultBuilder, cid, keyString,
-                            docResult.revisionId(), prevDocResult.revisionId(),
-                            showReplaced ? &prevDocResult : nullptr,
-                            options.returnNew ? &docResult : nullptr);
+      if (replicationType != ReplicationType::FOLLOWER) {
+        buildDocumentIdentity(collection.get(), resultBuilder, cid, keyString,
+                              docResult.revisionId(),
+                              prevDocResult.revisionId(),
+                              showReplaced ? &prevDocResult : nullptr,
+                              options.returnNew ? &docResult : nullptr);
+      }
     }
     return res;
   };
@@ -1223,7 +1244,10 @@ Future<OperationResult> transaction::Methods::insertLocal(
       VPackSlice s = it.value();
       res = workForOneDocument(s, true, excludeFromReplication);
       if (res.fail()) {
-        createBabiesError(resultBuilder, errorCounter, res);
+        createBabiesError(replicationType == ReplicationType::FOLLOWER
+                              ? nullptr
+                              : &resultBuilder,
+                          errorCounter, res);
       } else if (excludeFromReplication) {
         excludePositions.insert(it.index());
       }
@@ -1236,7 +1260,20 @@ Future<OperationResult> transaction::Methods::insertLocal(
     if (res.ok() && excludeFromReplication) {
       excludePositions.insert(0);
     }
+
+    // on a follower, our result should always be an empty object
+    if (replicationType == ReplicationType::FOLLOWER) {
+      TRI_ASSERT(resultBuilder.slice().isNone());
+      // add an empty object here so that when sending things back in JSON
+      // format, there is no "non-representable type 'none'" issue.
+      resultBuilder.add(VPackSlice::emptyObjectSlice());
+    }
   }
+
+  // on a follower, our result should always be an empty array or object
+  TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
+             (value.isArray() && resultBuilder.slice().isEmptyArray()) ||
+             (value.isObject() && resultBuilder.slice().isEmptyObject()));
 
   TRI_ASSERT(!value.isArray() || options.silent ||
              resultBuilder.slice().length() == value.length());
@@ -1393,6 +1430,9 @@ Future<OperationResult> transaction::Methods::modifyLocal(
                                options);
       }
       bool sendRefusal = (options.isSynchronousReplicationFrom != theLeader);
+      TRI_IF_FAILURE("synchronousReplication::neverRefuseOnFollower") {
+        sendRefusal = false;
+      }
       TRI_IF_FAILURE("synchronousReplication::refuseOnFollower") {
         sendRefusal = true;
       }
@@ -1412,6 +1452,12 @@ Future<OperationResult> transaction::Methods::modifyLocal(
                 options, theLeader),
             options);
       }
+
+      // we are a valid follower. we do not need to send a proper result with
+      // _key, _id, _rev back to the leader, because it will ignore all these
+      // data anyway. it is sufficient to send headers and the proper error
+      // codes back.
+      options.silent = true;
     }
   }  // isDBServer - early block
 
@@ -1492,14 +1538,30 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     while (it.valid()) {
       res = workForOneDocument(it.value(), true);
       if (res.fail()) {
-        createBabiesError(resultBuilder, errorCounter, res);
+        createBabiesError(replicationType == ReplicationType::FOLLOWER
+                              ? nullptr
+                              : &resultBuilder,
+                          errorCounter, res);
       }
       it.next();
     }
     res.reset();  // With babies reporting is handled in the result body
   } else {
     res = workForOneDocument(newValue, false);
+
+    // on a follower, our result should always be an empty object
+    if (replicationType == ReplicationType::FOLLOWER) {
+      TRI_ASSERT(resultBuilder.slice().isNone());
+      // add an empty object here so that when sending things back in JSON
+      // format, there is no "non-representable type 'none'" issue.
+      resultBuilder.add(VPackSlice::emptyObjectSlice());
+    }
   }
+
+  // on a follower, our result should always be an empty array or object
+  TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
+             (newValue.isArray() && resultBuilder.slice().isEmptyArray()) ||
+             (newValue.isObject() && resultBuilder.slice().isEmptyObject()));
 
   TRI_ASSERT(!newValue.isArray() || options.silent ||
              resultBuilder.slice().length() == newValue.length());
@@ -1631,6 +1693,9 @@ Future<OperationResult> transaction::Methods::removeLocal(
                                options);
       }
       bool sendRefusal = (options.isSynchronousReplicationFrom != theLeader);
+      TRI_IF_FAILURE("synchronousReplication::neverRefuseOnFollower") {
+        sendRefusal = false;
+      }
       TRI_IF_FAILURE("synchronousReplication::refuseOnFollower") {
         sendRefusal = true;
       }
@@ -1646,6 +1711,12 @@ Future<OperationResult> transaction::Methods::removeLocal(
             ::buildRefusalResult(*collection, "remove", options, theLeader),
             options);
       }
+
+      // we are a valid follower. we do not need to send a proper result with
+      // _key, _id, _rev back to the leader, because it will ignore all these
+      // data anyway. it is sufficient to send headers and the proper error
+      // codes back.
+      options.silent = true;
     }
   }  // isDBServer - early block
 
@@ -1716,13 +1787,29 @@ Future<OperationResult> transaction::Methods::removeLocal(
     for (VPackSlice s : VPackArrayIterator(value)) {
       res = workForOneDocument(s, true);
       if (res.fail()) {
-        createBabiesError(resultBuilder, errorCounter, res);
+        createBabiesError(replicationType == ReplicationType::FOLLOWER
+                              ? nullptr
+                              : &resultBuilder,
+                          errorCounter, res);
       }
     }
     res.reset();  // With babies reporting is handled in the result body
   } else {
     res = workForOneDocument(value, false);
+
+    // on a follower, our result should always be an empty object
+    if (replicationType == ReplicationType::FOLLOWER) {
+      TRI_ASSERT(resultBuilder.slice().isNone());
+      // add an empty object here so that when sending things back in JSON
+      // format, there is no "non-representable type 'none'" issue.
+      resultBuilder.add(VPackSlice::emptyObjectSlice());
+    }
   }
+
+  // on a follower, our result should always be an empty array or object
+  TRI_ASSERT(replicationType != ReplicationType::FOLLOWER ||
+             (value.isArray() && resultBuilder.slice().isEmptyArray()) ||
+             (value.isObject() && resultBuilder.slice().isEmptyObject()));
 
   TRI_ASSERT(!value.isArray() || options.silent ||
              resultBuilder.slice().length() == value.length());
@@ -1889,6 +1976,9 @@ Future<OperationResult> transaction::Methods::truncateLocal(
             OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options));
       }
       bool sendRefusal = (options.isSynchronousReplicationFrom != theLeader);
+      TRI_IF_FAILURE("synchronousReplication::neverRefuseOnFollower") {
+        sendRefusal = false;
+      }
       TRI_IF_FAILURE("synchronousReplication::refuseOnFollower") {
         sendRefusal = true;
       }

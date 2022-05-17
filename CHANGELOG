@@ -1,6 +1,11 @@
 v3.9.2 (XXXX-XX-XX)
 -------------------
 
+* Make followers respond to synchronous replication requests with less data.
+  Specifically, followers will not build detailed results with _id, _key and
+  _rev for the inserted/modified/removed documents, which would be ignored by
+  the leader anyway.
+
 * Very verbose warning from failing to parse GEO JSON in search. Has lead to
   billions of log lines on deployed services.
 
