@@ -1,8 +1,8 @@
 devel
 -----
 
-* Fixed Github issue #16279: assertion failure/crash in AQL query optimizer
-  when permuting adjacent FOR loops that depended on each other.
+* Fixed Github issue #16279: assertion failure/crash in AQL query optimizer when
+  permuting adjacent FOR loops that depended on each other.
 
 * Put hotbackup requests on the HIGH priority queue to make hotbackups work
   under high load (BTS-865).
