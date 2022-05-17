@@ -1,8 +1,8 @@
 v3.8.7 (XXXX-XX-XX)
 -------------------
 
-* Fixed Github issue #16279: assertion failure/crash in AQL query optimizer
-  when permuting adjacent FOR loops that depended on each other.
+* Fixed Github issue #16279: assertion failure/crash in AQL query optimizer when
+  permuting adjacent FOR loops that depended on each other.
 
 * Fixed a potential hang on shutdown, when there were still document operations
   queued.
