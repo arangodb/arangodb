@@ -94,10 +94,15 @@ rocksdb::Status RocksDBSstFileMethods::writeToFile() {
     _bytesToWriteCount = 0;
     _sstFileNames.emplace_back(fileName);
     for (auto const& [key, val] : _sortedKeyValPairs) {
-      _sstFileWriter.Put(rocksdb::Slice(key), rocksdb::Slice(val));
+      res = _sstFileWriter.Put(rocksdb::Slice(key), rocksdb::Slice(val));
+      if (!res.ok()) {
+        break;
+      }
     }
     _sortedKeyValPairs.clear();
-    rocksdb::Status res = _sstFileWriter.Finish();
+    if (res.ok()) {
+      res = _sstFileWriter.Finish();
+    }
     if (!res.ok()) {
       cleanUpFiles();
     } else {
