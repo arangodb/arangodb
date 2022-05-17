@@ -1437,9 +1437,13 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
   int64_t offset = 0;
   int64_t count = INT64_MAX;
 
+  bool const isBoolean = node->hasFlag(FLAG_BOOLEAN_EXPANSION);
+
   auto limitNode = node->getMember(3);
 
   if (limitNode->type != NODE_TYPE_NOP) {
+    TRI_ASSERT(!isBoolean);
+
     bool localMustDestroy;
     AqlValue subOffset = executeSimpleExpression(ctx, limitNode->getMember(0),
                                                  localMustDestroy, false);
@@ -1454,11 +1458,11 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
     if (localMustDestroy) {
       subCount.destroy();
     }
-  }
 
-  if (offset < 0 || count <= 0) {
-    // no items to return... can already stop here
-    return AqlValue(AqlValueHintEmptyArray());
+    if (offset < 0 || count <= 0) {
+      // no items to return... can already stop here
+      return AqlValue(AqlValueHintEmptyArray());
+    }
   }
 
   // FILTER
@@ -1472,6 +1476,9 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
       filterNode = nullptr;
     } else {
       // filter expression is always false
+      if (isBoolean) {
+        return AqlValue(AqlValueHintBool(false));
+      }
       return AqlValue(AqlValueHintEmptyArray());
     }
   }
@@ -1492,6 +1499,9 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
 
     if (!a.isArray()) {
       TRI_ASSERT(!mustDestroy);
+      if (isBoolean) {
+        return AqlValue(AqlValueHintBool(false));
+      }
       return AqlValue(AqlValueHintEmptyArray());
     }
 
@@ -1536,6 +1546,9 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
 
     if (!a.isArray()) {
       TRI_ASSERT(!mustDestroy);
+      if (isBoolean) {
+        return AqlValue(AqlValueHintBool(false));
+      }
       return AqlValue(AqlValueHintEmptyArray());
     }
 
@@ -1552,12 +1565,13 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
 
   if (node->getMember(4)->type != NODE_TYPE_NOP) {
     // return projection
+    TRI_ASSERT(!isBoolean);
     projectionNode = node->getMember(4);
   }
 
   if (filterNode == nullptr && projectionNode->type == NODE_TYPE_REFERENCE &&
-      value.isArray() && offset == 0 && count == INT64_MAX) {
-    // no filter and no projection... we can return the array as it is
+      value.isArray() && offset == 0 && count == INT64_MAX && !isBoolean) {
+    // no filter and no limit... we can return the array as it is
     auto other = static_cast<Variable const*>(projectionNode->getData());
 
     if (other->id == variable->id) {
@@ -1572,7 +1586,10 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
-  builder.openArray();
+
+  if (!isBoolean) {
+    builder.openArray();
+  }
 
   size_t const n = value.length();
   for (size_t i = 0; i < n; ++i) {
@@ -1599,12 +1616,17 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
       }
 
       if (takeItem && offset > 0) {
+        TRI_ASSERT(!isBoolean);
         // there is an offset in place
         --offset;
         takeItem = false;
       }
 
       if (takeItem) {
+        if (isBoolean) {
+          return AqlValue(AqlValueHintBool(true));
+        }
+
         AqlValue sub = executeSimpleExpression(ctx, projectionNode,
                                                localMustDestroy, false);
         sub.toVelocyPack(&vopts, builder, /*resolveExternals*/ false,
@@ -1627,6 +1649,10 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
         break;
       }
     }
+  }
+
+  if (isBoolean) {
+    return AqlValue(AqlValueHintBool(false));
   }
 
   builder.close();
