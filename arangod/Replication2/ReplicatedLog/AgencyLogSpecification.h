@@ -196,6 +196,13 @@ struct LogCurrentSupervision {
                            LeaderElectionQuorumNotReached const& s2) noexcept
         -> bool = default;
   };
+  struct LeaderElectionSuccess {
+    static constexpr std::string_view code = "LeaderElectionSuccess";
+    LogCurrentSupervisionElection election;
+    friend auto operator==(LeaderElectionSuccess const& s,
+                           LeaderElectionSuccess const& s2) noexcept
+        -> bool = default;
+  };
   struct SwitchLeaderFailed {
     static constexpr std::string_view code = "SwitchLeaderFailed";
     friend auto operator==(SwitchLeaderFailed const& s,
@@ -220,8 +227,8 @@ struct LogCurrentSupervision {
                    TargetLeaderFailed, TargetNotEnoughParticipants,
                    WaitingForConfigCommitted, ConfigChangeNotImplemented,
                    LeaderElectionImpossible, LeaderElectionOutOfBounds,
-                   LeaderElectionQuorumNotReached, SwitchLeaderFailed,
-                   PlanNotAvailable, CurrentNotAvailable>;
+                   LeaderElectionQuorumNotReached, LeaderElectionSuccess,
+                   SwitchLeaderFailed, PlanNotAvailable, CurrentNotAvailable>;
 
   using StatusReport = std::vector<StatusMessage>;
 

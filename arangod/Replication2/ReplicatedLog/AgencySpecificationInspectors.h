@@ -184,6 +184,11 @@ auto inspect(Inspector& f,
 }
 
 template<class Inspector>
+auto inspect(Inspector& f, LogCurrentSupervision::LeaderElectionSuccess& x) {
+  return f.object(x).fields(f.field("election", x.election));
+}
+
+template<class Inspector>
 auto inspect(Inspector& f, LogCurrentSupervision::SwitchLeaderFailed& x) {
   return f.object(x).fields();
 }
@@ -222,6 +227,8 @@ auto inspect(Inspector& f, LogCurrentSupervision::StatusMessage& x) {
               LogCurrentSupervision::LeaderElectionOutOfBounds::code),
           insp::type<LogCurrentSupervision::LeaderElectionQuorumNotReached>(
               LogCurrentSupervision::LeaderElectionQuorumNotReached::code),
+          insp::type<LogCurrentSupervision::LeaderElectionSuccess>(
+              LogCurrentSupervision::LeaderElectionSuccess::code),
           insp::type<LogCurrentSupervision::SwitchLeaderFailed>(
               LogCurrentSupervision::SwitchLeaderFailed::code),
           insp::type<LogCurrentSupervision::PlanNotAvailable>(

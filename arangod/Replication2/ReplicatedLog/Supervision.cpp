@@ -245,6 +245,7 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
     auto const& newLeaderRebootId = health.getRebootId(newLeader);
 
     if (newLeaderRebootId.has_value()) {
+      ctx.reportStatus<LogCurrentSupervision::LeaderElectionSuccess>(election);
       ctx.createAction<LeaderElectionAction>(
           LogPlanTermSpecification::Leader(newLeader, *newLeaderRebootId),
           election);
