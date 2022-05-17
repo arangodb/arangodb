@@ -119,7 +119,10 @@ const replicatedLogSupervisionError = function (database, logId, errorCode) {
     if (current.supervision === undefined) {
       return Error(`supervision not yet defined`);
     }
-    if (current.supervision.StatusReport === undefined || current.supervision.StatusReport.length === 0) {
+    if (
+      current.supervision.StatusReport === undefined ||
+      current.supervision.StatusReport.length === 0
+    ) {
       return Error(`no StatusReport available supervision`);
     }
     let statusReport = current.supervision.StatusReport[0];
