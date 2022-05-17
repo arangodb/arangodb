@@ -1296,11 +1296,11 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
   // new analyzer creation, validate
   if (itr.second) {
     bool erase = true;  // potentially invalid insertion took place
-    auto cleanup = irs::make_finally([&erase, &analyzers, &itr]() -> void {
+    auto cleanup = irs::make_finally([&erase, &analyzers, &itr]() noexcept {
       // cppcheck-suppress knownConditionTrueFalse
       if (erase) {
-        analyzers.erase(
-            itr.first);  // ensure no broken analyzers are left behind
+        // ensure no broken analyzers are left behind
+        analyzers.erase(itr.first);
       }
     });
 
@@ -1405,10 +1405,10 @@ Result IResearchAnalyzerFeature::emplace(EmplaceResult& result,
 
     auto& engine = server().getFeature<EngineSelectorFeature>().engine();
     bool erase = itr.second;  // an insertion took place
-    auto cleanup = irs::make_finally([&erase, this, &itr]() -> void {
+    auto cleanup = irs::make_finally([&erase, this, &itr]() noexcept {
       if (erase) {
-        _analyzers.erase(
-            itr.first);  // ensure no broken analyzers are left behind
+        // ensure no broken analyzers are left behind
+        _analyzers.erase(itr.first);
       }
     });
     auto pool = itr.first->second;
@@ -1612,13 +1612,12 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
     TRI_ASSERT(!engine.inRecovery());
     bool erase = true;
     std::vector<irs::hashed_string_ref> inserted;
-    auto cleanup = irs::make_finally([&erase, &inserted, this]() {
+    auto cleanup = irs::make_finally([&erase, &inserted, this]() noexcept {
       if (erase) {
         for (auto const& s : inserted) {
-          auto itr = _analyzers.find(s);
-          if (itr == _analyzers.end()) {
-            _analyzers.erase(
-                itr);  // ensure no broken analyzers are left behind
+          if (auto itr = _analyzers.find(s); itr == _analyzers.end()) {
+            // ensure no broken analyzers are left behind
+            _analyzers.erase(itr);
           }
         }
       }

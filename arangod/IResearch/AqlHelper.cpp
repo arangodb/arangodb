@@ -355,13 +355,13 @@ aql::AstNode const ScopedAqlValue::INVALID_NODE(aql::NODE_TYPE_ROOT);
 
 /*static*/ irs::string_ref const& ScopedAqlValue::typeString(
     ScopedValueType type) noexcept {
-  static irs::string_ref const TYPE_NAMES[] = {"invalid", "null",   "boolean",
+  static irs::string_ref const kTypeNames[] = {"invalid", "null",   "boolean",
                                                "double",  "string", "array",
                                                "range",   "object"};
 
-  TRI_ASSERT(size_t(type) < IRESEARCH_COUNTOF(TYPE_NAMES));
+  TRI_ASSERT(size_t(type) < std::size(kTypeNames));
 
-  return TYPE_NAMES[size_t(type)];
+  return kTypeNames[size_t(type)];
 }
 
 // ----------------------------------------------------------------------------

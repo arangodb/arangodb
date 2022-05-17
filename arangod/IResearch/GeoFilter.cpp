@@ -52,7 +52,8 @@ constexpr auto SIGNLETON_CAP_EPS = 2 * std::numeric_limits<double_t>::epsilon();
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
-using Disjunction = irs::disjunction_iterator<irs::doc_iterator::ptr>;
+using Disjunction =
+    irs::disjunction_iterator<irs::doc_iterator::ptr, irs::NoopAggregator>;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a filter matching all documents with a given geo field
@@ -94,28 +95,28 @@ class GeoIterator : public irs::doc_iterator {
       : _approx(std::move(approx)),
         _columnIt(std::move(columnIt)),
         _storedValue(irs::get<irs::payload>(*_columnIt)),
-        _doc(irs::get_mutable<irs::document>(_approx.get())),
-        _cost([this]() { return EXTRA_COST * irs::cost::extract(*_approx); }),
-        _attrs{{
-            {irs::type<irs::document>::id(), _doc},
-            {irs::type<irs::cost>::id(), &_cost},
-            {irs::type<irs::score>::id(), &_score},
-        }},
         _acceptor(acceptor) {
-    if (!order.empty()) {
-      irs::Order::scorers scorers(order, reader, field, query_stats,
-                                  _score.data(), *this, boost);
+    std::get<irs::attribute_ptr<irs::document>>(_attrs) =
+        irs::get_mutable<irs::document>(_approx.get());
 
-      irs::reset(_score, std::move(scorers));
+    std::get<irs::cost>(_attrs).reset(
+        [this]() { return EXTRA_COST * irs::cost::extract(*_approx); });
+
+    if (!order.empty()) {
+      auto& score = std::get<irs::score>(_attrs);
+      score = irs::CompileScore(order.buckets(), reader, field, query_stats,
+                                *this, boost);
     }
   }
 
   virtual irs::attribute* get_mutable(
       irs::type_info::type_id type) noexcept override {
-    return _attrs.get_mutable(type);
+    return irs::get_mutable(_attrs, type);
   }
 
-  virtual irs::doc_id_t value() const override final { return _doc->value; }
+  virtual irs::doc_id_t value() const override final {
+    return std::get<irs::attribute_ptr<irs::document>>(_attrs).ptr->value;
+  }
 
   virtual bool next() override {
     for (;;) {
@@ -130,8 +131,10 @@ class GeoIterator : public irs::doc_iterator {
   }
 
   virtual irs::doc_id_t seek(irs::doc_id_t target) override {
-    if (target <= _doc->value) {
-      return _doc->value;
+    auto* doc = std::get<irs::attribute_ptr<irs::document>>(_attrs).ptr;
+
+    if (target <= doc->value) {
+      return doc->value;
     }
 
     if (irs::doc_limits::eof(_approx->seek(target))) {
@@ -142,24 +145,25 @@ class GeoIterator : public irs::doc_iterator {
       next();
     }
 
-    return _doc->value;
+    return doc->value;
   }
 
  private:
   bool accept() {
-    TRI_ASSERT(_columnIt->value() < _doc->value);
+    auto* doc = std::get<irs::attribute_ptr<irs::document>>(_attrs).ptr;
+    TRI_ASSERT(_columnIt->value() < doc->value);
 
-    if (_doc->value != _columnIt->seek(_doc->value) ||
+    if (doc->value != _columnIt->seek(doc->value) ||
         _storedValue->value.empty()) {
       LOG_TOPIC("62a62", WARN, arangodb::iresearch::TOPIC)
-          << "failed to find stored geo value, doc='" << _doc->value << "'";
+          << "failed to find stored geo value, doc='" << doc->value << "'";
       return false;
     }
 
     if (!parseShape(slice(_storedValue->value), _shape, false)) {
       LOG_TOPIC("62a65", WARN, arangodb::iresearch::TOPIC)
           << "failed to parse stored geo value, value='"
-          << slice(_storedValue->value).toHex() << ", doc='" << _doc->value
+          << slice(_storedValue->value).toHex() << ", doc='" << doc->value
           << "'";
       return false;
     }
@@ -167,14 +171,14 @@ class GeoIterator : public irs::doc_iterator {
     return _acceptor(_shape);
   }
 
+  using attributes =
+      std::tuple<irs::attribute_ptr<irs::document>, irs::cost, irs::score>;
+
   geo::ShapeContainer _shape;
   irs::doc_iterator::ptr _approx;
   irs::doc_iterator::ptr _columnIt;
   irs::payload const* _storedValue;
-  irs::document* _doc;
-  irs::cost _cost;
-  irs::score _score;
-  irs::frozen_attributes<3, attribute_provider> _attrs;
+  attributes _attrs;
   Acceptor& _acceptor;
 };  // GeoIterator
 
@@ -229,7 +233,7 @@ class GeoQuery final : public irs::filter::prepared {
         _acceptor(std::move(acceptor)) {}
 
   virtual irs::doc_iterator::ptr execute(
-      const irs::sub_reader& segment, const irs::Order& ord,
+      const irs::sub_reader& segment, const irs::Order& ord, irs::ExecutionMode,
       const irs::attribute_provider* /*ctx*/) const override {
     // get term state for the specified reader
     auto state = _states.find(segment);
@@ -259,7 +263,8 @@ class GeoQuery final : public irs::filter::prepared {
     }
 
     auto* reader = state->storedField;
-    auto columnIt = reader ? reader->iterator(false) : nullptr;
+    auto columnIt =
+        reader ? reader->iterator(irs::ColumnHint::kNormal) : nullptr;
 
     if (!columnIt) {
       return irs::doc_iterator::empty();
@@ -584,10 +589,6 @@ irs::filter::prepared::ptr prepareInterval(
 namespace arangodb {
 namespace iresearch {
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                        GeoFilter
-// ----------------------------------------------------------------------------
-
 irs::filter::prepared::ptr GeoFilter::prepare(
     const irs::index_reader& index, const irs::Order& order, irs::score_t boost,
     const irs::attribute_provider* /*ctx*/) const {
@@ -640,10 +641,6 @@ irs::filter::prepared::ptr GeoFilter::prepare(
 }
 
 DEFINE_FACTORY_DEFAULT(GeoFilter)
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                                GeoDistanceFilter
-// ----------------------------------------------------------------------------
 
 irs::filter::prepared::ptr GeoDistanceFilter::prepare(
     irs::index_reader const& index, irs::Order const& order, irs::score_t boost,

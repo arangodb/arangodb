@@ -503,7 +503,7 @@ using ConvertionHandler = Result (*)(char const* funcName, irs::boolean_filter*,
                                      aql::AstNode const&);
 
 // forward declaration
-Result filter(irs::boolean_filter* filter, QueryContext const& queryctx,
+Result filter(irs::boolean_filter* filter, QueryContext const& queryCtx,
               FilterContext const& filterCtx, aql::AstNode const& node);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1354,7 +1354,7 @@ Result fromBinaryEq(irs::boolean_filter* filter, QueryContext const& ctx,
     }
 
     auto rv = fromExpression(filter, ctx, filterCtx, node);
-    return rv.withError([&](result::Error& err) {
+    return rv.withError([&](arangodb::result::Error& err) {
       err.resetErrorMessage(arangodb::basics::StringUtils::concatT(
           "in from binary equation", rv.errorMessage()));
     });
@@ -2773,7 +2773,7 @@ Result oneArgumentfromFuncPhrase(char const* funcName,
                                  irs::string_ref& term) {
   if (elem.isArray() && elem.length() != 1) {
     return error::invalidArgsCount<error::ExactValue<1>>(subFuncName)
-        .withError([&](result::Error& err) {
+        .withError([&](arangodb::result::Error& err) {
           err.appendErrorMessage(
               getSubFuncErrorSuffix(funcName, funcArgumentPosition));
         });
@@ -2867,14 +2867,18 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
                                std::string const& errorSuffix = std::string()) {
   if (!ElementTraits::isDeterministic(args)) {
     return error::nondeterministicArgs(funcName).withError(
-        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
+        [&](arangodb::result::Error& err) {
+          err.appendErrorMessage(errorSuffix);
+        });
   }
   auto const argc = ElementTraits::numMembers(args);
   constexpr size_t min = 3 - First;
   constexpr size_t max = 6 - First;
   if (argc < min || argc > max) {
     return error::invalidArgsCount<error::Range<min, max>>(funcName).withError(
-        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
+        [&](arangodb::result::Error& err) {
+          err.appendErrorMessage(errorSuffix);
+        });
   }
 
   if constexpr (0 == First) {  // this is done only for AstNode so don`t bother
@@ -2897,8 +2901,9 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
                                         1 - First, isFilter, ctx);
 
   if (res.fail()) {
-    return res.withError(
-        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
+    return res.withError([&](arangodb::result::Error& err) {
+      err.appendErrorMessage(errorSuffix);
+    });
   }
 
   typename ElementTraits::ValueType
@@ -2910,8 +2915,9 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
                                    2 - First, isFilter, ctx);
 
   if (res.fail()) {
-    return res.withError(
-        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
+    return res.withError([&](arangodb::result::Error& err) {
+      err.appendErrorMessage(errorSuffix);
+    });
   }
 
   if (maxDistance < 0) {
@@ -2930,8 +2936,9 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
                                      args, 3 - First, isFilter, ctx);
 
     if (res.fail()) {
-      return res.withError(
-          [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
+      return res.withError([&](arangodb::result::Error& err) {
+        err.appendErrorMessage(errorSuffix);
+      });
     }
   }
 
@@ -2961,8 +2968,9 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
                                      4 - First, isFilter, ctx);
 
     if (res.fail()) {
-      return res.withError(
-          [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
+      return res.withError([&](arangodb::result::Error& err) {
+        err.appendErrorMessage(errorSuffix);
+      });
     }
   }
 
@@ -2973,8 +2981,9 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
                                      5 - First, isFilter, ctx);
 
     if (res.fail()) {
-      return res.withError(
-          [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
+      return res.withError([&](arangodb::result::Error& err) {
+        err.appendErrorMessage(errorSuffix);
+      });
     }
   }
 
@@ -3072,7 +3081,7 @@ Result fromFuncPhraseTerms(char const* funcName,
 
   if (!ElementTraits::isDeterministic(array)) {
     return error::nondeterministicArgs(subFuncName)
-        .withError([&](result::Error& err) {
+        .withError([&](arangodb::result::Error& err) {
           err.appendErrorMessage(
               getSubFuncErrorSuffix(funcName, funcArgumentPosition));
         });
@@ -3081,7 +3090,7 @@ Result fromFuncPhraseTerms(char const* funcName,
   auto const argc = ElementTraits::numMembers(array);
   if (0 == argc) {
     return error::invalidArgsCount<error::OpenRange<false, 1>>(subFuncName)
-        .withError([&](result::Error& err) {
+        .withError([&](arangodb::result::Error& err) {
           err.appendErrorMessage(
               getSubFuncErrorSuffix(funcName, funcArgumentPosition));
         });
@@ -3095,7 +3104,7 @@ Result fromFuncPhraseTerms(char const* funcName,
                                           i, filter != nullptr, ctx);
 
     if (res.fail()) {
-      return res.withError([&](result::Error& err) {
+      return res.withError([&](arangodb::result::Error& err) {
         err.appendErrorMessage(
             getSubFuncErrorSuffix(funcName, funcArgumentPosition));
       });
@@ -3133,14 +3142,17 @@ Result getInRangeArguments(
     bool& ret, std::string const& errorSuffix = std::string()) {
   if (!ElementTraits::isDeterministic(args)) {
     return error::nondeterministicArgs(funcName).withError(
-        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
+        [&](arangodb::result::Error& err) {
+          err.appendErrorMessage(errorSuffix);
+        });
   }
   auto const argc = ElementTraits::numMembers(args);
 
   if (5 - First != argc) {
     return error::invalidArgsCount<error::ExactValue<5 - First>>(funcName)
-        .withError(
-            [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
+        .withError([&](arangodb::result::Error& err) {
+          err.appendErrorMessage(errorSuffix);
+        });
   }
 
   if constexpr (0 == First) {
@@ -3160,16 +3172,18 @@ Result getInRangeArguments(
   auto res = ElementTraits::evaluateArg(minInclude, includeValue, funcName,
                                         args, 3 - First, isFilter, ctx);
   if (res.fail()) {
-    return res.withError(
-        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
+    return res.withError([&](arangodb::result::Error& err) {
+      err.appendErrorMessage(errorSuffix);
+    });
   }
 
   // (4 - First) argument defines inclusion of upper boundary
   res = ElementTraits::evaluateArg(maxInclude, includeValue, funcName, args,
                                    4 - First, isFilter, ctx);
   if (res.fail()) {
-    return res.withError(
-        [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
+    return res.withError([&](arangodb::result::Error& err) {
+      err.appendErrorMessage(errorSuffix);
+    });
   }
 
   // (1 - First) argument defines a lower boundary
@@ -3177,8 +3191,9 @@ Result getInRangeArguments(
     auto res = ElementTraits::getMemberValue(args, 1 - First, funcName, min,
                                              isFilter, ctx, ret);
     if (res.fail()) {
-      return res.withError(
-          [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
+      return res.withError([&](arangodb::result::Error& err) {
+        err.appendErrorMessage(errorSuffix);
+      });
     }
   }
   // (2 - First) argument defines an upper boundary
@@ -3186,8 +3201,9 @@ Result getInRangeArguments(
     auto res = ElementTraits::getMemberValue(args, 2 - First, funcName, max,
                                              isFilter, ctx, ret);
     if (res.fail()) {
-      return res.withError(
-          [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
+      return res.withError([&](arangodb::result::Error& err) {
+        err.appendErrorMessage(errorSuffix);
+      });
     }
   }
 
@@ -3239,16 +3255,18 @@ Result fromFuncPhraseInRange(char const* funcName,
   if (!min.isString()) {
     return error::typeMismatch(subFuncName, 1, SCOPED_VALUE_TYPE_STRING,
                                ArgsTraits<VPackSlice>::scopedType(min))
-        .withError(
-            [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
+        .withError([&](arangodb::result::Error& err) {
+          err.appendErrorMessage(errorSuffix);
+        });
   }
   irs::string_ref const minStrValue = getStringRef(min);
 
   if (!max.isString()) {
     return error::typeMismatch(subFuncName, 2, SCOPED_VALUE_TYPE_STRING,
                                ArgsTraits<VPackSlice>::scopedType(max))
-        .withError(
-            [&](result::Error& err) { err.appendErrorMessage(errorSuffix); });
+        .withError([&](arangodb::result::Error& err) {
+          err.appendErrorMessage(errorSuffix);
+        });
   }
   irs::string_ref const maxStrValue = getStringRef(max);
 
