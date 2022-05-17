@@ -177,9 +177,11 @@ struct AddLogToPlanAction {
   std::optional<LogPlanTermSpecification::Leader> _leader;
 
   auto execute(ActionContext& ctx) const -> void {
-    ctx.setPlan(LogPlanSpecification(
+    auto newPlan = LogPlanSpecification(
         _id, LogPlanTermSpecification(LogTerm{1}, _config, _leader),
-        ParticipantsConfig{.generation = 1, .participants = _participants}));
+        ParticipantsConfig{.generation = 1, .participants = _participants});
+    newPlan.owner = "target";
+    ctx.setPlan(newPlan);
   }
 };
 template<typename Inspector>
