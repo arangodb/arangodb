@@ -342,7 +342,6 @@ auto checkLeaderRemovedFromTargetParticipants(SupervisionContext& ctx,
 
   if (!isConfigurationCommitted(log)) {
     ctx.reportStatus<LogCurrentSupervision::WaitingForConfigCommitted>();
-    ctx.createAction<NoActionPossibleAction>();
     return;
   }
   auto const& committedParticipants =
