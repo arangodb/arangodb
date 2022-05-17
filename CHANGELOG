@@ -3,6 +3,10 @@ devel
 
 * Fix documentation of collection's `cacheEnabled` property default.
 
+* No good reason to fatal error in agency state, when local database entries
+  lack local timestamp (legacy). In that situation, we will record epoch begin
+  as local time.
+
 * Put hotbackup requests on the HIGH priority queue to make hotbackups work
   under high load (BTS-865).
 
