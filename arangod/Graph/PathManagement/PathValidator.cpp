@@ -36,7 +36,6 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
-#include "Enterprise/Graph/Steps/SmartGraphCoordinatorStep.h"
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 
 // For additional information, please read PathValidatorEE.cpp
@@ -254,12 +253,6 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
       evaluator->injectEdge(edgeBuilder.slice());
     }
     if (evaluator->needsPath()) {
-      // TODO [GraphRefactor]: We need to distinguish the ResultType
-      // this is only based on the Enumerator type (OneSided or TwoSided)
-      // TODO [GraphRefactor]: Improve this section. Currently, I do not like
-      // the design here. I. Drop of PathStore const& qualifier was necessary to
-      // initialize PathResultInterface. II. I don't want to distinguish between
-      // different ProviderTypes here if possible (best case).
       using ResultPathType =
           SingleProviderPathResult<ProviderType, PathStore, Step>;
       std::unique_ptr<PathResultInterface> currentPath =

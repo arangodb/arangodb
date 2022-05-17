@@ -87,8 +87,11 @@ enum AstNodeFlagType : AstNodeFlagsType {
   FLAG_SUBQUERY_REFERENCE = 0x0080000,  // node references a subquery
 
   FLAG_INTERNAL_CONST = 0x0100000,  // internal, constant node
+
+  FLAG_BOOLEAN_EXPANSION = 0x0200000,  // make expansion result boolean
+
   FLAG_READ_OWN_WRITES =
-      0x0200000,  // reads own writes (only needed for UPSERT FOR nodes)
+      0x0400000,  // reads own writes (only needed for UPSERT FOR nodes)
 };
 
 /// @brief enumeration of AST node value types
@@ -658,7 +661,7 @@ std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const&);
   }                                                                     \
   auto sg = arangodb::scopeGuard([&]() noexcept {                       \
     FINALIZE_SUBTREE_CONDITIONAL(n, wasFinalizedAlready);               \
-  });
+  })
 #else
 #define FINALIZE_SUBTREE(n) \
   while (0) {               \

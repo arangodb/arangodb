@@ -291,8 +291,8 @@ std::
                  }},
                 {"%z",
                  [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
-                   std::string formatted =
-                       format("%FT%TZ", floor<std::chrono::milliseconds>(tp));
+                   std::string formatted = date::format(
+                       "%FT%TZ", floor<std::chrono::milliseconds>(tp));
                    wrk.append(formatted);
                  }},
                 {"%w",

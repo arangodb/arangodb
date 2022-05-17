@@ -39,7 +39,6 @@
 #include "Graph/algorithm-aliases.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
-#include "Enterprise/Graph/Steps/SmartGraphCoordinatorStep.h"
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
 #endif
 
@@ -58,7 +57,17 @@ OneSidedEnumerator<Configuration>::OneSidedEnumerator(
       _queue(resourceMonitor),
       _provider(std::move(forwardProvider)),
       _interior(resourceMonitor),
-      _validator(_provider, _interior, std::move(validatorOptions)) {}
+      _validator(_provider, _interior, std::move(validatorOptions)),
+      _results{initResultList()} {}
+
+template<class Configuration>
+auto OneSidedEnumerator<Configuration>::initResultList() -> ResultList {
+  if constexpr (std::is_same_v<Step, enterprise::SmartGraphStep>) {
+    return ResultList{_provider};
+  } else {
+    return ResultList{};
+  }
+}
 
 template<class Configuration>
 OneSidedEnumerator<Configuration>::~OneSidedEnumerator() = default;
@@ -151,7 +160,8 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
     }
   }
 
-  if constexpr (std::is_same_v<ResultList, enterprise::SmartGraphResponse>) {
+  if constexpr (std::is_same_v<ResultList,
+                               enterprise::SmartGraphResponse<Provider>>) {
     TRI_ASSERT(ServerState::instance()->isDBServer());
     smartExpand(step, posPrevious, res);
   } else {
@@ -235,7 +245,8 @@ void OneSidedEnumerator<Configuration>::resetManyStartVertices(
 template<class Configuration>
 auto OneSidedEnumerator<Configuration>::getNextPath()
     -> std::unique_ptr<PathResultInterface> {
-  if constexpr (std::is_same_v<ResultList, enterprise::SmartGraphResponse>) {
+  if constexpr (std::is_same_v<ResultList,
+                               enterprise::SmartGraphResponse<Provider>>) {
     // Not implemented and used
     TRI_ASSERT(false);
   } else {
@@ -254,7 +265,8 @@ auto OneSidedEnumerator<Configuration>::getNextPath()
 
 template<class Configuration>
 void OneSidedEnumerator<Configuration>::searchMoreResults() {
-  if constexpr (std::is_same_v<ResultList, enterprise::SmartGraphResponse>) {
+  if constexpr (std::is_same_v<ResultList,
+                               enterprise::SmartGraphResponse<Provider>>) {
     // Not implemented and used
     TRI_ASSERT(false);
   } else {
@@ -277,7 +289,8 @@ void OneSidedEnumerator<Configuration>::searchMoreResults() {
 
 template<class Configuration>
 bool OneSidedEnumerator<Configuration>::skipPath() {
-  if constexpr (std::is_same_v<ResultList, enterprise::SmartGraphResponse>) {
+  if constexpr (std::is_same_v<ResultList,
+                               enterprise::SmartGraphResponse<Provider>>) {
     // Not implemented and used
     TRI_ASSERT(false);
   } else {
@@ -301,9 +314,8 @@ auto OneSidedEnumerator<Configuration>::searchDone() const -> bool {
 
 template<class Configuration>
 auto OneSidedEnumerator<Configuration>::fetchResults() -> void {
-  if constexpr (std::is_same_v<
-                    ResultList,
-                    arangodb::graph::enterprise::SmartGraphResponse>) {
+  if constexpr (std::is_same_v<ResultList, arangodb::graph::enterprise::
+                                               SmartGraphResponse<Provider>>) {
     // Not implemented and used
     TRI_ASSERT(false);
   } else {
@@ -328,6 +340,7 @@ auto OneSidedEnumerator<Configuration>::fetchResults() -> void {
         // fetch as fetched. This works, but we might create a batch limit here
         // in the future. Also discuss: Do we want (re-)fetch logic here?
         // TODO: maybe we can combine this with prefetching of paths
+        // Ticket ID: [GORDO-1394]
       }
     }
   }

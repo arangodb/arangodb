@@ -44,7 +44,7 @@
 #include <velocypack/Sink.h>
 #include <velocypack/Value.h>
 
-#include <absl/container/inlined_vector.h>
+#include "Containers/SmallVector.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -291,7 +291,7 @@ uint64_t QueryList::kill(std::function<bool(Query&)> const& filter,
   // We must not call the std::shared_ptr<Query> dtor under the `_lock`,
   // because this can result in a deadlock since the Query dtor tries to
   // remove itself from this list which acquires the write `_lock`
-  absl::InlinedVector<std::shared_ptr<Query>, 16> queries;
+  containers::SmallVector<std::shared_ptr<Query>, 16> queries;
   {
     READ_LOCKER(readLocker, _lock);
     queries.reserve(_current.size());
@@ -317,7 +317,7 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
   // We must not call the std::shared_ptr<Query> dtor under the `_lock`,
   // because this can result in a deadlock since the Query dtor tries to
   // remove itself from this list which acquires the write `_lock`
-  absl::InlinedVector<std::shared_ptr<Query>, 16> queries;
+  containers::SmallVector<std::shared_ptr<Query>, 16> queries;
   std::vector<QueryEntryCopy> result;
   // reserve room for some queries outside of the lock already,
   // so we reduce the possibility of having to reserve more room later

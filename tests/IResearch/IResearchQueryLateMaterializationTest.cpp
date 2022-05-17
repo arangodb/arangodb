@@ -71,7 +71,7 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
     auto slice = builder.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE(slice.get("type").copyString() ==
-                arangodb::iresearch::StaticStrings::DataSourceType);
+                arangodb::iresearch::StaticStrings::ViewType);
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());

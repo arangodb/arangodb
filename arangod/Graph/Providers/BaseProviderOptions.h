@@ -217,6 +217,7 @@ struct ClusterBaseProviderOptions {
   // TODO: This is right now a little bit hacked in, to allow unittestability.
   // i would like to clean this up better such that the RPCCommunicator is
   // properly owned by this class
+  // Ticket [GORDO-1392]
   std::unique_ptr<enterprise::SmartGraphRPCCommunicator> _communicator;
 #endif
 

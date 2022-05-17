@@ -1,6 +1,34 @@
 devel
 -----
 
+* Added `[?]` array operator to AQL, which works as follows:
+  - `nonArray[?]`: returns `false`
+  - `nonArray[? FILTER CURRENT ...]`: returns `false`
+  - `array[?]`: returns `false` if array is empty, `true` otherwise
+  - `array[? FILTER CURRENT ...]`: returns `false` if no array member
+     satisfies the filter condition, returns `true` if at least one
+     member satistifies it.
+
+* Fixed Github issue #16279: assertion failure/crash in AQL query optimizer when
+  permuting adjacent FOR loops that depended on each other.
+
+* No good reason to fatal error in agency state, when local database entries
+  lack local timestamp (legacy). In that situation, we will record epoch begin
+	as local time.
+
+* Put hotbackup requests on the HIGH priority queue to make hotbackups work
+  under high load (BTS-865).
+
+* Removed separate FlushThread (for views syncing) and merged it with the
+  RocksDBBackgroundThread.
+
+* Fix some issues with WAL recovery for views. Previously it was possible that
+  changes to a view/link were already recovered and persisted, but that the
+  lower bound WAL tick was not moved forward. This could lead to already fully
+  recovered views/links being recovered again on the next restart.
+
+* Updated OpenSSL to 1.1.1o and OpenLDAP to 2.6.2.
+
 * Upgrade jemalloc to version 5.3.0.
 
 * Fixed BTS-860. Changed ArangoSearch index recovery procedure to
