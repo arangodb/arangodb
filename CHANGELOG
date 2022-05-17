@@ -2,7 +2,7 @@ v3.8.7 (XXXX-XX-XX)
 -------------------
 
 * Very verbose warning from failing to parse GEO JSON in search. Has lead to
-  Billions of log lines on deployed services.
+  billions of log lines on deployed services.
 
 * Fixed BTS-860. Changed ArangoSearch index recovery procedure to remove
   necessity to always fully recreate index if IndexCreation marker encountered.
