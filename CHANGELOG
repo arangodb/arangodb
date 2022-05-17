@@ -36,6 +36,14 @@ devel
   mechanisms that require access to the database data will also be responded to
   with HTTP 503 errors, even if correct credentials are used.
 
+* Added `[?]` array operator to AQL, which works as follows:
+  - `nonArray[?]`: returns `false`
+  - `nonArray[? FILTER CURRENT ...]`: returns `false`
+  - `array[?]`: returns `false` if array is empty, `true` otherwise
+  - `array[? FILTER CURRENT ...]`: returns `false` if no array member
+     satisfies the filter condition, returns `true` if at least one
+     member satistifies it.
+
 * Fixed Github issue #16279: assertion failure/crash in AQL query optimizer when
   permuting adjacent FOR loops that depended on each other.
 
