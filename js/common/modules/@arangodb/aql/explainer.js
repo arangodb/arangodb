@@ -925,9 +925,14 @@ function processQuery(query, explain, planIndex) {
       case 'reference':
         if (references.hasOwnProperty(node.name)) {
           var ref = references[node.name];
+          var c = '*';
+          if (ref.length > 5 && ref[5]) {
+            c = '?';
+          }
+          print(node, ref);
           delete references[node.name];
           if (Array.isArray(ref)) {
-            var out = buildExpression(ref[1]) + '[' + (new Array(ref[0] + 1).join('*'));
+            var out = buildExpression(ref[1]) + '[' + (new Array(ref[0] + 1).join(c));
             if (ref[2].type !== 'no-op') {
               out += ' ' + keyword('FILTER') + ' ' + buildExpression(ref[2]);
             }
@@ -940,7 +945,7 @@ function processQuery(query, explain, planIndex) {
             out += ']';
             return out;
           }
-          return buildExpression(ref) + '[*]';
+          return buildExpression(ref) + '[' + c + ']';
         }
         return variableName(node);
       case 'collection':
@@ -987,7 +992,7 @@ function processQuery(query, explain, planIndex) {
       case 'expansion':
         if (node.subNodes.length > 2) {
           // [FILTER ...]
-          references[node.subNodes[0].subNodes[0].name] = [node.levels, node.subNodes[0].subNodes[1], node.subNodes[2], node.subNodes[3], node.subNodes[4]];
+          references[node.subNodes[0].subNodes[0].name] = [node.levels, node.subNodes[0].subNodes[1], node.subNodes[2], node.subNodes[3], node.subNodes[4], node.booleanize || false];
         } else {
           // [*]
           references[node.subNodes[0].subNodes[0].name] = node.subNodes[0].subNodes[1];

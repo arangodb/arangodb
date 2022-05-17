@@ -848,6 +848,12 @@ auto buildAgencyTransaction(DatabaseID const& dbName, LogId const& logId,
                                     sctx.getAction());
                        },
                        maxActionsTraceLength)
+                   .precs()
+                   .isNotEmpty(paths::target()
+                                   ->replicatedLogs()
+                                   ->database(dbName)
+                                   ->log(logId)
+                                   ->str())
                    .end();
   }
 
@@ -874,6 +880,12 @@ auto buildAgencyTransaction(DatabaseID const& dbName, LogId const& logId,
                       })
                   .inc(paths::current()->version()->str());
             })
+      .precs()
+      .isNotEmpty(paths::target()
+                      ->replicatedLogs()
+                      ->database(dbName)
+                      ->log(logId)
+                      ->str())
       .end();
 }
 
