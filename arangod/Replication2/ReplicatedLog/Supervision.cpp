@@ -491,20 +491,6 @@ auto getAddedParticipant(ParticipantsFlagsMap const& targetParticipants,
   return std::nullopt;
 }
 
-// If there is a participant that is present in Plan, but not in Target,
-// returns a pair consisting of the ParticipantId and the ParticipantFlags.
-// Otherwise returns std::nullopt
-auto getRemovedParticipant(ParticipantsFlagsMap const& targetParticipants,
-                           ParticipantsFlagsMap const& planParticipants)
-    -> std::optional<std::pair<ParticipantId, ParticipantFlags>> {
-  for (auto const& [planParticipant, flags] : planParticipants) {
-    if (!targetParticipants.contains(planParticipant)) {
-      return std::make_pair(planParticipant, flags);
-    }
-  }
-  return std::nullopt;
-}
-
 // Pick leader at random from participants
 auto pickRandomParticipantToBeLeader(ParticipantsFlagsMap const& participants,
                                      ParticipantsHealth const& health,
@@ -615,23 +601,26 @@ auto checkParticipantToRemove(SupervisionContext& ctx, Log const& log,
   TRI_ASSERT(leader.committedParticipantsConfig.has_value());
   auto const& committedParticipantsConfig = *leader.committedParticipantsConfig;
 
-  if (auto maybeParticipant = getRemovedParticipant(
-          target.participants, plan.participantsConfig.participants)) {
-    auto const& [participantId, planFlags] = *maybeParticipant;
+  auto const& targetParticipants = target.participants;
+  auto const& planParticipants = plan.participantsConfig.participants;
 
-    // We do not ever remove a leader
-    if (participantId != leader.serverId) {
+  for (auto const& [maybeRemovedParticipant, maybeRemovedParticipantFlags] :
+       planParticipants) {
+    if (!targetParticipants.contains(maybeRemovedParticipant) and
+        maybeRemovedParticipant != leader.serverId) {
       // If the participant is not allowed in Quorum it is safe to remove it
-      if (not planFlags.allowedInQuorum and
+      if (not maybeRemovedParticipantFlags.allowedInQuorum and
           committedParticipantsConfig.generation ==
               plan.participantsConfig.generation) {
-        ctx.createAction<RemoveParticipantFromPlanAction>(participantId);
-      } else if (planFlags.allowedInQuorum) {
+        ctx.createAction<RemoveParticipantFromPlanAction>(
+            maybeRemovedParticipant);
+      } else if (maybeRemovedParticipantFlags.allowedInQuorum) {
         // A participant can only be removed without risk,
         // if it is not member of any quorum
-        auto newFlags = planFlags;
+        auto newFlags = maybeRemovedParticipantFlags;
         newFlags.allowedInQuorum = false;
-        ctx.createAction<UpdateParticipantFlagsAction>(participantId, newFlags);
+        ctx.createAction<UpdateParticipantFlagsAction>(maybeRemovedParticipant,
+                                                       newFlags);
       } else {
         // still waiting
         ctx.reportStatus<LogCurrentSupervision::WaitingForConfigCommitted>();
@@ -742,6 +731,10 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
   // anymore
   checkParticipantToAdd(ctx, log, health);
 
+  // If a participant is in Plan but not in Target, gracefully
+  // remove it
+  checkParticipantToRemove(ctx, log, health);
+
   // If the participant who is leader has been removed from target,
   // gracefully remove it by selecting a different eligible participant
   // as leader
@@ -759,10 +752,6 @@ auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
   // This operation can fail and
   // TODO: Report if leaderInTarget fails.
   checkLeaderSetInTarget(ctx, log, health);
-
-  // If a participant is in Plan but not in Target, gracefully
-  // remove it
-  checkParticipantToRemove(ctx, log, health);
 
   // If the user has updated flags for a participant, which is detected by
   // comparing Target to Plan, write that change to Plan.
