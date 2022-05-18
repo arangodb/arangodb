@@ -36,6 +36,7 @@
 #include "Graph/Steps/ClusterProviderStep.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
+#include "Transaction/Helpers.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Providers/SmartGraphProvider.h"
