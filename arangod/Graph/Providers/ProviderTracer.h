@@ -76,6 +76,15 @@ class ProviderTracer {
                           arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(typename Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
+  void addEdgeIDToBuilder(typename Step::Edge const& edge,
+                          arangodb::velocypack::Builder& builder);
+
+  void addEdgeToLookupMap(typename Step::Edge const& edge,
+                          arangodb::velocypack::Builder& builder);
+
+  auto getEdgeId(typename Step::Edge const& edge) -> std::string;
+
+  auto getEdgeIdRef(typename Step::Edge const& edge) -> EdgeType;
 
   void prepareIndexExpressions(aql::Ast* ast);
 
@@ -88,6 +97,7 @@ class ProviderTracer {
 
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();
+  [[nodiscard]] bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 
  private:
   ProviderImpl _impl;

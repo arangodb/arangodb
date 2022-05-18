@@ -25,7 +25,6 @@
 const LH = require("@arangodb/testutils/replicated-logs-helper");
 const _ = require("lodash");
 
-
 const replicatedLogIsReady = function (database, logId, term, participants, leader) {
   return function () {
     let {current} = LH.readReplicatedLogAgency(database, logId);
@@ -56,6 +55,22 @@ const replicatedLogIsReady = function (database, logId, term, participants, lead
       if (!current.leader.leadershipEstablished) {
         return Error("Leader has not yet established its leadership");
       }
+    }
+    return true;
+  };
+};
+
+const replicatedLogIsGone = function (database, logId) {
+  return function () {
+    let {target, plan, current} = LH.readReplicatedLogAgency(database, logId);
+    if (target !== undefined) {
+      return Error("target still set");
+    }
+    if (plan !== undefined) {
+      return Error("plan still set");
+    }
+    if (current !== undefined) {
+      return Error("current still set");
     }
     return true;
   };
@@ -219,13 +234,36 @@ const replicatedLogLeaderCommitFail = function (database, logId, expected) {
   };
 };
 
-exports.replicatedLogIsReady = replicatedLogIsReady;
+const replicatedLogParticipantGeneration = function (database, logId, generation) {
+  return function () {
+    let {current} = LH.readReplicatedLogAgency(database, logId);
+    if (current === undefined) {
+      return Error("current not yet defined");
+    }
+    if (!current.leader) {
+      return Error("Leader has not yet established its term");
+    }
+    if (!current.leader.committedParticipantsConfig) {
+      return Error("Leader has not yet committed any participants config");
+    }
+    if (current.leader.committedParticipantsConfig.generation < generation) {
+      return Error("Leader has not yet acked new generation; "
+          + `found ${current.leader.committedParticipantsConfig.generation}, expected = ${generation}`);
+    }
+
+    return true;
+  };
+};
+
 exports.allServersHealthy = allServersHealthy;
-exports.serverHealthy = serverHealthy;
-exports.serverFailed = serverFailed;
+exports.replicatedLogIsGone = replicatedLogIsGone;
+exports.replicatedLogIsReady = replicatedLogIsReady;
+exports.replicatedLogLeaderCommitFail = replicatedLogLeaderCommitFail;
 exports.replicatedLogLeaderEstablished = replicatedLogLeaderEstablished;
+exports.replicatedLogLeaderPlanIs = replicatedLogLeaderPlanIs;
+exports.replicatedLogLeaderTargetIs = replicatedLogLeaderTargetIs;
+exports.replicatedLogParticipantGeneration = replicatedLogParticipantGeneration;
 exports.replicatedLogParticipantsFlag = replicatedLogParticipantsFlag;
 exports.replicatedLogTargetVersion = replicatedLogTargetVersion;
-exports.replicatedLogLeaderTargetIs = replicatedLogLeaderTargetIs;
-exports.replicatedLogLeaderPlanIs = replicatedLogLeaderPlanIs;
-exports.replicatedLogLeaderCommitFail = replicatedLogLeaderCommitFail;
+exports.serverFailed = serverFailed;
+exports.serverHealthy = serverHealthy;

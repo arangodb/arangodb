@@ -132,7 +132,8 @@ class TraversalNode : public virtual GraphNode {
                                RegisterId,
                                TraversalExecutorInfosHelper::OutputNameHash>&,
       RegisterId, RegisterInfos,
-      std::unordered_map<ServerID, aql::EngineId> const*) const;
+      std::unordered_map<ServerID, aql::EngineId> const*,
+      bool isSmart = false) const;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,

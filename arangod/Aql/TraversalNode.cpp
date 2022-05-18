@@ -690,7 +690,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createRefactoredBlock(
         TraversalExecutorInfosHelper::OutputName, RegisterId,
         TraversalExecutorInfosHelper::OutputNameHash>& outputRegisterMapping,
     RegisterId inputRegister, RegisterInfos registerInfos,
-    std::unordered_map<ServerID, aql::EngineId> const* engines) const {
+    std::unordered_map<ServerID, aql::EngineId> const* engines,
+    bool isSmart) const {
   TraverserOptions* opts = this->options();
 
   arangodb::graph::OneSidedEnumeratorOptions options{opts->minDepth,
@@ -708,9 +709,9 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createRefactoredBlock(
   };
   auto isDisjointIsSat = generateDisjointPathValidatorOptions();
 
-  PathValidatorOptions validatorOptions{opts->_tmpVar, opts->getExpressionCtx(),
-                                        isDisjointIsSat.first,
-                                        isDisjointIsSat.second};
+  PathValidatorOptions validatorOptions{
+      opts->tmpVar(), opts->getExpressionCtx(), isDisjointIsSat.first,
+      isDisjointIsSat.second};
 
   // Prune Section
   if (pruneExpression() != nullptr) {
@@ -754,14 +755,13 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createRefactoredBlock(
         std::move(filterConditionVariables), plan()->getAst(),
         opts->uniqueVertices, opts->uniqueEdges, opts->mode, opts->refactor(),
         opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
-        std::move(validatorOptions),
-        //                                 arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
-        //                                 opts->maxDepth});
-        std::move(options), opts, std::move(clusterBaseProviderOptions));
+        std::move(validatorOptions), std::move(options), opts,
+        std::move(clusterBaseProviderOptions), isSmart);
 
     return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else {
+    TRI_ASSERT(!isSmart);
     auto singleServerBaseProviderOptions =
         getSingleServerBaseProviderOptions(opts, filterConditionVariables);
     auto executorInfos = TraversalExecutorInfos(  // todo add a parameter:
@@ -770,10 +770,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createRefactoredBlock(
         std::move(filterConditionVariables), plan()->getAst(),
         opts->uniqueVertices, opts->uniqueEdges, opts->mode, opts->refactor(),
         opts->defaultWeight, opts->weightAttribute, opts->trx(), opts->query(),
-        std::move(validatorOptions),
-        //                                 arangodb::graph::OneSidedEnumeratorOptions{opts->minDepth,
-        //                                 opts->maxDepth});
-        std::move(options), opts, std::move(singleServerBaseProviderOptions));
+        std::move(validatorOptions), std::move(options), opts,
+        std::move(singleServerBaseProviderOptions), isSmart);
 
     return std::make_unique<ExecutionBlockImpl<TraversalExecutor>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -786,12 +784,18 @@ ClusterBaseProviderOptions TraversalNode::getClusterBaseProviderOptions(
         filterConditionVariables) const {
   auto traverserCache = std::make_shared<RefactoredClusterTraverserCache>(
       opts->query().resourceMonitor());
+  std::unordered_set<uint64_t> availableDepthsSpecificConditions;
+  availableDepthsSpecificConditions.reserve(opts->_depthLookupInfo.size());
+  for (auto const& [depth, _] : opts->_depthLookupInfo) {
+    availableDepthsSpecificConditions.emplace(depth);
+  }
   return {traverserCache,
           engines(),
           false,
           opts->produceVertices(),
           &opts->getExpressionCtx(),
-          filterConditionVariables};
+          filterConditionVariables,
+          std::move(availableDepthsSpecificConditions)};
 }
 
 SingleServerBaseProviderOptions
@@ -1012,8 +1016,16 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
      */
     waitForSatelliteIfRequired(&engine);
     if (isSmart() && !isDisjoint()) {
-      traverser = std::make_unique<arangodb::traverser::SmartGraphTraverser>(
-          opts, engines());
+      if (opts->refactor()) {
+        // Note: Using refactored smart graph cluster engine.
+        return createRefactoredBlock(
+            engine, std::move(filterConditionVariables), checkPruneAvailability,
+            checkPostFilterAvailability, outputRegisterMapping, inputRegister,
+            registerInfos, engines(), true /*isSmart*/);
+      } else {
+        traverser = std::make_unique<arangodb::traverser::SmartGraphTraverser>(
+            opts, engines());
+      }
     } else {
 #endif
       /*
@@ -1025,7 +1037,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
             engine, std::move(filterConditionVariables), checkPruneAvailability,
             checkPostFilterAvailability, outputRegisterMapping, inputRegister,
             registerInfos, engines());
-
       } else {
         // Note: Using non-refactored cluster engine.
         traverser = std::make_unique<arangodb::traverser::ClusterTraverser>(
@@ -1034,7 +1045,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 #ifdef USE_ENTERPRISE
     }
 #endif
-  } else {
+  }
+  {
     if (isDisjoint()) {
       opts->setDisjoint();
     }
@@ -1063,9 +1075,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
                                         isDisjointIsSat.first,
                                         isDisjointIsSat.second};
 
-  if (ServerState::instance()->isCoordinator() && !isSmart()) {
-    // Note: In case we're smart, we are NOT allowed to initialize the
-    // ClusterProvider.
+  if (ServerState::instance()->isCoordinator()) {
     auto clusterBaseProviderOptions =
         getClusterBaseProviderOptions(opts, filterConditionVariables);
 

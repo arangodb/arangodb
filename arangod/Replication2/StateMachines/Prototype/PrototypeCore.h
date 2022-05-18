@@ -87,6 +87,9 @@ struct PrototypeCore {
   template<typename EntryIterator>
   void applyEntries(std::unique_ptr<EntryIterator> ptr);
 
+  template<typename EntryIterator>
+  void update(std::unique_ptr<EntryIterator> ptr);
+
   auto getSnapshot() -> std::unordered_map<std::string, std::string>;
   void applySnapshot(
       std::unordered_map<std::string, std::string> const& snapshot);
@@ -99,10 +102,18 @@ struct PrototypeCore {
   auto get(std::vector<std::string> const& keys)
       -> std::unordered_map<std::string, std::string>;
 
+  bool compare(std::string const& key, std::string const& value);
+
+  auto getReadState() -> StorageType;
+  void applyToOngoingState(LogIndex, PrototypeLogEntry const&);
+
   [[nodiscard]] auto getLastPersistedIndex() const noexcept -> LogIndex const&;
   [[nodiscard]] auto getLogId() const noexcept -> GlobalLogIdentifier const&;
 
   LoggerContext const loggerContext;
+
+ private:
+  void applyToLocalStore(PrototypeLogEntry const& entry);
 
  private:
   GlobalLogIdentifier _logId;
@@ -110,6 +121,7 @@ struct PrototypeCore {
   LogIndex _lastAppliedIndex;
   StorageType _store;
   std::shared_ptr<IPrototypeStorageInterface> _storage;
+  std::deque<std::pair<LogIndex, StorageType>> _ongoingStates;
 };
 
 /*
@@ -120,19 +132,20 @@ void PrototypeCore::applyEntries(std::unique_ptr<EntryIterator> ptr) {
   auto lastAppliedIndex = ptr->range().to.saturatedDecrement();
   while (auto entry = ptr->next()) {
     PrototypeLogEntry const& logEntry = entry->second;
-    std::visit(overload{
-                   [&](PrototypeLogEntry::InsertOperation const& op) {
-                     for (auto const& [key, value] : op.map) {
-                       _store = _store.set(key, value);
-                     }
-                   },
-                   [&](PrototypeLogEntry::DeleteOperation const& op) {
-                     for (auto const& it : op.keys) {
-                       _store = _store.erase(it);
-                     }
-                   },
-               },
-               logEntry.op);
+    applyToLocalStore(logEntry);
+  }
+  _lastAppliedIndex = std::move(lastAppliedIndex);
+}
+
+/*
+ * Advances through the deque.
+ */
+template<typename EntryIterator>
+void PrototypeCore::update(std::unique_ptr<EntryIterator> ptr) {
+  auto lastAppliedIndex = ptr->range().to.saturatedDecrement();
+  while (!_ongoingStates.empty() &&
+         _ongoingStates.front().first < lastAppliedIndex) {
+    _ongoingStates.pop_front();
   }
   _lastAppliedIndex = std::move(lastAppliedIndex);
 }

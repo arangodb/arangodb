@@ -79,6 +79,12 @@ struct PrototypeStateMethods {
       LogId id, std::unordered_map<std::string, std::string> const& entries,
       PrototypeWriteOptions) const -> futures::Future<LogIndex> = 0;
 
+  [[nodiscard]] virtual auto compareExchange(LogId id, std::string key,
+                                             std::string oldValue,
+                                             std::string newValue,
+                                             PrototypeWriteOptions) const
+      -> futures::Future<ResultT<LogIndex>> = 0;
+
   [[nodiscard]] virtual auto get(LogId id, std::string key,
                                  LogIndex waitForApplied) const
       -> futures::Future<ResultT<std::optional<std::string>>>;
@@ -88,7 +94,7 @@ struct PrototypeStateMethods {
 
   struct ReadOptions {
     LogIndex waitForApplied{0};
-    std::optional<ParticipantId> readFrom;
+    std::optional<ParticipantId> readFrom{};
   };
 
   [[nodiscard]] virtual auto get(LogId id, std::string key,
