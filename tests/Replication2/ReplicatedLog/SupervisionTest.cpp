@@ -27,11 +27,13 @@
 #include <fmt/core.h>
 
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
 
 #include "velocypack/Parser.h"
+#include "Inspection/VPack.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -470,11 +472,19 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
 
   checkReplicatedLog(ctx, log, health);
 
-  EXPECT_TRUE(ctx.hasAction());
-  auto const& r = ctx.getAction();
+  EXPECT_FALSE(ctx.hasAction());
+  auto const r = ctx.getReport();
 
-  ASSERT_TRUE(std::holds_alternative<NoActionPossibleAction>(r))
-      << fmt::format("{}", r);
+  // TODO: we get two "Waiting for config committed", and the source
+  //       of this report should be made obvious.
+  EXPECT_EQ(r.size(), 2);
+
+  EXPECT_TRUE(
+      std::holds_alternative<LogCurrentSupervision::WaitingForConfigCommitted>(
+          r[0]));
+  EXPECT_TRUE(
+      std::holds_alternative<LogCurrentSupervision::WaitingForConfigCommitted>(
+          r[1]));
 }
 
 TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
