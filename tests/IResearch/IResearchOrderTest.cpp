@@ -77,7 +77,7 @@ REGISTER_SCORER_JSON(dummy_scorer, dummy_scorer::make);
 
 void assertOrder(
     arangodb::ArangodServer& server, bool parseOk, bool execOk,
-    std::string const& queryString, std::vector<irs::sort::ptr> const& expected,
+    std::string const& queryString, std::span<const irs::sort::ptr> expected,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
@@ -170,13 +170,15 @@ void assertOrder(
         actual.emplace_back(std::move(actualScorer));
       }
     }
-    EXPECT_TRUE((!execOk || expected == actual));
+
+    EXPECT_TRUE(!execOk || std::equal(std::begin(expected), std::end(expected),
+                                      std::begin(actual), std::end(actual)));
   }
 }
 
 void assertOrderSuccess(
     arangodb::ArangodServer& server, std::string const& queryString,
-    std::vector<irs::sort::ptr> const& expected,
+    std::span<const irs::sort::ptr> expected,
     arangodb::aql::ExpressionContext* exprCtx = nullptr,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
     std::string const& refName = "d") {
@@ -336,7 +338,7 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
   // tfidf
   {
     std::string query = "FOR d IN collection FILTER '1' SORT tfidf(d) RETURN d";
-    std::vector expected{
+    std::array expected{
         irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(),
                           irs::string_ref::NIL)};
 
@@ -347,7 +349,7 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
   {
     std::string query =
         "FOR d IN collection FILTER '1' SORT tfidf(d) ASC RETURN d";
-    std::vector<irs::sort::ptr> expected{
+    std::array expected{
         irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(),
                           irs::string_ref::NIL)};
 
@@ -358,7 +360,7 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
   {
     std::string query =
         "FOR d IN collection FILTER '1' SORT tfidf(d) DESC RETURN d";
-    std::vector<irs::sort::ptr> expected{
+    std::array expected{
         irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(),
                           irs::string_ref::NIL)};
 
@@ -369,7 +371,7 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
   {
     std::string query =
         "FOR d IN collection FILTER '1' SORT tfidf(d, true) DESC RETURN d";
-    std::vector<irs::sort::ptr> expected{irs::scorers::get(
+    std::array expected{irs::scorers::get(
         "tfidf", irs::type<irs::text_format::json>::get(), "[ true ]")};
 
     assertOrderSuccess(server, query, expected);
@@ -381,7 +383,7 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
         "LET withNorms=true FOR d IN collection FILTER '1' SORT tfidf(d, "
         "withNorms) DESC RETURN d";
 
-    std::vector expected{irs::scorers::get(
+    std::array expected{irs::scorers::get(
         "tfidf", irs::type<irs::text_format::json>::get(), "[ true ]")};
 
     ExpressionContextMock ctx;
@@ -396,7 +398,7 @@ TEST_F(IResearchOrderTest, test_FCall_tfidf) {
     std::string query =
         "LET x=5 FOR d IN collection FILTER '1' SORT tfidf(d, 1+x > 3) DESC "
         "RETURN d";
-    std::vector expected{irs::scorers::get(
+    std::array expected{irs::scorers::get(
         "tfidf", irs::type<irs::text_format::json>::get(), "[ true ]")};
 
     ExpressionContextMock ctx;
@@ -460,7 +462,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
   // bm25
   {
     std::string query = "FOR d IN collection FILTER '1' SORT bm25(d) RETURN d";
-    std::vector expected{
+    std::array expected{
         irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
                           irs::string_ref::NIL)};
 
@@ -471,7 +473,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
   {
     std::string query =
         "FOR d IN collection FILTER '1' SORT bm25(d) ASC RETURN d";
-    std::vector expected{
+    std::array expected{
         irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
                           irs::string_ref::NIL)};
 
@@ -482,7 +484,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
   {
     std::string query =
         "FOR d IN collection FILTER '1' SORT bm25(d) DESC RETURN d";
-    std::vector expected{
+    std::array expected{
         irs::scorers::get("bm25", irs::type<irs::text_format::json>::get(),
                           irs::string_ref::NIL)};
 
@@ -493,7 +495,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
   {
     std::string query =
         "FOR d IN collection FILTER '1' SORT bm25(d, 0.99) DESC RETURN d";
-    std::vector expected{irs::scorers::get(
+    std::array expected{irs::scorers::get(
         "bm25", irs::type<irs::text_format::json>::get(), "[ 0.99 ]")};
 
     assertOrderSuccess(server, query, expected);
@@ -508,7 +510,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     std::string query =
         "LET k=0.99 FOR d IN collection FILTER '1' SORT bm25(d, k) DESC RETURN "
         "d";
-    std::vector expected{irs::scorers::get(
+    std::array expected{irs::scorers::get(
         "bm25", irs::type<irs::text_format::json>::get(), "[ 0.99 ]")};
 
     assertOrderSuccess(server, query, expected, &ctx);
@@ -523,7 +525,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     std::string query =
         "LET x=0.97 FOR d IN collection FILTER '1' SORT bm25(d, x+0.02) DESC "
         "RETURN d";
-    std::vector expected{irs::scorers::get(
+    std::array expected{irs::scorers::get(
         "bm25", irs::type<irs::text_format::json>::get(), "[ 0.99 ]")};
 
     assertOrderSuccess(server, query, expected, &ctx);
@@ -545,7 +547,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
   {
     std::string query =
         "FOR d IN collection FILTER '1' SORT bm25(d, 0.99, 1.2) DESC RETURN d";
-    std::vector expected{irs::scorers::get(
+    std::array expected{irs::scorers::get(
         "bm25", irs::type<irs::text_format::json>::get(), "[ 0.99, 1.2 ]")};
 
     assertOrderSuccess(server, query, expected);
@@ -562,7 +564,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     std::string query =
         "LET k=0.97 LET b=1.2 FOR d IN collection FILTER '1' SORT bm25(d, k, "
         "b) DESC RETURN d";
-    std::vector expected{irs::scorers::get(
+    std::array expected{irs::scorers::get(
         "bm25", irs::type<irs::text_format::json>::get(), "[ 0.97, 1.2 ]")};
 
     assertOrderSuccess(server, query, expected, &ctx);
@@ -579,7 +581,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     std::string query =
         "LET x=0.97 LET y=0.1 FOR d IN collection FILTER '1' SORT bm25(d, "
         "x+0.02, 1+y) DESC RETURN d";
-    std::vector expected{irs::scorers::get(
+    std::array expected{irs::scorers::get(
         "bm25", irs::type<irs::text_format::json>::get(), "[ 0.99, 1.2 ]")};
 
     assertOrderSuccess(server, query, expected, &ctx);
@@ -601,7 +603,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
   {
     std::string query =
         "FOR d IN collection FILTER '1' SORT bm25(d, 0.99, 1.2) DESC RETURN d";
-    std::vector expected{irs::scorers::get(
+    std::array expected{irs::scorers::get(
         "bm25", irs::type<irs::text_format::json>::get(), "[ 0.99, 1.2 ]")};
 
     assertOrderSuccess(server, query, expected);
@@ -620,7 +622,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     std::string query =
         "LET k=0.97 LET b=1.2 FOR d IN collection FILTER '1' SORT bm25(d, k, "
         "b) DESC RETURN d";
-    std::vector expected{irs::scorers::get(
+    std::array expected{irs::scorers::get(
         "bm25", irs::type<irs::text_format::json>::get(), "[ 0.97, 1.2 ]")};
 
     assertOrderSuccess(server, query, expected, &ctx);
@@ -637,7 +639,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
     std::string query =
         "LET x=0.97 LET y=0.1 FOR d IN collection FILTER '1' SORT bm25(d, "
         "x+0.02, 1+y) DESC RETURN d";
-    std::vector expected{irs::scorers::get(
+    std::array expected{irs::scorers::get(
         "bm25", irs::type<irs::text_format::json>::get(), "[ 0.99, 1.1 ]")};
 
     assertOrderSuccess(server, query, expected, &ctx);
@@ -700,8 +702,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf(d) RETURN d";
 
-    std::vector<irs::sort::ptr> expected{
-        dummy_scorer::make(irs::string_ref::NIL)};
+    std::array expected{dummy_scorer::make(irs::string_ref::NIL)};
 
     assertOrderSuccess(server, query, expected);
   }
@@ -714,8 +715,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
     });
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\") RETURN d";
-    std::vector<irs::sort::ptr> expected{
-        dummy_scorer::make(irs::string_ref::NIL)};
+    std::array expected{dummy_scorer::make(irs::string_ref::NIL)};
     dummy_scorer::validateArgs = [](irs::string_ref args) -> bool {
       EXPECT_TRUE((irs::string_ref("[\"abc\"]") == args));
       return true;
@@ -731,8 +731,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
     });
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\") RETURN d";
-    std::vector<irs::sort::ptr> expected{
-        dummy_scorer::make(irs::string_ref::NIL)};
+    std::array expected{dummy_scorer::make(irs::string_ref::NIL)};
     bool valid = true;
 
     size_t attempt = 0;
@@ -755,8 +754,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"{\\\"abc\\\": "
         "\\\"def\\\"}\") RETURN d";
-    std::vector<irs::sort::ptr> expected{
-        dummy_scorer::make(irs::string_ref::NIL)};
+    std::array expected{dummy_scorer::make(irs::string_ref::NIL)};
 
     size_t attempt = 0;
     dummy_scorer::validateArgs = [&attempt](irs::string_ref args) -> bool {
@@ -778,8 +776,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"{\\\"abc\\\": "
         "\\\"def\\\"}\") RETURN d";
-    std::vector<irs::sort::ptr> expected{
-        dummy_scorer::make(irs::string_ref::NIL)};
+    std::array expected{dummy_scorer::make(irs::string_ref::NIL)};
     bool valid = true;
 
     size_t attempt = 0;
@@ -803,8 +800,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf(d, {\"abc\": "
         "\"def\"}) RETURN d";
-    std::vector<irs::sort::ptr> expected{
-        dummy_scorer::make(irs::string_ref::NIL)};
+    std::array expected{dummy_scorer::make(irs::string_ref::NIL)};
 
     size_t attempt = 0;
     dummy_scorer::validateArgs = [&attempt](irs::string_ref args) -> bool {
@@ -825,8 +821,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\", \"def\") "
         "RETURN d";
-    std::vector<irs::sort::ptr> expected{
-        dummy_scorer::make(irs::string_ref::NIL)};
+    std::array expected{dummy_scorer::make(irs::string_ref::NIL)};
     size_t attempt = 0;
     dummy_scorer::validateArgs = [&attempt](irs::string_ref args) -> bool {
       ++attempt;
@@ -846,8 +841,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\", "
         "\"{\\\"def\\\": \\\"ghi\\\"}\") RETURN d";
-    std::vector<irs::sort::ptr> expected{
-        dummy_scorer::make(irs::string_ref::NIL)};
+    std::array expected{dummy_scorer::make(irs::string_ref::NIL)};
     size_t attempt = 0;
     dummy_scorer::validateArgs = [&attempt](irs::string_ref args) -> bool {
       ++attempt;
@@ -868,8 +862,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\", {\"def\": "
         "\"ghi\"}) RETURN d";
-    std::vector<irs::sort::ptr> expected{
-        dummy_scorer::make(irs::string_ref::NIL)};
+    std::array expected{dummy_scorer::make(irs::string_ref::NIL)};
     size_t attempt = 0;
     dummy_scorer::validateArgs = [&attempt](irs::string_ref args) -> bool {
       ++attempt;
@@ -884,8 +877,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
   {
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf(d) ASC RETURN d";
-    std::vector<irs::sort::ptr> expected{
-        dummy_scorer::make(irs::string_ref::NIL)};
+    std::array expected{dummy_scorer::make(irs::string_ref::NIL)};
     assertOrderSuccess(server, query, expected);
   }
 
@@ -893,8 +885,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
   {
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf(d) DESC RETURN d";
-    std::vector<irs::sort::ptr> expected{
-        dummy_scorer::make(irs::string_ref::NIL)};
+    std::array expected{dummy_scorer::make(irs::string_ref::NIL)};
     assertOrderSuccess(server, query, expected);
   }
 
@@ -961,7 +952,7 @@ TEST_F(IResearchOrderTest, test_order) {
     std::string query =
         "FOR d IN collection FILTER '1' SORT test::tfidf(d) DESC, tfidf(d) "
         "RETURN d";
-    std::vector<irs::sort::ptr> expected{
+    std::array expected{
         dummy_scorer::make(irs::string_ref::NIL),
         irs::scorers::get("tfidf", irs::type<irs::text_format::json>::get(),
                           irs::string_ref::NIL)};
