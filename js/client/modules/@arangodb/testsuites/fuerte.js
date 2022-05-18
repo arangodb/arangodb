@@ -144,7 +144,7 @@ function gtestRunner(options) {
   argv.push(options.extremeVerbosity ? "true" : "false");
 
   // TODO use JWT tokens ?
-  argv.push('--endpoint=' + instanceInfo.endpoint);
+  argv.push('--endpoint=' + instanceManager.endpoint);
   argv.push('--authentication=' + "basic:root:");
 
   print(argv);

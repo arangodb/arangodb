@@ -117,7 +117,7 @@ class replicationRunner extends tu.runInArangoshRunner {
     this.follower['isSlaveInstance'] = true;
     this.addArgs['flatCommands'] = [ this.follower.endpoint];
     if (this.startReplication) {
-      let res = pu.run.arangoshCmd(this.options, this.instanceInfo, {}, [
+      let res = pu.run.arangoshCmd(this.options, this.instanceManager, {}, [
         '--javascript.execute-string',
         `
           var users = require("@arangodb/users");

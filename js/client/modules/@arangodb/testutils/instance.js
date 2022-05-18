@@ -553,6 +553,7 @@ class instance {
   }
   launchInstance(moreArgs) {
     if (this.pid !== null) {
+      print(RED + "can not re-launch when PID still there. " + this.name + " - " + this.pid); 
       return;
     }
     try {
@@ -577,14 +578,41 @@ class instance {
     this.url = pu.endpointToURL(this.endpoint);
   };
 
+  waitForExit() {
+    if (this.pid === null) {
+      this.exitStatus = null;
+      return;
+    }
+    this.exitStatus = internal.statusExternal(this.pid, true);
+    if (this.exitStatus.status !== 'TERMINATED') {
+      throw new Error(this.name + " didn't exit in a regular way: " + JSON.stringify(this.exitStatus));
+    }
+    this.exitStatus = null;
+    this.pid = null;
+  }
+
   restartOneInstance(moreArgs) {
     const startTime = time();
-    delete(this.exitStatus);
-    delete(this.pid);
+    this.exitStatus = null;
+    this.pid = null;
     this.upAndRunning = false;
 
-    print("relaunching: " + JSON.stringify(this));
+    print("relaunching: " + JSON.stringify(this.getStructure()));
     this.launchInstance(moreArgs);
+    while(true) {
+      const reply = download(this.url + '/_api/version', '');
+
+      if (!reply.error && reply.code === 200) {
+        break;
+      }
+      print('.');
+      sleep(0.5);
+      if (!this.checkArangoAlive()) {
+        print("instance gone! " + this.name);
+        this.pid = null;
+        throw new Error("restart failed! " + this.name);
+      }
+    }
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief periodic checks whether spawned arangod processes are still alive
