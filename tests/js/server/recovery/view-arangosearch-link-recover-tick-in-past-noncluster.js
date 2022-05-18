@@ -1,9 +1,7 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue, assertFalse, assertNull, fail, AQL_EXECUTE */
+/* global assertEqual, assertTrue, assertFalse */
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief recovery tests for views
-// /
-// / @file
 // /
 // / DISCLAIMER
 // /
@@ -27,34 +25,39 @@
 // / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var db = require('@arangodb').db;
-var internal = require('internal');
-var jsunity = require('jsunity');
+const db = require('@arangodb').db;
+const internal = require('internal');
+const jsunity = require('jsunity');
+const replication = require('@arangodb/replication');
+
+const cn = 'UnitTestsRecovery';
+const vn = 'UnitTestsView';
 
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
 
-  db._drop('UnitTestsRecoveryDummy');
-  var c = db._create('UnitTestsRecoveryDummy');
+  let c = db._create(cn);
+  let docs = [];
+  for (let i = 0; i < 1000; ++i) {
+    docs.push({ value1: i, value2: "test" + i });
+  }
+  c.insert(docs);
 
-  db._dropView('UnitTestsRecoveryView');
-  var v = db._createView('UnitTestsRecoveryView', 'arangosearch', {});
+  let v = db._createView(vn, 'arangosearch', {});
+  
+  internal.debugSetFailAt("StatisticsWorker::bypass");
 
-  var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
+  internal.waitForEstimatorSync();
+  let lastTickBeforeLink = replication.logger.state().state.lastLogTick;
+  
+  // prevent background thread from running and noting view's progress
+  internal.debugSetFailAt("RocksDBBackgroundThread::run");
+
+  let meta = { links: { [cn]: { includeAllFields: true } } };
   v.properties(meta);
 
-  for (let i = 0; i < 10000; i++) {
-    c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
-  }
-
-  internal.wal.flush(true, true);
-  internal.debugSetFailAt("RocksDBBackgroundThread::run");
-  internal.wait(2); // make sure failure point takes effect
-
-  v.properties({ links: { 'UnitTestsRecoveryDummy': null } });
-
-  c.save({ name: 'crashme' }, { waitForSync: true });
+  c.insert({ _key: "lastLogTick", tick: lastTickBeforeLink }, true);
 
   internal.debugTerminate('crashing server');
 }
@@ -68,30 +71,25 @@ function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
 
   return {
-    setUp: function () {},
-    tearDown: function () {},
+    testIResearchRecoverWithTickInPast: function () {
+      let storedTick = db._collection(cn).document("lastLogTick").tick;
 
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test whether we can restore the trx data
-    // //////////////////////////////////////////////////////////////////////////////
+      let recoverTick = global.WAL_RECOVERY_START_SEQUENCE();
+      assertTrue(replication.compareTicks(recoverTick, storedTick) <= 0, { recoverTick, storedTick });
 
-    testIResearchLinkPopulateDropLinkNoFlushThread: function () {
-      var v = db._view('UnitTestsRecoveryView');
-      assertEqual(v.name(), 'UnitTestsRecoveryView');
+      let v = db._view(vn);
+      assertEqual(v.name(), vn);
       assertEqual(v.type(), 'arangosearch');
-      var p = v.properties().links;
-      assertFalse(p.hasOwnProperty('UnitTestsRecoveryDummy'));
+      let p = v.properties().links;
+      assertTrue(p.hasOwnProperty(cn));
+      assertTrue(p[cn].includeAllFields);
 
-      var result = db._query("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
-      assertEqual(result[0], 0);
+      let results = db._query(`FOR i IN 0..999 FOR doc IN ${vn} SEARCH doc.value1 == i OPTIONS { waitForSync: true } RETURN doc`).toArray();
+      assertEqual(1000, results.length);
     }
 
   };
 }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief executes the test suite
-// //////////////////////////////////////////////////////////////////////////////
 
 function main (argv) {
   'use strict';
