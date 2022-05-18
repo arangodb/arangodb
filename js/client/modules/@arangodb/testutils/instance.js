@@ -164,6 +164,7 @@ class instance {
     if (! PORTMANAGER) {
       PORTMANAGER = new portManager(options);
     }
+    this.id = null;
     this.pm = PORTMANAGER;
     this.options = options;
     this.instanceRole = instanceRole;
@@ -218,6 +219,7 @@ class instance {
       logFile: this.logFile,
       args: this.args,
       pid: this.pid,
+      id: this.id,
       exitStatus: this.exitStatus,
       serverCrashedLocal: this.serverCrashedLocal
     };
