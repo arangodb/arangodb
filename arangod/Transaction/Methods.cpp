@@ -90,6 +90,36 @@ namespace {
 
 enum class ReplicationType { NONE, LEADER, FOLLOWER };
 
+/// @brief choose a timeout for synchronous replication, based on the
+/// number of documents we ship over
+double chooseTimeoutForReplication(ReplicationTimeoutFeature const& feature,
+                                   size_t count, size_t totalBytes) {
+  // We essentially stop using a meaningful timeout for this operation.
+  // This is achieved by setting the default for the minimal timeout to 15m or
+  // 900s. The reason behind this is the following: We have to live with RocksDB
+  // stalls and write stops, which can happen in overload situations. Then, no
+  // meaningful timeout helps and it is almost certainly better to keep trying
+  // to not have to drop the follower and make matters worse. In case of an
+  // actual failure (or indeed a restart), the follower is marked as failed and
+  // its reboot id is increased. As a consequence, the connection is aborted and
+  // we run into an error anyway. This is when a follower will be dropped.
+
+  // We leave this code in place for now.
+
+  // We usually assume that a server can process at least 2500 documents
+  // per second (this is a low estimate), and use a low limit of 0.5s
+  // and a high timeout of 120s
+  double timeout = count / 2500.0;
+
+  // Really big documents need additional adjustment. Using total size
+  // of all messages to handle worst case scenario of constrained resource
+  // processing all
+  timeout += (totalBytes / 4096.0) * feature.timeoutPer4k();
+
+  return std::clamp(timeout, feature.lowerLimit(), feature.upperLimit()) *
+         feature.timeoutFactor();
+}
+
 Result buildRefusalResult(LogicalCollection const& collection,
                           char const* operation,
                           OperationOptions const& options,
@@ -968,36 +998,6 @@ Future<OperationResult> transaction::Methods::insertCoordinator(
                                                api);
 }
 #endif
-
-/// @brief choose a timeout for synchronous replication, based on the
-/// number of documents we ship over
-static double chooseTimeoutForReplication(size_t count, size_t totalBytes) {
-  // We essentially stop using a meaningful timeout for this operation.
-  // This is achieved by setting the default for the minimal timeout to 15m or
-  // 900s. The reason behind this is the following: We have to live with RocksDB
-  // stalls and write stops, which can happen in overload situations. Then, no
-  // meaningful timeout helps and it is almost certainly better to keep trying
-  // to not have to drop the follower and make matters worse. In case of an
-  // actual failure (or indeed a restart), the follower is marked as failed and
-  // its reboot id is increased. As a consequence, the connection is aborted and
-  // we run into an error anyway. This is when a follower will be dropped.
-
-  // We leave this code in place for now.
-
-  // We usually assume that a server can process at least 2500 documents
-  // per second (this is a low estimate), and use a low limit of 0.5s
-  // and a high timeout of 120s
-  double timeout = count / 2500.0;
-
-  // Really big documents need additional adjustment. Using total size
-  // of all messages to handle worst case scenario of constrained resource
-  // processing all
-  timeout += (totalBytes / 4096.0) * ReplicationTimeoutFeature::timeoutPer4k;
-
-  return std::clamp(timeout, ReplicationTimeoutFeature::lowerLimit,
-                    ReplicationTimeoutFeature::upperLimit) *
-         ReplicationTimeoutFeature::timeoutFactor;
-}
 
 /// @brief create one or multiple documents in a collection, local
 /// the single-document variant of this operation will either succeed or,
@@ -2619,11 +2619,13 @@ Future<Result> Methods::replicateOperations(
     return Result();
   }
 
-  reqOpts.timeout =
-      network::Timeout(chooseTimeoutForReplication(count, payload->size()));
+  ReplicationTimeoutFeature& timeouts =
+      vocbase().server().getFeature<ReplicationTimeoutFeature>();
+  reqOpts.timeout = network::Timeout(
+      ::chooseTimeoutForReplication(timeouts, count, payload->size()));
   TRI_IF_FAILURE("replicateOperations_randomize_timeout") {
-    reqOpts.timeout =
-        network::Timeout((double)RandomGenerator::interval(uint32_t(60)));
+    reqOpts.timeout = network::Timeout(
+        static_cast<double>(RandomGenerator::interval(uint32_t(60))));
   }
 
   TRI_IF_FAILURE("replicateOperationsDropFollowerBeforeSending") {
