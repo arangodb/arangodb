@@ -684,7 +684,6 @@ void RocksDBEngine::start() {
   if (basics::FileUtils::isDirectory(_idxPath.data())) {
     ::cleanUpExtFiles(_idxPath.data());
   } else {
-    LOG_DEVEL << "_idxPath " << _idxPath;
     auto errorMsg = TRI_ERROR_NO_ERROR;
     if (!basics::FileUtils::createDirectory(_idxPath.data(), &errorMsg)) {
       LOG_TOPIC("6d10f", FATAL, Logger::ENGINES)

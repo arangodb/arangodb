@@ -505,7 +505,7 @@ static arangodb::Result fillIndex(
   std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
 
   TRI_IF_FAILURE("RocksDBBuilderIndex::fillIndex") { FATAL_ERROR_EXIT(); }
-  if (isUnique) {
+  if (isUnique || !foreground) {
     uint64_t numDocsWritten = 0;
     RocksDBTransactionCollection* trxColl = trx.resolveTrxCollection();
 
