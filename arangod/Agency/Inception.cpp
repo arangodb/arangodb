@@ -33,6 +33,7 @@
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "Random/RandomGenerator.h"
 
 #include <chrono>
 #include <thread>
@@ -44,22 +45,23 @@ void handleGossipResponse(arangodb::network::Response const& r,
                           std::string const& endpoint,
                           arangodb::consensus::Agent* agent, size_t version) {
   using namespace arangodb;
-  std::string newLocation;
-
   if (r.ok()) {
     velocypack::Slice payload = r.slice();
 
     switch (r.statusCode()) {
-      case 200:  // Digest other configuration
+      case 200: {
+        // Digest other configuration
         LOG_TOPIC("4995a", DEBUG, Logger::AGENCY)
             << "Got result of gossip message, code: 200"
             << " body: " << payload.toJson();
         agent->gossip(payload, true, version);
         break;
+      }
 
-      case 307:  // Add new endpoint to gossip peers
+      case 307: {
+        // Add new endpoint to gossip peers
         bool found;
-        newLocation =
+        std::string newLocation =
             r.response().header.metaByKey(StaticStrings::Location, found);
 
         if (found) {
@@ -92,21 +94,25 @@ void handleGossipResponse(arangodb::network::Response const& r,
               << "Redirect lacks 'Location' header";
         }
         break;
+      }
 
-      case 503:
+      case 503: {
         // service unavailable
         LOG_TOPIC("f9c3f", INFO, Logger::AGENCY)
             << "Gossip endpoint " << endpoint << " is still unavailable";
-        std::this_thread::sleep_for(std::chrono::seconds(10));
+        uint32_t sleepTime = 250 + RandomGenerator::interval(uint32_t(250));
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime));
         break;
+      }
 
-      default:
+      default: {
         // unexpected error
         LOG_TOPIC("bed89", ERR, Logger::AGENCY)
             << "Got error " << r.statusCode() << " from gossip endpoint "
             << endpoint;
-        std::this_thread::sleep_for(std::chrono::seconds(40));
+        std::this_thread::sleep_for(std::chrono::seconds(30));
         break;
+      }
     }
   }
 
