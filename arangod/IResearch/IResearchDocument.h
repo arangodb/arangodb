@@ -265,7 +265,6 @@ class InvertedIndexFieldIterator {
   Field _value;       // iterator's value
   VPackSlice _slice;  // input slice
   VPackSlice _valueSlice;
-  irs::string_ref _collection;
   IndexId _indexId;
   AnalyzerPool::CacheType::ptr _currentTypedAnalyzer;
   VPackTermAttribute const* _currentTypedAnalyzerValue{nullptr};

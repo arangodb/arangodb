@@ -523,10 +523,10 @@ bool IResearchInvertedIndexMeta::matchesFieldsDefinition(
 
 IResearchInvertedIndexMeta::FieldRecord::FieldRecord(
     std::vector<basics::AttributeName> const& path, FieldMeta::Analyzer&& a)
-    : analyzer(std::move(a)) {
+    : _analyzer(std::move(a)) {
   auto it = path.begin();
   while (it != path.end()) {
-    attribute.push_back(*it);
+    _attribute.push_back(*it);
     if (it->shouldExpand) {
       ++it;
       break;
@@ -536,18 +536,18 @@ IResearchInvertedIndexMeta::FieldRecord::FieldRecord(
   while (it != path.end()) {
     TRI_ASSERT(
         !it->shouldExpand);  // only one expansion per attribute is supported!
-    expansion.push_back(*it);
+    _expansion.push_back(*it);
     ++it;
   }
 }
 
 std::string IResearchInvertedIndexMeta::FieldRecord::toString() const {
   std::string attr;
-  TRI_AttributeNamesToString(attribute, attr, false);
+  TRI_AttributeNamesToString(_attribute, attr, false);
   if (!expansion.empty()) {
     attr += ".";
     std::string exp;
-    TRI_AttributeNamesToString(expansion, exp, true);
+    TRI_AttributeNamesToString(_expansion, exp, true);
     attr += exp;
   }
   return attr;
@@ -557,18 +557,18 @@ bool IResearchInvertedIndexMeta::FieldRecord::isIdentical(
     std::vector<basics::AttributeName> const& path,
     irs::string_ref analyzerName) const noexcept {
   if (analyzer._shortName == analyzerName &&
-      path.size() == (attribute.size() + expansion.size())) {
+      path.size() == (_attribute.size() + _expansion.size())) {
     auto it = path.begin();
-    auto atr = attribute.begin();
-    while (it != path.end() && atr != attribute.end()) {
+    auto atr = _attribute.begin();
+    while (it != path.end() && atr != _attribute.end()) {
       if (it->name != atr->name || it->shouldExpand != atr->shouldExpand) {
         return false;
       }
       ++atr;
       ++it;
     }
-    auto exp = expansion.begin();
-    while (it != path.end() && exp != expansion.end()) {
+    auto exp = _expansion.begin();
+    while (it != path.end() && exp != _expansion.end()) {
       if (it->name != exp->name || it->shouldExpand != exp->shouldExpand) {
         return false;
       }

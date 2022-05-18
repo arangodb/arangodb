@@ -29,6 +29,10 @@
 
 namespace arangodb::iresearch {
 
+enum class Consistency {
+  kEventual, kImmediate
+};
+
 struct IResearchInvertedIndexMeta {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize IResearchInvertedIndexMeta with values from a JSON
@@ -47,6 +51,8 @@ struct IResearchInvertedIndexMeta {
             bool readAnalyzerDefinition, std::string& errorField,
             irs::string_ref const defaultVocbase);
 
+  bool dense() const noexcept { return !_sort.empty(); }
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description
   /// @param server underlying application server
@@ -61,6 +67,10 @@ struct IResearchInvertedIndexMeta {
             bool writeAnalyzerDefinition,
             TRI_vocbase_t const* defaultVocbase = nullptr) const;
 
+  //struct ViewFieldRecord {
+  //  includeAllfields: true;
+  //};
+
   struct FieldRecord {
     FieldRecord(std::vector<basics::AttributeName> const& path,
                 FieldMeta::Analyzer&& a);
@@ -70,12 +80,14 @@ struct IResearchInvertedIndexMeta {
     bool isIdentical(std::vector<basics::AttributeName> const& path,
                      irs::string_ref analyzerName) const noexcept;
 
+   private:
     /// @brief attribute path
-    std::vector<basics::AttributeName> attribute;
+    std::vector<basics::AttributeName> _attribute;
     /// @brief array sub-path in case of expansion (maybe empty)
-    std::vector<basics::AttributeName> expansion;
+    std::vector<basics::AttributeName> _expansion;
     /// @brief analyzer to apply
-    FieldMeta::Analyzer analyzer;
+    FieldMeta::Analyzer _analyzer;
+    std::optional<Features> _features;
   };
 
   using Fields = std::vector<FieldRecord>;
@@ -92,9 +104,14 @@ struct IResearchInvertedIndexMeta {
   // stored values associated with the link
   IResearchViewStoredValues _storedValues;
   irs::type_info::type_id _sortCompression{getDefaultCompression()};
+  // Not used in the inverted index but need this member for compliance with
+  // the LinkMeta interface
   irs::string_ref _collectionName;
   // the version of the iresearch interface e.g. which how data is stored in
   // iresearch (default == MAX) IResearchInvertedIndexMeta
   uint32_t _version{static_cast<uint32_t>(LinkVersion::MAX)};
+  Consistency _consistency{Consistency::kEventual};
+  std::string _defaultAnalyzerName;
+  std::optional<Features> _features;
 };
 }  // namespace arangodb::iresearch

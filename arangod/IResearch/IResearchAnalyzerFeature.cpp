@@ -679,7 +679,7 @@ Result parseAnalyzerSlice(VPackSlice const& slice, irs::string_ref& name,
     for (VPackArrayIterator subItr(subSlice); subItr.valid(); ++subItr) {
       auto subEntry = *subItr;
 
-      if (!subEntry.isString() && !subSlice.isNull()) {
+      if (!subEntry.isString()) {
         return {TRI_ERROR_BAD_PARAMETER,
                 "failed to find a string value for an entry in analyzer "
                 "'features'"};
