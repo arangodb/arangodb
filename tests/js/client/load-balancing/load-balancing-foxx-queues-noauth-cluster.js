@@ -32,7 +32,7 @@ const request = require("@arangodb/request");
 const _ = require("lodash");
 
 function getCoordinators() {
-  const isCoordinator = (d) => (_.toLower(d.role) === 'coordinator');
+  const isCoordinator = (d) => (_.toLower(d.instanceRole) === 'coordinator');
   const toEndpoint = (d) => (d.endpoint);
   const endpointToURL = (endpoint) => {
     if (endpoint.substr(0, 6) === 'ssl://') {

@@ -36,7 +36,7 @@ const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const dbs = ["testDatabase", "abc123", "maçã", "mötör", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "かわいい犬"];
 
 function getCoordinators() {
-  const isCoordinator = (d) => (_.toLower(d.role) === 'coordinator');
+  const isCoordinator = (d) => (_.toLower(d.instanceRole) === 'coordinator');
   const toEndpoint = (d) => (d.endpoint);
   const endpointToURL = (endpoint) => {
     if (endpoint.substr(0, 6) === 'ssl://') {
