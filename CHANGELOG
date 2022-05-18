@@ -1,6 +1,9 @@
 v3.9.2 (XXXX-XX-XX)
 -------------------
 
+* Fix behavior when accessing a view instead of a collection by name in a REST
+  document operation. Now return a proper error.
+
 * Make followers respond to synchronous replication requests with less data.
   Specifically, followers will not build detailed results with _id, _key and
   _rev for the inserted/modified/removed documents, which would be ignored by
