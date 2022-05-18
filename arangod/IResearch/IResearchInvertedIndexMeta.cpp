@@ -424,7 +424,7 @@ bool IResearchInvertedIndexMeta::json(
     for (auto& entry : _fields) {
       VPackObjectBuilder fieldObject(&fieldsBuilder);
       fieldsBuilder.add("name", VPackValue(entry.toString()));
-      fieldsBuilder.add("analyzer", VPackValue(entry.analyzer._pool->name()));
+      fieldsBuilder.add("analyzer", VPackValue(entry.analyzerName()));
     }
   }
   builder.add(arangodb::StaticStrings::IndexFields, fieldsBuilder.slice());
@@ -456,14 +456,7 @@ bool IResearchInvertedIndexMeta::operator==(
   size_t matched{0};
   for (auto const& thisField : _fields) {
     for (auto const& otherField : _fields) {
-      TRI_ASSERT(thisField.analyzer._pool);
-      TRI_ASSERT(otherField.analyzer._pool);
-      if (thisField.analyzer._pool->name() ==
-              otherField.analyzer._pool->name() &&
-          basics::AttributeName::namesMatch(thisField.attribute,
-                                            otherField.attribute) &&
-          basics::AttributeName::namesMatch(thisField.expansion,
-                                            otherField.expansion)) {
+      if (thisField.namesMatch(otherField)) {
         matched++;
         break;
       }
@@ -544,7 +537,7 @@ IResearchInvertedIndexMeta::FieldRecord::FieldRecord(
 std::string IResearchInvertedIndexMeta::FieldRecord::toString() const {
   std::string attr;
   TRI_AttributeNamesToString(_attribute, attr, false);
-  if (!expansion.empty()) {
+  if (!_expansion.empty()) {
     attr += ".";
     std::string exp;
     TRI_AttributeNamesToString(_expansion, exp, true);
@@ -553,10 +546,26 @@ std::string IResearchInvertedIndexMeta::FieldRecord::toString() const {
   return attr;
 }
 
+std::vector<arangodb::basics::AttributeName>
+IResearchInvertedIndexMeta::FieldRecord::combinedName() const {
+  std::vector<arangodb::basics::AttributeName> combined;
+  combined.reserve(_attribute.size() + _expansion.size());
+  combined.insert(combined.end(), std::begin(_attribute), std::end(_attribute));
+  combined.insert(combined.end(), std::begin(_expansion), std::end(_expansion));
+  return combined;
+}
+
+bool IResearchInvertedIndexMeta::FieldRecord::namesMatch(
+    FieldRecord const& other) const noexcept {
+  return analyzerName() == other.analyzerName() &&
+         basics::AttributeName::namesMatch(_attribute, other._attribute) &&
+         basics::AttributeName::namesMatch(_expansion, other._expansion);
+}
+
 bool IResearchInvertedIndexMeta::FieldRecord::isIdentical(
     std::vector<basics::AttributeName> const& path,
     irs::string_ref analyzerName) const noexcept {
-  if (analyzer._shortName == analyzerName &&
+  if (_analyzer._shortName == analyzerName &&
       path.size() == (_attribute.size() + _expansion.size())) {
     auto it = path.begin();
     auto atr = _attribute.begin();

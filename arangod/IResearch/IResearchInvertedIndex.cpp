@@ -147,7 +147,7 @@ AnalyzerProvider makeAnalyzerProvider(IResearchInvertedIndexMeta const& meta) {
              std::string_view ex) -> FieldMeta::Analyzer const& {
     for (auto const& field : meta._fields) {
       if (field.toString() == ex) {
-        return field.analyzer;
+        return field.analyzer();
       }
     }
     return defaultAnalyzer;
@@ -842,13 +842,7 @@ IResearchInvertedIndex::fields(IResearchInvertedIndexMeta const& meta) {
   std::vector<std::vector<arangodb::basics::AttributeName>> res;
   res.reserve(meta._fields.size());
   for (auto const& f : meta._fields) {
-    std::vector<arangodb::basics::AttributeName> combined;
-    combined.reserve(f.attribute.size() + f.expansion.size());
-    combined.insert(combined.end(), std::begin(f.attribute),
-                    std::end(f.attribute));
-    combined.insert(combined.end(), std::begin(f.expansion),
-                    std::end(f.expansion));
-    res.push_back(std::move(combined));
+    res.push_back(f.combinedName());
   }
   return res;
 }

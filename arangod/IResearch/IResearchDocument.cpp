@@ -749,12 +749,12 @@ void InvertedIndexFieldIterator::next() {
     _valueSlice = VPackSlice::noneSlice();
     while (!_arrayStack.empty()) {
       if (_arrayStack.back().valid()) {
-        if (_begin->expansion.empty()) {
+        if (_begin->expansion().empty()) {
           _valueSlice = *_arrayStack.back();
         } else {
           // for array subobjects we index "null" in case of absence as declared
           // for other indicies
-          _valueSlice = get(*_arrayStack.back(), _begin->expansion,
+          _valueSlice = get(*_arrayStack.back(), _begin->expansion(),
                             VPackSlice::nullSlice());
         }
         ++_arrayStack.back();
@@ -769,9 +769,9 @@ void InvertedIndexFieldIterator::next() {
           TRI_ASSERT(!valid());
           return;  // exhausted
         }
-        _valueSlice = get(_slice, _begin->attribute, VPackSlice::noneSlice());
+        _valueSlice = get(_slice, _begin->attribute(), VPackSlice::noneSlice());
         if (!_valueSlice.isNone() && !_valueSlice.isArray() &&
-            _begin->attribute.back().shouldExpand) {
+            _begin->isArray()) {
           _valueSlice = VPackSlice::noneSlice();
         }
       }
@@ -780,22 +780,22 @@ void InvertedIndexFieldIterator::next() {
     if (!_valueSlice.isNone()) {
       if (_nameBuffer.empty()) {
         bool isFirst = true;
-        for (auto& a : _begin->attribute) {
+        for (auto& a : _begin->attribute()) {
           if (!isFirst) {
             _nameBuffer += NESTING_LEVEL_DELIMITER;
           }
           _nameBuffer.append(a.name);
           isFirst = false;
         }
-        if (!_begin->expansion.empty()) {
+        if (!_begin->expansion().empty()) {
           _nameBuffer.append("[*]");
         }
-        for (auto& a : _begin->expansion) {
+        for (auto& a : _begin->expansion()) {
           _nameBuffer += NESTING_LEVEL_DELIMITER;
           _nameBuffer.append(a.name);
         }
       }
-      TRI_ASSERT(_begin->analyzer._pool);
+      TRI_ASSERT(_begin->analyzer()._pool);
       switch (_valueSlice.type()) {
         case VPackValueType::Null:
           setNullValue();
@@ -804,7 +804,7 @@ void InvertedIndexFieldIterator::next() {
           setBoolValue(_valueSlice);
           return;
         case VPackValueType::Object:
-          if (setValue(_valueSlice, _begin->analyzer)) {
+          if (setValue(_valueSlice, _begin->analyzer())) {
             return;
           }
           THROW_ARANGO_EXCEPTION_FORMAT(
@@ -817,10 +817,10 @@ void InvertedIndexFieldIterator::next() {
               _nameBuffer.c_str());
           return;  // never reached
         case VPackValueType::Array: {
-          if (_begin->attribute.back().shouldExpand && _arrayStack.empty()) {
+          if (_begin->isArray() && _arrayStack.empty()) {
             _arrayStack.push_back(VPackArrayIterator(_valueSlice));
             _prefixLength = _nameBuffer.size();
-          } else if (setValue(_valueSlice, _begin->analyzer)) {
+          } else if (setValue(_valueSlice, _begin->analyzer())) {
             return;
           } else {
             THROW_ARANGO_EXCEPTION_FORMAT(
@@ -841,7 +841,7 @@ void InvertedIndexFieldIterator::next() {
           setNumericValue(_valueSlice);
           return;
         case VPackValueType::String: {
-          setValue(_valueSlice, _begin->analyzer);
+          setValue(_valueSlice, _begin->analyzer());
           return;
         }
         default:

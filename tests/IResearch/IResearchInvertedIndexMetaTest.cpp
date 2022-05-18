@@ -148,7 +148,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
     "fields": [
        "simple",
         {
-          "expression": "RETURN MERGE(@param, {foo: 'bar'}) ",
+          "expression": "MERGE(@param, {foo: 'bar'}) ",
           "override": true,
           "name": "huypuy",
           "analyzer": "test_text",
@@ -162,7 +162,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
           "includeAllFields":true
         },
         {
-          "expression": "RETURN SPLIT(@param, ',') ",
+          "expression": "SPLIT(@param, ',') ",
           "override": true,
           "name": "huypuy",
           "analyzer": "test_text",

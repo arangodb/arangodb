@@ -77,8 +77,35 @@ struct IResearchInvertedIndexMeta {
 
     std::string toString() const;
 
+    std::string const& analyzerName() const noexcept {
+      TRI_ASSERT(_analyzer._pool);
+      return _analyzer._shortName;
+    }
+
+    bool namesMatch(FieldRecord const& other) const noexcept;
+
     bool isIdentical(std::vector<basics::AttributeName> const& path,
                      irs::string_ref analyzerName) const noexcept;
+
+    FieldMeta::Analyzer const& analyzer() const noexcept {
+      return _analyzer;
+    }
+
+    bool isArray() const noexcept {
+      TRI_ASSERT(!_attribute.empty());
+      return _attribute.back().shouldExpand;
+    }
+
+    auto const& attribute() const noexcept {
+      return _attribute;
+    }
+
+    auto const& expansion() const noexcept {
+      return _expansion;
+    }
+
+
+    std::vector<arangodb::basics::AttributeName> combinedName() const;
 
    private:
     /// @brief attribute path
