@@ -454,43 +454,6 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
   }
 }
 
-// If there is a participant such that the flags between Target and Plan
-// differ, returns at a pair consisting of the ParticipantId and the desired
-// flags.
-auto getParticipantWithUpdatedFlags(
-    ParticipantsFlagsMap const& targetParticipants,
-    ParticipantsFlagsMap const& planParticipants)
-    -> std::optional<std::pair<ParticipantId, ParticipantFlags>> {
-  for (auto const& [targetParticipant, targetFlags] : targetParticipants) {
-    if (auto const& planParticipant = planParticipants.find(targetParticipant);
-        planParticipant != std::end(planParticipants)) {
-      // participant is in plan, check whether flags are the same
-      if (targetFlags != planParticipant->second) {
-        // Flags changed, so we need to commit new flags for this participant
-        return std::make_pair(targetParticipant, targetFlags);
-      }
-    }
-  }
-
-  // nothing changed, nothing to do
-  return std::nullopt;
-}
-
-// If there is a participant that is present in Target, but not in Flags,
-// returns a pair consisting of the ParticipantId and the ParticipantFlags.
-// Otherwise returns std::nullopt
-auto getAddedParticipant(ParticipantsFlagsMap const& targetParticipants,
-                         ParticipantsFlagsMap const& planParticipants)
-    -> std::optional<std::pair<ParticipantId, ParticipantFlags>> {
-  for (auto const& [targetParticipant, targetFlags] : targetParticipants) {
-    if (auto const& planParticipant = planParticipants.find(targetParticipant);
-        planParticipant == planParticipants.end()) {
-      return std::make_pair(targetParticipant, targetFlags);
-    }
-  }
-  return std::nullopt;
-}
-
 // Pick leader at random from participants
 auto pickRandomParticipantToBeLeader(ParticipantsFlagsMap const& participants,
                                      ParticipantsHealth const& health,
@@ -571,10 +534,14 @@ auto checkParticipantToAdd(SupervisionContext& ctx, Log const& log,
   }
   TRI_ASSERT(log.plan.has_value());
   auto const& plan = *log.plan;
-  if (auto participant = getAddedParticipant(
-          target.participants, plan.participantsConfig.participants)) {
-    ctx.createAction<AddParticipantToPlanAction>(participant->first,
-                                                 participant->second);
+
+  for (auto const& [targetParticipant, targetFlags] : target.participants) {
+    if (auto const& planParticipant =
+            plan.participantsConfig.participants.find(targetParticipant);
+        planParticipant == plan.participantsConfig.participants.end()) {
+      ctx.createAction<AddParticipantToPlanAction>(targetParticipant,
+                                                   targetFlags);
+    }
   }
 }
 
@@ -606,6 +573,7 @@ auto checkParticipantToRemove(SupervisionContext& ctx, Log const& log,
 
   for (auto const& [maybeRemovedParticipant, maybeRemovedParticipantFlags] :
        planParticipants) {
+    // never remove a leader
     if (!targetParticipants.contains(maybeRemovedParticipant) and
         maybeRemovedParticipant != leader.serverId) {
       // If the participant is not allowed in Quorum it is safe to remove it
@@ -629,7 +597,6 @@ auto checkParticipantToRemove(SupervisionContext& ctx, Log const& log,
   }
 }
 
-// FIXME: Probably pull the `getParticipantWithUpdatedFlags` in here
 auto checkParticipantWithFlagsToUpdate(SupervisionContext& ctx, Log const& log,
                                        ParticipantsHealth const& health)
     -> void {
@@ -641,10 +608,17 @@ auto checkParticipantWithFlagsToUpdate(SupervisionContext& ctx, Log const& log,
   TRI_ASSERT(log.plan.has_value());
   auto const& plan = *log.plan;
 
-  if (auto participantFlags = getParticipantWithUpdatedFlags(
-          target.participants, plan.participantsConfig.participants)) {
-    ctx.createAction<UpdateParticipantFlagsAction>(participantFlags->first,
-                                                   participantFlags->second);
+  for (auto const& [targetParticipant, targetFlags] : target.participants) {
+    if (auto const& planParticipant =
+            plan.participantsConfig.participants.find(targetParticipant);
+        planParticipant != std::end(plan.participantsConfig.participants)) {
+      // participant is in plan, check whether flags are the same
+      if (targetFlags != planParticipant->second) {
+        // Flags changed, so we need to commit new flags for this participant
+        ctx.createAction<UpdateParticipantFlagsAction>(targetParticipant,
+                                                       targetFlags);
+      }
+    }
   }
 }
 
