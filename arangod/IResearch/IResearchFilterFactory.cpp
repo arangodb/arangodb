@@ -3586,12 +3586,17 @@ Result fromFuncStartsWith(
     if (isMultiPrefix) {
       auto& minMatchFilter = filter->add<irs::Or>();
       minMatchFilter.min_match_count(static_cast<size_t>(minMatchCount));
+      minMatchFilter.boost(filterCtx.boost);
       // become a new root
       filter = &minMatchFilter;
     }
 
     for (size_t i = 0, size = prefixes.size(); i < size; ++i) {
       auto& prefixFilter = filter->add<irs::by_prefix>();
+      if (!isMultiPrefix) {
+        TRI_ASSERT(prefixes.size() == 1);
+        prefixFilter.boost(filterCtx.boost);
+      }
       if (i + 1 < size) {
         *prefixFilter.mutable_field() = name;
       } else {
