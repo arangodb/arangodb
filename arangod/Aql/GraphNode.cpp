@@ -541,7 +541,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
 }
 
 #ifndef USE_ENTERPRISE
-void GraphNode::determineEnterpriseFlags() {
+void GraphNode::determineEnterpriseFlags(AstNode const*) {
   _isSmart = false;
   _isDisjoint = false;
 }
