@@ -33,10 +33,12 @@
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
+#include "Graph/Steps/ClusterProviderStep.h"
 #include "Graph/Types/ValidationResult.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 #endif
 
 using namespace arangodb;
@@ -221,3 +223,29 @@ template void arangodb::graph::PathStoreTracer<PathStore<ClusterProviderStep>>::
         PathResult<ProviderTracer<ClusterProvider<ClusterProviderStep>>,
                    ProviderTracer<ClusterProvider<ClusterProviderStep>>::Step>&
             path) const;
+
+#ifdef USE_ENTERPRISE
+
+template void ::arangodb::graph::
+    PathStoreTracer<PathStore<ClusterProviderStep>>::buildPath<PathResult<
+        ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>,
+        ProviderTracer<SingleServerProvider<ClusterProviderStep>>::Step>>(
+        ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>::
+            Step const& vertex,
+        PathResult<
+            ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>,
+            ProviderTracer<
+                enterprise::SmartGraphProvider<ClusterProviderStep>>::Step>&
+            path) const;
+
+template void arangodb::graph::PathStoreTracer<PathStore<ClusterProviderStep>>::
+    reverseBuildPath<
+        ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>>(
+        ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>::
+            Step const& vertex,
+        PathResult<
+            ProviderTracer<enterprise::SmartGraphProvider<ClusterProviderStep>>,
+            ProviderTracer<
+                enterprise::SmartGraphProvider<ClusterProviderStep>>::Step>&
+            path) const;
+#endif

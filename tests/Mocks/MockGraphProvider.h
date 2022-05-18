@@ -289,10 +289,19 @@ class MockGraphProvider {
                           arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
+  void addEdgeIDToBuilder(Step::Edge const& edge,
+                          arangodb::velocypack::Builder& builder);
+  void addEdgeToLookupMap(typename Step::Edge const& edge,
+                          arangodb::velocypack::Builder& builder);
+
+  std::string getEdgeId(Step::Edge const& edge);
+  velocypack::HashedStringRef getEdgeIdRef(Step::Edge const& edge);
 
   void prepareIndexExpressions(aql::Ast* ast);
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();
+
+  [[nodiscard]] bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 
   [[nodiscard]] transaction::Methods* trx();
 
