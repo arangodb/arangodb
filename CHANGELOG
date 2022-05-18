@@ -100,6 +100,8 @@ v3.9.2 (XXXX-XX-XX)
     - `arangodb_ioheartbeat_delays_total`: total number of delayed io heartbeats
     - `arangodb_ioheartbeat_duration`: histogram of execution times [us]
     - `arangodb_ioheartbeat_failures_total`: total number of failures
+  These metrics are only populated, if `--database.io-heartbeat` is set to
+  `true` (which is currently the default).
 
 * Fix lock order in Agent::advanceCommitIndex for State's _logLock and Agent's
   _waitForCV.
