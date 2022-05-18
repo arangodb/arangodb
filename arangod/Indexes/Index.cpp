@@ -236,7 +236,7 @@ Index::Index(IndexId iid, arangodb::LogicalCollection& collection,
       _numThreads(basics::VelocyPackHelper::getNumericValue<size_t>(
           slice, StaticStrings::IndexNumThreads, 2)),
       _threadBatchSize(basics::VelocyPackHelper::getNumericValue<uint64_t>(
-          slice, StaticStrings::IndexThreadBatchSize, 500)) {}
+          slice, StaticStrings::IndexThreadBatchSize, 5000)) {}
 
 Index::~Index() = default;
 

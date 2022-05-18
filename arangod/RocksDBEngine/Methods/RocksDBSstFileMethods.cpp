@@ -30,8 +30,6 @@
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabasePathFeature.h"
 
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 namespace FU = basics::FileUtils;
 

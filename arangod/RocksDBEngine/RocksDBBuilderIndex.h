@@ -85,9 +85,6 @@ class IndexCreatorThread final : public Thread {
   void run() override;
 
  private:
-  Result commitInsertions();
-
- private:
   bool _isUniqueIndex = false;
   bool _isForeground = false;
   uint64_t _batchSize;

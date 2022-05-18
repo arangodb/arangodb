@@ -82,7 +82,7 @@ class Index {
   Index(IndexId iid, LogicalCollection& collection, std::string const& name,
         std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
         bool unique, bool sparse, size_t numThreads = 2,
-        uint64_t threadBatchSize = 500);
+        uint64_t threadBatchSize = 5000);
 
   Index(IndexId iid, LogicalCollection& collection,
         arangodb::velocypack::Slice slice);
