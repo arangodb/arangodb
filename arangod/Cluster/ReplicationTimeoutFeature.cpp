@@ -32,11 +32,6 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-double ReplicationTimeoutFeature::timeoutFactor = 1.0;
-double ReplicationTimeoutFeature::timeoutPer4k = 0.1;
-double ReplicationTimeoutFeature::lowerLimit = 900.0;   // used to be 30.0
-double ReplicationTimeoutFeature::upperLimit = 3600.0;  // used to be 120.0
-
 // We essentially stop using a meaningful timeout for this operation.
 // This is achieved by setting the default for the minimal timeout to 1h or
 // 3600s. The reason behind this is the following: We have to live with RocksDB
@@ -49,7 +44,12 @@ double ReplicationTimeoutFeature::upperLimit = 3600.0;  // used to be 120.0
 
 ReplicationTimeoutFeature::ReplicationTimeoutFeature(
     application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "ReplicationTimeout") {
+    : ApplicationFeature(server, "ReplicationTimeout"),
+      _timeoutFactor(1.0),
+      _timeoutPer4k(0.1),
+      _lowerLimit(900.0),
+      _upperLimit(3600.0),
+      _shardSynchronizationAttemptTimeout(20.0 * 60.0) {
   setOptional(true);
   startsAfter<application_features::DatabaseFeaturePhase>();
 }
@@ -59,36 +59,62 @@ void ReplicationTimeoutFeature::collectOptions(
   options->addOption("--cluster.synchronous-replication-timeout-minimum",
                      "all synchronous replication timeouts will be at least "
                      "this value (in seconds)",
-                     new DoubleParameter(&lowerLimit));
+                     new DoubleParameter(&_lowerLimit),
+                     arangodb::options::makeDefaultFlags(
+                         arangodb::options::Flags::Hidden,
+                         arangodb::options::Flags::OnDBServer));
 
   options
       ->addOption("--cluster.synchronous-replication-timeout-maximum",
                   "all synchronous replication timeouts will be at most "
                   "this value (in seconds)",
-                  new DoubleParameter(&upperLimit))
+                  new DoubleParameter(&_upperLimit),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Hidden,
+                      arangodb::options::Flags::OnDBServer))
       .setIntroducedIn(30800);
 
   options->addOption(
       "--cluster.synchronous-replication-timeout-factor",
       "all synchronous replication timeouts are multiplied by this factor",
-      new DoubleParameter(&timeoutFactor));
+      new DoubleParameter(&_timeoutFactor),
+      arangodb::options::makeDefaultFlags(
+          arangodb::options::Flags::Hidden,
+          arangodb::options::Flags::OnDBServer));
 
   options->addOption(
       "--cluster.synchronous-replication-timeout-per-4k",
       "all synchronous replication timeouts are increased by this amount per "
       "4096 bytes (in seconds)",
-      new DoubleParameter(&timeoutPer4k),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+      new DoubleParameter(&_timeoutPer4k),
+      arangodb::options::makeDefaultFlags(
+          arangodb::options::Flags::Hidden,
+          arangodb::options::Flags::OnDBServer));
+
+  options
+      ->addOption(
+          "--cluster.shard-synchronization-attempt-timeout",
+          "timeout (in seconds) for every shard synchronization attempt. "
+          "running into the timeout will not lead to a synchronization "
+          "failure, but will continue the synchronization shortly after. "
+          "setting a timeout can help to split the replication of large "
+          "shards into smaller chunks and release snapshots on the "
+          "leader earlier",
+          new DoubleParameter(&_shardSynchronizationAttemptTimeout),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Hidden,
+              arangodb::options::Flags::OnDBServer))
+      .setIntroducedIn(30902);
 }
 
 void ReplicationTimeoutFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-  if (upperLimit < lowerLimit) {
+  if (_upperLimit < _lowerLimit) {
     LOG_TOPIC("8a9f3", WARN, Logger::CONFIG)
         << "--cluster.synchronous-replication-timeout-maximum must be at least "
         << "--cluster.synchronous-replication-timeout-minimum, setting max to "
         << "min";
-    upperLimit = lowerLimit;
+    _upperLimit = _lowerLimit;
   }
 }
 
