@@ -42,6 +42,17 @@ class TraversalStats;
 }
 
 namespace graph {
+struct VertexDescription;
+struct OneSidedEnumeratorOptions;
+class PathValidatorOptions;
+struct ClusterBaseProviderOptions;
+
+#ifdef USE_ENTERPRISE
+namespace enterprise {
+template<class Provider>
+struct SmartGraphResponse;
+}
+#endif
 
 class PathResultInterface {
  public:
@@ -57,6 +68,17 @@ class PathResultInterface {
 
 class TraversalEnumerator {
  public:
+  template<class Provider>
+  static auto createEnumerator(
+      traverser::TraverserOptions::Order order,
+      traverser::TraverserOptions::UniquenessLevel uniqueVertices,
+      traverser::TraverserOptions::UniquenessLevel uniqueEdges,
+      arangodb::aql::QueryContext& query,
+      typename Provider::Options&& baseProviderOptions,
+      arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
+      arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
+      bool useTracing) -> std::unique_ptr<TraversalEnumerator>;
+
   using VertexRef = arangodb::velocypack::HashedStringRef;
   TraversalEnumerator(){};
   virtual ~TraversalEnumerator() {}
@@ -70,8 +92,16 @@ class TraversalEnumerator {
   // can be removed in the version after 3.9
   virtual void reset(VertexRef source, size_t depth = 0, double weight = 0.0,
                      bool keepPathStore = false) = 0;
+
+  virtual void resetManyStartVertices(
+      std::vector<VertexDescription> const& vertices) = 0;
+
   virtual auto prepareIndexExpressions(aql::Ast* ast) -> void = 0;
   virtual auto getNextPath() -> std::unique_ptr<PathResultInterface> = 0;
+#ifdef USE_ENTERPRISE
+  virtual auto smartSearch(size_t amountOfExpansions,
+                           arangodb::velocypack::Builder& result) -> void = 0;
+#endif
   virtual bool skipPath() = 0;
   virtual auto destroyEngines() -> void = 0;
 

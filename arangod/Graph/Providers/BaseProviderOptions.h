@@ -31,6 +31,10 @@
 #include "Transaction/Methods.h"
 #include "Aql/InAndOutRowExpressionContext.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Graph/Providers/SmartGraphRPCCommunicator.h"
+#endif
+
 #include <optional>
 #include <vector>
 
@@ -156,7 +160,8 @@ struct ClusterBaseProviderOptions {
       std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
       bool produceVertices, aql::FixedVarExpressionContext* expressionContext,
       std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
-          filterConditionVariables);
+          filterConditionVariables,
+      std::unordered_set<uint64_t> availableDepthsSpecificConditions);
 
   RefactoredClusterTraverserCache* getCache();
 
@@ -180,6 +185,14 @@ struct ClusterBaseProviderOptions {
 
   void setWeightEdgeCallback(WeightCallback callback);
 
+#ifdef USE_ENTERPRISE
+  void setRPCCommunicator(
+      std::unique_ptr<enterprise::SmartGraphRPCCommunicator>);
+  enterprise::SmartGraphRPCCommunicator& getRPCCommunicator();
+#endif
+
+  bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
+
  private:
   std::shared_ptr<RefactoredClusterTraverserCache> _cache;
 
@@ -199,6 +212,16 @@ struct ClusterBaseProviderOptions {
 
   // Optional callback to compute the weight of an edge.
   std::optional<WeightCallback> _weightCallback;
+
+#ifdef USE_ENTERPRISE
+  // TODO: This is right now a little bit hacked in, to allow unittestability.
+  // i would like to clean this up better such that the RPCCommunicator is
+  // properly owned by this class
+  // Ticket [GORDO-1392]
+  std::unique_ptr<enterprise::SmartGraphRPCCommunicator> _communicator;
+#endif
+
+  std::unordered_set<uint64_t> _availableDepthsSpecificConditions;
 };
 
 }  // namespace graph
