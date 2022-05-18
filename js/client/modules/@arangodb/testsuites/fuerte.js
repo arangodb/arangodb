@@ -35,6 +35,7 @@ const optionsDocumentation = [
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const im = require('@arangodb/testutils/instance-manager');
 
 const testPaths = {
   'fuerte': []
@@ -119,16 +120,18 @@ function gtestRunner(options) {
   // start server
   print('Starting server...');
 
-  let instanceInfo = pu.startInstance('tcp', options, {"http.keep-alive-timeout" : "10"}, 'single_server');
-  if (instanceInfo === false) {
-    results.failed += 1;
-    results.basics = {
-      failed: 1,
-      status: false,
-      message: 'could not start server'
+  let instanceManager = new im.instanceManager('tcp', options, {"http.keep-alive-timeout" : "10"}, 'fuerte');
+  instanceManager.prepareInstance();
+  instanceManager.launchTcpDump("");
+  if (!instanceManager.launchInstance()) {
+    return {
+      fuerte: {
+        status: false,
+        message: 'failed to start server!'
+      }
     };
-    return results;
   }
+  instanceManager.reconnect();
 
   let argv = [
     '--gtest_output=json:' + testResultJsonFile
@@ -146,16 +149,16 @@ function gtestRunner(options) {
 
   print(argv);
 
-  results.basics = pu.executeAndWait(run, argv, options, 'fuertetest', rootDir, options.coreCheck);
-  results.basics.failed = results.basics.status ? 0 : 1;
-  if (!results.basics.status) {
+  results.fuerte = pu.executeAndWait(run, argv, options, 'fuertetest', rootDir, options.coreCheck);
+  results.fuerte.failed = results.basics.status ? 0 : 1;
+  if (!results.fuerte.status) {
     results.failed += 1;
   }
   results = getGTestResults(testResultJsonFile, results);
 
   print('Shutting down...');
 
-  results['shutdown'] = pu.shutdownInstance(instanceInfo, options);
+  results['shutdown'] = instanceManager.shutdownInstance(false);
 
   return results;
 }
