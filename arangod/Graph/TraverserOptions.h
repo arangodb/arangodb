@@ -53,8 +53,6 @@ class EdgeCursor;
 
 namespace traverser {
 
-class ClusterTraverser;
-
 struct TraverserOptions : public graph::BaseOptions {
   friend class arangodb::aql::TraversalNode;
 
@@ -69,8 +67,6 @@ struct TraverserOptions : public graph::BaseOptions {
       _vertexExpressions;
 
   std::unique_ptr<aql::Expression> _baseVertexExpression;
-
-  arangodb::traverser::ClusterTraverser* _traverser;
 
   /// @brief The condition given in PRUNE (might be empty)
   ///        The Node keeps responsibility
@@ -153,26 +149,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool hasSpecificCursorForDepth(uint64_t depth) const;
 
-  bool vertexHasFilter(uint64_t) const;
-
-  bool hasEdgeFilter(int64_t, size_t) const;
-
-  bool hasWeightAttribute() const;
-
-  bool hasVertexCollectionRestrictions() const;
-
   bool evaluateEdgeExpression(arangodb::velocypack::Slice,
                               std::string_view vertexId, uint64_t, size_t);
-
-  bool evaluateVertexExpression(arangodb::velocypack::Slice, uint64_t);
-
-  bool checkSmartDestination(VPackSlice edge,
-                             std::string_view sourceVertex) const;
-
-  bool destinationCollectionAllowed(velocypack::Slice edge,
-                                    std::string_view sourceVertex) const;
-
-  void linkTraverser(arangodb::traverser::ClusterTraverser*);
 
   std::unique_ptr<arangodb::graph::EdgeCursor> buildCursor(uint64_t depth);
 
@@ -187,11 +165,6 @@ struct TraverserOptions : public graph::BaseOptions {
       std::vector<aql::Variable const*> vars, std::vector<aql::RegisterId> regs,
       size_t vertexVarIdx, size_t edgeVarIdx, aql::Expression* expr);
 
-  void activatePrune(std::vector<aql::Variable const*> vars,
-                     std::vector<aql::RegisterId> regs, size_t vertexVarIdx,
-                     size_t edgeVarIdx, size_t pathVarIdx,
-                     aql::Expression* expr);
-
   void activatePostFilter(std::vector<aql::Variable const*> vars,
                           std::vector<aql::RegisterId> regs,
                           size_t vertexVarIdx, size_t edgeVarIdx,
@@ -204,18 +177,6 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool isUniqueGlobalVerticesAllowed() const {
     return mode == Order::BFS || mode == Order::WEIGHTED;
-  }
-
-  double weightEdge(VPackSlice edge) const;
-
-  aql::PruneExpressionEvaluator* getPruneEvaluator() {
-    TRI_ASSERT(usesPrune());
-    return _pruneExpression.get();
-  }
-
-  aql::PruneExpressionEvaluator* getPostFilterEvaluator() {
-    TRI_ASSERT(usesPostFilter());
-    return _postFilterExpression.get();
   }
 
   auto estimateDepth() const noexcept -> uint64_t override;
@@ -241,9 +202,6 @@ struct TraverserOptions : public graph::BaseOptions {
   auto isDisjoint() const -> bool;
 
   auto isSatelliteLeader() const -> bool;
-
-  auto getEdgeDestination(arangodb::velocypack::Slice edge,
-                          std::string_view origin) const -> std::string_view;
 
   void initializeIndexConditions(
       aql::Ast* ast,
