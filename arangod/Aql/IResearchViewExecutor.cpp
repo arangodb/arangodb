@@ -472,8 +472,9 @@ template<typename ValueType, bool copyStored>
 irs::score_t* IndexReadBuffer<ValueType, copyStored>::pushNoneScores(
     size_t count) {
   const size_t prevSize = _scoreBuffer.size();
-  _scoreBuffer.resize(prevSize + count,
-                      std::numeric_limits<float_t>::quiet_NaN());
+  while (count--) {
+    _scoreBuffer.emplace_back(std::numeric_limits<float_t>::quiet_NaN());
+  }
   return _scoreBuffer.data() + prevSize;
 }
 

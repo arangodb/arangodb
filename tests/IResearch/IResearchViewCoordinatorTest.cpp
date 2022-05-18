@@ -4381,7 +4381,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
                                         // configuration from system database
 
     auto resetUserManager = irs::make_finally(
-        [userManager]() -> void { userManager->removeAllUsers(); });
+        [userManager]() noexcept { userManager->removeAllUsers(); });
 
     EXPECT_TRUE((
         TRI_ERROR_FORBIDDEN ==
@@ -5923,7 +5923,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
                                         // configuration from system database
 
     auto resetUserManager = irs::make_finally(
-        [userManager]() -> void { userManager->removeAllUsers(); });
+        [userManager]() noexcept { userManager->removeAllUsers(); });
 
     EXPECT_EQ(TRI_ERROR_FORBIDDEN,
               logicalView->properties(viewUpdateJson->slice(), true, false)
@@ -6271,7 +6271,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
     auto resetUserManager = irs::make_finally(
-        [userManager]() -> void { userManager->removeAllUsers(); });
+        [userManager]() noexcept { userManager->removeAllUsers(); });
 
     EXPECT_EQ(TRI_ERROR_FORBIDDEN,
               logicalView->properties(viewUpdateJson->slice(), true, false)
@@ -7138,7 +7138,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
     auto resetUserManager = irs::make_finally(
-        [userManager]() -> void { userManager->removeAllUsers(); });
+        [userManager]() noexcept { userManager->removeAllUsers(); });
 
     EXPECT_EQ(TRI_ERROR_FORBIDDEN,
               logicalView->properties(viewUpdateJson->slice(), true, true)
