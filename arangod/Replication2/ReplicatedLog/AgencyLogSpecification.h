@@ -33,6 +33,7 @@
 
 #include <optional>
 #include <type_traits>
+#include <utility>
 
 namespace arangodb::replication2::agency {
 
@@ -43,8 +44,8 @@ struct LogPlanTermSpecification {
     ParticipantId serverId;
     RebootId rebootId;
 
-    Leader(ParticipantId const& participant, RebootId const& rebootId)
-        : serverId{participant}, rebootId{rebootId} {}
+    Leader(ParticipantId participant, RebootId rebootId)
+        : serverId{std::move(participant)}, rebootId{rebootId} {}
     Leader() : rebootId{RebootId{0}} {};
     auto toVelocyPack(VPackBuilder&) const -> void;
     friend auto operator==(Leader const&, Leader const&) noexcept
@@ -68,6 +69,8 @@ struct LogPlanSpecification {
   std::optional<LogPlanTermSpecification> currentTerm;
 
   ParticipantsConfig participantsConfig;
+
+  std::optional<std::string> owner;
 
   auto toVelocyPack(velocypack::Builder&) const -> void;
   [[nodiscard]] static auto fromVelocyPack(velocypack::Slice)
