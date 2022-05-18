@@ -40,26 +40,6 @@ using namespace arangodb::replication2;
 using namespace arangodb::replication2::agency;
 using namespace arangodb::replication2::replicated_log;
 
-#if 0
-using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
-
-VPackBuffer<uint8_t> vpackFromJsonString(char const* c) {
-  VPackOptions options;
-  options.checkAttributeUniqueness = true;
-  VPackParser parser(&options);
-  parser.parse(c);
-
-  std::shared_ptr<VPackBuilder> builder = parser.steal();
-  std::shared_ptr<VPackBuffer<uint8_t>> buffer = builder->steal();
-  VPackBuffer<uint8_t> b = std::move(*buffer);
-  return b;
-}
-
-VPackBuffer<uint8_t> operator"" _vpack(const char* json, size_t) {
-  return vpackFromJsonString(json);
-}
-#endif
-
 struct LeaderElectionCampaignTest : ::testing::Test {};
 TEST_F(LeaderElectionCampaignTest, test_computeReason) {
   {
@@ -633,50 +613,3 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
 
   ASSERT_EQ(writeEmptyTermAction.minTerm, LogTerm{3});
 }
-
-#if 0
-TEST_F(LogSupervisionTest, test_failed_to_select_leader) {
-  SupervisionContext ctx;
-
-  auto const target = LogTarget::fromVelocyPack(VPackSlice(R"vpack({"id":23,
-        "participants":{"B":{"forced":false,"allowedInQuorum":true,"allowedAsLeader":true},
-                        "C":{"forced":false,"allowedInQuorum":true,"allowedAsLeader":true},
-                        "A":{"forced":false,"allowedInQuorum":true,"allowedAsLeader":true}},
-        "config":{"writeConcern":1,"softWriteConcern":1,"replicationFactor":1,"waitForSync":false}})vpack"_vpack
-                                                               .data()));
-
-  auto const plan =
-      LogPlanSpecification::fromVelocyPack(VPackSlice(R"vpack({"id":23,
-        "currentTerm":{"term":2,"config":{"writeConcern":1,"softWriteConcern":1,"replicationFactor":1,"waitForSync":false}},"participantsConfig":{"generation":1,"participants":{"B":{"forced":false,"allowedInQuorum":true,"allowedAsLeader":true},"C":{"forced":false,"allowedInQuorum":true,"allowedAsLeader":true},"A":{"forced":false,"allowedInQuorum":true,"allowedAsLeader":true}}}})vpack"_vpack
-                                                          .data()));
-
-  auto const current = LogCurrent::fromVelocyPack(VPackSlice(
-      R"vpack({"localStatus":{"B":{"term":2,"spearhead":{"term":0,"index":0}},"C":{"term":2,"spearhead":{"term":0,"index":0}},"A":{"term":2,"spearhead":{"term":0,"index":0}}},"supervision":{},"actions":[]})vpack"_vpack
-          .data()));
-
-  auto const& health = ParticipantsHealth{
-      ._health = {{"A", ParticipantHealth{.rebootId = RebootId{0},
-                                          .notIsFailed = true}},
-                  {"B", ParticipantHealth{.rebootId = RebootId{0},
-                                          .notIsFailed = true}},
-                  {"C", ParticipantHealth{.rebootId = RebootId{0},
-                                          .notIsFailed = true}}}};
-
-  checkReplicatedLog(
-      ctx, Log{.target = target, .plan = plan, .current = current}, health);
-
-  EXPECT_TRUE(ctx.hasAction());
-  auto const& r = ctx.getAction();
-
-  // Since the leader is `A` and the rebootId in health is higher than the one
-  // in plan, we need to write an empty term
-  ASSERT_TRUE(std::holds_alternative<LeaderElectionAction>(r))
-      << fmt::format("{}", r);
-
-  auto leaderElectionAction = std::get<LeaderElectionAction>(r);
-
-  ASSERT_EQ(leaderElectionAction._electedLeader.serverId, "A");
-  ASSERT_EQ(leaderElectionAction._electedLeader.serverId, "B");
-  ASSERT_EQ(leaderElectionAction._electedLeader.serverId, "C");
-}
-#endif
