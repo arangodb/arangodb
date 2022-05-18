@@ -136,8 +136,7 @@ IndexCreatorThread::IndexCreatorThread(
     // for later
   } else {
     _methods = std::make_unique<RocksDBSstFileMethods>(
-        _isForeground, ridx.collection().vocbase().server(), _rootDB, _trxColl,
-        _ridx, _dbOptions, idxPath);
+        _isForeground, _rootDB, _trxColl, _ridx, _dbOptions, idxPath);
   }
 }
 

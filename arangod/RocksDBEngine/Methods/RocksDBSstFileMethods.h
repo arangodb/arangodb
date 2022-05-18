@@ -39,8 +39,7 @@ namespace arangodb {
 /// wraps an sst file writer - non transactional
 class RocksDBSstFileMethods final : public RocksDBMethods {
  public:
-  explicit RocksDBSstFileMethods(bool isForeground, ArangodServer const& server,
-                                 rocksdb::DB* rootDB,
+  explicit RocksDBSstFileMethods(bool isForeground, rocksdb::DB* rootDB,
                                  RocksDBTransactionCollection* trxColl,
                                  RocksDBIndex& ridx,
                                  rocksdb::Options const& dbOptions,
@@ -75,7 +74,6 @@ class RocksDBSstFileMethods final : public RocksDBMethods {
   uint64_t _bytesToWriteCount = 0;
 
   bool _isForeground;
-  ArangodServer const& _server;
   rocksdb::DB* _rootDB;
   RocksDBTransactionCollection* _trxColl;
   RocksDBIndex& _ridx;

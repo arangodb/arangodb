@@ -36,12 +36,11 @@ using namespace arangodb;
 namespace FU = basics::FileUtils;
 
 RocksDBSstFileMethods::RocksDBSstFileMethods(
-    bool isForeground, ArangodServer const& server, rocksdb::DB* rootDB,
+    bool isForeground, rocksdb::DB* rootDB,
     RocksDBTransactionCollection* trxColl, RocksDBIndex& ridx,
     rocksdb::Options const& dbOptions, std::string const& idxPath)
     : RocksDBMethods(),
       _isForeground(isForeground),
-      _server(server),
       _rootDB(rootDB),
       _trxColl(trxColl),
       _ridx(ridx),
