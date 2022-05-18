@@ -668,16 +668,16 @@ function getCleanupDBDirectories () {
 // / @brief loads the JWT secret from the various ways possible
 // //////////////////////////////////////////////////////////////////////////////
 
-function getJwtSecret(options) {
+function getJwtSecret(args) {
   let jwtSecret;
-  if (options['server.jwt-secret-folder']) {
-    let files = fs.list(options['server.jwt-secret-folder']);
+  if (args.hasOwnProperty('server.jwt-secret-folder')) {
+    let files = fs.list(args['server.jwt-secret-folder']);
     files.sort();
     if (files.length > 0) {
-      jwtSecret = fs.read(fs.join(options['server.jwt-secret-folder'], files[0]));
+      jwtSecret = fs.read(fs.join(args['server.jwt-secret-folder'], files[0]));
     }
   } else {
-    jwtSecret = options['server.jwt-secret'];
+    jwtSecret = args['server.jwt-secret'];
   }
   return jwtSecret;
 }
@@ -686,8 +686,8 @@ function getJwtSecret(options) {
 // / @brief adds authorization headers
 // //////////////////////////////////////////////////////////////////////////////
 
-function makeAuthorizationHeaders (options) {
-  const jwtSecret = getJwtSecret(options);
+function makeAuthorizationHeaders (options, args) {
+  const jwtSecret = getJwtSecret(args);
 
   if (jwtSecret) {
     let jwt = crypto.jwtEncode(jwtSecret,

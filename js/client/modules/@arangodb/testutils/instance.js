@@ -179,6 +179,7 @@ class instance {
     this.suspended = false;
     this.message = '';
     this.port = '';
+    this.url = '';
     this.endpoint = '';
     this.assertLines = [];
     this.memProfCounter = 0;
@@ -212,6 +213,7 @@ class instance {
       upAndRunning: this.upAndRunning,
       suspended: this.suspended,
       port: this.port,
+      url: this.url,
       endpoint: this.endpoint,
       dataDir: this.dataDir,
       appDir: this.appDir,
@@ -232,6 +234,11 @@ class instance {
 
   isAgent() {
     return this.instanceRole === instanceRole.agent;
+  }
+  isFrontend() {
+    return ( (this.instanceRole === instanceRole.single) ||
+             (this.instanceRole === instanceRole.coordinator) ||
+             (this.instanceRole === instanceRole.failover)      );
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief arguments for testing (server)
@@ -757,7 +764,7 @@ class instance {
           print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
         }
       } else {
-        const requestOptions = pu.makeAuthorizationHeaders(this.options);
+        const requestOptions = pu.makeAuthorizationHeaders(this.options, this.args);
         requestOptions.method = 'DELETE';
         requestOptions.timeout = 60; // 60 seconds hopefully are enough for getting a response
         if (!this.options.noStartStopLogs) {

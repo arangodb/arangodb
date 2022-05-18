@@ -86,7 +86,7 @@ class instanceManager {
       fs.makeDirectoryRecursive(this.rootDir);
       fs.write(this.restKeyFile, "Open Sesame!Open Sesame!Open Ses");
     }
-    this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options);
+    this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs);
   }
 
   getStructure() {
@@ -396,7 +396,7 @@ class instanceManager {
 
   getMemProfSnapshot(instanceInfo, options, counter) {
     if (this.options.memprof) {
-      let opts = Object.assign(pu.makeAuthorizationHeaders(this.options),
+      let opts = Object.assign(pu.makeAuthorizationHeaders(this.options, this.addArgs),
                                { method: 'GET' });
 
       this.arangods.forEach(arangod => arangod.getMemprofSnapshot(opts));
@@ -431,7 +431,7 @@ class instanceManager {
 
   checkUptime () {
     let ret = {};
-    let opts = Object.assign(pu.makeAuthorizationHeaders(this.options),
+    let opts = Object.assign(pu.makeAuthorizationHeaders(this.options, this.addArgs),
                              { method: 'GET' });
     this.arangods.forEach(arangod => {
       let reply = download(arangod.url + '/_admin/statistics', '', opts);
@@ -565,7 +565,7 @@ class instanceManager {
       print(Date() + ' waiting ' + waitTime + ' for server GC');
       const remoteCommand = 'require("internal").wait(' + waitTime + ', true);';
 
-      const requestOptions = pu.makeAuthorizationHeaders(this.options);
+      const requestOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
       requestOptions.method = 'POST';
       requestOptions.timeout = waitTime * 10;
       requestOptions.returnBodyOnError = true;
@@ -627,7 +627,7 @@ class instanceManager {
           arangod.isRole(instanceRole.coordinator) &&
             (arangod.exitStatus !== null));
         if (coords.length > 0) {
-          let requestOptions = pu.makeAuthorizationHeaders(this.options);
+          let requestOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
           requestOptions.method = 'PUT';
 
           if (!this.options.noStartStopLogs) {
@@ -807,21 +807,29 @@ class instanceManager {
       jwt: crypto.jwtEncode(this.arangods[0].args['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256'),
       headers: {'content-type': 'application/json' }
     };
-    let reply = download(this.agencyConfig.urls[0] + '/_api/agency/read', '[["/arango/Plan/AsyncReplication/Leader"]]', opts);
+    let count = 10;
+    while (count > 0) {
+      let reply = download(this.agencyConfig.urls[0] + '/_api/agency/read', '[["/arango/Plan/AsyncReplication/Leader"]]', opts);
 
-    if (!reply.error && reply.code === 200) {
-      let res = JSON.parse(reply.body);
-      //internal.print("Response ====> " + reply.body);
-      let leader = res[0].arango.Plan.AsyncReplication.Leader;
-      if (!leader) {
-        throw "Leader is not selected";
+      if (!reply.error && reply.code === 200) {
+        let res = JSON.parse(reply.body);
+        //print("Response ====> " + reply.body);
+        let leader = res[0].arango.Plan.AsyncReplication.Leader;
+        if (leader) {
+          break;
+        }
+        count --;
+        if (count === 0) {
+          throw "Leader is not selected";
+        }
+        sleep(0.5);
       }
     }
     this.leader = null;
     while (this.leader === null) {
       this.urls.forEach(url => {
         opts['method'] = 'GET';
-        reply = download(url + '/_api/cluster/endpoints', '', opts);
+        let reply = download(url + '/_api/cluster/endpoints', '', opts);
         if (reply.code === 200) {
           let res;
           try {
@@ -890,7 +898,6 @@ class instanceManager {
           url += '/_api/version';
           httpOptions.method = 'POST';
         }
-        
         const reply = download(url, '', httpOptions);
         if (!reply.error && reply.code === 200) {
           arangod.upAndRunning = true;
@@ -1030,7 +1037,7 @@ class instanceManager {
         }
         while (true) {
           wait(1, false);
-          if (this.options.useReconnect) {
+          if (this.options.useReconnect && arangod.isFrontend()) {
             try {
               print(Date() + " reconnecting " + arangod.url);
               arango.reconnect(arangod.endpoint,

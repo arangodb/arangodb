@@ -192,7 +192,7 @@ function checkData(server, allowDirty = false) {
 }
 
 function readAgencyValue(path) {
-  let agents = instanceinfo.arangods.filter(arangod => arangod.role === "agent");
+  let agents = instanceinfo.arangods.filter(arangod => arangod.instanceRole === "agent");
   assertTrue(agents.length > 0, "No agents present");
   print("Querying agency... (", path, ")");
   var res = request.post({
@@ -543,8 +543,9 @@ function ActiveFailoverSuite() {
         });
         assertTrue(checkInSync(currentLead, servers));
         // after its in sync, halt all others so it becomes the leader again
+        instanceinfo.arangods.forEach(arangod => print(arangod.instanceRole))
         suspended = instanceinfo.arangods.filter(arangod =>
-          (arangod.endpoint !== oldLead) && (arangod.role === 'single'));
+          (arangod.endpoint !== oldLead) && (arangod.instanceRole === 'activefailover'));
         suspended.forEach(arangod => {
           print("Suspending all but old Leader: ", arangod.endpoint);
           assertTrue(suspendExternal(arangod.pid));
@@ -604,7 +605,7 @@ function ActiveFailoverSuite() {
       let nextLead = endpoints[2]; // could be any one of them
       // suspend remaining followers
       print("Suspending followers, except one");
-      suspended = instanceinfo.arangods.filter(arangod => arangod.role !== 'agent' &&
+      suspended = instanceinfo.arangods.filter(arangod => arangod.instanceRole !== 'agent' &&
         arangod.endpoint !== currentLead &&
         arangod.endpoint !== nextLead);
       suspended.forEach(arangod => {
@@ -691,7 +692,7 @@ function ActiveFailoverSuite() {
       }*/
 
       print("Suspending followers, except original leader");
-      suspended = instanceinfo.arangods.filter(arangod => arangod.role !== 'agent' &&
+      suspended = instanceinfo.arangods.filter(arangod => arangod.instanceRole !== 'agent' &&
         arangod.endpoint !== firstLeader);
       suspended.forEach(arangod => {
         print("Suspending: ", arangod.endpoint);
