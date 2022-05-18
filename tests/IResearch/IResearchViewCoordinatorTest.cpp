@@ -90,7 +90,7 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
  protected:
   arangodb::tests::mocks::MockCoordinator server;
 
-  IResearchViewCoordinatorTest() : server() {
+  IResearchViewCoordinatorTest() : server("CRDN_0001") {
     arangodb::tests::init();
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;

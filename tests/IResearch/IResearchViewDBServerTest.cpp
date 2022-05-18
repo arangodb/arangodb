@@ -82,7 +82,7 @@ class IResearchViewDBServerTest : public ::testing::Test {
  protected:
   arangodb::tests::mocks::MockDBServer server;
 
-  IResearchViewDBServerTest() : server() {}
+  IResearchViewDBServerTest() : server("PRMR_0001") {}
 
   void createTestDatabase(TRI_vocbase_t*& vocbase,
                           std::string const name = "testDatabase") {

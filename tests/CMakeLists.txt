@@ -39,7 +39,7 @@ target_include_directories(fuertetest SYSTEM PRIVATE
   ${V8_INTERNAL_INCLUDE_DIR}
   ${INCLUDE_DIRECTORIES}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
-  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
+  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/third-party/gtest-1.8.1/fused-src
   ${CMAKE_SOURCE_DIR}/3rdParty/fuerte/src
 )
 
@@ -159,7 +159,6 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SubqueryStartExecutorTest.cpp
   Aql/TestEmptyExecutorHelper.cpp
   Aql/TestLambdaExecutor.cpp
-  Aql/TraversalExecutorTest.cpp
   Aql/TraversalNodeTest.cpp
   Aql/UpdateExecutorTest.cpp
   Aql/UpsertExecutorTest.cpp
@@ -236,21 +235,6 @@ set(ARANGODB_TESTS_SOURCES
   Geo/GeoJsonTest.cpp
   Geo/NearUtilsTest.cpp
   Geo/ShapeContainerTest.cpp
-  Graph/ClusterTraverserCacheTest.cpp
-  Graph/TraverserCacheTest.cpp
-  Graph/ConstantWeightShortestPathFinder.cpp
-  Graph/GenericGraphProviderTest.cpp
-  Graph/GraphMockProviderInstances.cpp
-  Graph/GraphTestTools.cpp
-  Graph/KPathFinderTest.cpp
-  Graph/DFSFinderTest.cpp
-  Graph/KShortestPathsFinder.cpp
-  Graph/PathStoreTest.cpp
-  Graph/PathValidatorTest.cpp
-  Graph/FifoQueueTest.cpp
-  Graph/LifoQueueTest.cpp
-  Graph/WeightedQueueTest.cpp
-  Graph/SingleServerProviderTest.cpp
   Greenspun/PrimitivesTest.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
   Logger/EscaperTest.cpp
@@ -379,6 +363,25 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/Streams/TestLogSpecification.h
 )
 
+set(ARANGODB_GRAPH_TEST_SOURCES
+  Graph/ClusterTraverserCacheTest.cpp
+  Graph/TraverserCacheTest.cpp
+  Graph/ConstantWeightShortestPathFinder.cpp
+  Graph/GenericGraphProviderTest.cpp
+  Graph/GraphMockProviderInstances.cpp
+  Graph/GraphTestTools.cpp
+  Graph/KPathFinderTest.cpp
+  Graph/DFSFinderTest.cpp
+  Graph/KShortestPathsFinder.cpp
+  Graph/PathStoreTest.cpp
+  Graph/PathValidatorTest.cpp
+  Graph/FifoQueueTest.cpp
+  Graph/LifoQueueTest.cpp
+  Graph/WeightedQueueTest.cpp
+  Graph/SingleServerProviderTest.cpp
+  ${ADDITIONAL_GRAPH_TEST_SOURCES}
+)
+
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
@@ -398,6 +401,7 @@ add_executable(
   ../cmake/activeCodePage.manifest
   ${ARANGODB_TESTS_SOURCES}
   ${ARANGODB_REPLICATION2_TEST_SOURCES}
+  ${ARANGODB_GRAPH_TEST_SOURCES}
   main.cpp
 )
 
@@ -412,6 +416,19 @@ if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
     main.cpp
   )
 endif()
+
+set(USE_SEPARATE_GRAPH_TESTS_BINARY FALSE CACHE BOOL
+        "Write a separate binary 'arangodbtests_graph', containing only the graph tests.")
+
+if (USE_SEPARATE_GRAPH_TESTS_BINARY)
+  add_executable(
+          arangodbtests_graph
+          ${ARANGODB_TESTS_COMMON_SOURCES}
+          ${ARANGODB_GRAPH_TEST_SOURCES}
+          main.cpp
+  )
+endif()
+
 
 #required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
@@ -445,6 +462,17 @@ if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
   )
 endif()
 
+if (USE_SEPARATE_GRAPH_TESTS_BINARY)
+  target_link_libraries(arangodbtests_graph
+          gtest
+          arango_agency
+          arango_v8server
+          arangoserver
+          arango_replication2
+          arango_iresearch
+          )
+endif()
+
 if (USE_ENTERPRISE)
   target_link_libraries(arangodbtests arango_rclone)
 endif ()
@@ -466,16 +494,32 @@ if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
   target_link_libraries(arangodbtests_replication2 arango)
 endif()
 
+if (USE_SEPARATE_GRAPH_TESTS_BINARY)
+  target_include_directories(arangodbtests_graph PRIVATE
+          ${PROJECT_SOURCE_DIR}/arangod
+          ${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}
+          ${CMAKE_CURRENT_SOURCE_DIR}
+          ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/
+          )
+  target_link_libraries(arangodbtests_graph arango)
+endif()
+
 if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
     target_compile_options(arangodbtests_replication2 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  endif()
+  if (USE_SEPARATE_GRAPH_TESTS_BINARY)
+    target_compile_options(arangodbtests_graph PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
   endif()
   if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
     # There's a warning about /MP being unused if compiling only a single file
     target_compile_options(arangodbtests PRIVATE -Wno-unused-command-line-argument)
     if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
       target_compile_options(arangodbtests_replication2 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+    endif()
+    if (USE_SEPARATE_GRAPH_TESTS_BINARY)
+      target_compile_options(arangodbtests_graph PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
     endif()
   endif()
 endif()
@@ -486,6 +530,9 @@ if (DARWIN AND USE_FAIL_ON_WARNINGS)
   if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
     target_compile_options(arangodbtests_replication2 PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
   endif()
+  if (USE_SEPARATE_GRAPH_TESTS_BINARY)
+    target_compile_options(arangodbtests_graph PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
+  endif()
 endif()
 
 # add these includes as system includes because otherwise
@@ -493,15 +540,21 @@ endif()
 target_include_directories(arangodbtests SYSTEM PRIVATE
   ${V8_INTERNAL_INCLUDE_DIR}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
-  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
+  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/third-party/gtest-1.8.1/fused-src
 )
 
 target_link_libraries(arangodbtests v8_interface)
 
 if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
   target_include_directories(arangodbtests_replication2 SYSTEM PRIVATE
-    ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
+    ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/third-party/gtest-1.8.1/fused-src
   )
+endif()
+
+if (USE_SEPARATE_GRAPH_TESTS_BINARY)
+  target_include_directories(arangodbtests_graph SYSTEM PRIVATE
+          ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
+          )
 endif()
 
 if (USE_JEMALLOC)

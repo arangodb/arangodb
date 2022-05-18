@@ -60,6 +60,19 @@ class LifoQueue {
     guard.steal();  // now we are responsible for tracking the memory
   }
 
+  void setStartContent(std::vector<Step> startSteps) {
+    arangodb::ResourceUsageScope guard(_resourceMonitor,
+                                       sizeof(Step) * startSteps.size());
+    TRI_ASSERT(_queue.empty());
+    for (auto& s : startSteps) {
+      // For LIFO just append to the back,
+      // The handed in vector will then be processed from start to end.
+      // And appending would queue BEFORE items in the queue.
+      _queue.push_back(std::move(s));
+    }
+    guard.steal();  // now we are responsible for tracking the memory
+  }
+
   bool firstIsVertexFetched() const {
     if (not isEmpty()) {
       auto const& first = _queue.front();

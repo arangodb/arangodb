@@ -88,6 +88,9 @@ class SingleServerProvider {
   void insertEdgeIdIntoResult(EdgeDocumentToken edge,
                               arangodb::velocypack::Builder& builder);
 
+  std::string getEdgeId(typename Step::Edge const& edge);
+  EdgeType getEdgeIdRef(typename Step::Edge const& edge);
+
   void addVertexToBuilder(typename Step::Vertex const& vertex,
                           arangodb::velocypack::Builder& builder,
                           bool writeIdIfNotFound = false);
@@ -95,6 +98,18 @@ class SingleServerProvider {
                         arangodb::velocypack::Builder& builder);
 
   void addEdgeIDToBuilder(typename Step::Edge const& edge,
+                          arangodb::velocypack::Builder& builder);
+
+  /**
+   * Adds the given Edge into the given builder, which is required to
+   * be an open Object.
+   * We will then add a key value pair:
+   * `edgeId`: edgeData
+   *
+   * @param edge The edge to insert
+   * @param builder The output builder, required to be an openObject
+   */
+  void addEdgeToLookupMap(typename Step::Edge const& edge,
                           arangodb::velocypack::Builder& builder);
 
   void destroyEngines(){};
@@ -107,6 +122,7 @@ class SingleServerProvider {
 
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();
+  [[nodiscard]] bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 
  private:
   void activateCache(bool enableDocumentCache);

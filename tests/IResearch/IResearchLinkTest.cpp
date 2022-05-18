@@ -2714,7 +2714,8 @@ class IResearchLinkInRecoveryDBServerOnUpgradeTest
   arangodb::tests::mocks::MockDBServer server;
   std::string testFilesystemPath;
 
-  IResearchLinkInRecoveryDBServerOnUpgradeTest() : server(false, true) {
+  IResearchLinkInRecoveryDBServerOnUpgradeTest()
+      : server("PRMR_0001", false, true) {
     arangodb::tests::init();
 
     // ensure ArangoSearch start 1 maintenance for each group
