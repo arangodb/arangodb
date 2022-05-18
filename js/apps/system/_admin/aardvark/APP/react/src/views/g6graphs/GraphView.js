@@ -194,7 +194,6 @@ export class GraphView extends React.Component {
         default: [
           'brush-select',
           'drag-canvas',
-          'zoom-canvas',
           'drag-node',
           //'activate-relations',
           {
@@ -875,8 +874,9 @@ export class GraphView extends React.Component {
           duration: 100,
         });
       }}>Find node Paris</button>
+      <LoadingSpinner />
   */
- 
+
   render() {
     return <>
       <Headerinfo
