@@ -92,7 +92,6 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   constructor(firstRunOptions, secondRunOptions, serverOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart) {
     super(firstRunOptions, which, serverOptions, false);
     this.serverOptions = serverOptions;
-    this.instanceInfo = {};
     this.firstRunOptions = firstRunOptions;
     this.secondRunOptions = secondRunOptions;
     this.restartServer = firstRunOptions.cluster !== secondRunOptions.cluster;
@@ -143,7 +142,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       this.restoreConfig.setInputDirectory('dump', true);
       this.restoreConfig.setIncludeSystem(true);
     } else {
-      this.restoreConfig.setEndpoint(this.instanceInfo.endpoint);
+      this.restoreConfig.setEndpoint(this.instanceManager.endpoint);
     }
     
     if (!this.restoreOldConfig) {
