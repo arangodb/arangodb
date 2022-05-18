@@ -325,6 +325,9 @@ using Action =
 auto executeAction(Log log, Action& action) -> ActionContext;
 }  // namespace arangodb::replication2::replicated_log
 
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include "Inspection/VPack.h"
+
 template<>
 struct fmt::formatter<arangodb::replication2::replicated_log::Action>
     : formatter<string_view> {
@@ -332,7 +335,13 @@ struct fmt::formatter<arangodb::replication2::replicated_log::Action>
   template<typename FormatContext>
   auto format(arangodb::replication2::replicated_log::Action a,
               FormatContext& ctx) const {
-    auto const sv = std::visit([](auto&& arg) { return arg.name; }, a);
-    return formatter<string_view>::format(sv, ctx);
+    VPackBuilder builder;
+
+    std::visit(
+        [&builder](auto&& arg) {
+          arangodb::velocypack::serialize(builder, arg);
+        },
+        a);
+    return formatter<string_view>::format(builder.slice().toJson(), ctx);
   }
 };

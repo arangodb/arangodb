@@ -418,11 +418,6 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
       return;
     };
 
-    if (!isConfigurationCommitted(log)) {
-      ctx.reportStatus<LogCurrentSupervision::WaitingForConfigCommitted>();
-      return;
-    }
-
     if (hasCurrentTermWithLeader(log) and
         target.leader != plan.currentTerm->leader->serverId) {
       TRI_ASSERT(plan.participantsConfig.participants.contains(*target.leader));
@@ -439,6 +434,12 @@ auto checkLeaderSetInTarget(SupervisionContext& ctx, Log const& log,
 
       if (!planLeaderConfig.allowedAsLeader) {
         ctx.reportStatus<LogCurrentSupervision::TargetLeaderExcluded>();
+        return;
+      }
+
+      if (!isConfigurationCommitted(log)) {
+        ctx.reportStatus<LogCurrentSupervision::WaitingForConfigCommitted>();
+        ctx.createAction<NoActionPossibleAction>();
         return;
       }
 

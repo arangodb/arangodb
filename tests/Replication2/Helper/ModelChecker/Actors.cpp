@@ -26,6 +26,9 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+
 #include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/ReplicatedState/Supervision.h"
 
