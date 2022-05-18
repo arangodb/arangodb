@@ -241,6 +241,21 @@ combined(Os...) -> combined<Os...>;
 
 }  // namespace arangodb::test::model_checker
 
+#if defined(__APPLE__) && defined(__clang__)
+// We had issues with AppleClang when we tried to use the
+// filename as a template parameter, so it is going to be just the line number
+// for now.
+
+template<std::size_t Line>
+struct FileLineType {
+  static inline constexpr std::size_t line = Line;
+  static auto annotate(std::string_view message) -> std::string {
+    return std::to_string(line) + std::string{message};
+  }
+};
+
+#define MC_HERE ([] { return ::FileLineType<__LINE__>{}; }())
+#else
 template<const char File[], std::size_t FileLen, typename>
 struct StringBuffer;
 template<const char File[], std::size_t FileLen, std::size_t... Idxs>
@@ -255,7 +270,7 @@ struct FileLineType {
   static inline constexpr std::size_t line = Line;
 
   static auto annotate(std::string_view message) -> std::string {
-    return std::string{filename};
+    return std::string{filename} + std::to_string(line) + std::string{message};
   }
 };
 
@@ -264,6 +279,7 @@ struct FileLineType {
     static constexpr char data[sizeof(__FILE__)] = __FILE__;   \
     return ::FileLineType<data, sizeof(__FILE__), __LINE__>{}; \
   }())
+#endif
 
 #define MC_GTEST_PRED(name, pred)           \
   model_checker::gtest_predicate {          \
