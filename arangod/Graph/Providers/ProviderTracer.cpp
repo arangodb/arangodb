@@ -30,9 +30,11 @@
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
+#include "Graph/Steps/ClusterProviderStep.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
+#include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 #endif
 
 using namespace arangodb;
@@ -133,6 +135,46 @@ void ProviderTracer<ProviderImpl>::addEdgeToBuilder(
 }
 
 template<class ProviderImpl>
+void ProviderTracer<ProviderImpl>::addEdgeIDToBuilder(
+    typename Step::Edge const& edge, arangodb::velocypack::Builder& builder) {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["addEdgeToIDBuilder"].addTiming(TRI_microtime() - start);
+  });
+  return _impl.addEdgeIDToBuilder(edge, builder);
+}
+
+template<class ProviderImpl>
+void ProviderTracer<ProviderImpl>::addEdgeToLookupMap(
+    typename Step::Edge const& edge, arangodb::velocypack::Builder& builder) {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["addEdgeToLookupMap"].addTiming(TRI_microtime() - start);
+  });
+  return _impl.addEdgeToLookupMap(edge, builder);
+}
+
+template<class ProviderImpl>
+auto ProviderTracer<ProviderImpl>::getEdgeId(typename Step::Edge const& edge)
+    -> std::string {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["getEdgeId"].addTiming(TRI_microtime() - start);
+  });
+  return _impl.getEdgeId(edge);
+}
+
+template<class ProviderImpl>
+auto ProviderTracer<ProviderImpl>::getEdgeIdRef(typename Step::Edge const& edge)
+    -> EdgeType {
+  double start = TRI_microtime();
+  auto sg = arangodb::scopeGuard([&]() noexcept {
+    _stats["getEdgeIdRef"].addTiming(TRI_microtime() - start);
+  });
+  return _impl.getEdgeIdRef(edge);
+}
+
+template<class ProviderImpl>
 void ProviderTracer<ProviderImpl>::destroyEngines() {
   double start = TRI_microtime();
   auto sg = arangodb::scopeGuard([&]() noexcept {
@@ -185,6 +227,12 @@ void ProviderTracer<ProviderImpl>::unPrepareContext() {
   _impl.unPrepareContext();
 }
 
+template<class ProviderImpl>
+bool ProviderTracer<ProviderImpl>::hasDepthSpecificLookup(
+    uint64_t depth) const noexcept {
+  return _impl.hasDepthSpecificLookup(depth);
+}
+
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
 template class ::arangodb::graph::ProviderTracer<
@@ -192,7 +240,12 @@ template class ::arangodb::graph::ProviderTracer<
 
 #ifdef USE_ENTERPRISE
 template class ::arangodb::graph::ProviderTracer<
-    arangodb::graph::SingleServerProvider<enterprise::SmartGraphStep>>;
+    arangodb::graph::SingleServerProvider<
+        arangodb::graph::enterprise::SmartGraphStep>>;
+
+template class ::arangodb::graph::ProviderTracer<
+    arangodb::graph::enterprise::SmartGraphProvider<
+        arangodb::graph::ClusterProviderStep>>;
 #endif
 
 template class ::arangodb::graph::ProviderTracer<
