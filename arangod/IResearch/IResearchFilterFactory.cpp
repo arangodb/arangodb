@@ -3581,7 +3581,6 @@ Result fromFuncStartsWith(
 
     TRI_ASSERT(filterCtx.analyzer);
     kludge::mangleField(name, filterCtx.analyzer);
-    filter->boost(filterCtx.boost);
 
     if (isMultiPrefix) {
       auto& minMatchFilter = filter->add<irs::Or>();
