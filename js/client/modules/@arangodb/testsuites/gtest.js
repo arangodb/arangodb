@@ -161,16 +161,16 @@ function gtestRunner (testname, options) {
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
-  testFns['gtest'] = (x => gtestRunner('arangodbtests', x));
-  testFns['catch'] = (x => gtestRunner('arangodbtests', x));
-  testFns['boost'] = (x => gtestRunner('arangodbtests', x));
+  testFns['gtest'] = x => gtestRunner('arangodbtests', x);
+  testFns['catch'] = x => gtestRunner('arangodbtests', x);
+  testFns['boost'] = x => gtestRunner('arangodbtests', x);
 
   opts['skipGtest'] = false;
   opts['skipGeo'] = false; // not used anymore - only here for downwards-compatibility
 
   defaultFns.push('gtest');
 
-  testFns['gtest_replication2'] = (x => gtestRunner('arangodbtests_replication2', x));
+  testFns['gtest_replication2'] = x => gtestRunner('arangodbtests_replication2', x);
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
