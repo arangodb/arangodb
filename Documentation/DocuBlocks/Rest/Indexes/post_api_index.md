@@ -48,13 +48,13 @@ the *unique* attribute with these types may lead to an error:
 **Note**: Unique indexes on non-shard keys are not supported in a
 cluster.
 
-Hash, skiplist and persistent indexes can optionally be created in a sparse
+Persistent indexes can optionally be created in a sparse
 variant. A sparse index will be created if the *sparse* attribute in
 the index details is set to *true*. Sparse indexes do not index documents
 for which any of the index attributes is either not set or is *null*.
 
-The optional attribute **deduplicate** is supported by array indexes of type
-*persistent*, *hash* or *skiplist*. It controls whether inserting duplicate index values
+The optional **deduplicate** attribute is supported by array indexes of type
+*persistent*. It controls whether inserting duplicate index values
 from the same document into a unique array index will lead to a unique constraint
 error or not. The default value is *true*, so only a single instance of each
 non-unique index value will be inserted into the index per document. Trying to
@@ -70,8 +70,7 @@ the query optimizer will not be able to determine the usefulness of different
 competing indexes in AQL queries when there are multiple candidate indexes to
 choose from.
 The *estimates* attribute is optional and defaults to *true* if not set. It will
-have no effect on indexes other than *persistent* (with *hash* and *skiplist*
-being mere aliases for *persistent* nowadays).
+have no effect on indexes other than *persistent*.
 
 The optional attribute **cacheEnabled** is supported by indexes of type
 *persistent*. This attribute controls whether an extra in-memory hash cache is

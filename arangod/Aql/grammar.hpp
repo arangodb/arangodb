@@ -1,5 +1,5 @@
 /* clang-format off */
-/* A Bison parser, made by GNU Bison 3.7.6.  */
+/* A Bison parser, made by GNU Bison 3.8.2.  */
 
 /* Bison interface for Yacc-like parsers in C
 
@@ -171,6 +171,8 @@ struct YYLTYPE
 
 
 
+
 int Aqlparse (arangodb::aql::Parser* parser);
+
 
 #endif /* !YY_AQL_AQL_GRAMMAR_HPP_INCLUDED  */
