@@ -75,7 +75,6 @@ class permissionsRunner extends tu.runInArangoshRunner {
         return 'tcp://127.0.0.1:8888';
       },
       getStructure: function() {
-        print(rootDir)
         return {
           endpoint: 'tcp://127.0.0.1:8888',
           rootDir: rootDir
