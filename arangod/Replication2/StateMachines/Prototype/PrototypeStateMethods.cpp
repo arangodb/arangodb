@@ -55,6 +55,15 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
   explicit PrototypeStateMethodsDBServer(TRI_vocbase_t& vocbase)
       : _vocbase(vocbase) {}
 
+  [[nodiscard]] auto compareExchange(LogId id, std::string key,
+                                     std::string oldValue, std::string newValue,
+                                     PrototypeWriteOptions options) const
+      -> futures::Future<ResultT<LogIndex>> override {
+    auto leader = getPrototypeStateLeaderById(id);
+    return leader->compareExchange(std::move(key), std::move(oldValue),
+                                   std::move(newValue), options);
+  }
+
   [[nodiscard]] auto insert(
       LogId id, std::unordered_map<std::string, std::string> const& entries,
       PrototypeWriteOptions options) const
@@ -182,6 +191,56 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
 struct PrototypeStateMethodsCoordinator final
     : PrototypeStateMethods,
       std::enable_shared_from_this<PrototypeStateMethodsCoordinator> {
+  [[nodiscard]] auto compareExchange(LogId id, std::string key,
+                                     std::string oldValue, std::string newValue,
+                                     PrototypeWriteOptions options) const
+      -> futures::Future<ResultT<LogIndex>> override {
+    auto path =
+        basics::StringUtils::joinT("/", "_api/prototype-state", id, "cmp-ex");
+    network::RequestOptions opts;
+    opts.database = _vocbase.name();
+    opts.param("waitForApplied", std::to_string(options.waitForApplied));
+    opts.param("waitForSync", std::to_string(options.waitForSync));
+    opts.param("waitForCommit", std::to_string(options.waitForCommit));
+
+    VPackBuilder builder{};
+    {
+      VPackObjectBuilder ob{&builder};
+      builder.add(VPackValue(key));
+      {
+        VPackObjectBuilder ob2{&builder};
+        builder.add("oldValue", oldValue);
+        builder.add("newValue", newValue);
+      }
+    }
+
+    return network::sendRequest(_pool, "server:" + getLogLeader(id),
+                                fuerte::RestVerb::Put, path,
+                                builder.bufferRef(), opts)
+        .thenValue([](network::Response&& resp) -> ResultT<LogIndex> {
+          if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
+            auto r = resp.combinedResult();
+            r = r.mapError([&](result::Error error) {
+              error.appendErrorMessage(" while contacting server " +
+                                       resp.serverId());
+              return error;
+            });
+            return r;
+          } else {
+            auto slice = resp.slice();
+            if (auto result = slice.get("result");
+                result.isObject() && result.length() == 1) {
+              return result.get("index").extract<LogIndex>();
+            }
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+                TRI_ERROR_INTERNAL,
+                basics::StringUtils::concatT(
+                    "expected result containing index in leader response: ",
+                    slice.toJson()));
+          }
+        });
+  }
+
   [[nodiscard]] auto insert(
       LogId id, std::unordered_map<std::string, std::string> const& entries,
       PrototypeWriteOptions options) const
