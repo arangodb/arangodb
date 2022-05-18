@@ -1,6 +1,18 @@
 devel
 -----
 
+* Change default value of `--rocksdb.block-cache-shard-bits` to an automatic
+  default value that allows data blocks of at least 128MiB to be stored in each
+  cache shard if the block cache's strict capacity limit is used. The strict 
+  capacity limit for the block cache is enabled by default in 3.10, but can be 
+  turned off by setting the option `--rocksdb.enforce-block-cache-size-limit`
+  to `false`. Also log a startup warning if the resulting cache shard size 
+  would be smaller than is potentially safe when the strict capacity limit is
+  set. 
+  Enforcing the block cache's capacity limit has the consequence that data
+  reads by RocksDB must fit into the block cache or the read operation will
+  fail with an "Incomplete" error.
+
 * Fix behavior when accessing a view instead of a collection by name in a REST
   document operation. Now return a proper error.
 
