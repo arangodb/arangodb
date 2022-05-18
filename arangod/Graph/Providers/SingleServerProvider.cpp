@@ -148,7 +148,7 @@ auto SingleServerProvider<Step>::expand(
   _cursor->readAll(
       *this, _stats, step.getDepth(),
       [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorID) -> void {
-        VertexType id = _cache.persistString(([&]() -> auto {
+        VertexType id = _cache.persistString(([&]() -> auto{
           if (edge.isString()) {
             return VertexType(edge);
           } else {
@@ -241,7 +241,6 @@ bool SingleServerProvider<Step>::isResponsible(Step const& step) const {
 // Include Enterprise part of the template implementation
 #include "Enterprise/Graph/Providers/SingleServerProviderEE.tpp"
 #endif
-
 
 template<class Step>
 std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>>
