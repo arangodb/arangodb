@@ -78,7 +78,8 @@ class TraversalExecutorInfos {
       arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
       arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
       traverser::TraverserOptions* opts,
-      graph::ClusterBaseProviderOptions&& clusterBaseProviderOptions);
+      graph::ClusterBaseProviderOptions&& clusterBaseProviderOptions,
+      bool isSmart = false);
   // TODO [GraphRefactor]: Tidy-up input parameter "mess" after refactor is
   // done.
   // TODO [GraphRefactor]: Thinking about a new class / struct for passing /
@@ -101,7 +102,8 @@ class TraversalExecutorInfos {
       arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
       arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
       traverser::TraverserOptions* opts,
-      graph::SingleServerBaseProviderOptions&& singleServerBaseProviderOptions);
+      graph::SingleServerBaseProviderOptions&& singleServerBaseProviderOptions,
+      bool isSmart = false);
 
   TraversalExecutorInfos() = delete;
 
@@ -153,7 +155,8 @@ class TraversalExecutorInfos {
       arangodb::aql::QueryContext& query,
       arangodb::graph::SingleServerBaseProviderOptions&& baseProviderOptions,
       arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
-      arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions) -> void;
+      arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
+      bool isSmart = false) -> void;
 
   auto parseTraversalEnumeratorCluster(
       traverser::TraverserOptions::Order order,
@@ -163,7 +166,8 @@ class TraversalExecutorInfos {
       arangodb::aql::QueryContext& query,
       arangodb::graph::ClusterBaseProviderOptions&& baseProviderOptions,
       arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
-      arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions) -> void;
+      arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
+      bool isSmart = false) -> void;
 
   traverser::TraverserOptions::UniquenessLevel getUniqueVertices() const;
   traverser::TraverserOptions::UniquenessLevel getUniqueEdges() const;

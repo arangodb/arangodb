@@ -3,6 +3,21 @@ devel
 
 * Upgraded bundled version of RocksDB to 7.2.
 
+* Added `[?]` array operator to AQL, which works as follows:
+  - `nonArray[?]`: returns `false`
+  - `nonArray[? FILTER CURRENT ...]`: returns `false`
+  - `array[?]`: returns `false` if array is empty, `true` otherwise
+  - `array[? FILTER CURRENT ...]`: returns `false` if no array member
+     satisfies the filter condition, returns `true` if at least one
+     member satistifies it.
+
+* Fixed Github issue #16279: assertion failure/crash in AQL query optimizer when
+  permuting adjacent FOR loops that depended on each other.
+
+* No good reason to fatal error in agency state, when local database entries
+  lack local timestamp (legacy). In that situation, we will record epoch begin
+	as local time.
+
 * Put hotbackup requests on the HIGH priority queue to make hotbackups work
   under high load (BTS-865).
 

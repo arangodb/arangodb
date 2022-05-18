@@ -173,6 +173,42 @@ function arrayAccessTestSuite () {
       }
     },
 
+    testQuestionMarkEmptyArray : function() {
+      var expected = [ false ];
+      var result = AQL_EXECUTE("RETURN [][?]").json;
+      assertEqual(expected, result);
+    },
+
+    testMulitpleQuestionMarkEmptyArray : function() {
+      var expected = [ false ];
+      var result = AQL_EXECUTE("RETURN [][????]").json;
+      assertEqual(expected, result);
+    },
+
+    testQuestionMarkNonEmptyArray : function() {
+      var expected = [ true ];
+      var result = AQL_EXECUTE("RETURN [42][?]").json;
+      assertEqual(expected, result);
+    },
+
+    testQuestionMarkWithFilter: function() {
+      var expected = [ true ];
+      var result = AQL_EXECUTE("RETURN @value[? FILTER CURRENT.name == 'Europe']", { value : continents }).json;
+      assertEqual(expected, result);
+    },
+
+    testMultipleQuestionMarkWithFilter: function() {
+      var expected = [ true ];
+      var result = AQL_EXECUTE("RETURN @value[???????????? FILTER CURRENT.name == 'Europe']", { value : continents }).json;
+      assertEqual(expected, result);
+    },
+
+    testQuestionMarkWithNonMatchingFilter: function() {
+      var expected = [ false ];
+      var result = AQL_EXECUTE("RETURN @value[? FILTER CURRENT.name == 'foobar']", { value : continents }).json;
+      assertEqual(expected, result);
+    },
+
     testStarExtractScalar : function () {
       var expected = [ "Europe", "Asia" ];
       var result = AQL_EXECUTE("RETURN @value[*].name", { value : continents }).json;

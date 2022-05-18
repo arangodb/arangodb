@@ -57,13 +57,21 @@ template<class Step>
 void SingleServerProvider<Step>::addEdgeIDToBuilder(
     typename Step::Edge const& edge, arangodb::velocypack::Builder& builder) {
   if (edge.isValid()) {
-    insertEdgeIntoResult(edge.getID(), builder);
+    insertEdgeIdIntoResult(edge.getID(), builder);
   } else {
     // We can never hand out invalid ids.
     // For production just be sure to add something sensible.
     builder.add(VPackSlice::nullSlice());
   }
 };
+
+template<class Step>
+void SingleServerProvider<Step>::addEdgeToLookupMap(
+    typename Step::Edge const& edge, arangodb::velocypack::Builder& builder) {
+  if (edge.isValid()) {
+    _cache.insertEdgeIntoLookupMap(edge.getID(), builder);
+  }
+}
 
 template<class Step>
 SingleServerProvider<Step>::SingleServerProvider(
@@ -194,6 +202,21 @@ void SingleServerProvider<Step>::insertEdgeIdIntoResult(
 }
 
 template<class Step>
+std::string SingleServerProvider<Step>::getEdgeId(
+    typename Step::Edge const& edge) {
+  return _cache.getEdgeId(edge.getID());
+}
+
+template<class Step>
+EdgeType SingleServerProvider<Step>::getEdgeIdRef(
+    typename Step::Edge const& edge) {
+  // TODO: Maybe we can simplify this
+  auto id = getEdgeId(edge);
+  VPackHashedStringRef hashed{id.data(), static_cast<uint32_t>(id.size())};
+  return _cache.persistString(hashed);
+}
+
+template<class Step>
 void SingleServerProvider<Step>::prepareIndexExpressions(aql::Ast* ast) {
   TRI_ASSERT(_cursor != nullptr);
   _cursor->prepareIndexExpressions(ast);
@@ -249,6 +272,12 @@ auto SingleServerProvider<StepType>::fetchEdges(
   // We will never need to fetch anything
   TRI_ASSERT(false);
   return TRI_ERROR_NO_ERROR;
+}
+
+template<class StepType>
+bool SingleServerProvider<StepType>::hasDepthSpecificLookup(
+    uint64_t depth) const noexcept {
+  return _cursor->hasDepthSpecificLookup(depth);
 }
 
 template class arangodb::graph::SingleServerProvider<SingleServerProviderStep>;
