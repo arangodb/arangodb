@@ -404,6 +404,7 @@ void checkReplicatedState(SupervisionContext& ctx,
   checkConverged(ctx, *log, state);
 }
 
+// TODO: sctx is unused
 auto buildAgencyTransaction(DatabaseID const& database, LogId id,
                             SupervisionContext& sctx, ActionContext& actx,
                             arangodb::agency::envelope envelope)

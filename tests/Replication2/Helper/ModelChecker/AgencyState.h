@@ -20,19 +20,19 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include <optional>
-#include <boost/container_hash/hash_fwd.hpp>
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
-#include "Replication2/ReplicatedLog/SupervisionAction.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
+#include "Replication2/ReplicatedLog/SupervisionAction.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
+#include <boost/container_hash/hash_fwd.hpp>
+#include <optional>
 
 namespace arangodb::test {
 
 struct AgencyState {
   std::optional<arangodb::replication2::replicated_state::agency::State>
-      replicatedState;
-  std::optional<arangodb::replication2::agency::Log> replicatedLog;
+      replicatedState{};
+  std::optional<arangodb::replication2::agency::Log> replicatedLog{};
   arangodb::replication2::replicated_log::ParticipantsHealth health;
 
   friend std::size_t hash_value(AgencyState const& s) {
@@ -47,19 +47,21 @@ struct AgencyState {
 
   friend auto operator<<(std::ostream& os, AgencyState const& state)
       -> std::ostream& {
-    return os;
+    // return os;
     auto const print = [&](auto const& x) {
       VPackBuilder builder;
       x.toVelocyPack(builder);
       os << builder.toJson() << std::endl;
     };
 
-    print(state.replicatedState->target);
-    if (state.replicatedState->plan) {
-      print(*state.replicatedState->plan);
-    }
-    if (state.replicatedState->current) {
-      print(*state.replicatedState->current);
+    if (state.replicatedState) {
+      print(state.replicatedState->target);
+      if (state.replicatedState->plan) {
+        print(*state.replicatedState->plan);
+      }
+      if (state.replicatedState->current) {
+        print(*state.replicatedState->current);
+      }
     }
     if (state.replicatedLog) {
       print(state.replicatedLog->target);
@@ -71,8 +73,8 @@ struct AgencyState {
       }
     }
     for (auto const& [name, ph] : state.health._health) {
-      std::cout << name << " reboot id = " << ph.rebootId.value()
-                << " failed = " << !ph.notIsFailed;
+      os << name << " reboot id = " << ph.rebootId.value()
+         << " failed = " << !ph.notIsFailed;
     }
     return os;
   }
