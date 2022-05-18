@@ -38,6 +38,8 @@
 #include "Replication2/Helper/ModelChecker/Predicates.h"
 #include "Replication2/Helper/ModelChecker/AgencyTransitions.h"
 
+#include <boost/core/demangle.hpp>
+
 using namespace arangodb;
 using namespace arangodb::test;
 using namespace arangodb::replication2;
@@ -49,7 +51,11 @@ namespace arangodb::test {
 
 auto SupervisionStateAction::toString() const -> std::string {
   return std::string{"Supervision "} +
-         std::visit([&](auto const& x) { return typeid(x).name(); }, _action);
+         std::visit(
+             [&](auto const& x) {
+               return boost::core::demangle(typeid(x).name());
+             },
+             _action);
 }
 
 SupervisionStateAction::SupervisionStateAction(replicated_state::Action action)
@@ -88,7 +94,11 @@ void KillServerAction::apply(AgencyState& agency) {
 
 auto SupervisionLogAction::toString() const -> std::string {
   return std::string{"Supervision "} +
-         std::visit([&](auto const& x) { return typeid(x).name(); }, _action);
+         std::visit(
+             [&](auto const& x) {
+               return boost::core::demangle(typeid(x).name());
+             },
+             _action);
 }
 
 SupervisionLogAction::SupervisionLogAction(replicated_log::Action action)

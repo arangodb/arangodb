@@ -80,9 +80,16 @@ struct StreamGenericImplementation<Implementation, Descriptor, ProducerStream>
     : StreamGenericImplementationBase<Implementation, Descriptor,
                                       ProducerStream> {
   using ValueType = stream_descriptor_type_t<Descriptor>;
+
   auto insert(ValueType const& t) -> LogIndex override {
     return static_cast<Implementation*>(this)
         ->template insertInternal<Descriptor>(t);
+  }
+
+  auto insertDeferred(ValueType const& t)
+      -> std::pair<LogIndex, DeferredAction> override {
+    return static_cast<Implementation*>(this)
+        ->template insertInternalDeferred<Descriptor>(t);
   }
 };
 
