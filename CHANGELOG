@@ -1,6 +1,9 @@
 v3.9.2 (XXXX-XX-XX)
 -------------------
 
+* Make all requests which are needed for shard resync at least medium priority
+  to improve getting-in-sync under load.
+
 * Fix behavior when accessing a view instead of a collection by name in a REST
   document operation. Now return a proper error.
 
