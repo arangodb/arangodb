@@ -63,7 +63,7 @@ using namespace arangodb::options;
 
 namespace {
 // fail and abort with the specified message
-static void failCallback(std::string const& message) {
+void failCallback(std::string const& message) {
   LOG_TOPIC("85b08", FATAL, arangodb::Logger::FIXME)
       << "error. cannot proceed. reason: " << message;
   FATAL_ERROR_EXIT();
@@ -88,7 +88,28 @@ ApplicationServer::ApplicationServer(
       _options(options),
       _features{features},
       _fail{failCallback},  // register callback function for failures
-      _binaryPath{binaryPath} {}
+      _binaryPath{binaryPath} {
+  addReporter(ProgressHandler{
+      [server = this](ApplicationServer::State state) {
+        server->progressInfo(server->stringifyState(state), "");
+      },
+      [server = this](ApplicationServer::State state, std::string_view name) {
+        server->progressInfo(server->stringifyState(state), name);
+      }});
+}
+
+std::pair<std::string, std::string> ApplicationServer::progressInfo() const {
+  std::unique_lock mtx{_progressMutex};
+
+  return {_progressPhase, _progressFeature};
+}
+
+void ApplicationServer::progressInfo(std::string_view phase,
+                                     std::string_view feature) {
+  std::unique_lock mtx{_progressMutex};
+  _progressPhase = phase;
+  _progressFeature = feature;
+}
 
 bool ApplicationServer::isPrepared() {
   auto tmp = state();
@@ -185,7 +206,8 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // off even in the prepare phase
   disableDependentFeatures();
 
-  // start features. now features are allowed to start threads, write files etc.
+  // start features. now features are allowed to start threads, write files
+  // etc.
   _state.store(State::IN_START, std::memory_order_release);
   reportServerProgress(State::IN_START);
   start();
@@ -336,9 +358,9 @@ void ApplicationServer::collectOptions() {
       [this](ApplicationFeature& feature) {
         LOG_TOPIC("b2731", TRACE, Logger::STARTUP)
             << feature.name() << "::loadOptions";
-        feature.collectOptions(_options);
         reportFeatureProgress(_state.load(std::memory_order_relaxed),
                               feature.name());
+        feature.collectOptions(_options);
       },
       true);
 }
@@ -409,10 +431,10 @@ void ApplicationServer::validateOptions() {
     if (feature.isEnabled()) {
       LOG_TOPIC("fa73c", TRACE, Logger::STARTUP)
           << feature.name() << "::validateOptions";
-      feature.validateOptions(_options);
-      feature.state(ApplicationFeature::State::VALIDATED);
       reportFeatureProgress(_state.load(std::memory_order_relaxed),
                             feature.name());
+      feature.validateOptions(_options);
+      feature.state(ApplicationFeature::State::VALIDATED);
     }
   }
 
@@ -581,7 +603,8 @@ void ApplicationServer::disableDependentFeatures() {
       if (!hasFeature(other)) {
         LOG_TOPIC("f70cc", TRACE, Logger::STARTUP)
             << "turning off feature '" << feature.name()
-            << "' because it is enabled only in conjunction with non-existing "
+            << "' because it is enabled only in conjunction with "
+               "non-existing "
                "feature with id '"
             << other << "'";
         feature.disable();
@@ -605,6 +628,8 @@ void ApplicationServer::prepare() {
   LOG_TOPIC("04e8f", TRACE, Logger::STARTUP) << "ApplicationServer::prepare";
 
   for (ApplicationFeature& feature : _orderedFeatures) {
+    reportFeatureProgress(_state.load(std::memory_order_relaxed),
+                          feature.name());
     if (feature.isEnabled()) {
       try {
         LOG_TOPIC("d4e57", TRACE, Logger::STARTUP)
@@ -622,9 +647,6 @@ void ApplicationServer::prepare() {
             << feature.name() << "'";
         throw;
       }
-
-      reportFeatureProgress(_state.load(std::memory_order_relaxed),
-                            feature.name());
     }
   }
 }
@@ -642,10 +664,10 @@ void ApplicationServer::start() {
     LOG_TOPIC("27b63", TRACE, Logger::STARTUP) << feature.name() << "::start";
 
     try {
-      feature.start();
-      feature.state(ApplicationFeature::State::STARTED);
       reportFeatureProgress(_state.load(std::memory_order_relaxed),
                             feature.name());
+      feature.start();
+      feature.state(ApplicationFeature::State::STARTED);
     } catch (basics::Exception const& ex) {
       res.reset(
           ex.code(),
@@ -764,6 +786,8 @@ void ApplicationServer::stop() {
       continue;
     }
 
+    reportFeatureProgress(_state.load(std::memory_order_relaxed),
+                          feature.name());
     LOG_TOPIC("4cd18", TRACE, Logger::STARTUP) << feature.name() << "::stop";
     try {
       feature.stop();
@@ -777,8 +801,6 @@ void ApplicationServer::stop() {
           << feature.name() << "'";
     }
     feature.state(ApplicationFeature::State::STOPPED);
-    reportFeatureProgress(_state.load(std::memory_order_relaxed),
-                          feature.name());
   }
 }
 
@@ -794,6 +816,8 @@ void ApplicationServer::unprepare() {
 
     LOG_TOPIC("98be4", TRACE, Logger::STARTUP)
         << feature.name() << "::unprepare";
+    reportFeatureProgress(_state.load(std::memory_order_relaxed),
+                          feature.name());
     try {
       feature.unprepare();
     } catch (std::exception const& ex) {
@@ -806,8 +830,6 @@ void ApplicationServer::unprepare() {
           << feature.name() << "'";
     }
     feature.state(ApplicationFeature::State::UNPREPARED);
-    reportFeatureProgress(_state.load(std::memory_order_relaxed),
-                          feature.name());
   }
 }
 
@@ -850,8 +872,12 @@ void ApplicationServer::reportFeatureProgress(State state,
   }
 }
 
-char const* ApplicationServer::stringifyState() const {
-  switch (_state.load()) {
+std::string_view ApplicationServer::stringifyState() const {
+  return stringifyState(_state.load(std::memory_order_acquire));
+}
+
+std::string_view ApplicationServer::stringifyState(State state) {
+  switch (state) {
     case State::UNINITIALIZED:
       return "uninitialized";
     case State::IN_COLLECT_OPTIONS:

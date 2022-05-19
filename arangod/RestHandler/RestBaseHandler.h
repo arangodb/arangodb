@@ -70,6 +70,12 @@ class RestBaseHandler : public rest::RestHandler {
   // generates a canceled message
   void generateCanceled();
 
+  /// @brief generates not implemented
+  void generateNotImplemented(std::string const& path);
+
+  /// @brief generates forbidden
+  void generateForbidden();
+
  protected:
   /// @brief parses the body (request) as VelocyPack, generates body
   arangodb::velocypack::Slice parseVPackBody(bool& success);
