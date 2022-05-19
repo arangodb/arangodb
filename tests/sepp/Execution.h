@@ -48,15 +48,15 @@ struct Execution {
   void createThreads(Server& server);
   Report run();
   [[nodiscard]] ExecutionState state(
-      std::memory_order order = std::memory_order_relaxed) const;
-  [[nodiscard]] std::uint32_t numThreads() const {
+      std::memory_order order = std::memory_order_relaxed) const noexcept;
+  [[nodiscard]] std::uint32_t numThreads() const noexcept {
     return static_cast<std::uint32_t>(_threads.size());
   }
 
   void signalFinishedThread() noexcept;
 
  private:
-  void waitUntilAllThreadsAre(ThreadState state);
+  void waitUntilAllThreadsAre(ThreadState state) const;
 
   void waitUntilRunning(ExecutionThread const& thread) const;
   void waitUntilFinished(ExecutionThread const& thread) const;

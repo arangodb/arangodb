@@ -134,7 +134,7 @@ void Execution::waitUntilAllThreadsAre(ThreadState state) const {
 }
 
 void Execution::waitUntilThreadStateIs(ExecutionThread const& thread,
-                                       ThreadState expected) const {
+                                       ThreadState expected) {
   auto state = thread._state.load(std::memory_order_relaxed);
   while (state != expected) {
     if (state == ThreadState::kFinished) {

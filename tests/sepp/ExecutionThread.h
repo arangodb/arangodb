@@ -60,9 +60,9 @@ struct ExecutionThread {
   friend struct Execution;
   void threadFunc();
   void doRun();
-  void waitUntilAllThreadsAreStarted();
-  void waitUntilInitialization();
-  void waitUntilBenchmarkStarts();
+  void waitUntilAllThreadsAreStarted() const;
+  void waitUntilInitialization() const;
+  void waitUntilBenchmarkStarts() const;
 };
 
 }  // namespace arangodb::sepp
