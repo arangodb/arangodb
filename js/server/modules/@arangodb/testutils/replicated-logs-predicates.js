@@ -209,7 +209,7 @@ const replicatedLogLeaderPlanIs = function (database, stateId, expectedLeader) {
 
 const replicatedLogLeaderPlanChanged = function (database, stateId, oldLeader) {
   return function () {
-      const leaderPlan = LH.getReplicatedLogLeaderPlan(database, stateId);
+      const leaderPlan = LH.getReplicatedLogLeaderPlan(database, stateId, true);
       if (leaderPlan instanceof Error) {
         return leaderPlan;
       }

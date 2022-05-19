@@ -489,7 +489,7 @@ const replicatedLogSuite = function () {
       stopServer(setLeader);
 
       // Supervision should notice that the target leader is failed and should not try to set it.
-      const errorCode = 3; // TARGET_LEADER_FAILED
+      const errorCode = "TargetLeaderFailed";
       waitFor(replicatedLogSupervisionError(database, logId, errorCode));
 
       waitFor(lpreds.replicatedLogLeaderPlanChanged(database, logId, setLeader));
