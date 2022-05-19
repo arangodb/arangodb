@@ -543,7 +543,6 @@ function ActiveFailoverSuite() {
         });
         assertTrue(checkInSync(currentLead, servers));
         // after its in sync, halt all others so it becomes the leader again
-        instanceinfo.arangods.forEach(arangod => print(arangod.instanceRole))
         suspended = instanceinfo.arangods.filter(arangod =>
           (arangod.endpoint !== oldLead) && (arangod.instanceRole === 'activefailover'));
         suspended.forEach(arangod => {
