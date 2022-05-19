@@ -7,6 +7,9 @@ devel
   parameters `numThreads` and `threadBatchSize` on index creation. Default:
   2 threads, 5000 batch size. 
 
+* Fix behavior when accessing a view instead of a collection by name in a REST
+  document operation. Now return a proper error.
+
 * Upgraded bundled version of RocksDB to 7.2.
 
 * Fix documentation of collection's `cacheEnabled` property default.
