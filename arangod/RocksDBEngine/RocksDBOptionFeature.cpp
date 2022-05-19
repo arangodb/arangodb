@@ -672,7 +672,6 @@ void RocksDBOptionFeature::prepare() {
           << "block cache size: " << _blockCacheSize
           << ", shard bits: " << _blockCacheShardBits
           << ", shard size: " << shardSize
-          << ", shard bits: " << _blockCacheShardBits
           << ". it is probably useful to set "
              "`--rocksdb.enforce-block-cache-size-limit` to false "
           << "to avoid incomplete cache reads.";
