@@ -651,10 +651,14 @@ void RocksDBOptionFeature::validateOptions(
     // they don't fit into the block cache upon reading, the block cache will
     // return Status::Incomplete() when the block cache's strict capacity limit
     // is set. then we cannot read any data anymore.
+    // we are limiting the maximum number of shard bits to 10 here, which is
+    // 1024 shards. that should be enough shards even for very big caches.
+    // note that RocksDB also has an internal upper bound for the number of
+    // shards bits, which is 20.
     _blockCacheShardBits = std::clamp(
         int64_t(std::floor(
             std::log2(static_cast<double>(_blockCacheSize) / ::minShardSize))),
-        int64_t(1), int64_t(6));
+        int64_t(1), int64_t(10));
   }
 }
 
