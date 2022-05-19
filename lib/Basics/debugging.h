@@ -292,11 +292,11 @@ struct AssertionLogger {
 #endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #endif  // #ifndef TRI_ASSERT
 /// @brief assert, always enabled. Yes, even in production.
-#ifndef ABD_PROD_ASSERT
+#ifndef ADB_PROD_ASSERT
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 // This version of the macro always evaluates the output string, even if the
 // assertion did not fail.
-#define ABD_PROD_ASSERT(expr) /*GCOVR_EXCL_LINE*/                       \
+#define ADB_PROD_ASSERT(expr) /*GCOVR_EXCL_LINE*/                       \
   (ADB_LIKELY(expr))                                                    \
       ? ::arangodb::debug::AssertionNoOpLogger{} &                      \
             ::arangodb::debug::AssertionNoOpLogger::assertionNoOpStream \
@@ -306,7 +306,7 @@ struct AssertionLogger {
 #else
 // This version of the macro only evaluates the output string, if the assertion
 // failed.
-#define ABD_PROD_ASSERT(expr) /*GCOVR_EXCL_LINE*/                             \
+#define ADB_PROD_ASSERT(expr) /*GCOVR_EXCL_LINE*/                             \
   (ADB_LIKELY(expr))                                                          \
       ? (void)nullptr                                                         \
       : ::arangodb::debug::AssertionLogger{__FILE__, __LINE__,                \
@@ -314,4 +314,4 @@ struct AssertionLogger {
             ::arangodb::debug::AssertionLogger::assertionStringStream
 
 #endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#endif  // #ifndef ABD_PROD_ASSERT
+#endif  // #ifndef ADB_PROD_ASSERT
