@@ -5481,8 +5481,8 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
   // with scoring limit (double), boost
   {
     irs::Or expected;
-    expected.boost(3.1f);
     auto& prefix = expected.add<irs::by_prefix>();
+    prefix.boost(3.1f);
     *prefix.mutable_field() = mangleStringIdentity("name");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
@@ -5503,10 +5503,10 @@ TEST_F(IResearchFilterFunctionTest, StartsWith) {
   // with scoring limit with min match count (double), boost
   {
     irs::Or expected;
-    expected.boost(3.1f);
     auto& orFilter = expected.add<irs::Or>();
     orFilter.min_match_count(2);
     auto& prefix = orFilter.add<irs::by_prefix>();
+    orFilter.boost(3.1f);
     *prefix.mutable_field() = mangleStringIdentity("name");
     auto* opt = prefix.mutable_options();
     opt->term = irs::ref_cast<irs::byte_type>(irs::string_ref("abc"));
