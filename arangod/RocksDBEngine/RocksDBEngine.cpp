@@ -3112,11 +3112,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
             "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
             16));
 
-    _db->GetApproximateSizes(
-        c, &r, 1, &out,
-        static_cast<uint8_t>(
-            rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
-            rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+    rocksdb::SizeApproximationOptions options{.include_memtables = true,
+                                              .include_files = true};
+    _db->GetApproximateSizes(options, c, &r, 1, &out);
 
     builder.add("memory", VPackValue(out));
     builder.close();
