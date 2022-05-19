@@ -41,12 +41,11 @@ class FileDescriptorsFeature : public ArangodFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-  void start() override final;
 
  private:
-  uint64_t _descriptorsMinimum;
-
   void adjustFileDescriptors();
+
+  uint64_t _descriptorsMinimum;
 };
 
 }  // namespace arangodb

@@ -26,12 +26,14 @@
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
-#include "Basics/application-exit.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "Random/RandomGenerator.h"
 
 #include <chrono>
 #include <thread>
@@ -40,39 +42,45 @@ using namespace arangodb::consensus;
 
 namespace {
 void handleGossipResponse(arangodb::network::Response const& r,
+                          std::string const& endpoint,
                           arangodb::consensus::Agent* agent, size_t version) {
   using namespace arangodb;
-  std::string newLocation;
-
   if (r.ok()) {
     velocypack::Slice payload = r.slice();
 
     switch (r.statusCode()) {
-      case 200:  // Digest other configuration
+      case 200: {
+        // Digest other configuration
         LOG_TOPIC("4995a", DEBUG, Logger::AGENCY)
             << "Got result of gossip message, code: 200"
             << " body: " << payload.toJson();
         agent->gossip(payload, true, version);
         break;
+      }
 
-      case 307:  // Add new endpoint to gossip peers
+      case 307: {
+        // Add new endpoint to gossip peers
         bool found;
-        newLocation = r.response().header.metaByKey("location", found);
+        std::string newLocation =
+            r.response().header.metaByKey(StaticStrings::Location, found);
 
         if (found) {
-          if (newLocation.compare(0, 5, "https") == 0) {
-            newLocation = newLocation.replace(0, 5, "ssl");
-          } else if (newLocation.compare(0, 4, "http") == 0) {
-            newLocation = newLocation.replace(0, 4, "tcp");
+          if (newLocation.starts_with("https")) {
+            newLocation =
+                newLocation.replace(0, std::string_view("https").size(), "ssl");
+          } else if (newLocation.starts_with("http")) {
+            newLocation =
+                newLocation.replace(0, std::string_view("http").size(), "tcp");
           } else {
             LOG_TOPIC("60be0", FATAL, Logger::AGENCY)
-                << "Invalid URL specified as gossip endpoint";
+                << "Invalid URL specified as gossip endpoint by " << endpoint
+                << ": " << newLocation;
             FATAL_ERROR_EXIT();
           }
 
           LOG_TOPIC("4c822", DEBUG, Logger::AGENCY)
-              << "Got redirect to " << newLocation
-              << ". Adding peer to gossip peers";
+              << "Got redirect to " << newLocation << ". Adding peer "
+              << newLocation << " to gossip peers";
           bool added = agent->addGossipPeer(newLocation);
           if (added) {
             LOG_TOPIC("d41c8", DEBUG, Logger::AGENCY)
@@ -86,18 +94,33 @@ void handleGossipResponse(arangodb::network::Response const& r,
               << "Redirect lacks 'Location' header";
         }
         break;
+      }
 
-      default:
-        LOG_TOPIC("bed89", ERR, Logger::AGENCY)
-            << "Got error " << r.statusCode() << " from gossip endpoint";
-        std::this_thread::sleep_for(std::chrono::seconds(40));
+      case 503: {
+        // service unavailable
+        LOG_TOPIC("f9c3f", INFO, Logger::AGENCY)
+            << "Gossip endpoint " << endpoint << " is still unavailable";
+        uint32_t sleepTime = 250 + RandomGenerator::interval(uint32_t(250));
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleepTime));
         break;
+      }
+
+      default: {
+        // unexpected error
+        LOG_TOPIC("bed89", ERR, Logger::AGENCY)
+            << "Got error " << r.statusCode() << " from gossip endpoint "
+            << endpoint;
+        std::this_thread::sleep_for(std::chrono::seconds(30));
+        break;
+      }
     }
   }
 
   LOG_TOPIC("e2ef9", DEBUG, Logger::AGENCY)
-      << "Got error from gossip message, status:" << fuerte::to_string(r.error);
+      << "Got error from gossip message to " << endpoint
+      << ", status: " << fuerte::to_string(r.error);
 }
+
 }  // namespace
 
 Inception::Inception(Agent& agent)
@@ -166,7 +189,7 @@ void Inception::gossip() {
         network::sendRequest(cp, p, fuerte::RestVerb::Post, path, buffer,
                              reqOpts)
             .thenValue([=, this](network::Response r) {
-              ::handleGossipResponse(r, &_agent, version);
+              ::handleGossipResponse(r, p, &_agent, version);
             });
       }
     }
@@ -197,7 +220,7 @@ void Inception::gossip() {
         network::sendRequest(cp, pair.second, fuerte::RestVerb::Post, path,
                              buffer, reqOpts)
             .thenValue([=, this](network::Response r) {
-              ::handleGossipResponse(r, &_agent, version);
+              ::handleGossipResponse(r, pair.second, &_agent, version);
             });
       }
     }
@@ -333,7 +356,7 @@ bool Inception::restartingActiveAgent() {
                                            path, greetBuffer, reqOpts)
                           .get();
 
-        if (comres.ok()) {
+        if (comres.combinedResult().ok()) {
           try {
             VPackSlice theirConfig = comres.slice();
 
@@ -479,7 +502,7 @@ void Inception::reportVersionForEp(std::string const& endpoint,
 // @brief Thread main
 void Inception::run() {
   auto server = ServerState::instance();
-  while (server->isMaintenance() && !this->isStopping() &&
+  while (server->isStartupOrMaintenance() && !this->isStopping() &&
          !_agent.isStopping()) {
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     LOG_TOPIC("1b613", DEBUG, Logger::AGENCY)

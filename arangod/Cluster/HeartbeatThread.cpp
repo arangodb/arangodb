@@ -342,7 +342,7 @@ void HeartbeatThread::run() {
   // which fails when it is still in maintenance mode
   auto server = ServerState::instance();
   if (!server->isCoordinator(role)) {
-    while (server->isMaintenance()) {
+    while (server->isStartupOrMaintenance()) {
       if (isStopping()) {
         // startup aborted
         return;
