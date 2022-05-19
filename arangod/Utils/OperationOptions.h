@@ -173,6 +173,10 @@ struct OperationOptions {
   // get associated execution context
   ExecContext const& context() const;
 
+  // whether or not dirty reads are allowed, this has no relevance for
+  // writing operations
+  bool allowDirtyReads = false;
+
  private:
   ExecContext const* _context;
 };

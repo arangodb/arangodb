@@ -878,8 +878,11 @@ Future<OperationResult> transaction::Methods::documentLocal(
   if (_state->isDBServer()) {
     auto const& followerInfo = collection->followers();
     if (!followerInfo->getLeader().empty()) {
-      return futures::makeFuture(
-          OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options));
+      // We believe to be a follower!
+      if (!options.allowDirtyReads) {
+        return futures::makeFuture(
+            OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED, options));
+      }
     }
   }
 

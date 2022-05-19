@@ -337,6 +337,14 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   OperationOptions options(_context);
   options.ignoreRevs = true;
 
+  // Check if dirty reads are allowed:
+  bool found = false;
+  std::string const& val =
+      _request->header(StaticStrings::AllowDirtyReads, found);
+  if (found && StringUtils::boolean(val)) {
+    options.allowDirtyReads = true;
+  }
+
   RevisionId ifRid = extractRevision("if-match", isValidRevision);
   if (!isValidRevision) {
     ifRid = RevisionId::max();  // an impossible rev, so precondition failed
@@ -808,6 +816,14 @@ RestStatus RestDocumentHandler::readManyDocuments() {
   OperationOptions opOptions(_context);
   opOptions.ignoreRevs =
       _request->parsedValue(StaticStrings::IgnoreRevsString, true);
+
+  // Check if dirty reads are allowed:
+  bool found = false;
+  std::string const& val =
+      _request->header(StaticStrings::AllowDirtyReads, found);
+  if (found && StringUtils::boolean(val)) {
+    opOptions.allowDirtyReads = true;
+  }
 
   _activeTrx = createTransaction(cname, AccessMode::Type::READ, opOptions);
 

@@ -2041,9 +2041,17 @@ Future<OperationResult> getDocumentOnCoordinator(
           }
           builder.close();
         }
+        std::string dest;
+        if (!isManaged && options.allowDirtyReads) {
+          dest = "replica:";
+          headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
+        } else {
+          dest = "shard:";
+        }
+        dest.append(it.first);
         futures.emplace_back(network::sendRequestRetry(
-            pool, "shard:" + it.first, restVerb, std::move(url),
-            std::move(buffer), reqOpts, std::move(headers)));
+            pool, dest, restVerb, std::move(url), std::move(buffer), reqOpts,
+            std::move(headers)));
       }
 
       // Now compute the result
@@ -2108,8 +2116,17 @@ Future<OperationResult> getDocumentOnCoordinator(
         headers.try_emplace(StaticStrings::AqlDocumentCall, "true");
       }
 
+      std::string dest;
+      if (!isManaged && options.allowDirtyReads) {
+        dest = "replica:";
+        headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
+      } else {
+        dest = "shard:";
+      }
+      dest.append(shard);
+
       futures.emplace_back(network::sendRequestRetry(
-          pool, "shard:" + shard, restVerb,
+          pool, dest, restVerb,
           "/_api/document/" + StringUtils::urlEncode(shard) + "/" +
               StringUtils::urlEncode(key.data(), key.size()),
           VPackBuffer<uint8_t>(), reqOpts, std::move(headers)));
@@ -2121,8 +2138,18 @@ Future<OperationResult> getDocumentOnCoordinator(
       ShardID const& shard = shardServers.first;
       network::Headers headers;
       addTransactionHeaderForShard(trx, *shardIds, shard, headers);
+
+      std::string dest;
+      if (!isManaged && options.allowDirtyReads) {
+        dest = "replica:";
+        headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
+      } else {
+        dest = "shard:";
+      }
+      dest.append(shard);
+
       futures.emplace_back(network::sendRequestRetry(
-          pool, "shard:" + shard, restVerb,
+          pool, dest, restVerb,
           "/_api/document/" + StringUtils::urlEncode(shard),
           /*cannot move*/ buffer, reqOpts, std::move(headers)));
     }
