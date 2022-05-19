@@ -288,7 +288,7 @@ auto GlobalStatus::fromVelocyPack(VPackSlice slice) -> GlobalStatus {
   return status;
 }
 
-void GlobalStatus::Connection::toVelocyPack(
+void GlobalStatusConnection::toVelocyPack(
     arangodb::velocypack::Builder& b) const {
   velocypack::ObjectBuilder ob(&b);
   b.add(StaticStrings::ErrorCode, VPackValue(error));
@@ -297,14 +297,14 @@ void GlobalStatus::Connection::toVelocyPack(
   }
 }
 
-auto GlobalStatus::Connection::fromVelocyPack(arangodb::velocypack::Slice slice)
-    -> GlobalStatus::Connection {
+auto GlobalStatusConnection::fromVelocyPack(arangodb::velocypack::Slice slice)
+    -> GlobalStatusConnection {
   auto code = ErrorCode(slice.get(StaticStrings::ErrorCode).extract<int>());
   auto message = std::string{};
   if (auto ms = slice.get(StaticStrings::ErrorMessage); !ms.isNone()) {
     message = ms.copyString();
   }
-  return Connection{.error = code, .errorMessage = message};
+  return GlobalStatusConnection{.error = code, .errorMessage = message};
 }
 
 void GlobalStatus::ParticipantStatus::Response::toVelocyPack(
@@ -343,7 +343,7 @@ void GlobalStatus::ParticipantStatus::toVelocyPack(
 
 auto GlobalStatus::ParticipantStatus::fromVelocyPack(
     arangodb::velocypack::Slice s) -> GlobalStatus::ParticipantStatus {
-  auto connection = Connection::fromVelocyPack(s.get("connection"));
+  auto connection = GlobalStatusConnection::fromVelocyPack(s.get("connection"));
   auto response = std::optional<Response>{};
   if (auto rs = s.get("response"); !rs.isNone()) {
     response = Response::fromVelocyPack(rs);
@@ -365,7 +365,7 @@ void GlobalStatus::SupervisionStatus::toVelocyPack(
 
 auto GlobalStatus::SupervisionStatus::fromVelocyPack(
     arangodb::velocypack::Slice s) -> GlobalStatus::SupervisionStatus {
-  auto connection = Connection::fromVelocyPack(s.get("connection"));
+  auto connection = GlobalStatusConnection::fromVelocyPack(s.get("connection"));
   auto const response =
       std::invoke([&s]() -> std::optional<agency::LogCurrentSupervision> {
         if (auto rs = s.get("response"); !rs.isNone()) {
