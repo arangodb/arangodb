@@ -260,11 +260,7 @@ class instance {
       this.appDir = fs.getTempPath();
     }
 
-    let config = 'arangod.conf';
-
-    if (this.instanceRole !== instanceRole.single) {
-      config = 'arangod-' + this.instanceRole + '.conf';
-    }
+    let config = 'arangod-' + this.instanceRole + '.conf';
 
     this.args = _.defaults(this.args, {
       'configuration': fs.join(pu.CONFIG_DIR, config),
