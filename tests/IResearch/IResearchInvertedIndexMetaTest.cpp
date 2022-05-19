@@ -181,6 +181,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
        "compression": "none",
        "locale": "myLocale"
     },
+    "version":0,
     "storedValues": [{ "fields": ["dummy"], "compression": "none"}],
     "analyzer": "test_text",
     "features": ["norm", "position", "frequency"],
@@ -193,16 +194,17 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
     ASSERT_TRUE(meta.init(server.server(), json->slice(), true, errorString,
                           irs::string_ref::NIL));
     ASSERT_TRUE(errorString.empty());
-    ASSERT_EQ(0, meta._analyzerDefinitions.size());
-    ASSERT_EQ(1, meta._fields.size());
-    ASSERT_EQ("simple", meta._fields.front().toString());
+    ASSERT_EQ(1, meta._analyzerDefinitions.size());
+    ASSERT_EQ("test_text", (*meta._analyzerDefinitions.begin())->name());
+    ASSERT_EQ(5, meta._fields.size());
+   // Order could be arbitrary ASSERT_EQ("simple", meta._fields.front().toString());
     ASSERT_FALSE(meta._sort.empty());
-    ASSERT_TRUE(meta._storedValues.empty());
+    ASSERT_FALSE(meta._storedValues.empty());
     ASSERT_EQ(meta._sortCompression, irs::type<irs::compression::lz4>::id());
     ASSERT_TRUE(meta._analyzerDefinitions.empty());
     ASSERT_FALSE(meta.dense());
     ASSERT_EQ(meta._version,
-              static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX));
+              static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MIN));
     ASSERT_EQ(meta._consistency, Consistency::kImmediate);
     ASSERT_TRUE(meta._defaultAnalyzerName.empty());
     ASSERT_FALSE(meta._features);

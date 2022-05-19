@@ -728,37 +728,12 @@ bool IResearchLinkMeta::init(
 
           if (value.hasKey(kSubFieldName)) {
             auto subField = value.get(kSubFieldName);
-
-            if (!subField.isArray()) {
-              errorField = std::string{kFieldName} + "[" +
-                           std::to_string(itr.index()) + "]." +
-                           std::string{kSubFieldName};
-
+            auto featuresRes = features.fromVelocyPack(subField);
+            if (featuresRes.fail()) {
+              errorField = std::string{kFieldName}.append(" (")
+               .append(featuresRes.errorMessage()).append(")");
               return false;
-            }
 
-            for (velocypack::ArrayIterator subItr(subField); subItr.valid();
-                 ++subItr) {
-              auto subValue = *subItr;
-
-              if (!subValue.isString() && !subValue.isNull()) {
-                errorField = std::string{kFieldName} + "[" +
-                             std::to_string(itr.index()) + "]." +
-                             std::string{kSubFieldName} + "[" +
-                             std::to_string(subItr.index()) + +"]";
-
-                return false;
-              }
-
-              const auto featureName = getStringRef(subValue);
-              if (!features.add(featureName)) {
-                errorField = std::string{kFieldName} + "[" +
-                             std::to_string(itr.index()) + "]." +
-                             std::string{kSubFieldName} + "." +
-                             std::string{featureName};
-
-                return false;
-              }
             }
           }
         }

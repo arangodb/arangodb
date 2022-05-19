@@ -671,25 +671,10 @@ Result parseAnalyzerSlice(VPackSlice const& slice, irs::string_ref& name,
   if (slice.hasKey("features")) {
     auto subSlice = slice.get("features");
 
-    if (!subSlice.isArray()) {
+    auto featuresRes = features.fromVelocyPack(subSlice);
+    if (featuresRes.fail()) {
       return {TRI_ERROR_BAD_PARAMETER,
-              "failed to find an array value for analyzer 'features'"};
-    }
-
-    for (VPackArrayIterator subItr(subSlice); subItr.valid(); ++subItr) {
-      auto subEntry = *subItr;
-
-      if (!subEntry.isString()) {
-        return {TRI_ERROR_BAD_PARAMETER,
-                "failed to find a string value for an entry in analyzer "
-                "'features'"};
-      }
-      const auto featureName = ::arangodb::iresearch::getStringRef(subEntry);
-      if (!features.add(featureName)) {
-        return {TRI_ERROR_BAD_PARAMETER,
-                "failed to find feature '"s.append(std::string(featureName))
-                    .append("'")};
-      }
+              "Error in analyzer 'features': "s.append(featuresRes.errorMessage())};
     }
   }
   return {};
@@ -3045,6 +3030,29 @@ std::vector<irs::type_info::type_id> Features::fieldFeatures(
 
   return {version > LinkVersion::MIN ? irs::type<irs::Norm2>::id()
                                      : irs::type<irs::Norm>::id()};
+}
+
+Result Features::fromVelocyPack(VPackSlice slice) {
+  if (!slice.isArray()) {
+    return {TRI_ERROR_BAD_PARAMETER, "array expected"};
+  }
+  for (VPackArrayIterator subItr(slice); subItr.valid(); ++subItr) {
+    auto subEntry = *subItr;
+
+    if (!subEntry.isString()) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "array entry #"s.append(std::to_string(subItr.index()))
+                  .append(" is not a string")};
+    }
+    const auto featureName = ::arangodb::iresearch::getStringRef(subEntry);
+    if (!add(featureName)) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              "failed to find feature '"s.append(std::string(featureName))
+                  .append("' see array entry #")
+                  .append(std::to_string(subItr.index()))};
+    }
+  }
+  return {};
 }
 
 bool Features::add(irs::string_ref featureName) {

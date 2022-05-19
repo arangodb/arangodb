@@ -32,6 +32,14 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
 
+namespace {
+constexpr auto consistencyTypeMap =
+    frozen::make_map<irs::string_ref, arangodb::iresearch::Consistency>({
+        {"eventual", arangodb::iresearch::Consistency::kEventual},
+        {"immediate", arangodb::iresearch::Consistency::kImmediate}
+    });
+} // namespace
+
 namespace arangodb::iresearch {
 
 bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
@@ -39,6 +47,27 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
                                       bool readAnalyzerDefinition,
                                       std::string& errorField,
                                       irs::string_ref const defaultVocbase) {
+
+  // consistency (optional)
+  {
+    constexpr std::string_view kFieldName("consistency");
+    auto consistencySlice = slice.get(kFieldName);
+    if (!consistencySlice.isNone()) {
+      if (consistencySlice.isString()) {
+        auto it = consistencyTypeMap.find(consistencySlice.stringRef());
+        if (it != consistencyTypeMap.end()) {
+          _consistency = it->second;
+        } else {
+          errorField = kFieldName;
+          return false;
+        }
+      } else {
+        errorField = kFieldName;
+        return false;
+      }
+    }
+   
+  }
   // copied part begin FIXME: verify and move to common base class if possible
   {
     // optional stored values
@@ -191,36 +220,13 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
 
           if (value.hasKey(kSubFieldName)) {
             auto subField = value.get(kSubFieldName);
-
-            if (!subField.isArray()) {
-              errorField = std::string{kFieldName} + "[" +
-                           std::to_string(itr.index()) + "]." +
-                           std::string{kSubFieldName};
-
+            auto featuresRes = features.fromVelocyPack(subField);
+            if (featuresRes.fail()) {
+              errorField = std::string{kFieldName}
+                               .append(" (")
+                               .append(featuresRes.errorMessage())
+                               .append(")");
               return false;
-            }
-
-            for (velocypack::ArrayIterator subItr(subField); subItr.valid();
-                 ++subItr) {
-              auto subValue = *subItr;
-
-              if (!subValue.isString() && !subValue.isNull()) {
-                errorField = std::string{kFieldName} + "[" +
-                             std::to_string(itr.index()) + "]." +
-                             std::string{kSubFieldName} + "[" +
-                             std::to_string(subItr.index()) + +"]";
-                return false;
-              }
-
-              const auto featureName = getStringRef(subValue);
-              if (!features.add(featureName)) {
-                errorField = std::string{kFieldName} + "[" +
-                             std::to_string(itr.index()) + "]." +
-                             std::string{kSubFieldName} + "." +
-                             std::string{featureName};
-
-                return false;
-              }
             }
           }
         }
