@@ -41,4 +41,4 @@ struct RandomStringGenerator : ValueGenerator {
   basics::xoroshiro128plus _prng;
 };
 
-}  // namespace arangodb::sepp
+}  // namespace arangodb::sepp::generators
