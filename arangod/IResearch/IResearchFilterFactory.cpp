@@ -79,6 +79,20 @@ using namespace arangodb;
 using namespace arangodb::iresearch;
 using namespace std::literals::string_literals;
 
+namespace arangodb::iresearch {
+
+Result makeFilter(irs::boolean_filter* filter, QueryContext const& queryCtx,
+                  FilterContext const& filterCtx, aql::AstNode const& node);
+
+#ifdef USE_ENTERPRISE
+Result fromBooleanExpansion(irs::boolean_filter* filter,
+                            QueryContext const& ctx,
+                            FilterContext const& filterCtx,
+                            aql::AstNode const& node);
+#endif
+
+}  // namespace arangodb::iresearch
+
 namespace {
 
 constexpr char const* GEO_INTERSECT_FUNC = "GEO_INTERSECTS";
@@ -455,56 +469,9 @@ Result extractAnalyzerFromArg(FieldMeta::Analyzer& out, char const* funcName,
   return getAnalyzerByName(out, analyzerId, funcName, ctx);
 }
 
-class FilterContext {
- public:
-  FilterContext(FieldMeta::Analyzer const& analyzer, irs::score_t boost,
-                bool search, AnalyzerProvider const* provider) noexcept
-      : _analyzerProvider(provider),
-        _analyzer(analyzer),
-        _boost(boost),
-        _isSearchFilter(search) {
-    TRI_ASSERT(_analyzer._pool);
-  }
-
-  FilterContext(FilterContext const&) = default;
-  FilterContext& operator=(FilterContext const&) = delete;
-
-  bool isSearchFilter() const noexcept { return _isSearchFilter; }
-
-  irs::score_t boost() const noexcept { return _boost; }
-
-  FieldMeta::Analyzer const& analyzer() const noexcept { return _analyzer; }
-
-  FieldMeta::Analyzer const& fieldAnalyzer(std::string_view name) const {
-    if (_analyzerProvider == nullptr) {
-      return _analyzer;
-    }
-    return (*_analyzerProvider)(name);
-  }
-
-  AnalyzerProvider const* analyzerProvider() const noexcept {
-    return _analyzerProvider;
-  }
-
-  FieldMeta::Analyzer const& contextAnalyzer() const noexcept {
-    return _analyzer;
-  }
-
- private:
-  AnalyzerProvider const* _analyzerProvider;
-  // need shared_ptr since pool could be deleted from the feature
-  FieldMeta::Analyzer const& _analyzer;
-  irs::score_t _boost;
-  bool _isSearchFilter;  // filter is building for SEARCH clause
-};
-
 using ConvertionHandler = Result (*)(char const* funcName, irs::boolean_filter*,
                                      QueryContext const&, FilterContext const&,
                                      aql::AstNode const&);
-
-// forward declaration
-Result makeFilter(irs::boolean_filter* filter, QueryContext const& queryCtx,
-                  FilterContext const& filterCtx, aql::AstNode const& node);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appends value tokens to a phrase filter
@@ -2119,7 +2086,7 @@ Result fromNegation(irs::boolean_filter* filter, QueryContext const& ctx,
                                    filterCtx.isSearchFilter(),
                                    filterCtx.analyzerProvider()};
 
-  return ::makeFilter(filter, ctx, subFilterCtx, *member);
+  return makeFilter(filter, ctx, subFilterCtx, *member);
 }
 
 /*
@@ -2205,7 +2172,7 @@ Result fromGroup(irs::boolean_filter* filter, QueryContext const& ctx,
     auto const* valueNode = node.getMemberUnchecked(i);
     TRI_ASSERT(valueNode);
 
-    auto const rv = ::makeFilter(filter, ctx, subFilterCtx, *valueNode);
+    auto const rv = makeFilter(filter, ctx, subFilterCtx, *valueNode);
     if (rv.fail()) {
       return rv;
     }
@@ -2283,7 +2250,7 @@ Result fromFuncAnalyzer(char const* funcName, irs::boolean_filter* filter,
       analyzerValue, filterCtx.boost(), filterCtx.isSearchFilter(),
       nullptr);  // override analyzer and throw away provider
 
-  rv = ::makeFilter(filter, ctx, subFilterContext, *expressionArg);
+  rv = makeFilter(filter, ctx, subFilterContext, *expressionArg);
 
   if (rv.fail()) {
     return {rv.errorNumber(),
@@ -2333,7 +2300,7 @@ Result fromFuncBoost(char const* funcName, irs::boolean_filter* filter,
       filterCtx.boost() * static_cast<float_t>(boostValue),
       filterCtx.isSearchFilter(), filterCtx.analyzerProvider()};
 
-  rv = ::makeFilter(filter, ctx, subFilterContext, *expressionArg);
+  rv = makeFilter(filter, ctx, subFilterContext, *expressionArg);
 
   if (rv.fail()) {
     return {rv.errorNumber(),
@@ -2558,7 +2525,7 @@ Result fromFuncMinMatch(char const* funcName, irs::boolean_filter* filter,
 
     irs::boolean_filter* subFilter = filter ? &filter->add<irs::Or>() : nullptr;
 
-    rv = ::makeFilter(subFilter, ctx, subFilterCtx, *subFilterExpression);
+    rv = makeFilter(subFilter, ctx, subFilterCtx, *subFilterExpression);
     if (rv.fail()) {
       return {TRI_ERROR_BAD_PARAMETER,
               "'"s.append(funcName)
@@ -4247,12 +4214,30 @@ Result fromFilter(irs::boolean_filter* filter, QueryContext const& ctx,
   auto const* member = node.getMemberUnchecked(0);
 
   if (member) {
-    return ::makeFilter(filter, ctx, filterCtx, *member);
+    return makeFilter(filter, ctx, filterCtx, *member);
   } else {
     return {TRI_ERROR_INTERNAL,
             "could not get node member"};  // wrong number of members
   }
 }
+
+Result fromExpansion(irs::boolean_filter* filter, QueryContext const& ctx,
+                     FilterContext const& filterCtx, aql::AstNode const& node) {
+  TRI_ASSERT(aql::NODE_TYPE_EXPANSION == node.type);
+
+#ifdef USE_ENTERPRISE
+  return node.hasFlag(aql::FLAG_BOOLEAN_EXPANSION))
+    ? fromExpression(filter, ctx, filterCtx, node);
+    : fromBooleanExpansion(filter, ctx, filterCtx, node);
+#else
+  return fromExpression(filter, ctx, filterCtx, node);
+#endif
+}
+
+}  // namespace
+
+namespace arangodb {
+namespace iresearch {
 
 Result makeFilter(irs::boolean_filter* filter, QueryContext const& queryCtx,
                   FilterContext const& filterCtx, aql::AstNode const& node) {
@@ -4309,15 +4294,12 @@ Result makeFilter(irs::boolean_filter* filter, QueryContext const& queryCtx,
     case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:  // compare ARRAY >=
       return fromArrayComparison<ByRangeSubFilterFactory>(filter, queryCtx,
                                                           filterCtx, node);
+    case aql::NODE_TYPE_EXPANSION:  // [?|* ...]
+      return fromExpansion(filter, queryCtx, filterCtx, node);
     default:
       return fromExpression(filter, queryCtx, filterCtx, node);
   }
 }
-
-}  // namespace
-
-namespace arangodb {
-namespace iresearch {
 
 /*static*/ Result FilterFactory::filter(
     irs::boolean_filter* filter, QueryContext const& ctx,
@@ -4333,7 +4315,7 @@ namespace iresearch {
   FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
   FilterContext const filterCtx(analyzer, irs::kNoBoost, forSearch, provider);
 
-  const auto res = ::makeFilter(filter, ctx, filterCtx, node);
+  const auto res = makeFilter(filter, ctx, filterCtx, node);
 
   if (res.fail()) {
     LOG_TOPIC("dfa15", WARN, TOPIC) << res.errorMessage();

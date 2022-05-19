@@ -53,6 +53,49 @@ struct QueryContext;
 using AnalyzerProvider =
     std::function<FieldMeta::Analyzer const&(std::string_view)>;
 
+class FilterContext {
+ public:
+  FilterContext(FieldMeta::Analyzer const& analyzer, irs::score_t boost,
+                bool search, AnalyzerProvider const* provider) noexcept
+      : _analyzerProvider(provider),
+        _analyzer(analyzer),
+        _boost(boost),
+        _isSearchFilter(search) {
+    TRI_ASSERT(_analyzer._pool);
+  }
+
+  FilterContext(FilterContext const&) = default;
+  FilterContext& operator=(FilterContext const&) = delete;
+
+  bool isSearchFilter() const noexcept { return _isSearchFilter; }
+
+  irs::score_t boost() const noexcept { return _boost; }
+
+  FieldMeta::Analyzer const& analyzer() const noexcept { return _analyzer; }
+
+  FieldMeta::Analyzer const& fieldAnalyzer(std::string_view name) const {
+    if (_analyzerProvider == nullptr) {
+      return _analyzer;
+    }
+    return (*_analyzerProvider)(name);
+  }
+
+  AnalyzerProvider const* analyzerProvider() const noexcept {
+    return _analyzerProvider;
+  }
+
+  FieldMeta::Analyzer const& contextAnalyzer() const noexcept {
+    return _analyzer;
+  }
+
+ private:
+  AnalyzerProvider const* _analyzerProvider;
+  // need shared_ptr since pool could be deleted from the feature
+  FieldMeta::Analyzer const& _analyzer;
+  irs::score_t _boost;
+  bool _isSearchFilter;  // filter is building for SEARCH clause
+};
+
 struct FilterFactory {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief determine if the 'node' can be converted into an iresearch filter
