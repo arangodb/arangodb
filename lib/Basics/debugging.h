@@ -241,9 +241,13 @@ struct NoOpStream {
   }
 };
 
+struct AssertionNoOpLogger {
+  void operator&(NoOpStream const&) const noexcept {}
+  static thread_local NoOpStream assertionNoOpStream;
+};
+
 struct AssertionLogger {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  void operator&(std::ostringstream const& stream) const {
+  [[noreturn]] void operator&(std::ostringstream const& stream) const {
     std::string message = stream.str();
     arangodb::CrashHandler::assertionFailure(
         file, line, function, expr,
@@ -251,7 +255,7 @@ struct AssertionLogger {
   }
 
   // can be removed in C++20 because of LWG 1203
-  void operator&(std::ostream const& stream) const {
+  [[noreturn]] void operator&(std::ostream const& stream) const {
     operator&(static_cast<std::ostringstream const&>(stream));
   }
 
@@ -259,14 +263,14 @@ struct AssertionLogger {
   int line;
   const char* function;
   const char* expr;
-#endif
-  void operator&(NoOpStream const&) const noexcept {}
+
+  static thread_local std::ostringstream assertionStringStream;
 };
 
 }  // namespace debug
 }  // namespace arangodb
 
-/// @brief assert
+/// @brief assert, only enabled in maintainer mode
 #ifndef TRI_ASSERT
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -276,16 +280,38 @@ struct AssertionLogger {
       ? (void)nullptr                                                         \
       : ::arangodb::debug::AssertionLogger{__FILE__, __LINE__,                \
                                            ARANGODB_PRETTY_FUNCTION, #expr} & \
-            std::ostringstream {}
+            ::arangodb::debug::AssertionLogger::assertionStringStream
 
 #else
 
-#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                   \
-  (true)                                                                       \
-      ? ((false) ? (void)(expr) : (void)nullptr)                               \
-      : ::arangodb::debug::AssertionLogger{} & ::arangodb::debug::NoOpStream { \
-  }
+#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/          \
+  (true) ? ((false) ? (void)(expr) : (void)nullptr)   \
+         : ::arangodb::debug::AssertionNoOpLogger{} & \
+               :: : arangodb::debug::AssertionNoOpLogger::assertionNoOpStream
 
 #endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-
 #endif  // #ifndef TRI_ASSERT
+/// @brief assert, always enabled. Yes, even in production.
+#ifndef ABD_PROD_ASSERT
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+// This version of the macro always evaluates the output string, even if the
+// assertion did not fail.
+#define ABD_PROD_ASSERT(expr) /*GCOVR_EXCL_LINE*/                       \
+  (ADB_LIKELY(expr))                                                    \
+      ? ::arangodb::debug::AssertionNoOpLogger{} &                      \
+            ::arangodb::debug::AssertionNoOpLogger::assertionNoOpStream \
+      : ::arangodb::debug::AssertionLogger{} &                          \
+            ::arangodb::debug::AssertionLogger::assertionStringStream
+
+#else
+// This version of the macro only evaluates the output string, if the assertion
+// failed.
+#define ABD_PROD_ASSERT(expr) /*GCOVR_EXCL_LINE*/                             \
+  (ADB_LIKELY(expr))                                                          \
+      ? (void)nullptr                                                         \
+      : ::arangodb::debug::AssertionLogger{__FILE__, __LINE__,                \
+                                           ARANGODB_PRETTY_FUNCTION, #expr} & \
+            ::arangodb::debug::AssertionLogger::assertionStringStream
+
+#endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#endif  // #ifndef ABD_PROD_ASSERT
