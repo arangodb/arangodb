@@ -262,8 +262,6 @@ struct AssertionLogger {
   static thread_local std::ostringstream assertionStringStream;
 };
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-
 struct AssertionConditionalStream {
   bool condition{false};
   std::ostringstream stream;
@@ -297,8 +295,6 @@ struct AssertionConditionalLogger {
 
   static thread_local AssertionConditionalStream assertionStringStream;
 };
-
-#endif
 
 }  // namespace debug
 }  // namespace arangodb
