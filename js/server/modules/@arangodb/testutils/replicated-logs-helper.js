@@ -478,15 +478,45 @@ const testHelperFunctions = function (database) {
   };
 };
 
+const getSupervisionActionTypes = function (database, logId) {
+  const {current} = readReplicatedLogAgency(database, logId);
+  // filter out all empty actions
+  const actions = _.filter(current.actions, (a) => a.desc.type !== "EmptyAction");
+  return _.map(actions, (a) => a.desc.type);
+};
+
+const getLastNSupervisionActionsType = function (database, logId, n) {
+  const actions = getSupervisionActionTypes(database, logId);
+  return _.takeRight(actions, n);
+};
+
+const countActionsByType = function (actions) {
+  return _.reduce(actions, function (acc, type) {
+    acc[type] = 1 + (acc[type] || 0);
+    return acc;
+  }, {});
+};
+
+const updateReplicatedLogTarget = function(database, id, callback) {
+  const {target: oldTarget} = readReplicatedLogAgency(database, id);
+  let result = callback(oldTarget);
+  if (result === undefined) {
+    result = oldTarget;
+  }
+  replicatedLogSetTarget(database, id, result);
+};
+
 exports.checkRequestResult = checkRequestResult;
 exports.continueServer = continueServerImpl;
 exports.continueServerWaitOk = continueServerWaitOk;
 exports.coordinators = coordinators;
+exports.countActionsByType = countActionsByType;
 exports.createParticipantsConfig = createParticipantsConfig;
 exports.createReplicatedLog = createReplicatedLog;
 exports.createReplicatedLogPlanOnly = createReplicatedLogPlanOnly;
 exports.createTermSpecification = createTermSpecification;
 exports.dbservers = dbservers;
+exports.getLastNSupervisionActionsType = getLastNSupervisionActionsType;
 exports.getLocalStatus = getLocalStatus;
 exports.getParticipantsObjectForServers = getParticipantsObjectForServers;
 exports.getReplicatedLogLeaderPlan = getReplicatedLogLeaderPlan;
@@ -494,6 +524,7 @@ exports.getReplicatedLogLeaderTarget = getReplicatedLogLeaderTarget;
 exports.getServerHealth = getServerHealth;
 exports.getServerRebootId = getServerRebootId;
 exports.getServerUrl = getServerUrl;
+exports.getSupervisionActionTypes = getSupervisionActionTypes;
 exports.nextUniqueLogId = nextUniqueLogId;
 exports.readAgencyValueAt = readAgencyValueAt;
 exports.readReplicatedLogAgency = readReplicatedLogAgency;
@@ -510,5 +541,6 @@ exports.replicatedLogUpdateTargetParticipants = replicatedLogUpdateTargetPartici
 exports.stopServer = stopServerImpl;
 exports.stopServerWaitFailed = stopServerWaitFailed;
 exports.testHelperFunctions = testHelperFunctions;
+exports.updateReplicatedLogTarget = updateReplicatedLogTarget;
 exports.waitFor = waitFor;
 exports.waitForReplicatedLogAvailable = waitForReplicatedLogAvailable;
