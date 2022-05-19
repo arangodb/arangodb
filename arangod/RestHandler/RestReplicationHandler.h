@@ -61,7 +61,9 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
     if (len >= 1) {
       std::string const& command = suffixes[0];
       if (command == AddFollower || command == HoldReadLockCollection ||
-          command == RemoveFollower || command == LoggerFollow) {
+          command == RemoveFollower || command == LoggerFollow ||
+          command == Batch || command == Inventory || command == Revisions ||
+          command == Dump) {
         return RequestLane::SERVER_REPLICATION_CATCHUP;
       }
     }
@@ -92,7 +94,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const LoggerFirstTick;
   static std::string const LoggerFollow;
   static std::string const Batch;
-  static std::string const Barrier;
   static std::string const Inventory;
   static std::string const Keys;
   static std::string const Dump;
@@ -467,12 +468,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   virtual void handleCommandBatch() = 0;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief add or remove a WAL logfile barrier
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void handleCommandBarrier() = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the inventory (current replication and collection state)

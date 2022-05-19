@@ -23,8 +23,7 @@
 
 #pragma once
 
-namespace arangodb {
-namespace maintenance {
+namespace arangodb::maintenance {
 
 constexpr char const* ACTIONS = "actions";
 constexpr char const* AGENCY = "agency";
@@ -66,6 +65,7 @@ constexpr char const* SHARD = "shard";
 constexpr char const* SHARDS = "shards";
 constexpr char const* SHARD_VERSION = "shardVersion";
 constexpr char const* SYNCHRONIZE_SHARD = "SynchronizeShard";
+constexpr char const* SYNC_BY_REVISION = "syncByRevision";
 constexpr char const* TAKEOVER_SHARD_LEADERSHIP = "TakeoverShardLeadership";
 constexpr char const* THE_LEADER = "theLeader";
 constexpr char const* UNDERSCORE = "_";
@@ -73,5 +73,4 @@ constexpr char const* UPDATE_COLLECTION = "UpdateCollection";
 constexpr char const* UPDATE_REPLICATED_LOG = "UpdateReplicatedLog";
 constexpr char const* WAIT_FOR_SYNC = "waitForSync";
 
-}  // namespace maintenance
-}  // namespace arangodb
+}  // namespace arangodb::maintenance
