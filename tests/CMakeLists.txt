@@ -450,36 +450,6 @@ target_link_libraries(arangodbtests
   fmt
 )
 
-set(ARANGODB_SEPP_SOURCES
-  sepp/main.cpp
-  sepp/Execution.cpp
-  sepp/ExecutionThread.cpp
-  sepp/Runner.cpp
-  sepp/RocksDBOptions.cpp
-  sepp/Server.cpp
-  sepp/ValueGenerators/RandomStringGenerator.cpp
-  sepp/Workloads/InsertDocuments.cpp
-  sepp/Workloads/IterateDocuments.cpp
-)
-
-add_executable(
-  sepp
-  ${ARANGODB_SEPP_SOURCES}
-)
-
-target_link_libraries(sepp
-  arango_rocksdb
-  arangoserver
-  rocksdb
-  snappy
-  boost_boost
-)
-
-target_include_directories(sepp PRIVATE
-  ${PROJECT_SOURCE_DIR}/arangod
-  ${PROJECT_SOURCE_DIR}/tests/sepp
-)
-
 
 if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
   target_link_libraries(arangodbtests_replication2
