@@ -8618,7 +8618,9 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
         collection = kShortestPathsNode->collection();
         // Subtle: KShortestPathsNode uses a reference when returning
         // startInVariable
+        TRI_ASSERT(kShortestPathsNode->usesStartInVariable());
         inputVariable = &kShortestPathsNode->startInVariable();
+        TRI_ASSERT(kShortestPathsNode->usesTargetInVariable());
         alternativeVariable = &kShortestPathsNode->targetInVariable();
         allowKeyConversionToObject = true;
         createKeys = false;
@@ -8638,7 +8640,9 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
             ExecutionNode::castTo<ShortestPathNode*>(targetNode);
         TRI_ASSERT(shortestPathNode->isDisjoint());
         collection = shortestPathNode->collection();
+        TRI_ASSERT(shortestPathNode->usesStartInVariable());
         inputVariable = shortestPathNode->startInVariable();
+        TRI_ASSERT(shortestPathNode->usesTargetInVariable());
         alternativeVariable = shortestPathNode->targetInVariable();
         allowKeyConversionToObject = true;
         createKeys = false;
