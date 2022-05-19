@@ -1105,7 +1105,7 @@ void StatisticsWorker::run() {
   // run the StatisticsWorker on DB servers!
   TRI_ASSERT(!ServerState::instance()->isDBServer());
 
-  while (ServerState::isMaintenance()) {
+  while (ServerState::isStartupOrMaintenance()) {
     if (isStopping()) {
       // startup aborted
       return;

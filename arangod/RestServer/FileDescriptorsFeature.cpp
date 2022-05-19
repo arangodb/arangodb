@@ -31,6 +31,7 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/EnvironmentFeature.h"
 
 #ifdef TRI_HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
@@ -116,6 +117,7 @@ FileDescriptorsFeature::FileDescriptorsFeature(Server& server)
       _descriptorsMinimum(FileDescriptors::recommendedMinimum()) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
+  startsAfter<EnvironmentFeature>();
 }
 
 void FileDescriptorsFeature::collectOptions(
@@ -142,9 +144,9 @@ void FileDescriptorsFeature::validateOptions(
   }
 }
 
-void FileDescriptorsFeature::prepare() { adjustFileDescriptors(); }
+void FileDescriptorsFeature::prepare() {
+  adjustFileDescriptors();
 
-void FileDescriptorsFeature::start() {
   FileDescriptors current = FileDescriptors::load();
 
   LOG_TOPIC("a1c60", INFO, arangodb::Logger::SYSCALL)
