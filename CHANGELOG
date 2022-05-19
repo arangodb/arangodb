@@ -4,6 +4,8 @@ v3.8.7 (XXXX-XX-XX)
 * Fix behavior when accessing a view instead of a collection by name in a REST
   document operation. Now return a proper error.
 
+* Fix ES-1147. Fixed boost propagation in STARTS_WITH function.
+
 * Fix documentation of collection's `cacheEnabled` property default.
 
 * Make all requests which are needed for shard resync at least medium priority
