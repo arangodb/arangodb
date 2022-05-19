@@ -1,6 +1,9 @@
 v3.9.2 (XXXX-XX-XX)
 -------------------
 
+* Make all requests which are needed for shard resync at least medium
+  priority to improve getting-in-sync under load.
+
 * Very verbose warning from failing to parse GEO JSON in search. Has lead to
   billions of log lines on deployed services.
 
@@ -107,9 +110,6 @@ v3.9.2 (XXXX-XX-XX)
 
 v3.9.1 (2022-04-04)
 -------------------
-
-* Make all requests which are needed for shard resync at least medium
-  priority to improve getting-in-sync under load.
 
 * Updated ArangoDB Starter to 0.15.4.
 
