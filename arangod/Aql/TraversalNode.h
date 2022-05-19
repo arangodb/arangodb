@@ -132,7 +132,8 @@ class TraversalNode : public virtual GraphNode {
                                RegisterId,
                                TraversalExecutorInfosHelper::OutputNameHash>&,
       RegisterId, RegisterInfos,
-      std::unordered_map<ServerID, aql::EngineId> const*) const;
+      std::unordered_map<ServerID, aql::EngineId> const*,
+      bool isSmart = false) const;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -184,9 +185,6 @@ class TraversalNode : public virtual GraphNode {
   /// @brief return the condition for the node
   Condition const* condition() const { return _condition.get(); }
 
-  /// @brief which variable? -1 none, 0 Edge, 1 Vertex, 2 path
-  int checkIsOutVariable(size_t variableId) const;
-
   /// @brief check whether an access is inside the specified range
   bool isInRange(uint64_t, bool) const;
 
@@ -205,8 +203,6 @@ class TraversalNode : public virtual GraphNode {
   ///        This condition validates the edge
   void registerPostFilterCondition(AstNode const* condition);
 
-  bool allDirectionsEqual() const;
-
   void getConditionVariables(std::vector<Variable const*>&) const override;
 
   void getPruneVariables(std::vector<Variable const*>&) const;
@@ -223,9 +219,6 @@ class TraversalNode : public virtual GraphNode {
   std::vector<arangodb::graph::IndexAccessor> buildUsedIndexes() const;
   std::unordered_map<uint64_t, std::vector<arangodb::graph::IndexAccessor>>
   buildUsedDepthBasedIndexes() const;
-  std::pair<arangodb::graph::VertexUniquenessLevel,
-            arangodb::graph::EdgeUniquenessLevel>
-  convertUniquenessLevels() const;
 
   /// @brief Overrides GraphNode::options() with a more specific return type
   ///  (casts graph::BaseOptions* into traverser::TraverserOptions*)

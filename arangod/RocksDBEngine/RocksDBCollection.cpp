@@ -578,7 +578,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 
     // inBackground index might not recover selectivity estimate w/o sync
     if (inBackground && !newIdx->unique() && newIdx->hasSelectivityEstimate()) {
-      engine.settingsManager()->sync(false);
+      engine.settingsManager()->sync(/*force*/ false);
     }
 
     // Step 6. persist in rocksdb
@@ -769,7 +769,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx,
     rocksdb::DB* db = engine.db()->GetRootDB();
 
     TRI_IF_FAILURE("RocksDBCollection::truncate::forceSync") {
-      engine.settingsManager()->sync(false);
+      engine.settingsManager()->sync(/*force*/ false);
     }
 
     // pre commit sequence needed to place a blocker
@@ -1458,13 +1458,13 @@ void RocksDBCollection::figuresSpecific(
   rocksdb::Range r(bounds.start(), bounds.end());
 
   uint64_t out = 0;
-  db->GetApproximateSizes(
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::Documents),
-      &r, 1, &out,
-      static_cast<uint8_t>(
-          rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
-          rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+
+  rocksdb::SizeApproximationOptions options{.include_memtables = true,
+                                            .include_files = true};
+  db->GetApproximateSizes(options,
+                          RocksDBColumnFamilyManager::get(
+                              RocksDBColumnFamilyManager::Family::Documents),
+                          &r, 1, &out);
 
   builder.add("documentsSize", VPackValue(out));
   bool cacheInUse = useCache();

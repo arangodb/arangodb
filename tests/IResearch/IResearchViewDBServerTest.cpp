@@ -58,6 +58,8 @@
 #include "utils/utf8_path.hpp"
 #include "velocypack/Parser.h"
 
+#include "IResearch/MakeViewSnapshot.h"
+
 namespace {
 
 struct Link : public arangodb::iresearch::IResearchLink {
@@ -80,7 +82,7 @@ class IResearchViewDBServerTest : public ::testing::Test {
  protected:
   arangodb::tests::mocks::MockDBServer server;
 
-  IResearchViewDBServerTest() : server() {}
+  IResearchViewDBServerTest() : server("PRMR_0001") {}
 
   void createTestDatabase(TRI_vocbase_t*& vocbase,
                           std::string const name = "testDatabase") {
@@ -459,7 +461,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     arangodb::iresearch::ViewSnapshot::Links links;
     {
       auto guard = viewImpl->linksReadLock();
-      links.emplace(cid, viewImpl->linkLock(guard, cid));
+      links.emplace_back(viewImpl->linkLock(guard, cid));
     }
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -525,7 +527,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     arangodb::iresearch::ViewSnapshot::Links links;
     {
       auto guard = viewImpl->linksReadLock();
-      links.emplace(cid, viewImpl->linkLock(guard, cid));
+      links.emplace_back(viewImpl->linkLock(guard, cid));
     }
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -589,9 +591,9 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     arangodb::iresearch::ViewSnapshot::Links links01, links02, links03;
     {
       auto guard = viewImpl->linksReadLock();
-      links01.emplace(cid0, viewImpl->linkLock(guard, cid0));
-      links02.emplace(cid0, viewImpl->linkLock(guard, cid0));
-      links03.emplace(cid0, viewImpl->linkLock(guard, cid0));
+      links01.emplace_back(viewImpl->linkLock(guard, cid0));
+      links02.emplace_back(viewImpl->linkLock(guard, cid0));
+      links03.emplace_back(viewImpl->linkLock(guard, cid0));
     }
     auto* snapshot0 =
         makeViewSnapshot(trx0, arangodb::iresearch::ViewSnapshotMode::Find,
@@ -638,7 +640,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     arangodb::iresearch::ViewSnapshot::Links links1;
     {
       auto guard = viewImpl->linksReadLock();
-      links1.emplace(cid1, viewImpl->linkLock(guard, cid1));
+      links1.emplace_back(viewImpl->linkLock(guard, cid1));
     }
     auto* snapshot1 = makeViewSnapshot(
         trx1, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
@@ -709,7 +711,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         arangodb::iresearch::ViewSnapshot::Links links;
         {
           auto guard = viewImpl->linksReadLock();
-          links.emplace(cid, viewImpl->linkLock(guard, cid));
+          links.emplace_back(viewImpl->linkLock(guard, cid));
         }
         auto* snapshot = makeViewSnapshot(
             trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
@@ -1047,7 +1049,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
     arangodb::iresearch::ViewSnapshot::Links links;
     {
       auto guard = viewImpl->linksReadLock();
-      links.emplace(cid, viewImpl->linkLock(guard, cid));
+      links.emplace_back(viewImpl->linkLock(guard, cid));
     }
     auto* snapshot =
         makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
@@ -1067,8 +1069,8 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
     arangodb::iresearch::ViewSnapshot::Links links1, links2;
     {
       auto guard = viewImpl->linksReadLock();
-      links1.emplace(cid, viewImpl->linkLock(guard, cid));
-      links2.emplace(cid, viewImpl->linkLock(guard, cid));
+      links1.emplace_back(viewImpl->linkLock(guard, cid));
+      links2.emplace_back(viewImpl->linkLock(guard, cid));
     }
     auto* snapshot =
         makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
@@ -1095,7 +1097,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
     arangodb::iresearch::ViewSnapshot::Links links;
     {
       auto guard = viewImpl->linksReadLock();
-      links.emplace(cid, viewImpl->linkLock(guard, cid));
+      links.emplace_back(viewImpl->linkLock(guard, cid));
     }
     auto* snapshot =
         makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,
@@ -1116,10 +1118,10 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
     arangodb::iresearch::ViewSnapshot::Links links1, links2, links3, links4;
     {
       auto guard = viewImpl->linksReadLock();
-      links1.emplace(cid, viewImpl->linkLock(guard, cid));
-      links2.emplace(cid, viewImpl->linkLock(guard, cid));
-      links3.emplace(cid, viewImpl->linkLock(guard, cid));
-      links4.emplace(cid, viewImpl->linkLock(guard, cid));
+      links1.emplace_back(viewImpl->linkLock(guard, cid));
+      links2.emplace_back(viewImpl->linkLock(guard, cid));
+      links3.emplace_back(viewImpl->linkLock(guard, cid));
+      links4.emplace_back(viewImpl->linkLock(guard, cid));
     }
     auto* snapshot =
         makeViewSnapshot(trx, arangodb::iresearch::ViewSnapshotMode::Find,

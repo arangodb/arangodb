@@ -976,12 +976,11 @@ void RocksDBEngine::stop() {
     _backgroundThread->beginShutdown();
 
     if (_settingsManager) {
-      try {
-        _settingsManager->sync(true);
-      } catch (std::exception const& ex) {
+      auto syncRes = _settingsManager->sync(/*force*/ true);
+      if (syncRes.fail()) {
         LOG_TOPIC("0582f", WARN, Logger::ENGINES)
             << "caught exception while shutting down RocksDB engine: "
-            << ex.what();
+            << syncRes.errorMessage();
       }
     }
 
@@ -1992,7 +1991,7 @@ void RocksDBEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
 /// @brief Add engine-specific V8 functions
 void RocksDBEngine::addV8Functions() {
   // there are no specific V8 functions here
-  RocksDBV8Functions::registerResources();
+  RocksDBV8Functions::registerResources(*this);
 }
 
 /// @brief Add engine-specific REST handlers
@@ -2882,11 +2881,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
             "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff",
             16));
 
-    _db->GetApproximateSizes(
-        c, &r, 1, &out,
-        static_cast<uint8_t>(
-            rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
-            rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+    rocksdb::SizeApproximationOptions options{.include_memtables = true,
+                                              .include_files = true};
+    _db->GetApproximateSizes(options, c, &r, 1, &out);
 
     builder.add("memory", VPackValue(out));
     builder.close();

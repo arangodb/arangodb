@@ -43,6 +43,14 @@ const insertEntries = function (url, stateId, payload) {
   });
 };
 
+const compareExchange = function (url, stateId, payload) {
+  return request.put({
+    url: `${url}/_db/${database}/_api/prototype-state/${stateId}/cmp-ex`,
+    body: payload,
+    json: true
+  });
+};
+
 const getEntry = function (url, stateId, entry, waitForApplied) {
   if (waitForApplied === undefined) {
     return request.get({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/entry/${entry}`});
@@ -191,7 +199,6 @@ const replicatedStateSuite = function () {
       assertEqual(index, 5);
 
       result = getEntry(coordUrl, stateId, "foo100", index);
-
       lh.checkRequestResult(result);
       assertEqual(result.json.result.foo100,  "bar100");
 
@@ -226,6 +233,31 @@ const replicatedStateSuite = function () {
       result = getSnapshot(leaderUrl, stateId, index);
       lh.checkRequestResult(result);
       assertEqual(result.json.result, {foo400: "bar400"});
+
+      result = compareExchange(leaderUrl, stateId, {"foo400": {"oldValue": "bar400", "newValue": "foobar"}});
+      lh.checkRequestResult(result);
+      index = result.json.result.index;
+      assertEqual(index, 9);
+      result = getEntry(coordUrl, stateId, "foo400", index);
+      lh.checkRequestResult(result);
+      assertEqual(result.json.result.foo400,  "foobar");
+
+      result = compareExchange(leaderUrl, stateId, {"foo400": {"oldValue": "bar400", "newValue": "foobar"}});
+      assertEqual(result.json.code, 409);
+      result = getEntry(coordUrl, stateId, "foo400", index);
+      lh.checkRequestResult(result);
+      assertEqual(result.json.result.foo400,  "foobar");
+
+      result = compareExchange(coordUrl, stateId, {"foo400": {"oldValue": "foobar", "newValue": "bar400"}});
+      lh.checkRequestResult(result);
+      index = result.json.result.index;
+      assertEqual(index, 10);
+      result = getEntry(coordUrl, stateId, "foo400", index);
+      lh.checkRequestResult(result);
+      assertEqual(result.json.result.foo400,  "bar400");
+
+      result = compareExchange(coordUrl, stateId, {"foo400": {"oldValue": "foobar", "newValue": "bar400"}});
+      assertEqual(result.json.code, 409);
     },
   };
 };

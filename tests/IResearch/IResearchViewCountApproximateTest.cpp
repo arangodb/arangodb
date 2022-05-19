@@ -38,6 +38,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
+#include "IResearch/MakeViewSnapshot.h"
+
 #include <velocypack/Iterator.h>
 #include "frozen/map.h"
 
