@@ -26,6 +26,7 @@
 #include <iostream>
 #include <filesystem>
 #include <memory>
+#include <thread>
 
 #include "Execution.h"
 
@@ -81,13 +82,13 @@ void ExecutionThread::waitUntilAllThreadsAreStarted() const {
 
 void ExecutionThread::waitUntilInitialization() const {
   while (_execution.state() == ExecutionState::kPreparing) {
-    ;
+    std::this_thread::yield();
   }
 }
 
 void ExecutionThread::waitUntilBenchmarkStarts() const {
   while (_execution.state() == ExecutionState::kInitializing) {
-    ;
+    std::this_thread::yield();
   }
 }
 

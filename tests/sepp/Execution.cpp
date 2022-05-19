@@ -26,6 +26,7 @@
 #include <iostream>
 #include <filesystem>
 #include <memory>
+#include <thread>
 
 #include "Workload.h"
 
@@ -139,6 +140,7 @@ void Execution::waitUntilThreadStateIs(ExecutionThread const& thread,
     if (state == ThreadState::kFinished) {
       throw std::runtime_error("worker thread finished prematurely");
     }
+    std::this_thread::yield();
     state = thread._state.load(std::memory_order_relaxed);
   }
 }
