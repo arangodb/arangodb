@@ -41,6 +41,9 @@ const JsonForm = ({ formState, dispatch, renderKey, isEdit = false }: JsonFormPr
       fss.properties.id = {
         const: formState.id
       };
+      fss.properties.globallyUniqueId = {
+        const: formState.globallyUniqueId
+      };
       fss.properties.primarySort = {
         const: formState.primarySort
       };
@@ -67,7 +70,7 @@ const JsonForm = ({ formState, dispatch, renderKey, isEdit = false }: JsonFormPr
 
       validate.current = ajv.compile(fss);
     }
-  }, [formState.id, formState.name, formState.primarySort, formState.primarySortCompression, formState.storedValues, formState.writebufferActive, formState.writebufferIdle, formState.writebufferSizeMax, prevId]);
+  }, [formState.globallyUniqueId, formState.id, formState.name, formState.primarySort, formState.primarySortCompression, formState.storedValues, formState.writebufferActive, formState.writebufferIdle, formState.writebufferSizeMax, prevId]);
 
   useEffect(() => {
     let fssid = '';

@@ -64,6 +64,7 @@
       'view/:name/info': 'viewInfo',
       'view/:name/consolidation': 'viewConsolidation',
       'view/:name/links': 'viewLinks',
+      'view/:name/links/*link': 'viewLinks',
       'view/:name/json': 'viewJSON',
       'graph/:name': 'graph',
       'graph/:name/settings': 'graphSettings',

@@ -1,14 +1,11 @@
-import React, { useState, MouseEventHandler } from "react";
-import Modal, {
-  ModalBody,
-  ModalFooter,
-  ModalHeader
-} from "../../components/modal/Modal";
+import React, { useState } from "react";
+import Modal, { ModalBody, ModalFooter, ModalHeader } from "../../components/modal/Modal";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
 import { FormState } from "./constants";
 import { pick } from "lodash";
 import { IconButton } from "../../components/arango/buttons";
 import { mutate } from "swr";
+import { useHistory } from "react-router-dom";
 
 declare var arangoHelper: { [key: string]: any };
 declare var window: { [key: string]: any };
@@ -18,20 +15,21 @@ type ButtonProps = {
 };
 
 type SaveButtonProps = ButtonProps & {
-  oldName: string;
+  oldName?: string;
   menu?: string;
 };
 
 type BackButtonProps = {
-  buttonClick: MouseEventHandler<HTMLElement>;
   disabled?: boolean;
 };
 
-export const BackButton = ({ buttonClick, disabled }: BackButtonProps) => {
+export const BackButton = ({ disabled }: BackButtonProps) => {
+  const history = useHistory();
+
   return (
     <IconButton
       icon={"arrow-left"}
-      onClick={buttonClick}
+      onClick={() => history.goBack()}
       type={"default"}
       disabled={disabled}
     >
@@ -51,7 +49,7 @@ export const handleSave = async ({
   const path = `/view/${view.name}/properties`;
 
   try {
-    if (view.name !== oldName) {
+    if (oldName && view.name !== oldName) {
       result = await route.put(`/view/${oldName}/rename`, {
         name: view.name
       });
@@ -94,6 +92,9 @@ export const handleSave = async ({
             replace: true
           });
         }
+
+        window.sessionStorage.removeItem(view.globallyUniqueId);
+
         arangoHelper.arangoNotification(
           "Success",
           `Updated View: ${view.name}`

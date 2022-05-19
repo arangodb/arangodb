@@ -1,9 +1,9 @@
 import React, { useContext } from "react";
-import ViewLayout from "./ViewLayout";
+import ViewLinkLayout from "./ViewLinkLayout";
 import { ArangoTable, ArangoTD } from "../../../components/arango/table";
 import LinkPropertiesInput from "../forms/inputs/LinkPropertiesInput";
 import { IconButton } from "../../../components/arango/buttons";
-import { ViewContext } from "../ViewLinksReactView";
+import { ViewContext } from "../constants";
 
 interface LinkViewProps {
   links: {};
@@ -46,7 +46,7 @@ const LinkView = ({
   const newLink = loopLinks(links);
 
   return (
-    <ViewLayout view={view} link={link} field={field}>
+    <ViewLinkLayout view={view} link={link} field={field}>
       <ArangoTable>
         <tbody>
           <tr key={newLink} style={{ borderBottom: "1px  solid #DDD" }}>
@@ -72,7 +72,7 @@ const LinkView = ({
         </tr>
         </tbody>
       </ArangoTable>
-    </ViewLayout>
+    </ViewLinkLayout>
   );
 };
 export default LinkView;

@@ -1,36 +1,14 @@
-import { cloneDeep, noop } from 'lodash';
-import React, {
-  createContext,
-  useEffect,
-  useReducer,
-  useRef,
-  useState
-} from 'react';
-import {
-  getReducer,
-  isAdminUser as userIsAdmin,
-  usePermissions
-} from '../../utils/helpers';
-import { BackButton, SaveButton } from './Actions';
+import { chain, cloneDeep, difference, isNull, map } from 'lodash';
+import React, { useEffect, useReducer, useRef, useState } from 'react';
+import { HashRouter, Route, Switch } from 'react-router-dom';
+import useSWR from 'swr';
+import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
+import { getReducer, isAdminUser as userIsAdmin, usePermissions } from '../../utils/helpers';
 import LinkList from './Components/LinkList';
+import NewLink from './Components/NewLink';
 import LinkPropertiesForm from './forms/LinkPropertiesForm';
-import { buildSubNav, postProcessor, useView } from './helpers';
-
-export const ViewContext = createContext({
-  show: '',
-  setShow: noop,
-  formState: {},
-  dispatch: noop,
-  field: {
-    field: '',
-    basePath: ''
-  },
-  setField: noop,
-  link: '',
-  setNewLink: noop,
-  newLink: '',
-  setParentLink: noop
-});
+import { buildSubNav, postProcessor, useLinkState, useView } from './helpers';
+import { ViewContext } from './constants';
 
 const ViewLinksReactView = ({ name }) => {
   const initialState = useRef({
@@ -44,10 +22,27 @@ const ViewLinksReactView = ({ name }) => {
   const view = useView(name);
   const permissions = usePermissions();
   const [isAdminUser, setIsAdminUser] = useState(false);
-  const [show, setShow] = useState('LinkList');
-  const [field, setField] = useState({});
-  const [newLink, setNewLink] = useState('');
-  const [link, setParentLink] = useState('');
+  const [collection, setCollection, addDisabled, links] = useLinkState(
+    state.formState,
+    "links"
+  );
+  const { data } = useSWR(["/collection", "excludeSystem=true"], (path, qs) =>
+    getApiRouteForCurrentDB().get(path, qs)
+  );
+  const [options, setOptions] = useState([]);
+
+  useEffect(() => {
+    if (data) {
+      const linkKeys = chain(links)
+        .omitBy(isNull)
+        .keys()
+        .value();
+      const collNames = map(data.body.result, "name");
+      const tempOptions = difference(collNames, linkKeys).sort();
+
+      setOptions(tempOptions);
+    }
+  }, [data, links]);
 
   useEffect(() => {
     initialState.current.formCache = cloneDeep(view);
@@ -56,7 +51,7 @@ const ViewLinksReactView = ({ name }) => {
       type: 'setFormState',
       formState: view
     });
-  }, [view, name]);
+  }, [view]);
 
   useEffect(() => {
     const observer = buildSubNav(isAdminUser, name, 'Links');
@@ -72,71 +67,38 @@ const ViewLinksReactView = ({ name }) => {
 
   const formState = state.formState;
 
-  const handleView = l => {
-    setParentLink(l);
-    setShow('ViewParent');
-  };
-  const handleBackClick = e => {
-    e.preventDefault();
-    setShow('LinkList');
-  };
-
-  return (
-    <ViewContext.Provider
-      value={{
-        show,
-        setShow,
-        formState,
-        dispatch,
-        field,
-        setField,
-        link,
-        setNewLink,
-        newLink,
-        setParentLink
-      }}
-    >
-      <div className={'centralContent'} id={'content'}>
-        {show === 'LinkList' ? (
-          <LinkList
-            formState={formState}
-            addClick={() => setShow('AddNew')}
-            viewLink={handleView}
-            icon={'fa-plus-circle'}
-          />
-        ) : (
-          <div
-            id={'modal-dialog'}
-            className={'createModalDialog'}
-            tabIndex={-1}
-            role={'dialog'}
-            aria-labelledby={'myModalLabel'}
-            aria-hidden={'true'}
-          >
-            <div className="modal-body" style={{ overflowY: 'visible' }}>
-              <div className={'tab-content'}>
-                <div className="tab-pane tab-pane-modal active" id="Links">
-                  <LinkPropertiesForm
-                    formState={formState}
-                    disabled={!isAdminUser}
-                    view={name}
-                    dispatch={dispatch}/>
-                </div>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <BackButton disabled={newLink} buttonClick={handleBackClick}/>
-              {
-                isAdminUser
-                  ? <SaveButton view={formState} oldName={name}/>
-                  : null
-              }
-            </div>
-          </div>
-        )}
-      </div>
-    </ViewContext.Provider>
-  );
+  return <ViewContext.Provider
+    value={{
+      formState,
+      dispatch,
+      isAdminUser
+    }}
+  >
+    <div className={'centralContent'} id={'content'}>
+      <HashRouter basename={`view/${name}/links/`} hashType={'noslash'}>
+        <Switch>
+          <Route exact path={'/'}>
+            <LinkList/>
+          </Route>
+          <Route exact path={'/_add'}>
+             {
+              isAdminUser
+                ? <NewLink
+                  disabled={addDisabled || !options.includes(collection)}
+                  collection={collection}
+                  updateCollection={setCollection}
+                  options={options}
+                />
+                : null
+             }
+          </Route>
+          <Route path={'/:link'}>
+            <LinkPropertiesForm disabled={!isAdminUser}/>
+          </Route>
+        </Switch>
+      </HashRouter>
+    </div>
+  </ViewContext.Provider>;
 };
 
 window.ViewLinksReactView = ViewLinksReactView;

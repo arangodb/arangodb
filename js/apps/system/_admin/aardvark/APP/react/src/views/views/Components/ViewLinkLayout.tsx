@@ -1,27 +1,21 @@
-import React, { ReactNode, useContext } from "react";
-import {
-  ArangoTable,
-  ArangoTD,
-  ArangoTH
-} from "../../../components/arango/table";
-import { ViewContext } from "../ViewLinksReactView";
-type ViewLayoutProps = {
+import React, { ReactNode } from "react";
+import { ArangoTable, ArangoTD, ArangoTH } from "../../../components/arango/table";
+
+type ViewLinkLayoutProps = {
   view?: string | undefined;
   field?: string;
   link?: string;
   children: ReactNode;
 };
 
-const ViewLayout = ({ view, field, link, children }: ViewLayoutProps) => {
-  const { setShow } = useContext(ViewContext);
-
+const ViewLinkLayout = ({ view, field, link, children }: ViewLinkLayoutProps) => {
   return (
     <ArangoTable>
       <thead>
         <tr>
           <ArangoTH seq={0} style={{ width: "100%" }}>
             <a href={`/${view}`}>{view}</a>
-            <a href={`/${link}`} onClick={() => setShow("ViewParent")}>
+            <a href={`/${link}`}>
               {link !== undefined ? "/" + link : ""}
             </a>
             <a href={`/${field}`}>{field !== undefined ? "/" + field : ""}</a>
@@ -37,4 +31,4 @@ const ViewLayout = ({ view, field, link, children }: ViewLayoutProps) => {
   );
 };
 
-export default ViewLayout;
+export default ViewLinkLayout;

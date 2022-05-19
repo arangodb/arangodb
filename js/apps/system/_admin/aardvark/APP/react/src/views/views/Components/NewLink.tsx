@@ -1,14 +1,14 @@
-import React from "react";
-import ViewLayout from "./ViewLayout";
+import React, { useContext } from "react";
+import ViewLinkLayout from "./ViewLinkLayout";
 import { ArangoTable, ArangoTD } from "../../../components/arango/table";
 import AutoCompleteTextInput from "../../../components/pure-css/form/AutoCompleteTextInput";
 import { IconButton } from "../../../components/arango/buttons";
+import { ViewContext } from "../constants";
 
 type NewLinkProps = {
   disabled: boolean;
   options: string[] | number[];
   collection: string | number;
-  addLink: Function;
   updateCollection: (value: string | number) => void;
   view?: string | undefined;
 };
@@ -18,11 +18,22 @@ const NewLink = ({
   options,
   updateCollection,
   disabled,
-  addLink,
   view
 }: NewLinkProps) => {
+  const { dispatch } = useContext(ViewContext);
+
+  const addLink = () => {
+    dispatch({
+      type: "setField",
+      field: {
+        path: `links[${collection}]`,
+        value: {}
+      }
+    });
+  };
+
   return (
-    <ViewLayout view={view}>
+    <ViewLinkLayout view={view}>
       <ArangoTable>
         <tbody>
           <tr style={{ borderBottom: "1px  solid #DDD" }}>
@@ -51,7 +62,7 @@ const NewLink = ({
         </tr>
         </tbody>
       </ArangoTable>
-    </ViewLayout>
+    </ViewLinkLayout>
   );
 };
 

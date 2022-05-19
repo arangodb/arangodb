@@ -53,7 +53,14 @@ export function useView (name: string) {
 
   useEffect(() => {
     if (data) {
-      setView(omit(data.body, 'error', 'code'));
+      let viewState = omit(data.body, 'error', 'code') as FormState;
+
+      const cachedViewStateStr = window.sessionStorage.getItem(viewState.globallyUniqueId);
+      if (cachedViewStateStr) {
+        viewState = JSON.parse(cachedViewStateStr);
+      }
+
+      setView(viewState);
     }
   }, [data]);
 
@@ -75,6 +82,8 @@ export const postProcessor = (state: State<FormState>, action: DispatchArgs<Form
       set(state.formState, path, action.field.value);
     }
   }
+
+  window.sessionStorage.setItem(state.formState.globallyUniqueId, JSON.stringify(state.formState));
 };
 
 export const buildSubNav = (isAdminUser: boolean, name: string, activeKey: string) => {
@@ -113,7 +122,7 @@ export const buildSubNav = (isAdminUser: boolean, name: string, activeKey: strin
   arangoHelper.buildSubNavBar(menus);
 
   // Setup observer to watch for container divs creation, then render subnav.
-  // This is used during direct page loads or a page rerfesh.
+  // This is used during direct page loads or a page refresh.
   const target = $("#subNavigationBar")[0];
   const observer = new MutationObserver(function (mutations) {
     mutations.forEach(function (mutation) {

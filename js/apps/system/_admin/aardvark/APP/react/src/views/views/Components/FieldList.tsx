@@ -7,7 +7,7 @@ import {
 } from "../../../components/arango/table";
 import Badge from "../../../components/arango/badges";
 import { IconButton } from "../../../components/arango/buttons";
-import { ViewContext } from "../ViewLinksReactView";
+import { ViewContext } from "../constants";
 
 type FieldListProps = {
   fields: object | any;

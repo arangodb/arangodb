@@ -1,19 +1,17 @@
-import React, { MouseEventHandler, useContext, useEffect, useState } from "react";
+import React, { useContext, useState } from "react";
 import { ArangoTable, ArangoTD, ArangoTH } from "../../../components/arango/table";
 import { IconButton } from "../../../components/arango/buttons";
-import Link from "./Link";
-import { ViewContext } from "../ViewLinksReactView";
-import { FormState } from "../constants";
-import { handleSave } from "../Actions";
+import { FormState, ViewContext, ViewProps } from "../constants";
 import Modal, { ModalFooter, ModalHeader } from "../../../components/modal/Modal";
+import { Link as HashLink, useRouteMatch } from 'react-router-dom';
+import { SaveButton } from "../Actions";
 
 type DeleteButtonProps = {
   collection: string;
   modalCid: string;
-  setLinkRemoved: (val: boolean) => void;
 };
 
-const DeleteButton = ({ collection, modalCid, setLinkRemoved }: DeleteButtonProps) => {
+const DeleteButton = ({ collection, modalCid }: DeleteButtonProps) => {
   const [show, setShow] = useState(false);
   const { dispatch } = useContext(ViewContext);
 
@@ -25,7 +23,6 @@ const DeleteButton = ({ collection, modalCid, setLinkRemoved }: DeleteButtonProp
         value: null
       }
     });
-    setLinkRemoved(true);
   };
 
   return <>
@@ -40,15 +37,11 @@ const DeleteButton = ({ collection, modalCid, setLinkRemoved }: DeleteButtonProp
   </>;
 };
 
-type CollProps = {
-  formState: FormState;
-  addClick: MouseEventHandler<HTMLElement>;
-  viewLink: (link: {} | []) => void;
-  icon: string;
-};
+const LinkList = ({ name }: ViewProps) => {
+  const { formState: fs, isAdminUser } = useContext(ViewContext);
+  const match = useRouteMatch();
 
-const LinkList = ({ formState, addClick, icon, viewLink }: CollProps) => {
-  const [linkRemoved, setLinkRemoved] = useState(false);
+  const formState = fs as FormState;
   const links = formState.links;
   const checkLinks = (links: any) => {
     let linksArr = [];
@@ -65,65 +58,53 @@ const LinkList = ({ formState, addClick, icon, viewLink }: CollProps) => {
 
   const linksArr = checkLinks(links);
 
-  useEffect(() => {
-    if (linkRemoved) {
-      handleSave({
-        view: formState,
-        oldName: formState.name
-      }).then(() => setLinkRemoved(false));
-    }
-  }, [formState, linkRemoved]);
-
   return (
-    <div className="contentIn" id="indexHeaderContent">
-      <ArangoTable className={"edit-index-table arango-table"}>
-        <thead>
-        <tr className="figuresHeader">
-          <ArangoTH seq={0}>Link Name</ArangoTH>
-          <ArangoTH seq={1}>Properties</ArangoTH>
-          <ArangoTH seq={1}>Root Analyzers</ArangoTH>
-          <ArangoTH seq={3}>Action</ArangoTH>
-        </tr>
-        </thead>
+    <div id="modal-dialog">
+      <div className="modal-body">
+        <ArangoTable className={"edit-index-table arango-table"}>
+          <thead>
+          <tr className="figuresHeader">
+            <ArangoTH seq={0}>Collection</ArangoTH>
+            <ArangoTH seq={1}>Action</ArangoTH>
+          </tr>
+          </thead>
 
-        <tbody>
-        {links && linksArr.filter(p => p.link !== null)
-          .map((p, key) => (
-            <Link
-              name={p.name}
-              analyzers={p.link.analyzers}
-              includeAllFields={p.link.includeAllFields}
-              action={
-                <>
-                  <DeleteButton collection={p.name} modalCid={`modal-content-view-${key}`}
-                                setLinkRemoved={setLinkRemoved}/>
-                  <IconButton
-                    icon={"eye"}
-                    type={"warning"}
-                    onClick={() => viewLink(p.name)}
-                  />
-                </>
-              }
-              key={key}
-              linkKey={key}
-            />
-          ))}
-        </tbody>
-        <tfoot>
-        <tr>
-          <ArangoTD seq={0}> </ArangoTD>
-          <ArangoTD seq={1}> </ArangoTD>
-          <ArangoTD seq={2}> </ArangoTD>
-          <ArangoTD seq={3}>
-            <i className={`fa ${icon}`} onClick={addClick}/>
-          </ArangoTD>
-        </tr>
-        </tfoot>
-      </ArangoTable>
-
-      <div id="modal-dialog">
-        <div className="modal-footer" style={{ border: "none" }}/>
+          <tbody>
+          {links && linksArr.filter(p => p.link !== null)
+            .map((p, key) => (
+              <tr key={key}>
+                <ArangoTD seq={0}>{p.name}</ArangoTD>
+                <ArangoTD seq={1}>
+                  <DeleteButton collection={p.name} modalCid={`modal-content-view-${key}`}/>
+                  <HashLink to={p.name}>
+                    <IconButton
+                      icon={"eye"}
+                      type={"warning"}
+                    />
+                  </HashLink>
+                </ArangoTD>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+          <tr>
+            <ArangoTD seq={0}> </ArangoTD>
+            <ArangoTD seq={1}>
+              <HashLink to={`${match.path}_add`}>
+                <i className={'fa fa-plus-circle'}/>
+              </HashLink>
+            </ArangoTD>
+          </tr>
+          </tfoot>
+        </ArangoTable>
       </div>
+      {
+        isAdminUser
+          ? <div className="modal-footer">
+            <SaveButton view={formState} oldName={name}/>
+          </div>
+          : null
+      }
     </div>
   );
 };

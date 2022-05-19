@@ -1,34 +1,31 @@
-import { FormProps } from "../../../utils/constants";
-import { FormState } from "../constants";
 import React, { useContext, useEffect, useState } from "react";
-import { chain, difference, isEmpty, isNull, map, noop } from "lodash";
+import { chain, difference, get, isEmpty, isNull, map, noop } from "lodash";
 import { useLinkState } from "../helpers";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 import NewLink from "../Components/NewLink";
 import LinkView from "../Components/LinkView";
 import FieldView from "../Components/FieldView";
-import { ViewContext } from "../ViewLinksReactView";
-import JsonForm from "../forms/JsonForm";
-type LinksPropertiesFormProps = FormProps<FormState> & {
-  view: string;
-};
-const LinkPropertiesForm = ({
-  disabled,
-  view,
-  formState: newFormstate
-}: LinksPropertiesFormProps) => {
-  const { formState, dispatch, field } = useContext(ViewContext);
+import { Route, Switch, useRouteMatch } from "react-router-dom";
+import { BackButton, SaveButton } from "../Actions";
+import { FormState, ViewContext } from "../constants";
 
+type LinksPropertiesFormProps = {
+  disabled?: boolean;
+};
+const LinkPropertiesForm = ({ disabled }: LinksPropertiesFormProps) => {
+  const { formState, isAdminUser } = useContext(ViewContext);
+  const match = useRouteMatch();
   const [collection, setCollection, addDisabled, links] = useLinkState(
-    formState,
+     formState,
     "links"
   );
   const { data } = useSWR(["/collection", "excludeSystem=true"], (path, qs) =>
     getApiRouteForCurrentDB().get(path, qs)
   );
   const [options, setOptions] = useState<string[]>([]);
-  const { show, setShow, setNewLink, newLink, link } = useContext(ViewContext);
+
+  const link = get(match.params, 'link');
 
   useEffect(() => {
     if (data) {
@@ -68,68 +65,68 @@ const LinkPropertiesForm = ({
     return formatedStr;
   };
 
-  const addLink = () => {
-    dispatch({
-      type: "setField",
-      field: {
-        path: `links[${collection}]`,
-        value: {}
+  return <div
+    id={'modal-dialog'}
+    className={'createModalDialog'}
+    tabIndex={-1}
+    role={'dialog'}
+    aria-labelledby={'myModalLabel'}
+    aria-hidden={'true'}
+  >
+    <div className="modal-body" style={{ overflowY: 'visible' }}>
+      <div className={'tab-content'}>
+        <div className="tab-pane tab-pane-modal active" id="Links">
+          {
+            disabled && isEmpty(links)
+              ? <span>No links found.</span>
+              : <main>
+                <Switch>
+                  <Route path={`${match.path}`}>
+                    <LinkView link={link} links={links} disabled={disabled}/>
+                  </Route>
+                  <Route path={`${match.path}/_add`}>
+                    {
+                      disabled
+                        ? null
+                        : <NewLink
+                          disabled={addDisabled || !options.includes(collection)}
+                          collection={collection}
+                          updateCollection={setCollection}
+                          options={options}
+                        />
+                    }
+                  </Route>
+                  <Route path={`${match.path}/_new`}>
+                    <LinkView
+                      link={'newLink'}
+                      links={links}
+                      disabled={disabled}
+                    />
+                  </Route>
+                  <Route path={`${match.path}/:field`}>
+                    <FieldView
+                      disabled={disabled}
+                      basePath={'field.basePath'}
+                      viewField={noop}
+                      fieldName={'field.field'}
+                      link={getLink('field.basePath')}
+                    />
+                  </Route>
+                </Switch>
+              </main>
+          }
+        </div>
+      </div>
+    </div>
+     <div className="modal-footer">
+      <BackButton disabled={false /* !!newLink */}/>
+      {
+        isAdminUser
+          ? <SaveButton view={formState as FormState}/>
+          : null
       }
-    });
-    setCollection("");
-    setShow("ViewChild");
-    setNewLink(collection);
-  };
-
-  return disabled && isEmpty(links) ? (
-    <span>No links found.</span>
-  ) : (
-    <main>
-      {!disabled && show === "AddNew" && (
-        <NewLink
-          view={view}
-          disabled={addDisabled || !options.includes(collection)}
-          addLink={addLink}
-          collection={collection}
-          updateCollection={setCollection}
-          options={options}
-        />
-      )}
-
-      {show === "ViewParent" && (
-        <LinkView view={view} link={link} links={links} disabled={disabled} />
-      )}
-
-      {show === "JsonView" && (
-        <JsonForm
-          formState={newFormstate}
-          dispatch={dispatch}
-          renderKey={view}
-          isEdit={true}
-        />
-      )}
-
-      {show === "ViewChild" && (
-        <LinkView
-          view={view}
-          link={newLink}
-          links={links}
-          disabled={disabled}
-        />
-      )}
-
-      {show === "ViewField" && (
-        <FieldView
-          view={view}
-          disabled={disabled}
-          basePath={field.basePath}
-          viewField={noop}
-          fieldName={field.field}
-          link={getLink(field.basePath)}
-        />
-      )}
-    </main>
-  );
+     </div>
+  </div>;
 };
 
 export default LinkPropertiesForm;

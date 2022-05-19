@@ -1,13 +1,7 @@
 import { FormProps } from "../../../../utils/constants";
 import { LinkProperties } from "../../constants";
-import React, {
-  ChangeEvent,
-  useContext,
-  useEffect,
-  useMemo,
-  useState
-} from "react";
-import { chain, isEmpty, without } from "lodash";
+import React, { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { chain, isEmpty, noop, without } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
 import { ArangoTable, ArangoTD } from "../../../../components/arango/table";
@@ -20,7 +14,6 @@ import AutoCompleteMultiSelect from "../../../../components/pure-css/form/AutoCo
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
 import FieldList from "../../Components/FieldList";
-import { ViewContext } from "../../ViewLinksReactView";
 
 type LinkPropertiesInputProps = FormProps<LinkProperties> & {
   basePath: string;
@@ -45,7 +38,7 @@ const LinkPropertiesInput = ({
     formState.analyzers
   ]);
 
-  const { setShow, setField: setCurrentField } = useContext(ViewContext);
+  const setCurrentField = noop;
 
   useEffect(() => {
     if (data) {
@@ -127,7 +120,6 @@ const LinkPropertiesInput = ({
       field: field,
       basePath: basePath
     });
-    setShow("ViewField");
   };
 
   const storeIdValues = formState.storeValues === "id";

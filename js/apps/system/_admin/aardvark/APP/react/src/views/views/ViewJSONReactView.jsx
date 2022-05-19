@@ -1,4 +1,4 @@
-import { cloneDeep, isEqual, omit, uniqueId } from 'lodash';
+import { cloneDeep, isEqual, uniqueId } from 'lodash';
 import React, { useEffect, useReducer, useRef, useState } from 'react';
 import useSWR from 'swr';
 import Textarea from '../../components/pure-css/form/Textarea';
@@ -30,7 +30,7 @@ const ViewJSONReactView = ({ name }) => {
 
     dispatch({
       type: 'setFormState',
-      formState: omit(view, 'globallyUniqueId')
+      formState: view
     });
     dispatch({
       type: 'regenRenderKey'

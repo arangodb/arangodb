@@ -1,11 +1,10 @@
 import React, { Dispatch, useContext } from "react";
-import ViewLayout from "./ViewLayout";
+import ViewLinkLayout from "./ViewLinkLayout";
 import { ArangoTable, ArangoTD } from "../../../components/arango/table";
 import { IconButton } from "../../../components/arango/buttons";
 import { DispatchArgs } from "../../../utils/constants";
-import { LinkProperties } from "../constants";
+import { LinkProperties, ViewContext } from "../constants";
 import LinkPropertiesInput from "../forms/inputs/LinkPropertiesInput";
-import { ViewContext } from "../ViewLinksReactView";
 import { get } from "lodash";
 
 type FieldViewProps = {
@@ -43,7 +42,7 @@ const FieldView = ({
   const field = get(formState, `${basePath}.fields[${fieldName}]`);
 
   return (
-    <ViewLayout field={fieldName} view={view} link={link}>
+    <ViewLinkLayout field={fieldName} view={view} link={link}>
       <ArangoTable style={{ marginLeft: 0 }}>
         <tbody>
           <tr key={fieldName} style={{ borderBottom: "1px  solid #794242" }}>
@@ -74,7 +73,7 @@ const FieldView = ({
           </tr>
         </tbody>
       </ArangoTable>
-    </ViewLayout>
+    </ViewLinkLayout>
   );
 };
 
