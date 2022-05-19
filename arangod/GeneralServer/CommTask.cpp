@@ -600,6 +600,11 @@ void CommTask::handleRequestStartup(std::shared_ptr<RestHandler> handler) {
                       "service unavailable due to startup");
     return;
   }
+  // note that in addition to the CLIENT_FAST request lane, another
+  // prerequisite for serving a request during startup is that the handler
+  // is registered via GeneralServerFeature::defineInitialHandlers().
+  // only the handlers listed there will actually be responded to.
+  // requests to any other handlers will be responded to with HTTP 503.
 
   handler->trackQueueStart();
   LOG_TOPIC("96766", DEBUG, Logger::REQUESTS)

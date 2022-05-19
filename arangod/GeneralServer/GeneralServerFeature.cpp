@@ -524,6 +524,11 @@ void GeneralServerFeature::startListening() {
 }
 
 void GeneralServerFeature::defineInitialHandlers(rest::RestHandlerFactory& f) {
+  // these handlers will be available early during the server start.
+  // if you want to add more handlers here, please make sure that they
+  // run on the CLIENT_FAST request lane. otherwise the incoming requests
+  // will still be rejected during startup, even though they are registered
+  // here.
   f.addHandler("/_api/version",
                RestHandlerCreator<RestVersionHandler>::createNoData);
   f.addHandler("/_admin/version",
