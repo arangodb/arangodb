@@ -73,7 +73,8 @@ auto isParticipantSnapshotCompleted(ParticipantId const& participant,
                                     RSA::Plan const& plan) -> bool {
   ADB_PROD_ASSERT(plan.participants.contains(participant))
       << "plan did not contain participant " << participant;
-  ADB_PROD_ASSERT(plan.participants.at(participant).generation == expectedGeneration)
+  ADB_PROD_ASSERT(plan.participants.at(participant).generation ==
+                  expectedGeneration)
       << "expected = " << expectedGeneration
       << " planned = " << plan.participants.at(participant).generation;
   if (expectedGeneration == StateGeneration{1}) {
@@ -292,8 +293,8 @@ auto checkSnapshotComplete(SupervisionContext& ctx, RLA::Log const& log,
         // otherwise, report error
         ctx.reportStatus(RSA::StatusCode::kServerSnapshotMissing, participant);
       } else {
-        ADB_PROD_ASSERT(isParticipantSnapshotCompleted(participant, *state.current,
-                                                  *state.plan))
+        ADB_PROD_ASSERT(isParticipantSnapshotCompleted(
+            participant, *state.current, *state.plan))
             << "If a participant is allowed as leader and in a quorum, its "
                "snapshot must be available";
       }
