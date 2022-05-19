@@ -4226,9 +4226,9 @@ Result fromExpansion(irs::boolean_filter* filter, QueryContext const& ctx,
   TRI_ASSERT(aql::NODE_TYPE_EXPANSION == node.type);
 
 #ifdef USE_ENTERPRISE
-  return node.hasFlag(aql::FLAG_BOOLEAN_EXPANSION))
-    ? fromExpression(filter, ctx, filterCtx, node);
-    : fromBooleanExpansion(filter, ctx, filterCtx, node);
+  return node.hasFlag(aql::FLAG_BOOLEAN_EXPANSION)
+             ? fromExpression(filter, ctx, filterCtx, node)
+             : fromBooleanExpansion(filter, ctx, filterCtx, node);
 #else
   return fromExpression(filter, ctx, filterCtx, node);
 #endif
