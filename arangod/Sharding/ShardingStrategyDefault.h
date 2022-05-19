@@ -96,15 +96,13 @@ class ShardingStrategyHashBase : public ShardingStrategy {
                                     bool docComplete, ErrorCode& error,
                                     std::string_view const& key);
 
- private:
-  void determineShards();
-
  protected:
   ShardingInfo* _sharding;
   std::vector<ShardID> _shards;
   bool _usesDefaultShardKeys;
   std::atomic<bool> _shardsSet;
   Mutex _shardsSetMutex;
+  void determineShards();
 };
 
 /// @brief old version of the sharding used in the Community Edition
