@@ -19,7 +19,7 @@ struct elsa<ErrorCode> {
 #include <cinttypes>
 
 namespace arangodb::error {
-constexpr static frozen::unordered_map<ErrorCode, const char*, 363>
+constexpr static frozen::unordered_map<ErrorCode, const char*, 364>
     ErrorMessages = {
         {TRI_ERROR_NO_ERROR,  // 0
          "no error"},
@@ -265,6 +265,8 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 363>
          "invalid applier state"},
         {TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION,  // 1408
          "invalid transaction"},
+        {TRI_ERROR_REPLICATION_SHARD_SYNC_ATTEMPT_TIMEOUT_EXCEEDED,  // 1409
+         "shard synchronization attempt timeout exceeded"},
         {TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,  // 1410
          "invalid replication applier configuration"},
         {TRI_ERROR_REPLICATION_RUNNING,  // 1411

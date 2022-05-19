@@ -1,8 +1,28 @@
 v3.9.2 (XXXX-XX-XX)
 -------------------
 
-* Make all requests which are needed for shard resync at least medium
-  priority to improve getting-in-sync under load.
+* Make all requests which are needed for shard resync at least medium priority
+  to improve getting-in-sync under load.
+
+* Fix behavior when accessing a view instead of a collection by name in a REST
+  document operation. Now return a proper error.
+
+* Fix documentation of collection's `cacheEnabled` property default.
+
+* Added startup option `--cluster.shard-synchronization-attempt-timeout` to
+  limit the amount of time to spend in shard synchronization attempts. The
+  default timeout value is 20 minutes.
+  Running into the timeout will not lead to a synchronization failure, but will
+  continue the synchronization shortly after. Setting a timeout can help to
+  split the synchronization of large shards into smaller chunks and release
+  snapshots and archived WAL files on the leader earlier.
+  This change also introduces a new metric `arangodb_sync_timeouts_total` that
+  counts the number of timed-out shard synchronization attempts.
+
+* Make followers respond to synchronous replication requests with less data.
+  Specifically, followers will not build detailed results with _id, _key and
+  _rev for the inserted/modified/removed documents, which would be ignored by
+  the leader anyway.
 
 * Very verbose warning from failing to parse GEO JSON in search. Has lead to
   billions of log lines on deployed services.
@@ -94,7 +114,12 @@ v3.9.2 (XXXX-XX-XX)
 
 * Added an IO heartbeat which checks that the underlying volume is writable with
   reasonable performance. The test is done every 15 seconds and can be
-  explicitly switched off. New metrics to give visibility if the test fails.
+  explicitly switched off. New metrics to give visibility if the test fails:
+    - `arangodb_ioheartbeat_delays_total`: total number of delayed io heartbeats
+    - `arangodb_ioheartbeat_duration`: histogram of execution times [us]
+    - `arangodb_ioheartbeat_failures_total`: total number of failures
+  These metrics are only populated, if `--database.io-heartbeat` is set to
+  `true` (which is currently the default).
 
 * Fix lock order in Agent::advanceCommitIndex for State's _logLock and Agent's
   _waitForCV.
