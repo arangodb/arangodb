@@ -61,7 +61,7 @@ void Execution::createThreads(Server& server) {
   _threads = _workload->createThreads(*this, server);
 }
 
-ExecutionState Execution::state(std::memory_order order) const {
+ExecutionState Execution::state(std::memory_order order) const noexcept {
   return _state.load(order);
 }
 
@@ -126,14 +126,14 @@ Report Execution::buildReport(double runtime) {
           .databaseSize = getFolderSize(_options.databaseDirectory)};
 }
 
-void Execution::waitUntilAllThreadsAre(ThreadState state) {
-  for (auto& thread : _threads) {
+void Execution::waitUntilAllThreadsAre(ThreadState state) const {
+  for (auto const& thread : _threads) {
     waitUntilThreadStateIs(*thread, state);
   }
 }
 
 void Execution::waitUntilThreadStateIs(ExecutionThread const& thread,
-                                       ThreadState expected) {
+                                       ThreadState expected) const {
   auto state = thread._state.load(std::memory_order_relaxed);
   while (state != expected) {
     if (state == ThreadState::kFinished) {

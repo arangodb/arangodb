@@ -72,20 +72,20 @@ void ExecutionThread::doRun() {
   _execution.signalFinishedThread();
 }
 
-void ExecutionThread::waitUntilAllThreadsAreStarted() {
+void ExecutionThread::waitUntilAllThreadsAreStarted() const {
   while (_execution.state(std::memory_order_acquire) ==
          ExecutionState::kStarting) {
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
 }
 
-void ExecutionThread::waitUntilInitialization() {
+void ExecutionThread::waitUntilInitialization() const {
   while (_execution.state() == ExecutionState::kPreparing) {
     ;
   }
 }
 
-void ExecutionThread::waitUntilBenchmarkStarts() {
+void ExecutionThread::waitUntilBenchmarkStarts() const {
   while (_execution.state() == ExecutionState::kInitializing) {
     ;
   }
