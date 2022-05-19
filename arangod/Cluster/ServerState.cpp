@@ -45,7 +45,6 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
-#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterInfo.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -69,12 +68,19 @@ std::regex const uuidRegex(
     "^(SNGL|CRDN|PRMR|AGNT)-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-"
     "f0-9]{12}$");
 
-static constexpr char const* extendedNamesDatabasesKey =
-    "extendedNamesDatabases";
-}  // namespace
+constexpr char const* extendedNamesDatabasesKey = "extendedNamesDatabases";
 
-static constexpr char const* currentServersRegisteredPref =
+constexpr char const* currentServersRegisteredPref =
     "/Current/ServersRegistered/";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief current server mode
+////////////////////////////////////////////////////////////////////////////////
+std::atomic<ServerState::Mode> serverMode(ServerState::Mode::DEFAULT);
+
+std::atomic<bool> serverStateReadOnly(false);
+std::atomic<bool> licenseReadOnly(false);
+}  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief single instance of ServerState - will live as long as the server is
@@ -92,7 +98,7 @@ ServerState::ServerState(ArangodServer& server)
       _initialized(false),
       _foxxmasterSince(0),
       _foxxmasterQueueupdate(false) {
-  TRI_ASSERT(!Instance);
+  TRI_ASSERT(Instance == nullptr);
   Instance = this;
   setRole(ROLE_UNDEFINED);
 }
@@ -207,7 +213,7 @@ std::string ServerState::roleToShortString(ServerState::RoleEnum role) {
 /// @brief convert a string to a role
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerState::RoleEnum ServerState::stringToRole(std::string const& value) {
+ServerState::RoleEnum ServerState::stringToRole(std::string_view value) {
   if (value == "SINGLE") {
     return ROLE_SINGLE;
   } else if (value == "PRIMARY" || value == "DBSERVER") {
@@ -249,7 +255,7 @@ std::string ServerState::stateToString(StateEnum state) {
 /// @brief convert a string representation to a state
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerState::StateEnum ServerState::stringToState(std::string const& value) {
+ServerState::StateEnum ServerState::stringToState(std::string_view value) {
   if (value == "STARTUP") {
     return STATE_STARTUP;
   } else if (value == "SERVING") {
@@ -269,6 +275,8 @@ std::string ServerState::modeToString(Mode mode) {
   switch (mode) {
     case Mode::DEFAULT:
       return "default";
+    case Mode::STARTUP:
+      return "startup";
     case Mode::MAINTENANCE:
       return "maintenance";
     case Mode::TRYAGAIN:
@@ -287,9 +295,11 @@ std::string ServerState::modeToString(Mode mode) {
 /// @brief convert string to mode
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerState::Mode ServerState::stringToMode(std::string const& value) {
+ServerState::Mode ServerState::stringToMode(std::string_view value) {
   if (value == "default") {
     return Mode::DEFAULT;
+  } else if (value == "startup") {
+    return Mode::STARTUP;
   } else if (value == "maintenance") {
     return Mode::MAINTENANCE;
   } else if (value == "tryagain") {
@@ -302,56 +312,51 @@ ServerState::Mode ServerState::stringToMode(std::string const& value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief current server mode
-////////////////////////////////////////////////////////////////////////////////
-static std::atomic<ServerState::Mode> _serverstate_mode(
-    ServerState::Mode::DEFAULT);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief atomically load current server mode
 ////////////////////////////////////////////////////////////////////////////////
 ServerState::Mode ServerState::mode() {
-  return _serverstate_mode.load(std::memory_order_acquire);
+  return ::serverMode.load(std::memory_order_acquire);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief change server mode, returns previously set mode
 ////////////////////////////////////////////////////////////////////////////////
 ServerState::Mode ServerState::setServerMode(ServerState::Mode value) {
-  //_serverMode.store(value, std::memory_order_release);
-  if (_serverstate_mode.load(std::memory_order_acquire) != value) {
-    return _serverstate_mode.exchange(value, std::memory_order_release);
+  if (::serverMode.load(std::memory_order_acquire) != value) {
+    return ::serverMode.exchange(value, std::memory_order_release);
   }
   return value;
 }
 
-static std::atomic<bool> _serverstate_readonly(false);
-static std::atomic<bool> _license_readonly(false);
+bool ServerState::isStartupOrMaintenance() {
+  Mode value = mode();
+  return value == Mode::STARTUP || value == Mode::MAINTENANCE;
+}
 
 bool ServerState::readOnly() {
-  return _serverstate_readonly.load(std::memory_order_acquire) ||
-         _license_readonly.load(std::memory_order_acquire);
+  return ::serverStateReadOnly.load(std::memory_order_acquire) ||
+         ::licenseReadOnly.load(std::memory_order_acquire);
 }
 
 bool ServerState::readOnlyByAPI() {
-  return _serverstate_readonly.load(std::memory_order_acquire);
+  return ::serverStateReadOnly.load(std::memory_order_acquire);
 }
 
 bool ServerState::readOnlyByLicense() {
-  return _license_readonly.load(std::memory_order_acquire);
+  return ::licenseReadOnly.load(std::memory_order_acquire);
 }
 
 /// @brief set server read-only
 bool ServerState::setReadOnly(ReadOnlyMode ro) {
   auto ret = readOnly();
   if (ro == API_FALSE) {
-    _serverstate_readonly.exchange(false, std::memory_order_release);
+    ::serverStateReadOnly.exchange(false, std::memory_order_release);
   } else if (ro == API_TRUE) {
-    _serverstate_readonly.exchange(true, std::memory_order_release);
+    ::serverStateReadOnly.exchange(true, std::memory_order_release);
   } else if (ro == LICENSE_FALSE) {
-    _license_readonly.exchange(false, std::memory_order_release);
+    ::licenseReadOnly.exchange(false, std::memory_order_release);
   } else if (ro == LICENSE_TRUE) {
-    _license_readonly.exchange(true, std::memory_order_release);
+    ::licenseReadOnly.exchange(true, std::memory_order_release);
   }
   return ret;
 }
@@ -526,10 +531,11 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
 
   // now check the configuration of the different servers for duplicate
   // endpoints
-  AgencyCommResult result = comm.getValues(currentServersRegisteredPref);
+  AgencyCommResult result = comm.getValues(::currentServersRegisteredPref);
 
   if (result.successful()) {
-    auto slicePath = AgencyCommHelper::slicePath(currentServersRegisteredPref);
+    auto slicePath =
+        AgencyCommHelper::slicePath(::currentServersRegisteredPref);
     auto valueSlice = result.slice()[0].get(slicePath);
 
     if (valueSlice.isObject()) {
@@ -656,10 +662,11 @@ std::string ServerState::getPersistedId() {
 
 /// @brief check equality of engines with other registered servers
 bool ServerState::checkEngineEquality(AgencyComm& comm) {
-  AgencyCommResult result = comm.getValues(currentServersRegisteredPref);
+  AgencyCommResult result = comm.getValues(::currentServersRegisteredPref);
   if (result.successful()) {  // no error if we cannot reach agency directly
 
-    auto slicePath = AgencyCommHelper::slicePath(currentServersRegisteredPref);
+    auto slicePath =
+        AgencyCommHelper::slicePath(::currentServersRegisteredPref);
     VPackSlice servers = result.slice()[0].get(slicePath);
     if (!servers.isObject()) {
       return true;  // do not do anything harsh here
@@ -688,10 +695,11 @@ bool ServerState::checkNamingConventionsEquality(AgencyComm& comm) {
   bool const extendedNamesForDatabases =
       _server.getFeature<DatabaseFeature>().extendedNamesForDatabases();
 
-  AgencyCommResult result = comm.getValues(currentServersRegisteredPref);
+  AgencyCommResult result = comm.getValues(::currentServersRegisteredPref);
   if (result.successful()) {  // no error if we cannot reach agency directly
 
-    auto slicePath = AgencyCommHelper::slicePath(currentServersRegisteredPref);
+    auto slicePath =
+        AgencyCommHelper::slicePath(::currentServersRegisteredPref);
     VPackSlice servers = result.slice()[0].get(slicePath);
     if (!servers.isObject()) {
       return true;  // do not do anything harsh here
@@ -887,9 +895,9 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm,
     {
       VPackObjectBuilder b(&localIdBuilder);
       localIdBuilder.add("TransactionID", VPackValue(num + 1));
-      std::stringstream ss;  // ShortName
       size_t width =
           std::max(std::to_string(num + 1).size(), static_cast<size_t>(4));
+      std::stringstream ss;  // ShortName
       ss << roleToAgencyKey(role) << std::setw(width) << std::setfill('0')
          << num + 1;
       localIdBuilder.add("ShortName", VPackValue(ss.str()));
@@ -928,12 +936,12 @@ std::string ServerState::getShortName() const {
   if (_role == ROLE_AGENT) {
     return getId().substr(0, 13);
   }
-  std::stringstream ss;  // ShortName
   auto num = getShortId();
   if (num == 0) {
     return std::string{};  // not yet known
   }
   size_t width = std::max(std::to_string(num).size(), static_cast<size_t>(4));
+  std::stringstream ss;  // ShortName
   ss << roleToAgencyKey(getRole()) << std::setw(width) << std::setfill('0')
      << num;
   return ss.str();
@@ -943,7 +951,8 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm,
                                          bool const hadPersistedId) {
   TRI_ASSERT(!_id.empty() && !_myEndpoint.empty());
 
-  std::string const serverRegistrationPath = currentServersRegisteredPref + _id;
+  std::string const serverRegistrationPath =
+      ::currentServersRegisteredPref + _id;
   std::string const rebootIdPath = "/Current/ServersKnown/" + _id + "/rebootId";
 
   // If we generated a new UUID, this *must not* exist in the Agency, so we
@@ -1038,12 +1047,10 @@ std::string ServerState::getId() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ServerState::setId(std::string const& id) {
-  if (id.empty()) {
-    return;
+  if (!id.empty()) {
+    std::lock_guard<std::mutex> guard(_idLock);
+    _id = id;
   }
-
-  std::lock_guard<std::mutex> guard(_idLock);
-  _id = id;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1059,11 +1066,9 @@ uint32_t ServerState::getShortId() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ServerState::setShortId(uint32_t id) {
-  if (id == 0) {
-    return;
+  if (id != 0) {
+    _shortId.store(id, std::memory_order_relaxed);
   }
-
-  _shortId.store(id, std::memory_order_relaxed);
 }
 
 RebootId ServerState::getRebootId() const {
@@ -1178,7 +1183,7 @@ bool ServerState::checkCoordinatorState(StateEnum state) {
 
 bool ServerState::isFoxxmaster() const {
   READ_LOCKER(readLocker, _foxxmasterLock);
-  return /*!isRunningInCluster() ||*/ _foxxmaster == getId();
+  return _foxxmaster == getId();
 }
 
 std::string ServerState::getFoxxmaster() const {

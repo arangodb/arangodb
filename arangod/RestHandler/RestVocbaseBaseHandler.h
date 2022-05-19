@@ -168,12 +168,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
                   TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
 
-  /// @brief generates not implemented
-  void generateNotImplemented(std::string const& path);
-
-  /// @brief generates forbidden
-  void generateForbidden();
-
   /// @brief generates conflict error
   void generateConflictError(arangodb::OperationResult const&,
                              bool precFailed = false);

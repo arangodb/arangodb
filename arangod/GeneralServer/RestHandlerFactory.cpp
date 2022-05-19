@@ -33,9 +33,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-namespace {
-static std::string const ROOT_PATH = "/";
-}
+RestHandlerFactory::RestHandlerFactory() : _sealed(false) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new handler
@@ -44,6 +42,8 @@ static std::string const ROOT_PATH = "/";
 std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
     ArangodServer& server, std::unique_ptr<GeneralRequest> req,
     std::unique_ptr<GeneralResponse> res) const {
+  TRI_ASSERT(_sealed);
+
   std::string const& path = req->requestPath();
 
   auto it = _constructors.find(path);
@@ -88,7 +88,7 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
     LOG_TOPIC("7c476", TRACE, arangodb::Logger::FIXME)
         << "no prefix handler found, using catch all";
 
-    it = _constructors.find(ROOT_PATH);
+    it = _constructors.find("/");
     l = 1;
   } else {
     TRI_ASSERT(!prefix->empty());
@@ -129,6 +129,8 @@ std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(
 
 void RestHandlerFactory::addHandler(std::string const& path, create_fptr func,
                                     void* data) {
+  TRI_ASSERT(!_sealed);
+
   if (!_constructors.try_emplace(path, func, data).second) {
     // there should only be one handler for each path
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -144,13 +146,21 @@ void RestHandlerFactory::addHandler(std::string const& path, create_fptr func,
 
 void RestHandlerFactory::addPrefixHandler(std::string const& path,
                                           create_fptr func, void* data) {
+  TRI_ASSERT(!_sealed);
+
   addHandler(path, func, data);
 
-  // add to list of prefixes and (re-)sort them
   _prefixes.emplace_back(path);
+}
 
+void RestHandlerFactory::seal() {
+  TRI_ASSERT(!_sealed);
+
+  // sort prefixes by their lengths
   std::sort(_prefixes.begin(), _prefixes.end(),
             [](std::string const& a, std::string const& b) {
               return a.size() > b.size();
             });
+
+  _sealed = true;
 }

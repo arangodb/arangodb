@@ -472,7 +472,7 @@ void HttpCommTask<T>::doProcessRequest() {
     }
   }
 
-  // ensure there is a null byte termination. RestHandlers use
+  // ensure there is a null byte termination. Some RestHandlers use
   // C functions like strchr that except a C string as input
   _request->body().push_back('\0');
   _request->body().resetTo(_request->body().size() - 1);
@@ -502,8 +502,10 @@ void HttpCommTask<T>::doProcessRequest() {
     return;
   }
 
+  ServerState::Mode mode = ServerState::mode();
+
   // scrape the auth headers to determine and authenticate the user
-  auto authToken = this->checkAuthHeader(*_request);
+  auto authToken = this->checkAuthHeader(*_request, mode);
 
   // We want to separate superuser token traffic:
   if (_request->authenticated() && _request->user().empty()) {
@@ -511,7 +513,7 @@ void HttpCommTask<T>::doProcessRequest() {
   }
 
   // first check whether we allow the request to continue
-  CommTask::Flow cont = this->prepareExecution(authToken, *_request);
+  CommTask::Flow cont = this->prepareExecution(authToken, *_request, mode);
   if (cont != CommTask::Flow::Continue) {
     return;  // prepareExecution sends the error message
   }
@@ -528,7 +530,7 @@ void HttpCommTask<T>::doProcessRequest() {
   auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR,
                                              1, nullptr);
   resp->setContentType(_request->contentTypeResponse());
-  this->executeRequest(std::move(_request), std::move(resp));
+  this->executeRequest(std::move(_request), std::move(resp), mode);
 }
 
 #ifdef USE_DTRACE
