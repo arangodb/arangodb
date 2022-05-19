@@ -241,11 +241,6 @@ struct NoOpStream {
   }
 };
 
-struct AssertionNoOpLogger {
-  void operator&(NoOpStream const&) const noexcept {}
-  static thread_local NoOpStream assertionNoOpStream;
-};
-
 struct AssertionLogger {
   [[noreturn]] void operator&(std::ostringstream const& stream) const {
     std::string message = stream.str();
@@ -267,6 +262,44 @@ struct AssertionLogger {
   static thread_local std::ostringstream assertionStringStream;
 };
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+
+struct AssertionConditionalStream {
+  bool condition{false};
+  std::ostringstream stream;
+  template<typename T>
+  auto operator<<(T const& v) noexcept -> AssertionConditionalStream& {
+    if (condition) {
+      stream << v;
+    }
+    return *this;
+  }
+  auto withCondition(bool c) -> AssertionConditionalStream&& {
+    condition = c;
+    return std::move(*this);
+  }
+};
+
+struct AssertionConditionalLogger {
+  [[noreturn]] void operator&(AssertionConditionalStream const& stream) const {
+    if (!stream.condition) {
+      std::string message = stream.stream.str();
+      arangodb::CrashHandler::assertionFailure(
+          file, line, function, expr,
+          message.empty() ? nullptr : message.c_str());
+    }
+  }
+
+  const char* file;
+  int line;
+  const char* function;
+  const char* expr;
+
+  static thread_local AssertionConditionalStream assertionStringStream;
+};
+
+#endif
+
 }  // namespace debug
 }  // namespace arangodb
 
@@ -287,7 +320,7 @@ struct AssertionLogger {
 #define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/          \
   (true) ? ((false) ? (void)(expr) : (void)nullptr)   \
          : ::arangodb::debug::AssertionNoOpLogger{} & \
-               :: : arangodb::debug::AssertionNoOpLogger::assertionNoOpStream
+               :: : arangodb::debug::NoOpStream {}
 
 #endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #endif  // #ifndef TRI_ASSERT
@@ -296,12 +329,11 @@ struct AssertionLogger {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 // This version of the macro always evaluates the output string, even if the
 // assertion did not fail.
-#define ADB_PROD_ASSERT(expr) /*GCOVR_EXCL_LINE*/                       \
-  (ADB_LIKELY(expr))                                                    \
-      ? ::arangodb::debug::AssertionNoOpLogger{} &                      \
-            ::arangodb::debug::AssertionNoOpLogger::assertionNoOpStream \
-      : ::arangodb::debug::AssertionLogger{} &                          \
-            ::arangodb::debug::AssertionLogger::assertionStringStream
+#define ADB_PROD_ASSERT(expr) /*GCOVR_EXCL_LINE*/                          \
+  ::arangodb::debug::AssertionConditionalLogger{                           \
+      __FILE__, __LINE__, ARANGODB_PRETTY_FUNCTION, #expr} &               \
+      ::arangodb::debug::AssertionConditionalLogger::assertionStringStream \
+          .withCondition(expr)
 
 #else
 // This version of the macro only evaluates the output string, if the assertion
