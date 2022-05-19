@@ -772,7 +772,3 @@ aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
 
 }  // namespace iresearch
 }  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
