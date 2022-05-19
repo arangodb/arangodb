@@ -24,27 +24,25 @@
 #pragma once
 
 #include <optional>
+#include <unordered_map>
 #include <variant>
 
 #include "Inspection/Status.h"
 #include "Inspection/Types.h"
+#include "ValueGenerators/RandomStringGenerator.h"
+#include "velocypack/SliceContainer.h"
 
 #include "ExecutionThread.h"
 #include "StoppingCriterion.h"
+#include "ValueGenerator.h"
 #include "Workload.h"
-#include "velocypack/SliceContainer.h"
 
 namespace arangodb::sepp::workloads {
 
 struct InsertDocuments : Workload {
-  struct ThreadOptions {
-    std::string collection;
-    std::shared_ptr<velocypack::Builder> object;
-    StoppingCriterion::type stop;
-  };
+  struct ThreadOptions;
   struct Options;
   struct Thread;
-  struct Object;
 
   InsertDocuments(Options const& options) : _options(options) {}
 
@@ -56,26 +54,50 @@ struct InsertDocuments : Workload {
   Options const& _options;
 };
 
-struct InsertDocuments::Object : std::variant<std::string, velocypack::Slice> {
-  template<class Inspector>
-  friend inline auto inspect(Inspector& f, Object& o) {
-    namespace insp = arangodb::inspection;
-    return f.variant(o)
-        .qualified("source", "value")
-        .alternatives(insp::type<std::string>("file"),
-                      insp::type<velocypack::Slice>("inline"));
-  }
-};
-
 struct InsertDocuments::Options {
+  struct Document : std::variant<std::string, velocypack::Slice> {
+    template<class Inspector>
+    friend inline auto inspect(Inspector& f, Document& o) {
+      namespace insp = arangodb::inspection;
+      return f.variant(o)
+          .qualified("source", "value")
+          .alternatives(insp::type<std::string>("file"),
+                        insp::type<velocypack::Slice>("inline"));
+    }
+  };
+
+  struct RandomStringGenerator {
+    std::uint32_t size;
+    template<class Inspector>
+    friend inline auto inspect(Inspector& f, RandomStringGenerator& o) {
+      return f.object(o).fields(f.field("size", o.size));
+    }
+  };
+
+  struct DocumentModifier {
+    template<class Inspector>
+    friend inline auto inspect(Inspector& f, DocumentModifier& o) {
+      namespace insp = arangodb::inspection;
+      return f.variant(o.value).unqualified().alternatives(
+          insp::type<RandomStringGenerator>("randomString"));
+    }
+
+    std::variant<RandomStringGenerator> value;
+  };
+
   struct Thread {
     std::string collection;
-    Object object;
+    std::uint32_t documentsPerTrx;
+    Document document;
+    std::unordered_map<std::string, DocumentModifier> documentModifier;
 
     template<class Inspector>
     friend inline auto inspect(Inspector& f, Thread& o) {
-      return f.object(o).fields(f.field("object", o.object),
-                                f.field("collection", o.collection));
+      return f.object(o).fields(
+          f.field("document", o.document),
+          f.field("documentModifier", o.documentModifier),
+          f.field("documentsPerTrx", o.documentsPerTrx).fallback(1u),
+          f.field("collection", o.collection));
     }
   };
 
@@ -91,18 +113,39 @@ struct InsertDocuments::Options {
   }
 };
 
+struct InsertDocuments::ThreadOptions {
+  std::string collection;
+  std::uint32_t documentsPerTrx{1};
+  std::shared_ptr<velocypack::Builder> document;
+  std::unordered_map<std::string, Options::DocumentModifier> documentModifier;
+  StoppingCriterion::type stop;
+};
+
 struct InsertDocuments::Thread : ExecutionThread {
   Thread(ThreadOptions options, Execution& exec, Server& server);
   ~Thread();
+
   void run() override;
-  [[nodiscard]] virtual ThreadReport report() const override {
+  [[nodiscard]] auto report() const -> ThreadReport override {
     return {.operations = _operations};
   }
   auto shouldStop() const noexcept -> bool override;
 
+  struct DocumentModifier {
+    explicit DocumentModifier(
+        std::unordered_map<std::string, Options::DocumentModifier> const&);
+    void apply(velocypack::Builder&);
+
+   private:
+    std::unordered_map<std::string, std::unique_ptr<ValueGenerator>>
+        _generators;
+  };
+
  private:
-  std::uint64_t _operations{0};
+  void buildDocument(velocypack::Builder&);
   ThreadOptions _options;
+  DocumentModifier _modifier;
+  std::uint64_t _operations{0};
 };
 
 }  // namespace arangodb::sepp::workloads

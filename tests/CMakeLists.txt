@@ -457,6 +457,7 @@ set(ARANGODB_SEPP_SOURCES
   sepp/Runner.cpp
   sepp/RocksDBOptions.cpp
   sepp/Server.cpp
+  sepp/ValueGenerators/RandomStringGenerator.cpp
   sepp/Workloads/InsertDocuments.cpp
   sepp/Workloads/IterateDocuments.cpp
 )

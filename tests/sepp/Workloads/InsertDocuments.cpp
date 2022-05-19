@@ -27,15 +27,17 @@
 #include <memory>
 #include <stdexcept>
 
+#include "Basics/overload.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "velocypack/Builder.h"
 #include "VocBase/Methods/Collections.h"
 
 #include "Server.h"
-#include "velocypack/Builder.h"
+#include "ValueGenerators/RandomStringGenerator.h"
 
 namespace arangodb::sepp::workloads {
 
@@ -50,26 +52,27 @@ auto InsertDocuments::createThreads(Execution& exec, Server& server)
   defaultThread.stop = _options.stop;
 
   if (_options.defaultThreadOptions) {
-    defaultThread.collection = _options.defaultThreadOptions->collection;
-    if (std::holds_alternative<std::string>(
-            _options.defaultThreadOptions->object)) {
-      auto objectFile =
-          std::get<std::string>(_options.defaultThreadOptions->object);
+    auto& defaultOpts = _options.defaultThreadOptions.value();
+    defaultThread.collection = defaultOpts.collection;
+    defaultThread.documentsPerTrx = defaultOpts.documentsPerTrx;
+    defaultThread.documentModifier = defaultOpts.documentModifier;
+    if (std::holds_alternative<std::string>(defaultOpts.document)) {
+      auto documentFile = std::get<std::string>(defaultOpts.document);
       try {
-        std::ifstream t(objectFile);
+        std::ifstream t(documentFile);
         std::stringstream buffer;
         buffer << t.rdbuf();
 
-        defaultThread.object =
+        defaultThread.document =
             arangodb::velocypack::Parser::fromJson(buffer.str());
       } catch (std::exception const& e) {
-        throw std::runtime_error("Failed to parse object file '" + objectFile +
-                                 "' - " + e.what());
+        throw std::runtime_error("Failed to parse object file '" +
+                                 documentFile + "' - " + e.what());
       }
     } else {
-      defaultThread.object = std::make_shared<velocypack::Builder>();
-      defaultThread.object->add(
-          std::get<velocypack::Slice>(_options.defaultThreadOptions->object));
+      defaultThread.document = std::make_shared<velocypack::Builder>();
+      defaultThread.document->add(
+          std::get<velocypack::Slice>(defaultOpts.document));
     }
   }
 
@@ -82,38 +85,50 @@ auto InsertDocuments::createThreads(Execution& exec, Server& server)
 
 InsertDocuments::Thread::Thread(ThreadOptions options, Execution& exec,
                                 Server& server)
-    : ExecutionThread(exec, server), _options(options) {}
+    : ExecutionThread(exec, server),
+      _options(std::move(options)),
+      _modifier(_options.documentModifier) {}
 
 InsertDocuments::Thread::~Thread() = default;
 
 void InsertDocuments::Thread::run() {
-  // TODO - make more configurable
-  const unsigned numOps = 10;
-  for (unsigned i = 0; i < numOps; ++i) {
-    auto trx = std::make_unique<SingleCollectionTransaction>(
-        transaction::StandaloneContext::Create(*_server.vocbase()),
-        _options.collection, AccessMode::Type::WRITE);
+  auto trx = std::make_unique<SingleCollectionTransaction>(
+      transaction::StandaloneContext::Create(*_server.vocbase()),
+      _options.collection, AccessMode::Type::WRITE);
 
-    auto res = trx->begin();
+  auto res = trx->begin();
+  if (!res.ok()) {
+    throw std::runtime_error("Failed to begin trx: " +
+                             std::string(res.errorMessage()));
+  }
+
+  velocypack::Builder builder;
+  for (std::uint32_t j = 0; j < _options.documentsPerTrx; ++j) {
+    buildDocument(builder);
+    auto res = trx->insert(_options.collection, builder.slice(), {});
     if (!res.ok()) {
-      throw std::runtime_error("Failed to begin trx: " +
-                               std::string(res.errorMessage()));
-    }
-    {
-      // TODO - insert mutiple objects in a single transaction
-      auto res = trx->insert(_options.collection, _options.object->slice(), {});
-      if (!res.ok()) {
-        throw std::runtime_error("Failed to insert document in trx: " +
-                                 std::string(res.errorMessage()));
-      }
-    }
-    res = trx->commit();
-    if (!res.ok()) {
-      throw std::runtime_error("Failed to commit trx: " +
+      throw std::runtime_error("Failed to insert document in trx: " +
                                std::string(res.errorMessage()));
     }
   }
-  _operations += numOps;
+
+  res = trx->commit();
+  if (!res.ok()) {
+    throw std::runtime_error("Failed to commit trx: " +
+                             std::string(res.errorMessage()));
+  }
+  _operations += _options.documentsPerTrx;
+}
+
+void InsertDocuments::Thread::buildDocument(velocypack::Builder& builder) {
+  builder.clear();
+  builder.openObject();
+  for (auto [k, v] : VPackObjectIterator(_options.document->slice())) {
+    builder.add(k);
+    builder.add(v);
+  }
+  _modifier.apply(builder);
+  builder.close();
 }
 
 auto InsertDocuments::Thread::shouldStop() const noexcept -> bool {
@@ -122,6 +137,28 @@ auto InsertDocuments::Thread::shouldStop() const noexcept -> bool {
     return _operations >= std::get<StopAfterOps>(_options.stop).count;
   }
   return false;
+}
+
+InsertDocuments::Thread::DocumentModifier::DocumentModifier(
+    std::unordered_map<std::string, Options::DocumentModifier> const&
+        modifiers) {
+  for (auto& [attr, mod] : modifiers) {
+    _generators.emplace(
+        attr,
+        std::visit(overload{[](Options::RandomStringGenerator const& g) {
+                     return std::make_unique<generators::RandomStringGenerator>(
+                         g.size);
+                   }},
+                   mod.value));
+  }
+}
+
+void InsertDocuments::Thread::DocumentModifier::apply(
+    velocypack::Builder& builder) {
+  for (auto& [attr, gen] : _generators) {
+    builder.add(VPackValue(attr));
+    gen->apply(builder);
+  }
 }
 
 }  // namespace arangodb::sepp::workloads
