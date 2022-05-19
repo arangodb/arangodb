@@ -286,7 +286,7 @@ function scanTestPaths (paths, options) {
 }
 
 
-function getTestCode(file, options, instanceInfo) {
+function getTestCode(file, options, instanceManager) {
   let filter;
   if (options.testCase) {
     filter = JSON.stringify(options.testCase);
@@ -304,7 +304,7 @@ function getTestCode(file, options, instanceInfo) {
     filter = filter || '';
     runTest = 'const runTest = require("@arangodb/mocha-runner");\n';
   }
-  return 'global.instanceInfo = ' + JSON.stringify(instanceInfo.getStructure()) + ';\n' + runTest +
+  return 'global.instanceManager = ' + JSON.stringify(instanceManager.getStructure()) + ';\n' + runTest +
          'return runTest(' + JSON.stringify(file) + ', true, ' + filter + ');\n';
 }
 // //////////////////////////////////////////////////////////////////////////////
@@ -318,8 +318,8 @@ class runOnArangodRunner extends testRunnerBase{
   }
   runOneTest(file) {
     try {
-      let testCode = getTestCode(file, this.options, this.instanceInfo);
-      let httpOptions = pu.makeAuthorizationHeaders(this.options);
+      let testCode = getTestCode(file, this.options, this.instanceManager);
+      let httpOptions = pu.makeAuthorizationHeaders(this.options, this.instanceManager.arangods[0].args);
       httpOptions.method = 'POST';
 
       httpOptions.timeout = this.options.oneTestTimeout;
