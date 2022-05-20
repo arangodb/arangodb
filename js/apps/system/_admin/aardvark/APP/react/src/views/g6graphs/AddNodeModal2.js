@@ -63,7 +63,8 @@ const ModalBody = styled.div`
           onRequestClose();
         },
         error: function (response) {
-          console.log("response after addNode (error): ", response);
+          arangoHelper.arangoError('Graph', 'Could not add node.');
+          console.log("Error adding this node: ", response);
         }
       });
     }
