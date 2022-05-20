@@ -752,7 +752,9 @@ void RocksDBEngine::start() {
   _options.use_fsync = opts._useFSync;
 
   rocksdb::CompressionType compressionType = rocksdb::kNoCompression;
-  if (opts._compressionType == "snappy") {
+  if (opts._compressionType == "none") {
+    compressionType = rocksdb::kNoCompression;
+  } else if (opts._compressionType == "snappy") {
     compressionType = rocksdb::kSnappyCompression;
   } else if (opts._compressionType == "lz4") {
     compressionType = rocksdb::kLZ4Compression;
