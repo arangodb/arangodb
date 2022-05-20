@@ -762,7 +762,7 @@ void RocksDBEngine::start() {
     compressionType = rocksdb::kLZ4HCCompression;
   } else {
     TRI_ASSERT(false);
-    LOG_TOPIC("74b7f", FATAL, arangodb::Logger::STARTUP)
+    LOG_TOPIC("89052", FATAL, arangodb::Logger::STARTUP)
         << "unexpected compression type '" << opts._compressionType << "'";
     FATAL_ERROR_EXIT();
   }
