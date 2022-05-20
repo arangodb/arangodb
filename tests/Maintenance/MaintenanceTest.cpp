@@ -23,6 +23,7 @@
 /// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RestServer/arangod.h"
 #include "gtest/gtest.h"
 
 #include "Agency/AgencyPaths.h"
@@ -550,6 +551,7 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
                    {dbsIds[shortNames[1]], createNode(dbs1Str)},
                    {dbsIds[shortNames[2]], createNode(dbs2Str)}} {
     as.addFeature<arangodb::metrics::MetricsFeature>();
+    as.addFeature<arangodb::RocksDBOptionFeature>();
     as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
         std::false_type{});
     auto& selector = as.addFeature<arangodb::EngineSelectorFeature>();
