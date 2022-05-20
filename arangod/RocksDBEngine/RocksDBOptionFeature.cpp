@@ -54,6 +54,9 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 namespace {
+std::unordered_set<std::string> const compressionTypes = {
+    {"snappy"}, {"lz4"}, {"lz4hc"}, {"none"}};
+
 rocksdb::TransactionDBOptions rocksDBTrxDefaults;
 rocksdb::Options rocksDBDefaults;
 rocksdb::BlockBasedTableOptions rocksDBTableOptionsDefaults;
@@ -133,6 +136,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _transactionLockStripes(
           std::max(NumberOfCores::getValue(), std::size_t(16))),
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
+      _compressionType("snappy"),
       _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
       _maxWriteBufferNumber(8 + 2),  // number of column families plus 2
@@ -220,6 +224,11 @@ void RocksDBOptionFeature::collectOptions(
                      "If not set, the WAL directory will be located inside the "
                      "regular data directory",
                      new StringParameter(&_walDirectory));
+
+  options->addOption("--rocksdb.compression-type",
+                     "compression algorithm to use within RocksDB",
+                     new DiscreteValuesParameter<StringParameter>(
+                         &_compressionType, ::compressionTypes));
 
   options
       ->addOption("--rocksdb.target-file-size-base",
@@ -698,6 +707,7 @@ void RocksDBOptionFeature::start() {
   LOG_TOPIC("f66e4", TRACE, Logger::ROCKSDB)
       << "using RocksDB options:"
       << " wal_dir: '" << _walDirectory << "'"
+      << ", compression type: " << _compressionType
       << ", write_buffer_size: " << _writeBufferSize
       << ", total_write_buffer_size: " << _totalWriteBufferSize
       << ", max_write_buffer_number: " << _maxWriteBufferNumber
