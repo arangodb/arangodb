@@ -89,8 +89,7 @@ class permissionsRunner extends tu.runInArangoshRunner {
         let testName = t[t.length - 1].replace(/\.js/, '');
         let instanceRoot = fs.join(rootDir, testName);
         fs.makeDirectoryRecursive(instanceRoot);
-        obj.instanceManager['rootDir'] = instanceRoot;
-        let testResultJson = fs.join(instanceRoot, 'testresult.json');;
+        let testResultJson = fs.join(rootDir, 'testresult.json');;
         process.env['RESULT'] = testResultJson;
         pu.cleanupDBDirectoriesAppend(instanceRoot);
 
