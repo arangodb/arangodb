@@ -47,6 +47,9 @@ constexpr std::string_view kAnalyzerFieldName("analyzer");
 constexpr std::string_view kNestedFieldsFieldName("nested");
 constexpr std::string_view kFeaturesFieldName("features");
 constexpr std::string_view kExpressionFieldName("expression");
+constexpr std::string_view kIsArrayFieldName("isArray");
+constexpr std::string_view kIncludeAllFieldsFieldName("includeAllFields");
+constexpr std::string_view kTrackListPositionsFieldName("trackListPositions");
 
 std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
     VPackSlice slice, bool isNested,
@@ -185,12 +188,36 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
         }
       }
       if (slice.hasKey(kExpressionFieldName)) {
-        auto expressionSlice = slice.get(kExpressionFieldName);
-        if (!expressionSlice.isString()) {
+        auto subSlice = slice.get(kExpressionFieldName);
+        if (!subSlice.isString()) {
           errorField = kExpressionFieldName;
           return std::nullopt;
         }
-        expression = expressionSlice.stringView();
+        expression = subSlice.stringView();
+      }
+      if (slice.hasKey(kIsArrayFieldName)) {
+        auto subSlice = slice.get(kIsArrayFieldName);
+        if (!subSlice.isBool()) {
+          errorField = kIsArrayFieldName;
+          return std::nullopt;
+        }
+        isArray = subSlice.getBool();
+      }
+      if (slice.hasKey(kTrackListPositionsFieldName)) {
+        auto subSlice = slice.get(kTrackListPositionsFieldName);
+        if (!subSlice.isBool()) {
+          errorField = kTrackListPositionsFieldName;
+          return std::nullopt;
+        }
+        trackListPositions = subSlice.getBool();
+      }
+      if (slice.hasKey(kIncludeAllFieldsFieldName)) {
+        auto subSlice = slice.get(kIncludeAllFieldsFieldName);
+        if (!subSlice.isBool()) {
+          errorField = kIncludeAllFieldsFieldName;
+          return std::nullopt;
+        }
+        includeAllFields = subSlice.getBool();
       }
     } else {
       errorField = kNameFieldName;
@@ -232,6 +259,14 @@ void toVelocyPack(IResearchInvertedIndexMeta::FieldRecord const& field, VPackBui
    VPackObjectBuilder fieldObject(&vpack);
   vpack.add(kNameFieldName, VPackValue(field.toString()));
   vpack.add(kAnalyzerFieldName, VPackValue(field.analyzerName()));
+  vpack.add(kIsArrayFieldName, VPackValue(field.isArray()));
+  vpack.add(kTrackListPositionsFieldName, VPackValue(field.trackListPositions()));
+  vpack.add(kIncludeAllFieldsFieldName, VPackValue(field.includeAllFields()));
+  if (field.features()) {
+    VPackBuilder tmp;
+    field.features()->toVelocyPack(tmp);
+    vpack.add(kFeaturesFieldName, tmp.slice());
+  }
   if (!field.nested().empty()) {
     VPackBuilder nestedFields;
     VPackArrayBuilder nestedArray(&nestedFields);
@@ -279,6 +314,7 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
 
     auto const field = slice.get(kFieldName);
     if (!field.isNone() && !_storedValues.fromVelocyPack(field, errorField)) {
+      errorField = kFieldName;
       return false;
     }
   }
@@ -289,6 +325,7 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
 
     if (!field.isNone() && ((_sortCompression = columnCompressionFromString(
                                  getStringRef(field))) == nullptr)) {
+      errorField = kFieldName;
       return false;
     }
   }
@@ -297,6 +334,7 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
     constexpr std::string_view kFieldName("primarySort");
     auto const field = slice.get(kFieldName);
     if (!field.isNone() && !_sort.fromVelocyPack(field, errorField)) {
+      errorField = kFieldName;
       return false;
     }
   }
@@ -346,7 +384,6 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
 
       if (!field.isArray()) {
         errorField = kFieldName;
-
         return false;
       }
 
@@ -489,6 +526,24 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
       return false;
     } 
   }
+
+  if (slice.hasKey(kTrackListPositionsFieldName)) {
+    auto subSlice = slice.get(kTrackListPositionsFieldName);
+    if (!subSlice.isBool()) {
+      errorField = kTrackListPositionsFieldName;
+      return false;
+    }
+    _trackListPositions = subSlice.getBool();
+  }
+  if (slice.hasKey(kIncludeAllFieldsFieldName)) {
+    auto subSlice = slice.get(kIncludeAllFieldsFieldName);
+    if (!subSlice.isBool()) {
+      errorField = kIncludeAllFieldsFieldName;
+      return false;
+    }
+    _includeAllFields = subSlice.getBool();
+  }
+
   return true;
 }
 
@@ -519,6 +574,16 @@ bool IResearchInvertedIndexMeta::json(
     }
   }
   builder.add(arangodb::StaticStrings::IndexFields, fieldsBuilder.slice());
+
+  if (_features) { 
+    VPackBuilder tmp;
+    _features->toVelocyPack(tmp);
+    builder.add(kFeaturesFieldName, tmp.slice());
+  }
+
+  builder.add(kTrackListPositionsFieldName, VPackValue(_trackListPositions));
+  builder.add(kIncludeAllFieldsFieldName, VPackValue(_includeAllFields));
+
   return true;
 }
 

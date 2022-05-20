@@ -821,11 +821,9 @@ void AnalyzerPool::toVelocyPack(VPackBuilder& builder,
   builder.add(StaticStrings::AnalyzerPropertiesField, properties());
 
   // add features
-  VPackArrayBuilder featuresScope(&builder,
-                                  StaticStrings::AnalyzerFeaturesField);
-
-  features().visit(
-      [&builder](std::string_view feature) { addStringRef(builder, feature); });
+  VPackBuilder tmp;
+  features().toVelocyPack(tmp);
+  builder.add(StaticStrings::AnalyzerFeaturesField, tmp.slice());
 }
 
 void AnalyzerPool::toVelocyPack(VPackBuilder& builder,
@@ -3030,6 +3028,12 @@ std::vector<irs::type_info::type_id> Features::fieldFeatures(
 
   return {version > LinkVersion::MIN ? irs::type<irs::Norm2>::id()
                                      : irs::type<irs::Norm>::id()};
+}
+
+void Features::toVelocyPack(VPackBuilder& builder) const {
+  VPackArrayBuilder featuresScope(&builder);
+  visit(
+      [&builder](std::string_view feature) { addStringRef(builder, feature); });
 }
 
 Result Features::fromVelocyPack(VPackSlice slice) {

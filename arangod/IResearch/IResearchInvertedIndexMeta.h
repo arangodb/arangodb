@@ -94,7 +94,7 @@ struct IResearchInvertedIndexMeta {
 
     bool isArray() const noexcept {
       TRI_ASSERT(!_attribute.empty());
-      return isArray || _attribute.back().shouldExpand;
+      return _isArray || _attribute.back().shouldExpand;
     }
 
     auto const& attribute() const noexcept {
@@ -111,6 +111,14 @@ struct IResearchInvertedIndexMeta {
 
     auto const& features() const noexcept {
       return _features;
+    }
+
+    auto trackListPositions() const noexcept {
+      return _trackListPositions;
+    }
+
+    auto includeAllFields() const noexcept {
+      return _includeAllFields;
     }
 
     std::vector<arangodb::basics::AttributeName> combinedName() const;
@@ -160,5 +168,9 @@ struct IResearchInvertedIndexMeta {
   Consistency _consistency{Consistency::kEventual};
   std::string _defaultAnalyzerName;
   std::optional<Features> _features;
+  /// @brief parse fields recursively
+  bool _includeAllFields;
+  /// @brief array processing variant
+  bool _trackListPositions;
 };
 }  // namespace arangodb::iresearch
