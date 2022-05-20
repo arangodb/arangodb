@@ -141,6 +141,9 @@ std::string Response::destinationShard() const {
   if (this->destination.size() > 6 &&
       this->destination.compare(0, 6, "shard:", 6) == 0) {
     return this->destination.substr(6);
+  } else if (this->destination.size() > 8 &&
+      this->destination.compare(0, 8, "replica:", 8) == 0) {
+    return this->destination.substr(8);
   }
   return StaticStrings::Empty;
 }
