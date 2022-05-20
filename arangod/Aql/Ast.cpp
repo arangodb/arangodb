@@ -38,6 +38,7 @@
 #include "Aql/Function.h"
 #include "Aql/Graphs.h"
 #include "Aql/ModificationOptions.h"
+#include "Aql/Quantifier.h"
 #include "Aql/QueryContext.h"
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Basics/Exceptions.h"
@@ -1094,6 +1095,25 @@ AstNode* Ast::createNodeArrayLimit(AstNode const* offset,
   }
   node->addMember(offset);
   node->addMember(count);
+
+  return node;
+}
+
+/// @brief create an AST array limit node (quantifier, filter)
+AstNode* Ast::createNodeArrayFilter(AstNode const* quantifier,
+                                    AstNode const* filter) {
+  AstNode* node = createNode(NODE_TYPE_ARRAY_FILTER);
+  node->reserve(2);
+
+  if (quantifier == nullptr) {
+    quantifier = createNodeQuantifier(Quantifier::ANY);
+  }
+
+  TRI_ASSERT(quantifier != nullptr);
+  TRI_ASSERT(filter != nullptr);
+
+  node->addMember(quantifier);
+  node->addMember(filter);
 
   return node;
 }

@@ -1465,21 +1465,37 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
     }
   }
 
-  // FILTER
-  AstNode const* filterNode = node->getMember(2);
+  // quantifier and FILTER
+  AstNode const* quantifierAndFilterNode = node->getMember(2);
+  TRI_ASSERT(quantifierAndFilterNode != nullptr);
 
-  if (filterNode->type == NODE_TYPE_NOP) {
+  AstNode const* quantifierNode = nullptr;
+  AstNode const* filterNode = nullptr;
+
+  if (quantifierAndFilterNode->type == NODE_TYPE_NOP) {
     filterNode = nullptr;
-  } else if (filterNode->isConstant()) {
-    if (filterNode->isTrue()) {
-      // filter expression is always true
-      filterNode = nullptr;
-    } else {
-      // filter expression is always false
-      if (isBoolean) {
-        return AqlValue(AqlValueHintBool(false));
+  } else {
+    TRI_ASSERT(quantifierAndFilterNode->type == NODE_TYPE_ARRAY_FILTER);
+    TRI_ASSERT(quantifierAndFilterNode->numMembers() == 2);
+
+    quantifierNode = quantifierAndFilterNode->getMember(0);
+    TRI_ASSERT(quantifierNode->isIntValue() ||
+               quantifierNode->type == NODE_TYPE_QUANTIFIER ||
+               quantifierNode->type == NODE_TYPE_RANGE);
+
+    filterNode = quantifierAndFilterNode->getMember(1);
+
+    if (filterNode->isConstant()) {
+      if (filterNode->isTrue()) {
+        // filter expression is always true
+        filterNode = nullptr;
+      } else {
+        // filter expression is always false
+        if (isBoolean) {
+          return AqlValue(AqlValueHintBool(false));
+        }
+        return AqlValue(AqlValueHintEmptyArray());
       }
-      return AqlValue(AqlValueHintEmptyArray());
     }
   }
 
@@ -1592,6 +1608,46 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
   }
 
   size_t const n = value.length();
+
+  // relevant only in case isBoolean = true
+  size_t minRequiredItems = 0;
+  size_t maxRequiredItems = 0;
+  size_t takenItems = 0;
+
+  if (quantifierNode == nullptr || quantifierNode->type == NODE_TYPE_NOP) {
+    // no quantifier. assume we need at least 1 item
+    minRequiredItems = maxRequiredItems = 1;
+  } else {
+    // note: quantifierNode can be a NODE_TYPE_QUANTIFIER (ALL|ANY|NONE),
+    // a number (e.g. 3), or a range (e.g. 1..5)
+    if (quantifierNode->type == NODE_TYPE_QUANTIFIER) {
+      // ALL|ANY|NONE
+      std::tie(minRequiredItems, maxRequiredItems) =
+          Quantifier::requiredMatches(n, quantifierNode);
+    } else if (quantifierNode->type == NODE_TYPE_RANGE) {
+      // range
+      TRI_ASSERT(quantifierNode->numMembers() == 2);
+      TRI_ASSERT(quantifierNode->getMember(0)->isIntValue());
+
+      minRequiredItems =
+          static_cast<size_t>(quantifierNode->getMember(0)->getIntValue());
+      TRI_ASSERT(quantifierNode->getMember(1)->isIntValue());
+      maxRequiredItems =
+          static_cast<size_t>(quantifierNode->getMember(1)->getIntValue());
+    } else if (quantifierNode->isIntValue()) {
+      // exact value
+      minRequiredItems = maxRequiredItems =
+          static_cast<size_t>(quantifierNode->getIntValue());
+    } else {
+      // quantifier type was already validated before.
+      TRI_ASSERT(false);
+    }
+  }
+
+  LOG_DEVEL << "MIN: " << minRequiredItems << ", MAX: " << maxRequiredItems;
+
+  TRI_ASSERT(minRequiredItems <= maxRequiredItems);
+
   for (size_t i = 0; i < n; ++i) {
     bool localMustDestroy;
     AqlValue item = value.at(i, localMustDestroy, false);
@@ -1623,16 +1679,16 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
       }
 
       if (takeItem) {
-        if (isBoolean) {
-          return AqlValue(AqlValueHintBool(true));
-        }
+        ++takenItems;
 
-        AqlValue sub = executeSimpleExpression(ctx, projectionNode,
-                                               localMustDestroy, false);
-        sub.toVelocyPack(&vopts, builder, /*resolveExternals*/ false,
-                         /*allowUnindexed*/ false);
-        if (localMustDestroy) {
-          sub.destroy();
+        if (!isBoolean) {
+          AqlValue sub = executeSimpleExpression(ctx, projectionNode,
+                                                 localMustDestroy, false);
+          sub.toVelocyPack(&vopts, builder, /*resolveExternals*/ false,
+                           /*allowUnindexed*/ false);
+          if (localMustDestroy) {
+            sub.destroy();
+          }
         }
       }
       ctx.clearVariable(variable);
@@ -1652,7 +1708,8 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
   }
 
   if (isBoolean) {
-    return AqlValue(AqlValueHintBool(false));
+    return AqlValue(AqlValueHintBool(takenItems >= minRequiredItems &&
+                                     takenItems <= maxRequiredItems));
   }
 
   builder.close();

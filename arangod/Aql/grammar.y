@@ -1867,7 +1867,45 @@ optional_array_filter:
       $$ = nullptr;
     }
   | T_FILTER expression {
-      $$ = $2;
+      $$ = parser->ast()->createNodeArrayFilter(nullptr, $2);
+    }
+  | quantifier T_FILTER expression {
+      // ALL|ANY|NONE filter-condition
+      $$ = parser->ast()->createNodeArrayFilter($1, $3);
+    }
+  | expression T_FILTER expression {
+      // 1 filter-condition
+      // 2..5 filter-condition
+      auto isValidNumber = [](AstNode const* node, int64_t& number) -> bool {
+        if (!node->isNumericValue() || !node->isIntValue()) {
+          return false;
+        }
+        number = node->getIntValue();
+        return (number >= 0);
+      };
+
+      bool error = false;
+      if ($1->type == NODE_TYPE_RANGE) {
+        TRI_ASSERT($1->numMembers() == 2);
+        int64_t number1, number2;
+        if (!isValidNumber($1->getMember(0), number1) || !isValidNumber($1->getMember(1), number2)) {
+          error = true;
+        } else {
+          if (number1 > number2) {
+            error = true;
+          }
+        }
+      } else {
+        int64_t number;
+        if (!isValidNumber($1, number)) {
+          error = true;
+        }
+      }
+      
+      if (error) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected quantifier value found for array filtering operation. expecting either a quantifer (ALL|ANY|NONE), a number or a range of numbers", yylloc.first_line, yylloc.first_column);
+      }
+      $$ = parser->ast()->createNodeArrayFilter($1, $3);
     }
   ;
 
@@ -2148,6 +2186,10 @@ reference:
       auto variableNode = iterator->getMember(0);
       TRI_ASSERT(variableNode->type == NODE_TYPE_VARIABLE);
       auto variable = static_cast<Variable const*>(variableNode->getData());
+
+      if ($5 != nullptr) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected quantifier value found for array expansion operation.", yylloc.first_line, yylloc.first_column);
+      }
 
       if ($1->type == NODE_TYPE_EXPANSION) {
         auto expand = parser->ast()->createNodeExpansion($3, iterator, parser->ast()->createNodeReference(variable->name), $5, $6, $7);
