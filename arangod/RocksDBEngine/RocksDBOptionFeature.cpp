@@ -225,10 +225,12 @@ void RocksDBOptionFeature::collectOptions(
                      "regular data directory",
                      new StringParameter(&_walDirectory));
 
-  options->addOption("--rocksdb.compression-type",
-                     "compression algorithm to use within RocksDB",
-                     new DiscreteValuesParameter<StringParameter>(
-                         &_compressionType, ::compressionTypes));
+  options
+      ->addOption("--rocksdb.compression-type",
+                  "compression algorithm to use within RocksDB",
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_compressionType, ::compressionTypes))
+      .setIntroducedIn(31000);
 
   options
       ->addOption("--rocksdb.target-file-size-base",
