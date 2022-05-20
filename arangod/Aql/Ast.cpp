@@ -1106,10 +1106,9 @@ AstNode* Ast::createNodeArrayFilter(AstNode const* quantifier,
   node->reserve(2);
 
   if (quantifier == nullptr) {
-    quantifier = createNodeQuantifier(Quantifier::ANY);
+    quantifier = createNodeNop();
   }
 
-  TRI_ASSERT(quantifier != nullptr);
   TRI_ASSERT(filter != nullptr);
 
   node->addMember(quantifier);

@@ -1905,6 +1905,7 @@ optional_array_filter:
       if (error) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected quantifier value found for array filtering operation. expecting either a quantifer (ALL|ANY|NONE), a number or a range of numbers", yylloc.first_line, yylloc.first_column);
       }
+
       $$ = parser->ast()->createNodeArrayFilter($1, $3);
     }
   ;
@@ -2188,7 +2189,13 @@ reference:
       auto variable = static_cast<Variable const*>(variableNode->getData());
 
       if ($5 != nullptr) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected quantifier value found for array expansion operation.", yylloc.first_line, yylloc.first_column);
+        // array filter members are [quantifier, filter]
+        // quantifier is optional.
+        TRI_ASSERT($5->type == NODE_TYPE_ARRAY_FILTER);
+        TRI_ASSERT($5->numMembers() == 2);
+        if ($5->getMember(0) != nullptr && $5->getMember(0)->type != NODE_TYPE_NOP) {
+          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected quantifier value found for array expansion operation.", yylloc.first_line, yylloc.first_column);
+        }
       }
 
       if ($1->type == NODE_TYPE_EXPANSION) {

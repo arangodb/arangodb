@@ -55,6 +55,8 @@
 
 #include <v8.h>
 
+#include <limits>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
@@ -1467,33 +1469,32 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
 
   // quantifier and FILTER
   AstNode const* quantifierAndFilterNode = node->getMember(2);
-  TRI_ASSERT(quantifierAndFilterNode != nullptr);
 
   AstNode const* quantifierNode = nullptr;
   AstNode const* filterNode = nullptr;
 
-  if (quantifierAndFilterNode->type == NODE_TYPE_NOP) {
+  if (quantifierAndFilterNode == nullptr ||
+      quantifierAndFilterNode->type == NODE_TYPE_NOP) {
     filterNode = nullptr;
   } else {
     TRI_ASSERT(quantifierAndFilterNode->type == NODE_TYPE_ARRAY_FILTER);
     TRI_ASSERT(quantifierAndFilterNode->numMembers() == 2);
 
     quantifierNode = quantifierAndFilterNode->getMember(0);
-    TRI_ASSERT(quantifierNode->isIntValue() ||
+    TRI_ASSERT(quantifierNode != nullptr);
+    TRI_ASSERT(quantifierNode->type == NODE_TYPE_NOP ||
+               quantifierNode->isIntValue() ||
                quantifierNode->type == NODE_TYPE_QUANTIFIER ||
                quantifierNode->type == NODE_TYPE_RANGE);
 
     filterNode = quantifierAndFilterNode->getMember(1);
 
-    if (filterNode->isConstant()) {
+    if (!isBoolean && filterNode->isConstant()) {
       if (filterNode->isTrue()) {
         // filter expression is always true
         filterNode = nullptr;
       } else {
         // filter expression is always false
-        if (isBoolean) {
-          return AqlValue(AqlValueHintBool(false));
-        }
         return AqlValue(AqlValueHintEmptyArray());
       }
     }
@@ -1616,7 +1617,8 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
 
   if (quantifierNode == nullptr || quantifierNode->type == NODE_TYPE_NOP) {
     // no quantifier. assume we need at least 1 item
-    minRequiredItems = maxRequiredItems = 1;
+    minRequiredItems = 1;
+    maxRequiredItems = std::numeric_limits<decltype(maxRequiredItems)>::max();
   } else {
     // note: quantifierNode can be a NODE_TYPE_QUANTIFIER (ALL|ANY|NONE),
     // a number (e.g. 3), or a range (e.g. 1..5)
@@ -1643,8 +1645,6 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
       TRI_ASSERT(false);
     }
   }
-
-  LOG_DEVEL << "MIN: " << minRequiredItems << ", MAX: " << maxRequiredItems;
 
   TRI_ASSERT(minRequiredItems <= maxRequiredItems);
 
