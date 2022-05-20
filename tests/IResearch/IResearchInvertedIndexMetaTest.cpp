@@ -191,7 +191,11 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
         }
     ],
     "consistency": "immediate",
-    "primarySort": [{ "field" : "dummy", "direction": "desc" }],
+    "primarySort": {
+       "fields":[{ "field" : "dummy", "direction": "desc" }],
+       "compression": "none",
+       "locale": "myLocale"
+    },
     "version":0,
     "storedValues": [{ "fields": ["dummy"], "compression": "none"}],
     "analyzer": "test_text",
@@ -201,13 +205,6 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
     "analyzerDefinitions":[{"name":"test_text", "type":"identity", "properties":{}}]
   })");
 
-  /*
-      "primarySort": {
-       "fields":[{ "field" : "dummy", "direction": "desc" }],
-       "compression": "none",
-       "locale": "myLocale"
-    },
-  */
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
   std::string errorString;
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,

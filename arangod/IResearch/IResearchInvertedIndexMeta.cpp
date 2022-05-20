@@ -46,6 +46,7 @@ constexpr std::string_view kNameFieldName("name");
 constexpr std::string_view kAnalyzerFieldName("analyzer");
 constexpr std::string_view kNestedFieldsFieldName("nested");
 constexpr std::string_view kFeaturesFieldName("features");
+constexpr std::string_view kExpressionFieldName("expression");
 
 std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
     VPackSlice slice, bool isNested,
@@ -56,14 +57,16 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
   std::optional<Features> features;
   IResearchInvertedIndexMeta::Fields nestedFields;
   AnalyzerPool::ptr analyzer;
+  std::string expression;
+  std::vector<basics::AttributeName> fieldParts;
+  bool isArray{false};
+  bool trackListPositions{false};
+  bool includeAllFields{false};
   if (slice.isString()) {
     try {
-      std::vector<basics::AttributeName> fieldParts;
+      analyzer = versionSpecificIdentity;
       TRI_ParseAttributeString(slice.stringView(), fieldParts, true);
       TRI_ASSERT(!fieldParts.empty());
-      return std::make_optional<IResearchInvertedIndexMeta::FieldRecord>(
-          std::move(fieldParts), FieldMeta::Analyzer(versionSpecificIdentity),
-          std::move(nestedFields), std::move(features));
     } catch (arangodb::basics::Exception const& err) {
       LOG_TOPIC("1d04c", ERR, arangodb::iresearch::TOPIC)
           << "Error parsing attribute: " << err.what();
@@ -73,32 +76,9 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
   } else if (slice.isObject()) {
     auto nameSlice = slice.get(kNameFieldName);
     if (nameSlice.isString()) {
-      std::vector<basics::AttributeName> fieldParts;
       try {
         TRI_ParseAttributeString(nameSlice.stringRef(), fieldParts, true);
         TRI_ASSERT(!fieldParts.empty());
-        // we only allow one expansion
-        size_t expansionCount{0};
-        std::for_each(
-            fieldParts.begin(), fieldParts.end(),
-            [&expansionCount](basics::AttributeName const& a) -> void {
-              if (a.shouldExpand) {
-                ++expansionCount;
-              }
-            });
-        if (expansionCount > 1 && !isNested) {
-          LOG_TOPIC("2646b", ERR, arangodb::iresearch::TOPIC)
-              << "Error parsing field: '" << nameSlice.stringView() << "'. "
-              << "Expansion is allowed only once.";
-          errorField = kNameFieldName;
-          return std::nullopt;
-        } else if (expansionCount > 0 && isNested) {
-          LOG_TOPIC("2646b", ERR, arangodb::iresearch::TOPIC)
-              << "Error parsing field: '" << nameSlice.stringView() << "'. "
-              << "Expansion is not allowed for nested fields.";
-          errorField = kNameFieldName;
-          return std::nullopt;
-        }
       } catch (arangodb::basics::Exception const& err) {
         LOG_TOPIC("84c20", ERR, arangodb::iresearch::TOPIC)
             << "Error parsing attribute: " << err.what();
@@ -165,6 +145,8 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
           errorField = kAnalyzerFieldName;
           return std::nullopt;
         }
+      } else {
+        analyzer = versionSpecificIdentity;
       }
       {
         if (slice.hasKey(kFeaturesFieldName)) {
@@ -202,10 +184,14 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
           }
         }
       }
-      return std::make_optional<IResearchInvertedIndexMeta::FieldRecord>(
-            std::move(fieldParts), FieldMeta::Analyzer(versionSpecificIdentity),
-            std::move(nestedFields), std::move(features));
-      
+      if (slice.hasKey(kExpressionFieldName)) {
+        auto expressionSlice = slice.get(kExpressionFieldName);
+        if (!expressionSlice.isString()) {
+          errorField = kExpressionFieldName;
+          return std::nullopt;
+        }
+        expression = expressionSlice.stringView();
+      }
     } else {
       errorField = kNameFieldName;
       return std::nullopt;
@@ -214,6 +200,31 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
     errorField = "<String or object expected>";
     return std::nullopt;
   }
+  // we only allow one expansion
+  size_t expansionCount{0};
+  std::for_each(fieldParts.begin(), fieldParts.end(),
+                [&expansionCount](basics::AttributeName const& a) -> void {
+                  if (a.shouldExpand) {
+                    ++expansionCount;
+                  }
+                });
+  if (expansionCount > 1 && !isNested) {
+    LOG_TOPIC("2646b", ERR, arangodb::iresearch::TOPIC)
+        << "Error parsing field: '" << kNameFieldName << "'. "
+        << "Expansion is allowed only once.";
+    errorField = kNameFieldName;
+    return std::nullopt;
+  } else if (expansionCount > 0 && isNested) {
+    LOG_TOPIC("2646b", ERR, arangodb::iresearch::TOPIC)
+        << "Error parsing field: '" << kNameFieldName << "'. "
+        << "Expansion is not allowed for nested fields.";
+    errorField = kNameFieldName;
+    return std::nullopt;
+  }
+  return std::make_optional<IResearchInvertedIndexMeta::FieldRecord>(
+      std::move(fieldParts), FieldMeta::Analyzer(versionSpecificIdentity),
+      std::move(nestedFields), std::move(features), std::move(expression),
+      isArray, includeAllFields, trackListPositions);
 }
 
 void toVelocyPack(IResearchInvertedIndexMeta::FieldRecord const& field, VPackBuilder& vpack) {
@@ -598,9 +609,15 @@ bool IResearchInvertedIndexMeta::matchesFieldsDefinition(
 
 IResearchInvertedIndexMeta::FieldRecord::FieldRecord(
     std::vector<basics::AttributeName> const& path, FieldMeta::Analyzer&& a,
-    std::vector<FieldRecord>&& nested, std::optional<Features>&& features)
-    : _analyzer(std::move(a)), _nested(std::move(nested)),
-      _features(std::move(features)){
+    std::vector<FieldRecord>&& nested, std::optional<Features>&& features,
+    std::string&& expression, bool isArray, bool includeAllFields, bool trackListPositions)
+    : _nested(std::move(nested)),
+      _expression(std::move(expression)),
+      _analyzer(std::move(a)),
+      _features(std::move(features)),
+      _isArray(isArray),
+      _includeAllFields(includeAllFields),
+      _trackListPositions(trackListPositions) {
   TRI_ASSERT(_attribute.empty());
   TRI_ASSERT(_expansion.empty());
   auto it = path.begin();

@@ -73,7 +73,8 @@ struct IResearchInvertedIndexMeta {
   struct FieldRecord {
     FieldRecord(std::vector<basics::AttributeName> const& path,
                 FieldMeta::Analyzer&& a, std::vector<FieldRecord>&& nested,
-                std::optional<Features>&& features);
+                std::optional<Features>&& features, std::string&& expression,
+                bool isArray, bool includeAllFields, bool trackListPositions);
 
     std::string toString() const;
 
@@ -93,7 +94,7 @@ struct IResearchInvertedIndexMeta {
 
     bool isArray() const noexcept {
       TRI_ASSERT(!_attribute.empty());
-      return _attribute.back().shouldExpand;
+      return isArray || _attribute.back().shouldExpand;
     }
 
     auto const& attribute() const noexcept {
@@ -115,16 +116,24 @@ struct IResearchInvertedIndexMeta {
     std::vector<arangodb::basics::AttributeName> combinedName() const;
 
    private:
-    std::string _expression;
-
+    /// @brief nested fields
     std::vector<FieldRecord> _nested;
     /// @brief attribute path
     std::vector<basics::AttributeName> _attribute;
     /// @brief array sub-path in case of expansion (maybe empty)
     std::vector<basics::AttributeName> _expansion;
+    /// @brief AQL expression to be computed as field value
+    std::string _expression;
     /// @brief analyzer to apply
     FieldMeta::Analyzer _analyzer;
+    /// @brief override for field features
     std::optional<Features> _features;
+    /// @brief mark that field value is expected to be an array
+    bool _isArray{false};
+    /// @brief parse fields recursively
+    bool _includeAllFields;
+    /// @brief array processing variant
+    bool _trackListPositions;
   };
 
   using Fields = std::vector<FieldRecord>;
