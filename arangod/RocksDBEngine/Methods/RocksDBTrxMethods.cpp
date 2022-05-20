@@ -212,6 +212,13 @@ Result RocksDBTrxMethods::triggerIntermediateCommit() {
 
   ++_state->statistics()._intermediateCommits;
 
+  TRI_IF_FAILURE("logAfterIntermediateCommit") {
+    LOG_DEVEL << "_numInserts = " << _numInserts
+              << " _numUpdates = " << _numUpdates
+              << " _numRemoves = " << _numRemoves
+              << " _numLogdata = " << _numLogdata;
+  }
+
   // reset counters for DML operations, but intentionally don't reset
   // the commit counter, as we need to track if we had intermediate commits
   _numInserts = 0;
