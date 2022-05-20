@@ -122,6 +122,7 @@ class instanceManager {
 
   prepareInstance () {
     try {
+      let frontendCount = 0;
       if (this.options.hasOwnProperty('server')) {
         /// external server, not managed by us.
         this.endpoint = this.options.server;
@@ -168,6 +169,7 @@ class instanceManager {
                                              fs.join(this.rootDir, instanceRole.coordinator + "_" + count),
                                              this.restKeyFile,
                                              this.agencyConfig));
+        frontendCount ++;
       }
       
       for (let count = 0;
@@ -183,6 +185,7 @@ class instanceManager {
                                              this.agencyConfig));
         this.urls.push(this.arangods[this.arangods.length -1].url);
         this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
+        frontendCount ++;
       }
 
       for (let count = 0;
@@ -199,9 +202,15 @@ class instanceManager {
                                              this.agencyConfig));
         this.urls.push(this.arangods[this.arangods.length -1].url);
         this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
+        frontendCount ++;
       }
-      this.url = this.urls[0];
-      this.endpoint = this.endpoints[0];
+      if (frontendCount > 0) {
+        this.url = this.urls[0];
+        this.endpoint = this.endpoints[0];
+      } else {
+        this.url = null;
+        this.endpoint = null;
+      };
     } catch (e) {
       print(e, e.stack);
       return false;
@@ -1005,7 +1014,11 @@ class instanceManager {
     }
 
     try {
-      arango.reconnect(this.endpoint, '_system', 'root', '');
+      if (this.endpoint !== null) {
+        arango.reconnect(this.endpoint, '_system', 'root', '');
+      } else {
+        print("Don't have a frontend instance to connect to");
+      }
     } catch (e) {
       print(RED + Date() + " error connecting '" + this.endpoint + "' Error: " + JSON.stringify(e) + RESET);
       if (e instanceof ArangoError && e.message.search('Connection reset by peer') >= 0) {
