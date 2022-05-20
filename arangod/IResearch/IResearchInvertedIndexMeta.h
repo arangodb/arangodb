@@ -67,13 +67,13 @@ struct IResearchInvertedIndexMeta {
             bool writeAnalyzerDefinition,
             TRI_vocbase_t const* defaultVocbase = nullptr) const;
 
-  //struct ViewFieldRecord {
-  //  includeAllfields: true;
-  //};
+
+  using AnalyzerDefinitions = std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer>;
 
   struct FieldRecord {
     FieldRecord(std::vector<basics::AttributeName> const& path,
-                FieldMeta::Analyzer&& a);
+                FieldMeta::Analyzer&& a, std::vector<FieldRecord>&& nested,
+                std::optional<Features>&& features);
 
     std::string toString() const;
 
@@ -104,10 +104,20 @@ struct IResearchInvertedIndexMeta {
       return _expansion;
     }
 
+    auto const& nested() const noexcept {
+      return _nested;
+    }
+
+    auto const& features() const noexcept {
+      return _features;
+    }
 
     std::vector<arangodb::basics::AttributeName> combinedName() const;
 
    private:
+    std::string _expression;
+
+    std::vector<FieldRecord> _nested;
     /// @brief attribute path
     std::vector<basics::AttributeName> _attribute;
     /// @brief array sub-path in case of expansion (maybe empty)
@@ -124,7 +134,8 @@ struct IResearchInvertedIndexMeta {
   static bool matchesFieldsDefinition(IResearchInvertedIndexMeta const& meta,
                                       VPackSlice other);
 
-  std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
+  AnalyzerDefinitions _analyzerDefinitions;
+
   Fields _fields;
   // sort condition associated with the link (primarySort)
   IResearchViewSort _sort;

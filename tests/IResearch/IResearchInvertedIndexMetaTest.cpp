@@ -148,7 +148,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
     "fields": [
        "simple",
         {
-          "expression": "MERGE(@param, {foo: 'bar'}) ",
+          "expression": "RETURN MERGE(@param, {foo: 'bar'}) ",
           "override": true,
           "name": "huypuy",
           "analyzer": "test_text",
@@ -162,9 +162,9 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
           "includeAllFields":true
         },
         {
-          "expression": "SPLIT(@param, ',') ",
+          "expression": "RETURN SPLIT(@param, ',') ",
           "override": true,
-          "name": "huypuy",
+          "name": "huypuy2",
           "analyzer": "test_text",
           "features": ["norm", "frequency"],
           "isArray":true,
@@ -173,63 +173,70 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
         {
           "name": "foo.boo.too[*].doo.aoo.noo",
           "features": ["norm"]
+        },
+        {
+          "name": "foo.boo.nest",
+          "features": ["norm"],
+          "analyzer": "test_text",
+          "nested": [
+            { "name":"A" },
+            {
+              "name":"Sub", "analyzer":"identity",
+              "nested": [
+                 { "name":"SubSub.foo",
+                   "analyzer":"test_text",
+                   "features": ["position"]}]
+            }
+          ]
         }
     ],
     "consistency": "immediate",
-    "primarySort": {
-       "fields":[{ "field" : "dummy", "direction": "desc" }],
-       "compression": "none",
-       "locale": "myLocale"
-    },
+    "primarySort": [{ "field" : "dummy", "direction": "desc" }],
     "version":0,
     "storedValues": [{ "fields": ["dummy"], "compression": "none"}],
     "analyzer": "test_text",
     "features": ["norm", "position", "frequency"],
-    "analyzersDefinitions":[{"name":"test_text", "type":"identity", "properties":{}}]
+    "includeAllFields":true,
+    "trackListPositions": false,
+    "analyzerDefinitions":[{"name":"test_text", "type":"identity", "properties":{}}]
   })");
 
+  /*
+      "primarySort": {
+       "fields":[{ "field" : "dummy", "direction": "desc" }],
+       "compression": "none",
+       "locale": "myLocale"
+    },
+  */
+  arangodb::iresearch::IResearchInvertedIndexMeta meta;
+  std::string errorString;
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
+  auto res = meta.init(server.server(), json->slice(), true, errorString,
+                       irs::string_ref(vocbase.name()));
   {
-    arangodb::iresearch::IResearchInvertedIndexMeta meta;
-    std::string errorString;
-    ASSERT_TRUE(meta.init(server.server(), json->slice(), true, errorString,
-                          irs::string_ref::NIL));
-    ASSERT_TRUE(errorString.empty());
-    ASSERT_EQ(1, meta._analyzerDefinitions.size());
-    ASSERT_EQ("test_text", (*meta._analyzerDefinitions.begin())->name());
-    ASSERT_EQ(5, meta._fields.size());
-   // Order could be arbitrary ASSERT_EQ("simple", meta._fields.front().toString());
-    ASSERT_FALSE(meta._sort.empty());
-    ASSERT_FALSE(meta._storedValues.empty());
-    ASSERT_EQ(meta._sortCompression, irs::type<irs::compression::lz4>::id());
-    ASSERT_TRUE(meta._analyzerDefinitions.empty());
-    ASSERT_FALSE(meta.dense());
-    ASSERT_EQ(meta._version,
-              static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MIN));
-    ASSERT_EQ(meta._consistency, Consistency::kImmediate);
-    ASSERT_TRUE(meta._defaultAnalyzerName.empty());
-    ASSERT_FALSE(meta._features);
+    SCOPED_TRACE(::testing::Message("Unexpected error:") << errorString);
+    ASSERT_TRUE(res);
   }
-  // with active vobcase
-  {
-    arangodb::iresearch::IResearchInvertedIndexMeta meta;
-    std::string errorString;
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                          testDBInfo(server.server()));
-    ASSERT_TRUE(meta.init(server.server(), json->slice(), true, errorString,
-                          irs::string_ref(vocbase.name())));
-    ASSERT_TRUE(errorString.empty());
-    ASSERT_EQ(0, meta._analyzerDefinitions.size());
-    ASSERT_EQ(1, meta._fields.size());
-    ASSERT_EQ("simple", meta._fields.front().toString());
-    ASSERT_TRUE(meta._sort.empty());
-    ASSERT_TRUE(meta._storedValues.empty());
-    ASSERT_EQ(meta._sortCompression, irs::type<irs::compression::lz4>::id());
-    ASSERT_TRUE(meta._analyzerDefinitions.empty());
-    ASSERT_FALSE(meta.dense());
-    ASSERT_EQ(meta._version,
-              static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX));
-    ASSERT_EQ(meta._consistency, Consistency::kImmediate);
-    ASSERT_TRUE(meta._defaultAnalyzerName.empty());
-    ASSERT_FALSE(meta._features);
-  }
+  ASSERT_TRUE(errorString.empty());
+  ASSERT_EQ(2, meta._analyzerDefinitions.size());
+  ASSERT_NE(meta._analyzerDefinitions.find(vocbase.name() + "::test_text"),
+            meta._analyzerDefinitions.end());
+  ASSERT_NE(meta._analyzerDefinitions.find("identity"),
+            meta._analyzerDefinitions.end());
+  ASSERT_EQ(6, meta._fields.size());
+  ASSERT_FALSE(meta._sort.empty());
+  ASSERT_FALSE(meta._storedValues.empty());
+  ASSERT_EQ(meta._sortCompression, irs::type<irs::compression::lz4>::id());
+  ASSERT_TRUE(meta.dense());
+  ASSERT_EQ(meta._version,
+            static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MIN));
+  ASSERT_EQ(meta._consistency, Consistency::kImmediate);
+  ASSERT_TRUE(meta._defaultAnalyzerName.empty());
+  ASSERT_FALSE(meta._features);
+
+  VPackBuilder serialized;
+  ASSERT_TRUE(meta.json(server.server(), serialized, true, &vocbase));
+
+
 }
