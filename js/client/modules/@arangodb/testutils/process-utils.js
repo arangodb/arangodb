@@ -948,6 +948,7 @@ exports.cleanupDBDirectories = cleanupDBDirectories;
 exports.cleanupLastDirectory = cleanupLastDirectory;
 exports.getCleanupDBDirectories = getCleanupDBDirectories;
 exports.cleanupDBDirectoriesRemove = cleanupDBDirectoriesRemove;
+exports.executableExt = executableExt;
 
 exports.makeAuthorizationHeaders = makeAuthorizationHeaders;
 Object.defineProperty(exports, 'ARANGOBACKUP_BIN', {get: () => ARANGOBACKUP_BIN});
