@@ -748,6 +748,9 @@ auto executeCheckReplicatedLog(DatabaseID const& dbName,
     -> arangodb::agency::envelope {
   SupervisionContext sctx;
 
+  auto const hasStatusReport = log.current && log.current->supervision &&
+                               log.current->supervision->statusReport;
+
   sctx.enableErrorReporting();
 
   auto maxActionsTraceLength = std::invoke([&log]() {
@@ -763,15 +766,22 @@ auto executeCheckReplicatedLog(DatabaseID const& dbName,
   auto actionCtx = arangodb::replication2::replicated_log::executeAction(
       std::move(log), sctx.getAction());
 
-  auto rep = sctx.getReport();
-  actionCtx.modifyOrCreate<LogCurrentSupervision>(
-      [&rep](LogCurrentSupervision& currentSupervision) {
-        if (rep.empty()) {
-          currentSupervision.statusReport.reset();
-        } else {
-          currentSupervision.statusReport = rep;
-        }
+  if (sctx.isErrorReportingEnabled()) {
+    if (sctx.getReport().empty()) {
+      if (hasStatusReport) {
+        actionCtx.modify<LogCurrentSupervision>(
+            [&](auto& supervision) { supervision.statusReport.reset(); });
+      }
+    } else {
+      actionCtx.modify<LogCurrentSupervision>([&](auto& supervision) {
+        supervision.statusReport = std::move(sctx.getReport());
       });
+    }
+  }
+
+  if (!actionCtx.hasModification()) {
+    return envelope;
+  }
 
   return buildAgencyTransaction(dbName, log.target.id, sctx, actionCtx,
                                 maxActionsTraceLength, std::move(envelope));
