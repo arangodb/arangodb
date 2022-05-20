@@ -533,7 +533,7 @@ std::string LogicalCollection::smartGraphAttribute() const {
   return StaticStrings::Empty;
 }
 
-void setSmartGraphAttribute(std::string const& value) {
+void LogicalCollection::setSmartGraphAttribute(std::string const& value) {
   // Nothing to do here.
 }
 #endif
