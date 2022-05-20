@@ -594,6 +594,13 @@ std::string mangleNumeric(std::string name) {
   return name;
 }
 
+#ifdef USE_ENTERPRISE
+std::string mangleNested(std::string name) {
+  arangodb::iresearch::kludge::mangleNested(name);
+  return name;
+}
+#endif
+
 std::string mangleString(std::string name, std::string_view suffix) {
   arangodb::iresearch::kludge::mangleAnalyzer(name);
   name += suffix;

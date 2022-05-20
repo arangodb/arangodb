@@ -134,6 +134,7 @@ void expectEqualSlices_(const velocypack::Slice& lhs,
 }  // namespace tests
 }  // namespace arangodb
 
+std::string mangleNested(std::string name);
 std::string mangleType(std::string name);
 std::string mangleAnalyzer(std::string name);
 std::string mangleBool(std::string name);
