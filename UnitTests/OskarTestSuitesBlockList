@@ -5,7 +5,6 @@ upgrade_data_3.5.*
 upgrade_data_3.6.*
 upgrade_data_3.7.*
 upgrade_data_3.8.*
-upgrade
 audit
 dfdb
 http_server
