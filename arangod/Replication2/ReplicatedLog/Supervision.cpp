@@ -747,8 +747,19 @@ auto executeCheckReplicatedLog(DatabaseID const& dbName,
                                arangodb::agency::envelope envelope) noexcept
     -> arangodb::agency::envelope {
   SupervisionContext sctx;
+  auto const now = std::chrono::system_clock::now();
+  auto const logId = log.target.id;
+  auto const hasStatusReport = log.current && log.current->supervision &&
+                               log.current->supervision->statusReport;
 
-  sctx.enableErrorReporting();
+  // check if error reporting is enabled
+  if (log.current && log.current->supervision &&
+      log.current->supervision->lastTimeModified.has_value()) {
+    auto const lastMod = *log.current->supervision->lastTimeModified;
+    if ((now - lastMod) > std::chrono::seconds{15}) {
+      sctx.enableErrorReporting();
+    }
+  }
 
   auto maxActionsTraceLength = std::invoke([&log]() {
     if (log.target.supervision.has_value()) {
@@ -760,20 +771,54 @@ auto executeCheckReplicatedLog(DatabaseID const& dbName,
 
   checkReplicatedLog(sctx, log, health);
 
+  bool const hasNoExecutableAction =
+      std::holds_alternative<EmptyAction>(sctx.getAction()) ||
+      std::holds_alternative<NoActionPossibleAction>(sctx.getAction());
+  // now check if there is status update
+  if (hasNoExecutableAction) {
+    // there is only a status update
+    if (sctx.isErrorReportingEnabled()) {
+      // now compare the new status with the old status
+      if (log.current && log.current->supervision) {
+        if (log.current->supervision->statusReport == sctx.getReport()) {
+          // report did not change, do not create a transaction
+          return envelope;
+        }
+      }
+    }
+  }
+
   auto actionCtx = arangodb::replication2::replicated_log::executeAction(
       std::move(log), sctx.getAction());
 
-  auto rep = sctx.getReport();
-  actionCtx.modifyOrCreate<LogCurrentSupervision>(
-      [&rep](LogCurrentSupervision& currentSupervision) {
-        if (rep.empty()) {
-          currentSupervision.statusReport.reset();
-        } else {
-          currentSupervision.statusReport = rep;
-        }
+  if (sctx.isErrorReportingEnabled()) {
+    if (sctx.getReport().empty()) {
+      if (hasStatusReport) {
+        actionCtx.modify<LogCurrentSupervision>(
+            [&](auto& supervision) { supervision.statusReport.reset(); });
+      }
+    } else {
+      actionCtx.modify<LogCurrentSupervision>([&](auto& supervision) {
+        supervision.statusReport = std::move(sctx.getReport());
       });
+    }
+  } else if (std::holds_alternative<ConvergedToTargetAction>(
+                 sctx.getAction())) {
+    actionCtx.modify<LogCurrentSupervision>(
+        [&](auto& supervision) { supervision.statusReport.reset(); });
+  }
 
-  return buildAgencyTransaction(dbName, log.target.id, sctx, actionCtx,
+  // update last time modified
+  if (!hasNoExecutableAction) {
+    actionCtx.modify<LogCurrentSupervision>(
+        [&](auto& supervision) { supervision.lastTimeModified = now; });
+  }
+
+  if (!actionCtx.hasModification()) {
+    return envelope;
+  }
+
+  return buildAgencyTransaction(dbName, logId, sctx, actionCtx,
                                 maxActionsTraceLength, std::move(envelope));
 }
 
