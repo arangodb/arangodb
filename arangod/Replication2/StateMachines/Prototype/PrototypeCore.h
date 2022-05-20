@@ -142,12 +142,12 @@ void PrototypeCore::applyEntries(std::unique_ptr<EntryIterator> ptr) {
  */
 template<typename EntryIterator>
 void PrototypeCore::update(std::unique_ptr<EntryIterator> ptr) {
-  auto lastAppliedIndex = ptr->range().to.saturatedDecrement();
-  while (!_ongoingStates.empty() &&
-         _ongoingStates.front().first < lastAppliedIndex) {
+  auto lastIndexToApply = ptr->range().to.saturatedDecrement();
+  while (_ongoingStates.size() > 1 &&
+         _ongoingStates[1].first <= lastIndexToApply) {
     _ongoingStates.pop_front();
   }
-  _lastAppliedIndex = std::move(lastAppliedIndex);
+  _lastAppliedIndex = lastIndexToApply;
 }
 
 }  // namespace arangodb::replication2::replicated_state::prototype
