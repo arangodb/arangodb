@@ -296,7 +296,15 @@ class instance {
     if (this.options.verbose) {
       this.args['log.level'] = 'debug';
     } else if (this.options.noStartStopLogs) {
-      this.args['log.level'] = 'all=error';
+      let logs = ['all=error'];
+      if (args['log.level'] !== undefined) {
+        if (Array.isArray(args['log.level'])) {
+          logs = logs.concat(args['log.level']);
+        } else {
+          logs.push(args['log.level']);
+        }
+      }
+      args['log.level'] = logs;
     }
     if (this.isAgent()) {
       this.args = Object.assign(this.args, {
