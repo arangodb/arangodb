@@ -183,14 +183,16 @@ class instanceManager {
         this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
       }
 
-      if (!this.options.agency) {
-        // Single server...
+      for (let count = 0;
+           !this.options.agency && count < this.options.singles;
+           count ++) {
+         // Single server...
         this.arangods.push(new inst.instance(this.options,
                                              instanceRole.single,
                                              this.addArgs,
                                              this.httpAuthOptions,
                                              this.protocol,
-                                             fs.join(this.rootDir, instanceRole.single + "_0"),
+                                             fs.join(this.rootDir, instanceRole.single + "_" + count),
                                              this.restKeyFile,
                                              this.agencyConfig));
         this.urls.push(this.arangods[this.arangods.length -1].url);
