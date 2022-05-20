@@ -99,7 +99,12 @@ auto parseConfig(Options const& opts) {
   auto config = arangodb::velocypack::Parser::fromJson(buffer.str());
 
   for (auto& v : opts.params) {
-    addConfig(*config, v);
+    try {
+      addConfig(*config, v);
+    } catch (...) {
+      std::cerr << "Failed to process config parameter " << v << std::endl;
+      throw;
+    }
   }
   return config;
 }
