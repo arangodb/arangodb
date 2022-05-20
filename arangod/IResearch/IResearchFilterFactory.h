@@ -56,11 +56,13 @@ using AnalyzerProvider =
 class FilterContext {
  public:
   FilterContext(FieldMeta::Analyzer const& analyzer, irs::score_t boost,
-                bool search, AnalyzerProvider const* provider) noexcept
-      : _analyzerProvider(provider),
-        _analyzer(analyzer),
-        _boost(boost),
-        _isSearchFilter(search) {
+                bool search, AnalyzerProvider const* provider,
+                std::string_view namePrefix) noexcept
+      : _analyzerProvider{provider},
+        _analyzer{analyzer},
+        _namePrefix{namePrefix},
+        _boost{boost},
+        _isSearchFilter{search} {
     TRI_ASSERT(_analyzer._pool);
   }
 
@@ -88,10 +90,13 @@ class FilterContext {
     return _analyzer;
   }
 
+  std::string_view namePrefix() const noexcept { return _namePrefix; }
+
  private:
   AnalyzerProvider const* _analyzerProvider;
   // need shared_ptr since pool could be deleted from the feature
   FieldMeta::Analyzer const& _analyzer;
+  std::string_view _namePrefix;  // field name prefix
   irs::score_t _boost;
   bool _isSearchFilter;  // filter is building for SEARCH clause
 };
