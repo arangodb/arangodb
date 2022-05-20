@@ -751,12 +751,28 @@ void RocksDBEngine::start() {
   _options.max_subcompactions = opts._maxSubcompactions;
   _options.use_fsync = opts._useFSync;
 
+  rocksdb::CompressionType compressionType = rocksdb::kNoCompression;
+  if (opts._compressionType == "none") {
+    compressionType = rocksdb::kNoCompression;
+  } else if (opts._compressionType == "snappy") {
+    compressionType = rocksdb::kSnappyCompression;
+  } else if (opts._compressionType == "lz4") {
+    compressionType = rocksdb::kLZ4Compression;
+  } else if (opts._compressionType == "lz4hc") {
+    compressionType = rocksdb::kLZ4HCCompression;
+  } else {
+    TRI_ASSERT(false);
+    LOG_TOPIC("74b7f", FATAL, arangodb::Logger::STARTUP)
+        << "unexpected compression type '" << opts._compressionType << "'";
+    FATAL_ERROR_EXIT();
+  }
+
   // only compress levels >= 2
   _options.compression_per_level.resize(_options.num_levels);
   for (int level = 0; level < _options.num_levels; ++level) {
     _options.compression_per_level[level] =
-        (((uint64_t)level >= opts._numUncompressedLevels)
-             ? rocksdb::kSnappyCompression
+        ((uint64_t(level) >= opts._numUncompressedLevels)
+             ? compressionType
              : rocksdb::kNoCompression);
   }
 

@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add support for LZ4 and LZ4HC compression in RocksDB.
+
 * Change default value of `--rocksdb.block-cache-shard-bits` to an automatic
   default value that allows data blocks of at least 128MiB to be stored in each
   cache shard if the block cache's strict capacity limit is used. The strict 
