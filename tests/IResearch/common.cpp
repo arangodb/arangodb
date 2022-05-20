@@ -56,7 +56,9 @@
 
 #include "index/index_reader.hpp"
 #include "search/boolean_filter.hpp"
+#include "search/column_existence_filter.hpp"
 #include "search/range_filter.hpp"
+#include "search/nested_filter.hpp"
 #include "search/scorers.hpp"
 #include "search/term_filter.hpp"
 #include "search/ngram_similarity_filter.hpp"
@@ -109,6 +111,12 @@ std::ostream& operator<<(std::ostream& os, by_term const& term) {
   return os << "Term(" << term.field() << "=" << termValue << ")";
 }
 
+std::ostream& operator<<(std::ostream& os, irs::ByNestedFilter const& filter) {
+  auto& [parent, child, _] = filter.options();
+  os << "NESTED[PARENT[" << *parent << "], CHILD[" << *child << "]]";
+  return os;
+}
+
 std::ostream& operator<<(std::ostream& os, And const& filter) {
   os << "AND[";
   for (auto it = filter.begin(); it != filter.end(); ++it) {
@@ -153,6 +161,12 @@ std::ostream& operator<<(std::ostream& os, empty const&) {
   return os;
 }
 
+std::ostream& operator<<(std::ostream& os,
+                         irs::by_column_existence const& filter) {
+  os << "EXISTS[" << filter.field() << "]";
+  return os;
+}
+
 std::ostream& operator<<(std::ostream& os, by_edit_distance const& lev) {
   os << "LEVENSHTEIN_MATCH[";
   os << lev.field() << ", '";
@@ -190,6 +204,10 @@ std::ostream& operator<<(std::ostream& os, filter const& filter) {
     return os << static_cast<by_edit_distance const&>(filter);
   } else if (type == irs::type<by_prefix>::id()) {
     return os << static_cast<by_prefix const&>(filter);
+  } else if (type == irs::type<ByNestedFilter>::id()) {
+    return os << static_cast<ByNestedFilter const&>(filter);
+  } else if (type == irs::type<irs::by_column_existence>::id()) {
+    return os << static_cast<by_column_existence const&>(filter);
   } else if (type == irs::type<empty>::id()) {
     return os << static_cast<empty const&>(filter);
   } else {
