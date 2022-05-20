@@ -72,10 +72,20 @@ struct AgencyState {
         print(*state.replicatedLog->current);
       }
     }
-    for (auto const& [name, ph] : state.health._health) {
-      os << name << " reboot id = " << ph.rebootId.value()
-         << " failed = " << !ph.notIsFailed;
+    {
+      VPackBuilder builder;
+      {
+        VPackObjectBuilder ob(&builder);
+        for (auto const& [name, ph] : state.health._health) {
+          builder.add(VPackValue(name));
+          VPackObjectBuilder ob2(&builder);
+          builder.add("rebootId", ph.rebootId.value());
+          builder.add("failed", !ph.notIsFailed);
+        }
+      }
+      os << builder.toJson() << std::endl;
     }
+
     return os;
   }
 };
