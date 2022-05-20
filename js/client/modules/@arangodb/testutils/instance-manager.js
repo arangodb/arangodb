@@ -105,7 +105,9 @@ class instanceManager {
       agencyConfig: this.agencyConfig.getStructure(),
       httpAuthOptions: this.httpAuthOptions,
       urls: this.urls,
+      url: this.url,
       endpoints: this.endpoints,
+      endpoint: this.endpoint,
       arangods: d,
       restKeyFile: this.restKeyFile,
       tcpdump: this.tcpdump,
@@ -197,9 +199,9 @@ class instanceManager {
                                              this.agencyConfig));
         this.urls.push(this.arangods[this.arangods.length -1].url);
         this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
-        this.url = this.urls[0];
-        this.endpoint = this.endpoints[0];
       }
+      this.url = this.urls[0];
+      this.endpoint = this.endpoints[0];
     } catch (e) {
       print(e, e.stack);
       return false;
