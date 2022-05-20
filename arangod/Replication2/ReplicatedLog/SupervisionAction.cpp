@@ -49,6 +49,10 @@ auto executeAction(Log log, Action& action) -> ActionContext {
         }
       });
 
+  if (!currentSupervision.has_value()) {
+    currentSupervision.emplace();
+  }
+
   auto ctx = ActionContext{std::move(log.plan), std::move(currentSupervision)};
 
   std::visit([&](auto&& action) { action.execute(ctx); }, action);
