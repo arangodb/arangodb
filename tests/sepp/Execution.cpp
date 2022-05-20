@@ -28,6 +28,8 @@
 #include <memory>
 #include <thread>
 
+#include "Inspection/VPack.h"
+
 #include "Workload.h"
 
 namespace {
@@ -122,9 +124,13 @@ Report Execution::buildReport(double runtime) {
   for (auto& thread : _threads) {
     threadReports.push_back(thread->report());
   }
-  return {.threads = std::move(threadReports),
-          .runtime = runtime,
-          .databaseSize = getFolderSize(_options.databaseDirectory)};
+
+  Report report{.threads = std::move(threadReports),
+                .runtime = runtime,
+                .databaseSize = getFolderSize(_options.databaseDirectory)};
+  velocypack::serialize(report.configBuilder, _options);
+  report.config = report.configBuilder.slice();
+  return report;
 }
 
 void Execution::waitUntilAllThreadsAre(ThreadState state) const {

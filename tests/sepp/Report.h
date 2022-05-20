@@ -24,6 +24,7 @@
 #pragma once
 
 #include <vector>
+#include "velocypack/SliceContainer.h"
 
 #include <velocypack/Builder.h>
 
@@ -48,7 +49,8 @@ auto inspect(Inspector& f, ThreadReport& o) {
 struct Report {
   std::int64_t timestamp;
   // TODO - rocksdb statistics
-  // velocypack::SliceContainer config;
+  velocypack::Slice config;
+  velocypack::Builder configBuilder;
 
   std::vector<ThreadReport> threads;
   double runtime;  // runtime in milliseconds
@@ -73,6 +75,7 @@ struct Report {
 template<class Inspector>
 auto inspect(Inspector& f, Report& o) {
   return f.object(o).fields(f.field("timestamp", o.timestamp),        //
+                            f.field("config", o.config),              //
                             f.field("threads", o.threads),            //
                             f.field("runtime", o.runtime),            //
                             f.field("databaseSize", o.databaseSize),  //
