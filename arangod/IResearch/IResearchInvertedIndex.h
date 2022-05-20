@@ -95,14 +95,14 @@ class proxy_query final : public irs::filter::prepared {
   };
 
   proxy_query(proxy_cache& cache, irs::filter::ptr&& filter,
-              const irs::index_reader& index, const irs::order::prepared& order)
+              const irs::index_reader& index, const irs::Order& order)
       : cache_(cache),
         real_filter_(std::move(filter)),
         index_(index),
         order_(order) {}
 
   irs::doc_iterator::ptr execute(
-      const irs::sub_reader& rdr, const irs::order::prepared&,
+      const irs::sub_reader& rdr, const irs::Order&, irs::ExecutionMode,
       const irs::attribute_provider* /*ctx*/) const override {
     // first try to find segment in cache.
     auto& [unused, cached] = *cache_.readers_.emplace(&rdr, nullptr).first;
@@ -124,7 +124,7 @@ class proxy_query final : public irs::filter::prepared {
   proxy_cache& cache_;
   irs::filter::ptr real_filter_;
   const irs::index_reader& index_;
-  const irs::order::prepared& order_;
+  const irs::Order& order_;
 };
 
 class proxy_filter final : public irs::filter {
@@ -134,8 +134,8 @@ class proxy_filter final : public irs::filter {
   proxy_filter() noexcept : filter(irs::type<proxy_filter>::get()) {}
 
   irs::filter::prepared::ptr prepare(
-      const irs::index_reader& rdr, const irs::order::prepared& ord,
-      irs::boost_t boost, const irs::attribute_provider* ctx) const override {
+      const irs::index_reader& rdr, const irs::Order& ord, irs::score_t boost,
+      const irs::attribute_provider* ctx) const override {
     if (!real_filter_ || !cache_) {
       TRI_ASSERT(false);
       return irs::filter::prepared::empty();

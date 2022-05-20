@@ -135,10 +135,13 @@ class IResearchViewExecutorInfos {
 
   auto scoresSort() const noexcept { return std::span{_scorersSort}; }
 
+  size_t scoreRegistersCount() const noexcept { return _scoreRegistersCount; }
+
  private:
   aql::RegisterId _documentOutReg;
   aql::RegisterId _collectionPointerReg;
   std::vector<RegisterId> _scoreRegisters;
+  size_t _scoreRegistersCount;
   iresearch::ViewSnapshotPtr const _reader;
   aql::QueryContext& _query;
   std::vector<iresearch::Scorer> const& _scorers;
@@ -251,6 +254,8 @@ class IndexReadBuffer {
     _scoresSort = s;
   }
 
+  irs::score_t* pushNoneScores(size_t count);
+
   template<typename... Args>
   void pushValue(Args&&... args);
 
@@ -260,10 +265,6 @@ class IndexReadBuffer {
   // A note on the scores: instead of saving an array of AqlValues, we could
   // save an array of floats plus a bitfield noting which entries should be
   // None.
-
-  void pushScore(float_t scoreValue);
-
-  void pushScoreNone();
 
   void reset() noexcept {
     // Should only be called after everything was consumed
@@ -476,8 +477,7 @@ class IResearchViewExecutorBase {
 
   Infos const& infos() const noexcept;
 
-  void fillScores(ReadContext const& ctx, float_t const* begin,
-                  float_t const* end);
+  void fillScores(irs::score const& score);
 
   bool writeRow(ReadContext& ctx, IndexReadBufferEntry bufferEntry,
                 LocalDocumentId const& documentId,
@@ -516,7 +516,7 @@ class IResearchViewExecutorBase {
   FilterCtx _filterCtx;  // filter context
   iresearch::ViewSnapshotPtr _reader;
   irs::filter::prepared::ptr _filter;
-  irs::order::prepared _order;
+  irs::Order _order;
   std::vector<ColumnIterator>
       _storedValuesReaders;  // current stored values readers
   bool _isInitialized;
@@ -545,8 +545,6 @@ class IResearchViewExecutor
   size_t skipAll(IResearchViewStats&);
 
   void saveCollection();
-
-  void evaluateScores(ReadContext const& ctx);
 
   void fillBuffer(ReadContext& ctx);
 
@@ -651,9 +649,6 @@ class IResearchViewMergeExecutor
 
   // reads local document id from a specified segment
   LocalDocumentId readPK(Segment const& segment);
-
-  void evaluateScores(ReadContext const& ctx, irs::score const& score,
-                      size_t numScores);
 
   void fillBuffer(ReadContext& ctx);
 

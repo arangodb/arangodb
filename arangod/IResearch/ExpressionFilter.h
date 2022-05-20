@@ -113,8 +113,8 @@ class ByExpression final : public irs::filter {
   using irs::filter::prepare;
 
   virtual irs::filter::prepared::ptr prepare(
-      irs::index_reader const& index, irs::order::prepared const& ord,
-      irs::boost_t boost, irs::attribute_provider const* ctx) const override;
+      irs::index_reader const& index, irs::Order const& ord, irs::score_t boost,
+      irs::attribute_provider const* ctx) const override;
 
   virtual size_t hash() const noexcept override;
 
