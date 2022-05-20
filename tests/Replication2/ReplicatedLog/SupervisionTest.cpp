@@ -131,6 +131,39 @@ TEST_F(LeaderElectionCampaignTest, test_runElectionCampaign_oneElectible) {
   EXPECT_EQ(electible, expectedElectible);
 }
 
+TEST_F(LeaderElectionCampaignTest,
+       test_runElectionCampaign_electible_not_in_plan) {
+  // all servers have reported, but A has the longest log. However,
+  // it is not in plan and should therefore not be elected.
+  auto localStates = LogCurrentLocalStates{
+      {"A", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{3}}}},
+      {"B", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}}},
+      {"C", {LogTerm{1}, TermIndexPair{LogTerm{1}, LogIndex{1}}}}};
+
+  auto health = ParticipantsHealth{._health{
+      {"A", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}},
+      {"B", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}},
+      {"C", ParticipantHealth{.rebootId = RebootId{0}, .notIsFailed = true}}}};
+
+  auto config = ParticipantsConfig{
+      .generation = 0,
+      .participants = {
+          {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
+          {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}}};
+
+  auto campaign = runElectionCampaign(localStates, config, health, LogTerm{1});
+
+  EXPECT_EQ(campaign.participantsAvailable, 2);
+  EXPECT_EQ(campaign.bestTermIndex, (TermIndexPair{LogTerm{1}, LogIndex{1}}));
+
+  auto expectedElectible = std::set<ParticipantId>{"B", "C"};
+  auto electible = std::set<ParticipantId>{};
+  std::copy(std::begin(campaign.electibleLeaderSet),
+            std::end(campaign.electibleLeaderSet),
+            std::inserter(electible, std::begin(electible)));
+  EXPECT_EQ(electible, expectedElectible);
+}
+
 struct SupervisionLogTest : ::testing::Test {};
 
 TEST_F(SupervisionLogTest, test_log_created) {
