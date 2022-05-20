@@ -1,6 +1,58 @@
 devel
 -----
 
+* Change default value of `--rocksdb.block-cache-shard-bits` to an automatic
+  default value that allows data blocks of at least 128MiB to be stored in each
+  cache shard if the block cache's strict capacity limit is used. The strict 
+  capacity limit for the block cache is enabled by default in 3.10, but can be 
+  turned off by setting the option `--rocksdb.enforce-block-cache-size-limit`
+  to `false`. Also log a startup warning if the resulting cache shard size 
+  would be smaller than is potentially safe when the strict capacity limit is
+  set. 
+  Enforcing the block cache's capacity limit has the consequence that data
+  reads by RocksDB must fit into the block cache or the read operation will
+  fail with an "Incomplete" error.
+
+* The API `/_admin/status` now returns a progress attribute that shows the 
+  server's current state (starting, stopping, etc.), with details about which 
+  feature is currently started, stopped etc. During recovery, the current WAL 
+  recovery sequence number is also reported in a sub-attribute of the 
+  `progress` attribute. Clients can query this attribute to track the 
+  progress of the WAL recovery.
+  The additional progress attribute returned by `/_admin/status` is most
+  useful when using the `--server.early-connections true` setting. With that
+  setting, the server will respond to incoming requests to a limited set of
+  APIs already during server startup. When the setting is not used, the REST
+  interface will be opened relatively late during the startup sequence, so
+  that the progress attribute will likely not be very useful anymore.
+
+* Optionally start up HTTP interface of servers earlier, so that ping probes 
+  from tools can already be responded to when the server is not fully started.
+  By default, the HTTP interface is opened at the same point during the startup
+  sequence as before, but it can optionally be opened earlier by setting the 
+  new startup option `--server.early-connections` to `true`. This will 
+  open the HTTP interface early in the startup, so that the server can respond
+  to a limited set of REST APIs even during recovery. This can be useful 
+  because the recovery procedure can take time proportional to the amount of 
+  data to recover.
+  When the `--server.early-connections` option is set to `true`, the
+  server will respond to requests to the following APIs during the startup
+  already:
+  - `/_api/version`
+  - `/_admin/version`
+  - `/_admin/status`
+  All other APIs will be responded to with an HTTP response code 503, so that 
+  callers can see that the server is not fully ready.
+  If authentication is used, then only JWT authentication can be used during
+  the early startup phase. Incoming requests relying on other authentication
+  mechanisms that require access to the database data will also be responded to
+  with HTTP 503 errors, even if correct credentials are used.
+
+* Fix behavior when accessing a view instead of a collection by name in a REST
+  document operation. Now return a proper error.
+
+* Upgraded bundled version of RocksDB to 7.2.
+
 * Fix documentation of collection's `cacheEnabled` property default.
 
 * Added `[?]` array operator to AQL, which works as follows:
