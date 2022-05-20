@@ -33,12 +33,7 @@
 #include <utility>
 
 #include "Basics/system-compiler.h"
-
-#ifndef TRI_ASSERT
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "Basics/CrashHandler.h"
-#endif
-#endif
 
 /// @brief macro TRI_IF_FAILURE
 /// this macro can be used in maintainer mode to make the server fail at
@@ -241,6 +236,10 @@ struct NoOpStream {
   }
 };
 
+struct AssertionNoOpLogger {
+  void operator&(NoOpStream const& stream) const {}
+};
+
 struct AssertionLogger {
   [[noreturn]] void operator&(std::ostringstream const& stream) const {
     std::string message = stream.str();
@@ -316,7 +315,7 @@ struct AssertionConditionalLogger {
 #define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/          \
   (true) ? ((false) ? (void)(expr) : (void)nullptr)   \
          : ::arangodb::debug::AssertionNoOpLogger{} & \
-               :: : arangodb::debug::NoOpStream {}
+               ::arangodb::debug::NoOpStream {}
 
 #endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #endif  // #ifndef TRI_ASSERT
