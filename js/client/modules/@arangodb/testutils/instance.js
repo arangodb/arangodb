@@ -297,14 +297,14 @@ class instance {
       this.args['log.level'] = 'debug';
     } else if (this.options.noStartStopLogs) {
       let logs = ['all=error'];
-      if (args['log.level'] !== undefined) {
-        if (Array.isArray(args['log.level'])) {
-          logs = logs.concat(args['log.level']);
+      if (this.args['log.level'] !== undefined) {
+        if (Array.isArray(this.args['log.level'])) {
+          logs = logs.concat(this.args['log.level']);
         } else {
-          logs.push(args['log.level']);
+          logs.push(this.args['log.level']);
         }
       }
-      args['log.level'] = logs;
+      this.args['log.level'] = logs;
     }
     if (this.isAgent()) {
       this.args = Object.assign(this.args, {
