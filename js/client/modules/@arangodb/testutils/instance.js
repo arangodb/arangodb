@@ -279,13 +279,13 @@ class instance {
       this.args['foxx.queues'] = false;
     }
 
-    if (this.protocol === 'ssl') {
+    if (this.protocol === 'ssl' && !this.args.hasOwnProperty('ssl.keyfile')) {
       this.args['ssl.keyfile'] = fs.join('UnitTests', 'server.pem');
     }
-    if (this.options.encryptionAtRest) {
+    if (this.options.encryptionAtRest && !this.args.hasOwnProperty('rocksdb.encryption-keyfile')) {
       this.args['rocksdb.encryption-keyfile'] = this.restKeyFile;
     }
-    if (this.restKeyFile) {
+    if (this.restKeyFile && !this.args.hasOwnProperty('server.jwt-secret')) {
       this.args['server.jwt-secret'] = this.restKeyFile;
     }
     //TODO server_secrets else if (addArgs['server.jwt-secret-folder'] && !instanceInfo.authOpts['server.jwt-secret-folder']) {
