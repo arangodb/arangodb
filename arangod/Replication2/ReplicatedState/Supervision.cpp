@@ -71,8 +71,10 @@ auto isParticipantSnapshotCompleted(ParticipantId const& participant,
                                     StateGeneration expectedGeneration,
                                     RSA::Current const& current,
                                     RSA::Plan const& plan) -> bool {
-  TRI_ASSERT(plan.participants.contains(participant));
-  TRI_ASSERT(plan.participants.at(participant).generation == expectedGeneration)
+  ADB_PROD_ASSERT(plan.participants.contains(participant))
+      << "plan did not contain participant " << participant;
+  ADB_PROD_ASSERT(plan.participants.at(participant).generation ==
+                  expectedGeneration)
       << "expected = " << expectedGeneration
       << " planned = " << plan.participants.at(participant).generation;
   if (expectedGeneration == StateGeneration{1}) {
@@ -112,9 +114,9 @@ auto isParticipantSnapshotCompleted(ParticipantId const& participant,
  */
 auto isParticipantOk(ParticipantId const& participant, RLA::Log const& log,
                      RSA::State const& state) {
-  TRI_ASSERT(state.current.has_value());
-  TRI_ASSERT(state.plan.has_value());
-  TRI_ASSERT(log.plan.has_value());
+  ADB_PROD_ASSERT(state.current.has_value());
+  ADB_PROD_ASSERT(state.plan.has_value());
+  ADB_PROD_ASSERT(log.plan.has_value());
 
   // check if the participant has an up-to-date snapshot
   auto snapshotOk =
@@ -190,7 +192,7 @@ auto checkLeaderSet(SupervisionContext& ctx, RLA::Log const& log,
 
 auto checkParticipantAdded(SupervisionContext& ctx, RLA::Log const& log,
                            RSA::State const& state) {
-  TRI_ASSERT(state.plan.has_value());
+  ADB_PROD_ASSERT(state.plan.has_value());
 
   auto const& targetParticipants = state.target.participants;
   auto const& planParticipants = state.plan->participants;
@@ -212,7 +214,7 @@ auto checkParticipantAdded(SupervisionContext& ctx, RLA::Log const& log,
 
 void checkTargetParticipantRemoved(SupervisionContext& ctx, RLA::Log const& log,
                                    RSA::State const& state) {
-  TRI_ASSERT(state.plan.has_value());
+  ADB_PROD_ASSERT(state.plan.has_value());
 
   auto const& stateTargetParticipants = state.target.participants;
   auto const& logTargetParticipants = log.target.participants;
@@ -235,7 +237,7 @@ void checkTargetParticipantRemoved(SupervisionContext& ctx, RLA::Log const& log,
 
 auto checkLogParticipantRemoved(SupervisionContext& ctx, RLA::Log const& log,
                                 RSA::State const& state) {
-  TRI_ASSERT(state.plan.has_value());
+  ADB_PROD_ASSERT(state.plan.has_value());
 
   auto const& stateTargetParticipants = state.target.participants;
   auto const& logTargetParticipants = log.target.participants;
@@ -268,7 +270,7 @@ auto checkSnapshotComplete(SupervisionContext& ctx, RLA::Log const& log,
   if (state.current and log.plan) {
     for (auto const& [participant, flags] : log.target.participants) {
       if (!flags.allowedAsLeader || !flags.allowedInQuorum) {
-        TRI_ASSERT(state.plan->participants.contains(participant))
+        ADB_PROD_ASSERT(state.plan->participants.contains(participant))
             << "if a participant is in Log/Target is has to be in State/Plan";
         auto const& plannedGeneration =
             state.plan->participants.at(participant).generation;
@@ -291,8 +293,8 @@ auto checkSnapshotComplete(SupervisionContext& ctx, RLA::Log const& log,
         // otherwise, report error
         ctx.reportStatus(RSA::StatusCode::kServerSnapshotMissing, participant);
       } else {
-        TRI_ASSERT(isParticipantSnapshotCompleted(participant, *state.current,
-                                                  *state.plan))
+        ADB_PROD_ASSERT(isParticipantSnapshotCompleted(
+            participant, *state.current, *state.plan))
             << "If a participant is allowed as leader and in a quorum, its "
                "snapshot must be available";
       }
@@ -392,13 +394,13 @@ void checkReplicatedState(SupervisionContext& ctx,
   // we're waiting for the log to appear.
   if (!log.has_value()) {
     // if state/plan is visible, log/target should be visible as well
-    TRI_ASSERT(state.plan == std::nullopt);
+    ADB_PROD_ASSERT(state.plan == std::nullopt);
     ctx.reportStatus(RSA::StatusCode::kLogNotCreated,
                      "replicated log has not yet been created");
     return;
   }
 
-  TRI_ASSERT(state.plan.has_value());
+  ADB_PROD_ASSERT(state.plan.has_value());
   checkReplicatedStateParticipants(ctx, *log, state);
   checkForwardSettings(ctx, *log, state);
   checkConverged(ctx, *log, state);

@@ -644,7 +644,7 @@ static void ClientConnection_reconnect(
   }
 
   std::string jwtSecret;
-  if (args.Length() > 5) {
+  if (args.Length() > 5 && !args[5]->IsUndefined()) {
     jwtSecret = TRI_ObjectToString(isolate, args[5]);
   }
 

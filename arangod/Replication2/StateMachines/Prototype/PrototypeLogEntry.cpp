@@ -50,11 +50,12 @@ auto PrototypeLogEntry::createDelete(std::vector<std::string> keys)
   return PrototypeLogEntry{PrototypeLogEntry::DeleteOperation{std::move(keys)}};
 }
 
-auto PrototypeLogEntry::createCompareExchange(std::string key, std::string oldValue,
+auto PrototypeLogEntry::createCompareExchange(std::string key,
+                                              std::string oldValue,
                                               std::string newValue)
     -> PrototypeLogEntry {
-  return PrototypeLogEntry{PrototypeLogEntry::CompareExchangeOperation{std::move(key),
-      std::move(oldValue), std::move(newValue)}};
+  return PrototypeLogEntry{PrototypeLogEntry::CompareExchangeOperation{
+      std::move(key), std::move(oldValue), std::move(newValue)}};
 }
 
 auto replicated_state::EntryDeserializer<
