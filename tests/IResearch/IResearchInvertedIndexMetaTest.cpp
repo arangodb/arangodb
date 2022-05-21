@@ -25,7 +25,7 @@
 #include "gtest/gtest.h"
 
 #include "IResearch/common.h"
-#include "IResearch\IResearchInvertedIndexMeta.h"
+#include "IResearch/IResearchInvertedIndexMeta.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
@@ -96,7 +96,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readDefaults) {
   auto json = VPackParser::fromJson(R"({
     "fields": ["dummy"]
   })");
-  // without active vobcase
+  // without active vocbase
   {
     arangodb::iresearch::IResearchInvertedIndexMeta meta;
     std::string errorString;
@@ -117,7 +117,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readDefaults) {
     ASSERT_TRUE(meta._defaultAnalyzerName.empty());
     ASSERT_FALSE(meta._features);
   }
-  // with active vobcase
+  // with active vocbase
   {
     arangodb::iresearch::IResearchInvertedIndexMeta meta;
     std::string errorString;
@@ -143,7 +143,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readDefaults) {
 }
 
 TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
-  // without active vobcase
+  // without active vocbase
   auto json = VPackParser::fromJson(R"({
     "fields": [
        "simple",

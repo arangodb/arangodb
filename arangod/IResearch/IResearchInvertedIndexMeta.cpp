@@ -80,7 +80,7 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
     auto nameSlice = slice.get(kNameFieldName);
     if (nameSlice.isString()) {
       try {
-        TRI_ParseAttributeString(nameSlice.stringRef(), fieldParts, true);
+        TRI_ParseAttributeString(nameSlice.stringView(), fieldParts, true);
         TRI_ASSERT(!fieldParts.empty());
       } catch (arangodb::basics::Exception const& err) {
         LOG_TOPIC("84c20", ERR, arangodb::iresearch::TOPIC)
@@ -293,7 +293,7 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
     auto consistencySlice = slice.get(kFieldName);
     if (!consistencySlice.isNone()) {
       if (consistencySlice.isString()) {
-        auto it = consistencyTypeMap.find(consistencySlice.stringRef());
+        auto it = consistencyTypeMap.find(consistencySlice.stringView());
         if (it != consistencyTypeMap.end()) {
           _consistency = it->second;
         } else {
@@ -656,7 +656,7 @@ bool IResearchInvertedIndexMeta::matchesFieldsDefinition(
       return false;
     }
 
-    auto in = name.stringRef();
+    auto in = name.stringView();
     irs::string_ref analyzerName = analyzer.stringView();
     TRI_ParseAttributeString(in, translate, true);
     for (auto const& f : meta._fields) {
