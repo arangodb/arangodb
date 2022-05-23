@@ -242,7 +242,6 @@ bool SingleServerProvider<Step>::isResponsible(Step const& step) const {
 #include "Enterprise/Graph/Providers/SingleServerProviderEE.tpp"
 #endif
 
-
 template<class Step>
 std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>>
 SingleServerProvider<Step>::buildCursor(
