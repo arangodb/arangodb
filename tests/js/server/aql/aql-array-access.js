@@ -208,6 +208,119 @@ function arrayAccessTestSuite () {
       var result = AQL_EXECUTE("RETURN @value[? FILTER CURRENT.name == 'foobar']", { value : continents }).json;
       assertEqual(expected, result);
     },
+    
+    testQuestionMarkWithFilterAndQuantifier: function() {
+      const values = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 ];
+      let result;
+  
+      // range quantifiers
+      result = AQL_EXECUTE("LET values = @values RETURN values[? 1..1 FILTER CURRENT == 3]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? 1..2 FILTER CURRENT == 3]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? 1..10 FILTER CURRENT == 3]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? 2..2 FILTER CURRENT == 3]", { values }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? 2..5 FILTER CURRENT == 3]", { values }).json;
+      assertEqual([ false ], result);
+
+      result = AQL_EXECUTE("LET values = @values RETURN values[? 1..1 FILTER CURRENT >= 3]", { values }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? 1..2 FILTER CURRENT >= 3]", { values }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? 1..10 FILTER CURRENT >= 3]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? 2..2 FILTER CURRENT >= 3]", { values }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? 2..5 FILTER CURRENT >= 3]", { values }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? 9..9 FILTER CURRENT >= 3]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? 8..9 FILTER CURRENT >= 3]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? 8..10 FILTER CURRENT >= 3]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? 9..11 FILTER CURRENT >= 3]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? 10..11 FILTER CURRENT >= 3]", { values }).json;
+      assertEqual([ false ], result);
+
+      // numeric quantifiers
+      result = AQL_EXECUTE("LET values = @values RETURN values[? 1 FILTER CURRENT == 3]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? 1 FILTER CURRENT == 4]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? 1 FILTER CURRENT != 3]", { values }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? 1 FILTER CURRENT == 12]", { values }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? 1 FILTER CURRENT == 0]", { values }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? 2 FILTER CURRENT == 1]", { values }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? 0 FILTER CURRENT == 1]", { values }).json;
+      assertEqual([ false ], result);
+     
+      // ALL|ANY|NONE
+      result = AQL_EXECUTE("LET values = @values RETURN values[? ALL FILTER CURRENT == 1]", { values }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? ALL FILTER CURRENT <= 11]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? ALL FILTER CURRENT >= 1 && CURRENT <= 11]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? ALL FILTER CURRENT >= 2 && CURRENT <= 11]", { values }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? ANY FILTER CURRENT == 1]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? ANY FILTER CURRENT == 10]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? ANY FILTER CURRENT == 12]", { values }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? ANY FILTER CURRENT >= 5]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? NONE FILTER CURRENT == 1]", { values }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? NONE FILTER CURRENT == 11]", { values }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? NONE FILTER CURRENT == 12]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? NONE FILTER CURRENT <= 11]", { values }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? NONE FILTER CURRENT >= 12]", { values }).json;
+      assertEqual([ true ], result);
+    },
 
     testStarExtractScalar : function () {
       var expected = [ "Europe", "Asia" ];
