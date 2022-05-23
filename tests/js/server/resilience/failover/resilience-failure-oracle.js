@@ -70,7 +70,7 @@ const FailureOracleSuite = function () {
     },
 
     testFailureOracleStatus: function () {
-      let coordinators = global.instanceInfo.arangods.filter(arangod => arangod.role === 'coordinator');
+      let coordinators = global.instanceManager.arangods.filter(arangod => arangod.instanceRole === 'coordinator');
       assertTrue(coordinators.length > 0);
       let coord = coordinators[0];
       const coordUrl = coord.url;
@@ -130,7 +130,7 @@ const FailureOracleSuite = function () {
     },
 
     testFailureOracleFlush: function () {
-      let coordinators = global.instanceInfo.arangods.filter(arangod => arangod.role === 'coordinator');
+      let coordinators = global.instanceManager.arangods.filter(arangod => arangod.instanceRole === 'coordinator');
       assertTrue(coordinators.length > 0);
       let coord = coordinators[0];
       const coordUrl = coord.url;
