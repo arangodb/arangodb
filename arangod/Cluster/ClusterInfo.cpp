@@ -901,6 +901,7 @@ void ClusterInfo::loadPlan() {
   decltype(_plannedCollections) newCollections;
   decltype(_shards) newShards;
   decltype(_shardServers) newShardServers;
+  decltype(_shardToProtoShard) newShardToProtoShard;
   decltype(_shardToName) newShardToName;
   decltype(_dbAnalyzersRevision) newDbAnalyzersRevision;
   decltype(_newStuffByDatabase) newStuffByDatabase;
@@ -917,6 +918,7 @@ void ClusterInfo::loadPlan() {
     newCollections = _plannedCollections;
     newShards = _shards;
     newShardServers = _shardServers;
+    newShardToProtoShard = _shardToProtoShard;
     newShardToName = _shardToName;
     newDbAnalyzersRevision = _dbAnalyzersRevision;
     newStuffByDatabase = _newStuffByDatabase;
@@ -973,6 +975,10 @@ void ClusterInfo::loadPlan() {
                 newShards.erase(shardName);
                 newShardServers.erase(shardName);
                 newShardToName.erase(shardName);
+                // if (col.value.hasKey("distributeShardsLike")) {
+                // Probably faster to try to erase anyway!
+                newShardToProtoShard.erase(shardName);
+                //}
               }
             }
           }
@@ -1325,6 +1331,9 @@ void ClusterInfo::loadPlan() {
               newShards.erase(shardId);
               newShardServers.erase(shardId);
               newShardToName.erase(shardId);
+              // We try to erase the shard ID anyway, no problem if it is
+              // not in there, because it is a prototype!
+              newShardToProtoShard.erase(shardId);
             }
             collectionsPath.pop_back();
           }
@@ -1425,6 +1434,34 @@ void ClusterInfo::loadPlan() {
         continue;
       }
     }
+    // Now that the loop is completed, we have to run through it one more
+    // time to get the prototypes of shards done:
+    for (auto const& colPair : *databaseCollections) {
+      if (colPair.first == colPair.second.collection->name()) {
+        // Every collection shows up once with its ID and once with its name.
+        // We only want it once, so we only take it when we see the ID, not
+        // the name as key:
+        continue;
+      }
+      auto const& proto = colPair.second.collection->distributeShardsLike();
+      if (!proto.empty()) {
+        auto protoCol = newShards.find(proto);
+        if (protoCol != newShards.end()) {
+          auto col = newShards.find(std::to_string(colPair.second.collection->id().id()));
+          if (col != newShards.end()) {
+            TRI_ASSERT(protoCol->second->size() == col->second->size());
+            for (size_t i = 0; i < col->second->size(); ++i) {
+              newShardToProtoShard.try_emplace(col->second->at(i), protoCol->second->at(i));
+              LOG_DEVEL << "Mapping " << col->second->at(i) << " to " << protoCol->second->at(i);
+            }
+          } else {
+            LOG_DEVEL << "Strange, could not find collection: " << colPair.second.collection->name();
+          }
+        } else {
+          LOG_DEVEL << "Strange, could not find proto collection: " << proto;
+        }
+      }
+    }
     newCollections.insert_or_assign(databaseName,
                                     std::move(databaseCollections));
   }
@@ -1518,6 +1555,8 @@ void ClusterInfo::loadPlan() {
     _plannedCollections.swap(newCollections);
     _shards.swap(newShards);
     _shardServers.swap(newShardServers);
+    _shardToProtoShard.swap(newShardToProtoShard);
+    LOG_DEVEL << "Setting new _shartToProtoShard:";
     _shardToName.swap(newShardToName);
   }
 
@@ -6657,6 +6696,13 @@ VPackBuilder ClusterInfo::toVelocyPack() {
             for (auto const& sv : s.second) {
               dump.add(VPackValue(sv));
             }
+          }
+        }
+        dump.add(VPackValue("shardToProtoShards"));
+        {
+          VPackObjectBuilder d(&dump);
+          for (auto const& s : _shardToProtoShard) {
+            dump.add(s.first, VPackValue(s.second));
           }
         }
         dump.add(VPackValue("shards"));

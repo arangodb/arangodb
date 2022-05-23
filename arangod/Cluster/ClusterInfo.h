@@ -1198,6 +1198,16 @@ class ClusterInfo final {
   containers::FlatHashMap<ShardID, std::vector<ServerID>> _shardServers;
   // planned shard ID => collection name
   containers::FlatHashMap<ShardID, CollectionID> _shardToName;
+  // planned shard ID => prototype shard ID
+  // This deserves an explanation. If collection B has `distributeShardsLike`
+  // collection A, then A and B have the same number of shards. We say that
+  // A is B's prototype in this case. We then call the k-th shard of A
+  // the prototype shard of the k-th shard of B. It is guaranteed that
+  // a shard and its prototype are always planned to be on the same
+  // dbserver, and the leaders are always the same. If a shard is a shard
+  // prototype, it does not appear in this map. Recall that there are no
+  // chains of prototypes!
+  containers::FlatHashMap<ShardID, ShardID> _shardToProtoShard;
 
   AllViews _plannedViews;     // from Plan/Views/
   AllViews _newPlannedViews;  // views that have been created during `loadPlan`
