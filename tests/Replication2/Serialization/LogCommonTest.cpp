@@ -230,9 +230,9 @@ TEST(LogCommonTest, participants_config) {
       .generation = 15, .participants = {{"A", ParticipantFlags{}}}};
 
   VPackBuilder builder;
-  participantsConfig.toVelocyPack(builder);
+  velocypack::serialize(builder, participantsConfig);
   auto slice = builder.slice();
-  auto fromVPack = ParticipantsConfig::fromVelocyPack(slice);
+  auto fromVPack = velocypack::deserialize<ParticipantsConfig>(slice);
   EXPECT_EQ(participantsConfig, fromVPack);
 }
 

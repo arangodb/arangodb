@@ -208,9 +208,9 @@ TEST(LogStatusTest, leader_status) {
   leaderStatus.lastCommitStatus = CommitFailReason::withNothingToCommit();
   leaderStatus.commitLagMS = 0.014453ms;
   VPackBuilder builder;
-  leaderStatus.toVelocyPack(builder);
+  velocypack::serialize(builder, leaderStatus);
   auto slice = builder.slice();
-  auto fromVPack = LeaderStatus::fromVelocyPack(slice);
+  auto fromVPack = velocypack::deserialize<LeaderStatus>(slice);
   EXPECT_EQ(leaderStatus, fromVPack);
 }
 
@@ -231,11 +231,11 @@ TEST(LogStatusTest, follower_status) {
     }
   })"_vpack;
   auto followerSlice = velocypack::Slice(jsonBuffer->data());
-  auto followerStatus = FollowerStatus::fromVelocyPack(followerSlice);
+  auto followerStatus = velocypack::deserialize<FollowerStatus>(followerSlice);
   EXPECT_TRUE(followerStatus.leader.has_value());
 
   VPackBuilder builder;
-  followerStatus.toVelocyPack(builder);
+  velocypack::serialize(builder, followerStatus);
   auto builderSlice = builder.slice();
   EXPECT_TRUE(VelocyPackHelper::equal(followerSlice, builderSlice, true))
       << "expected " << followerSlice.toJson() << " found "
@@ -243,7 +243,7 @@ TEST(LogStatusTest, follower_status) {
 
   builder.clear();
   followerStatus.leader = std::nullopt;
-  followerStatus.toVelocyPack(builder);
+  velocypack::serialize(builder, followerStatus);
   builderSlice = builder.slice();
   jsonBuffer = R"({
     "role": "follower",
@@ -260,7 +260,8 @@ TEST(LogStatusTest, follower_status) {
     }
   })"_vpack;
   followerSlice = velocypack::Slice(jsonBuffer->data());
-  auto followerStatusNoLeader = FollowerStatus::fromVelocyPack(followerSlice);
+  auto followerStatusNoLeader =
+      velocypack::deserialize<FollowerStatus>(followerSlice);
   EXPECT_FALSE(followerStatusNoLeader.leader.has_value());
   EXPECT_TRUE(VelocyPackHelper::equal(followerSlice, builderSlice, true))
       << "expected " << followerSlice.toJson() << " found "

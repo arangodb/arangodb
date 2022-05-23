@@ -44,6 +44,21 @@ struct TimeStampTransformer {
   }
 };
 
+template<typename Duration>
+struct DurationTransformer {
+  using SerializedType = typename Duration::rep;
+  auto toSerialized(Duration source, SerializedType& target) const
+      -> inspection::Status {
+    target = source.count();
+    return {};
+  }
+  auto fromSerialized(SerializedType source, Duration& target) const
+      -> inspection::Status {
+    target = Duration{source};
+    return {};
+  }
+};
+
 struct ErrorCodeTransformer {
   struct ErrorCodeWithMessage {
     ErrorCode::ValueType code;
