@@ -41,27 +41,35 @@ class Slice;
 
 namespace arangodb::replication2::replicated_state::agency {
 
+namespace static_strings {
+auto const String_Snapshot = velocypack::StringRef{"snapshot"};
+auto const String_Generation = velocypack::StringRef{"generation"};
+}  // namespace static_strings
+
 struct ImplementationSpec {
   std::string type;
-
-  void toVelocyPack(velocypack::Builder& builder) const;
-  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice)
-      -> ImplementationSpec;
 
   friend auto operator==(ImplementationSpec const& s,
                          ImplementationSpec const& s2) noexcept
       -> bool = default;
 };
 
+template<class Inspector>
+auto inspect(Inspector& f, ImplementationSpec& x) {
+  return f.object(x).fields(f.field("type", x.type));
+}
+
 struct Properties {
   ImplementationSpec implementation;
-
-  void toVelocyPack(velocypack::Builder& builder) const;
-  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Properties;
 
   friend auto operator==(Properties const& s, Properties const& s2) noexcept
       -> bool = default;
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, Properties& x) {
+  return f.object(x).fields(f.field("implementation", x.implementation));
+}
 
 struct Plan {
   LogId id;
@@ -71,20 +79,30 @@ struct Plan {
   struct Participant {
     StateGeneration generation;
 
-    void toVelocyPack(velocypack::Builder& builder) const;
-    [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Participant;
     friend auto operator==(Participant const& s, Participant const& s2) noexcept
         -> bool = default;
   };
 
   std::unordered_map<ParticipantId, Participant> participants;
 
-  void toVelocyPack(velocypack::Builder& builder) const;
-  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Plan;
-
   friend auto operator==(Plan const& s, Plan const& s2) noexcept
       -> bool = default;
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, Plan& x) {
+  return f.object(x).fields(
+      f.field("id", x.id),
+      f.field(static_strings::String_Generation, x.generation),
+      f.field("properties", x.properties),
+      f.field("participants", x.participants)
+          .fallback(std::unordered_map<ParticipantId, Plan::Participant>{}));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, Plan::Participant& x) {
+  return f.object(x).fields(f.field("generation", x.generation));
+}
 
 struct Current {
   struct ParticipantStatus {
@@ -93,9 +111,6 @@ struct Current {
 
     friend auto operator==(ParticipantStatus const&,
                            ParticipantStatus const&) noexcept -> bool = default;
-    void toVelocyPack(velocypack::Builder& builder) const;
-    [[nodiscard]] static auto fromVelocyPack(velocypack::Slice)
-        -> ParticipantStatus;
   };
 
   std::unordered_map<ParticipantId, ParticipantStatus> participants;
@@ -132,8 +147,6 @@ struct Current {
     std::optional<StatusReport> statusReport;
     std::optional<clock::time_point> lastTimeModified;
 
-    void toVelocyPack(velocypack::Builder& builder) const;
-    [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Supervision;
     friend auto operator==(Supervision const&, Supervision const&) noexcept
         -> bool = default;
   };
@@ -142,9 +155,31 @@ struct Current {
 
   friend auto operator==(Current const&, Current const&) noexcept
       -> bool = default;
-  void toVelocyPack(velocypack::Builder& builder) const;
-  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Current;
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, Current& x) {
+  return f.object(x).fields(
+      f.field("participants", x.participants)
+          .fallback(
+              std::unordered_map<ParticipantId, Current::ParticipantStatus>{}),
+      f.field("supervision", x.supervision));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, Current::ParticipantStatus& x) {
+  return f.object(x).fields(
+      f.field(static_strings::String_Generation, x.generation),
+      f.field(static_strings::String_Snapshot, x.snapshot));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, Current::Supervision& x) {
+  return f.object(x).fields(
+      f.field("version", x.version), f.field("statusReport", x.statusReport),
+      f.field("lastTimeModified", x.lastTimeModified)
+          .transformWith(inspection::TimeStampTransformer{}));
+}
 
 using StatusCode = Current::Supervision::StatusCode;
 using StatusMessage = Current::Supervision::StatusMessage;
@@ -168,8 +203,6 @@ struct Target {
   std::optional<ParticipantId> leader;
 
   struct Participant {
-    void toVelocyPack(velocypack::Builder& builder) const;
-    [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Participant;
     friend auto operator==(Participant const& s, Participant const& s2) noexcept
         -> bool = default;
   };
@@ -180,12 +213,24 @@ struct Target {
 
   struct Supervision {};
 
-  void toVelocyPack(velocypack::Builder& builder) const;
-  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> Target;
-
   friend auto operator==(Target const& s, Target const& s2) noexcept
       -> bool = default;
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, Target& x) {
+  return f.object(x).fields(
+      f.field("id", x.id), f.field("properties", x.properties),
+      f.field("leader", x.leader),
+      f.field("participants", x.participants)
+          .fallback(std::unordered_map<ParticipantId, Target::Participant>{}),
+      f.field("config", x.config), f.field("version", x.version));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, Target::Participant& x) {
+  return f.object(x).fields();
+}
 
 struct State {
   Target target;
@@ -194,15 +239,6 @@ struct State {
   friend auto operator==(State const& s, State const& s2) noexcept
       -> bool = default;
 };
-
-template<class Inspector>
-auto inspect(Inspector& f, Current::Supervision& x) {
-  return f.object(x).fields(
-      f.field("version", x.version),
-      f.field("lastTimeModified", x.lastTimeModified)
-          .transformWith(inspection::TimeStampTransformer{}),
-      f.field("statusReport", x.statusReport));
-}
 
 template<class Inspector>
 auto inspect(Inspector& f, Current::Supervision::StatusMessage& x) {

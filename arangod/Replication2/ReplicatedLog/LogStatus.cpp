@@ -21,17 +21,19 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Basics/debugging.h>
+#include "Inspection/VPack.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include <Basics/Exceptions.h>
 #include <Basics/StaticStrings.h>
-#include <Basics/overload.h>
 #include <Basics/application-exit.h>
+#include <Basics/debugging.h>
+#include <Basics/overload.h>
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 
 #include "LogStatus.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
@@ -359,7 +361,7 @@ void GlobalStatus::SupervisionStatus::toVelocyPack(
   connection.toVelocyPack(b);
   if (response.has_value()) {
     b.add(VPackValue("response"));
-    response->toVelocyPack(b);
+    velocypack::serialize(b, response);
   }
 }
 
@@ -369,7 +371,7 @@ auto GlobalStatus::SupervisionStatus::fromVelocyPack(
   auto const response =
       std::invoke([&s]() -> std::optional<agency::LogCurrentSupervision> {
         if (auto rs = s.get("response"); !rs.isNone()) {
-          return agency::LogCurrentSupervision::fromVelocyPack(rs);
+          return velocypack::deserialize<agency::LogCurrentSupervision>(rs);
         }
         return std::nullopt;
       });
@@ -410,13 +412,14 @@ void GlobalStatus::Specification::toVelocyPack(
     arangodb::velocypack::Builder& b) const {
   velocypack::ObjectBuilder ob(&b);
   b.add(VPackValue("plan"));
-  plan.toVelocyPack(b);
+  velocypack::serialize(b, plan);
   b.add("source", VPackValue(to_string(source)));
 }
 
 auto GlobalStatus::Specification::fromVelocyPack(arangodb::velocypack::Slice s)
     -> Specification {
-  auto plan = agency::LogPlanSpecification::fromVelocyPack(s.get("plan"));
+  auto plan =
+      velocypack::deserialize<agency::LogPlanSpecification>(s.get("plan"));
   auto source = GlobalStatus::SpecificationSource::kLocalCache;
   if (s.get("source").isEqualString("RemoteAgency")) {
     source = GlobalStatus::SpecificationSource::kRemoteAgency;

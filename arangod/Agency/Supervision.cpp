@@ -2521,7 +2521,7 @@ namespace {
 template<typename T>
 auto parseSomethingFromNode(Node const& n) -> T {
   auto builder = n.toBuilder();
-  return T::fromVelocyPack(builder.slice());
+  return velocypack::deserialize<T>(builder.slice());
 }
 
 template<typename T>
