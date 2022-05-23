@@ -191,6 +191,10 @@ struct IResearchInvertedIndexMeta {
       return _expansion;
     }
 
+    auto const& expression() const noexcept {
+      return _expression;
+    }
+
     auto const& nested() const noexcept {
       return _nested;
     }

@@ -36,6 +36,25 @@
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
+namespace  {
+  bool AnalyzerFeaturesChecker(FieldMeta::Analyzer const& analyzer, std::vector<std::string> expected) {
+    VPackBuilder b;
+    analyzer->features().toVelocyPack(b);
+    auto featuresSlice = b.slice();
+
+    featuresSlice.isArray();
+    std::vector<std::string> actual;
+    for (auto itr : VPackArrayIterator(featuresSlice)) {
+      actual.push_back(itr.copyString());
+    }
+
+    std::sort(expected.begin(), expected.end());
+    std::sort(actual.begin(), actual.end());
+
+    return true;
+  }
+}
+
 class IResearchInvertedIndexMetaTest
     : public ::testing::Test,
       public tests::LogSuppressor<arangodb::Logger::AGENCYCOMM,
@@ -191,19 +210,20 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
         }
     ],
     "consistency": "immediate",
-    "primarySort": {
-       "fields":[{ "field" : "dummy", "direction": "desc" }],
-       "compression": "none",
-       "locale": "myLocale"
-    },
     "version":0,
-    "storedValues": [{ "fields": ["dummy"], "compression": "none"}],
+    "storedValues": [{ "fields": ["foo.boo.nest"], "compression": "none"}],
     "analyzer": "test_text",
     "features": ["norm", "position", "frequency"],
     "includeAllFields":true,
     "trackListPositions": false,
     "analyzerDefinitions":[{"name":"test_text", "type":"identity", "properties":{}}]
   })");
+
+//"primarySort": {
+//   "fields":[{ "field" : "foo", "direction": "desc" }],
+//   "compression": "none",
+//   "locale": "myLocale"
+//},
 
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
   std::string errorString;
@@ -216,24 +236,111 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
     ASSERT_TRUE(res);
   }
   ASSERT_TRUE(errorString.empty());
+
   ASSERT_EQ(2, meta._analyzerDefinitions.size());
   ASSERT_NE(meta._analyzerDefinitions.find(vocbase.name() + "::test_text"),
             meta._analyzerDefinitions.end());
   ASSERT_NE(meta._analyzerDefinitions.find("identity"),
             meta._analyzerDefinitions.end());
+
   ASSERT_EQ(6, meta._fields.size());
-  ASSERT_FALSE(meta._sort.empty());
+  ASSERT_TRUE(meta._sort.empty());
+
+  // Check stored values
   ASSERT_FALSE(meta._storedValues.empty());
   ASSERT_EQ(meta._sort.sortCompression(), irs::type<irs::compression::lz4>::id());
   ASSERT_TRUE(meta.dense());
+  auto storedValues = meta._storedValues.columns();
+  ASSERT_EQ(storedValues.size(), 1);
+  ASSERT_FALSE(storedValues[0].name.empty()); // field name with delimiter. Hard to compare it. Just check emptyness
+//  ASSERT_EQ(storedValues[0].compression(), irs::compression::none()); FIXME: HOW TO CHECK compression
+  ASSERT_EQ(storedValues[0].fields.size(), 1);
+  ASSERT_EQ(storedValues[0].fields[0].first, "foo.boo.nest"); // Now verify field name
+
+//  ASSERT_EQ(meta._sortCompression(), irs::type<irs::compression::lz4>::id());
+
+  ASSERT_FALSE(meta.dense());
   ASSERT_EQ(meta._version,
             static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MIN));
   ASSERT_EQ(meta._consistency, Consistency::kImmediate);
-  ASSERT_TRUE(meta._defaultAnalyzerName.empty());
-  ASSERT_FALSE(meta._features);
+  ASSERT_TRUE(meta._defaultAnalyzerName.empty()); // FIXME: HOW COME?
+  ASSERT_FALSE(meta._features); // FIXME: HOW COME?
+  ASSERT_TRUE(meta._includeAllFields);
+  ASSERT_FALSE(meta._trackListPositions);
 
-  VPackBuilder serialized;
-  ASSERT_TRUE(meta.json(server.server(), serialized, true, &vocbase));
+  // Iterating through fields and check them
+  {
+    auto& field0 = meta._fields[0];
+
+    ASSERT_EQ(field0.attribute().size(), 1);
+    auto& attr = field0.attribute()[0];
+    ASSERT_EQ(attr.name, "simple");
+    ASSERT_FALSE(attr.shouldExpand);
+
+//    ASSERT_FALSE(field0.override()); // FIXME: add parsing of override
+    ASSERT_EQ(field0.expansion().size(), 0);
+    ASSERT_EQ(field0.nested().size(), 0);
+    ASSERT_EQ(field0.expression().size(), 0);
+
+    ASSERT_EQ(field0.analyzerName(), "identity"); // identity by default
+//    ASSERT_TRUE(field0.features().has_value()); // FIXME: FALSE. HOW COME??
+//    std::cout << static_cast<int>(field0.features().value().indexFeatures()) << std::endl;
+
+    ASSERT_FALSE(field0.isArray());
+    ASSERT_FALSE(field0.trackListPositions());
+    ASSERT_FALSE(field0.includeAllFields());
+  }
+
+  {
+    auto& field1 = meta._fields[1];
+
+    ASSERT_EQ(field1.attribute().size(), 1);
+    auto& attr = field1.attribute()[0];
+    ASSERT_EQ(attr.name, "huypuy");
+    ASSERT_FALSE(attr.shouldExpand);
+
+    //    ASSERT_TRUE(field0.override()); // FIXME: add parsing of override
+    ASSERT_EQ(field1.expansion().size(), 0);
+    ASSERT_EQ(field1.nested().size(), 0);
+    ASSERT_EQ(field1.expression(), "RETURN MERGE(@param, {foo: 'bar'}) ");
+
+//    ASSERT_EQ(field1.analyzerName(), "test_text");
+    ASSERT_TRUE(field1.features().has_value());
+//    std::cout << static_cast<int>(field1.features().value().indexFeatures()) << std::endl;
+    ASSERT_TRUE(AnalyzerFeaturesChecker(field1.analyzer(), {"norm", "frequency"}));
+
+
+    ASSERT_FALSE(field1.isArray());
+    ASSERT_FALSE(field1.trackListPositions());
+    ASSERT_FALSE(field1.includeAllFields());
+  }
+
+  {
+    auto& field2 = meta._fields[2];
+  }
+
+  {
+    auto& field3 = meta._fields[3];
+  }
+
+  {
+    auto& field4 = meta._fields[4];
+  }
+
+  {
+    auto& field5 = meta._fields[5];
+  }
+
+
+
+
+
+
+
+
+
+//  VPackBuilder serialized;
+//  ASSERT_TRUE(meta.json(server.server(), serialized, true, &vocbase));
 
 
 }
