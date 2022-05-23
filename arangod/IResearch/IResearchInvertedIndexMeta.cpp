@@ -56,7 +56,7 @@ constexpr std::string_view kFieldName = "field";
 constexpr std::string_view kFieldsFieldName = "fields";
 constexpr std::string_view kSortCompressionFieldName = "primarySortCompression";
 constexpr std::string_view kLocaleFieldName = "locale";
-constexpr std::string_view kOverrideFieldName = "locale";
+constexpr std::string_view kOverrideFieldName = "override";
 
 std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
     VPackSlice slice, bool isNested,
@@ -278,6 +278,7 @@ void toVelocyPack(IResearchInvertedIndexMeta::FieldRecord const& field, VPackBui
   vpack.add(kIsArrayFieldName, VPackValue(field.isArray()));
   vpack.add(kTrackListPositionsFieldName, VPackValue(field.trackListPositions()));
   vpack.add(kIncludeAllFieldsFieldName, VPackValue(field.includeAllFields()));
+  vpack.add(kOverrideFieldName, VPackValue(field.overrideValue()));
   if (field.features()) {
     VPackBuilder tmp;
     field.features()->toVelocyPack(tmp);
@@ -285,9 +286,11 @@ void toVelocyPack(IResearchInvertedIndexMeta::FieldRecord const& field, VPackBui
   }
   if (!field.nested().empty()) {
     VPackBuilder nestedFields;
-    VPackArrayBuilder nestedArray(&nestedFields);
-    for (auto const nested : field.nested()) {
-      toVelocyPack(nested, nestedFields);
+    {
+      VPackArrayBuilder nestedArray(&nestedFields);
+      for (auto const nested : field.nested()) {
+        toVelocyPack(nested, nestedFields);
+      }
     }
     vpack.add(kNestedFieldsFieldName, nestedFields.slice());
   }

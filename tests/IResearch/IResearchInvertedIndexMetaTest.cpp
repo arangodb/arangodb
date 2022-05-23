@@ -275,6 +275,11 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
   ASSERT_TRUE(meta._includeAllFields);
   ASSERT_FALSE(meta._trackListPositions);
 
+  VPackBuilder serialized;
+  {
+    VPackObjectBuilder obj(&serialized);
+    ASSERT_TRUE(meta.json(server.server(), serialized, true, &vocbase));
+  }
   // Iterating through fields and check them
   {
     auto& field0 = meta._fields[0];

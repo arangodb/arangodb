@@ -43,7 +43,7 @@
 #include <variant>
 
 namespace iresearch {
-class score;
+struct score;
 struct document;
 }  // namespace iresearch
 

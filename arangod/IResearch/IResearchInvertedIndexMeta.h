@@ -211,6 +211,10 @@ struct IResearchInvertedIndexMeta {
       return _includeAllFields;
     }
 
+    auto overrideValue() const noexcept {
+      return _overrideValue;
+    }
+
     std::vector<arangodb::basics::AttributeName> combinedName() const;
 
    private:
