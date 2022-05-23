@@ -46,6 +46,9 @@ class IoContext {
     ~IoThread();
     void run() override;
 
+    // allow IoThreads to start during server prepare phase
+    bool isSystem() const override { return true; }
+
    private:
     IoContext& _iocontext;
   };

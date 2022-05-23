@@ -56,10 +56,9 @@ class GeneralServer {
  public:
   void registerTask(std::shared_ptr<rest::CommTask>);
   void unregisterTask(rest::CommTask*);
-  void setEndpointList(EndpointList const* list);
-  void startListening();   /// start accepting connections
-  void stopListening();    /// stop accepting new connections
-  void stopConnections();  /// stop connections
+  void startListening(EndpointList& list);  /// start accepting connections
+  void stopListening();                     /// stop accepting new connections
+  void stopConnections();                   /// stop connections
   void stopWorking();
 
   IoContext& selectIoContext();
@@ -75,7 +74,6 @@ class GeneralServer {
 
  private:
   GeneralServerFeature& _feature;
-  EndpointList const* _endpointList;
   std::vector<IoContext> _contexts;
 
   std::recursive_mutex _tasksLock;

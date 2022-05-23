@@ -32,7 +32,7 @@ using namespace arangodb::rest;
 RestDebugHandler::RestDebugHandler(ArangodServer& server,
                                    GeneralRequest* request,
                                    GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response) {}
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestDebugHandler::execute() {
   // extract the sub-request type
