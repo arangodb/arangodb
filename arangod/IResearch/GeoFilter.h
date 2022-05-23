@@ -104,8 +104,7 @@ class GeoFilter final : public irs::filter_base<GeoFilterOptions> {
   using filter::prepare;
 
   virtual prepared::ptr prepare(
-      const irs::index_reader& rdr, const irs::order::prepared& ord,
-      irs::boost_t boost,
+      const irs::index_reader& rdr, const irs::Order& ord, irs::score_t boost,
       const irs::attribute_provider* /*ctx*/) const override;
 };  // GeoFilter
 
@@ -147,8 +146,7 @@ class GeoDistanceFilter final
   using filter::prepare;
 
   virtual prepared::ptr prepare(
-      const irs::index_reader& rdr, const irs::order::prepared& ord,
-      irs::boost_t boost,
+      const irs::index_reader& rdr, const irs::Order& ord, irs::score_t boost,
       const irs::attribute_provider* /*ctx*/) const override;
 };  // GeoDistanceFilter
 

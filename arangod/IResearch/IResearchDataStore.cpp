@@ -1503,8 +1503,8 @@ void IResearchDataStore::afterTruncate(TRI_voc_tick_t tick,
   auto const lastCommittedTick = _lastCommittedTick;
   bool recoverCommittedTick = true;
 
-  auto lastCommittedTickGuard =
-      irs::make_finally([lastCommittedTick, this, &recoverCommittedTick] {
+  auto lastCommittedTickGuard = irs::make_finally(
+      [lastCommittedTick, this, &recoverCommittedTick]() noexcept {
         if (recoverCommittedTick) {
           _lastCommittedTick = lastCommittedTick;
         }

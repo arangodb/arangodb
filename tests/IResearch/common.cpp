@@ -56,7 +56,9 @@
 
 #include "index/index_reader.hpp"
 #include "search/boolean_filter.hpp"
+#include "search/column_existence_filter.hpp"
 #include "search/range_filter.hpp"
+#include "search/nested_filter.hpp"
 #include "search/scorers.hpp"
 #include "search/term_filter.hpp"
 #include "search/ngram_similarity_filter.hpp"
@@ -109,6 +111,12 @@ std::ostream& operator<<(std::ostream& os, by_term const& term) {
   return os << "Term(" << term.field() << "=" << termValue << ")";
 }
 
+std::ostream& operator<<(std::ostream& os, irs::ByNestedFilter const& filter) {
+  auto& [parent, child, _] = filter.options();
+  os << "NESTED[PARENT[" << *parent << "], CHILD[" << *child << "]]";
+  return os;
+}
+
 std::ostream& operator<<(std::ostream& os, And const& filter) {
   os << "AND[";
   for (auto it = filter.begin(); it != filter.end(); ++it) {
@@ -153,6 +161,12 @@ std::ostream& operator<<(std::ostream& os, empty const&) {
   return os;
 }
 
+std::ostream& operator<<(std::ostream& os,
+                         irs::by_column_existence const& filter) {
+  os << "EXISTS[" << filter.field() << "]";
+  return os;
+}
+
 std::ostream& operator<<(std::ostream& os, by_edit_distance const& lev) {
   os << "LEVENSHTEIN_MATCH[";
   os << lev.field() << ", '";
@@ -190,6 +204,10 @@ std::ostream& operator<<(std::ostream& os, filter const& filter) {
     return os << static_cast<by_edit_distance const&>(filter);
   } else if (type == irs::type<by_prefix>::id()) {
     return os << static_cast<by_prefix const&>(filter);
+  } else if (type == irs::type<ByNestedFilter>::id()) {
+    return os << static_cast<ByNestedFilter const&>(filter);
+  } else if (type == irs::type<irs::by_column_existence>::id()) {
+    return os << static_cast<by_column_existence const&>(filter);
   } else if (type == irs::type<empty>::id()) {
     return os << static_cast<empty const&>(filter);
   } else {
@@ -205,7 +223,7 @@ struct BoostScorer : public irs::sort {
     return "boostscorer";
   }
 
-  struct Prepared : public irs::prepared_sort_base<irs::boost_t, void> {
+  struct Prepared : public irs::PreparedSortBase<void> {
    public:
     Prepared() = default;
 
@@ -219,11 +237,6 @@ struct BoostScorer : public irs::sort {
       return irs::IndexFeatures::NONE;
     }
 
-    virtual bool less(irs::byte_type const* lhs,
-                      irs::byte_type const* rhs) const override {
-      return traits_t::score_cast(lhs) < traits_t::score_cast(rhs);
-    }
-
     virtual irs::sort::field_collector::ptr prepare_field_collector()
         const override {
       return nullptr;
@@ -234,23 +247,18 @@ struct BoostScorer : public irs::sort {
       return nullptr;
     }
 
-    virtual irs::score_function prepare_scorer(
+    virtual irs::ScoreFunction prepare_scorer(
         irs::sub_reader const&, irs::term_reader const&, irs::byte_type const*,
-        irs::byte_type* score_buf, irs::attribute_provider const&,
-        irs::boost_t boost) const override {
+        irs::attribute_provider const&, irs::score_t boost) const override {
       struct ScoreCtx : public irs::score_ctx {
-        explicit ScoreCtx(irs::byte_type const* score_buf) noexcept
-            : score_buf(score_buf) {}
+        explicit ScoreCtx(irs::score_t boost) noexcept : boost{boost} {}
 
-        irs::byte_type const* score_buf;
-        ;
+        irs::score_t boost;
       };
 
-      irs::sort::score_cast<irs::boost_t>(score_buf) = boost;
-
-      return {std::make_unique<ScoreCtx>(score_buf),
-              [](irs::score_ctx* ctx) noexcept {
-                return static_cast<ScoreCtx*>(ctx)->score_buf;
+      return {std::make_unique<ScoreCtx>(boost),
+              [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+                *res = static_cast<ScoreCtx*>(ctx)->boost;
               }};
     }
   };  // namespace
@@ -273,7 +281,7 @@ struct CustomScorer : public irs::sort {
     return "customscorer";
   }
 
-  struct Prepared : public irs::prepared_sort_base<float_t, void> {
+  struct Prepared : public irs::PreparedSortBase<void> {
    public:
     Prepared(float_t i) : i(i) {}
 
@@ -287,11 +295,6 @@ struct CustomScorer : public irs::sort {
       return irs::IndexFeatures::NONE;
     }
 
-    virtual bool less(const irs::byte_type* lhs,
-                      const irs::byte_type* rhs) const override {
-      return traits_t::score_cast(lhs) < traits_t::score_cast(rhs);
-    }
-
     virtual irs::sort::field_collector::ptr prepare_field_collector()
         const override {
       return nullptr;
@@ -302,25 +305,20 @@ struct CustomScorer : public irs::sort {
       return nullptr;
     }
 
-    virtual irs::score_function prepare_scorer(irs::sub_reader const&,
-                                               irs::term_reader const&,
-                                               irs::byte_type const*,
-                                               irs::byte_type* score_buf,
-                                               irs::attribute_provider const&,
-                                               irs::boost_t) const override {
+    virtual irs::ScoreFunction prepare_scorer(irs::sub_reader const&,
+                                              irs::term_reader const&,
+                                              irs::byte_type const*,
+                                              irs::attribute_provider const&,
+                                              irs::score_t) const override {
       struct ScoreCtx : public irs::score_ctx {
-        ScoreCtx(float_t scoreValue, irs::byte_type* scoreBuf) noexcept
-            : scoreValue(scoreValue), scoreBuf(scoreBuf) {}
+        ScoreCtx(float_t scoreValue) noexcept : scoreValue(scoreValue) {}
 
         float_t scoreValue;
-        irs::byte_type* scoreBuf;
       };
 
-      return {std::make_unique<ScoreCtx>(this->i, score_buf),
-              [](irs::score_ctx* ctx) noexcept -> irs::byte_type const* {
-                auto& state = *static_cast<ScoreCtx const*>(ctx);
-                *reinterpret_cast<float_t*>(state.scoreBuf) = state.scoreValue;
-                return state.scoreBuf;
+      return {std::make_unique<ScoreCtx>(this->i),
+              [](irs::score_ctx* ctx, irs::score_t* res) noexcept {
+                *res = static_cast<ScoreCtx const*>(ctx)->scoreValue;
               }};
     }
 
@@ -614,6 +612,13 @@ std::string mangleNumeric(std::string name) {
   return name;
 }
 
+#ifdef USE_ENTERPRISE
+std::string mangleNested(std::string name) {
+  arangodb::iresearch::kludge::mangleNested(name);
+  return name;
+}
+#endif
+
 std::string mangleString(std::string name, std::string_view suffix) {
   arangodb::iresearch::kludge::mangleAnalyzer(name);
   name += suffix;
@@ -698,11 +703,10 @@ void assertFilterOptimized(
 
 void assertExpressionFilter(
     TRI_vocbase_t& vocbase, std::string const& queryString,
-    irs::boost_t boost /*= irs::no_boost()*/,
+    irs::score_t boost /*= irs::kNoBoost*/,
     std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const&
         expressionExtractor /*= &defaultExpressionExtractor*/,
-    std::string const& refName /*= "d"*/
-) {
+    std::string const& refName /*= "d"*/) {
   auto ctx =
       std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   auto query = arangodb::aql::Query::create(

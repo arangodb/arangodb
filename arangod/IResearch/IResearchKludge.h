@@ -35,6 +35,9 @@
 
 namespace arangodb::iresearch::kludge {
 
+#ifdef USE_ENTERPRISE
+void mangleNested(std::string& name);
+#endif
 void mangleType(std::string& name);
 void mangleAnalyzer(std::string& name);
 

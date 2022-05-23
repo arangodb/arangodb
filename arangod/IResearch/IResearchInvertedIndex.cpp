@@ -229,7 +229,7 @@ const irs::payload NoPayload;
 inline irs::doc_iterator::ptr pkColumn(irs::sub_reader const& segment) {
   auto const* reader = segment.column(DocumentPrimaryKey::PK());
 
-  return reader ? reader->iterator(false) : nullptr;
+  return reader ? reader->iterator(irs::ColumnHint::kNormal) : nullptr;
 }
 
 /// @brief  Struct represents value of a Projections[i]
@@ -246,7 +246,7 @@ struct CoveringValue {
     auto extraValuesReader = column.empty() ? rdr.sort() : rdr.column(column);
     // FIXME: this is expensive - move it to get and do lazily?
     if (ADB_LIKELY(extraValuesReader)) {
-      itr = extraValuesReader->iterator(false);
+      itr = extraValuesReader->iterator(irs::ColumnHint::kNormal);
       TRI_ASSERT(itr);
       if (ADB_LIKELY(itr)) {
         value = irs::get<irs::payload>(*itr);
@@ -518,7 +518,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       // sorting case
       root.add<irs::all>();
     }
-    _filter = root.prepare(*_reader, _order, irs::no_boost(), nullptr);
+    _filter = root.prepare(*_reader, _order, irs::kNoBoost, nullptr);
     TRI_ASSERT(_filter);
     if (ADB_UNLIKELY(!_filter)) {
       if (condition) {
@@ -535,7 +535,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
   }
 
   irs::filter::prepared::ptr _filter;
-  irs::order::prepared _order;
+  irs::Order _order;
   irs::index_reader const* _reader{0};
   IResearchInvertedIndex* _index;
   aql::Variable const* _variable;

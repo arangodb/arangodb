@@ -33,11 +33,13 @@ class parametric_description;
 namespace arangodb {
 namespace iresearch {
 
-constexpr irs::byte_type MAX_LEVENSHTEIN_DISTANCE = 4;
-constexpr irs::byte_type MAX_DAMERAU_LEVENSHTEIN_DISTANCE = 3;
+using namespace ::iresearch;
 
-const irs::parametric_description& getParametricDescription(
-    irs::byte_type max_distance, bool with_transpositions);
+constexpr byte_type MAX_LEVENSHTEIN_DISTANCE = 4;
+constexpr byte_type MAX_DAMERAU_LEVENSHTEIN_DISTANCE = 3;
+
+const parametric_description& getParametricDescription(
+    byte_type max_distance, bool with_transpositions);
 
 }  // namespace iresearch
 }  // namespace arangodb
