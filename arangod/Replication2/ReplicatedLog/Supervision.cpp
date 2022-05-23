@@ -33,11 +33,10 @@
 #include "Inspection/VPack.h"
 #include "Random/RandomGenerator.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
 #include "Replication2/ReplicatedLog/SupervisionContext.h"
-
-#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
 #include "Logger/LogMacros.h"
 
@@ -874,18 +873,19 @@ auto buildAgencyTransaction(DatabaseID const& dbName, LogId const& logId,
             [&](arangodb::agency::envelope::write_trx&& trx) {
               return std::move(trx).emplace_object(
                   planPath, [&](VPackBuilder& builder) {
-                    actx.getValue<LogPlanSpecification>().toVelocyPack(builder);
+                    velocypack::serialize(
+                        builder, actx.getValue<LogPlanSpecification>());
                   });
             })
       .cond(actx.hasModificationFor<LogCurrentSupervision>(),
             [&](arangodb::agency::envelope::write_trx&& trx) {
               return std::move(trx)
-                  .emplace_object(
-                      currentSupervisionPath,
-                      [&](VPackBuilder& builder) {
-                        actx.getValue<LogCurrentSupervision>().toVelocyPack(
-                            builder);
-                      })
+                  .emplace_object(currentSupervisionPath,
+                                  [&](VPackBuilder& builder) {
+                                    velocypack::serialize(
+                                        builder,
+                                        actx.getValue<LogCurrentSupervision>());
+                                  })
                   .inc(paths::current()->version()->str());
             })
       .precs()

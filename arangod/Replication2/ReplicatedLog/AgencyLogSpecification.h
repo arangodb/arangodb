@@ -50,13 +50,11 @@ struct LogPlanTermSpecification {
     Leader(ParticipantId participant, RebootId rebootId)
         : serverId{std::move(participant)}, rebootId{rebootId} {}
     Leader() : rebootId{RebootId{0}} {};
-    auto toVelocyPack(VPackBuilder&) const -> void;
     friend auto operator==(Leader const&, Leader const&) noexcept
         -> bool = default;
   };
   std::optional<Leader> leader;
 
-  auto toVelocyPack(VPackBuilder&) const -> void;
   LogPlanTermSpecification() = default;
 
   LogPlanTermSpecification(LogTerm term, LogConfig config,
@@ -75,10 +73,7 @@ struct LogPlanSpecification {
 
   std::optional<std::string> owner;
 
-  auto toVelocyPack(velocypack::Builder&) const -> void;
-  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice)
-      -> LogPlanSpecification;
-  LogPlanSpecification();
+  LogPlanSpecification() = default;
 
   LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term);
   LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term,
@@ -93,7 +88,6 @@ struct LogCurrentLocalState {
   LogTerm term{};
   TermIndexPair spearhead{};
 
-  auto toVelocyPack(VPackBuilder&) const -> void;
   LogCurrentLocalState() = default;
   LogCurrentLocalState(LogTerm, TermIndexPair) noexcept;
   friend auto operator==(LogCurrentLocalState const& s,
@@ -120,8 +114,6 @@ struct LogCurrentSupervisionElection {
   std::unordered_map<ParticipantId, ErrorCode> detail;
   std::vector<ParticipantId> electibleLeaderSet;
 
-  auto toVelocyPack(VPackBuilder&) const -> void;
-
   friend auto operator==(LogCurrentSupervisionElection const&,
                          LogCurrentSupervisionElection const&) noexcept -> bool;
   friend auto operator!=(LogCurrentSupervisionElection const& left,
@@ -138,8 +130,6 @@ auto operator==(LogCurrentSupervisionElection const&,
 
 auto to_string(LogCurrentSupervisionElection::ErrorCode) noexcept
     -> std::string_view;
-auto toVelocyPack(LogCurrentSupervisionElection::ErrorCode, VPackBuilder&)
-    -> void;
 
 struct LogCurrentSupervision {
   using clock = std::chrono::system_clock;
@@ -239,10 +229,6 @@ struct LogCurrentSupervision {
   std::optional<StatusReport> statusReport;
   std::optional<clock::time_point> lastTimeModified;
 
-  auto toVelocyPack(VPackBuilder&) const -> void;
-  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice)
-      -> LogCurrentSupervision;
-
   LogCurrentSupervision() = default;
   friend auto operator==(LogCurrentSupervision const& s,
                          LogCurrentSupervision const& s2) noexcept
@@ -262,8 +248,6 @@ struct LogCurrent {
     // will be set after 5s if leader is unable to establish leadership
     std::optional<replicated_log::CommitFailReason> commitStatus;
 
-    auto toVelocyPack(VPackBuilder&) const -> void;
-    [[nodiscard]] static auto fromVelocyPack(VPackSlice) -> Leader;
     friend auto operator==(Leader const& s, Leader const& s2) noexcept
         -> bool = default;
   };
@@ -280,8 +264,6 @@ struct LogCurrent {
   };
   std::vector<ActionDummy> actions;
 
-  auto toVelocyPack(VPackBuilder&) const -> void;
-  [[nodiscard]] static auto fromVelocyPack(VPackSlice) -> LogCurrent;
   LogCurrent() = default;
   friend auto operator==(LogCurrent const& s, LogCurrent const& s2) noexcept
       -> bool = default;
@@ -302,9 +284,6 @@ struct LogTarget {
   };
 
   std::optional<Supervision> supervision;
-
-  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> LogTarget;
-  void toVelocyPack(velocypack::Builder&) const;
 
   LogTarget() = default;
 

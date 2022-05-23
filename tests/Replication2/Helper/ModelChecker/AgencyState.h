@@ -50,7 +50,7 @@ struct AgencyState {
     // return os;
     auto const print = [&](auto const& x) {
       VPackBuilder builder;
-      x.toVelocyPack(builder);
+      velocypack::serialize(builder, x);
       os << builder.toJson() << std::endl;
     };
 
