@@ -771,7 +771,7 @@ class IResearchInvertedIndexMergeIterator final
 
   class MinHeapContext {
    public:
-    MinHeapContext(IResearchViewSort const& sort, size_t sortBuckets,
+    MinHeapContext(IResearchInvertedIndexSort const& sort, size_t sortBuckets,
                    std::vector<Segment>& segments) noexcept
         : _less(sort, sortBuckets), _segments(&segments) {}
 
@@ -798,7 +798,7 @@ class IResearchInvertedIndexMergeIterator final
                    refFromSlice((*_segments)[lhs].sortValue));
     }
 
-    VPackComparer _less;
+    VPackComparer<IResearchInvertedIndexSort> _less;
     std::vector<Segment>* _segments;
   };
 
@@ -860,9 +860,9 @@ IResearchInvertedIndex::sortedFields(IResearchInvertedIndexMeta const& meta) {
 Result IResearchInvertedIndex::init(
     bool& pathExists,
     IResearchDataStore::InitCallback const& initCallback /*= {}*/) {
-  TRI_ASSERT(_meta._sortCompression);
+  TRI_ASSERT(_meta._sort.sortCompression());
   auto r = initDataStore(pathExists, initCallback, _meta._version, isSorted(),
-                         _meta._storedValues.columns(), _meta._sortCompression);
+                         _meta._storedValues.columns(), _meta._sort.sortCompression());
   if (r.ok()) {
     _comparer.reset(_meta._sort);
   }

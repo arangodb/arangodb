@@ -24,6 +24,7 @@
 
 #include "VelocyPackHelper.h"
 
+#include "Basics/StringUtils.h"
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 
@@ -147,6 +148,39 @@ bool mergeSliceSkipOffsets(velocypack::Builder& builder,
   }
 
   return true;
+}
+
+bool parseDirectionBool(arangodb::velocypack::Slice slice, bool& direction) {
+  if (slice.isBool()) {
+    // true - asc
+    // false - desc
+    direction = slice.getBool();
+    return true;
+  }
+
+  // unsupported value type
+  return false;
+}
+
+bool parseDirectionString(arangodb::velocypack::Slice slice, bool& direction) {
+  if (slice.isString()) {
+    std::string value = slice.copyString();
+    arangodb::basics::StringUtils::tolowerInPlace(value);
+
+    if (value == "asc") {
+      direction = true;
+      return true;
+    }
+
+    if (value == "desc") {
+      direction = false;
+      return true;
+    }
+
+    return false;
+  }
+  // unsupported value type
+  return false;
 }
 
 // can't make it noexcept since VPackSlice::getNthOffset is not noexcept

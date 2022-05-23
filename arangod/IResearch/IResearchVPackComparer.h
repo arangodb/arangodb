@@ -31,17 +31,18 @@
 namespace arangodb {
 namespace iresearch {
 
+template<typename Sort>
 class VPackComparer final : public irs::comparer {
  public:
   VPackComparer();
 
-  explicit VPackComparer(IResearchViewSort const& sort) noexcept
+  explicit VPackComparer(Sort const& sort) noexcept
       : _sort(&sort), _size(sort.size()) {}
 
-  VPackComparer(IResearchViewSort const& sort, size_t size) noexcept
+  VPackComparer(Sort const& sort, size_t size) noexcept
       : _sort(&sort), _size(std::min(sort.size(), size)) {}
 
-  void reset(IResearchViewSort const& sort) noexcept {
+  void reset(Sort const& sort) noexcept {
     _sort = &sort;
     _size = sort.size();
   }
@@ -53,7 +54,7 @@ class VPackComparer final : public irs::comparer {
                     irs::bytes_ref const& rhs) const override;
 
  private:
-  IResearchViewSort const* _sort;
+  Sort const* _sort;
   size_t _size;  // number of buckets to compare
 };               // VPackComparer
 

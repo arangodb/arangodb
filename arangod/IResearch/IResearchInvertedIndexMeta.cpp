@@ -50,6 +50,12 @@ constexpr std::string_view kExpressionFieldName("expression");
 constexpr std::string_view kIsArrayFieldName("isArray");
 constexpr std::string_view kIncludeAllFieldsFieldName("includeAllFields");
 constexpr std::string_view kTrackListPositionsFieldName("trackListPositions");
+constexpr std::string_view kDirectionFieldName = "direction";
+constexpr std::string_view kAscFieldName = "asc";
+constexpr std::string_view kFieldName = "field";
+constexpr std::string_view kFieldsFieldName = "fields";
+constexpr std::string_view kSortCompressionFieldName = "primarySortCompression";
+constexpr std::string_view kLocaleFieldName = "locale";
 
 std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
     VPackSlice slice, bool isNested,
@@ -319,17 +325,6 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
     }
   }
   {
-    // optional sort compression
-    constexpr std::string_view kFieldName("primarySortCompression");
-    auto const field = slice.get(kFieldName);
-
-    if (!field.isNone() && ((_sortCompression = columnCompressionFromString(
-                                 getStringRef(field))) == nullptr)) {
-      errorField = kFieldName;
-      return false;
-    }
-  }
-  {
     // optional primarySort
     constexpr std::string_view kFieldName("primarySort");
     auto const field = slice.get(kFieldName);
@@ -504,7 +499,6 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
     }
   }
   // end of the copied part
-  constexpr std::string_view kFieldsFieldName("fields");
   // for index there is no recursive struct and fields array is mandatory
   auto field = slice.get(kFieldsFieldName);
   if (!field.isArray() || field.isEmptyArray()) {
@@ -594,10 +588,6 @@ bool IResearchInvertedIndexMeta::operator==(
   }
 
   if (_storedValues != other._storedValues) {
-    return false;
-  }
-
-  if (_sortCompression != other._sortCompression) {
     return false;
   }
 
@@ -756,5 +746,138 @@ bool IResearchInvertedIndexMeta::FieldRecord::isIdentical(
     }
   }
   return false;
+}
+
+size_t IResearchInvertedIndexSort::memory() const noexcept {
+  size_t size = sizeof(*this);
+
+  for (auto& field : _fields) {
+    size += sizeof(basics::AttributeName) * field.size();
+    for (auto& entry : field) {
+      size += entry.name.size();
+    }
+  }
+
+  size += irs::math::math_traits<size_t>::div_ceil(_directions.size(), 8);
+
+  return size;
+}
+bool IResearchInvertedIndexSort::toVelocyPack(velocypack::Builder& builder) const {
+  VPackObjectBuilder objectScope(&builder);
+  {
+    VPackBuilder fields;
+    VPackArrayBuilder arrayScope(&fields);
+    std::string fieldName;
+    auto visitor = [&fields, &fieldName](
+                       std::vector<basics::AttributeName> const& field,
+                       bool direction) {
+      fieldName.clear();
+      basics::TRI_AttributeNamesToString(field, fieldName, true);
+
+      arangodb::velocypack::ObjectBuilder sortEntryBuilder(&fields);
+      fields.add(kFieldName, VPackValue(fieldName));
+      fields.add(kAscFieldName, VPackValue(direction));
+
+      return true;
+    };
+
+    if (!visit(visitor)) {
+      return false;
+    }
+    builder.add(kFieldsFieldName, fields.slice());
+  }
+
+  {
+    auto compression = columnCompressionToString(_sortCompression);
+    addStringRef(builder, kSortCompressionFieldName, compression);
+  }
+
+  if (!_locale.isBogus()) {
+    builder.add(kLocaleFieldName, VPackValue(_locale.getName()));
+  }
+  return true;
+}
+bool IResearchInvertedIndexSort::fromVelocyPack(velocypack::Slice slice,
+                                                std::string& error) {
+  clear();
+
+  if (!slice.isObject()) {
+    return false;
+  }
+
+  auto fieldsSlice = slice.get(kFieldsFieldName);
+  if (!fieldsSlice.isArray()) {
+    error = kFieldsFieldName;
+    return false;
+  }
+
+  _fields.reserve(fieldsSlice.length());
+  _directions.reserve(fieldsSlice.length());
+
+  for (auto sortSlice : velocypack::ArrayIterator(fieldsSlice)) {
+    if (!sortSlice.isObject() || sortSlice.length() != 2) {
+      error = "[" + std::to_string(size()) + "]";
+      return false;
+    }
+
+    bool direction;
+
+    auto const directionSlice = sortSlice.get(kDirectionFieldName);
+    if (!directionSlice.isNone()) {
+      if (!parseDirectionString(directionSlice, direction)) {
+        error = "[" + std::to_string(size()) + "]." + std::string(kDirectionFieldName);
+        return false;
+      }
+    } else if (!parseDirectionBool(sortSlice.get(kAscFieldName), direction)) {
+      error = "[" + std::to_string(size()) + "]." + std::string(kAscFieldName);
+      return false;
+    }
+
+    auto const fieldSlice = sortSlice.get(kFieldName);
+
+    if (!fieldSlice.isString()) {
+      error = "[" + std::to_string(size()) + "]." + std::string(kFieldName);
+      return false;
+    }
+
+    std::vector<arangodb::basics::AttributeName> field;
+
+    try {
+      arangodb::basics::TRI_ParseAttributeString(
+          arangodb::iresearch::getStringRef(fieldSlice), field, false);
+    } catch (...) {
+      error = "[" + std::to_string(size()) + "]." + std::string(kFieldName);
+      return false;
+    }
+
+    emplace_back(std::move(field), direction);
+  }
+
+  if (slice.hasKey(kSortCompressionFieldName)) {
+    auto const field = slice.get(kSortCompressionFieldName);
+
+    if (!field.isNone() && ((_sortCompression = columnCompressionFromString(
+                                 getStringRef(field))) == nullptr)) {
+      error = kSortCompressionFieldName;
+      return false;
+    }
+  } 
+
+  if (slice.hasKey(kLocaleFieldName)) {
+    auto localeSlice = slice.get(kLocaleFieldName);
+    if (!localeSlice.isString()) {
+      error = kLocaleFieldName;
+      return false;
+    }
+    // intentional string copy here as createCanonical expects null-ternibated string
+    // and string_view has no such guarantees
+    _locale = icu::Locale::createCanonical(localeSlice.copyString().c_str());
+    if (_locale.isBogus()) {
+      error = kLocaleFieldName;
+      return false;
+    }
+  }
+
+  return true;
 }
 }  // namespace arangodb::iresearch

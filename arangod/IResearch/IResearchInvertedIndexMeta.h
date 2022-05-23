@@ -24,13 +24,98 @@
 #pragma once
 
 #include "IResearchLinkMeta.h"
-#include "IResearchViewSort.h"
 #include "IResearchViewStoredValues.h"
+
+#include <unicode/locid.h>
 
 namespace arangodb::iresearch {
 
 enum class Consistency {
   kEventual, kImmediate
+};
+
+class IResearchInvertedIndexSort {
+ public:
+  IResearchInvertedIndexSort() = default;
+  IResearchInvertedIndexSort(const IResearchInvertedIndexSort&) = default;
+  IResearchInvertedIndexSort(IResearchInvertedIndexSort&&) = default;
+  IResearchInvertedIndexSort& operator=(const IResearchInvertedIndexSort&) = default;
+  IResearchInvertedIndexSort& operator=(IResearchInvertedIndexSort&&) = default;
+
+  bool operator==(IResearchInvertedIndexSort const& rhs) const noexcept {
+    return _fields == rhs._fields && _directions == rhs._directions &&
+           _locale.getName() == rhs._locale.getName();
+  }
+
+  bool operator!=(IResearchInvertedIndexSort const& rhs) const noexcept {
+    return !(*this == rhs);
+  }
+
+  auto sortCompression() const noexcept {
+    return _sortCompression;
+  }
+
+  void clear() noexcept {
+    _fields.clear();
+    _directions.clear();
+    _locale.setToBogus();
+    _sortCompression = getDefaultCompression();
+  }
+
+  size_t size() const noexcept {
+    TRI_ASSERT(_fields.size() == _directions.size());
+    return _fields.size();
+  }
+
+  bool empty() const noexcept {
+    TRI_ASSERT(_fields.size() == _directions.size());
+    return _fields.empty();
+  }
+
+  void emplace_back(std::vector<basics::AttributeName>&& field,
+                    bool direction) {
+    _fields.emplace_back(std::move(field));
+    _directions.emplace_back(direction);
+  }
+
+  template<typename Visitor>
+  bool visit(Visitor visitor) const {
+    for (size_t i = 0, size = this->size(); i < size; ++i) {
+      if (!visitor(_fields[i], _directions[i])) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  std::vector<std::vector<basics::AttributeName>> const& fields()
+      const noexcept {
+    return _fields;
+  }
+
+  std::vector<basics::AttributeName> const& field(size_t i) const noexcept {
+    TRI_ASSERT(i < this->size());
+
+    return _fields[i];
+  }
+
+  bool direction(size_t i) const noexcept {
+    TRI_ASSERT(i < this->size());
+
+    return _directions[i];
+  }
+
+  size_t memory() const noexcept;
+
+  bool toVelocyPack(velocypack::Builder& builder) const;
+  bool fromVelocyPack(velocypack::Slice, std::string& error);
+
+ private:
+  std::vector<std::vector<basics::AttributeName>> _fields;
+  std::vector<bool> _directions;
+  irs::type_info::type_id _sortCompression{getDefaultCompression()};
+  icu::Locale _locale;
 };
 
 struct IResearchInvertedIndexMeta {
@@ -137,7 +222,7 @@ struct IResearchInvertedIndexMeta {
     /// @brief override for field features
     std::optional<Features> _features;
     /// @brief mark that field value is expected to be an array
-    bool _isArray{false};
+    bool _isArray;
     /// @brief parse fields recursively
     bool _includeAllFields;
     /// @brief array processing variant
@@ -155,10 +240,9 @@ struct IResearchInvertedIndexMeta {
 
   Fields _fields;
   // sort condition associated with the link (primarySort)
-  IResearchViewSort _sort;
+  IResearchInvertedIndexSort _sort;
   // stored values associated with the link
   IResearchViewStoredValues _storedValues;
-  irs::type_info::type_id _sortCompression{getDefaultCompression()};
   // Not used in the inverted index but need this member for compliance with
   // the LinkMeta interface
   irs::string_ref _collectionName;

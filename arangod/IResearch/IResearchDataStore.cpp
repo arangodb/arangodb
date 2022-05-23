@@ -1036,7 +1036,7 @@ Result IResearchDataStore::initDataStore(
   // Do not lock index, ArangoDB has its own lock.
   options.lock_repository = false;
   // Set comparator if requested.
-  options.comparator = sorted ? &_comparer : nullptr;
+  options.comparator = sorted ? getComparator() : nullptr;
   // Set index features.
   if (LinkVersion{version} < LinkVersion::MAX) {
     options.features = getIndexFeatures<irs::Norm>();

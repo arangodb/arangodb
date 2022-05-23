@@ -415,10 +415,9 @@ class IResearchDataStore {
 
   virtual void invalidateQueryCache(TRI_vocbase_t*) = 0;
 
-  StorageEngine* _engine;
+  virtual irs::comparer const* getComparator() const noexcept = 0;
 
-  // for primarySort ordering
-  VPackComparer _comparer;
+  StorageEngine* _engine;
 
   // the feature where async jobs were registered (nullptr == no jobs
   // registered)

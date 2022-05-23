@@ -351,5 +351,10 @@ class Iterator {
   IteratorValue _value;
 };  // Iterator
 
+
+bool parseDirectionBool(arangodb::velocypack::Slice slice, bool& direction);
+
+bool parseDirectionString(arangodb::velocypack::Slice slice, bool& direction);
+
 }  // namespace iresearch
 }  // namespace arangodb

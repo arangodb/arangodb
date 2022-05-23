@@ -181,6 +181,10 @@ class IResearchLink : public IResearchDataStore {
 
   void invalidateQueryCache(TRI_vocbase_t* vocbase) override;
 
+  irs::comparer const* getComparator() const noexcept override {
+    return &_comparer;
+  }
+
  private:
   template<typename T>
   Result toView(std::shared_ptr<LogicalView> const& logical,
@@ -195,6 +199,8 @@ class IResearchLink : public IResearchDataStore {
   IResearchLinkMeta _meta;
   // the identifier of the desired view (read-only, set via init())
   std::string _viewGuid;
+
+  VPackComparer<IResearchViewSort> _comparer;
 };
 
 }  // namespace arangodb::iresearch

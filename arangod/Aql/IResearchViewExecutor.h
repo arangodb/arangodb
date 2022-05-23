@@ -645,7 +645,7 @@ class IResearchViewMergeExecutor
     // compare
     bool operator()(size_t lhs, size_t rhs) const;
 
-    iresearch::VPackComparer _less;
+    iresearch::VPackComparer<iresearch::IResearchViewSort> _less;
     std::vector<Segment>* _segments;
   };
 

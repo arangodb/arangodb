@@ -214,8 +214,13 @@ class IResearchInvertedIndex : public IResearchDataStore {
  protected:
   void invalidateQueryCache(TRI_vocbase_t* vocbase) override;
 
+  irs::comparer const* getComparator() const noexcept override {
+    return &_comparer;
+  }
+
  private:
   IResearchInvertedIndexMeta _meta;
+  VPackComparer<IResearchInvertedIndexSort> _comparer;
 };
 
 class IResearchInvertedClusterIndex : public IResearchInvertedIndex,

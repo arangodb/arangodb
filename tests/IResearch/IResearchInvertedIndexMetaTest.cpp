@@ -82,7 +82,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_defaults) {
   ASSERT_TRUE(true == meta._fields.empty());
   ASSERT_TRUE(meta._sort.empty());
   ASSERT_TRUE(meta._storedValues.empty());
-  ASSERT_EQ(meta._sortCompression, irs::type<irs::compression::lz4>::id());
+  ASSERT_EQ(meta._sort.sortCompression(), irs::type<irs::compression::lz4>::id());
   ASSERT_TRUE(meta._analyzerDefinitions.empty());
   ASSERT_FALSE(meta.dense());
   ASSERT_EQ(meta._version,
@@ -108,7 +108,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readDefaults) {
     ASSERT_EQ("dummy", meta._fields.front().toString());
     ASSERT_TRUE(meta._sort.empty());
     ASSERT_TRUE(meta._storedValues.empty());
-    ASSERT_EQ(meta._sortCompression, irs::type<irs::compression::lz4>::id());
+    ASSERT_EQ(meta._sort.sortCompression(), irs::type<irs::compression::lz4>::id());
     ASSERT_TRUE(meta._analyzerDefinitions.empty());
     ASSERT_FALSE(meta.dense());
     ASSERT_EQ(meta._version,
@@ -131,7 +131,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readDefaults) {
     ASSERT_EQ("dummy", meta._fields.front().toString());
     ASSERT_TRUE(meta._sort.empty());
     ASSERT_TRUE(meta._storedValues.empty());
-    ASSERT_EQ(meta._sortCompression, irs::type<irs::compression::lz4>::id());
+    ASSERT_EQ(meta._sort.sortCompression(), irs::type<irs::compression::lz4>::id());
     ASSERT_TRUE(meta._analyzerDefinitions.empty());
     ASSERT_FALSE(meta.dense());
     ASSERT_EQ(meta._version,
@@ -224,7 +224,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
   ASSERT_EQ(6, meta._fields.size());
   ASSERT_FALSE(meta._sort.empty());
   ASSERT_FALSE(meta._storedValues.empty());
-  ASSERT_EQ(meta._sortCompression, irs::type<irs::compression::lz4>::id());
+  ASSERT_EQ(meta._sort.sortCompression(), irs::type<irs::compression::lz4>::id());
   ASSERT_TRUE(meta.dense());
   ASSERT_EQ(meta._version,
             static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MIN));
