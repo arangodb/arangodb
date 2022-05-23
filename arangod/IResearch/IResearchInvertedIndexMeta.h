@@ -159,7 +159,8 @@ struct IResearchInvertedIndexMeta {
     FieldRecord(std::vector<basics::AttributeName> const& path,
                 FieldMeta::Analyzer&& a, std::vector<FieldRecord>&& nested,
                 std::optional<Features>&& features, std::string&& expression,
-                bool isArray, bool includeAllFields, bool trackListPositions);
+                bool isArray, bool includeAllFields, bool trackListPositions,
+                bool overrideValue);
 
     std::string toString() const;
 
@@ -227,6 +228,8 @@ struct IResearchInvertedIndexMeta {
     bool _includeAllFields;
     /// @brief array processing variant
     bool _trackListPositions;
+    /// @brief force computed value to override existing value
+    bool _overrideValue;
   };
 
   using Fields = std::vector<FieldRecord>;

@@ -56,6 +56,7 @@ constexpr std::string_view kFieldName = "field";
 constexpr std::string_view kFieldsFieldName = "fields";
 constexpr std::string_view kSortCompressionFieldName = "primarySortCompression";
 constexpr std::string_view kLocaleFieldName = "locale";
+constexpr std::string_view kOverrideFieldName = "locale";
 
 std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
     VPackSlice slice, bool isNested,
@@ -71,6 +72,7 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
   bool isArray{false};
   bool trackListPositions{false};
   bool includeAllFields{false};
+  bool overrideValue{false};
   if (slice.isString()) {
     try {
       analyzer = versionSpecificIdentity;
@@ -225,6 +227,14 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
         }
         includeAllFields = subSlice.getBool();
       }
+      if (slice.hasKey(kOverrideFieldName)) {
+        auto subSlice = slice.get(kOverrideFieldName);
+        if (!subSlice.isBoolean()) {
+          errorField = kOverrideFieldName;
+          return std::nullopt;
+        }
+        overrideValue = subSlice.getBoolean();
+      }
     } else {
       errorField = kNameFieldName;
       return std::nullopt;
@@ -255,9 +265,9 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
     return std::nullopt;
   }
   return std::make_optional<IResearchInvertedIndexMeta::FieldRecord>(
-      std::move(fieldParts), FieldMeta::Analyzer(versionSpecificIdentity),
+      std::move(fieldParts), std::move(analyzer),
       std::move(nestedFields), std::move(features), std::move(expression),
-      isArray, includeAllFields, trackListPositions);
+      isArray, includeAllFields, trackListPositions, overrideValue);
 }
 
 void toVelocyPack(IResearchInvertedIndexMeta::FieldRecord const& field, VPackBuilder& vpack) {
@@ -665,14 +675,16 @@ bool IResearchInvertedIndexMeta::matchesFieldsDefinition(
 IResearchInvertedIndexMeta::FieldRecord::FieldRecord(
     std::vector<basics::AttributeName> const& path, FieldMeta::Analyzer&& a,
     std::vector<FieldRecord>&& nested, std::optional<Features>&& features,
-    std::string&& expression, bool isArray, bool includeAllFields, bool trackListPositions)
+    std::string&& expression, bool isArray, bool includeAllFields, bool trackListPositions,
+    bool overrideValue)
     : _nested(std::move(nested)),
       _expression(std::move(expression)),
       _analyzer(std::move(a)),
       _features(std::move(features)),
       _isArray(isArray),
       _includeAllFields(includeAllFields),
-      _trackListPositions(trackListPositions) {
+      _trackListPositions(trackListPositions),
+      _overrideValue(overrideValue) {
   TRI_ASSERT(_attribute.empty());
   TRI_ASSERT(_expansion.empty());
   auto it = path.begin();
