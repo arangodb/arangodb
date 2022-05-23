@@ -98,15 +98,17 @@ struct ActorDriver {
   std::tuple<Actors...> actors;
 };
 
-template<typename State, typename Transition>
+template<template<typename, typename, typename> typename EnumeratorT,
+         typename State, typename Transition>
 struct ActorEngine {
   template<typename... Actors, typename Observer>
   static auto run(ActorDriver<Actors...>& driver, Observer observer,
-                  State initState) {
+                  State initState, RandomParameters randomParameters = {}) {
     using GlobalState = GlobalActorState<State, Transition, Actors...>;
-    return DFSEnumerator<GlobalState, Transition, Observer>::run(
+    return EnumeratorT<GlobalState, Transition, Observer>::run(
         driver, std::move(observer),
-        driver.template initialState<Transition>(std::move(initState)));
+        driver.template initialState<Transition>(std::move(initState)),
+        randomParameters);
   }
 };
 

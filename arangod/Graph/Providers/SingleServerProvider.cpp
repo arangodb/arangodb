@@ -148,7 +148,7 @@ auto SingleServerProvider<Step>::expand(
   _cursor->readAll(
       *this, _stats, step.getDepth(),
       [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorID) -> void {
-        VertexType id = _cache.persistString(([&]() -> auto {
+        VertexType id = _cache.persistString(([&]() -> auto{
           if (edge.isString()) {
             return VertexType(edge);
           } else {

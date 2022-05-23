@@ -137,14 +137,20 @@ auto methods::updateTermSpecification(DatabaseID const& database, LogId id,
 auto methods::deleteReplicatedLogTrx(arangodb::agency::envelope envelope,
                                      DatabaseID const& database, LogId id)
     -> arangodb::agency::envelope {
-  auto path =
+  auto planPath =
       paths::plan()->replicatedLogs()->database(database)->log(id)->str();
+  auto targetPath =
+      paths::target()->replicatedLogs()->database(database)->log(id)->str();
+  auto currentPath =
+      paths::current()->replicatedLogs()->database(database)->log(id)->str();
 
   return envelope.write()
-      .remove(path)
+      .remove(planPath)
       .inc(paths::plan()->version()->str())
-      .precs()
-      .isNotEmpty(path)
+      .remove(targetPath)
+      .inc(paths::target()->version()->str())
+      .remove(currentPath)
+      .inc(paths::current()->version()->str())
       .end();
 }
 

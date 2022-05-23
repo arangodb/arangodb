@@ -397,17 +397,11 @@ bool LogicalCollection::mustCreateKeyOnCoordinator() const noexcept {
   return numberOfShards() != 1;
 }
 
-uint32_t LogicalCollection::v8CacheVersion() const {
-  return _v8CacheVersion;
-}
+uint32_t LogicalCollection::v8CacheVersion() const { return _v8CacheVersion; }
 
-TRI_col_type_e LogicalCollection::type() const {
-  return _type;
-}
+TRI_col_type_e LogicalCollection::type() const { return _type; }
 
-TRI_vocbase_col_status_e LogicalCollection::status() const {
-  return _status;
-}
+TRI_vocbase_col_status_e LogicalCollection::status() const { return _status; }
 
 TRI_vocbase_col_status_e LogicalCollection::getStatusLocked() {
   READ_LOCKER(readLocker, _statusLock);
@@ -568,9 +562,7 @@ Result LogicalCollection::rename(std::string&& newName) {
   return {};
 }
 
-ErrorCode LogicalCollection::close() {
-  return getPhysical()->close();
-}
+ErrorCode LogicalCollection::close() { return getPhysical()->close(); }
 
 Result LogicalCollection::drop() {
   // make sure collection has been closed
@@ -781,9 +773,7 @@ void LogicalCollection::includeVelocyPackEnterprise(
 }
 #endif
 
-void LogicalCollection::increaseV8Version() {
-  ++_v8CacheVersion;
-}
+void LogicalCollection::increaseV8Version() { ++_v8CacheVersion; }
 
 Result LogicalCollection::properties(velocypack::Slice slice, bool) {
   TRI_ASSERT(_sharding != nullptr);
@@ -1088,9 +1078,7 @@ Result LogicalCollection::truncate(transaction::Methods& trx,
 }
 
 /// @brief compact-data operation
-void LogicalCollection::compact() {
-  getPhysical()->compact();
-}
+void LogicalCollection::compact() { getPhysical()->compact(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a document or edge into the collection

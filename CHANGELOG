@@ -1,20 +1,22 @@
 devel
 -----
 
+* Fix documentation of collection's `cacheEnabled` property default.
+
 * Added `[?]` array operator to AQL, which works as follows:
   - `nonArray[?]`: returns `false`
   - `nonArray[? FILTER CURRENT ...]`: returns `false`
   - `array[?]`: returns `false` if array is empty, `true` otherwise
   - `array[? FILTER CURRENT ...]`: returns `false` if no array member
-     satisfies the filter condition, returns `true` if at least one
-     member satistifies it.
+     satisfies the filter condition, returns `true` if at least one member
+     satistifies it.
 
 * Fixed Github issue #16279: assertion failure/crash in AQL query optimizer when
   permuting adjacent FOR loops that depended on each other.
 
 * No good reason to fatal error in agency state, when local database entries
   lack local timestamp (legacy). In that situation, we will record epoch begin
-	as local time.
+  as local time.
 
 * Put hotbackup requests on the HIGH priority queue to make hotbackups work
   under high load (BTS-865).
@@ -154,8 +156,12 @@ devel
 
 * Added an IO heartbeat which checks that the underlying volume is writable
   with reasonable performance. The test is done every 15 seconds and can
-  be explicitly switched off. New metrics to give visibility if the test
-  fails.
+  explicitly switched off. New metrics to give visibility if the test fails:
+    - `arangodb_ioheartbeat_delays_total`: total number of delayed io heartbeats
+    - `arangodb_ioheartbeat_duration`: histogram of execution times [us]
+    - `arangodb_ioheartbeat_failures_total`: total number of failures
+  These metrics are only populated, if `--database.io-heartbeat` is set to
+  `true` (which is currently the default).
 
 * Fix lock order in Agent::advanceCommitIndex for State's _logLock and
   Agent's _waitForCV.

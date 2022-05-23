@@ -35,8 +35,7 @@ namespace arangodb::graph {
 template<class StepImpl>
 class ClusterProvider;
 
-class
-    ClusterProviderStep
+class ClusterProviderStep
     : public arangodb::graph::BaseStep<ClusterProviderStep> {
  public:
   using EdgeType = ::arangodb::graph::EdgeType;
