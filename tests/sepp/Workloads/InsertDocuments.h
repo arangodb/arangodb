@@ -95,7 +95,7 @@ struct InsertDocuments::Options {
     friend inline auto inspect(Inspector& f, Thread& o) {
       return f.object(o).fields(
           f.field("document", o.document),
-          f.field("documentModifier", o.documentModifier),
+          f.field("documentModifier", o.documentModifier).fallback(f.keep()),
           f.field("documentsPerTrx", o.documentsPerTrx).fallback(1u),
           f.field("collection", o.collection));
     }

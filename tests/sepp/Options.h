@@ -65,7 +65,7 @@ auto inspect(Inspector& f, CollectionsSetup& o) {
 
 struct Setup {
   std::vector<CollectionsSetup> collections;
-  std::vector<workloads::InsertDocuments::Options> prefill;
+  std::map<std::string, workloads::InsertDocuments::Options> prefill;
 };
 
 template<class Inspector>

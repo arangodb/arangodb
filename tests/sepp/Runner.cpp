@@ -145,7 +145,7 @@ void Runner::setup() {
 
   std::cout << "Running prefill...\n";
   for (auto& opts : _options.setup.prefill) {
-    auto workload = std::make_shared<workloads::InsertDocuments>(opts);
+    auto workload = std::make_shared<workloads::InsertDocuments>(opts.second);
     Execution exec(_options, workload);
     exec.createThreads(*_server);
     std::ignore = exec.run();  // TODO - do we need the report?
