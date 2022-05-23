@@ -25,6 +25,7 @@
 #include <string>
 #include <chrono>
 #include "Basics/TimeString.h"
+#include "Basics/ErrorCode.h"
 
 namespace arangodb::inspection {
 
@@ -42,5 +43,31 @@ struct TimeStampTransformer {
     return {};
   }
 };
+
+struct ErrorCodeTransformer {
+  struct ErrorCodeWithMessage {
+    ErrorCode::ValueType code;
+    std::string message;
+  };
+  using SerializedType = ErrorCodeWithMessage;
+
+  auto toSerialized(ErrorCode source, ErrorCodeWithMessage& target) const
+      -> inspection::Status {
+    target.code = source.operator ErrorCode::ValueType();
+    target.message = to_string(source);
+    return {};
+  }
+  auto fromSerialized(ErrorCodeWithMessage const& source,
+                      ErrorCode& target) const -> inspection::Status {
+    target = ErrorCode(source.code);
+    return {};
+  }
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ErrorCodeTransformer::ErrorCodeWithMessage& x) {
+  return f.object(x).fields(f.field("code", x.code),
+                            f.field("message", x.message));
+}
 
 }  // namespace arangodb::inspection
