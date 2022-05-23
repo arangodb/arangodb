@@ -37,7 +37,7 @@ using namespace arangodb;
 using namespace arangodb::iresearch;
 
 namespace  {
-  bool AnalyzerFeaturesChecker(FieldMeta::Analyzer const& analyzer, std::vector<std::string> expected) {
+  void AnalyzerFeaturesChecker(FieldMeta::Analyzer const& analyzer, std::vector<std::string> expected) {
     VPackBuilder b;
     analyzer->features().toVelocyPack(b);
     auto featuresSlice = b.slice();
@@ -48,11 +48,19 @@ namespace  {
       actual.push_back(itr.copyString());
     }
 
+    ASSERT_EQ(actual.size(), expected.size());
     std::sort(expected.begin(), expected.end());
     std::sort(actual.begin(), actual.end());
 
-    return true;
-  }
+    auto it1 = expected.begin();
+    auto it2 = actual.begin();
+    while (it1 != expected.end() && it2 != actual.end()) {
+      ASSERT_EQ(*it1, *it2);
+      it1++;
+      it2++;
+    }
+
+}
 }
 
 class IResearchInvertedIndexMetaTest
@@ -209,6 +217,11 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
           ]
         }
     ],
+    "primarySort": {
+       "fields":[{ "field" : "foo", "direction": "desc" }],
+       "compression": "none",
+       "locale": "myLocale"
+    },
     "consistency": "immediate",
     "version":0,
     "storedValues": [{ "fields": ["foo.boo.nest"], "compression": "none"}],
@@ -218,12 +231,6 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
     "trackListPositions": false,
     "analyzerDefinitions":[{"name":"test_text", "type":"identity", "properties":{}}]
   })");
-
-//"primarySort": {
-//   "fields":[{ "field" : "foo", "direction": "desc" }],
-//   "compression": "none",
-//   "locale": "myLocale"
-//},
 
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
   std::string errorString;
@@ -285,6 +292,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
     ASSERT_EQ(field0.analyzerName(), "identity"); // identity by default
 //    ASSERT_TRUE(field0.features().has_value()); // FIXME: FALSE. HOW COME??
 //    std::cout << static_cast<int>(field0.features().value().indexFeatures()) << std::endl;
+    AnalyzerFeaturesChecker(field0.analyzer(), {"norm", "frequency", "position"});
 
     ASSERT_FALSE(field0.isArray());
     ASSERT_FALSE(field0.trackListPositions());
@@ -299,7 +307,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
     ASSERT_EQ(attr.name, "huypuy");
     ASSERT_FALSE(attr.shouldExpand);
 
-    //    ASSERT_TRUE(field0.override()); // FIXME: add parsing of override
+//    ASSERT_TRUE(field1.override()); // FIXME: add parsing of override
     ASSERT_EQ(field1.expansion().size(), 0);
     ASSERT_EQ(field1.nested().size(), 0);
     ASSERT_EQ(field1.expression(), "RETURN MERGE(@param, {foo: 'bar'}) ");
@@ -307,7 +315,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
 //    ASSERT_EQ(field1.analyzerName(), "test_text");
     ASSERT_TRUE(field1.features().has_value());
 //    std::cout << static_cast<int>(field1.features().value().indexFeatures()) << std::endl;
-    ASSERT_TRUE(AnalyzerFeaturesChecker(field1.analyzer(), {"norm", "frequency"}));
+    AnalyzerFeaturesChecker(field1.analyzer(), {"norm", "frequency"});
 
 
     ASSERT_FALSE(field1.isArray());
@@ -342,5 +350,5 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
 //  VPackBuilder serialized;
 //  ASSERT_TRUE(meta.json(server.server(), serialized, true, &vocbase));
 
-
 }
+
