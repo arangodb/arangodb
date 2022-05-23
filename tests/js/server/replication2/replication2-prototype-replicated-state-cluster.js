@@ -128,7 +128,6 @@ const replicatedStateSuite = function () {
                                         waitForSync: true,
                                         writeConcern: 2,
                                         softWriteConcern: 3,
-                                        replicationFactor: 3
                                       },
                                       properties: {
                                         implementation: {

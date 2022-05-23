@@ -65,7 +65,6 @@ const replicatedStateSuite = function (stateType) {
         currentTerm: {
           term: 1,
           config: {
-            replicationFactor: 3,
             writeConcern: 2,
             softWriteConcern: 2,
             waitForSync: false,

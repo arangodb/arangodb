@@ -33,10 +33,10 @@ const database = 'ReplLogsMaintenanceTest';
 
 const {setUpAll, tearDownAll, setUp, tearDown} = lh.testHelperFunctions(database);
 
+const replicationFactor = 3;
 const targetConfig = {
   writeConcern: 2,
   softWriteConcern: 2,
-  replicationFactor: 3,
   waitForSync: false,
 };
 
@@ -84,7 +84,7 @@ const replicatedLogSuite = function () {
 
     testCreateReplicatedLog: function () {
       const logId = lh.nextUniqueLogId();
-      const servers = _.sampleSize(lh.dbservers, targetConfig.replicationFactor);
+      const servers = _.sampleSize(lh.dbservers, replicationFactor);
       const leader = servers[0];
       const term = 1;
       lh.replicatedLogSetPlan(database, logId, {
@@ -101,7 +101,7 @@ const replicatedLogSuite = function () {
 
     testCreateReplicatedLogWithoutLeader: function () {
       const logId = lh.nextUniqueLogId();
-      const servers = _.sampleSize(lh.dbservers, targetConfig.replicationFactor);
+      const servers = _.sampleSize(lh.dbservers, replicationFactor);
       const term = 1;
       lh.replicatedLogSetPlan(database, logId, {
         id: logId,
@@ -186,7 +186,7 @@ const replicatedLogSuite = function () {
 
     testRemoveParticipant: function () {
       const logId = lh.nextUniqueLogId();
-      const servers = _.sampleSize(lh.dbservers, targetConfig.replicationFactor);
+      const servers = _.sampleSize(lh.dbservers, replicationFactor);
       const remaining = _.difference(lh.dbservers, servers);
       const toBeRemoved = _.sample(remaining);
       const leader = servers[0];

@@ -375,9 +375,12 @@ const createReplicatedLogPlanOnly = function (database, targetConfig) {
   return {logId, servers, leader, term, followers, remaining};
 };
 
-const createReplicatedLog = function (database, targetConfig) {
+const createReplicatedLog = function (database, targetConfig, replicationFactor) {
   const logId = nextUniqueLogId();
-  const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
+  if (replicationFactor === undefined) {
+    replicationFactor = 3;
+  }
+  const servers = _.sampleSize(dbservers, replicationFactor);
   replicatedLogSetTarget(database, logId, {
     id: logId,
     config: targetConfig,
