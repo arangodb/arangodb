@@ -99,8 +99,7 @@ struct ReplicatedLogTest : ::testing::Test {
       std::size_t writeConcern, bool waitForSync = false,
       std::shared_ptr<cluster::IFailureOracle> failureOracle = nullptr)
       -> std::shared_ptr<LogLeader> {
-    auto config =
-        LogConfig{writeConcern, writeConcern, follower.size() + 1, waitForSync};
+    auto config = LogConfig{writeConcern, writeConcern, waitForSync};
     auto participants =
         std::unordered_map<ParticipantId, ParticipantFlags>{{id, {}}};
     for (auto const& participant : follower) {

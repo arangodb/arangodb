@@ -117,7 +117,7 @@ TEST(LogCommonTest, commit_fail_reason) {
 }
 
 TEST(LogCommonTest, log_config) {
-  auto logConfig = LogConfig{1, 1, 1, false};
+  auto logConfig = LogConfig{1, 1, false};
   VPackBuilder builder;
   velocypack::serialize(builder, logConfig);
   auto slice = builder.slice();
@@ -127,7 +127,6 @@ TEST(LogCommonTest, log_config) {
   auto jsonBuffer = R"({
     "writeConcern": 1,
     "softWriteConcern": 1,
-    "replicationFactor": 1,
     "waitForSync": false
   })"_vpack;
   auto jsonSlice = velocypack::Slice(jsonBuffer->data());
@@ -137,7 +136,6 @@ TEST(LogCommonTest, log_config) {
   // Test defaulting of softWriteConcern to writeConcern
   jsonBuffer = R"({
     "writeConcern": 2,
-    "replicationFactor": 3,
     "waitForSync": false
   })"_vpack;
   jsonSlice = velocypack::Slice(jsonBuffer->data());
@@ -146,7 +144,7 @@ TEST(LogCommonTest, log_config) {
 }
 
 TEST(LogCommonTest, log_config_inspector) {
-  auto logConfig = LogConfig{1, 1, 1, false};
+  auto logConfig = LogConfig{1, 1, false};
   VPackBuilder builder;
 
   serialize(builder, logConfig);
@@ -157,7 +155,6 @@ TEST(LogCommonTest, log_config_inspector) {
   auto jsonBuffer = R"({
     "writeConcern": 1,
     "softWriteConcern": 1,
-    "replicationFactor": 1,
     "waitForSync": false
   })"_vpack;
   auto jsonSlice = velocypack::Slice(jsonBuffer->data());
@@ -167,7 +164,6 @@ TEST(LogCommonTest, log_config_inspector) {
   // Test defaulting of softWriteConcern to writeConcern
   jsonBuffer = R"({
     "writeConcern": 2,
-    "replicationFactor": 3,
     "waitForSync": false
   })"_vpack;
   jsonSlice = velocypack::Slice(jsonBuffer->data());

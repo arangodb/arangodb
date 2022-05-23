@@ -169,7 +169,7 @@ struct SupervisionLogTest : ::testing::Test {};
 TEST_F(SupervisionLogTest, test_log_created) {
   SupervisionContext ctx;
 
-  auto const config = LogConfig(3, 2, 3, true);
+  auto const config = LogConfig(3, 2, true);
   auto const participants = ParticipantsFlagsMap{
       {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
@@ -193,7 +193,7 @@ TEST_F(SupervisionLogTest, test_log_created) {
 TEST_F(SupervisionLogTest, test_log_not_created) {
   SupervisionContext ctx;
 
-  auto const config = LogConfig(3, 2, 3, true);
+  auto const config = LogConfig(3, 2, true);
   auto const participants = ParticipantsFlagsMap{
       {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
@@ -275,7 +275,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
   SupervisionContext ctx;
 
   auto const& logId = LogId{44};
-  auto const& config = LogConfig(3, 3, 3, true);
+  auto const& config = LogConfig(3, 3, true);
 
   // Server D is missing in target
   auto const& target =
@@ -343,7 +343,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
   SupervisionContext ctx;
 
   auto const& logId = LogId{44};
-  auto const& config = LogConfig(3, 3, 3, true);
+  auto const& config = LogConfig(3, 3, true);
 
   // Server D is missing in target and has set the allowedInQuorum flag to
   // false but the config is not yet committed
@@ -419,7 +419,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
   SupervisionContext ctx;
 
   auto const& logId = LogId{44};
-  auto const& config = LogConfig(3, 3, 3, true);
+  auto const& config = LogConfig(3, 3, true);
 
   // Server D is missing in target and has set the allowedInQuorum flag to
   // false but the config is not yet committed
@@ -484,7 +484,7 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
   SupervisionContext ctx;
 
   auto const& logId = LogId{44};
-  auto const& config = LogConfig(3, 3, 3, true);
+  auto const& config = LogConfig(3, 3, true);
 
   auto const& target =
       LogTarget(logId,

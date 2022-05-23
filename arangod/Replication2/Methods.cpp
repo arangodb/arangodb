@@ -283,15 +283,10 @@ struct ReplicatedLogMethodsCoordinator final
     auto dbservers = clusterInfo.getCurrentDBServers();
     std::size_t expectedNumberOfServers =
         std::min(dbservers.size(), std::size_t{3});
-    if (options.config.has_value()) {
-      expectedNumberOfServers = options.config->replicationFactor;
-    } else if (!options.servers.empty()) {
-      expectedNumberOfServers = options.servers.size();
-    }
+    expectedNumberOfServers = options.servers.size();
 
     if (!options.config.has_value()) {
-      options.config =
-          LogConfig{2, expectedNumberOfServers, expectedNumberOfServers, false};
+      options.config = LogConfig{2, expectedNumberOfServers, false};
     }
 
     if (expectedNumberOfServers > dbservers.size()) {
@@ -379,31 +374,6 @@ struct ReplicatedLogMethodsCoordinator final
 
   auto createReplicatedLog(replication2::agency::LogTarget spec) const
       -> futures::Future<Result> override {
-    if (spec.participants.size() > spec.config.replicationFactor) {
-      return Result{
-          TRI_ERROR_BAD_PARAMETER,
-          "More participants specified than indicated by replication factor"};
-    } else if (spec.participants.size() < spec.config.replicationFactor) {
-      // add more servers to the list
-      auto dbservers = clusterInfo.getCurrentDBServers();
-      if (dbservers.size() < spec.config.replicationFactor) {
-        return Result{TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS};
-      }
-      auto newEnd = std::remove_if(dbservers.begin(), dbservers.end(),
-                                   [&](std::string const& server) {
-                                     return spec.participants.contains(server);
-                                   });
-
-      std::shuffle(dbservers.begin(), newEnd,
-                   RandomGenerator::UniformRandomGenerator<std::uint32_t>{});
-      auto iter = dbservers.begin();
-      while (spec.participants.size() < spec.config.replicationFactor) {
-        TRI_ASSERT(iter != newEnd);
-        spec.participants.emplace(*iter, ParticipantFlags{});
-        iter += 1;
-      }
-    }
-
     return replication2::agency::methods::createReplicatedLog(vocbase.name(),
                                                               spec)
         .thenValue([self = shared_from_this()](
@@ -947,32 +917,6 @@ struct ReplicatedStateCoordinatorMethods
 
   auto createReplicatedState(replicated_state::agency::Target spec) const
       -> futures::Future<Result> override {
-    if (spec.participants.size() > spec.config.replicationFactor) {
-      return Result{
-          TRI_ERROR_BAD_PARAMETER,
-          "More participants specified than indicated by replication factor"};
-    } else if (spec.participants.size() < spec.config.replicationFactor) {
-      // add more servers to the list
-      auto dbservers = clusterInfo.getCurrentDBServers();
-      if (dbservers.size() < spec.config.replicationFactor) {
-        return Result{TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS};
-      }
-      auto newEnd = std::remove_if(dbservers.begin(), dbservers.end(),
-                                   [&](std::string const& server) {
-                                     return spec.participants.contains(server);
-                                   });
-
-      std::shuffle(dbservers.begin(), newEnd,
-                   RandomGenerator::UniformRandomGenerator<std::uint32_t>{});
-      auto iter = dbservers.begin();
-      while (spec.participants.size() < spec.config.replicationFactor) {
-        TRI_ASSERT(iter != newEnd);
-        spec.participants.emplace(
-            *iter, replicated_state::agency::Target::Participant{});
-        iter += 1;
-      }
-    }
-
     return replication2::agency::methods::createReplicatedState(vocbase.name(),
                                                                 spec)
         .thenValue([self = shared_from_this()](
