@@ -33,6 +33,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include "Basics/StaticStrings.h"
 
 namespace arangodb::velocypack {
 class Builder;
@@ -56,7 +57,7 @@ struct ImplementationSpec {
 
 template<class Inspector>
 auto inspect(Inspector& f, ImplementationSpec& x) {
-  return f.object(x).fields(f.field("type", x.type));
+  return f.object(x).fields(f.field(StaticStrings::IndexType, x.type));
 }
 
 struct Properties {
@@ -92,16 +93,17 @@ struct Plan {
 template<class Inspector>
 auto inspect(Inspector& f, Plan& x) {
   return f.object(x).fields(
-      f.field("id", x.id),
+      f.field(StaticStrings::Id, x.id),
       f.field(static_strings::String_Generation, x.generation),
-      f.field("properties", x.properties),
-      f.field("participants", x.participants)
+      f.field(StaticStrings::Properties, x.properties),
+      f.field(StaticStrings::Participants, x.participants)
           .fallback(std::unordered_map<ParticipantId, Plan::Participant>{}));
 }
 
 template<class Inspector>
 auto inspect(Inspector& f, Plan::Participant& x) {
-  return f.object(x).fields(f.field("generation", x.generation));
+  return f.object(x).fields(
+      f.field(static_strings::String_Generation, x.generation));
 }
 
 struct Current {
@@ -160,7 +162,7 @@ struct Current {
 template<class Inspector>
 auto inspect(Inspector& f, Current& x) {
   return f.object(x).fields(
-      f.field("participants", x.participants)
+      f.field(StaticStrings::Participants, x.participants)
           .fallback(
               std::unordered_map<ParticipantId, Current::ParticipantStatus>{}),
       f.field("supervision", x.supervision));
@@ -176,7 +178,8 @@ auto inspect(Inspector& f, Current::ParticipantStatus& x) {
 template<class Inspector>
 auto inspect(Inspector& f, Current::Supervision& x) {
   return f.object(x).fields(
-      f.field("version", x.version), f.field("statusReport", x.statusReport),
+      f.field(StaticStrings::Version, x.version),
+      f.field("statusReport", x.statusReport),
       f.field("lastTimeModified", x.lastTimeModified)
           .transformWith(inspection::TimeStampTransformer{}));
 }
@@ -220,11 +223,13 @@ struct Target {
 template<class Inspector>
 auto inspect(Inspector& f, Target& x) {
   return f.object(x).fields(
-      f.field("id", x.id), f.field("properties", x.properties),
-      f.field("leader", x.leader),
-      f.field("participants", x.participants)
+      f.field(StaticStrings::Id, x.id),
+      f.field(StaticStrings::Properties, x.properties),
+      f.field(StaticStrings::Leader, x.leader),
+      f.field(StaticStrings::Participants, x.participants)
           .fallback(std::unordered_map<ParticipantId, Target::Participant>{}),
-      f.field("config", x.config), f.field("version", x.version));
+      f.field(StaticStrings::Config, x.config),
+      f.field(StaticStrings::Version, x.version));
 }
 
 template<class Inspector>
