@@ -23,6 +23,8 @@
 
 #include "Exceptions.h"
 
+#include <fmt/core.h>
+
 namespace arangodb::basics {
 
 template<typename... Args>

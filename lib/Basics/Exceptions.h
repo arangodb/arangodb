@@ -29,8 +29,6 @@
 #include <string>
 #include <utility>
 
-#include <fmt/core.h>
-
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
 #include "Basics/SourceLocation.h"
@@ -115,6 +113,8 @@ class Exception : public virtual std::exception {
         ::arangodb::basics::Exception::FillFormatExceptionString(fmt, args...));
     return Exception(code, std::move(message), location);
   }
+
+  // Include Exceptions.tpp when you want to call this function.
   template<typename... Args>
   static auto fmt(SourceLocation location, ErrorCode code, Args&&... args)
       -> Exception;

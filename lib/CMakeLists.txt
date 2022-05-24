@@ -267,7 +267,7 @@ target_link_libraries(arango PUBLIC snappy)
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 
 if (USE_LIBUNWIND)
-  target_link_libraries(arango ${LIBUNWIND_LIB})
+  target_link_libraries(arango PUBLIC ${LIBUNWIND_LIB})
   target_include_directories(arango PRIVATE "${LIBUNWIND_HOME}/include")
   add_dependencies(arango libunwind_build)
 endif ()

@@ -39,6 +39,7 @@ class Error final {
 
   Error(ErrorCode errorNumber, std::string_view errorMessage);
 
+  // Include ResultError.tpp when you want to call this function.
   template<typename... Args>
   static auto fmt(ErrorCode, Args&&...) -> Error;
 
