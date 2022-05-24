@@ -224,7 +224,7 @@ const replicatedStateSuite = function (stateType) {
       lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, 4));
     },
 
-    testDropFromTarget: function () {
+    ["testDropFromTarget_" + stateType]: function () {
       const {stateId} = createReplicatedState();
       sh.replicatedStateDeleteTarget(database, stateId);
 

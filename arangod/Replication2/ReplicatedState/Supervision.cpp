@@ -165,6 +165,7 @@ auto checkStateAdded(SupervisionContext& ctx, RSA::State const& state) {
                   // participants and *then* increments the generation
                   .generation = StateGeneration{2},
                   .properties = state.target.properties,
+                  .owner = "target",
                   .participants = {}};
 
     auto logTarget =

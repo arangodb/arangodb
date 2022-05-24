@@ -76,6 +76,7 @@ struct Plan {
   LogId id;
   StateGeneration generation;
   Properties properties;
+  std::optional<std::string> owner;
 
   struct Participant {
     StateGeneration generation;
@@ -96,6 +97,7 @@ auto inspect(Inspector& f, Plan& x) {
       f.field(StaticStrings::Id, x.id),
       f.field(static_strings::String_Generation, x.generation),
       f.field(StaticStrings::Properties, x.properties),
+      f.field("owner", x.owner),
       f.field(StaticStrings::Participants, x.participants)
           .fallback(std::unordered_map<ParticipantId, Plan::Participant>{}));
 }
