@@ -84,6 +84,9 @@ namespace arangodb::iresearch {
 Result makeFilter(irs::boolean_filter* filter, QueryContext const& queryCtx,
                   FilterContext const& filterCtx, aql::AstNode const& node);
 
+Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
+                      FilterContext const& filterCtx, aql::AstNode const& node);
+
 #ifdef USE_ENTERPRISE
 Result fromBooleanExpansion(irs::boolean_filter* filter,
                             QueryContext const& ctx,
@@ -769,7 +772,7 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
 using TypeRangeHandler = void (*)(irs::Or& rangeOr, std::string name,
                                   irs::score_t boost);
 
-std::array<TypeRangeHandler, 4> constexpr TypeRangeHandlers{
+std::array<TypeRangeHandler, 4> constexpr kTypeRangeHandlers{
     {[](irs::Or& rangeOr, std::string name, irs::score_t boost) {
        auto nullName = name;  // intentional copy as mangling is inplace!
        kludge::mangleNull(nullName);
@@ -794,15 +797,15 @@ std::array<TypeRangeHandler, 4> constexpr TypeRangeHandlers{
 template<bool Min, size_t typeIdx>
 void setupTypeOrderRangeFilter(irs::Or& rangeOr, std::string name,
                                irs::score_t boost) {
-  static_assert(typeIdx < TypeRangeHandlers.size());
+  static_assert(typeIdx < kTypeRangeHandlers.size());
   static_assert(typeIdx >= 0);
   if constexpr (Min) {
-    for (size_t i = typeIdx + 1; i < TypeRangeHandlers.size(); ++i) {
-      TypeRangeHandlers[i](rangeOr, name, boost);
+    for (size_t i = typeIdx + 1; i < kTypeRangeHandlers.size(); ++i) {
+      kTypeRangeHandlers[i](rangeOr, name, boost);
     }
   } else if constexpr (typeIdx > 0) {
     for (size_t i = 0; i < typeIdx; ++i) {
-      TypeRangeHandlers[i](rangeOr, name, boost);
+      kTypeRangeHandlers[i](rangeOr, name, boost);
     }
   }
 }
@@ -954,51 +957,6 @@ Result byRange(irs::boolean_filter* filter, NormalizedCmpNode const& node,
     }
   }
   return byRange<Min>(filter, name, value, incl, ctx, filterCtx);
-}
-
-Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
-                      FilterContext const& filterCtx,
-                      aql::AstNode const& node) {
-  // non-deterministic condition or self-referenced variable
-  if (!node.isDeterministic() || findReference(node, *ctx.ref)) {
-    // not supported by IResearch, but could be handled by ArangoDB
-    if (filterCtx.isSearchFilter()) {
-      if (filter) {
-        appendExpression(*filter, node, ctx, filterCtx);
-        return {};
-      }
-    } else {
-      return {TRI_ERROR_NOT_IMPLEMENTED,
-              "ByExpression filter is supported for SEARCH only"};
-    }
-  }
-
-  if (!filter) {
-    return {};
-  }
-
-  bool result;
-
-  if (node.isConstant()) {
-    result = node.isTrue();
-  } else {  // deterministic expression
-    ScopedAqlValue value(node);
-
-    if (!value.execute(ctx)) {
-      // can't execute expression
-      return {TRI_ERROR_BAD_PARAMETER, "can not execute expression"};
-    }
-
-    result = value.getBoolean();
-  }
-
-  if (result) {
-    filter->add<irs::all>().boost(filterCtx.boost());
-  } else {
-    filter->add<irs::empty>();
-  }
-
-  return {};
 }
 
 Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
@@ -3257,13 +3215,14 @@ Result fromFuncPhraseInRange(char const* funcName,
 }
 
 std::map<irs::string_ref, ConversionPhraseHandler> const
-    FCallSystemConversionPhraseHandlers{
+    kFCallSystemConversionPhraseHandlers{
         {"TERM", fromFuncPhraseTerm},
         {"STARTS_WITH", fromFuncPhraseStartsWith},
         {"WILDCARD", fromFuncPhraseLike},  // 'LIKE' is a key word
         {"LEVENSHTEIN_MATCH", fromFuncPhraseLevenshteinMatch},
         {TERMS_FUNC, fromFuncPhraseTerms<VPackSlice>},
         {"IN_RANGE", fromFuncPhraseInRange}};
+
 Result processPhraseArgObjectType(char const* funcName,
                                   size_t const funcArgumentPosition,
                                   irs::by_phrase* filter,
@@ -3286,8 +3245,8 @@ Result processPhraseArgObjectType(char const* funcName,
     }
     auto name = key.copyString();
     basics::StringUtils::toupperInPlace(name);
-    auto const entry = FCallSystemConversionPhraseHandlers.find(name);
-    if (FCallSystemConversionPhraseHandlers.cend() == entry) {
+    auto const entry = kFCallSystemConversionPhraseHandlers.find(name);
+    if (kFCallSystemConversionPhraseHandlers.cend() == entry) {
       return {TRI_ERROR_BAD_PARAMETER,
               "'"s.append(funcName)
                   .append("' AQL function: Unknown '")
@@ -4108,7 +4067,7 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
 }
 
 frozen::map<irs::string_ref, ConvertionHandler,
-            0> constexpr FCallUserConvertionHandlers{};
+            0> constexpr kFCallUserConvertionHandlers{};
 
 Result fromFCallUser(irs::boolean_filter* filter, QueryContext const& ctx,
                      FilterContext const& filterCtx, aql::AstNode const& node) {
@@ -4131,9 +4090,9 @@ Result fromFCallUser(irs::boolean_filter* filter, QueryContext const& ctx,
     return {TRI_ERROR_BAD_PARAMETER, "Unable to parse user function name"};
   }
 
-  auto const entry = FCallUserConvertionHandlers.find(name);
+  auto const entry = kFCallUserConvertionHandlers.find(name);
 
-  if (entry == FCallUserConvertionHandlers.end()) {
+  if (entry == kFCallUserConvertionHandlers.end()) {
     return fromExpression(filter, ctx, filterCtx, node);
   }
 
@@ -4148,7 +4107,7 @@ Result fromFCallUser(irs::boolean_filter* filter, QueryContext const& ctx,
 }
 
 frozen::map<irs::string_ref, ConvertionHandler,
-            13> constexpr FCallSystemConvertionHandlers{
+            13> constexpr kFCallSystemConvertionHandlers{
     // filter functions
     {"PHRASE", fromFuncPhrase},
     {"STARTS_WITH", fromFuncStartsWith},
@@ -4182,9 +4141,9 @@ Result fromFCall(irs::boolean_filter* filter, QueryContext const& ctx,
     return fromExpression(filter, ctx, filterCtx, node);
   }
 
-  auto const entry = FCallSystemConvertionHandlers.find(fn->name);
+  auto const entry = kFCallSystemConvertionHandlers.find(fn->name);
 
-  if (entry == FCallSystemConvertionHandlers.end()) {
+  if (entry == kFCallSystemConvertionHandlers.end()) {
     return fromExpression(filter, ctx, filterCtx, node);
   }
 
@@ -4237,6 +4196,51 @@ Result fromExpansion(irs::boolean_filter* filter, QueryContext const& ctx,
 
 namespace arangodb {
 namespace iresearch {
+
+Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
+                      FilterContext const& filterCtx,
+                      aql::AstNode const& node) {
+  // non-deterministic condition or self-referenced variable
+  if (!node.isDeterministic() || findReference(node, *ctx.ref)) {
+    // not supported by IResearch, but could be handled by ArangoDB
+    if (filterCtx.isSearchFilter()) {
+      if (filter) {
+        appendExpression(*filter, node, ctx, filterCtx);
+        return {};
+      }
+    } else {
+      return {TRI_ERROR_NOT_IMPLEMENTED,
+              "ByExpression filter is supported for SEARCH only"};
+    }
+  }
+
+  if (!filter) {
+    return {};
+  }
+
+  bool result;
+
+  if (node.isConstant()) {
+    result = node.isTrue();
+  } else {  // deterministic expression
+    ScopedAqlValue value(node);
+
+    if (!value.execute(ctx)) {
+      // can't execute expression
+      return {TRI_ERROR_BAD_PARAMETER, "can not execute expression"};
+    }
+
+    result = value.getBoolean();
+  }
+
+  if (result) {
+    filter->add<irs::all>().boost(filterCtx.boost());
+  } else {
+    filter->add<irs::empty>();
+  }
+
+  return {};
+}
 
 Result makeFilter(irs::boolean_filter* filter, QueryContext const& queryCtx,
                   FilterContext const& filterCtx, aql::AstNode const& node) {
