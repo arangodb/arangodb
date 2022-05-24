@@ -69,6 +69,9 @@ class Result final {
    */
   Result(Result&& other) noexcept = default;
 
+  template<typename... Args>
+  static auto fmt(ErrorCode, Args&&...) -> Result;
+
   /**
    * @brief Assignment operator
    * @param  other  To assign from

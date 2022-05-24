@@ -23,45 +23,18 @@
 
 #pragma once
 
-#include <string>
-#include <string_view>
+#include "ResultError.h"
 
-#include "Basics/ErrorCode.h"
+#include <fmt/core.h>
+
+#include "Basics/error.h"
 
 namespace arangodb::result {
 
-// arangodb::Error is used in arangodb::Result
-
-class Error final {
- public:
-  explicit Error(ErrorCode errorNumber) noexcept(
-      noexcept(std::string::allocator_type()));
-
-  Error(ErrorCode errorNumber, std::string_view errorMessage);
-
-  template<typename... Args>
-  static auto fmt(ErrorCode, Args&&...) -> Error;
-
-  [[nodiscard]] auto errorNumber() const noexcept -> ErrorCode;
-  [[nodiscard]] auto errorMessage() const& noexcept -> std::string_view;
-  [[nodiscard]] auto errorMessage() && noexcept -> std::string;
-
-  template<typename S>
-  void resetErrorMessage(S&& msg) {
-    _errorMessage = std::forward<S>(msg);
-  }
-
-  template<typename S>
-  void appendErrorMessage(S&& msg) {
-    if (_errorMessage.empty()) {
-      _errorMessage += errorMessage();
-    }
-    _errorMessage += std::forward<S>(msg);
-  }
-
- private:
-  ErrorCode _errorNumber;
-  std::string _errorMessage;
-};
+template<typename... Args>
+auto Error::fmt(ErrorCode errorCode, Args&&... args) -> Error {
+  return Error(errorCode, fmt::format(TRI_errno_string(errorCode),
+                                      std::forward<Args>(args)...));
+}
 
 }  // namespace arangodb::result
