@@ -156,7 +156,7 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
     }
     if (step.getDepth() >= _options.getMinDepth() && !res.isFiltered()) {
       // Include it in results.
-      _results.emplace_back(step);
+        _results.emplace_back(step);
     }
   }
 
