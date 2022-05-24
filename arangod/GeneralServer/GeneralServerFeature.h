@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Basics/Result.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
@@ -30,6 +31,11 @@
 #include "Metrics/LogScale.h"
 #include "Metrics/Histogram.h"
 #include "RestServer/arangod.h"
+
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace arangodb {
 class RestServerThread;
@@ -60,7 +66,7 @@ class GeneralServerFeature final : public ArangodFeature {
   std::string redirectRootTo() const;
   std::string const& supportInfoApiPolicy() const noexcept;
 
-  rest::RestHandlerFactory& handlerFactory();
+  std::shared_ptr<rest::RestHandlerFactory> handlerFactory() const;
   rest::AsyncJobManager& jobManager();
 
   void countHttp1Request(uint64_t bodySize) {
@@ -80,11 +86,20 @@ class GeneralServerFeature final : public ArangodFeature {
   void countVstConnection() { _vstConnections.count(); }
 
  private:
+  // build HTTP server(s)
   void buildServers();
-  void defineHandlers();
+  // open REST interface for listening
+  void startListening();
+  // define initial (minimal) REST handlers
+  void defineInitialHandlers(rest::RestHandlerFactory& f);
+  // define remaining REST handlers
+  void defineRemainingHandlers(rest::RestHandlerFactory& f);
 
- private:
   double _keepAliveTimeout = 300.0;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool _startedListening;
+#endif
+  bool _allowEarlyConnections;
   bool _allowMethodOverride;
   bool _proxyCheck;
   bool _returnQueueTimeHeader;
@@ -93,12 +108,16 @@ class GeneralServerFeature final : public ArangodFeature {
   std::vector<std::string> _accessControlAllowOrigins;
   std::string _redirectRootTo;
   std::string _supportInfoApiPolicy;
-  std::unique_ptr<rest::RestHandlerFactory> _handlerFactory;
+  std::shared_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
   std::vector<std::unique_ptr<rest::GeneralServer>> _servers;
   uint64_t _numIoThreads;
 
-  // Some metrics about
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  std::vector<std::string> _failurePoints;
+#endif
+
+  // Some metrics about requests and connections
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp1;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp2;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeVst;

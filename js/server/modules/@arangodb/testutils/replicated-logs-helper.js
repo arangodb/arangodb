@@ -329,14 +329,22 @@ const getLocalStatus = function (database, logId, serverId) {
   return res.json.result;
 };
 
-
-const getReplicatedLogLeaderPlan = function (database, logId) {
+const getReplicatedLogLeaderPlan = function (database, logId, nothrow = false) {
   let {plan} = readReplicatedLogAgency(database, logId);
   if (!plan.currentTerm) {
     throw Error("no current term in plan");
+        let error = Error("no current term in plan");
+    if (nothrow) {
+      return error;
+    }
+    throw error;
   }
   if (!plan.currentTerm.leader) {
-    throw Error("current term has no leader");
+    let error = Error("current term has no leader");
+    if (nothrow) {
+      return error;
+    }
+    throw error;
   }
   const leader = plan.currentTerm.leader.serverId;
   const term = plan.currentTerm.term;
@@ -346,6 +354,25 @@ const getReplicatedLogLeaderPlan = function (database, logId) {
 const getReplicatedLogLeaderTarget = function (database, logId) {
   let {target} = readReplicatedLogAgency(database, logId);
   return target.leader;
+};
+
+const createReplicatedLogPlanOnly = function (database, targetConfig) {
+  const logId = nextUniqueLogId();
+  const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
+  const leader = servers[0];
+  const term = 1;
+  const generation = 1;
+  replicatedLogSetPlan(database, logId, {
+    id: logId,
+    currentTerm: createTermSpecification(term, servers, targetConfig, leader),
+    participantsConfig: createParticipantsConfig(generation, servers),
+  });
+
+  // wait for all servers to have reported in current
+  waitFor(lpreds.replicatedLogIsReady(database, logId, term, servers, leader));
+  const followers = _.difference(servers, [leader]);
+  const remaining = _.difference(dbservers, servers);
+  return {logId, servers, leader, term, followers, remaining};
 };
 
 const createReplicatedLog = function (database, targetConfig) {
@@ -460,36 +487,69 @@ const testHelperFunctions = function (database) {
   };
 };
 
-exports.waitFor = waitFor;
-exports.readAgencyValueAt = readAgencyValueAt;
+const getSupervisionActionTypes = function (database, logId) {
+  const {current} = readReplicatedLogAgency(database, logId);
+  // filter out all empty actions
+  const actions = _.filter(current.actions, (a) => a.desc.type !== "EmptyAction");
+  return _.map(actions, (a) => a.desc.type);
+};
+
+const getLastNSupervisionActionsType = function (database, logId, n) {
+  const actions = getSupervisionActionTypes(database, logId);
+  return _.takeRight(actions, n);
+};
+
+const countActionsByType = function (actions) {
+  return _.reduce(actions, function (acc, type) {
+    acc[type] = 1 + (acc[type] || 0);
+    return acc;
+  }, {});
+};
+
+const updateReplicatedLogTarget = function(database, id, callback) {
+  const {target: oldTarget} = readReplicatedLogAgency(database, id);
+  let result = callback(oldTarget);
+  if (result === undefined) {
+    result = oldTarget;
+  }
+  replicatedLogSetTarget(database, id, result);
+};
+
+exports.checkRequestResult = checkRequestResult;
+exports.continueServer = continueServerImpl;
+exports.continueServerWaitOk = continueServerWaitOk;
+exports.coordinators = coordinators;
+exports.countActionsByType = countActionsByType;
 exports.createParticipantsConfig = createParticipantsConfig;
+exports.createReplicatedLog = createReplicatedLog;
+exports.createReplicatedLogPlanOnly = createReplicatedLogPlanOnly;
 exports.createTermSpecification = createTermSpecification;
 exports.dbservers = dbservers;
-exports.coordinators = coordinators;
-exports.readReplicatedLogAgency = readReplicatedLogAgency;
-exports.replicatedLogSetPlanParticipantsConfig = replicatedLogSetPlanParticipantsConfig;
-exports.replicatedLogUpdatePlanParticipantsConfigParticipants = replicatedLogUpdatePlanParticipantsConfigParticipants;
-exports.replicatedLogSetPlanTerm = replicatedLogSetPlanTerm;
-exports.replicatedLogSetPlan = replicatedLogSetPlan;
-exports.replicatedLogDeletePlan = replicatedLogDeletePlan;
-exports.stopServer = stopServerImpl;
-exports.continueServer = continueServerImpl;
-exports.nextUniqueLogId = nextUniqueLogId;
-exports.registerAgencyTestBegin = registerAgencyTestBegin;
-exports.registerAgencyTestEnd = registerAgencyTestEnd;
-exports.replicatedLogSetTarget = replicatedLogSetTarget;
-exports.getParticipantsObjectForServers = getParticipantsObjectForServers;
-exports.continueServerWaitOk = continueServerWaitOk;
-exports.stopServerWaitFailed = stopServerWaitFailed;
-exports.replicatedLogDeleteTarget = replicatedLogDeleteTarget;
+exports.getLastNSupervisionActionsType = getLastNSupervisionActionsType;
 exports.getLocalStatus = getLocalStatus;
-exports.getServerRebootId = getServerRebootId;
-exports.replicatedLogUpdateTargetParticipants = replicatedLogUpdateTargetParticipants;
-exports.waitForReplicatedLogAvailable = waitForReplicatedLogAvailable;
+exports.getParticipantsObjectForServers = getParticipantsObjectForServers;
 exports.getReplicatedLogLeaderPlan = getReplicatedLogLeaderPlan;
 exports.getReplicatedLogLeaderTarget = getReplicatedLogLeaderTarget;
-exports.createReplicatedLog = createReplicatedLog;
-exports.checkRequestResult = checkRequestResult;
-exports.getServerUrl = getServerUrl;
 exports.getServerHealth = getServerHealth;
+exports.getServerRebootId = getServerRebootId;
+exports.getServerUrl = getServerUrl;
+exports.getSupervisionActionTypes = getSupervisionActionTypes;
+exports.nextUniqueLogId = nextUniqueLogId;
+exports.readAgencyValueAt = readAgencyValueAt;
+exports.readReplicatedLogAgency = readReplicatedLogAgency;
+exports.registerAgencyTestBegin = registerAgencyTestBegin;
+exports.registerAgencyTestEnd = registerAgencyTestEnd;
+exports.replicatedLogDeletePlan = replicatedLogDeletePlan;
+exports.replicatedLogDeleteTarget = replicatedLogDeleteTarget;
+exports.replicatedLogSetPlan = replicatedLogSetPlan;
+exports.replicatedLogSetPlanParticipantsConfig = replicatedLogSetPlanParticipantsConfig;
+exports.replicatedLogSetPlanTerm = replicatedLogSetPlanTerm;
+exports.replicatedLogSetTarget = replicatedLogSetTarget;
+exports.replicatedLogUpdatePlanParticipantsConfigParticipants = replicatedLogUpdatePlanParticipantsConfigParticipants;
+exports.replicatedLogUpdateTargetParticipants = replicatedLogUpdateTargetParticipants;
+exports.stopServer = stopServerImpl;
+exports.stopServerWaitFailed = stopServerWaitFailed;
 exports.testHelperFunctions = testHelperFunctions;
+exports.updateReplicatedLogTarget = updateReplicatedLogTarget;
+exports.waitFor = waitFor;
+exports.waitForReplicatedLogAvailable = waitForReplicatedLogAvailable;

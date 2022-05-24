@@ -29,6 +29,7 @@
 #include "Basics/EncodingUtils.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
@@ -57,12 +58,6 @@ namespace {
 std::string const AdminAardvark("/_admin/aardvark/");
 std::string const ApiUser("/_api/user/");
 std::string const Open("/_open/");
-
-inline bool startsWith(std::string const& path, char const* other) {
-  size_t const size = std::char_traits<char>::length(other);
-
-  return (size <= path.size() && path.compare(0, size, other, size) == 0);
-}
 
 TRI_vocbase_t* lookupDatabaseFromRequest(ArangodServer& server,
                                          GeneralRequest& req) {
@@ -112,6 +107,7 @@ bool queueTimeViolated(GeneralRequest const& req) {
     // no queuing time restriction
     double requestedQueueTime = StringUtils::doubleDecimal(queueTimeValue);
     if (requestedQueueTime > 0.0) {
+      TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
       // value is > 0.0, so now check the last dequeue time that the scheduler
       // reported
       double lastDequeueTime =
@@ -153,16 +149,16 @@ CommTask::~CommTask() { _connectionStatistics.SET_END(); }
 
 /// Must be called before calling executeRequest, will send an error
 /// response if execution is supposed to be aborted
-
 CommTask::Flow CommTask::prepareExecution(
-    auth::TokenCache::Entry const& authToken, GeneralRequest& req) {
+    auth::TokenCache::Entry const& authToken, GeneralRequest& req,
+    ServerState::Mode mode) {
   DTRACE_PROBE1(arangod, CommTaskPrepareExecution, this);
 
   // Step 1: In the shutdown phase we simply return 503:
   if (_server.server().isStopping()) {
-    sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE,
-                      req.contentTypeResponse(), req.messageId(),
-                      TRI_ERROR_SHUTTING_DOWN);
+    this->sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE,
+                            req.contentTypeResponse(), req.messageId(),
+                            TRI_ERROR_SHUTTING_DOWN);
     return Flow::Abort;
   }
 
@@ -180,15 +176,51 @@ CommTask::Flow CommTask::prepareExecution(
   // Step 2: Handle server-modes, i.e. bootstrap/ Active-Failover / DC2DC stunts
   std::string const& path = req.requestPath();
 
-  ServerState::Mode mode = ServerState::mode();
   switch (mode) {
+    case ServerState::Mode::STARTUP: {
+      if (_auth->isActive() && !req.authenticated()) {
+        if (req.authenticationMethod() == rest::AuthenticationMethod::BASIC) {
+          // HTTP basic authentication is not supported during the startup
+          // phase, as we do not have any access to the database data. However,
+          // we must return HTTP 503 because we cannot even verify the
+          // credentials, and let the caller can try again later when the
+          // authentication may be available.
+          sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE,
+                            req.contentTypeResponse(), req.messageId(),
+                            TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                            "service unavailable due to startup");
+        } else {
+          sendErrorResponse(rest::ResponseCode::UNAUTHORIZED,
+                            req.contentTypeResponse(), req.messageId(),
+                            TRI_ERROR_FORBIDDEN);
+        }
+        return Flow::Abort;
+      }
+
+      // passed authentication!
+
+      if (path == "/_api/version" || path == "/_admin/version" ||
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+          path.starts_with("/_admin/debug/") ||
+#endif
+          path == "/_admin/status") {
+        return Flow::Continue;
+      }
+      // most routes are disallowed during startup, except the ones above.
+      sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE,
+                        req.contentTypeResponse(), req.messageId(),
+                        TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                        "service unavailable due to startup");
+      return Flow::Abort;
+    }
+
     case ServerState::Mode::MAINTENANCE: {
       // In the bootstrap phase, we would like that coordinators answer the
       // following endpoints, but not yet others:
       if ((!ServerState::instance()->isCoordinator() &&
-           !::startsWith(path, "/_api/agency/agency-callbacks")) ||
-          (!::startsWith(path, "/_api/agency/agency-callbacks") &&
-           !::startsWith(path, "/_api/aql"))) {
+           !path.starts_with("/_api/agency/agency-callbacks")) ||
+          (!path.starts_with("/_api/agency/agency-callbacks") &&
+           !path.starts_with("/_api/aql"))) {
         LOG_TOPIC("63f47", TRACE, arangodb::Logger::FIXME)
             << "Maintenance mode: refused path: " << path;
         sendErrorResponse(
@@ -210,26 +242,25 @@ CommTask::Flow CommTask::prepareExecution(
       [[fallthrough]];
     case ServerState::Mode::TRYAGAIN: {
       // the following paths are allowed on followers
-      if (!::startsWith(path, "/_admin/shutdown") &&
-          !::startsWith(path, "/_admin/cluster/health") &&
-          !(path == "/_admin/compact") &&
-          !::startsWith(path, "/_admin/license") &&
-          !::startsWith(path, "/_admin/log") &&
-          !::startsWith(path, "/_admin/metrics") &&
-          !::startsWith(path, "/_admin/server/") &&
-          !::startsWith(path, "/_admin/status") &&
-          !::startsWith(path, "/_admin/statistics") &&
-          !::startsWith(path, "/_admin/support-info") &&
-          !::startsWith(path, "/_api/agency/agency-callbacks") &&
+      if (!path.starts_with("/_admin/shutdown") &&
+          !path.starts_with("/_admin/cluster/health") &&
+          path != "/_admin/compact" && !path.starts_with("/_admin/license") &&
+          !path.starts_with("/_admin/log") &&
+          !path.starts_with("/_admin/metrics") &&
+          !path.starts_with("/_admin/server/") &&
+          !path.starts_with("/_admin/status") &&
+          !path.starts_with("/_admin/statistics") &&
+          !path.starts_with("/_admin/support-info") &&
+          !path.starts_with("/_api/agency/agency-callbacks") &&
           !(req.requestType() == RequestType::GET &&
-            ::startsWith(path, "/_api/collection")) &&
-          !::startsWith(path, "/_api/cluster/") &&
-          !::startsWith(path, "/_api/engine/stats") &&
-          !::startsWith(path, "/_api/replication") &&
-          !::startsWith(path, "/_api/ttl/statistics") &&
+            path.starts_with("/_api/collection")) &&
+          !path.starts_with("/_api/cluster/") &&
+          !path.starts_with("/_api/engine/stats") &&
+          !path.starts_with("/_api/replication") &&
+          !path.starts_with("/_api/ttl/statistics") &&
           (mode == ServerState::Mode::TRYAGAIN ||
-           !::startsWith(path, "/_api/version")) &&
-          !::startsWith(path, "/_api/wal")) {
+           !path.starts_with("/_api/version")) &&
+          !path.starts_with("/_api/wal")) {
         LOG_TOPIC("a5119", TRACE, arangodb::Logger::FIXME)
             << "Redirect/Try-again: refused path: " << path;
         std::unique_ptr<GeneralResponse> res =
@@ -350,6 +381,7 @@ void CommTask::finishExecution(GeneralResponse& res,
   if (_server.server()
           .getFeature<GeneralServerFeature>()
           .returnQueueTimeHeader()) {
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     res.setHeaderNC(
         StaticStrings::XArangoQueueTimeSeconds,
         std::to_string(
@@ -360,17 +392,16 @@ void CommTask::finishExecution(GeneralResponse& res,
 }
 
 /// Push this request into the execution pipeline
-
 void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
-                              std::unique_ptr<GeneralResponse> response) {
+                              std::unique_ptr<GeneralResponse> response,
+                              ServerState::Mode mode) {
+  TRI_ASSERT(request != nullptr);
+  TRI_ASSERT(response != nullptr);
+
   DTRACE_PROBE1(arangod, CommTaskExecuteRequest, this);
 
   response->setContentTypeRequested(request->contentTypeResponse());
   response->setGenerateBody(request->requestType() != RequestType::HEAD);
-
-  bool found;
-  // check for an async request (before the handler steals the request)
-  std::string const& asyncExec = request->header(StaticStrings::Async, found);
 
   // store the message id for error handling
   uint64_t messageId = 0UL;
@@ -393,11 +424,15 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     return;
   }
 
+  bool found;
+  // check for an async request (before the handler steals the request)
+  std::string const& asyncExec = request->header(StaticStrings::Async, found);
+
   // create a handler, this takes ownership of request and response
   auto& server = _server.server();
-  auto& factory = server.getFeature<GeneralServerFeature>().handlerFactory();
+  auto factory = server.getFeature<GeneralServerFeature>().handlerFactory();
   auto handler =
-      factory.createHandler(server, std::move(request), std::move(response));
+      factory->createHandler(server, std::move(request), std::move(response));
 
   // give up, if we cannot find a handler
   if (handler == nullptr) {
@@ -407,6 +442,14 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
                        VPackBuffer<uint8_t>());
     return;
   }
+
+  if (mode == ServerState::Mode::STARTUP) {
+    // request during startup phase
+    handler->setStatistics(stealStatistics(messageId));
+    handleRequestStartup(std::move(handler));
+    return;
+  }
+
   // forward to correct server if necessary
   bool forwarded;
   auto res = handler->forwardRequest(forwarded);
@@ -421,6 +464,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     return;
   }
 
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   SchedulerFeature::SCHEDULER->trackCreateHandlerTask();
 
   // asynchronous request
@@ -539,14 +583,58 @@ void CommTask::sendErrorResponse(rest::ResponseCode code,
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
+// Handle a request during the server startup
+void CommTask::handleRequestStartup(std::shared_ptr<RestHandler> handler) {
+  // We just injected the request pointer before calling this method
+  TRI_ASSERT(handler->request() != nullptr);
+
+  RequestLane lane = handler->determineRequestLane();
+  ContentType respType = handler->request()->contentTypeResponse();
+  uint64_t mid = handler->messageId();
+
+  // only fast lane handlers are allowed during startup
+  TRI_ASSERT(lane == RequestLane::CLIENT_FAST);
+  if (lane != RequestLane::CLIENT_FAST) {
+    sendErrorResponse(ResponseCode::SERVICE_UNAVAILABLE, respType, mid,
+                      TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                      "service unavailable due to startup");
+    return;
+  }
+  // note that in addition to the CLIENT_FAST request lane, another
+  // prerequisite for serving a request during startup is that the handler
+  // is registered via GeneralServerFeature::defineInitialHandlers().
+  // only the handlers listed there will actually be responded to.
+  // requests to any other handlers will be responded to with HTTP 503.
+
+  handler->trackQueueStart();
+  LOG_TOPIC("96766", DEBUG, Logger::REQUESTS)
+      << "Handling startup request " << (void*)this << " on path "
+      << handler->request()->requestPath() << " on lane " << lane;
+
+  handler->trackQueueEnd();
+  handler->trackTaskStart();
+
+  handler->runHandler([self = shared_from_this()](rest::RestHandler* handler) {
+    handler->trackTaskEnd();
+    try {
+      // Pass the response to the io context
+      self->sendResponse(handler->stealResponse(), handler->stealStatistics());
+    } catch (...) {
+      LOG_TOPIC("e1322", WARN, Logger::REQUESTS)
+          << "got an exception while sending response, closing connection";
+      self->stop();
+    }
+  });
+}
+
 // Execute a request by queueing it in the scheduler and having it executed via
 // a scheduler worker thread eventually.
-bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
+void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   DTRACE_PROBE2(arangod, CommTaskHandleRequestSync, this, handler.get());
 
   RequestLane lane = handler->determineRequestLane();
   handler->trackQueueStart();
-  // We just injected the request pointer a before calling this method
+  // We just injected the request pointer before calling this method
   TRI_ASSERT(handler->request() != nullptr);
   LOG_TOPIC("ecd0a", DEBUG, Logger::REQUESTS)
       << "Handling request " << (void*)this << " on path "
@@ -574,14 +662,14 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
       }
     });
   };
+
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   bool ok = SchedulerFeature::SCHEDULER->tryBoundedQueue(lane, std::move(cb));
 
   if (!ok) {
     sendErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE, respType, mid,
                       TRI_ERROR_QUEUE_FULL);
   }
-
-  return ok;
 }
 
 // handle a request which came in with the x-arango-async header
@@ -593,6 +681,8 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 
   RequestLane lane = handler->determineRequestLane();
   handler->trackQueueStart();
+
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
 
   if (jobId != nullptr) {
     auto& jobManager =
@@ -695,8 +785,8 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
     if (result == Flow::Abort) {
       std::string const& username = req.user();
 
-      if (path == "/" || StringUtils::isPrefix(path, Open) ||
-          StringUtils::isPrefix(path, AdminAardvark) ||
+      if (path == "/" || path.starts_with(Open) ||
+          path.starts_with(AdminAardvark) ||
           path == "/_admin/server/availability") {
         // mop: these paths are always callable...they will be able to check
         // req.user when it could be validated
@@ -707,12 +797,12 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
         result = Flow::Continue;
         // vc->forceReadOnly();
       } else if (req.requestType() == RequestType::POST && !username.empty() &&
-                 StringUtils::isPrefix(path, ApiUser + username + '/')) {
+                 path.starts_with(ApiUser + username + '/')) {
         // simon: unauthorized users should be able to call
         // `/_api/users/<name>` to check their passwords
         result = Flow::Continue;
         vc->forceReadOnly();
-      } else if (userAuthenticated && StringUtils::isPrefix(path, ApiUser)) {
+      } else if (userAuthenticated && path.starts_with(ApiUser)) {
         result = Flow::Continue;
       }
     }
@@ -798,7 +888,8 @@ void CommTask::processCorsOptions(std::unique_ptr<GeneralRequest> req,
   sendResponse(std::move(resp), stealStatistics(req->messageId()));
 }
 
-auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req) {
+auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
+                                                  ServerState::Mode mode) {
   bool found;
   std::string const& authStr = req.header(StaticStrings::Authorization, found);
   if (!found) {
@@ -842,8 +933,18 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req) {
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
+  if (authMethod != AuthenticationMethod::JWT &&
+      mode == ServerState::Mode::STARTUP) {
+    // during startup, the normal authentication is not available
+    // yet. so we have to refuse all requests that do not use
+    // a JWT.
+    // do not audit-log anything in this case, because there is
+    // nothing we can do to verify the credentials.
+    return auth::TokenCache::Entry::Unauthenticated();
+  }
+
   auto authToken =
-      this->_auth->tokenCache().checkAuthentication(authMethod, auth);
+      this->_auth->tokenCache().checkAuthentication(authMethod, mode, auth);
   req.setAuthenticated(authToken.authenticated());
   req.setTokenExpiry(authToken.expiry());
   req.setUser(authToken.username());  // do copy here, so that we do not

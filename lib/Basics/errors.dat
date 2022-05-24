@@ -71,13 +71,8 @@ ERROR_HTTP_SUPERFLUOUS_SUFFICES,601,"superfluous URL suffices","Will be raised w
 ################################################################################
 
 ERROR_ARANGO_ILLEGAL_STATE,1000,"illegal state","Internal error that will be raised when the datafile is not in the required state."
-ERROR_ARANGO_DATAFILE_SEALED,1002,"datafile sealed","Internal error that will be raised when trying to write to a datafile."
 ERROR_ARANGO_READ_ONLY,1004,"read only","Internal error that will be raised when trying to write to a read-only datafile or collection."
 ERROR_ARANGO_DUPLICATE_IDENTIFIER,1005,"duplicate identifier","Internal error that will be raised when a identifier duplicate is detected."
-ERROR_ARANGO_DATAFILE_UNREADABLE,1006,"datafile unreadable","Internal error that will be raised when a datafile is unreadable."
-ERROR_ARANGO_DATAFILE_EMPTY,1007,"datafile empty","Internal error that will be raised when a datafile is empty."
-ERROR_ARANGO_RECOVERY,1008,"logfile recovery error","Will be raised when an error occurred during WAL log file recovery."
-ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,1009,"datafile statistics not found","Will be raised when a required datafile statistics object was not found."
 
 ################################################################################
 ## External ArangoDB storage errors
@@ -87,15 +82,8 @@ ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,1009,"datafile statistics not found",
 ERROR_ARANGO_CORRUPTED_DATAFILE,1100,"corrupted datafile","Will be raised when a corruption is detected in a datafile."
 ERROR_ARANGO_ILLEGAL_PARAMETER_FILE,1101,"illegal or unreadable parameter file","Will be raised if a parameter file is corrupted or cannot be read."
 ERROR_ARANGO_CORRUPTED_COLLECTION,1102,"corrupted collection","Will be raised when a collection contains one or more corrupted data files."
-ERROR_ARANGO_MMAP_FAILED,1103,"mmap failed","Will be raised when the system call mmap failed."
 ERROR_ARANGO_FILESYSTEM_FULL,1104,"filesystem full","Will be raised when the filesystem is full."
-ERROR_ARANGO_NO_JOURNAL,1105,"no journal","Will be raised when a journal cannot be created."
-ERROR_ARANGO_DATAFILE_ALREADY_EXISTS,1106,"cannot create/rename datafile because it already exists","Will be raised when the datafile cannot be created or renamed because a file of the same name already exists."
 ERROR_ARANGO_DATADIR_LOCKED,1107,"database directory is locked","Will be raised when the database directory is locked by a different process."
-ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS,1108,"cannot create/rename collection because directory already exists","Will be raised when the collection cannot be created because a directory of the same name already exists."
-ERROR_ARANGO_MSYNC_FAILED,1109,"msync failed","Will be raised when the system call msync failed."
-ERROR_ARANGO_DATADIR_UNLOCKABLE,1110,"cannot lock database directory","Will be raised when the server cannot lock the database directory on startup."
-ERROR_ARANGO_SYNC_TIMEOUT,1111,"sync timeout","Will be raised when the server waited too long for a datafile to be synced to disk."
 
 ################################################################################
 ## General ArangoDB storage errors
@@ -103,12 +91,10 @@ ERROR_ARANGO_SYNC_TIMEOUT,1111,"sync timeout","Will be raised when the server wa
 ################################################################################
 
 ERROR_ARANGO_CONFLICT,1200,"conflict","Will be raised when updating or deleting a document and a conflict has been detected."
-ERROR_ARANGO_DATADIR_INVALID,1201,"invalid database directory","Will be raised when a non-existing database directory was specified when starting the database."
 ERROR_ARANGO_DOCUMENT_NOT_FOUND,1202,"document not found","Will be raised when a document with a given identifier is unknown."
 ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,1203,"collection or view not found","Will be raised when a collection or View with the given identifier or name is unknown."
 ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,1204,"parameter 'collection' not found","Will be raised when the collection parameter is missing."
 ERROR_ARANGO_DOCUMENT_HANDLE_BAD,1205,"illegal document identifier","Will be raised when a document identifier is corrupt."
-ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL,1206,"maximal size of journal too small","Will be raised when the maximal size of the journal is too small."
 ERROR_ARANGO_DUPLICATE_NAME,1207,"duplicate name","Will be raised when a name duplicate is detected."
 ERROR_ARANGO_ILLEGAL_NAME,1208,"illegal name","Will be raised when an illegal name is detected."
 ERROR_ARANGO_NO_INDEX,1209,"no suitable index known","Will be raised when no suitable index for the query is known."
@@ -132,7 +118,6 @@ ERROR_ARANGO_USE_SYSTEM_DATABASE,1230,"operation only allowed in system database
 ERROR_ARANGO_INVALID_KEY_GENERATOR,1232,"invalid key generator","Will be raised when an invalid key generator description is used."
 ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE,1233,"edge attribute missing or invalid","will be raised when the _from or _to values of an edge are undefined or contain an invalid value."
 ERROR_ARANGO_INDEX_CREATION_FAILED,1235,"index creation failed","Will be raised when an attempt to create an index has failed."
-ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT,1236,"write-throttling timeout","Will be raised when the server is write-throttled and a write operation has waited too long for the server to process queued operations."
 ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,1237,"collection type mismatch","Will be raised when a collection has a different type from what has been expected."
 ERROR_ARANGO_COLLECTION_NOT_LOADED,1238,"collection not loaded","Will be raised when a collection is accessed that is not yet loaded."
 ERROR_ARANGO_DOCUMENT_REV_BAD,1239,"illegal document revision","Will be raised when a document revision is corrupt or is missing where needed."
@@ -143,7 +128,6 @@ ERROR_ARANGO_INCOMPLETE_READ,1240,"incomplete read","Will be raised by the stora
 ## For errors that occur but are anticipated.
 ################################################################################
 
-ERROR_ARANGO_DATAFILE_FULL,1300,"datafile full","Will be raised when the datafile reaches its limit."
 ERROR_ARANGO_EMPTY_DATADIR,1301,"server database directory is empty","Will be raised when encountering an empty server database directory."
 ERROR_ARANGO_TRY_AGAIN,1302,"operation should be tried again","Will be raised when an operation should be retried."
 ERROR_ARANGO_BUSY,1303,"engine is busy","Will be raised when storage engine is busy."

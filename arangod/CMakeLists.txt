@@ -196,12 +196,10 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Aql/PruneExpressionEvaluator.cpp
   Cluster/CallbackGuard.cpp
   Cluster/ClusterEdgeCursor.cpp
-  Cluster/ClusterTraverser.cpp
   Cluster/ServerDefaults.cpp
   Cluster/TraverserEngine.cpp
   Graph/AttributeWeightShortestPathFinder.cpp
   Graph/BaseOptions.cpp
-  Graph/BreadthFirstEnumerator.cpp
   Graph/ClusterGraphDatalake.cpp
   Graph/ClusterTraverserCache.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
@@ -209,20 +207,15 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/GraphManager.cpp
   Graph/GraphOperations.cpp
   Graph/KShortestPathsFinder.cpp
-  Graph/NeighborsEnumerator.cpp
-  Graph/PathEnumerator.cpp
   Graph/ShortestPathFinder.cpp
   Graph/ShortestPathOptions.cpp
   Graph/ShortestPathResult.cpp
   Graph/ShortestPathType.cpp
   Graph/SingleServerEdgeCursor.cpp
-  Graph/SingleServerTraverser.cpp
-  Graph/Traverser.cpp
-  Graph/TraverserCache.cpp
+  Graph/TraverserCache.cpp # maybe remove
   Graph/TraverserCacheFactory.cpp
   Graph/TraverserDocumentCache.cpp
   Graph/TraverserOptions.cpp
-  Graph/WeightedEnumerator.cpp
   Graph/Cursors/RefactoredSingleServerEdgeCursor.cpp
   Graph/Cache/RefactoredTraverserCache.cpp
   Graph/Cache/RefactoredClusterTraverserCache.cpp
@@ -598,6 +591,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/Exceptions/ParticipantResignedException.h
   Replication2/Methods.cpp
   Replication2/ReplicatedLog/AgencyLogSpecification.cpp
+  Replication2/ReplicatedLog/AgencySpecificationInspectors.cpp
   Replication2/ReplicatedLog/Algorithms.cpp
   Replication2/ReplicatedLog/ILogInterfaces.cpp
   Replication2/ReplicatedLog/InMemoryLog.cpp
@@ -1133,6 +1127,7 @@ target_link_libraries(arango_replication arango_vocbase)
 
 target_link_libraries(arango_replication2 arango)
 target_link_libraries(arango_replication2 immer)
+target_link_libraries(arango_replication2 fmt)
 target_link_libraries(arango_replication2 arango_network)
 
 target_link_libraries(arango_rocksdb rocksdb)

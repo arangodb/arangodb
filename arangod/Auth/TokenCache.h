@@ -30,10 +30,16 @@
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
 #include "Basics/system-functions.h"
+#include "Cluster/ServerState.h"
 #include "Rest/CommonDefines.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+
+#include <atomic>
+#include <mutex>
+#include <string>
+#include <unordered_map>
 
 namespace arangodb {
 namespace auth {
@@ -53,18 +59,20 @@ class TokenCache {
     friend class auth::TokenCache;
 
    public:
-    explicit Entry(std::string const& username, bool a, double t)
-        : _username(username), _expiry(t), _authenticated(a) {}
+    explicit Entry(std::string username, bool a, double t)
+        : _username(std::move(username)), _expiry(t), _authenticated(a) {}
 
     static Entry Unauthenticated() { return Entry("", false, 0); }
     static Entry Superuser() { return Entry("", true, 0); }
 
-    std::string const& username() const { return _username; }
-    bool authenticated() const { return _authenticated; }
-    void authenticated(bool value) { _authenticated = value; }
-    void setExpiry(double expiry) { _expiry = expiry; }
+    std::string const& username() const noexcept { return _username; }
+    bool authenticated() const noexcept { return _authenticated; }
+    void authenticated(bool value) noexcept { _authenticated = value; }
+    void setExpiry(double expiry) noexcept { _expiry = expiry; }
     double expiry() const noexcept { return _expiry; }
-    bool expired() const { return _expiry != 0 && _expiry < TRI_microtime(); }
+    bool expired() const noexcept {
+      return _expiry != 0 && _expiry < TRI_microtime();
+    }
     std::vector<std::string> const& allowedPaths() const {
       return _allowedPaths;
     }
@@ -81,8 +89,9 @@ class TokenCache {
   };
 
  public:
-  TokenCache::Entry checkAuthentication(
-      arangodb::rest::AuthenticationMethod authType, std::string const& secret);
+  TokenCache::Entry checkAuthentication(rest::AuthenticationMethod authType,
+                                        ServerState::Mode mode,
+                                        std::string const& secret);
 
   /// Clear the cache of username / password auth
   void invalidateBasicCache();

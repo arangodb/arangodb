@@ -119,9 +119,9 @@ TEST(LogCommonTest, commit_fail_reason) {
 TEST(LogCommonTest, log_config) {
   auto logConfig = LogConfig{1, 1, 1, false};
   VPackBuilder builder;
-  logConfig.toVelocyPack(builder);
+  velocypack::serialize(builder, logConfig);
   auto slice = builder.slice();
-  const LogConfig fromVPack(slice);
+  auto fromVPack = velocypack::deserialize<LogConfig>(slice);
   EXPECT_EQ(logConfig, fromVPack);
 
   auto jsonBuffer = R"({
@@ -141,7 +141,7 @@ TEST(LogCommonTest, log_config) {
     "waitForSync": false
   })"_vpack;
   jsonSlice = velocypack::Slice(jsonBuffer->data());
-  logConfig = LogConfig{jsonSlice};
+  logConfig = velocypack::deserialize<LogConfig>(jsonSlice);
   EXPECT_EQ(logConfig.softWriteConcern, logConfig.writeConcern);
 }
 

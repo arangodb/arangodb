@@ -159,13 +159,14 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
 
   std::shared_ptr<ReplicatedStateFeature> feature =
       std::make_shared<ReplicatedStateFeature>();
-  std::shared_ptr<replication2::replicated_log::ReplicatedLog> leaderLog =
-      createAsyncReplicatedLog();
+
   std::shared_ptr<replication2::replicated_log::ReplicatedLog> followerLog =
       createAsyncReplicatedLog();
-
   std::shared_ptr<LogFollower> follower =
       followerLog->becomeFollower("follower", LogTerm{1}, "leader");
+
+  std::shared_ptr<replication2::replicated_log::ReplicatedLog> leaderLog =
+      createAsyncReplicatedLog();
   std::shared_ptr<LogLeader> leader = createLeaderWithDefaultFlags(
       leaderLog, "leader", LogTerm{1}, {follower}, 2);
 

@@ -33,8 +33,12 @@
 
 #include <optional>
 #include <type_traits>
+#include <utility>
 
 namespace arangodb::replication2::agency {
+
+using ParticipantsFlagsMap =
+    std::unordered_map<ParticipantId, ParticipantFlags>;
 
 struct LogPlanTermSpecification {
   LogTerm term;
@@ -43,16 +47,14 @@ struct LogPlanTermSpecification {
     ParticipantId serverId;
     RebootId rebootId;
 
-    Leader(ParticipantId const& participant, RebootId const& rebootId)
-        : serverId{participant}, rebootId{rebootId} {}
+    Leader(ParticipantId participant, RebootId rebootId)
+        : serverId{std::move(participant)}, rebootId{rebootId} {}
     Leader() : rebootId{RebootId{0}} {};
-    auto toVelocyPack(VPackBuilder&) const -> void;
     friend auto operator==(Leader const&, Leader const&) noexcept
         -> bool = default;
   };
   std::optional<Leader> leader;
 
-  auto toVelocyPack(VPackBuilder&) const -> void;
   LogPlanTermSpecification() = default;
 
   LogPlanTermSpecification(LogTerm term, LogConfig config,
@@ -69,10 +71,9 @@ struct LogPlanSpecification {
 
   ParticipantsConfig participantsConfig;
 
-  auto toVelocyPack(velocypack::Builder&) const -> void;
-  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice)
-      -> LogPlanSpecification;
-  LogPlanSpecification();
+  std::optional<std::string> owner;
+
+  LogPlanSpecification() = default;
 
   LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term);
   LogPlanSpecification(LogId id, std::optional<LogPlanTermSpecification> term,
@@ -87,7 +88,6 @@ struct LogCurrentLocalState {
   LogTerm term{};
   TermIndexPair spearhead{};
 
-  auto toVelocyPack(VPackBuilder&) const -> void;
   LogCurrentLocalState() = default;
   LogCurrentLocalState(LogTerm, TermIndexPair) noexcept;
   friend auto operator==(LogCurrentLocalState const& s,
@@ -114,8 +114,6 @@ struct LogCurrentSupervisionElection {
   std::unordered_map<ParticipantId, ErrorCode> detail;
   std::vector<ParticipantId> electibleLeaderSet;
 
-  auto toVelocyPack(VPackBuilder&) const -> void;
-
   friend auto operator==(LogCurrentSupervisionElection const&,
                          LogCurrentSupervisionElection const&) noexcept -> bool;
   friend auto operator!=(LogCurrentSupervisionElection const& left,
@@ -132,29 +130,104 @@ auto operator==(LogCurrentSupervisionElection const&,
 
 auto to_string(LogCurrentSupervisionElection::ErrorCode) noexcept
     -> std::string_view;
-auto toVelocyPack(LogCurrentSupervisionElection::ErrorCode, VPackBuilder&)
-    -> void;
-
-enum class LogCurrentSupervisionError {
-  TARGET_LEADER_INVALID,
-  TARGET_LEADER_EXCLUDED,
-  TARGET_NOT_ENOUGH_PARTICIPANTS,
-  GENERAL_ERROR  // TODO: Using this whilw refactoring
-                 // other code; needs to be improved
-};
-
-auto to_string(LogCurrentSupervisionError) noexcept -> std::string_view;
-auto toVelocyPack(LogCurrentSupervisionError, VPackBuilder&) -> void;
 
 struct LogCurrentSupervision {
-  std::optional<LogCurrentSupervisionElection> election;
-  std::optional<LogCurrentSupervisionError> error;
-  std::optional<std::string> statusMessage;
-  std::optional<uint64_t> targetVersion;
+  using clock = std::chrono::system_clock;
 
-  auto toVelocyPack(VPackBuilder&) const -> void;
-  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice)
-      -> LogCurrentSupervision;
+  struct TargetLeaderInvalid {
+    static constexpr std::string_view code = "TargetLeaderInvalid";
+    friend auto operator==(TargetLeaderInvalid const& s,
+                           TargetLeaderInvalid const& s2) noexcept
+        -> bool = default;
+  };
+  struct TargetLeaderExcluded {
+    static constexpr std::string_view code = "TargetLeaderExcluded";
+    friend auto operator==(TargetLeaderExcluded const& s,
+                           TargetLeaderExcluded const& s2) noexcept
+        -> bool = default;
+  };
+  struct TargetLeaderFailed {
+    static constexpr std::string_view code = "TargetLeaderFailed";
+    friend auto operator==(TargetLeaderFailed const& s,
+                           TargetLeaderFailed const& s2) noexcept
+        -> bool = default;
+  };
+  struct TargetNotEnoughParticipants {
+    static constexpr std::string_view code = "TargetNotEnoughParticipants";
+    friend auto operator==(TargetNotEnoughParticipants const& s,
+                           TargetNotEnoughParticipants const& s2) noexcept
+        -> bool = default;
+  };
+  struct WaitingForConfigCommitted {
+    static constexpr std::string_view code = "WaitingForConfigCommitted";
+    friend auto operator==(WaitingForConfigCommitted const& s,
+                           WaitingForConfigCommitted const& s2) noexcept
+        -> bool = default;
+  };
+  struct ConfigChangeNotImplemented {
+    static constexpr std::string_view code = "ConfigChangeNotImplemented";
+    friend auto operator==(ConfigChangeNotImplemented const& s,
+                           ConfigChangeNotImplemented const& s2) noexcept
+        -> bool = default;
+  };
+  struct LeaderElectionImpossible {
+    static constexpr std::string_view code = "LeaderElectionImpossible";
+    friend auto operator==(LeaderElectionImpossible const& s,
+                           LeaderElectionImpossible const& s2) noexcept
+        -> bool = default;
+  };
+  struct LeaderElectionOutOfBounds {
+    static constexpr std::string_view code = "LeaderElectionOutOfBounds";
+    friend auto operator==(LeaderElectionOutOfBounds const& s,
+                           LeaderElectionOutOfBounds const& s2) noexcept
+        -> bool = default;
+  };
+  struct LeaderElectionQuorumNotReached {
+    static constexpr std::string_view code = "LeaderElectionQuorumNotReached";
+    LogCurrentSupervisionElection election;
+    friend auto operator==(LeaderElectionQuorumNotReached const& s,
+                           LeaderElectionQuorumNotReached const& s2) noexcept
+        -> bool = default;
+  };
+  struct LeaderElectionSuccess {
+    static constexpr std::string_view code = "LeaderElectionSuccess";
+    LogCurrentSupervisionElection election;
+    friend auto operator==(LeaderElectionSuccess const& s,
+                           LeaderElectionSuccess const& s2) noexcept
+        -> bool = default;
+  };
+  struct SwitchLeaderFailed {
+    static constexpr std::string_view code = "SwitchLeaderFailed";
+    friend auto operator==(SwitchLeaderFailed const& s,
+                           SwitchLeaderFailed const& s2) noexcept
+        -> bool = default;
+  };
+  struct PlanNotAvailable {
+    static constexpr std::string_view code = "PlanNotAvailable";
+    friend auto operator==(PlanNotAvailable const& s,
+                           PlanNotAvailable const& s2) noexcept
+        -> bool = default;
+  };
+  struct CurrentNotAvailable {
+    static constexpr std::string_view code = "CurrentNotAvailable";
+    friend auto operator==(CurrentNotAvailable const& s,
+                           CurrentNotAvailable const& s2) noexcept
+        -> bool = default;
+  };
+
+  using StatusMessage =
+      std::variant<TargetLeaderInvalid, TargetLeaderExcluded,
+                   TargetLeaderFailed, TargetNotEnoughParticipants,
+                   WaitingForConfigCommitted, ConfigChangeNotImplemented,
+                   LeaderElectionImpossible, LeaderElectionOutOfBounds,
+                   LeaderElectionQuorumNotReached, LeaderElectionSuccess,
+                   SwitchLeaderFailed, PlanNotAvailable, CurrentNotAvailable>;
+
+  using StatusReport = std::vector<StatusMessage>;
+
+  std::optional<uint64_t> targetVersion;
+  std::optional<StatusReport> statusReport;
+  std::optional<clock::time_point> lastTimeModified;
 
   LogCurrentSupervision() = default;
   friend auto operator==(LogCurrentSupervision const& s,
@@ -175,8 +248,6 @@ struct LogCurrent {
     // will be set after 5s if leader is unable to establish leadership
     std::optional<replicated_log::CommitFailReason> commitStatus;
 
-    auto toVelocyPack(VPackBuilder&) const -> void;
-    [[nodiscard]] static auto fromVelocyPack(VPackSlice) -> Leader;
     friend auto operator==(Leader const& s, Leader const& s2) noexcept
         -> bool = default;
   };
@@ -193,8 +264,6 @@ struct LogCurrent {
   };
   std::vector<ActionDummy> actions;
 
-  auto toVelocyPack(VPackBuilder&) const -> void;
-  [[nodiscard]] static auto fromVelocyPack(VPackSlice) -> LogCurrent;
   LogCurrent() = default;
   friend auto operator==(LogCurrent const& s, LogCurrent const& s2) noexcept
       -> bool = default;
@@ -215,9 +284,6 @@ struct LogTarget {
   };
 
   std::optional<Supervision> supervision;
-
-  [[nodiscard]] static auto fromVelocyPack(velocypack::Slice) -> LogTarget;
-  void toVelocyPack(velocypack::Builder&) const;
 
   LogTarget() = default;
 

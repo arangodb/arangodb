@@ -41,9 +41,11 @@
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
+#include "Inspection/VPack.h"
 
 namespace arangodb {
 class Result;
@@ -88,7 +90,8 @@ auto methods::updateTermSpecificationTrx(arangodb::agency::envelope envelope,
 
   return envelope.write()
       .emplace_object(
-          termPath, [&](VPackBuilder& builder) { spec.toVelocyPack(builder); })
+          termPath,
+          [&](VPackBuilder& builder) { velocypack::serialize(builder, spec); })
       .inc(paths::plan()->version()->str())
       .precs()
       .isNotEmpty(logPath)
@@ -137,14 +140,20 @@ auto methods::updateTermSpecification(DatabaseID const& database, LogId id,
 auto methods::deleteReplicatedLogTrx(arangodb::agency::envelope envelope,
                                      DatabaseID const& database, LogId id)
     -> arangodb::agency::envelope {
-  auto path =
+  auto planPath =
       paths::plan()->replicatedLogs()->database(database)->log(id)->str();
+  auto targetPath =
+      paths::target()->replicatedLogs()->database(database)->log(id)->str();
+  auto currentPath =
+      paths::current()->replicatedLogs()->database(database)->log(id)->str();
 
   return envelope.write()
-      .remove(path)
+      .remove(planPath)
       .inc(paths::plan()->version()->str())
-      .precs()
-      .isNotEmpty(path)
+      .remove(targetPath)
+      .inc(paths::target()->version()->str())
+      .remove(currentPath)
+      .inc(paths::current()->version()->str())
       .end();
 }
 
@@ -173,7 +182,8 @@ auto methods::createReplicatedLogTrx(arangodb::agency::envelope envelope,
 
   return envelope.write()
       .emplace_object(
-          path, [&](VPackBuilder& builder) { spec.toVelocyPack(builder); })
+          path,
+          [&](VPackBuilder& builder) { velocypack::serialize(builder, spec); })
       .inc(paths::target()->version()->str())
       .precs()
       .isEmpty(path)
@@ -219,9 +229,10 @@ auto methods::updateElectionResult(arangodb::agency::envelope envelope,
                   ->str();
 
   return envelope.write()
-      .emplace_object(
-          path + "/supervision/election",
-          [&](VPackBuilder& builder) { result.toVelocyPack(builder); })
+      .emplace_object(path + "/supervision/election",
+                      [&](VPackBuilder& builder) {
+                        velocypack::serialize(builder, result);
+                      })
       .inc(paths::current()->version()->str())
       .end();
 }
@@ -234,7 +245,7 @@ auto methods::getCurrentSupervision(TRI_vocbase_t& vocbase, LogId id)
   agencyCache.get(builder, basics::StringUtils::concatT(
                                "Current/ReplicatedLogs/", vocbase.name(), "/",
                                id, "/supervision"));
-  return LogCurrentSupervision::fromVelocyPack(builder.slice());
+  return velocypack::deserialize<LogCurrentSupervision>(builder.slice());
 }
 
 namespace {
@@ -250,7 +261,8 @@ auto createReplicatedStateTrx(arangodb::agency::envelope envelope,
 
   return envelope.write()
       .emplace_object(
-          path, [&](VPackBuilder& builder) { spec.toVelocyPack(builder); })
+          path,
+          [&](VPackBuilder& builder) { velocypack::serialize(builder, spec); })
       .inc(paths::target()->version()->str())
       .precs()
       .isEmpty(path)
