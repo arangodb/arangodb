@@ -155,19 +155,22 @@ class VectorTypedBuffer : public TypedBuffer<T> {
 /** Filesize limited by size_t, usually 2^32 or 2^64 */
 template<typename T>
 class MappedFileBuffer : public TypedBuffer<T> {
-  std::string _logPrefix;  // prefix used for logging
-  std::string _filename;   // underlying filename
-  int _fd;                 // underlying file descriptor
-  bool _temporary;         // O_TMPFILE used?
-  void* _mmHandle;         // underlying memory map object handle (windows only)
-  size_t _mappedSize;      // actually mapped size
+  std::string const _tempPath;  // temporary path
+  std::string _logPrefix;       // prefix used for logging
+  std::string _filename;        // underlying filename
+  int _fd;                      // underlying file descriptor
+  bool _temporary;              // O_TMPFILE used?
+  void* _mmHandle;     // underlying memory map object handle (windows only)
+  size_t _mappedSize;  // actually mapped size
 
  public:
   MappedFileBuffer(MappedFileBuffer const& other) = delete;
   MappedFileBuffer& operator=(MappedFileBuffer const& other) = delete;
 
-  explicit MappedFileBuffer(size_t capacity, std::string const& logPrefix)
+  explicit MappedFileBuffer(std::string const& tempPath, size_t capacity,
+                            std::string const& logPrefix)
       : TypedBuffer<T>(),
+        _tempPath(tempPath),
         _logPrefix(logPrefix),
         _fd(-1),
         _temporary(false),
@@ -290,9 +293,13 @@ class MappedFileBuffer : public TypedBuffer<T> {
   }
 
   std::string buildFilename(bool temporary) const {
+    std::string tempPath = _tempPath;
+    if (tempPath.empty()) {
+      tempPath = TRI_GetTempPath();
+    }
     if (temporary) {
       // only need a path
-      return TRI_GetTempPath();
+      return tempPath;
     }
 
     double tt = TRI_microtime();
@@ -302,7 +309,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
     std::string file =
         "pregel-" + std::to_string(uint64_t(Thread::currentProcessId())) + "-" +
         std::to_string(uint64_t(tt)) + "-" + std::to_string(tt2) + ".mmap";
-    return basics::FileUtils::buildFilename(TRI_GetTempPath(), file);
+    return basics::FileUtils::buildFilename(tempPath, file);
   }
 
   void removeFile() const {
