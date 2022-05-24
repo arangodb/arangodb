@@ -63,6 +63,7 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -3051,6 +3052,46 @@ Result ClusterInfo::createCollectionsCoordinator(
     agencyCallbacks.emplace_back(std::move(agencyCallback));
     opers.emplace_back(CreateCollectionOrder(databaseName, info.collectionID,
                                              info.isBuildingSlice()));
+
+    // Create a replicated state for each shard
+    for (auto const& [shardId, serverIds] : shardServers) {
+      replication2::replicated_state::agency::Target spec;
+
+      auto stateId{std::string_view(shardId).substr(1, shardId.size() - 1)};
+      auto logId = replication2::LogId::fromString(stateId);
+      ADB_PROD_ASSERT(logId.has_value())
+          << " converting " << stateId
+          << " to LogId failed, during replicated state creation for shard "
+          << shardId;
+
+      spec.id = logId.value();
+      spec.properties.implementation.type = "black-hole";
+      TRI_ASSERT(!serverIds.empty());
+      spec.leader = serverIds.front();
+
+      for (auto const& serverId : serverIds) {
+        spec.participants.emplace(
+            serverId,
+            replication2::replicated_state::agency::Target::Participant{});
+      }
+
+      spec.config.writeConcern = info.writeConcern;
+      spec.config.replicationFactor = info.replicationFactor;
+      spec.config.softWriteConcern = info.replicationFactor;
+      spec.config.waitForSync = false;
+      spec.version = 1;
+
+      auto builder = std::make_shared<VPackBuilder>();
+      velocypack::serialize(*builder, spec);
+      auto path = basics::StringUtils::joinT("/", "Target/ReplicatedStates",
+                                             databaseName, spec.id);
+
+      LOG_DEVEL << "building replicated state with id " << spec.id
+                << " for collection " << info.name << " and database "
+                << databaseName << " using path " << path;
+      opers.emplace_back(AgencyOperation(path, AgencyValueOperationType::SET,
+                                         std::move(builder)));
+    }
 
     // Ensure preconditions on the agency
     std::shared_ptr<ShardMap> otherCidShardMap = nullptr;
