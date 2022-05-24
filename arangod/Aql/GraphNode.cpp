@@ -61,6 +61,86 @@ using namespace arangodb::traverser;
 
 namespace {
 
+struct DisjointSmartToSatelliteTester {
+  Result isCollectionAllowed(
+      std::shared_ptr<LogicalCollection> const& collection,
+      TRI_edge_direction_e dir) {
+    // We only need to check Sat -> Smart or Smart -> Sat collection, nothing
+    // else
+    if (collection->isSmartToSatEdgeCollection() ||
+        collection->isSatToSmartEdgeCollection()) {
+      if (dir == TRI_EDGE_ANY) {
+        // ANY is always forbidden
+        return {
+            TRI_ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION,
+            "Using direction 'ANY' on collection: '" + collection->name() +
+                "' could switch from Smart to Satellite and back. This "
+                "violates the isDisjoint feature and is forbidden."};
+      }
+      // Unify Edge storage, and edge read direction.
+      // The smartToSatDir defines the direction in which we attempt to
+      // walk from Smart to Satellite collections. (OUT: Smart -> Sat, IN: Sat
+      // -> Smart)
+      bool isOut = dir == TRI_EDGE_OUT;
+      auto smartToSatDir = isOut == collection->isSmartToSatEdgeCollection()
+                               ? TRI_EDGE_OUT
+                               : TRI_EDGE_IN;
+      if (_disjointSmartToSatDirection == TRI_EDGE_ANY) {
+        // We have not defined the direction yet, store it, this now defines the
+        // only allowed switch
+        _disjointSmartToSatDirection = smartToSatDir;
+        TRI_ASSERT(_conflictingCollection == nullptr);
+        _conflictingCollection = collection;
+        _conflictingDirection = dir;
+      } else if (_disjointSmartToSatDirection != smartToSatDir) {
+        // We try to switch again! This is disallowed. Let us report.
+        std::stringstream errorMessage;
+        errorMessage << "Using direction ";
+        if (dir == TRI_EDGE_OUT) {
+          errorMessage << "OUTBOUND";
+        } else {
+          errorMessage << "INBOUND";
+        }
+        auto printCollection = [&errorMessage](LogicalCollection const& col,
+                                               bool isOut) {
+          errorMessage << "'" << col.name() << "' switching from ";
+          if (isOut == col.isSmartToSatEdgeCollection()) {
+            // Hits OUTBOUND on SmartToSat and INBOUND on SatToSmart
+            errorMessage << "Smart to Satellite";
+          } else {
+            // Hits INBOUND on SmartToSat and OUTBOUND on SatToSmart
+            errorMessage << "Satellite to Smart";
+          }
+        };
+        errorMessage << " on collection: ";
+        printCollection(*collection, isOut);
+
+        errorMessage << ". Conflicting with: ";
+        if (_conflictingDirection == TRI_EDGE_OUT) {
+          errorMessage << "OUTBOUND";
+        } else {
+          errorMessage << "INBOUND";
+        }
+        errorMessage << " ";
+        bool conflictingIsOut = _conflictingDirection == TRI_EDGE_OUT;
+        TRI_ASSERT(_conflictingCollection != nullptr);
+        printCollection(*_conflictingCollection, conflictingIsOut);
+        errorMessage
+            << ". This violates the isDisjoint feature and is forbidden.";
+        return {
+            TRI_ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION,
+            errorMessage.str()};
+      }
+    }
+    return TRI_ERROR_NO_ERROR;
+  }
+
+ private:
+  TRI_edge_direction_e _disjointSmartToSatDirection{TRI_EDGE_ANY};
+  std::shared_ptr<LogicalCollection> _conflictingCollection{nullptr};
+  TRI_edge_direction_e _conflictingDirection{TRI_EDGE_ANY};
+};
+
 TRI_edge_direction_e uint64ToDirection(uint64_t dirNum) {
   switch (dirNum) {
     case 0:
@@ -114,7 +194,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(graph != nullptr);
 
-  auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+  DisjointSmartToSatelliteTester disjointTest{};
 
   if (graph->type == NODE_TYPE_COLLECTION_LIST) {
     size_t edgeCollectionCount = graph->numMembers();
@@ -123,36 +203,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
     _edgeColls.reserve(edgeCollectionCount);
     _directions.reserve(edgeCollectionCount);
 
-    // First determine whether all edge collections are smart and sharded
-    // like a common collection:
-    if (ServerState::instance()->isRunningInCluster()) {
-      _isSmart = true;
-      _isDisjoint = true;
-      std::string distributeShardsLike;
-      for (size_t i = 0; i < edgeCollectionCount; ++i) {
-        auto col = graph->getMember(i);
-        if (col->type == NODE_TYPE_DIRECTION) {
-          col = col->getMember(1);  // The first member always is the collection
-        }
-        std::string n = col->getString();
-        auto c = ci.getCollection(_vocbase->name(), n);
-        if (c->isSmart() && !c->isDisjoint()) {
-          _isDisjoint = false;
-        }
-        if (!c->isSmart() || c->distributeShardsLike().empty()) {
-          _isSmart = false;
-          _isDisjoint = false;
-          break;
-        }
-        if (distributeShardsLike.empty()) {
-          distributeShardsLike = c->distributeShardsLike();
-        } else if (distributeShardsLike != c->distributeShardsLike()) {
-          _isSmart = false;
-          _isDisjoint = false;
-          break;
-        }
-      }
-    }
+    determineEnterpriseFlags(graph);
 
     std::unordered_map<std::string, TRI_edge_direction_e> seenCollections;
     CollectionNameResolver const& resolver = plan->getAst()->query().resolver();
@@ -199,20 +250,27 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
                                        msg);
       }
+      if (_isDisjoint) {
+        // TODO: Alternative to "THROW" we could run a community based Query
+        // here, instead of a Disjoint one.
+        auto res = disjointTest.isCollectionAllowed(collection, dir);
+        if (res.fail()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+        }
+      }
 
       auto& collections = plan->getAst()->query().collections();
 
       _graphInfo.add(VPackValue(eColName));
       if (ServerState::instance()->isRunningInCluster()) {
-        auto c = ci.getCollection(_vocbase->name(), eColName);
-        if (!c->isSmart()) {
+        if (!collection->isSmart()) {
           addEdgeCollection(collections, eColName, dir);
         } else {
           std::vector<std::string> names;
           if (_isSmart) {
-            names = c->realNames();
+            names = collection->realNames();
           } else {
-            names = c->realNamesForRead();
+            names = collection->realNamesForRead();
           }
           for (auto const& name : names) {
             addEdgeCollection(collections, name, dir);
@@ -242,22 +300,30 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_EMPTY);
     }
 
-    // First determine whether all edge collections are smart and sharded
-    // like a common collection:
+    // Just use the Graph Object information
     if (ServerState::instance()->isRunningInCluster()) {
       _isSmart = _graphObj->isSmart();
       _isDisjoint = _graphObj->isDisjoint();
     }
-
+    auto& ci = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+    auto& collections = plan->getAst()->query().collections();
     for (const auto& n : eColls) {
       if (_options->shouldExcludeEdgeCollection(n)) {
         // excluded edge collection
         continue;
       }
 
-      auto& collections = plan->getAst()->query().collections();
       if (ServerState::instance()->isRunningInCluster()) {
         auto c = ci.getCollection(_vocbase->name(), n);
+        if (_isDisjoint) {
+          // TODO: Alternative to "THROW" we could run a community based Query
+          // here, instead of a Disjoint one.
+          auto res = disjointTest.isCollectionAllowed(c, _defaultDirection);
+          if (res.fail()) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(),
+                                           res.errorMessage());
+          }
+        }
         if (!c->isSmart()) {
           addEdgeCollection(collections, n, _defaultDirection);
         } else {
@@ -276,7 +342,6 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       }
     }
 
-    auto& collections = plan->getAst()->query().collections();
     auto vColls = _graphObj->vertexCollections();
     length = vColls.size();
     if (length == 0) {
@@ -472,6 +537,13 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       _options(std::move(options)) {
   setGraphInfoAndCopyColls(edgeColls, vertexColls);
 }
+
+#ifndef USE_ENTERPRISE
+void GraphNode::determineEnterpriseFlags(AstNode const*) {
+  _isSmart = false;
+  _isDisjoint = false;
+}
+#endif
 
 void GraphNode::setGraphInfoAndCopyColls(
     std::vector<Collection*> const& edgeColls,
