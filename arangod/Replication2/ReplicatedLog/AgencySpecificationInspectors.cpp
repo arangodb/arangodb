@@ -25,4 +25,4 @@
 
 namespace arangodb::replication2::agency {
 
-} // namespace arangodb::replication2::agency
+}  // namespace arangodb::replication2::agency
