@@ -108,7 +108,8 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, ExecutionNodeId id,
       _inStartVariable(nullptr),
       _inTargetVariable(nullptr),
       _fromCondition(nullptr),
-      _toCondition(nullptr) {
+      _toCondition(nullptr),
+      _distributeVariable(nullptr) {
   TRI_ASSERT(start != nullptr);
   TRI_ASSERT(target != nullptr);
   TRI_ASSERT(graph != nullptr);
@@ -148,7 +149,8 @@ ShortestPathNode::ShortestPathNode(
     std::vector<TRI_edge_direction_e> const& directions,
     Variable const* inStartVariable, std::string const& startVertexId,
     Variable const* inTargetVariable, std::string const& targetVertexId,
-    std::unique_ptr<BaseOptions> options, graph::Graph const* graph)
+    std::unique_ptr<BaseOptions> options, graph::Graph const* graph,
+    Variable const* distributeVariable)
     : GraphNode(plan, id, vocbase, edgeColls, vertexColls, defaultDirection,
                 directions, std::move(options), graph),
       _inStartVariable(inStartVariable),
@@ -156,7 +158,8 @@ ShortestPathNode::ShortestPathNode(
       _inTargetVariable(inTargetVariable),
       _targetVertexId(targetVertexId),
       _fromCondition(nullptr),
-      _toCondition(nullptr) {}
+      _toCondition(nullptr),
+      _distributeVariable(distributeVariable) {}
 
 ShortestPathNode::~ShortestPathNode() = default;
 
@@ -166,7 +169,8 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
       _inStartVariable(nullptr),
       _inTargetVariable(nullptr),
       _fromCondition(nullptr),
-      _toCondition(nullptr) {
+      _toCondition(nullptr),
+      _distributeVariable(nullptr) {
   // Start Vertex
   if (base.hasKey("startInVariable")) {
     _inStartVariable =
@@ -212,11 +216,27 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
   // the plan's AST takes ownership of the newly created AstNode, so this is
   // safe cppcheck-suppress *
   _toCondition = plan->getAst()->createNode(base.get("toCondition"));
+
+  if (base.hasKey("distributeVariable")) {
+    _distributeVariable =
+        Variable::varFromVPack(plan->getAst(), base, "distributeVariable");
+  }
 }
 
 void ShortestPathNode::setStartInVariable(Variable const* inVariable) {
   _inStartVariable = inVariable;
   _startVertexId = "";
+}
+
+void ShortestPathNode::setTargetInVariable(Variable const* inVariable) {
+  _inTargetVariable = inVariable;
+  _targetVertexId = "";
+}
+
+void ShortestPathNode::setDistributeVariable(Variable const* distVariable) {
+  // Can only be set once.
+  TRI_ASSERT(_distributeVariable == nullptr);
+  _distributeVariable = distVariable;
 }
 
 void ShortestPathNode::doToVelocyPack(VPackBuilder& nodes,
@@ -245,6 +265,11 @@ void ShortestPathNode::doToVelocyPack(VPackBuilder& nodes,
   TRI_ASSERT(_toCondition != nullptr);
   nodes.add(VPackValue("toCondition"));
   _toCondition->toVelocyPack(nodes, flags);
+
+  if (_distributeVariable != nullptr) {
+    nodes.add(VPackValue("distributeVariable"));
+    _distributeVariable->toVelocyPack(nodes);
+  }
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -324,7 +349,7 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
   auto c = std::make_unique<ShortestPathNode>(
       plan, _id, _vocbase, _edgeColls, _vertexColls, _defaultDirection,
       _directions, _inStartVariable, _startVertexId, _inTargetVariable,
-      _targetVertexId, std::move(tmp), _graphObj);
+      _targetVertexId, std::move(tmp), _graphObj, _distributeVariable);
   shortestPathCloneHelper(*plan, *c, withProperties);
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
@@ -373,6 +398,10 @@ void ShortestPathNode::replaceVariables(
   if (_inTargetVariable != nullptr) {
     _inTargetVariable = Variable::replace(_inTargetVariable, replacements);
   }
+
+  if (_distributeVariable != nullptr) {
+    _distributeVariable = Variable::replace(_distributeVariable, replacements);
+  }
 }
 
 /// @brief getVariablesSetHere
@@ -394,6 +423,14 @@ void ShortestPathNode::getVariablesUsedHere(VarSet& vars) const {
   }
   if (_inTargetVariable != nullptr) {
     vars.emplace(_inTargetVariable);
+  }
+  if (_distributeVariable != nullptr) {
+    // NOTE: This is not actually used, but is required to be kept
+    // as the shard based distribute node is eventually inserted, after
+    // the register plan is completed, and requires this variable.
+    // if we do not retain it here, the shard based distribution would
+    // not be able to distribute request to shard.
+    vars.emplace(_distributeVariable);
   }
 }
 
@@ -465,6 +502,7 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan& plan,
       _inTargetVariable(other._inTargetVariable),
       _targetVertexId(other._targetVertexId),
       _fromCondition(nullptr),
-      _toCondition(nullptr) {
+      _toCondition(nullptr),
+      _distributeVariable(other._distributeVariable) {
   other.shortestPathCloneHelper(plan, *this, false);
 }
