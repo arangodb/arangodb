@@ -24,6 +24,7 @@
 #include "Runner.h"
 
 #include <fstream>
+#include <iostream>
 #include <numeric>
 #include <memory>
 #include <stdexcept>

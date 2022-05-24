@@ -40,6 +40,8 @@ constexpr std::string_view charset =
 namespace arangodb::sepp::generators {
 
 RandomStringGenerator::RandomStringGenerator(std::uint32_t size) : _size(size) {
+  // TODO - seed properly (make seed configurable and use different but
+  // deterministic seeds for different threads)
   _prng.seed(0, 0xdeadbeefdeadbeefULL);
 }
 
