@@ -407,11 +407,13 @@ arangodb::Result SynchronizeShard::collectionCountOnLeader(
   options.database = getDatabase();
   options.timeout = network::Timeout(60);
   options.skipScheduler = true;  // hack to speed up future.get()
+  network::Headers headers;
+  headers.insert_or_assign("X-Arango-Frontend", "true");
 
   auto response =
       network::sendRequest(pool, leaderEndpoint, fuerte::RestVerb::Get,
                            "/_api/collection/" + getShard() + "/count",
-                           VPackBuffer<uint8_t>(), options)
+                           VPackBuffer<uint8_t>(), options, std::move(headers))
           .get();
   auto res = response.combinedResult();
   if (res.fail()) {
