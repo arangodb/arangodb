@@ -749,8 +749,9 @@ struct ReplicatedLogMethodsCoordinator final
               return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
             }
 
-            auto spec = arangodb::replication2::agency::LogPlanSpecification::
-                fromVelocyPack(result->value());
+            auto spec = velocypack::deserialize<
+                arangodb::replication2::agency::LogPlanSpecification>(
+                result->value());
 
             return {std::make_shared<
                 arangodb::replication2::agency::LogPlanSpecification>(
@@ -789,8 +790,9 @@ struct ReplicatedLogMethodsCoordinator final
       auto status = statusFromResult(read.asResult());
       if (read.ok() && !read.value().isNone()) {
         status.response.emplace(
-            arangodb::replication2::agency::LogCurrentSupervision::
-                fromVelocyPack(read.value()));
+            velocypack::deserialize<
+                arangodb::replication2::agency::LogCurrentSupervision>(
+                read.value()));
       }
 
       return status;
@@ -1009,9 +1011,8 @@ struct ReplicatedStateCoordinatorMethods
             return false;
           }
 
-          auto supervision =
-              replicated_state::agency::Current::Supervision::fromVelocyPack(
-                  slice);
+          auto supervision = velocypack::deserialize<
+              replicated_state::agency::Current::Supervision>(slice);
           if (supervision.version >= ctx->version) {
             ctx->promise.setValue(ResultT<consensus::index_t>{index});
             return true;
@@ -1074,8 +1075,8 @@ struct ReplicatedStateCoordinatorMethods
       if (result->value().isNone()) {
         return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
       }
-      auto current =
-          replicated_state::agency::Current::fromVelocyPack(result->value());
+      auto current = velocypack::deserialize<replicated_state::agency::Current>(
+          result->value());
 
       GlobalSnapshotStatus status;
       for (auto const& [p, s] : current.participants) {

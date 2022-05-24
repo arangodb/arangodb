@@ -40,21 +40,6 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::agency;
 
-auto LogPlanTermSpecification::Leader::toVelocyPack(VPackBuilder& builder) const
-    -> void {
-  serialize(builder, *this);
-}
-
-auto LogPlanTermSpecification::toVelocyPack(VPackBuilder& builder) const
-    -> void {
-  serialize(builder, *this);
-}
-
-LogPlanSpecification::LogPlanSpecification() = default;
-auto LogPlanSpecification::toVelocyPack(VPackBuilder& builder) const -> void {
-  serialize(builder, *this);
-}
-
 LogPlanTermSpecification::LogPlanTermSpecification(LogTerm term,
                                                    LogConfig config,
                                                    std::optional<Leader> leader)
@@ -71,40 +56,9 @@ LogPlanSpecification::LogPlanSpecification(
       currentTerm(std::move(term)),
       participantsConfig(std::move(participantsConfig)) {}
 
-auto LogPlanSpecification::fromVelocyPack(velocypack::Slice slice)
-    -> LogPlanSpecification {
-  return deserialize<LogPlanSpecification>(slice);
-}
-
 LogCurrentLocalState::LogCurrentLocalState(LogTerm term,
                                            TermIndexPair spearhead) noexcept
     : term(term), spearhead(spearhead) {}
-
-auto LogCurrentLocalState::toVelocyPack(VPackBuilder& builder) const -> void {
-  serialize(builder, *this);
-}
-
-auto LogCurrentSupervision::fromVelocyPack(VPackSlice s)
-    -> LogCurrentSupervision {
-  return deserialize<LogCurrentSupervision>(s);
-}
-
-auto LogCurrentSupervision::toVelocyPack(VPackBuilder& builder) const -> void {
-  serialize(builder, *this);
-}
-
-auto LogCurrent::toVelocyPack(VPackBuilder& builder) const -> void {
-  serialize(builder, *this);
-}
-
-auto LogCurrent::fromVelocyPack(VPackSlice s) -> LogCurrent {
-  return deserialize<LogCurrent>(s);
-}
-
-auto LogCurrentSupervisionElection::toVelocyPack(VPackBuilder& builder) const
-    -> void {
-  serialize(builder, *this);
-}
 
 auto agency::to_string(LogCurrentSupervisionElection::ErrorCode ec) noexcept
     -> std::string_view {
@@ -131,40 +85,6 @@ auto agency::operator==(const LogCurrentSupervisionElection& left,
          left.participantsAvailable == right.participantsAvailable &&
          left.participantsRequired == right.participantsRequired &&
          left.detail == right.detail;
-}
-
-auto agency::to_string(LogCurrentSupervisionError error) noexcept
-    -> std::string_view {
-  switch (error) {
-    case LogCurrentSupervisionError::GENERAL_ERROR:
-      return "generic error.";
-    case LogCurrentSupervisionError::TARGET_LEADER_INVALID:
-      return "the leader selected in target is invalid";
-    case LogCurrentSupervisionError::TARGET_LEADER_EXCLUDED:
-      return "the leader selected in target is excluded";
-    case LogCurrentSupervisionError::TARGET_NOT_ENOUGH_PARTICIPANTS:
-      return "not enough participants to create the log safely";
-  }
-  LOG_TOPIC("7eee2", FATAL, arangodb::Logger::REPLICATION2)
-      << "Invalid LogCurrentSupervisionError "
-      << static_cast<std::underlying_type_t<decltype(error)>>(error);
-  FATAL_ERROR_ABORT();
-}
-
-auto LogCurrent::Leader::toVelocyPack(VPackBuilder& builder) const -> void {
-  serialize(builder, *this);
-}
-
-auto LogCurrent::Leader::fromVelocyPack(VPackSlice s) -> Leader {
-  return deserialize<Leader>(s);
-}
-
-auto LogTarget::fromVelocyPack(velocypack::Slice s) -> LogTarget {
-  return deserialize<LogTarget>(s);
-}
-
-void LogTarget::toVelocyPack(velocypack::Builder& builder) const {
-  serialize(builder, *this);
 }
 
 LogTarget::LogTarget(LogId id, ParticipantsFlagsMap const& participants,

@@ -604,7 +604,9 @@ replicated_log::LogFollower::~LogFollower() {
 
 auto LogFollower::release(LogIndex doneWithIdx) -> Result {
   auto guard = _guardedFollowerData.getLockedGuard();
-
+  if (guard->didResign()) {
+    return {TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
+  }
   guard.wait(_appendEntriesInFlightCondVar,
              [&] { return !_appendEntriesInFlight; });
 

@@ -115,28 +115,12 @@ auto replication2::operator<<(std::ostream& os, TermIndexPair pair)
   return os << '(' << pair.term << ':' << pair.index << ')';
 }
 
-LogConfig::LogConfig(VPackSlice slice) {
-  waitForSync = slice.get(StaticStrings::WaitForSyncString).extract<bool>();
-  writeConcern = slice.get(StaticStrings::WriteConcern).extract<std::size_t>();
-  if (auto sw = slice.get(StaticStrings::SoftWriteConcern); !sw.isNone()) {
-    softWriteConcern = sw.extract<std::size_t>();
-  } else {
-    softWriteConcern = writeConcern;
-  }
-  replicationFactor =
-      slice.get(StaticStrings::ReplicationFactor).extract<std::size_t>();
-}
-
 LogConfig::LogConfig(std::size_t writeConcern, std::size_t softWriteConcern,
                      std::size_t replicationFactor, bool waitForSync) noexcept
     : writeConcern(writeConcern),
       softWriteConcern(softWriteConcern),
       replicationFactor(replicationFactor),
       waitForSync(waitForSync) {}
-
-auto LogConfig::toVelocyPack(VPackBuilder& builder) const -> void {
-  serialize(builder, *this);
-}
 
 LogRange::LogRange(LogIndex from, LogIndex to) noexcept : from(from), to(to) {
   TRI_ASSERT(from <= to);

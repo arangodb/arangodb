@@ -20,24 +20,27 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <fmt/ostream.h>
 #include <fmt/core.h>
 
-#include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
-#include "Replication2/ReplicatedState/Supervision.h"
-#include "Replication2/Helper/AgencyStateBuilder.h"
 #include "Replication2/Helper/AgencyLogBuilder.h"
+#include "Replication2/Helper/AgencyStateBuilder.h"
+#include "Replication2/ModelChecker/ActorModel.h"
+#include "Replication2/ModelChecker/ModelChecker.h"
+#include "Replication2/ModelChecker/Predicates.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
-#include "Replication2/ModelChecker/ModelChecker.h"
-#include "Replication2/ModelChecker/ActorModel.h"
-#include "Replication2/ModelChecker/Predicates.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "Replication2/ReplicatedState/Supervision.h"
 
 #include "Replication2/Helper/ModelChecker/AgencyState.h"
+#include "Replication2/Helper/ModelChecker/AgencyTransitions.h"
 #include "Replication2/Helper/ModelChecker/HashValues.h"
 #include "Replication2/Helper/ModelChecker/Predicates.h"
-#include "Replication2/Helper/ModelChecker/AgencyTransitions.h"
 
+#include "Logger/LogMacros.h"
 #include <boost/core/demangle.hpp>
 
 using namespace arangodb;
@@ -105,14 +108,20 @@ SupervisionLogAction::SupervisionLogAction(replicated_log::Action action)
     : _action(std::move(action)) {}
 
 void SupervisionLogAction::apply(AgencyState& agency) {
-  auto ctx = replicated_log::ActionContext{
-      agency.replicatedLog.value().plan, agency.replicatedLog.value().current};
-  std::visit([&](auto& action) { action.execute(ctx); }, _action);
-  if (ctx.hasCurrentModification()) {
-    agency.replicatedLog->current = ctx.getCurrent();
+  if (!agency.replicatedLog.has_value()) {
+    // TODO: What now?
+    TRI_ASSERT(false);
   }
-  if (ctx.hasPlanModification()) {
-    agency.replicatedLog->plan = ctx.getPlan();
+  auto ctx = replicated_log::executeAction(*agency.replicatedLog, _action);
+  if (ctx.hasModificationFor<LogCurrentSupervision>()) {
+    if (!agency.replicatedLog->current.has_value()) {
+      agency.replicatedLog->current.emplace(LogCurrent{});
+    }
+    agency.replicatedLog->current->supervision =
+        ctx.getValue<LogCurrentSupervision>();
+  }
+  if (ctx.hasModificationFor<LogPlanSpecification>()) {
+    agency.replicatedLog->plan = ctx.getValue<LogPlanSpecification>();
   }
 }
 
@@ -196,6 +205,48 @@ void ReplaceServerTargetState::apply(AgencyState& agency) const {
   target.participants.erase(oldServer);
   target.participants[newServer];
   target.version.emplace(target.version.value_or(0) + 1);
+}
+
+auto SetLeaderInTargetAction::toString() const -> std::string {
+  return fmt::format("setting `{}` as leader in target", newLeader);
+}
+
+SetLeaderInTargetAction::SetLeaderInTargetAction(ParticipantId newLeader)
+    : newLeader(newLeader) {}
+void SetLeaderInTargetAction::apply(AgencyState& agency) const {
+  TRI_ASSERT(agency.replicatedLog.has_value());
+  auto& target = agency.replicatedLog->target;
+  target.leader.emplace(newLeader);
+}
+
+AddLogParticipantAction::AddLogParticipantAction(
+    replication2::ParticipantId server)
+    : server(std::move(server)) {}
+
+void AddLogParticipantAction::apply(AgencyState& agency) const {
+  TRI_ASSERT(agency.replicatedLog.has_value());
+  auto& target = agency.replicatedLog->target;
+  target.participants[server];
+  target.version.emplace(target.version.value_or(0) + 1);
+}
+
+auto AddLogParticipantAction::toString() const -> std::string {
+  return fmt::format("adding participant {}", server);
+}
+
+RemoveLogParticipantAction::RemoveLogParticipantAction(
+    replication2::ParticipantId server)
+    : server(std::move(server)) {}
+
+void RemoveLogParticipantAction::apply(AgencyState& agency) const {
+  TRI_ASSERT(agency.replicatedLog.has_value());
+  auto& target = agency.replicatedLog->target;
+  target.participants.erase(server);
+  target.version.emplace(target.version.value_or(0) + 1);
+}
+
+auto RemoveLogParticipantAction::toString() const -> std::string {
+  return fmt::format("removing participant {}", server);
 }
 
 }  // namespace arangodb::test
