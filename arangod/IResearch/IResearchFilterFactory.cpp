@@ -111,9 +111,9 @@ struct Range {
 };
 
 template<typename>
-struct isRange : std::false_type {};
+struct IsRange : std::false_type {};
 template<size_t Min, size_t Max>
-struct isRange<Range<Min, Max>> : std::true_type {};
+struct IsRange<Range<Min, Max>> : std::true_type {};
 
 template<bool MaxBound, size_t Value>
 struct OpenRange {
@@ -122,9 +122,9 @@ struct OpenRange {
 };
 
 template<typename>
-struct isOpenRange : std::false_type {};
+struct IsOpenRange : std::false_type {};
 template<bool MaxBound, size_t Value>
-struct isOpenRange<OpenRange<MaxBound, Value>> : std::true_type {};
+struct IsOpenRange<OpenRange<MaxBound, Value>> : std::true_type {};
 
 template<size_t Value>
 struct ExactValue {
@@ -132,13 +132,13 @@ struct ExactValue {
 };
 
 template<typename>
-struct isExactValue : std::false_type {};
+struct IsExactValue : std::false_type {};
 template<size_t Value>
-struct isExactValue<ExactValue<Value>> : std::true_type {};
+struct IsExactValue<ExactValue<Value>> : std::true_type {};
 
 template<typename RangeType>
 Result invalidArgsCount(char const* funcName) {
-  if constexpr (isRange<RangeType>::value) {
+  if constexpr (IsRange<RangeType>::value) {
     return {TRI_ERROR_BAD_PARAMETER,
             "'"s.append(funcName)
                 .append("' AQL function: Invalid number of arguments passed "
@@ -147,7 +147,7 @@ Result invalidArgsCount(char const* funcName) {
                 .append(" and <= ")
                 .append(std::to_string(RangeType::MAX))
                 .append(")")};
-  } else if constexpr (isOpenRange<RangeType>::value) {
+  } else if constexpr (IsOpenRange<RangeType>::value) {
     if constexpr (RangeType::MAX_BOUND) {
       return {TRI_ERROR_BAD_PARAMETER,
               "'"s.append(funcName)
@@ -163,7 +163,7 @@ Result invalidArgsCount(char const* funcName) {
                         "(expected >= ")
                 .append(std::to_string(RangeType::VALUE))
                 .append(")")};
-  } else if constexpr (isExactValue<RangeType>::value) {
+  } else if constexpr (IsExactValue<RangeType>::value) {
     return {
         TRI_ERROR_BAD_PARAMETER,
         "'"s.append(funcName)
