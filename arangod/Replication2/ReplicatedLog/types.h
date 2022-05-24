@@ -173,7 +173,8 @@ auto inspect(Inspector& f, AppendEntriesErrorReason& x) {
   auto state = std::string{static_strings::requestInFlightString};
   auto errorMessage = std::string{x.getErrorMessage()};
   return f.object(x).fields(
-      f.field("details", x.details), f.field("errorMessage", errorMessage),
+      f.field("details", x.details),
+      f.field("errorMessage", errorMessage).fallback(std::string{}),
       f.field("error", x.error)
           .transformWith(AppendEntriesErrorReasonTypeStringTransformer{}));
 }

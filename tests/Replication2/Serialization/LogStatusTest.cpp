@@ -134,7 +134,7 @@ TEST(LogStatusTest, append_entries_error_reason) {
 TEST(LogStatusTest, follower_statistics_exceptions) {
   // Missing commitIndex
   EXPECT_ANY_THROW({
-    FollowerStatistics::fromVelocyPack(velocypack::Slice(R"({
+    velocypack::deserialize<FollowerStatistics>(velocypack::Slice(R"({
       "missing_commitIndex": 4,
       "releaseIndex": 0,
       "spearhead": {
@@ -151,7 +151,7 @@ TEST(LogStatusTest, follower_statistics_exceptions) {
 
   // Wrong type for commitIndex
   EXPECT_ANY_THROW({
-    FollowerStatistics::fromVelocyPack(velocypack::Slice(R"({
+    velocypack::deserialize<FollowerStatistics>(velocypack::Slice(R"({
       "commitIndex": "4",
       "releaseIndex": 0,
       "spearhead": {
@@ -182,9 +182,10 @@ TEST(LogStatusTest, leader_status) {
   leaderStatus.committedParticipantsConfig->generation = 18;
   std::unordered_map<ParticipantId, FollowerStatistics> follower(
       {{"PRMR-45c56239-6a83-4ab0-961e-9adea5078286",
-        FollowerStatistics::fromVelocyPack(velocypack::Slice(R"({
+        velocypack::deserialize<FollowerStatistics>(velocypack::Slice(R"({
         "commitIndex": 4,
         "releaseIndex": 0,
+        "firstIndex": 1,
         "spearhead": {"term": 2, "index": 4},
         "lastErrorReason": {"error": "None"},
         "lastRequestLatencyMS": 0.012983,
@@ -193,9 +194,10 @@ TEST(LogStatusTest, leader_status) {
         }
         })"_vpack->data()))},
        {"PRMR-13608015-4a2c-46aa-985f-73b6b8a73568",
-        FollowerStatistics::fromVelocyPack(velocypack::Slice(R"({
+        velocypack::deserialize<FollowerStatistics>(velocypack::Slice(R"({
           "commitIndex": 3,
           "releaseIndex": 0,
+          "firstIndex": 1,
           "spearhead": {"term": 2, "index": 3},
           "lastErrorReason": {"error": "CommunicationError", "details": "foo"},
           "lastRequestLatencyMS": 11159.799272,

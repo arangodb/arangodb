@@ -59,13 +59,6 @@ struct QuickLogStatus {
   [[nodiscard]] auto getCurrentTerm() const noexcept -> std::optional<LogTerm>;
   [[nodiscard]] auto getLocalStatistics() const noexcept
       -> std::optional<LogStatistics>;
-
-  void toVelocyPack(arangodb::velocypack::Builder& builder) {
-    serialize(builder, *this);
-  }
-  auto fromVelocyPack(arangodb::velocypack::Slice slice) {
-    return deserialize<QuickLogStatus>(slice);
-  }
 };
 
 auto to_string(ParticipantRole) noexcept -> std::string_view;
@@ -104,8 +97,6 @@ struct FollowerStatistics : LogStatistics {
   AppendEntriesErrorReason lastErrorReason;
   std::chrono::duration<double, std::milli> lastRequestLatencyMS;
   FollowerState internalState;
-  void toVelocyPack(velocypack::Builder& builder) const;
-  static auto fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics;
 
   friend auto operator==(FollowerStatistics const& left,
                          FollowerStatistics const& right) noexcept -> bool;

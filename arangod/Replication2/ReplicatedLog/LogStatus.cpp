@@ -53,32 +53,6 @@ auto QuickLogStatus::getLocalStatistics() const noexcept
   return local;
 }
 
-void FollowerStatistics::toVelocyPack(velocypack::Builder& builder) const {
-  VPackObjectBuilder ob(&builder);
-  builder.add(StaticStrings::CommitIndex, VPackValue(commitIndex.value));
-  builder.add(VPackValue(StaticStrings::Spearhead));
-  spearHead.toVelocyPack(builder);
-  builder.add(VPackValue("lastErrorReason"));
-  lastErrorReason.toVelocyPack(builder);
-  builder.add("lastRequestLatencyMS", VPackValue(lastRequestLatencyMS.count()));
-  builder.add(VPackValue("state"));
-  internalState.toVelocyPack(builder);
-}
-
-auto FollowerStatistics::fromVelocyPack(velocypack::Slice slice)
-    -> FollowerStatistics {
-  FollowerStatistics stats;
-  stats.commitIndex = slice.get(StaticStrings::CommitIndex).extract<LogIndex>();
-  stats.spearHead =
-      TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
-  stats.lastErrorReason =
-      AppendEntriesErrorReason::fromVelocyPack(slice.get("lastErrorReason"));
-  stats.lastRequestLatencyMS = std::chrono::duration<double, std::milli>{
-      slice.get("lastRequestLatencyMS").getDouble()};
-  stats.internalState = FollowerState::fromVelocyPack(slice.get("state"));
-  return stats;
-}
-
 auto replicated_log::operator==(FollowerStatistics const& left,
                                 FollowerStatistics const& right) noexcept
     -> bool {

@@ -42,37 +42,37 @@ namespace arangodb::replication2::replicated_log {
 using LogCurrentLocalStates =
     std::unordered_map<ParticipantId, LogCurrentLocalState>;
 
-auto isLeaderFailed(LogPlanTermSpecification::Leader const &leader,
-                    ParticipantsHealth const &health) -> bool;
+auto isLeaderFailed(LogPlanTermSpecification::Leader const& leader,
+                    ParticipantsHealth const& health) -> bool;
 
-auto computeReason(std::optional<LogCurrentLocalState> const &maybeStatus,
+auto computeReason(std::optional<LogCurrentLocalState> const& maybeStatus,
                    bool healthy, bool excluded, LogTerm term)
     -> LogCurrentSupervisionElection::ErrorCode;
 
-auto runElectionCampaign(LogCurrentLocalStates const &states,
-                         ParticipantsConfig const &participantsConfig,
-                         ParticipantsHealth const &health, LogTerm term)
+auto runElectionCampaign(LogCurrentLocalStates const& states,
+                         ParticipantsConfig const& participantsConfig,
+                         ParticipantsHealth const& health, LogTerm term)
     -> LogCurrentSupervisionElection;
 
 auto getParticipantsAcceptableAsLeaders(
-    ParticipantId const &currentLeader,
-    ParticipantsFlagsMap const &participants) -> std::vector<ParticipantId>;
+    ParticipantId const& currentLeader,
+    ParticipantsFlagsMap const& participants) -> std::vector<ParticipantId>;
 
 // Actions capture entries in log, so they have to stay
 // valid until the returned action has been executed (or discarded)
-auto checkReplicatedLog(SupervisionContext &ctx, Log const &log,
-                        ParticipantsHealth const &health) -> void;
+auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
+                        ParticipantsHealth const& health) -> void;
 
-auto executeCheckReplicatedLog(DatabaseID const &database,
-                               std::string const &logIdString, Log log,
-                               ParticipantsHealth const &health,
+auto executeCheckReplicatedLog(DatabaseID const& database,
+                               std::string const& logIdString, Log log,
+                               ParticipantsHealth const& health,
                                arangodb::agency::envelope envelope) noexcept
     -> arangodb::agency::envelope;
 
-auto buildAgencyTransaction(DatabaseID const &dbName, LogId const &logId,
-                            SupervisionContext &sctx, ActionContext &actx,
+auto buildAgencyTransaction(DatabaseID const& dbName, LogId const& logId,
+                            SupervisionContext& sctx, ActionContext& actx,
                             size_t maxActionsTraceLength,
                             arangodb::agency::envelope envelope)
     -> arangodb::agency::envelope;
 
-} // namespace arangodb::replication2::replicated_log
+}  // namespace arangodb::replication2::replicated_log
