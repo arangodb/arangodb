@@ -30,7 +30,7 @@ const db = arangodb.db;
 const request = require("@arangodb/request");
 
 let getServers = function(role) {
-  const isRole = (d) => (d.role.toLowerCase() === role);
+  const isRole = (d) => (d.instanceRrole === role);
   const endpointToURL = (server) => {
     let endpoint = server.endpoint;
     if (endpoint.substr(0, 6) === 'ssl://') {
@@ -43,7 +43,7 @@ let getServers = function(role) {
     return 'http' + endpoint.substr(pos);
   };
 
-  return global.instanceInfo.arangods.filter(isRole)
+  return global.instanceManager.arangods.filter(isRole)
                               .map((server) => { 
                                 return { url: endpointToURL(server), id: server.id };
                               });

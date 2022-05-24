@@ -29,22 +29,6 @@
 const jsunity = require("jsunity");
 const _ = require("lodash");
 
-function headersSingleSuite () {
-  'use strict';
-  
-  return {
-    testSingle: function() {
-      let result = arango.GET_RAW("/_api/version");
-      assertTrue(result.hasOwnProperty("headers"));
-      if (arango.protocol() !== 'vst') {
-        // VST does not send this header, never
-        assertTrue(result.headers.hasOwnProperty("server"), result);
-        assertEqual("ArangoDB", result.headers["server"]);
-      }
-    },
-  };
-}
-
 function headersClusterSuite () {
   'use strict';
 
@@ -81,9 +65,9 @@ function headersClusterSuite () {
     // test executing requests on DB-Servers
     testDBServer: function() {
       let getServers = role => {
-        const matchesRole = (d) => (_.toLower(d.role) === role);
-        const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
-        return instanceInfo.arangods.filter(matchesRole);
+        const matchesRole = (d) => (_.toLower(d.instanceRole) === role);
+        const instanceManager = JSON.parse(require('internal').env.INSTANCEINFO);
+        return instanceManager.arangods.filter(matchesRole);
       };
 
       const dbservers = getServers("dbserver");
@@ -103,9 +87,5 @@ function headersClusterSuite () {
   };
 }
 
-if (arango.GET("/_admin/server/role").role === "COORDINATOR") {
-  jsunity.run(headersClusterSuite);
-} else {
-  jsunity.run(headersSingleSuite);
-}
+jsunity.run(headersSingleSuite);
 return jsunity.done();
