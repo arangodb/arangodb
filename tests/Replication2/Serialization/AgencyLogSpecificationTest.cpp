@@ -47,9 +47,9 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
       ParticipantsConfig{15, {{"p1", {true, false}}, {"p2", {}}}}};
 
   VPackBuilder builder;
-  spec.toVelocyPack(builder);
+  velocypack::serialize(builder, spec);
   auto slice = builder.slice();
-  auto const fromVPack = LogPlanSpecification::fromVelocyPack(slice);
+  auto const fromVPack = velocypack::deserialize<LogPlanSpecification>(slice);
   EXPECT_EQ(spec, fromVPack);
 
   auto jsonBuffer = R"({
@@ -106,7 +106,7 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
   })"_vpack;
 
   jsonSlice = velocypack::Slice(jsonBuffer->data());
-  spec = LogPlanSpecification::fromVelocyPack(jsonSlice);
+  spec = velocypack::deserialize<LogPlanSpecification>(jsonSlice);
   EXPECT_EQ(spec.currentTerm->leader, std::nullopt);
 
   jsonBuffer = R"({
@@ -118,7 +118,7 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
   })"_vpack;
 
   jsonSlice = velocypack::Slice(jsonBuffer->data());
-  spec = LogPlanSpecification::fromVelocyPack(jsonSlice);
+  spec = velocypack::deserialize<LogPlanSpecification>(jsonSlice);
   EXPECT_EQ(spec.currentTerm, std::nullopt);
 }
 

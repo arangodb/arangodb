@@ -972,6 +972,9 @@ replicated_log::LogLeader::GuardedLeaderData::GuardedLeaderData(
 
 auto replicated_log::LogLeader::release(LogIndex doneWithIdx) -> Result {
   return _guardedLeaderData.doUnderLock([&](GuardedLeaderData& self) -> Result {
+    if (self._didResign) {
+      return {TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
+    }
     TRI_ASSERT(doneWithIdx <= self._inMemoryLog.getLastIndex());
     if (doneWithIdx <= self._releaseIndex) {
       return {};
