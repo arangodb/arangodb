@@ -472,6 +472,10 @@ struct velocypack::Extractor<replication2::LogId> {
 }  // namespace arangodb
 
 template<>
+struct fmt::formatter<arangodb::replication2::LogId>
+    : fmt::formatter<arangodb::basics::Identifier> {};
+
+template<>
 struct std::hash<arangodb::replication2::LogIndex> {
   [[nodiscard]] auto operator()(
       arangodb::replication2::LogIndex const& v) const noexcept -> std::size_t {

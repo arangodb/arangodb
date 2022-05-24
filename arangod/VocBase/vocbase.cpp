@@ -44,6 +44,7 @@
 #include "Aql/QueryList.h"
 #include "Auth/Common.h"
 #include "Basics/Exceptions.h"
+#include "Basics/Exceptions.tpp"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Locking.h"
 #include "Basics/NumberUtils.h"
@@ -116,9 +117,9 @@ struct arangodb::VocBaseLogManager {
     if (auto iter = guard->logs.find(id); iter != guard->logs.end()) {
       return iter->second;
     }
-    THROW_ARANGO_EXCEPTION_FORMAT(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
-        "replicated log %" PRIu64 " not found", id.id());
+    using namespace fmt::literals;
+    throw basics::Exception::fmt(
+        ADB_HERE, TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
   }
 
   [[nodiscard]] auto getReplicatedLogById(replication2::LogId id)
@@ -127,9 +128,9 @@ struct arangodb::VocBaseLogManager {
     if (auto iter = guard->logs.find(id); iter != guard->logs.end()) {
       return iter->second;
     }
-    THROW_ARANGO_EXCEPTION_FORMAT(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
-        "replicated log %" PRIu64 " not found", id.id());
+    using namespace fmt::literals;
+    throw basics::Exception::fmt(
+        ADB_HERE, TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
   }
 
   [[nodiscard]] auto getReplicatedStateById(replication2::LogId id)
@@ -344,7 +345,7 @@ struct arangodb::VocBaseLogManager {
 
       auto logIter = logs.find(id);
       if (logIter == std::end(logs)) {
-        return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
+        return Result::fmt(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
       }
 
       auto state =

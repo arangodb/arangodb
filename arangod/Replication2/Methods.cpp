@@ -46,6 +46,9 @@
 #include "Methods.h"
 #include "Random/RandomGenerator.h"
 
+#include "Basics/Result.h"
+#include "Basics/Result.tpp"
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
@@ -734,8 +737,8 @@ struct ReplicatedLogMethodsCoordinator final
                             std::chrono::seconds{5});
 
       return std::move(f).then(
-          [self =
-               shared_from_this()](futures::Try<AgencyReadResult>&& tryResult)
+          [self = shared_from_this(),
+           id](futures::Try<AgencyReadResult>&& tryResult)
               -> ResultT<std::shared_ptr<
                   arangodb::replication2::agency::LogPlanSpecification const>> {
             auto result = basics::catchToResultT(
@@ -746,7 +749,8 @@ struct ReplicatedLogMethodsCoordinator final
             }
 
             if (result->value().isNone()) {
-              return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
+              return Result::fmt(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
+                                 id.id());
             }
 
             auto spec = velocypack::deserialize<
@@ -1063,8 +1067,8 @@ struct ReplicatedStateCoordinatorMethods
                               ->database(vocbase.name())
                               ->state(id),
                           std::chrono::seconds{5});
-    return std::move(f).then([self = shared_from_this()](
-                                 futures::Try<AgencyReadResult>&& tryResult)
+    return std::move(f).then([self = shared_from_this(),
+                              id](futures::Try<AgencyReadResult>&& tryResult)
                                  -> ResultT<GlobalSnapshotStatus> {
       auto result =
           basics::catchToResultT([&] { return std::move(tryResult.get()); });
@@ -1073,7 +1077,8 @@ struct ReplicatedStateCoordinatorMethods
         return result.result();
       }
       if (result->value().isNone()) {
-        return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
+        return Result::fmt(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
+                           id.id());
       }
       auto current = velocypack::deserialize<replicated_state::agency::Current>(
           result->value());
