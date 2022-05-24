@@ -551,6 +551,17 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
     _includeAllFields = subSlice.getBool();
   }
 
+  if (slice.hasKey(kFeaturesFieldName)) {
+    Features tmp;
+    auto featuresRes = tmp.fromVelocyPack(slice.get(kFeaturesFieldName));
+    if (featuresRes.fail()) {
+      errorField = kFeaturesFieldName;
+      LOG_TOPIC("2d51a", ERR, arangodb::iresearch::TOPIC)
+          << "Error parsing features " << featuresRes.errorMessage();
+      return false;
+    }
+    _features = std::move(tmp);
+  }
   return true;
 }
 
