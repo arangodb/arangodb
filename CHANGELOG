@@ -1,6 +1,8 @@
 devel
 -----
 
+* Pregel status now reports whether memory mapped files are used.
+
 * Fix behavior when accessing a view instead of a collection by name in a REST
   document operation. Now return a proper error.
 
