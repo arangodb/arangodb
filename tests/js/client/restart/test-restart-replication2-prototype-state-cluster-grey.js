@@ -35,7 +35,7 @@ let getServers = function (role) {
   return global.theInstanceManager.arangods.filter((instance) => instance.instanceRole === role);
 };
 const dbservers = (function () {
-  return getServers("dbserver")
+  return getServers("dbserver");
 }());
 
 

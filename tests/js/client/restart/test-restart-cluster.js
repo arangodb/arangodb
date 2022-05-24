@@ -50,9 +50,7 @@ function testSuite() {
     const end = time() + timeout;
     while (time() < end) {
       res = request(all);
-      print(res)
       if (res.status === 200 || res.status === 401 || res.status === 403) {
-        print('ok')
         break;
       }
       console.warn("waiting for server response from url " + baseurl);
