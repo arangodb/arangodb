@@ -23,6 +23,8 @@
 
 #include "Supervision.h"
 
+#include "Inspection/VPack.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedState/SupervisionAction.h"
 #include <memory>
 #include "Agency/AgencyPaths.h"
@@ -406,6 +408,7 @@ void checkReplicatedState(SupervisionContext& ctx,
   checkConverged(ctx, *log, state);
 }
 
+// TODO: sctx is unused
 auto buildAgencyTransaction(DatabaseID const& database, LogId id,
                             SupervisionContext& sctx, ActionContext& actx,
                             arangodb::agency::envelope envelope)
@@ -428,19 +431,20 @@ auto buildAgencyTransaction(DatabaseID const& database, LogId id,
                   .emplace_object(
                       logTargetPath,
                       [&](VPackBuilder& builder) {
-                        actx.getValue<replication2::agency::LogTarget>()
-                            .toVelocyPack(builder);
+                        velocypack::serialize(
+                            builder,
+                            actx.getValue<replication2::agency::LogTarget>());
                       })
                   .inc(paths::target()->version()->str());
             })
       .cond(actx.hasModificationFor<agency::Plan>(),
             [&](arangodb::agency::envelope::write_trx&& trx) {
               return std::move(trx)
-                  .emplace_object(
-                      statePlanPath,
-                      [&](VPackBuilder& builder) {
-                        actx.getValue<agency::Plan>().toVelocyPack(builder);
-                      })
+                  .emplace_object(statePlanPath,
+                                  [&](VPackBuilder& builder) {
+                                    velocypack::serialize(
+                                        builder, actx.getValue<agency::Plan>());
+                                  })
                   .inc(paths::plan()->version()->str());
             })
       .cond(actx.hasModificationFor<agency::Current::Supervision>(),
@@ -449,8 +453,9 @@ auto buildAgencyTransaction(DatabaseID const& database, LogId id,
                   .emplace_object(
                       currentSupervisionPath,
                       [&](VPackBuilder& builder) {
-                        actx.getValue<agency::Current::Supervision>()
-                            .toVelocyPack(builder);
+                        velocypack::serialize(
+                            builder,
+                            actx.getValue<agency::Current::Supervision>());
                       })
                   .inc(paths::plan()->version()->str());
             })
