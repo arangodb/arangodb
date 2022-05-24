@@ -570,9 +570,9 @@ class instance {
       return;
     }
     try {
-      Object.assign(this.args, moreArgs);
+      let args = _.defaults(moreArgs, this.args);
       /// TODO Y? Where?
-      this.pid = this._executeArangod(this.args).pid;
+      this.pid = this._executeArangod(args).pid;
     } catch (x) {
       print(Date() + ' failed to run arangod - ' + JSON.stringify(x) + " - " + JSON.stringify(this.getStructure()));
 

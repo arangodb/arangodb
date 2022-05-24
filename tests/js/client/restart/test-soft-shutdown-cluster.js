@@ -58,25 +58,7 @@ function testAlgoCheck(pid) {
 }
 
 function getServers(role) {
-  return global.obj.instanceInfo.arangods.filter((instance) => instance.role === role);
-};
-
-function waitForShutdown(arangod, timeout) {
-  let startTime = time();
-  while (true) {
-    if (time() > startTime + timeout) {
-      assertTrue(false, "Instance did not shutdown quickly enough!");
-      return;
-    }
-    let status = statusExternal(arangod.pid, false);
-    console.warn("External status:", status);
-    if (status.status === "TERMINATED") {
-      arangod.exitStatus = status;
-      delete arangod.pid;
-      break;
-    }
-    wait(0.5);
-  }
+  return global.theInstanceManager.arangods.filter((instance) => instance.instanceRole === role);
 };
 
 function waitForAlive(timeout, baseurl, data) {
@@ -97,7 +79,7 @@ function waitForAlive(timeout, baseurl, data) {
 function restartInstance(arangod) {
   let options = _.clone(global.obj.options);
   options.skipReconnect = false;
-  pu.reStartInstance(options, global.obj.instanceInfo, {});
+  arangod.restartOneInstance();
   waitForAlive(30, arangod.url, {});
 };
 
@@ -131,7 +113,7 @@ function testSuite() {
       assertTrue(status.softShutdownOngoing);
       assertEqual(0, status.AQLcursors);
       assertEqual(0, status.transactions);
-      waitForShutdown(coordinator, 30);
+      coordinator.waitForInstanceShutdown(30);
       restartInstance(coordinator);
     },
 
@@ -177,7 +159,7 @@ function testSuite() {
       assertEqual(200, next.code);
 
       // And now it should shut down in due course...
-      waitForShutdown(coordinator, 30);
+      coordinator.waitForInstanceShutdown(30);
       restartInstance(coordinator);
     },
 
@@ -226,7 +208,7 @@ function testSuite() {
       assertEqual(202, next.code);
 
       // And now it should shut down in due course...
-      waitForShutdown(coordinator, 30);
+      coordinator.waitForInstanceShutdown(30);
       restartInstance(coordinator);
     },
 
@@ -265,7 +247,7 @@ function testSuite() {
       assertEqual(200, resp.code);
 
       // And now it should shut down in due course...
-      waitForShutdown(coordinator, 30);
+      coordinator.waitForInstanceShutdown(30);
       restartInstance(coordinator);
     },
 
@@ -305,7 +287,7 @@ function testSuite() {
       assertEqual(200, resp.code);
 
       // And now it should shut down in due course...
-      waitForShutdown(coordinator, 30);
+      coordinator.waitForInstanceShutdown(30);
       restartInstance(coordinator);
     },
 
@@ -357,7 +339,7 @@ function testSuite() {
       assertEqual(201, resp.code);
 
       // And now it should shut down in due course...
-      waitForShutdown(coordinator, 30);
+      coordinator.waitForInstanceShutdown(30);
       restartInstance(coordinator);
     },
 
@@ -426,7 +408,7 @@ function testSuite() {
       assertTrue(status.allClear);
 
       // And now it should shut down in due course...
-      waitForShutdown(coordinator, 30);
+      coordinator.waitForInstanceShutdown(30);
       restartInstance(coordinator);
     },
 
@@ -549,7 +531,7 @@ function testSuitePregel() {
       assertTrue(status.softShutdownOngoing);
 
       // And now it should shut down in due course...
-      waitForShutdown(coordinator, 30);
+      coordinator.waitForInstanceShutdown(30);
       restartInstance(coordinator);
     },
 

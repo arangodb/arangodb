@@ -30,8 +30,12 @@ const _ = require('lodash');
 const rh = require('@arangodb/testutils/restart-helper');
 const {db, errors} = require('@arangodb');
 
+
+let getServers = function (role) {
+  return global.theInstanceManager.arangods.filter((instance) => instance.instanceRole === role);
+};
 const dbservers = (function () {
-  return global.instanceInfo.arangods.filter((instance) => instance.role === "dbserver").map((x) => x.id);
+  return getServers("dbserver")
 }());
 
 

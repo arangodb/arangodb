@@ -47,7 +47,7 @@ function testSuite() {
   const jwtSecret = 'haxxmann';
 
   let getServers = function (role) {
-    return global.obj.instanceInfo.arangods.filter((instance) => instance.role === role);
+    return global.theInstanceManager.arangods.filter((instance) => instance.instanceRole === role);
   };
 
   let waitForAlive = function (timeout, baseurl, data) {
@@ -56,6 +56,7 @@ function testSuite() {
     const end = time() + timeout;
     while (time() < end) {
       res = request(all);
+      print(res)
       if (res.status === 200 || res.status === 401 || res.status === 403) {
         break;
       }
@@ -86,7 +87,7 @@ function testSuite() {
     require("console").warn("resuming servers with pid " + servers.map((s) => s.pid).join(", "));
     servers.forEach(function(server) {
       assertTrue(continueExternal(server.pid));
-      delete server.suspended;
+      server.suspended = false;
     });
     require("console").warn("successfully resumed servers with pid " + servers.map((s) => s.pid).join(", "));
   };
@@ -143,33 +144,25 @@ function testSuite() {
       
       // restart coordinator
       try {
-        let instanceInfo = global.obj.instanceInfo;
-
-        let newInstanceInfo = {
-          arangods: [ coordinator ],
-          endpoint: instanceInfo.endpoint,
-        };
-
         // shut down and restart coordinator.
         // on this coordinator, the self-heal cannot run successfully because
         // the DB servers are down
-        let shutdownStatus = pu.shutdownInstance(newInstanceInfo, global.obj.options, false); 
+        coordinator.shutdownArangod(false);
+        coordinator.waitForInstanceShutdown(30);
         coordinator.pid = null;
-        assertTrue(shutdownStatus);
+        coordinator.exitStatus = null;
 
-        let extraOptions = {
+        coordinator.restartOneInstance({
           "foxx.force-update-on-startup": "false",
           "foxx.queues": "false",
           "server.jwt-secret": jwtSecret
-        };
-        pu.reStartInstance(global.obj.options, instanceInfo, extraOptions);
-          
+        });
         waitForAlive(30, coordinator.url, {});
- 
+
         // try to request Foxx app. the app must be inaccessible, because self-heal
         // hasn't run yet
-        let res = request({ method: "get", timeout: 3, url: coordinator.url + `/${mount}/echo` }); 
-        assertEqual(503, res.status);
+        let res = request({ method: "get", timeout: 13, url: coordinator.url + `/${mount}/echo` }); 
+        assertEqual(503, res.status, JSON.stringify(res));
 
       } finally {
         resume(dbServers);
@@ -193,26 +186,19 @@ function testSuite() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
-      let instanceInfo = global.obj.instanceInfo;
-
-      let newInstanceInfo = {
-        arangods: [ coordinator ],
-        endpoint: instanceInfo.endpoint,
-      };
-
       // shut down and restart coordinator.
       // on this coordinator, the self-heal cannot run successfully because
       // the DB servers are down
-      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, global.obj.options, false); 
+      coordinator.shutdownArangod(false);
+      coordinator.waitForInstanceShutdown(30);
       coordinator.pid = null;
-      assertTrue(shutdownStatus);
+      coordinator.exitStatus = null;
 
-      let extraOptions = {
+      coordinator.restartOneInstance({
         "foxx.force-update-on-startup": "false",
         "foxx.queues": "false",
         "server.jwt-secret": jwtSecret
-      };
-      pu.reStartInstance(global.obj.options, instanceInfo, extraOptions);
+      });
         
       waitForAlive(30, coordinator.url, {});
       
@@ -236,27 +222,18 @@ function testSuite() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
-      let instanceInfo = global.obj.instanceInfo;
 
-      let newInstanceInfo = {
-        arangods: [ coordinator ],
-        endpoint: instanceInfo.endpoint,
-      };
-
-      // shut down and restart coordinator.
-      // on this coordinator, the self-heal cannot run successfully because
-      // the DB servers are down
-      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, global.obj.options, false); 
+      coordinator.shutdownArangod(false);
+      coordinator.waitForInstanceShutdown(30);
       coordinator.pid = null;
-      assertTrue(shutdownStatus);
+      coordinator.exitStatus = null;
 
-      let extraOptions = {
-        "foxx.force-update-on-startup": "true",
+      coordinator.restartOneInstance({
+        "foxx.force-update-on-startup": "false",
         "foxx.queues": "false",
         "server.jwt-secret": jwtSecret
-      };
-      pu.reStartInstance(global.obj.options, instanceInfo, extraOptions);
-
+      });
+      coordinator.checkArangoConnection(30);
       waitForAlive(30, coordinator.url, {});
 
       // try to request Foxx app. the app must be accessible, because of self-heal

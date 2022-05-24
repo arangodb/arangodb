@@ -44,7 +44,7 @@ function testSuite() {
   const jwtSecret = 'haxxmann';
 
   let getServers = function (role) {
-    return global.obj.instanceInfo.arangods.filter((instance) => instance.role === role);
+    return global.theInstanceManager.arangods.filter((instance) => instance.instanceRole === role);
   };
 
   let waitForAlive = function (timeout, baseurl, data) {
@@ -96,18 +96,13 @@ function testSuite() {
       // Need to restart without authentication for other tests to succeed:
       let coordinators = getServers('coordinator');
       let coordinator = coordinators[0];
-      let instanceInfo = global.obj.instanceInfo;
-      let newInstanceInfo = {
-        arangods: [ coordinator ],
-        endpoint: instanceInfo.endpoint,
-      };
-      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, global.obj.options, false); 
+      coordinator.shutdownArangod(false);
+      coordinator.waitForInstanceShutdown(30);
       coordinator.pid = null;
       console.warn("Cleaning up and restarting coordinator without authentication...", coordinator);
-      let extraOptions = {
+      coordinator.restartOneInstance({
         "server.authentication": "false"
-      };
-      pu.reStartInstance(global.obj.options, instanceInfo, extraOptions);
+      });
       let aliveStatus = waitForAlive(30, coordinator.url, {});
       assertEqual(200, aliveStatus);
     },
@@ -137,21 +132,14 @@ function testSuite() {
       let coordinators = getServers('coordinator');
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
-      let instanceInfo = global.obj.instanceInfo;
-
-      let newInstanceInfo = {
-        arangods: [ coordinator ],
-        endpoint: instanceInfo.endpoint,
-      };
-
-      let shutdownStatus = pu.shutdownInstance(newInstanceInfo, global.obj.options, false); 
+      coordinator.shutdownArangod(false);
+      coordinator.waitForInstanceShutdown(30);
+      coordinator.exitStatus = null;
       coordinator.pid = null;
-      assertTrue(shutdownStatus);
 
-      let extraOptions = {
+      coordinator.restartOneInstance({
         "server.jwt-secret": jwtSecret
-      };
-      pu.reStartInstance(global.obj.options, instanceInfo, extraOptions);
+      });
         
       waitForAlive(30, coordinator.url, {});
       
