@@ -90,6 +90,11 @@ const replicatedStateDeletePlan = function (database, logId) {
   global.ArangoAgency.increaseVersion(`Plan/Version`);
 };
 
+const replicatedStateDeleteTarget = function (database, logId) {
+  global.ArangoAgency.remove(`Target/ReplicatedStates/${database}/${logId}`);
+  global.ArangoAgency.increaseVersion(`Target/Version`);
+};
+
 
 const getLocalStatus = function (serverId, database, logId) {
   let url = LH.getServerUrl(serverId);
@@ -161,5 +166,6 @@ exports.getReplicatedStateLeaderTarget = getReplicatedStateLeaderTarget;
 exports.getReplicatedStateStatus = getReplicatedStateStatus;
 exports.readReplicatedStateAgency = readReplicatedStateAgency;
 exports.replicatedStateDeletePlan = replicatedStateDeletePlan;
+exports.replicatedStateDeleteTarget = replicatedStateDeleteTarget;
 exports.updateReplicatedStatePlan = updateReplicatedStatePlan;
 exports.updateReplicatedStateTarget = updateReplicatedStateTarget;

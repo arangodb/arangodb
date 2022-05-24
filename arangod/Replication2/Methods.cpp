@@ -896,7 +896,8 @@ struct ReplicatedStateDBServerMethods
     THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_NOT_IMPLEMENTED);
   }
 
-  auto deleteReplicatedLog(LogId id) const -> futures::Future<Result> override {
+  auto deleteReplicatedState(LogId id) const
+      -> futures::Future<Result> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_NOT_IMPLEMENTED);
   }
 
@@ -1032,8 +1033,18 @@ struct ReplicatedStateCoordinatorMethods
     });
   }
 
-  auto deleteReplicatedLog(LogId id) const -> futures::Future<Result> override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  auto deleteReplicatedState(LogId id) const
+      -> futures::Future<Result> override {
+    return replication2::agency::methods::deleteReplicatedState(vocbase.name(),
+                                                                id)
+        .thenValue([self = shared_from_this()](
+                       ResultT<uint64_t>&& res) -> futures::Future<Result> {
+          if (res.fail()) {
+            return futures::Future<Result>{std::in_place, res.result()};
+          }
+
+          return self->clusterInfo.waitForPlan(res.get());
+        });
   }
 
   auto getLocalStatus(LogId id) const

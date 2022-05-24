@@ -174,10 +174,28 @@ const replicatedStateStatusAvailable = function (database, stateId) {
   };
 };
 
-exports.replicatedStateSupervisionStatus = replicatedStateSupervisionStatus;
+
+const replicatedStateIsGone = function (database, logId) {
+  return function () {
+    let {target, plan, current} = SH.readReplicatedStateAgency(database, logId);
+    if (target !== undefined) {
+      return Error("target still set");
+    }
+    if (plan !== undefined) {
+      return Error("plan still set");
+    }
+    if (current !== undefined) {
+      return Error("current still set");
+    }
+    return true;
+  };
+};
+
+exports.replicatedStateIsGone = replicatedStateIsGone;
 exports.replicatedStateIsReady = replicatedStateIsReady;
-exports.serverReceivedSnapshotGeneration = serverReceivedSnapshotGeneration;
-exports.replicatedStateVersionConverged = replicatedStateVersionConverged;
-exports.replicatedStateTargetLeaderIs = replicatedStateTargetLeaderIs;
 exports.replicatedStateServerIsGone = replicatedStateServerIsGone;
 exports.replicatedStateStatusAvailable = replicatedStateStatusAvailable;
+exports.replicatedStateSupervisionStatus = replicatedStateSupervisionStatus;
+exports.replicatedStateTargetLeaderIs = replicatedStateTargetLeaderIs;
+exports.replicatedStateVersionConverged = replicatedStateVersionConverged;
+exports.serverReceivedSnapshotGeneration = serverReceivedSnapshotGeneration;

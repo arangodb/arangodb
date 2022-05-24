@@ -170,6 +170,42 @@ auto methods::deleteReplicatedLog(DatabaseID const& database, LogId id)
   return sendAgencyWriteTransaction(std::move(trx));
 }
 
+auto methods::deleteReplicatedStateTrx(arangodb::agency::envelope envelope,
+                                       DatabaseID const& database, LogId id)
+    -> arangodb::agency::envelope {
+  auto planPath =
+      paths::plan()->replicatedStates()->database(database)->state(id)->str();
+  auto targetPath =
+      paths::target()->replicatedStates()->database(database)->state(id)->str();
+  auto currentPath = paths::current()
+                         ->replicatedStates()
+                         ->database(database)
+                         ->state(id)
+                         ->str();
+
+  return envelope.write()
+      .remove(planPath)
+      .inc(paths::plan()->version()->str())
+      .remove(targetPath)
+      .inc(paths::target()->version()->str())
+      .remove(currentPath)
+      .inc(paths::current()->version()->str())
+      .end();
+}
+
+auto methods::deleteReplicatedState(DatabaseID const& database, LogId id)
+    -> futures::Future<ResultT<uint64_t>> {
+  VPackBufferUInt8 trx;
+  {
+    VPackBuilder builder(trx);
+    deleteReplicatedStateTrx(arangodb::agency::envelope::into_builder(builder),
+                             database, id)
+        .done();
+  }
+
+  return sendAgencyWriteTransaction(std::move(trx));
+}
+
 auto methods::createReplicatedLogTrx(arangodb::agency::envelope envelope,
                                      DatabaseID const& database,
                                      LogTarget const& spec)
