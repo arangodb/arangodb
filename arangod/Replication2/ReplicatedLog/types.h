@@ -32,6 +32,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Inspection/Transformers.h"
 
 namespace arangodb::futures {
 template<typename T>
@@ -44,6 +45,12 @@ class Slice;
 }  // namespace arangodb::velocypack
 
 namespace arangodb::replication2::replicated_log {
+
+namespace static_strings {
+inline constexpr std::string_view upToDateString = "up-to-date";
+inline constexpr std::string_view errorBackoffString = "error-backoff";
+inline constexpr std::string_view requestInFlightString = "request-in-flight";
+}  // namespace static_strings
 
 struct FollowerState {
   struct UpToDate {};
@@ -73,6 +80,43 @@ struct FollowerState {
   explicit FollowerState(std::in_place_t, Args&&... args)
       : value(std::forward<Args>(args)...) {}
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, FollowerState::UpToDate& x) {
+  auto state = std::string{static_strings::upToDateString};
+  return f.object(x).fields(f.field("state", state));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, FollowerState::ErrorBackoff& x) {
+  auto state = std::string{static_strings::errorBackoffString};
+  return f.object(x).fields(
+      f.field("state", state),
+      f.field("durationMS", x.durationMS)
+          .transformWith(inspection::DurationTransformer<
+                         std::chrono::duration<double, std::milli>>{}),
+      f.field("retryCount", x.retryCount));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, FollowerState::RequestInFlight& x) {
+  auto state = std::string{static_strings::requestInFlightString};
+  return f.object(x).fields(
+      f.field("state", state),
+      f.field("durationMS", x.durationMS)
+          .transformWith(inspection::DurationTransformer<
+                         std::chrono::duration<double, std::milli>>{}));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, FollowerState& x) {
+  if constexpr (Inspector::isLoading) {
+    x = FollowerState::fromVelocyPack(f.slice());
+  } else {
+    x.toVelocyPack(f.builder());
+  }
+  return arangodb::inspection::Status::Success{};
+}
 
 auto to_string(FollowerState const&) -> std::string_view;
 
@@ -115,6 +159,25 @@ struct AppendEntriesErrorReason {
 
 [[nodiscard]] auto to_string(AppendEntriesErrorReason::ErrorType error) noexcept
     -> std::string_view;
+struct AppendEntriesErrorReasonTypeStringTransformer {
+  using SerializedType = std::string;
+  auto toSerialized(AppendEntriesErrorReason::ErrorType source,
+                    std::string& target) const -> inspection::Status;
+  auto fromSerialized(std::string const& source,
+                      AppendEntriesErrorReason::ErrorType& target) const
+      -> inspection::Status;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, AppendEntriesErrorReason& x) {
+  auto state = std::string{static_strings::requestInFlightString};
+  auto errorMessage = std::string{x.getErrorMessage()};
+  return f.object(x).fields(
+      f.field("details", x.details),
+      f.field("errorMessage", errorMessage).fallback(std::string{}),
+      f.field("error", x.error)
+          .transformWith(AppendEntriesErrorReasonTypeStringTransformer{}));
+}
 
 struct LogStatistics {
   TermIndexPair spearHead{};
