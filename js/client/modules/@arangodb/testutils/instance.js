@@ -496,9 +496,10 @@ class instance {
   // / @brief executes a command, possible with valgrind
   // //////////////////////////////////////////////////////////////////////////////
 
-  _executeArangod () {
+  _executeArangod (moreArgs) {
     let cmd = pu.ARANGOD_BIN;
-    let args = [];
+    let args = _.defaults(moreArgs, this.args);
+    let argv = [];
     if (this.options.valgrind) {
       let valgrindOpts = {};
 
@@ -517,21 +518,20 @@ class instance {
       }
 
       valgrindOpts['log-file'] = testfn + '.%p.valgrind.log';
-
-      args = toArgv(valgrindOpts, true).concat([cmd]).concat(toArgv(this.args));
+      argv = toArgv(valgrindOpts, true).concat([cmd]).concat(toArgv(args));
       cmd = this.options.valgrind;
     } else if (this.options.rr) {
-      args = [cmd].concat(args);
+      argv = [cmd].concat(args);
       cmd = 'rr';
     } else {
-      args = toArgv(this.args);
+      argv = toArgv(args);
     }
 
     if (this.options.extremeVerbosity) {
-      print(Date() + ' starting process ' + cmd + ' with arguments: ' + JSON.stringify(args));
+      print(Date() + ' starting process ' + cmd + ' with arguments: ' + JSON.stringify(argv));
     }
 
-    return executeExternal(cmd, args, false, pu.coverageEnvironment());
+    return executeExternal(cmd, argv, false, pu.coverageEnvironment());
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief starts an instance
