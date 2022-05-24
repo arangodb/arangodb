@@ -182,9 +182,9 @@ function promtoolClusterSuite() {
     throw new Error('env.INSTANCEINFO was not set by caller!');
   }
   const instanceinfo = JSON.parse(internal.env.INSTANCEINFO);
-  let dbServers = instanceinfo.arangods.filter(arangod => arangod.role === "dbserver");
-  let agents = instanceinfo.arangods.filter(arangod => arangod.role === "agent");
-  let coordinators = instanceinfo.arangods.filter(arangod => arangod.role === "coordinator");
+  let dbServers = instanceManager.arangods.filter(arangod => arangod.instanceRole === "dbserver");
+  let agents = instanceManager.arangods.filter(arangod => arangod.instanceRole === "agent");
+  let coordinators = instanceManager.arangods.filter(arangod => arangod.instanceRole === "coordinator");
 
   return {
     testMetricsOnDbServers: function () {
