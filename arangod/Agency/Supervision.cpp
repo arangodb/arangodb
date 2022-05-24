@@ -2586,15 +2586,38 @@ auto parseReplicatedStateAgency(Node const& root, Node const& targetNode,
 
 namespace {
 using namespace replication2::replicated_log;
+
+auto replicatedLogOwnerGone(Node const& snapshot, Node const& node,
+                            std::string const& dbName,
+                            std::string const& idString) -> bool {
+  if (auto owner = node.hasAsString("owner");
+      !owner.has_value() || owner != "replicated-state") {
+    return false;
+  }
+
+  auto const& targetNode = snapshot.hasAsNode(planRepStatePrefix);
+  // now check if there is a replicated state in plan with that id
+  if (targetNode.has_value() &&
+      targetNode->get().has(std::vector{dbName, idString})) {
+    return false;
+  }
+  return true;
+}
+
 auto handleReplicatedLog(Node const& snapshot, Node const& targetNode,
                          std::string const& dbName, std::string const& idString,
                          ParticipantsHealth const& health,
                          arangodb::agency::envelope envelope)
     -> arangodb::agency::envelope try {
+  if (replicatedLogOwnerGone(snapshot, targetNode, dbName, idString)) {
+    auto logId = replication2::LogId{basics::StringUtils::uint64(idString)};
+    return methods::deleteReplicatedLogTrx(std::move(envelope), dbName, logId);
+  }
+
   auto maybeLog = parseReplicatedLogAgency(snapshot, dbName, idString);
 
   if (maybeLog.has_value()) {
-    auto const& log = *maybeLog;
+    auto& log = *maybeLog;
     return replication2::replicated_log::executeCheckReplicatedLog(
         dbName, idString, std::move(log), health, std::move(envelope));
   } else {

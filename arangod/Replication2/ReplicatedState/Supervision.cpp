@@ -169,6 +169,7 @@ auto checkStateAdded(SupervisionContext& ctx, RSA::State const& state) {
 
     auto logTarget =
         replication2::agency::LogTarget(id, {}, state.target.config);
+    logTarget.owner = "replicated-state";
 
     for (auto const& [participantId, _] : state.target.participants) {
       logTarget.participants.emplace(participantId, ParticipantFlags{});
