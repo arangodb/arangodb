@@ -24,18 +24,23 @@
 #include "OptimizerUtils.h"
 
 #include "Aql/Ast.h"
+#include "Aql/AttributeNamePath.h"
+#include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/Expression.h"
+#include "Aql/IndexNode.h"
+#include "Aql/ModificationNodes.h"
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SortCondition.h"
+#include "Aql/Variable.h"
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
 
-namespace arangodb {
-namespace aql {
-namespace utils {
+using namespace arangodb;
+using namespace arangodb::aql;
 
 namespace {
 /// @brief sort ORs for the same attribute so they are in ascending value
@@ -652,6 +657,117 @@ void extractNonConstPartsOfAndPart(
 
 }  // namespace
 
+namespace arangodb::aql::utils {
+
+// find projection attributes for variable v, starting from node n
+// down to the root node of the plan/subquery.
+// returns true if it is safe to reduce the full document data from
+// "v" to only the projections stored in "attributes". returns false
+// otherwise. if false is returned, the contents of "attributes" must
+// be ignored by the caller.
+// note: this function will wipe "attributes" on every call.
+bool findProjections(ExecutionNode const* n, Variable const* v,
+                     std::unordered_set<AttributeNamePath>& attributes) {
+  using EN = arangodb::aql::ExecutionNode;
+
+  VarSet vars;
+
+  attributes.clear();
+
+  ExecutionNode* current = n->getFirstParent();
+  while (current != nullptr) {
+    bool doRegularCheck = false;
+
+    if (current->getType() == EN::REMOVE) {
+      RemoveNode const* removeNode =
+          ExecutionNode::castTo<RemoveNode const*>(current);
+      if (removeNode->inVariable() == v) {
+        // FOR doc IN collection REMOVE doc IN ...
+        attributes.emplace(
+            arangodb::aql::AttributeNamePath(StaticStrings::KeyString));
+      } else {
+        doRegularCheck = true;
+      }
+    } else if (current->getType() == EN::UPDATE ||
+               current->getType() == EN::REPLACE) {
+      UpdateReplaceNode const* modificationNode =
+          ExecutionNode::castTo<UpdateReplaceNode const*>(current);
+
+      if (modificationNode->inKeyVariable() == v &&
+          modificationNode->inDocVariable() != v) {
+        // FOR doc IN collection UPDATE/REPLACE doc IN ...
+        attributes.emplace(
+            arangodb::aql::AttributeNamePath(StaticStrings::KeyString));
+      } else {
+        doRegularCheck = true;
+      }
+    } else if (current->getType() == EN::CALCULATION) {
+      Expression* exp =
+          ExecutionNode::castTo<CalculationNode*>(current)->expression();
+
+      if (exp != nullptr && exp->node() != nullptr) {
+        AstNode const* node = exp->node();
+        vars.clear();
+        current->getVariablesUsedHere(vars);
+
+        if (vars.find(v) != vars.end()) {
+          if (!Ast::getReferencedAttributesRecursive(node, v, attributes)) {
+            // cannot use projections for this variable
+            return false;
+          }
+        }
+      }
+    } else if (current->getType() == EN::GATHER) {
+      // compare sort attributes of GatherNode
+      auto gn = ExecutionNode::castTo<GatherNode*>(current);
+      for (auto const& it : gn->elements()) {
+        if (it.var == v) {
+          if (it.attributePath.empty()) {
+            // sort of GatherNode refers to the entire document, not to an
+            // attribute of the document
+            return false;
+          }
+          // insert attribute name into the set of attributes that we need for
+          // our projection
+          attributes.emplace(AttributeNamePath(it.attributePath));
+        }
+      }
+    } else if (current->getType() == EN::INDEX) {
+      Condition const* condition =
+          ExecutionNode::castTo<IndexNode const*>(current)->condition();
+
+      if (condition != nullptr && condition->root() != nullptr) {
+        AstNode const* node = condition->root();
+        vars.clear();
+        current->getVariablesUsedHere(vars);
+
+        if (vars.find(v) != vars.end()) {
+          if (!Ast::getReferencedAttributesRecursive(node, v, attributes)) {
+            return false;
+          }
+        }
+      }
+    } else {
+      // all other node types mandate a check
+      doRegularCheck = true;
+    }
+
+    if (doRegularCheck) {
+      vars.clear();
+      current->getVariablesUsedHere(vars);
+
+      if (vars.find(v) != vars.end()) {
+        // original variable is still used here
+        return false;
+      }
+    }
+
+    current = current->getFirstParent();
+  }
+
+  return true;
+}
+
 /// @brief Gets the best fitting index for one specific condition.
 ///        Difference to IndexHandles: Condition is only one NARY_AND
 ///        and the Condition stays unmodified. Also does not care for sorting
@@ -902,6 +1018,5 @@ NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
 
   return result;
 }
-}  // namespace utils
-}  // namespace aql
-}  // namespace arangodb
+
+}  // namespace arangodb::aql::utils

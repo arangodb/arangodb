@@ -6091,109 +6091,6 @@ void arangodb::aql::removeDataModificationOutVariablesRule(
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-// find projection attributes for variable v, starting from node n
-// down to the root node of the plan/subquery.
-bool findProjections(
-    ExecutionNode const* n, Variable const* v, size_t maxProjections,
-    std::unordered_set<arangodb::aql::AttributeNamePath>& attributes) {
-  VarSet vars;
-
-  attributes.clear();
-
-  ExecutionNode* current = n->getFirstParent();
-  while (current != nullptr) {
-    bool doRegularCheck = false;
-
-    if (current->getType() == EN::REMOVE) {
-      RemoveNode const* removeNode =
-          ExecutionNode::castTo<RemoveNode const*>(current);
-      if (removeNode->inVariable() == v) {
-        // FOR doc IN collection REMOVE doc IN ...
-        attributes.emplace(
-            arangodb::aql::AttributeNamePath(StaticStrings::KeyString));
-      } else {
-        doRegularCheck = true;
-      }
-    } else if (current->getType() == EN::UPDATE ||
-               current->getType() == EN::REPLACE) {
-      UpdateReplaceNode const* modificationNode =
-          ExecutionNode::castTo<UpdateReplaceNode const*>(current);
-
-      if (modificationNode->inKeyVariable() == v &&
-          modificationNode->inDocVariable() != v) {
-        // FOR doc IN collection UPDATE/REPLACE doc IN ...
-        attributes.emplace(
-            arangodb::aql::AttributeNamePath(StaticStrings::KeyString));
-      } else {
-        doRegularCheck = true;
-      }
-    } else if (current->getType() == EN::CALCULATION) {
-      Expression* exp =
-          ExecutionNode::castTo<CalculationNode*>(current)->expression();
-
-      if (exp != nullptr && exp->node() != nullptr) {
-        AstNode const* node = exp->node();
-        vars.clear();
-        current->getVariablesUsedHere(vars);
-
-        if (vars.find(v) != vars.end()) {
-          if (!Ast::getReferencedAttributesRecursive(node, v, attributes)) {
-            // cannot use projections for this variable
-            return false;
-          }
-        }
-      }
-    } else if (current->getType() == EN::GATHER) {
-      // compare sort attributes of GatherNode
-      auto gn = ExecutionNode::castTo<GatherNode*>(current);
-      for (auto const& it : gn->elements()) {
-        if (it.var == v) {
-          if (it.attributePath.empty()) {
-            // sort of GatherNode refers to the entire document, not to an
-            // attribute of the document
-            return false;
-          }
-          // insert attribute name into the set of attributes that we need for
-          // our projection
-          attributes.emplace(AttributeNamePath(it.attributePath));
-        }
-      }
-    } else if (current->getType() == EN::INDEX) {
-      Condition const* condition =
-          ExecutionNode::castTo<IndexNode const*>(current)->condition();
-
-      if (condition != nullptr && condition->root() != nullptr) {
-        AstNode const* node = condition->root();
-        vars.clear();
-        current->getVariablesUsedHere(vars);
-
-        if (vars.find(v) != vars.end()) {
-          if (!Ast::getReferencedAttributesRecursive(node, v, attributes)) {
-            return false;
-          }
-        }
-      }
-    } else {
-      // all other node types mandate a check
-      doRegularCheck = true;
-    }
-
-    if (doRegularCheck) {
-      vars.clear();
-      current->getVariablesUsedHere(vars);
-
-      if (vars.find(v) != vars.end()) {
-        // original variable is still used here
-        return false;
-      }
-    }
-
-    current = current->getFirstParent();
-  }
-
-  return !attributes.empty() && attributes.size() <= maxProjections;
-}
-
 /// @brief optimizes away unused traversal output variables and
 /// merges filter nodes into graph traversal nodes
 void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
@@ -6221,6 +6118,9 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     std::vector<Variable const*> pruneVars;
     traversal->getPruneVariables(pruneVars);
 
+    // TODO: make maxProjections configurable
+    constexpr size_t maxProjections = 10;
+
     // note that we can NOT optimize away the vertex output variable
     // yet, as many traversal internals depend on the number of vertices
     // found/built
@@ -6234,17 +6134,10 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
 
     if (outVariable != nullptr) {
       // find projections for vertex output variable
-      LOG_DEVEL << "FOUND VERTEX VAR";
-      if (findProjections(n, outVariable, /*maxProjections*/ 10, attributes)) {
-        Projections projections(attributes);
-
-        LOG_DEVEL << "FOUND PROJECTIONS FOR VERTEX VARIABLE "
-                  << outVariable->name << ":";
-        for (size_t i = 0; i < projections.size(); ++i) {
-          LOG_DEVEL << " - " << projections[i].path.path;
-        }
-
-        traversal->setVertexProjections(std::move(projections));
+      if (arangodb::aql::utils::findProjections(n, outVariable, attributes) &&
+          !attributes.empty() && attributes.size() <= maxProjections) {
+        traversal->setVertexProjections(Projections(attributes));
+        modified = true;
       }
 
       if (!n->isVarUsedLater(outVariable) &&
@@ -6264,16 +6157,13 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
 
     outVariable = traversal->edgeOutVariable();
     if (outVariable != nullptr) {
-      LOG_DEVEL << "FOUND EDGE VAR";
       // find projections for edge output variable
-      if (findProjections(n, outVariable, /*maxProjections*/ 10, attributes)) {
-        Projections projections(attributes);
-
-        LOG_DEVEL << "FOUND PROJECTIONS FOR EDGE VARIABLE " << outVariable->name
-                  << ":";
-        for (size_t i = 0; i < projections.size(); ++i) {
-          LOG_DEVEL << " - " << projections[i].path.path;
-        }
+      // TODO: make maxProjections configurable
+      if (arangodb::aql::utils::findProjections(n, outVariable, attributes) &&
+          !attributes.empty() && attributes.size() <= maxProjections) {
+        // TODO: activate setEdgeProjections
+        // traversal->setEdgeProjections(Projections(attributes));
+        modified = true;
       }
 
       if (!n->isVarUsedLater(outVariable)) {
