@@ -181,7 +181,7 @@ function promtoolClusterSuite() {
   if (!internal.env.hasOwnProperty('INSTANCEINFO')) {
     throw new Error('env.INSTANCEINFO was not set by caller!');
   }
-  const instanceinfo = JSON.parse(internal.env.INSTANCEINFO);
+  const instanceManager = JSON.parse(internal.env.INSTANCEINFO);
   let dbServers = instanceManager.arangods.filter(arangod => arangod.instanceRole === "dbserver");
   let agents = instanceManager.arangods.filter(arangod => arangod.instanceRole === "agent");
   let coordinators = instanceManager.arangods.filter(arangod => arangod.instanceRole === "coordinator");

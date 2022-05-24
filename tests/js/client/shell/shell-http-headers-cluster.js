@@ -87,5 +87,5 @@ function headersClusterSuite () {
   };
 }
 
-jsunity.run(headersSingleSuite);
+jsunity.run(headersClusterSuite);
 return jsunity.done();
