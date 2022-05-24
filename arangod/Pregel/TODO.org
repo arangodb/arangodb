@@ -1,0 +1,34 @@
+#+TITLE: Feature: Pregel Planner
+
+The user makes a `POST` request to http://coordinator:port/pregel/plan with a json payload containing
+the following information:
+
+{
+ "algorithm": algorithm name,
+ "numberVertices": number of vertices to plan for,
+ "numberEdges": number of edges to plan for,
+ "averageVertexKeySize": average size of a vertex document key,
+ "averageEdgeKeySize": average size of a edge key,
+}
+
+ArangoDB responds with a JSON that contains the above information plus
+
+{ "bytesPerVertex": the planned bytes per vertex,
+  "bytesPerEdge": planned bytes per edge,
+  "bytesPerMessage": planned bytes per message,
+  "estimatedBytes": estimated memory use of a pregel computation using this algorithm; might want to give this in KiB, MiB, or GiB as this number will be fairly large in any case.
+}
+
+- an advanced variant could be passed a graph in the database and make a more accdurate estimate; computing average key sizes for 1bn documents isn't exactly fast, though;
+
+* Plan
+** TODO implement plumbing code in REST handler that handles the post request at pregel/plan, checks options
+** TODO define a C++ struct PregelPlanParameters including Inspectors
+** TODO define a C++ struct PregelPlanResults including Inspectors
+** TODO implement a dummy function inside Pregel that will do the computation; it gets PregelPlanParameters as parameters, and results in PregelPlanResults; this can in principle be C++ Unit-Tested.
+** TODO implement code in the pregel JS module that can call the planner
+** TODO write a few JS tests
+** TODO Implement the Planner for WeaklyConnectedComponents
+** TODO Contact the UI team about UI integration of pregel and this feature
+** TODO Write documentation.
+** TODO Inspect the other Pregel algorithms and plan out how to implement the Planner for them
