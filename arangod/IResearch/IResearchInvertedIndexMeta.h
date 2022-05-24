@@ -106,6 +106,10 @@ class IResearchInvertedIndexSort {
     return _directions[i];
   }
 
+  std::string Locale() const noexcept {
+    return _locale.getName();
+  }
+
   size_t memory() const noexcept;
 
   bool toVelocyPack(velocypack::Builder& builder) const;

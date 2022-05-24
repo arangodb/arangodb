@@ -37,9 +37,9 @@ using namespace arangodb;
 using namespace arangodb::iresearch;
 
 namespace  {
-  void AnalyzerFeaturesChecker(FieldMeta::Analyzer const& analyzer, std::vector<std::string> expected) {
+  void AnalyzerFeaturesChecker(Features const& features, std::vector<std::string> expected) {
     VPackBuilder b;
-    analyzer->features().toVelocyPack(b);
+    features.toVelocyPack(b);
     auto featuresSlice = b.slice();
 
     featuresSlice.isArray();
@@ -251,7 +251,18 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
             meta._analyzerDefinitions.end());
 
   ASSERT_EQ(6, meta._fields.size());
-  ASSERT_TRUE(meta._sort.empty());
+  ASSERT_FALSE(meta._sort.empty());
+  const auto& primarySortFields = meta._sort.fields();
+  ASSERT_EQ(primarySortFields.size(), 1);
+  auto& psField = primarySortFields[0];
+  ASSERT_EQ(psField.size(), 1);
+  ASSERT_EQ(psField[0].name, "foo");
+  ASSERT_FALSE(psField[0].shouldExpand);
+  ASSERT_FALSE(meta._sort.direction(0));
+  ASSERT_EQ(meta._sort.Locale(), "mylocale");
+//  meta._sort.empty()
+//  meta._sort.sortCompression() // FIXME: HOW TO CHECK compression?
+//  ASSERT_EQ(meta._sortCompression(), irs::type<irs::compression::lz4>::id()); FIXME: HOW TO CHECK compression
 
   // Check stored values
   ASSERT_FALSE(meta._storedValues.empty());
@@ -264,9 +275,8 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
   ASSERT_EQ(storedValues[0].fields.size(), 1);
   ASSERT_EQ(storedValues[0].fields[0].first, "foo.boo.nest"); // Now verify field name
 
-//  ASSERT_EQ(meta._sortCompression(), irs::type<irs::compression::lz4>::id());
 
-  ASSERT_FALSE(meta.dense());
+  ASSERT_TRUE(meta.dense()); // FIXME: WHAT IS IT?
   ASSERT_EQ(meta._version,
             static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MIN));
   ASSERT_EQ(meta._consistency, Consistency::kImmediate);
@@ -280,6 +290,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
     VPackObjectBuilder obj(&serialized);
     ASSERT_TRUE(meta.json(server.server(), serialized, true, &vocbase));
   }
+
   // Iterating through fields and check them
   {
     auto& field0 = meta._fields[0];
@@ -289,15 +300,14 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
     ASSERT_EQ(attr.name, "simple");
     ASSERT_FALSE(attr.shouldExpand);
 
-//    ASSERT_FALSE(field0.override()); // FIXME: add parsing of override
+    ASSERT_FALSE(field0.overrideValue());
     ASSERT_EQ(field0.expansion().size(), 0);
     ASSERT_EQ(field0.nested().size(), 0);
     ASSERT_EQ(field0.expression().size(), 0);
 
-    ASSERT_EQ(field0.analyzerName(), "identity"); // identity by default
-//    ASSERT_TRUE(field0.features().has_value()); // FIXME: FALSE. HOW COME??
-//    std::cout << static_cast<int>(field0.features().value().indexFeatures()) << std::endl;
-    AnalyzerFeaturesChecker(field0.analyzer(), {"norm", "frequency", "position"});
+    ASSERT_EQ(field0.analyzerName(), "identity"); // identity by default. FIXME: Default should be changed by root analyzer
+    ASSERT_TRUE(meta._features.has_value()); // FIXME: FALSE. HOW COME??
+    AnalyzerFeaturesChecker(meta._features.value(), {"norm", "frequency", "position"});//FIXME: FALSE. IS IDENTITY DOES NOT SUPPORT POSITION?
 
     ASSERT_FALSE(field0.isArray());
     ASSERT_FALSE(field0.trackListPositions());
@@ -312,15 +322,14 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
     ASSERT_EQ(attr.name, "huypuy");
     ASSERT_FALSE(attr.shouldExpand);
 
-//    ASSERT_TRUE(field1.override()); // FIXME: add parsing of override
+    ASSERT_TRUE(field1.overrideValue());
     ASSERT_EQ(field1.expansion().size(), 0);
     ASSERT_EQ(field1.nested().size(), 0);
     ASSERT_EQ(field1.expression(), "RETURN MERGE(@param, {foo: 'bar'}) ");
 
-//    ASSERT_EQ(field1.analyzerName(), "test_text");
+    ASSERT_EQ(field1.analyzerName(), vocbase.name() + "::test_text");
     ASSERT_TRUE(field1.features().has_value());
-//    std::cout << static_cast<int>(field1.features().value().indexFeatures()) << std::endl;
-    AnalyzerFeaturesChecker(field1.analyzer(), {"norm", "frequency"});
+    AnalyzerFeaturesChecker(field1.features().value(), {"norm", "frequency"});
 
 
     ASSERT_FALSE(field1.isArray());
@@ -330,10 +339,45 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
 
   {
     auto& field2 = meta._fields[2];
+    ASSERT_EQ(field2.attribute().size(), 1);
+    auto& attr = field2.attribute()[0];
+    ASSERT_EQ(attr.name, "foo");
+    ASSERT_FALSE(attr.shouldExpand);
+
+    ASSERT_FALSE(field2.overrideValue());
+    ASSERT_EQ(field2.expansion().size(), 0);
+    ASSERT_EQ(field2.nested().size(), 0);
+    ASSERT_EQ(field2.expression(), "");
+
+    ASSERT_EQ(field2.analyzerName(), vocbase.name() + "::test_text");
+    ASSERT_TRUE(field2.features().has_value());
+    AnalyzerFeaturesChecker(field2.features().value(), {"position", "norm", "frequency"});
+
+    ASSERT_FALSE(field2.isArray());
+    ASSERT_FALSE(field2.trackListPositions());
+    ASSERT_TRUE(field2.includeAllFields());
   }
 
   {
     auto& field3 = meta._fields[3];
+
+    ASSERT_EQ(field3.attribute().size(), 1);
+    auto& attr = field3.attribute()[0];
+    ASSERT_EQ(attr.name, "huypuy2");
+    ASSERT_FALSE(attr.shouldExpand);
+
+    ASSERT_TRUE(field3.overrideValue());
+    ASSERT_EQ(field3.expansion().size(), 0);
+    ASSERT_EQ(field3.nested().size(), 0);
+    ASSERT_EQ(field3.expression(), "RETURN SPLIT(@param, ',') ");
+
+    ASSERT_EQ(field3.analyzerName(), vocbase.name() + "::test_text");
+    ASSERT_TRUE(field3.features().has_value());
+    AnalyzerFeaturesChecker(field3.features().value(), {"frequency", "norm"});
+
+    ASSERT_TRUE(field3.isArray());
+    ASSERT_TRUE(field3.trackListPositions());
+    ASSERT_FALSE(field3.includeAllFields());
   }
 
   {
