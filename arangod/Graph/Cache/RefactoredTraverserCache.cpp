@@ -71,11 +71,11 @@ bool isWithClauseMissing(arangodb::basics::Exception const& ex) {
 }  // namespace
 
 RefactoredTraverserCache::RefactoredTraverserCache(
-    arangodb::transaction::Methods* trx, aql::QueryContext* query,
-    arangodb::ResourceMonitor& resourceMonitor,
-    arangodb::aql::TraversalStats& stats,
+    transaction::Methods* trx, aql::QueryContext* query,
+    ResourceMonitor& resourceMonitor, aql::TraversalStats& stats,
     std::unordered_map<std::string, std::vector<std::string>> const&
-        collectionToShardMap)
+        collectionToShardMap,
+    aql::Projections vertexProjections)
     : _query(query),
       _trx(trx),
       _stringHeap(
@@ -87,7 +87,8 @@ RefactoredTraverserCache::RefactoredTraverserCache(
                                 !_query->vocbase()
                                      .server()
                                      .getFeature<QueryRegistryFeature>()
-                                     .requireWith()) {
+                                     .requireWith()),
+      _vertexProjections(vertexProjections) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 }
 
@@ -212,7 +213,13 @@ bool RefactoredTraverserCache::appendVertex(
               result = aql::AqlValue(doc);
             } else if constexpr (std::is_same_v<ResultType,
                                                 velocypack::Builder>) {
-              result.add(doc);
+              if (!_vertexProjections.empty()) {
+                LOG_DEVEL << "Using Projections!";
+                VPackObjectBuilder guard(&result);
+                _vertexProjections.toVelocyPackFromDocument(result, doc, _trx);
+              } else {
+                result.add(doc);
+              }
             }
             return true;
           });

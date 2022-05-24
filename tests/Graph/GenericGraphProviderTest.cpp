@@ -132,7 +132,7 @@ class GraphProviderTest : public ::testing::Test {
           std::make_pair(
               std::move(usedIndexes),
               std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
-          *_expressionContext.get(), {}, _emptyShardMap);
+          *_expressionContext.get(), {}, _emptyShardMap, {});
       return SingleServerProvider<SingleServerProviderStep>(
           *query.get(), std::move(opts), resourceMonitor);
     }

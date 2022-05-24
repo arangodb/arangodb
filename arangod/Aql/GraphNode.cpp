@@ -104,7 +104,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       _optionsBuilt(false),
       _isSmart(false),
       _isDisjoint(false),
-      _options(std::move(options)) {
+      _options(std::move(options)),
+      _vertexProjections() {
   // Direction is already the correct Integer.
   // Is not inserted by user but by enum.
 
@@ -306,7 +307,8 @@ GraphNode::GraphNode(ExecutionPlan* plan,
       _isSmart(arangodb::basics::VelocyPackHelper::getBooleanValue(
           base, StaticStrings::IsSmart, false)),
       _isDisjoint(arangodb::basics::VelocyPackHelper::getBooleanValue(
-          base, StaticStrings::IsDisjoint, false)) {
+          base, StaticStrings::IsDisjoint, false)),
+      _vertexProjections() {
   if (!ServerState::instance()->isDBServer()) {
     // Graph Information. Do we need to reload the graph here?
     std::string graphName;
@@ -933,6 +935,10 @@ void GraphNode::initializeIndexConditions() const {
   // Those are located on the options, and need to be partially executed.
   options()->initializeIndexConditions(
       plan()->getAst(), getRegisterPlan()->varInfo, getTemporaryVariable());
+}
+
+void GraphNode::setVertexProjections(Projections projections) {
+  _vertexProjections = std::move(projections);
 }
 
 bool GraphNode::isEligibleAsSatelliteTraversal() const {

@@ -27,6 +27,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/ResultT.h"
 #include "Basics/StringHeap.h"
+#include "Aql/Projections.h"
 #include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/HashedStringRef.h>
@@ -47,6 +48,7 @@ class Slice;
 
 namespace aql {
 struct AqlValue;
+class Projections;
 class QueryContext;
 class TraversalStats;
 }  // namespace aql
@@ -64,12 +66,14 @@ class RefactoredTraverserCache {
  public:
   enum EdgeReadType { ONLYID, DOCUMENT, ID_DOCUMENT };
 
-  explicit RefactoredTraverserCache(
+  RefactoredTraverserCache(
       arangodb::transaction::Methods* trx, aql::QueryContext* query,
       arangodb::ResourceMonitor& resourceMonitor,
       arangodb::aql::TraversalStats& stats,
       std::unordered_map<std::string, std::vector<std::string>> const&
-          collectionToShardMap);
+          collectionToShardMap,
+      arangodb::aql::Projections vertexProjections);
+
   ~RefactoredTraverserCache();
 
   RefactoredTraverserCache(RefactoredTraverserCache const&) = delete;
@@ -184,6 +188,8 @@ class RefactoredTraverserCache {
   /// @brief whether or not to allow adding of previously unknown collections
   /// during the traversal
   bool const _allowImplicitCollections;
+
+  aql::Projections _vertexProjections;
 };
 
 }  // namespace graph

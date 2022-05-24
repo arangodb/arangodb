@@ -200,6 +200,8 @@ class GraphNode : public ExecutionNode {
 
   void initializeIndexConditions() const;
 
+  void setVertexProjections(Projections projections);
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // Internal helpers used in tests to modify enterprise detections.
   // These should not be used in production, as their detection
@@ -284,6 +286,9 @@ class GraphNode : public ExecutionNode {
 
   /// @brief list of shards involved, required for one-shard-databases
   std::unordered_map<std::string, std::string> _collectionToShard;
+
+  /// @brief Projections used on vertex data
+  Projections _vertexProjections;
 };
 
 }  // namespace aql

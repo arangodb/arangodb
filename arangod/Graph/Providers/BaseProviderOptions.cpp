@@ -84,13 +84,15 @@ SingleServerBaseProviderOptions::SingleServerBaseProviderOptions(
     std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
         filterConditionVariables,
     std::unordered_map<std::string, std::vector<std::string>> const&
-        collectionToShardMap)
+        collectionToShardMap,
+    aql::Projections vertexProjections)
     : _temporaryVariable(tmpVar),
       _indexInformation(std::move(indexInfo)),
       _expressionContext(expressionContext),
       _collectionToShardMap(collectionToShardMap),
       _weightCallback(std::nullopt),
-      _filterConditionVariables(filterConditionVariables) {}
+      _filterConditionVariables(filterConditionVariables),
+      _vertexProjections{std::move(vertexProjections)} {}
 
 aql::Variable const* SingleServerBaseProviderOptions::tmpVar() const {
   return _temporaryVariable;
@@ -120,6 +122,11 @@ bool SingleServerBaseProviderOptions::hasWeightMethod() const {
 void SingleServerBaseProviderOptions::setWeightEdgeCallback(
     WeightCallback callback) {
   _weightCallback = std::move(callback);
+}
+
+aql::Projections const& SingleServerBaseProviderOptions::getVertexProjections()
+    const {
+  return _vertexProjections;
 }
 
 double SingleServerBaseProviderOptions::weightEdge(

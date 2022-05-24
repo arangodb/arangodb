@@ -771,8 +771,14 @@ TraversalNode::getSingleServerBaseProviderOptions(
       usedIndexes{};
   usedIndexes.first = buildUsedIndexes();
   usedIndexes.second = buildUsedDepthBasedIndexes();
-  return {opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(),
-          filterConditionVariables, opts->collectionToShard()};
+  // TODO : _vertexProjections are copied here, we could potentially
+  // move or reference them.
+  return {opts->tmpVar(),
+          std::move(usedIndexes),
+          opts->getExpressionCtx(),
+          filterConditionVariables,
+          opts->collectionToShard(),
+          _vertexProjections};
 }
 
 /// @brief creates corresponding ExecutionBlock

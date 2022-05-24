@@ -6244,6 +6244,8 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
         for (size_t i = 0; i < projections.size(); ++i) {
           LOG_DEVEL << " - " << projections[i].path.path;
         }
+
+        traversal->setVertexProjections(std::move(projections));
       }
 
       if (!n->isVarUsedLater(outVariable) &&

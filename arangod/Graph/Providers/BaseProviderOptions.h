@@ -26,6 +26,7 @@
 #include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/NonConstExpressionContainer.h"
+#include "Aql/Projections.h"
 #include "Cluster/ClusterInfo.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Transaction/Methods.h"
@@ -92,7 +93,8 @@ struct SingleServerBaseProviderOptions {
       std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
           filterConditionVariables,
       std::unordered_map<std::string, std::vector<std::string>> const&
-          collectionToShardMap);
+          collectionToShardMap,
+      aql::Projections vertexProjections);
 
   SingleServerBaseProviderOptions(SingleServerBaseProviderOptions const&) =
       delete;
@@ -117,6 +119,8 @@ struct SingleServerBaseProviderOptions {
                     arangodb::velocypack::Slice edge) const;
 
   void setWeightEdgeCallback(WeightCallback callback);
+
+  aql::Projections const& getVertexProjections() const;
 
  private:
   // The temporary Variable used in the Indexes
@@ -143,6 +147,9 @@ struct SingleServerBaseProviderOptions {
   // non-refactored code, we will do a move instead of a copy operation.
   std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
       _filterConditionVariables;
+
+  /// @brief Projections used on vertex data
+  aql::Projections _vertexProjections;
 };
 
 struct ClusterBaseProviderOptions {
