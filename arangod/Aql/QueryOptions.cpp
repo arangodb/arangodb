@@ -71,6 +71,7 @@ QueryOptions::QueryOptions()
       fullCount(false),
       count(false),
       skipAudit(false),
+      allowDirtyReads(false),
       explainRegisters(ExplainRegisterPlan::No) {
   // now set some default values from server configuration options
   {
@@ -204,6 +205,9 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
     explainRegisters =
         value.getBool() ? ExplainRegisterPlan::Yes : ExplainRegisterPlan::No;
   }
+  if (value = slice.get("allowDirtyReads"); value.isBool()) {
+    allowDirtyReads = value.getBool();
+  }
 
   // note: skipAudit is intentionally not read here.
   // the end user cannot override this setting
@@ -280,6 +284,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
     builder.add("forceOneShardAttributeValue",
                 VPackValue(forceOneShardAttributeValue));
   }
+  builder.add("allowDirtyReads", VPackValue(allowDirtyReads));
 
   // note: skipAudit is intentionally not serialized here.
   // the end user cannot override this setting anyway.

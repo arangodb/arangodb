@@ -551,6 +551,14 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
   _options->add("ttl", VPackValue(ttl.isNumber() && ttl.getNumber<double>() > 0
                                       ? ttl.getNumber<double>()
                                       : _queryRegistry->defaultTTL()));
+
+  // Check if dirty reads are allowed:
+  bool found = false;
+  std::string const& val =
+      _request->header(StaticStrings::AllowDirtyReads, found);
+  if (found && StringUtils::boolean(val)) {
+    _options->add("allowDirtyReads", VPackValue(true));
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////////
