@@ -8,7 +8,7 @@ Function global:registerTests()
 
     registerTest -testname "gtest_replication2"
     registerTest -testname "replication2_server" -cluster $true
-    registerTest -testname "replication2_client" -cluster $true -filter "tests/js/common/shell/shell-replicated-logs-cluster.js"
-    registerTest -testname "replication2_client" -cluster $true -filter "tests/js/common/shell/shell-prototype-state-cluster.js"
+    registerTest -testname "auto" -cluster $true -filter "tests/js/common/shell/shell-replicated-logs-cluster.js"
+    registerTest -testname "auto" -cluster $true -filter "tests/js/common/shell/shell-prototype-state-cluster.js"
     comm
 }
