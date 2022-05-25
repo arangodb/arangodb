@@ -23,6 +23,7 @@
 
 #include <Basics/ResultT.h>
 #include <Basics/Exceptions.h>
+#include <Basics/Exceptions.tpp>
 #include <Basics/voc-errors.h>
 #include <Futures/Future.h>
 
@@ -169,10 +170,10 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
         std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
             _vocbase.getReplicatedStateById(id));
     if (stateMachine == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
-          basics::StringUtils::concatT("Failed to get ProtoypeState with id ",
-                                       id));
+      using namespace fmt::literals;
+      throw basics::Exception::fmt(
+          ADB_HERE, TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND,
+          "id"_a = id, "type"_a = "PrototypeState");
     }
     auto leader = stateMachine->getLeader();
     if (leader == nullptr) {

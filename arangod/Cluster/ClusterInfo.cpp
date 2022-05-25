@@ -34,6 +34,8 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/RecursiveLocker.h"
+#include "Basics/Result.h"
+#include "Basics/Result.tpp"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimeString.h"
@@ -5896,7 +5898,7 @@ auto ClusterInfo::getReplicatedLogLeader(std::string_view database,
 
   auto it2 = it->second->replicatedLogs.find(id);
   if (it2 == std::end(it->second->replicatedLogs)) {
-    return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
+    return Result::fmt(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
   }
 
   if (auto const& term = it2->second->currentTerm) {
@@ -6753,7 +6755,7 @@ auto arangodb::ClusterInfo::getReplicatedLogPlanSpecification(
 
   auto it2 = it->second->replicatedLogs.find(id);
   if (it2 == std::end(it->second->replicatedLogs)) {
-    return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
+    return Result::fmt(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
   }
 
   TRI_ASSERT(it2->second != nullptr);
