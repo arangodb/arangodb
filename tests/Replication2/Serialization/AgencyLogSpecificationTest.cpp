@@ -42,7 +42,7 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
   auto spec = LogPlanSpecification{
       id,
       LogPlanTermSpecification{
-          LogTerm{1}, LogConfig{1, 1, false},
+          LogTerm{1}, LogPlanConfig{1, 1, false},
           LogPlanTermSpecification::Leader{"leaderId", RebootId{100}}},
       ParticipantsConfig{15, {{"p1", {true, false}}, {"p2", {}}}}};
 
@@ -145,7 +145,7 @@ TEST(AgencyLogSpecificationTest, log_target_supervision_test) {
 
 TEST(AgencyLogSpecificationTest, log_target_test) {
   {
-    auto config = LogConfig();
+    auto config = LogTargetConfig();
     config.writeConcern = 2;
     config.softWriteConcern = 2;
     config.waitForSync = false;
@@ -162,7 +162,7 @@ TEST(AgencyLogSpecificationTest, log_target_test) {
   }
 
   {
-    auto config = LogConfig();
+    auto config = LogTargetConfig();
     config.writeConcern = 2;
     config.softWriteConcern = 2;
     config.waitForSync = true;

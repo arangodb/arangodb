@@ -48,7 +48,7 @@ namespace RSA = arangodb::replication2::replicated_state::agency;
 struct ReplicatedStateModelCheckerTest
     : ::testing::Test,
       model_checker::testing::TracedSeedGenerator {
-  LogConfig const defaultConfig = {2, 2, false};
+  LogTargetConfig const defaultConfig = {2, 2, false};
   LogId const logId{12};
 
   ParticipantFlags const flagsSnapshotComplete{};

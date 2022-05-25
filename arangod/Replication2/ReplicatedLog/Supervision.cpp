@@ -510,8 +510,11 @@ auto checkLogExists(SupervisionContext& ctx, Log const& log,
     } else {
       auto leader = pickLeader(target.leader, target.participants, health,
                                log.target.id.id());
+      auto config = LogPlanConfig(target.config.writeConcern,
+                                  target.config.softWriteConcern,
+                                  target.config.waitForSync);
       ctx.createAction<AddLogToPlanAction>(target.id, target.participants,
-                                           target.config, leader);
+                                           config, leader);
     }
   }
 }

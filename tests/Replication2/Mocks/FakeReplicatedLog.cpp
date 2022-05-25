@@ -42,7 +42,7 @@ auto TestReplicatedLog::becomeLeader(
     std::size_t writeConcern, bool waitForSync,
     std::shared_ptr<cluster::IFailureOracle> failureOracle)
     -> std::shared_ptr<replicated_log::LogLeader> {
-  LogConfig config;
+  agency::LogPlanConfig config;
   config.writeConcern = writeConcern;
   config.waitForSync = waitForSync;
   config.softWriteConcern = writeConcern;
