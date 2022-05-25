@@ -157,7 +157,7 @@ BaseOptions::LookupInfo::LookupInfo(LookupInfo const& other)
 }
 
 void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
-  result.openObject();
+  VPackObjectBuilder objectGuard(&result);
 
   // direction
   TRI_ASSERT(direction == TRI_EDGE_IN || direction == TRI_EDGE_OUT);
@@ -190,7 +190,6 @@ void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
   result.add("condMemberToUpdate", VPackValue(conditionMemberToUpdate));
   result.add(VPackValue("nonConstContainer"));
   _nonConstContainer.toVelocyPack(result);
-  result.close();
 }
 
 double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
@@ -274,6 +273,8 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
       _parallelism(1),
       _produceVertices(true),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
+      _vertexProjections{},
+      _edgeProjections{},
       _refactor(true) {}
 
 BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
@@ -285,6 +286,8 @@ BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
       _parallelism(other._parallelism),
       _produceVertices(other._produceVertices),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
+      _vertexProjections{other._vertexProjections},
+      _edgeProjections{other._edgeProjections},
       _refactor(other._refactor) {
   if (!allowAlreadyBuiltCopy) {
     TRI_ASSERT(other._baseLookupInfos.empty());
@@ -334,6 +337,16 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info,
   read = info.get("produceVertices");
   if (read.isBool() && !read.getBool()) {
     _produceVertices = false;
+  }
+
+  read = info.get("vertexProjections");
+  if (!read.isNone()) {
+    _vertexProjections = Projections::fromVelocyPack(read);
+  }
+
+  read = info.get("edgeProjections");
+  if (!read.isNone()) {
+    _vertexProjections = Projections::fromVelocyPack(read);
   }
 }
 
@@ -504,6 +517,18 @@ void BaseOptions::injectEngineInfo(VPackBuilder& result) const {
   _tmpVar->toVelocyPack(result);
 
   result.add(StaticStrings::GraphRefactorFlag, VPackValue(_refactor));
+
+  if (!_vertexProjections.empty()) {
+    result.add(VPackValue("vertexProjections"));
+    VPackObjectBuilder projectionsObject(&result);
+    _vertexProjections.toVelocyPack(result);
+  }
+
+  if (!_edgeProjections.empty()) {
+    result.add(VPackValue("edgeProjections"));
+    VPackObjectBuilder projectionsObject(&result);
+    _edgeProjections.toVelocyPack(result);
+  }
 }
 
 arangodb::aql::Expression* BaseOptions::getEdgeExpression(
@@ -613,4 +638,20 @@ void BaseOptions::isQueryKilledCallback() const {
   if (query().killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
+}
+
+void BaseOptions::setVertexProjections(Projections projections) {
+  _vertexProjections = std::move(projections);
+}
+
+void BaseOptions::setEdgeProjections(Projections projections) {
+  _edgeProjections = std::move(projections);
+}
+
+Projections const& BaseOptions::getVertexProjections() {
+  return _vertexProjections;
+}
+
+Projections const& BaseOptions::getEdgeProjections() {
+  return _edgeProjections;
 }

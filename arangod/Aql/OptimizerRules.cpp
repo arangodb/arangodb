@@ -6195,8 +6195,7 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
             for (auto const& it : attributes) {
               LOG_DEVEL << "- E: " << it.path;
             }
-            // TODO: activate setEdgeProjections
-            // traversal->setEdgeProjections(Projections(attributes));
+            traversal->setEdgeProjections(Projections(attributes));
             modified = true;
           }
         }
