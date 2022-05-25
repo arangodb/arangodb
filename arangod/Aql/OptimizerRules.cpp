@@ -6160,10 +6160,16 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
       // find projections for edge output variable
       // TODO: make maxProjections configurable
       if (arangodb::aql::utils::findProjections(n, outVariable, attributes) &&
-          !attributes.empty() && attributes.size() <= maxProjections) {
-        // TODO: activate setEdgeProjections
-        // traversal->setEdgeProjections(Projections(attributes));
-        modified = true;
+          !attributes.empty()) {
+        // if we found any projections, make sure that they include _from and
+        // _to, as the traversal code will refer to these attributes later.
+        attributes.emplace(StaticStrings::FromString);
+        attributes.emplace(StaticStrings::ToString);
+        if (attributes.size() <= maxProjections) {
+          // TODO: activate setEdgeProjections
+          // traversal->setEdgeProjections(Projections(attributes));
+          modified = true;
+        }
       }
 
       if (!n->isVarUsedLater(outVariable)) {
