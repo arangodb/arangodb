@@ -142,7 +142,7 @@ replicated_log::InMemoryLog::InMemoryLog(log_type log)
 replicated_log::InMemoryLog::InMemoryLog(log_type log, LogIndex first)
     : _log(std::move(log)), _first(first) {
   TRI_ASSERT(_log.empty() || first == _log.front().entry().logIndex())
-      << " log.empty = " << _log.empty() << " first = " << first
+      << " log.empty = " << std::boolalpha << _log.empty() << " first = " << first
       << " log.front.idx = "
       << (!_log.empty() ? _log.front().entry().logIndex().value : 0);
 }
