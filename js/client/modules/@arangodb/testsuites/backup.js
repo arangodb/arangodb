@@ -158,6 +158,11 @@ class backupTestRunner extends tu.runInArangoshRunner {
             message: "shutdown of dump server failed"
           };
         }
+        this.instanceManager.arangods[0].pid = null;
+        this.instanceManager.arangods[0].exitStatus = null;
+        fs.removeDirectoryRecursive(this.instanceManager.arangods[0].dataDir);
+        fs.makeDirectory(this.instanceManager.arangods[0].dataDir);
+        
       }
       log('done.');
       print();
