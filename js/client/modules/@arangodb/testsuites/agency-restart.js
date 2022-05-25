@@ -94,7 +94,7 @@ function runArangodRecovery (params, agencyConfig) {
     args['log.output'] = 'file://' + crashLog;
     pu.cleanupDBDirectoriesAppend(params.testDir);
     params['instance'] = new inst.instance(params.options,
-                                           inst.instanceRole.agency,
+                                           inst.instanceRole.agent,
                                            args, {}, 'tcp', params.rootDir, '',
                                            agencyConfig);
 
