@@ -255,6 +255,8 @@ struct BaseOptions {
 
   void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
 
+  void toVelocyPackBase(VPackBuilder& builder) const;
+
  protected:
   mutable arangodb::transaction::Methods _trx;
 

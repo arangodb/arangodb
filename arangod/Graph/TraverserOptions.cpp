@@ -447,11 +447,10 @@ TraverserOptions::~TraverserOptions() = default;
 
 void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
+  toVelocyPackBase(builder);
 
   builder.add("minDepth", VPackValue(minDepth));
   builder.add("maxDepth", VPackValue(maxDepth));
-  builder.add("parallelism", VPackValue(_parallelism));
-  builder.add(StaticStrings::GraphRefactorFlag, VPackValue(refactor()));
 
   builder.add("neighbors", VPackValue(useNeighbors));
 
@@ -511,7 +510,6 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
     }
   }
 
-  builder.add("produceVertices", VPackValue(_produceVertices));
   builder.add("producePathsVertices", VPackValue(producePathsVertices()));
   builder.add("producePathsEdges", VPackValue(producePathsEdges()));
   builder.add("producePathsWeights", VPackValue(producePathsWeights()));

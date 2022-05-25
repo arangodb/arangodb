@@ -126,12 +126,12 @@ bool ShortestPathOptions::useWeight() const {
 
 void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
+  toVelocyPackBase(builder);
   builder.add("minDepth", VPackValue(minDepth));
   builder.add("maxDepth", VPackValue(maxDepth));
   builder.add("weightAttribute", VPackValue(getWeightAttribute()));
   builder.add("defaultWeight", VPackValue(getDefaultWeight()));
   builder.add("type", VPackValue("shortestPath"));
-  builder.add(StaticStrings::GraphRefactorFlag, VPackValue(refactor()));
 }
 
 void ShortestPathOptions::toVelocyPackIndexes(VPackBuilder& builder) const {

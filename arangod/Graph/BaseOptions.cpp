@@ -346,7 +346,7 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info,
 
   read = info.get("edgeProjections");
   if (!read.isNone()) {
-    _vertexProjections = Projections::fromVelocyPack(read);
+    _edgeProjections = Projections::fromVelocyPack(read);
   }
 }
 
@@ -515,20 +515,7 @@ void BaseOptions::injectEngineInfo(VPackBuilder& result) const {
   result.add(VPackValue("tmpVar"));
   TRI_ASSERT(_tmpVar != nullptr);
   _tmpVar->toVelocyPack(result);
-
-  result.add(StaticStrings::GraphRefactorFlag, VPackValue(_refactor));
-
-  if (!_vertexProjections.empty()) {
-    result.add(VPackValue("vertexProjections"));
-    VPackObjectBuilder projectionsObject(&result);
-    _vertexProjections.toVelocyPack(result);
-  }
-
-  if (!_edgeProjections.empty()) {
-    result.add(VPackValue("edgeProjections"));
-    VPackObjectBuilder projectionsObject(&result);
-    _edgeProjections.toVelocyPack(result);
-  }
+  toVelocyPackBase(result);
 }
 
 arangodb::aql::Expression* BaseOptions::getEdgeExpression(
@@ -654,4 +641,23 @@ Projections const& BaseOptions::getVertexProjections() {
 
 Projections const& BaseOptions::getEdgeProjections() {
   return _edgeProjections;
+}
+
+void BaseOptions::toVelocyPackBase(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add("parallelism", VPackValue(_parallelism));
+  builder.add(StaticStrings::GraphRefactorFlag, VPackValue(refactor()));
+  builder.add("produceVertices", VPackValue(_produceVertices));
+
+  if (!_vertexProjections.empty()) {
+    builder.add(VPackValue("vertexProjections"));
+    VPackObjectBuilder projectionsObject(&builder);
+    _vertexProjections.toVelocyPack(builder);
+  }
+
+  if (!_edgeProjections.empty()) {
+    builder.add(VPackValue("edgeProjections"));
+    VPackObjectBuilder projectionsObject(&builder);
+    _edgeProjections.toVelocyPack(builder);
+  }
 }
