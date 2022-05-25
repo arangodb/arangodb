@@ -94,7 +94,8 @@ struct SingleServerBaseProviderOptions {
           filterConditionVariables,
       std::unordered_map<std::string, std::vector<std::string>> const&
           collectionToShardMap,
-      aql::Projections vertexProjections);
+      aql::Projections const& vertexProjections,
+      aql::Projections const& edgeProjections);
 
   SingleServerBaseProviderOptions(SingleServerBaseProviderOptions const&) =
       delete;
@@ -122,6 +123,8 @@ struct SingleServerBaseProviderOptions {
 
   aql::Projections const& getVertexProjections() const;
 
+  aql::Projections const& getEdgeProjections() const;
+
  private:
   // The temporary Variable used in the Indexes
   aql::Variable const* _temporaryVariable;
@@ -137,6 +140,7 @@ struct SingleServerBaseProviderOptions {
 
   // CollectionName to ShardMap, used if the Traversal is pushed down to
   // DBServer
+  /// Ownership of this struct is at the BaseOptions
   std::unordered_map<std::string, std::vector<std::string>> const&
       _collectionToShardMap;
 
@@ -149,7 +153,12 @@ struct SingleServerBaseProviderOptions {
       _filterConditionVariables;
 
   /// @brief Projections used on vertex data
-  aql::Projections _vertexProjections;
+  /// Ownership of this struct is at the BaseOptions
+  aql::Projections const& _vertexProjections;
+
+  /// @brief Projections used on edge data.
+  /// Ownership of this struct is at the BaseOptions
+  aql::Projections const& _edgeProjections;
 };
 
 struct ClusterBaseProviderOptions {

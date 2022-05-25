@@ -26,6 +26,7 @@
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/NonConstExpressionContainer.h"
+#include "Aql/Projections.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -206,6 +207,14 @@ struct BaseOptions {
 
   void isQueryKilledCallback() const;
 
+  void setVertexProjections(aql::Projections projections);
+
+  void setEdgeProjections(aql::Projections projections);
+
+  aql::Projections const& getVertexProjections();
+
+  aql::Projections const& getEdgeProjections();
+
   void setRefactor(bool r) noexcept { _refactor = r; }
 
   bool refactor() const { return _refactor; }
@@ -303,6 +312,12 @@ struct BaseOptions {
 
   /// @brief whether or not we are running on a coordinator
   bool const _isCoordinator;
+
+  /// @brief Projections used on vertex data
+  aql::Projections _vertexProjections;
+
+  /// @brief Projections used on edge data
+  aql::Projections _edgeProjections;
 
   /// @brief whether or not we are running the refactored version
   /// TODO: This must be removed prior release - (is currently needed for the

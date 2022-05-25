@@ -776,7 +776,8 @@ TraversalNode::getSingleServerBaseProviderOptions(
           opts->getExpressionCtx(),
           filterConditionVariables,
           opts->collectionToShard(),
-          _vertexProjections};
+          opts->getVertexProjections(),
+          opts->getEdgeProjections()};
 }
 
 /// @brief creates corresponding ExecutionBlock
