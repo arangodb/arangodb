@@ -1,6 +1,7 @@
 devel
 -----
 
+* Pregel status now reports whether memory mapped files are used.
 
 * Enterprise only: Restricted behaviour of Hybrid Disjoint Smart Graphs. Within a single
   traversal or path query we now restrict that you can only switch between

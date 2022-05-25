@@ -953,6 +953,7 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
     VPackObjectBuilder ob(&result, "masterContext");
     _masterContext->serializeValues(result);
   }
+  result.add("useMemoryMaps", VPackValue(_useMemoryMaps));
   result.close();
 }
 
