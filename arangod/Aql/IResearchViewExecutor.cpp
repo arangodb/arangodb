@@ -1855,7 +1855,7 @@ IResearchViewMergeExecutor<copyStored, ordered, materializeType>::skipAll(
         this->_segments[_heap_it.value()].segmentPos) {
       skipped += (_heap_it.size() - 1);
     }
-    _heap_it.reset();
+    _heap_it.reset(0);
   }
   return skipped;
 }
