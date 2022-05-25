@@ -313,6 +313,7 @@ class instanceManager {
       if (count > 0) {
         args.push('or');
       }
+      args.push('port');
       args.push(arangod.port);
       count ++;
     });
