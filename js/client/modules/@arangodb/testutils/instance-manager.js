@@ -827,7 +827,7 @@ class instanceManager {
       if (!reply.error && reply.code === 200) {
         let res = JSON.parse(reply.body);
         print("Response ====> " + reply.body);
-        if (res[0].hasOwnProperty('Plan')){
+        if (res[0].hasOwnProperty('arango') && res[0].arango.Plan.AsyncReplication.hasOwnProperty('Leader')){
           let leader = res[0].arango.Plan.AsyncReplication.Leader;
           if (leader) {
             break;
