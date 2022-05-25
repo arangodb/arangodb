@@ -234,8 +234,6 @@ struct LogConfig {
   std::size_t replicationFactor = 1;
   bool waitForSync = false;
 
-  auto toVelocyPack(velocypack::Builder&) const -> void;
-  explicit LogConfig(velocypack::Slice);
   LogConfig() noexcept = default;
   LogConfig(std::size_t writeConcern, std::size_t softWriteConcern,
             std::size_t replicationFactor, bool waitForSync) noexcept;

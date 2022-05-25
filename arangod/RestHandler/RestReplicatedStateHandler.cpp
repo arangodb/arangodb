@@ -115,7 +115,8 @@ auto arangodb::RestReplicatedStateHandler::handlePostRequest(
 
     // create a new state
     auto spec =
-        replication2::replicated_state::agency::Target::fromVelocyPack(body);
+        velocypack::deserialize<replication2::replicated_state::agency::Target>(
+            body);
     return waitForFuture(methods.createReplicatedState(std::move(spec))
                              .thenValue([this](auto&& result) {
                                if (result.ok()) {
@@ -150,7 +151,7 @@ auto arangodb::RestReplicatedStateHandler::handlePostRequest(
     auto&& [res, raftIdx] =
         agencyCache.get(path->str(paths::SkipComponents{1}));
     auto stateTarget =
-        replication2::replicated_state::agency::Target::fromVelocyPack(
+        velocypack::deserialize<replication2::replicated_state::agency::Target>(
             res->slice());
 
     return waitForFuture(

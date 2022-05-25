@@ -79,6 +79,10 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Validators.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/VocBase/SmartGraphSchema.h"
+#endif
+
 #include "analysis/token_attributes.hpp"
 #include "utils/levenshtein_utils.hpp"
 #include "utils/ngram_match_utils.hpp"
@@ -9227,6 +9231,41 @@ AqlValue Functions::MakeDistributeGraphInput(
 
   return AqlValue{input};
 }
+
+#ifdef USE_ENTERPRISE
+AqlValue Functions::SelectSmartDistributeGraphInput(
+    arangodb::aql::ExpressionContext* expressionContext, AstNode const&,
+    VPackFunctionParametersView parameters) {
+  AqlValue const& from = extractFunctionParameterValue(parameters, 0);
+  VPackSlice input = from.slice();  // will throw when wrong type
+  if (ADB_UNLIKELY(!input.isObject() ||
+                   !input.hasKey(StaticStrings::IdString) ||
+                   !input.get(StaticStrings::IdString).isString())) {
+    // This is an internal use function, so the if condition should always be
+    // true Just a protection against users typing this method by hand.
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                   "invalid start vertex. Must either be "
+                                   "an _id string value or an object with _id. "
+                                   "Instead got: " +
+                                       input.toJson());
+  }
+  auto fromId = input.get(StaticStrings::IdString).stringView();
+  auto res =
+      SmartGraphValidationHelper::SmartValidationResult::validateVertexId(
+          fromId);
+  if (res.ok()) {
+    return AqlValue{input};
+  }
+  // From vertex is not smart. Use the other side.
+
+  // It does not matter if the other side is actually smart.
+  // Validity will be checked before (MAKE_DISTRIBUTE INPUT) and after
+  // (Distribute/PathQuery)
+  // If this vertex is Smart we shard by it.
+  // If not, we assume it to be satellite, so it can be send anywhere.
+  return extractFunctionParameterValue(parameters, 1);
+}
+#endif
 
 template<typename F>
 AqlValue decayFuncImpl(arangodb::aql::ExpressionContext* expressionContext,

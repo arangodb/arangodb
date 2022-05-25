@@ -89,6 +89,24 @@ TYPED_TEST_P(TypedModelCheckerTest, simple_model_test) {
   EXPECT_EQ(stats.finalStates, 1);
 }
 
+TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_fail) {
+  using Engine = model_checker::DFSEngine<MyState, MyTransition>;
+
+  auto driver = model_checker::lambda_driver{[&](MyState const& state) {
+    auto result = std::vector<std::pair<MyTransition, MyState>>{};
+    if (state.x < 10) {
+      result.emplace_back(MyTransition{.deltaX = 1}, MyState{.x = state.x + 1});
+    }
+    return result;
+  }};
+
+  auto test = MC_ALWAYS(MC_BOOL_PRED(state, { return state.x <= 5; }));
+
+  auto result = Engine::run(driver, test, {.x = 0},
+                            {.iterations = 3, .seed = this->seed(ADB_HERE)});
+  EXPECT_TRUE(result.failed);
+}
+
 TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_eventually) {
   using Engine = TypeParam;
   auto driver = model_checker::lambda_driver{[&](MyState const& state) {
@@ -182,7 +200,7 @@ TYPED_TEST_P(TypedModelCheckerTest, simple_model_test_cycle_detector) {
 }
 
 REGISTER_TYPED_TEST_CASE_P(TypedModelCheckerTest, simple_model_test,
-                           simple_model_test_eventually,
+                           simple_model_test_fail, simple_model_test_eventually,
                            simple_model_test_eventually_always,
                            simple_model_test_eventually_always_fail,
                            simple_model_test_cycle_detector);
