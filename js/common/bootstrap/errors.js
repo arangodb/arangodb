@@ -318,6 +318,7 @@
     "ERROR_NO_SMART_JOIN_ATTRIBUTE" : { "code" : 4008, "message" : "smart join attribute not given or invalid" },
     "ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE" : { "code" : 4009, "message" : "must not change the value of the smartJoinAttribute" },
     "ERROR_INVALID_DISJOINT_SMART_EDGE" : { "code" : 4010, "message" : "non disjoint edge found" },
+    "ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION" : { "code" : 4011, "message" : "Unsupported alternating Smart and Satellite in Disjoint SmartGraph." },
     "ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE" : { "code" : 20001, "message" : "malformed gossip message" },
     "ERROR_AGENCY_MALFORMED_INQUIRE_REQUEST" : { "code" : 20002, "message" : "malformed inquire request" },
     "ERROR_AGENCY_INFORM_MUST_BE_OBJECT" : { "code" : 20011, "message" : "Inform message must be an object." },

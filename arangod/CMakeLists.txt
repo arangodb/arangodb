@@ -593,6 +593,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/Exceptions/ParticipantResignedException.h
   Replication2/Methods.cpp
   Replication2/ReplicatedLog/AgencyLogSpecification.cpp
+  Replication2/ReplicatedLog/AgencySpecificationInspectors.cpp
   Replication2/ReplicatedLog/Algorithms.cpp
   Replication2/ReplicatedLog/ILogInterfaces.cpp
   Replication2/ReplicatedLog/InMemoryLog.cpp
@@ -1128,6 +1129,7 @@ target_link_libraries(arango_replication arango_vocbase)
 
 target_link_libraries(arango_replication2 arango)
 target_link_libraries(arango_replication2 immer)
+target_link_libraries(arango_replication2 fmt)
 target_link_libraries(arango_replication2 arango_network)
 
 target_link_libraries(arango_rocksdb rocksdb)

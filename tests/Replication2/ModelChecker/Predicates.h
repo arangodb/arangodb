@@ -270,7 +270,7 @@ struct FileLineType {
   static inline constexpr std::size_t line = Line;
 
   static auto annotate(std::string_view message) -> std::string {
-    return std::string{filename} + std::to_string(line) + std::string{message};
+    return fmt::format("{}:{}:{}", filename, line, message);
   }
 };
 
