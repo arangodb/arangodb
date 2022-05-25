@@ -887,6 +887,22 @@ class ClusterInfo final {
       containers::FlatHashSet<ShardID> const&);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief atomically find all servers who are responsible for the given
+  /// shards (choose either the leader or some follower for each, but
+  /// make the choice consistent with `distributeShardsLike` dependencies.
+  /// Will throw an exception if no leader can be found for any
+  /// of the shards. Will return an empty result if the shards couldn't be
+  /// determined after a while - it is the responsibility of the caller to
+  /// check for an empty result!
+  //////////////////////////////////////////////////////////////////////////////
+
+#ifdef USE_ENTERPRISE
+  containers::FlatHashMap<ShardID, ServerID>
+  getResponsibleServersReadFromFollower(
+      containers::FlatHashSet<ShardID> const&);
+#endif
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief find the shard list of a collection, sorted numerically
   //////////////////////////////////////////////////////////////////////////////
 
@@ -935,6 +951,13 @@ class ClusterInfo final {
 
   void setServerAdvertisedEndpoints(
       containers::FlatHashMap<ServerID, std::string> advertisedEndpoints);
+
+  void setShardToProtoShard(
+      containers::FlatHashMap<ShardID, ShardID> shardToProtoShards);
+
+  void setShardIds(
+      containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID>>>
+          shardIds);
 #endif
 
   bool serverExists(std::string_view serverID) const noexcept;

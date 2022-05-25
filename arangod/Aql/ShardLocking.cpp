@@ -359,41 +359,41 @@ void ShardLocking::serializeIntoBuilder(
 containers::FlatHashMap<ShardID, ServerID> const&
 ShardLocking::getShardMapping() {
   if (_shardMapping.empty() && !_collectionLocking.empty()) {
+    containers::FlatHashSet<ShardID> shardIds;
+    for (auto& lockInfo : _collectionLocking) {
+      auto& allShards = lockInfo.second.allShards;
+      TRI_ASSERT(!allShards.empty());
+      for (auto const& rest : lockInfo.second.snippetInfo) {
+        if (!rest.second.isRestricted) {
+          // We have an unrestricted snippet for this collection
+          // Use all shards for locking
+          for (auto const& s : allShards) {
+            shardIds.emplace(s);
+          }
+          // No need to search further
+          break;
+        }
+        for (auto const& s : rest.second.restrictedShards) {
+          shardIds.emplace(s);
+        }
+      }
+    }
+    TRI_ASSERT(!shardIds.empty());
+    auto& server = _query.vocbase().server();
+    if (!server.hasFeature<ClusterFeature>()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+    auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
 #ifdef USE_ENTERPRISE
     if (_query.queryOptions().allowDirtyReads) {
-      computeShardMappingForReadFromFollowers();
+      _shardMapping = ci.getResponsibleServersReadFromFollower(shardIds);
     } else
 #endif
     {
-      containers::FlatHashSet<ShardID> shardIds;
-      for (auto& lockInfo : _collectionLocking) {
-        auto& allShards = lockInfo.second.allShards;
-        TRI_ASSERT(!allShards.empty());
-        for (auto const& rest : lockInfo.second.snippetInfo) {
-          if (!rest.second.isRestricted) {
-            // We have an unrestricted snippet for this collection
-            // Use all shards for locking
-            for (auto const& s : allShards) {
-              shardIds.emplace(s);
-            }
-            // No need to search further
-            break;
-          }
-          for (auto const& s : rest.second.restrictedShards) {
-            shardIds.emplace(s);
-          }
-        }
-      }
-      auto& server = _query.vocbase().server();
-      if (!server.hasFeature<ClusterFeature>()) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-      }
-      auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
       // We have at least one shard, otherwise we would not have snippets!
-      TRI_ASSERT(!shardIds.empty());
       _shardMapping = ci.getResponsibleServers(shardIds);
-      TRI_ASSERT(_shardMapping.size() == shardIds.size());
     }
+    TRI_ASSERT(_shardMapping.size() == shardIds.size());
 
     for (auto const& lockInfo : _collectionLocking) {
       for (auto const& sid : lockInfo.second.allShards) {

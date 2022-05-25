@@ -1447,15 +1447,19 @@ void ClusterInfo::loadPlan() {
       if (!proto.empty()) {
         auto protoCol = newShards.find(proto);
         if (protoCol != newShards.end()) {
-          auto col = newShards.find(std::to_string(colPair.second.collection->id().id()));
+          auto col = newShards.find(
+              std::to_string(colPair.second.collection->id().id()));
           if (col != newShards.end()) {
             TRI_ASSERT(protoCol->second->size() == col->second->size());
             for (size_t i = 0; i < col->second->size(); ++i) {
-              newShardToProtoShard.try_emplace(col->second->at(i), protoCol->second->at(i));
-              LOG_DEVEL << "Mapping " << col->second->at(i) << " to " << protoCol->second->at(i);
+              newShardToProtoShard.try_emplace(col->second->at(i),
+                                               protoCol->second->at(i));
+              LOG_DEVEL << "Mapping " << col->second->at(i) << " to "
+                        << protoCol->second->at(i);
             }
           } else {
-            LOG_DEVEL << "Strange, could not find collection: " << colPair.second.collection->name();
+            LOG_DEVEL << "Strange, could not find collection: "
+                      << colPair.second.collection->name();
           }
         } else {
           LOG_DEVEL << "Strange, could not find proto collection: " << proto;
@@ -5811,20 +5815,33 @@ void ClusterInfo::setFailedServers(
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 void ClusterInfo::setServers(
     containers::FlatHashMap<ServerID, std::string> servers) {
-  WRITE_LOCKER(readLocker, _serversProt.lock);
+  WRITE_LOCKER(writeLocker, _serversProt.lock);
   _servers = std::move(servers);
 }
 
 void ClusterInfo::setServerAliases(
     containers::FlatHashMap<ServerID, std::string> aliases) {
-  WRITE_LOCKER(readLocker, _serversProt.lock);
+  WRITE_LOCKER(writeLocker, _serversProt.lock);
   _serverAliases = std::move(aliases);
 }
 
 void ClusterInfo::setServerAdvertisedEndpoints(
     containers::FlatHashMap<ServerID, std::string> advertisedEndpoints) {
-  WRITE_LOCKER(readLocker, _serversProt.lock);
+  WRITE_LOCKER(writeLocker, _serversProt.lock);
   _serverAdvertisedEndpoints = std::move(advertisedEndpoints);
+}
+
+void ClusterInfo::setShardToProtoShard(
+    containers::FlatHashMap<ShardID, ShardID> shardToProtoShards) {
+  WRITE_LOCKER(writeLocker, _planProt.lock);
+  _shardToProtoShard = std::move(shardToProtoShards);
+}
+
+void ClusterInfo::setShardIds(
+    containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID>>>
+        shardIds) {
+  WRITE_LOCKER(writeLocker, _currentProt.lock);
+  _shardIds = std::move(shardIds);
 }
 #endif
 
