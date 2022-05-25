@@ -813,9 +813,8 @@ namespace arangodb {
 namespace iresearch {
 
 IResearchInvertedIndex::IResearchInvertedIndex(
-    IndexId iid, LogicalCollection& collection,
-    IResearchInvertedIndexMeta&& meta)
-    : IResearchDataStore(iid, collection), _meta(std::move(meta)) {}
+    IndexId iid, LogicalCollection& collection)
+    : IResearchDataStore(iid, collection) {}
 
 // Analyzer names storing
 //  - forPersistence ::<analyzer> from system and <analyzer> for local and
@@ -858,14 +857,30 @@ IResearchInvertedIndex::sortedFields(IResearchInvertedIndexMeta const& meta) {
 }
 
 Result IResearchInvertedIndex::init(
+    VPackSlice definition,
     bool& pathExists,
     IResearchDataStore::InitCallback const& initCallback /*= {}*/) {
+  std::string errField;
+  if (!_meta.init(_collection.vocbase().server(), definition, true, errField,
+                  _collection.vocbase().name())) {
+    LOG_TOPIC("18c17", ERR, iresearch::TOPIC)
+        << (errField.empty()
+                ? (std::string(
+                       "failed to initialize index fields from definition: ") +
+                   definition.toString())
+                : (std::string("failed to initialize index fields from "
+                               "definition, error in attribute '") +
+                   errField + "': " + definition.toString()));
+    return {TRI_ERROR_BAD_PARAMETER, errField};
+  }
+
   TRI_ASSERT(_meta._sort.sortCompression());
   auto r = initDataStore(pathExists, initCallback, _meta._version, isSorted(),
                          _meta._storedValues.columns(), _meta._sort.sortCompression());
   if (r.ok()) {
     _comparer.reset(_meta._sort);
   }
+  properties(_meta);
   return r;
 }
 

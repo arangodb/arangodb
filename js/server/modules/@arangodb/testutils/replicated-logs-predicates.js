@@ -207,6 +207,20 @@ const replicatedLogLeaderPlanIs = function (database, stateId, expectedLeader) {
   };
 };
 
+const replicatedLogLeaderPlanChanged = function (database, stateId, oldLeader) {
+  return function () {
+      const leaderPlan = LH.getReplicatedLogLeaderPlan(database, stateId, true);
+      if (leaderPlan instanceof Error) {
+        return leaderPlan;
+      }
+      if (leaderPlan.leader !== oldLeader) {
+        return true;
+      } else {
+        return new Error(`Expected log leader to switch from ${oldLeader}, but is still the same`);
+      }
+  };
+};
+
 const replicatedLogLeaderCommitFail = function (database, logId, expected) {
   return function () {
     let {current} = LH.readReplicatedLogAgency(database, logId);
@@ -262,6 +276,7 @@ exports.replicatedLogLeaderCommitFail = replicatedLogLeaderCommitFail;
 exports.replicatedLogLeaderEstablished = replicatedLogLeaderEstablished;
 exports.replicatedLogLeaderPlanIs = replicatedLogLeaderPlanIs;
 exports.replicatedLogLeaderTargetIs = replicatedLogLeaderTargetIs;
+exports.replicatedLogLeaderPlanChanged = replicatedLogLeaderPlanChanged;
 exports.replicatedLogParticipantGeneration = replicatedLogParticipantGeneration;
 exports.replicatedLogParticipantsFlag = replicatedLogParticipantsFlag;
 exports.replicatedLogTargetVersion = replicatedLogTargetVersion;

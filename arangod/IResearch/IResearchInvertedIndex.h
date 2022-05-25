@@ -165,8 +165,7 @@ namespace arangodb {
 namespace iresearch {
 class IResearchInvertedIndex : public IResearchDataStore {
  public:
-  explicit IResearchInvertedIndex(IndexId iid, LogicalCollection& collection,
-                                  IResearchInvertedIndexMeta&& meta);
+  explicit IResearchInvertedIndex(IndexId iid, LogicalCollection& collection);
 
   virtual ~IResearchInvertedIndex() = default;
 
@@ -175,7 +174,8 @@ class IResearchInvertedIndex : public IResearchDataStore {
 
   bool isSorted() const { return !_meta._sort.empty(); }
 
-  Result init(bool& pathExists, InitCallback const& initCallback = {});
+  Result init(VPackSlice definition, bool& pathExists,
+              InitCallback const& initCallback = {});
 
   static std::vector<std::vector<arangodb::basics::AttributeName>> fields(
       IResearchInvertedIndexMeta const& meta);
@@ -226,15 +226,6 @@ class IResearchInvertedIndex : public IResearchDataStore {
 class IResearchInvertedClusterIndex : public IResearchInvertedIndex,
                                       public Index {
  public:
-  IResearchInvertedClusterIndex(IndexId iid, uint64_t objectId,
-                                LogicalCollection& collection,
-                                std::string const& name,
-                                IResearchInvertedIndexMeta&& m)
-      : IResearchInvertedIndex(iid, collection,
-                               std::forward<IResearchInvertedIndexMeta>(m)),
-        Index(iid, collection, name, IResearchInvertedIndex::fields(meta()),
-              false, true) {}
-
   Index::IndexType type() const override {
     return Index::TRI_IDX_TYPE_INVERTED_INDEX;
   }
@@ -305,7 +296,18 @@ class IResearchInvertedClusterIndex : public IResearchInvertedIndex,
       aql::AstNode* node, aql::Variable const* reference) const override {
     return IResearchInvertedIndex::specializeCondition(node, reference);
   }
-};
 
+  IResearchInvertedClusterIndex(IndexId iid, uint64_t objectId,
+                                LogicalCollection& collection,
+                                std::string const& name)
+      : IResearchInvertedIndex(iid, collection),
+        Index(iid, collection, name, {}, false, true) {}
+
+  void initFields() {
+    TRI_ASSERT(_fields.empty());
+    *const_cast<std::vector<std::vector<arangodb::basics::AttributeName>>*>(
+        &_fields) = IResearchInvertedIndex::fields(meta());
+  }
+};
 }  // namespace iresearch
 }  // namespace arangodb

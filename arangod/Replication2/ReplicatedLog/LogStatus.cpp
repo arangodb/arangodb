@@ -21,11 +21,14 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Basics/debugging.h>
+#include "Inspection/VPack.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include <Basics/Exceptions.h>
 #include <Basics/StaticStrings.h>
-#include <Basics/overload.h>
 #include <Basics/application-exit.h>
+#include <Basics/debugging.h>
+#include <Basics/overload.h>
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -287,7 +290,7 @@ auto GlobalStatus::fromVelocyPack(VPackSlice slice) -> GlobalStatus {
   return status;
 }
 
-void GlobalStatus::Connection::toVelocyPack(
+void GlobalStatusConnection::toVelocyPack(
     arangodb::velocypack::Builder& b) const {
   velocypack::ObjectBuilder ob(&b);
   b.add(StaticStrings::ErrorCode, VPackValue(error));
@@ -296,14 +299,14 @@ void GlobalStatus::Connection::toVelocyPack(
   }
 }
 
-auto GlobalStatus::Connection::fromVelocyPack(arangodb::velocypack::Slice slice)
-    -> GlobalStatus::Connection {
+auto GlobalStatusConnection::fromVelocyPack(arangodb::velocypack::Slice slice)
+    -> GlobalStatusConnection {
   auto code = ErrorCode(slice.get(StaticStrings::ErrorCode).extract<int>());
   auto message = std::string{};
   if (auto ms = slice.get(StaticStrings::ErrorMessage); !ms.isNone()) {
     message = ms.copyString();
   }
-  return Connection{.error = code, .errorMessage = message};
+  return GlobalStatusConnection{.error = code, .errorMessage = message};
 }
 
 void GlobalStatus::ParticipantStatus::Response::toVelocyPack(
@@ -342,7 +345,7 @@ void GlobalStatus::ParticipantStatus::toVelocyPack(
 
 auto GlobalStatus::ParticipantStatus::fromVelocyPack(
     arangodb::velocypack::Slice s) -> GlobalStatus::ParticipantStatus {
-  auto connection = Connection::fromVelocyPack(s.get("connection"));
+  auto connection = GlobalStatusConnection::fromVelocyPack(s.get("connection"));
   auto response = std::optional<Response>{};
   if (auto rs = s.get("response"); !rs.isNone()) {
     response = Response::fromVelocyPack(rs);
@@ -358,17 +361,20 @@ void GlobalStatus::SupervisionStatus::toVelocyPack(
   connection.toVelocyPack(b);
   if (response.has_value()) {
     b.add(VPackValue("response"));
-    response->toVelocyPack(b);
+    velocypack::serialize(b, response);
   }
 }
 
 auto GlobalStatus::SupervisionStatus::fromVelocyPack(
     arangodb::velocypack::Slice s) -> GlobalStatus::SupervisionStatus {
-  auto connection = Connection::fromVelocyPack(s.get("connection"));
-  auto response = std::optional<agency::LogCurrentSupervision>{};
-  if (auto rs = s.get("response"); !rs.isNone()) {
-    response = agency::LogCurrentSupervision::fromVelocyPack(rs);
-  }
+  auto connection = GlobalStatusConnection::fromVelocyPack(s.get("connection"));
+  auto const response =
+      std::invoke([&s]() -> std::optional<agency::LogCurrentSupervision> {
+        if (auto rs = s.get("response"); !rs.isNone()) {
+          return velocypack::deserialize<agency::LogCurrentSupervision>(rs);
+        }
+        return std::nullopt;
+      });
   return SupervisionStatus{.connection = std::move(connection),
                            .response = std::move(response)};
 }
@@ -406,13 +412,14 @@ void GlobalStatus::Specification::toVelocyPack(
     arangodb::velocypack::Builder& b) const {
   velocypack::ObjectBuilder ob(&b);
   b.add(VPackValue("plan"));
-  plan.toVelocyPack(b);
+  velocypack::serialize(b, plan);
   b.add("source", VPackValue(to_string(source)));
 }
 
 auto GlobalStatus::Specification::fromVelocyPack(arangodb::velocypack::Slice s)
     -> Specification {
-  auto plan = agency::LogPlanSpecification::fromVelocyPack(s.get("plan"));
+  auto plan =
+      velocypack::deserialize<agency::LogPlanSpecification>(s.get("plan"));
   auto source = GlobalStatus::SpecificationSource::kLocalCache;
   if (s.get("source").isEqualString("RemoteAgency")) {
     source = GlobalStatus::SpecificationSource::kRemoteAgency;

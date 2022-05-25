@@ -300,11 +300,21 @@ void toVelocyPack(IResearchInvertedIndexMeta::FieldRecord const& field, VPackBui
 
 namespace arangodb::iresearch {
 
+const IResearchInvertedIndexMeta& IResearchInvertedIndexMeta::DEFAULT() {
+  static const IResearchInvertedIndexMeta meta{};
+  return meta;
+}
+
+
 bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
                                       VPackSlice const& slice,
                                       bool readAnalyzerDefinition,
                                       std::string& errorField,
                                       irs::string_ref const defaultVocbase) {
+
+  if (!IResearchDataStoreMeta::init(slice, errorField, DEFAULT(), nullptr)) {
+    return false;
+  }
 
   // consistency (optional)
   {
@@ -569,6 +579,11 @@ bool IResearchInvertedIndexMeta::json(
     arangodb::ArangodServer& server, VPackBuilder& builder,
     bool writeAnalyzerDefinition,
     TRI_vocbase_t const* defaultVocbase /*= nullptr*/) const {
+
+  if (!IResearchDataStoreMeta::json(builder)) {
+    return false;
+  }
+
   if (!builder.isOpenObject()) {
     return false;
   }
@@ -607,6 +622,11 @@ bool IResearchInvertedIndexMeta::json(
 
 bool IResearchInvertedIndexMeta::operator==(
     IResearchInvertedIndexMeta const& other) const noexcept {
+  if (*static_cast<IResearchDataStoreMeta const*>(this) !=
+      static_cast<IResearchDataStoreMeta const&>(other)) {
+    return false;
+  }
+
   if (_sort != other._sort) {
     return false;
   }

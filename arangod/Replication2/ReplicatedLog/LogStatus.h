@@ -181,18 +181,18 @@ struct LogStatus {
  * @brief Provides a more general view of what's currently going on, without
  * completely relying on the leader.
  */
+struct GlobalStatusConnection {
+  ErrorCode error{0};
+  std::string errorMessage;
+
+  void toVelocyPack(velocypack::Builder&) const;
+  static auto fromVelocyPack(velocypack::Slice) -> GlobalStatusConnection;
+};
+
 struct GlobalStatus {
   enum class SpecificationSource {
     kLocalCache,
     kRemoteAgency,
-  };
-
-  struct Connection {
-    ErrorCode error{0};
-    std::string errorMessage;
-
-    void toVelocyPack(velocypack::Builder&) const;
-    static auto fromVelocyPack(velocypack::Slice) -> Connection;
   };
 
   struct ParticipantStatus {
@@ -204,7 +204,7 @@ struct GlobalStatus {
       static auto fromVelocyPack(velocypack::Slice) -> Response;
     };
 
-    Connection connection;
+    GlobalStatusConnection connection;
     std::optional<Response> response;
 
     void toVelocyPack(velocypack::Builder&) const;
@@ -212,7 +212,7 @@ struct GlobalStatus {
   };
 
   struct SupervisionStatus {
-    Connection connection;
+    GlobalStatusConnection connection;
     std::optional<agency::LogCurrentSupervision> response;
 
     void toVelocyPack(velocypack::Builder&) const;

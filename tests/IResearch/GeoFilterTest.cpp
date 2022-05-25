@@ -113,8 +113,6 @@ struct custom_sort : public irs::sort {
       const irs::term_reader& term_reader_;
     };
 
-    static ptr make(prepared);
-
     prepared(const custom_sort& sort) : sort_(sort) {}
 
     virtual void collect(irs::byte_type* filter_attrs,
@@ -205,8 +203,6 @@ struct custom_sort : public irs::sort {
     return std::make_unique<custom_sort::prepared>(*this);
   }
 };
-
-DEFINE_FACTORY_DEFAULT(custom_sort)
 
 }  // namespace
 

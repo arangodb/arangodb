@@ -22,6 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "IResearchDataStore.h"
 #include "IResearchDocument.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/IResearchDocumentEE.h"
+#endif
 #include "IResearchFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
@@ -158,6 +161,7 @@ auto getIndexFeatures() {
   };
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts ArangoDB document into an IResearch data store
 ////////////////////////////////////////////////////////////////////////////////
@@ -178,6 +182,9 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
 
   // User fields
   while (body.valid()) {
+#ifdef USE_ENTERPRISE
+    handleNestedFields(ctx, body.makeNestedIterator());
+#endif
     if (ValueStorage::NONE == field._storeValues) {
       doc.insert<irs::Action::INDEX>(field);
     } else {
@@ -421,7 +428,7 @@ struct ConsolidationTask : Task<ConsolidationTask> {
   static constexpr const char* typeName() noexcept { return "consolidation"; }
   void operator()();
   irs::merge_writer::flush_progress_t progress;
-  IResearchViewMeta::ConsolidationPolicy consolidationPolicy;
+  IResearchDataStoreMeta::ConsolidationPolicy consolidationPolicy;
   std::chrono::milliseconds consolidationIntervalMsec{};
 };
 void ConsolidationTask::operator()() {
@@ -825,7 +832,7 @@ Result IResearchDataStore::commitUnsafeImpl(bool wait, CommitResult* code) {
 /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
 ////////////////////////////////////////////////////////////////////////////////
 IResearchDataStore::UnsafeOpResult IResearchDataStore::consolidateUnsafe(
-    IResearchViewMeta::ConsolidationPolicy const& policy,
+    IResearchDataStoreMeta::ConsolidationPolicy const& policy,
     irs::merge_writer::flush_progress_t const& progress,
     bool& emptyConsolidation) {
   auto begin = std::chrono::steady_clock::now();
@@ -846,7 +853,7 @@ IResearchDataStore::UnsafeOpResult IResearchDataStore::consolidateUnsafe(
 /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
 ////////////////////////////////////////////////////////////////////////////////
 Result IResearchDataStore::consolidateUnsafeImpl(
-    IResearchViewMeta::ConsolidationPolicy const& policy,
+    IResearchDataStoreMeta::ConsolidationPolicy const& policy,
     irs::merge_writer::flush_progress_t const& progress,
     bool& emptyConsolidation) {
   emptyConsolidation = false;  // TODO Why?
@@ -1134,7 +1141,7 @@ Result IResearchDataStore::initDataStore(
   _dataStore._meta._commitIntervalMsec = 0;         // 0 == disable
   _dataStore._meta._consolidationIntervalMsec = 0;  // 0 == disable
   _dataStore._meta._consolidationPolicy =
-      IResearchViewMeta::ConsolidationPolicy();  // disable
+      IResearchDataStoreMeta::ConsolidationPolicy();  // disable
   _dataStore._meta._writebufferActive = options.segment_count_max;
   _dataStore._meta._writebufferIdle = options.segment_pool_size;
   _dataStore._meta._writebufferSizeMax = options.segment_memory_max;
@@ -1217,7 +1224,7 @@ Result IResearchDataStore::initDataStore(
       });
 }
 
-Result IResearchDataStore::properties(IResearchViewMeta const& meta) {
+Result IResearchDataStore::properties(IResearchDataStoreMeta const& meta) {
   auto linkLock = _asyncSelf->lock();
   // '_dataStore' can be asynchronously modified
   if (!linkLock) {
@@ -1232,7 +1239,7 @@ Result IResearchDataStore::properties(IResearchViewMeta const& meta) {
 }
 
 void IResearchDataStore::properties(LinkLock linkLock,
-                                    IResearchViewMeta const& meta) {
+                                    IResearchDataStoreMeta const& meta) {
   TRI_ASSERT(linkLock);
   TRI_ASSERT(linkLock->_dataStore);
   // must be valid if _asyncSelf->lock() is valid
