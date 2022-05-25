@@ -50,6 +50,8 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/RecursiveLocker.h"
+#include "Basics/Result.h"
+#include "Basics/Result.tpp"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
