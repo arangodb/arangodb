@@ -109,7 +109,7 @@ function gtestRunner(options) {
 
   if (run === '') {
     results.failed += 1;
-    results.basics = {
+    results.fuerte = {
       failed: 1,
       status: false,
       message: 'binary "fuertetest" not found when trying to run suite "fuertetest"'
@@ -150,7 +150,7 @@ function gtestRunner(options) {
   print(argv);
 
   results.fuerte = pu.executeAndWait(run, argv, options, 'fuertetest', rootDir, options.coreCheck);
-  results.fuerte.failed = results.basics.status ? 0 : 1;
+  results.fuerte.failed = results.fuerte.status ? 0 : 1;
   if (!results.fuerte.status) {
     results.failed += 1;
   }
