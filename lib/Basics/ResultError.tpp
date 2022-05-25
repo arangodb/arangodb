@@ -33,7 +33,7 @@ namespace arangodb::result {
 
 template<typename... Args>
 auto Error::fmt(ErrorCode errorCode, Args&&... args) -> Error {
-  return Error(errorCode, fmt::format(TRI_errno_string(errorCode),
+  return Error(errorCode, fmt::format(fmt::runtime(TRI_errno_string(errorCode)),
                                       std::forward<Args>(args)...));
 }
 
