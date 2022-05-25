@@ -113,7 +113,7 @@ auto methods::updateParticipantsConfigTrx(
   return envelope.write()
       .emplace_object(logPath->participantsConfig()->str(),
                       [&](VPackBuilder& builder) {
-                        participantsConfig.toVelocyPack(builder);
+                        velocypack::serialize(builder, participantsConfig);
                       })
       .inc(paths::plan()->version()->str())
       .precs()

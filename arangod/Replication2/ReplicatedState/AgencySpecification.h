@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/ErrorCode.h"
+#include "Basics/StaticStrings.h"
 #include "Inspection/VPack.h"
 #include "Inspection/Transformers.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -33,7 +34,6 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
-#include "Basics/StaticStrings.h"
 
 namespace arangodb::velocypack {
 class Builder;

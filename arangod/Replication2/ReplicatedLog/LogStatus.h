@@ -28,6 +28,7 @@
 #include <variant>
 
 #include <Inspection/VPack.h>
+#include <Inspection/Transformers.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -58,13 +59,6 @@ struct QuickLogStatus {
   [[nodiscard]] auto getCurrentTerm() const noexcept -> std::optional<LogTerm>;
   [[nodiscard]] auto getLocalStatistics() const noexcept
       -> std::optional<LogStatistics>;
-
-  void toVelocyPack(arangodb::velocypack::Builder& builder) {
-    serialize(builder, *this);
-  }
-  auto fromVelocyPack(arangodb::velocypack::Slice slice) {
-    return deserialize<QuickLogStatus>(slice);
-  }
 };
 
 auto to_string(ParticipantRole) noexcept -> std::string_view;
@@ -103,14 +97,27 @@ struct FollowerStatistics : LogStatistics {
   AppendEntriesErrorReason lastErrorReason;
   std::chrono::duration<double, std::milli> lastRequestLatencyMS;
   FollowerState internalState;
-  void toVelocyPack(velocypack::Builder& builder) const;
-  static auto fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics;
 
   friend auto operator==(FollowerStatistics const& left,
                          FollowerStatistics const& right) noexcept -> bool;
   friend auto operator!=(FollowerStatistics const& left,
                          FollowerStatistics const& right) noexcept -> bool;
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, FollowerStatistics& x) {
+  using namespace arangodb;
+  return f.object(x).fields(
+      f.field(StaticStrings::Spearhead, x.spearHead),
+      f.field(StaticStrings::CommitIndex, x.commitIndex),
+      f.field(StaticStrings::FirstIndex, x.firstIndex),
+      f.field(StaticStrings::ReleaseIndex, x.releaseIndex),
+      f.field("lastErrorReason", x.lastErrorReason),
+      f.field("lastRequestLatencyMS", x.lastRequestLatencyMS)
+          .transformWith(inspection::DurationTransformer<
+                         std::chrono::duration<double, std::milli>>{}),
+      f.field("state", x.internalState));
+}
 
 [[nodiscard]] auto operator==(FollowerStatistics const& left,
                               FollowerStatistics const& right) noexcept -> bool;
@@ -129,27 +136,49 @@ struct LeaderStatus {
   ParticipantsConfig activeParticipantsConfig;
   std::optional<ParticipantsConfig> committedParticipantsConfig;
 
-  void toVelocyPack(velocypack::Builder& builder) const;
-  static auto fromVelocyPack(velocypack::Slice slice) -> LeaderStatus;
-
   friend auto operator==(LeaderStatus const& left,
                          LeaderStatus const& right) noexcept -> bool = default;
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, LeaderStatus& x) {
+  auto role = StaticStrings::Leader;
+  return f.object(x).fields(
+      f.field("role", role), f.field("local", x.local), f.field("term", x.term),
+      f.field("lowestIndexToKeep", x.lowestIndexToKeep),
+      f.field("leadershipEstablished", x.leadershipEstablished),
+      f.field("follower", x.follower),
+      f.field("commitLagMS", x.commitLagMS)
+          .transformWith(inspection::DurationTransformer<
+                         std::chrono::duration<double, std::milli>>{}),
+      f.field("lastCommitStatus", x.lastCommitStatus),
+      f.field("activeParticipantsConfig", x.activeParticipantsConfig),
+      f.field("committedParticipantsConfig", x.committedParticipantsConfig));
+}
 
 struct FollowerStatus {
   LogStatistics local;
   std::optional<ParticipantId> leader;
   LogTerm term;
   LogIndex lowestIndexToKeep;
-
-  void toVelocyPack(velocypack::Builder& builder) const;
-  static auto fromVelocyPack(velocypack::Slice slice) -> FollowerStatus;
 };
 
-struct UnconfiguredStatus {
-  void toVelocyPack(velocypack::Builder& builder) const;
-  static auto fromVelocyPack(velocypack::Slice slice) -> UnconfiguredStatus;
-};
+template<class Inspector>
+auto inspect(Inspector& f, FollowerStatus& x) {
+  auto role = StaticStrings::Follower;
+  return f.object(x).fields(f.field("role", role), f.field("local", x.local),
+                            f.field("term", x.term),
+                            f.field("lowestIndexToKeep", x.lowestIndexToKeep),
+                            f.field("leader", x.leader));
+}
+
+struct UnconfiguredStatus {};
+
+template<class Inspector>
+auto inspect(Inspector& f, UnconfiguredStatus& x) {
+  auto role = std::string{"Unconfigured"};
+  return f.object(x).fields(f.field("role", role));
+}
 
 struct LogStatus {
   using VariantType =
