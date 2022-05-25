@@ -282,9 +282,6 @@ struct ParticipantsConfig {
   std::size_t generation = 0;
   ParticipantsFlagsMap participants;
 
-  void toVelocyPack(velocypack::Builder&) const;
-  static auto fromVelocyPack(velocypack::Slice) -> ParticipantsConfig;
-
   // to be defaulted soon
   friend auto operator==(ParticipantsConfig const& left,
                          ParticipantsConfig const& right) noexcept

@@ -501,16 +501,6 @@ auto replication2::operator<<(std::ostream& os, ParticipantFlags const& f)
   return os << "}";
 }
 
-void replication2::ParticipantsConfig::toVelocyPack(
-    velocypack::Builder& builder) const {
-  serialize(builder, *this);
-}
-
-auto replication2::ParticipantsConfig::fromVelocyPack(velocypack::Slice s)
-    -> ParticipantsConfig {
-  return deserialize<ParticipantsConfig>(s);
-}
-
 auto replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern::
     fromVelocyPack(velocypack::Slice)
         -> replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern {
