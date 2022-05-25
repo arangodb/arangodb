@@ -37,7 +37,7 @@ const optionsDocumentation = [
 const _ = require('lodash');
 const fs = require('fs');
 const tu = require('@arangodb/testutils/test-utils');
-const base64Encode = internal.base64Encode;
+const base64Encode = require('internal').base64Encode;
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -52,16 +52,15 @@ const testPaths = {
 };
 
 class runBasicOnArangod extends tu.runOnArangodRunner{
-  constructor(options, testname, ...optionalArgs) {
-    super(options, testname, ...optionalArgs);
-  }
   preRun() {
+    // we force to use auth basic, since tests expect it!
     this.instanceManager.httpAuthOptions =  {
       'headers': {
         'Authorization': 'Basic ' + base64Encode('root:')
       }
     };
-    return {state: true}; } // after successfull launch of the SUT
+    return {state: true};
+  }
 }
 
 function auditLog(onServer) {
