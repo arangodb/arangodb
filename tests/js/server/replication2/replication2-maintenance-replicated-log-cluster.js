@@ -45,13 +45,13 @@ const checkCommitFailReasonReport = function () {
     setUpAll, tearDownAll, setUp, tearDown,
 
     testNothingToCommit: function () {
-      const {logId} = lh.createReplicatedLogPlanOnly(database, targetConfig);
+      const {logId} = lh.createReplicatedLogPlanOnly(database, targetConfig, replicationFactor);
       lh.waitFor(lp.replicatedLogLeaderCommitFail(database, logId, undefined));
       lh.replicatedLogDeletePlan(database, logId);
     },
 
     testCheckExcludedServers: function () {
-      const {logId, followers} = lh.createReplicatedLogPlanOnly(database, targetConfig);
+      const {logId, followers} = lh.createReplicatedLogPlanOnly(database, targetConfig, replicationFactor);
 
       const [followerA, followerB] = _.sampleSize(followers, 2);
       lh.replicatedLogUpdatePlanParticipantsConfigParticipants(database, logId, {
@@ -116,7 +116,7 @@ const replicatedLogSuite = function () {
     },
 
     testAddParticipantFlag: function () {
-      const {logId, followers} = lh.createReplicatedLogPlanOnly(database, targetConfig);
+      const {logId, followers} = lh.createReplicatedLogPlanOnly(database, targetConfig, replicationFactor);
 
       // now update the excluded flag for one participant
       const follower = _.sample(followers);
@@ -153,7 +153,7 @@ const replicatedLogSuite = function () {
     },
 
     testUpdateTermInPlanLog: function () {
-      const {logId, term, servers, leader} = lh.createReplicatedLogPlanOnly(database, targetConfig);
+      const {logId, term, servers, leader} = lh.createReplicatedLogPlanOnly(database, targetConfig, replicationFactor);
       const newTerm = lh.createTermSpecification(term + 1, servers, targetConfig, leader);
       lh.replicatedLogSetPlanTerm(database, logId, newTerm);
 
@@ -163,7 +163,7 @@ const replicatedLogSuite = function () {
     },
 
     testUpdateTermInPlanLogWithNewLeader: function () {
-      const {logId, term, servers} = lh.createReplicatedLogPlanOnly(database, targetConfig);
+      const {logId, term, servers} = lh.createReplicatedLogPlanOnly(database, targetConfig, replicationFactor);
       // wait again for all servers to have acked term
       const otherLeader = servers[1];
       const newTerm = lh.createTermSpecification(term + 1, servers, targetConfig, otherLeader);
@@ -173,7 +173,7 @@ const replicatedLogSuite = function () {
     },
 
     testAddParticipant: function () {
-      const {logId, term, servers, remaining, leader} = lh.createReplicatedLogPlanOnly(database, targetConfig);
+      const {logId, term, servers, remaining, leader} = lh.createReplicatedLogPlanOnly(database, targetConfig, replicationFactor);
       // now add a participant to the participants configuration
       const newServer = _.sample(remaining);
       const newServers = [...servers, newServer];
@@ -240,7 +240,7 @@ const replicatedLogDropSuite = function () {
     setUpAll, tearDownAll, setUp, tearDown,
 
     testCreateDropReplicatedLog: function () {
-      const {logId, servers} = lh.createReplicatedLogPlanOnly(database, targetConfig);
+      const {logId, servers} = lh.createReplicatedLogPlanOnly(database, targetConfig, replicationFactor);
       lh.waitFor(hasLocalStatusStatusCode(database, logId, servers, 200, undefined));
 
       lh.replicatedLogDeletePlan(database, logId);

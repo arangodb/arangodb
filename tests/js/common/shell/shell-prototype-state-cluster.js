@@ -54,7 +54,6 @@ const {setUpAll, tearDownAll} = (function () {
 function PrototypeStateTestSuite() {
 
   const config = {
-    replicationFactor: 3,
     writeConcern: 2,
     softWriteConcern: 2,
     waitForSync: true

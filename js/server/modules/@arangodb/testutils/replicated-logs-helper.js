@@ -356,9 +356,9 @@ const getReplicatedLogLeaderTarget = function (database, logId) {
   return target.leader;
 };
 
-const createReplicatedLogPlanOnly = function (database, targetConfig) {
+const createReplicatedLogPlanOnly = function (database, targetConfig, replicationFactor) {
   const logId = nextUniqueLogId();
-  const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
+  const servers = _.sampleSize(dbservers, replicationFactor);
   const leader = servers[0];
   const term = 1;
   const generation = 1;
