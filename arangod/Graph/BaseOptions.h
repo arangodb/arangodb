@@ -211,9 +211,9 @@ struct BaseOptions {
 
   void setEdgeProjections(aql::Projections projections);
 
-  aql::Projections const& getVertexProjections();
+  aql::Projections const& getVertexProjections() const;
 
-  aql::Projections const& getEdgeProjections();
+  aql::Projections const& getEdgeProjections() const;
 
   void setRefactor(bool r) noexcept { _refactor = r; }
 

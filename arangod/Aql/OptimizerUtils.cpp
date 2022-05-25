@@ -710,9 +710,22 @@ bool findProjections(ExecutionNode* n, Variable const* v,
         attributes.emplace(StaticStrings::IdString);
       }
 
-      if (!checkExpression(traversalNode, traversalNode->pruneExpression())) {
-        // cannot use projections for this variable
-        return false;
+      // prune condition has to be treated in a special way, because the
+      // normal getVariablesUsedHere() call for a TraversalNode does not
+      // return the vertex out variable or the edge out variable if they
+      // are used by the prune condition.
+      Expression const* pruneExpression = traversalNode->pruneExpression();
+      if (pruneExpression != nullptr) {
+        std::vector<Variable const*> pruneVars;
+        traversalNode->getPruneVariables(pruneVars);
+
+        if (std::find(pruneVars.begin(), pruneVars.end(), v) !=
+                pruneVars.end() &&
+            !Ast::getReferencedAttributesRecursive(pruneExpression->node(), v,
+                                                   attributes)) {
+          // cannot use projections for this variable
+          return false;
+        }
       }
 
       if (!checkExpression(traversalNode,

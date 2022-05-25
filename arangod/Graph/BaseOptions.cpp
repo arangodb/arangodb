@@ -335,19 +335,13 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info,
 
   TRI_ASSERT(_produceVertices);
   read = info.get("produceVertices");
-  if (read.isBool() && !read.getBool()) {
+  if (read.isFalse()) {
     _produceVertices = false;
   }
 
-  read = info.get("vertexProjections");
-  if (!read.isNone()) {
-    _vertexProjections = Projections::fromVelocyPack(read);
-  }
-
-  read = info.get("edgeProjections");
-  if (!read.isNone()) {
-    _edgeProjections = Projections::fromVelocyPack(read);
-  }
+  // read back projections
+  _vertexProjections = Projections::fromVelocyPack(info, "vertexProjections");
+  _edgeProjections = Projections::fromVelocyPack(info, "edgeProjections");
 }
 
 BaseOptions::~BaseOptions() = default;
@@ -635,11 +629,11 @@ void BaseOptions::setEdgeProjections(Projections projections) {
   _edgeProjections = std::move(projections);
 }
 
-Projections const& BaseOptions::getVertexProjections() {
+Projections const& BaseOptions::getVertexProjections() const {
   return _vertexProjections;
 }
 
-Projections const& BaseOptions::getEdgeProjections() {
+Projections const& BaseOptions::getEdgeProjections() const {
   return _edgeProjections;
 }
 
@@ -650,14 +644,10 @@ void BaseOptions::toVelocyPackBase(VPackBuilder& builder) const {
   builder.add("produceVertices", VPackValue(_produceVertices));
 
   if (!_vertexProjections.empty()) {
-    builder.add(VPackValue("vertexProjections"));
-    VPackObjectBuilder projectionsObject(&builder);
-    _vertexProjections.toVelocyPack(builder);
+    _vertexProjections.toVelocyPack(builder, "vertexProjections");
   }
 
   if (!_edgeProjections.empty()) {
-    builder.add(VPackValue("edgeProjections"));
-    VPackObjectBuilder projectionsObject(&builder);
-    _edgeProjections.toVelocyPack(builder);
+    _edgeProjections.toVelocyPack(builder, "edgeProjections");
   }
 }

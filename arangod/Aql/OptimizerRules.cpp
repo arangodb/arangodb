@@ -6186,6 +6186,7 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
           // _to, as the traversal code will refer to these attributes later.
           attributes.emplace(StaticStrings::FromString);
           attributes.emplace(StaticStrings::ToString);
+
           if (attributes.size() <= maxProjections) {
             traversal->setEdgeProjections(Projections(attributes));
             modified = true;
