@@ -95,8 +95,8 @@ using namespace arangodb::replication2;
 replicated_log::LogLeader::LogLeader(
     LoggerContext logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-    LogConfig config, ParticipantId id, LogTerm term, LogIndex firstIndex,
-    InMemoryLog inMemoryLog,
+    agency::LogPlanConfig config, ParticipantId id, LogTerm term,
+    LogIndex firstIndex, InMemoryLog inMemoryLog,
     std::shared_ptr<cluster::IFailureOracle const> failureOracle)
     : _logContext(std::move(logContext)),
       _logMetrics(std::move(logMetrics)),
@@ -291,7 +291,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 }
 
 auto replicated_log::LogLeader::construct(
-    LogConfig config, std::unique_ptr<LogCore> logCore,
+    agency::LogPlanConfig config, std::unique_ptr<LogCore> logCore,
     std::vector<std::shared_ptr<AbstractFollower>> const& followers,
     std::shared_ptr<ParticipantsConfig const> participantsConfig,
     ParticipantId id, LogTerm term, LoggerContext const& logContext,
@@ -321,7 +321,7 @@ auto replicated_log::LogLeader::construct(
         LoggerContext logContext,
         std::shared_ptr<ReplicatedLogMetrics> logMetrics,
         std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-        LogConfig config, ParticipantId id, LogTerm term,
+        agency::LogPlanConfig config, ParticipantId id, LogTerm term,
         LogIndex firstIndexOfCurrentTerm, InMemoryLog inMemoryLog,
         std::shared_ptr<cluster::IFailureOracle const> failureOracle)
         : LogLeader(std::move(logContext), std::move(logMetrics),

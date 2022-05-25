@@ -213,7 +213,7 @@ struct Target {
   };
 
   std::unordered_map<ParticipantId, Participant> participants;
-  LogConfig config;
+  arangodb::replication2::agency::LogTargetConfig config;
   std::optional<std::uint64_t> version;
 
   struct Supervision {};

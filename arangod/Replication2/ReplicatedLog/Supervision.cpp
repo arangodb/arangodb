@@ -623,23 +623,7 @@ auto checkParticipantWithFlagsToUpdate(SupervisionContext& ctx, Log const& log,
 
 auto checkConfigUpdated(SupervisionContext& ctx, Log const& log,
                         ParticipantsHealth const& health) -> void {
-  auto const& target = log.target;
-
-  if (!log.plan.has_value()) {
-    return;
-  }
-  TRI_ASSERT(log.plan.has_value());
-  auto const& plan = *log.plan;
-
-  if (!plan.currentTerm.has_value()) {
-    return;
-  }
-  TRI_ASSERT(plan.currentTerm.has_value());
-  auto const& currentTerm = *plan.currentTerm;
-
-  if (target.config != currentTerm.config) {
-    ctx.reportStatus<LogCurrentSupervision::ConfigChangeNotImplemented>();
-  }
+  ctx.reportStatus<LogCurrentSupervision::ConfigChangeNotImplemented>();
 }
 
 auto checkConverged(SupervisionContext& ctx, Log const& log) {

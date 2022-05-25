@@ -88,7 +88,7 @@ struct AddLogToPlanAction {
   static constexpr std::string_view name = "AddLogToPlanAction";
 
   AddLogToPlanAction(LogId const id, ParticipantsFlagsMap participants,
-                     LogConfig config,
+                     LogPlanConfig config,
                      std::optional<LogPlanTermSpecification::Leader> leader)
       : _id(id),
         _participants(std::move(participants)),
@@ -96,7 +96,7 @@ struct AddLogToPlanAction {
         _leader(std::move(leader)){};
   LogId _id;
   ParticipantsFlagsMap _participants;
-  LogConfig _config;
+  LogPlanConfig _config;
   std::optional<LogPlanTermSpecification::Leader> _leader;
 
   auto execute(ActionContext& ctx) const -> void {
@@ -275,9 +275,9 @@ auto inspect(Inspector& f, RemoveParticipantFromPlanAction& x) {
 struct UpdateLogConfigAction {
   static constexpr std::string_view name = "UpdateLogConfigAction";
 
-  UpdateLogConfigAction(LogConfig const& config) : _config(config){};
+  UpdateLogConfigAction(LogPlanConfig const& config) : _config(config){};
 
-  LogConfig _config;
+  LogPlanConfig _config;
 
   auto execute(ActionContext& ctx) const -> void {
     // TODO: updating log config is not implemented yet

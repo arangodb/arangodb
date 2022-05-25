@@ -38,6 +38,7 @@
 #include "Basics/Result.h"
 #include "Futures/Future.h"
 #include "Replication2/LoggerContext.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -92,7 +93,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   ~LogLeader() override;
 
   [[nodiscard]] static auto construct(
-      LogConfig config, std::unique_ptr<LogCore> logCore,
+      agency::LogPlanConfig config, std::unique_ptr<LogCore> logCore,
       std::vector<std::shared_ptr<AbstractFollower>> const& followers,
       std::shared_ptr<ParticipantsConfig const> participantsConfig,
       ParticipantId id, LogTerm term, LoggerContext const& logContext,
@@ -172,7 +173,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   LogLeader(LoggerContext logContext,
             std::shared_ptr<ReplicatedLogMetrics> logMetrics,
             std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-            LogConfig config, ParticipantId id, LogTerm term,
+            agency::LogPlanConfig config, ParticipantId id, LogTerm term,
             LogIndex firstIndexOfCurrentTerm, InMemoryLog inMemoryLog,
             std::shared_ptr<cluster::IFailureOracle const> failureOracle);
 
@@ -336,7 +337,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   std::shared_ptr<ReplicatedLogMetrics> const _logMetrics;
   std::shared_ptr<ReplicatedLogGlobalSettings const> const _options;
   std::shared_ptr<cluster::IFailureOracle const> const _failureOracle;
-  LogConfig const _config;
+  agency::LogPlanConfig const _config;
   ParticipantId const _id;
   LogTerm const _currentTerm;
   LogIndex const _firstIndexOfCurrentTerm;
