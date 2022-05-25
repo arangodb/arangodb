@@ -1043,7 +1043,7 @@ class instanceManager {
   }
 
   launchFinalize(startTime) {
-    if (!this.options.cluster) {
+    if (!this.options.cluster && !this.options.agency) {
       let httpOptions = _.clone(this.httpAuthOptions);
       httpOptions.method = 'POST';
       httpOptions.returnBodyOnError = true;
@@ -1095,6 +1095,13 @@ class instanceManager {
       });
       this.endpoints = [this.endpoint];
       this.urls = [this.url];
+    } else if (this.options.agency && !this.options.cluster && !this.options.activefailover) {
+      this.arangods.forEach(arangod => {
+        this.urls.push(arangod.url);
+        this.endpoints.push(arangod.endpoint);
+      });
+      this.url = this.urls[0];
+      this.endpoint = this.endpoints[0];
     } else {
       this.arangods.forEach(arangod => {
         if (arangod.isRole(instanceRole.coordinator)) {

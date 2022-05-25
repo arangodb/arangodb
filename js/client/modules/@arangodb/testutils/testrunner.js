@@ -282,7 +282,14 @@ class testRunner {
     if (checkUsers) {
       this.cleanupChecks.push(usersTests);
     }
-    this.cleanupChecks.push(databasesTest);
+    if (this.options.agency) {
+      // pure agency tests won't need user checks.
+      if (this.options.cluster || this.options.activefailover) {
+        this.cleanupChecks.push(databasesTest);
+      }
+    } else {
+      this.cleanupChecks.push(databasesTest);
+    }
     this.collectionsBefore = [];
     if (checkCollections) {
       this.cleanupChecks.push(collectionsTest);
