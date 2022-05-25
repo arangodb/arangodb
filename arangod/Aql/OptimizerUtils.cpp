@@ -35,6 +35,7 @@
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SortCondition.h"
+#include "Aql/TraversalNode.h"
 #include "Aql/Variable.h"
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
@@ -666,19 +667,60 @@ namespace arangodb::aql::utils {
 // otherwise. if false is returned, the contents of "attributes" must
 // be ignored by the caller.
 // note: this function will wipe "attributes" on every call.
-bool findProjections(ExecutionNode const* n, Variable const* v,
+bool findProjections(ExecutionNode* n, Variable const* v,
                      std::unordered_set<AttributeNamePath>& attributes) {
   using EN = arangodb::aql::ExecutionNode;
 
   VarSet vars;
 
+  auto checkExpressionNode = [&vars, &attributes, v](
+                                 ExecutionNode const* current,
+                                 AstNode const* node) -> bool {
+    vars.clear();
+    current->getVariablesUsedHere(vars);
+
+    if (vars.find(v) != vars.end() &&
+        !Ast::getReferencedAttributesRecursive(node, v, attributes)) {
+      // cannot use projections for this variable
+      return false;
+    }
+
+    return true;
+  };
+
+  auto checkExpression = [&checkExpressionNode](ExecutionNode const* current,
+                                                Expression const* exp) -> bool {
+    return (exp == nullptr || checkExpressionNode(current, exp->node()));
+  };
+
   attributes.clear();
 
-  ExecutionNode* current = n->getFirstParent();
+  ExecutionNode* current = n;
   while (current != nullptr) {
     bool doRegularCheck = false;
 
-    if (current->getType() == EN::REMOVE) {
+    if (current->getType() == EN::TRAVERSAL) {
+      // check prune condition of traversal
+      TraversalNode const* traversalNode =
+          ExecutionNode::castTo<TraversalNode const*>(current);
+
+      if (traversalNode->usesInVariable() && traversalNode->inVariable() == v) {
+        // start vertex of traversal is our input variable.
+        // we need at least the _id attribute from the variable.
+        attributes.emplace(StaticStrings::IdString);
+      }
+
+      if (!checkExpression(traversalNode, traversalNode->pruneExpression())) {
+        // cannot use projections for this variable
+        return false;
+      }
+
+      if (!checkExpression(traversalNode,
+                           traversalNode->postFilterExpression())) {
+        // cannot use projections for this variable
+        return false;
+      }
+    } else if (current->getType() == EN::REMOVE) {
       RemoveNode const* removeNode =
           ExecutionNode::castTo<RemoveNode const*>(current);
       if (removeNode->inVariable() == v) {
@@ -702,24 +744,14 @@ bool findProjections(ExecutionNode const* n, Variable const* v,
         doRegularCheck = true;
       }
     } else if (current->getType() == EN::CALCULATION) {
-      Expression* exp =
-          ExecutionNode::castTo<CalculationNode*>(current)->expression();
-
-      if (exp != nullptr && exp->node() != nullptr) {
-        AstNode const* node = exp->node();
-        vars.clear();
-        current->getVariablesUsedHere(vars);
-
-        if (vars.find(v) != vars.end()) {
-          if (!Ast::getReferencedAttributesRecursive(node, v, attributes)) {
-            // cannot use projections for this variable
-            return false;
-          }
-        }
+      CalculationNode const* calculationNode =
+          ExecutionNode::castTo<CalculationNode const*>(current);
+      if (!checkExpression(calculationNode, calculationNode->expression())) {
+        return false;
       }
     } else if (current->getType() == EN::GATHER) {
       // compare sort attributes of GatherNode
-      auto gn = ExecutionNode::castTo<GatherNode*>(current);
+      auto gn = ExecutionNode::castTo<GatherNode const*>(current);
       for (auto const& it : gn->elements()) {
         if (it.var == v) {
           if (it.attributePath.empty()) {
@@ -733,19 +765,13 @@ bool findProjections(ExecutionNode const* n, Variable const* v,
         }
       }
     } else if (current->getType() == EN::INDEX) {
-      Condition const* condition =
-          ExecutionNode::castTo<IndexNode const*>(current)->condition();
+      IndexNode const* indexNode =
+          ExecutionNode::castTo<IndexNode const*>(current);
+      Condition const* condition = indexNode->condition();
 
-      if (condition != nullptr && condition->root() != nullptr) {
-        AstNode const* node = condition->root();
-        vars.clear();
-        current->getVariablesUsedHere(vars);
-
-        if (vars.find(v) != vars.end()) {
-          if (!Ast::getReferencedAttributesRecursive(node, v, attributes)) {
-            return false;
-          }
-        }
+      if (condition != nullptr && condition->root() != nullptr &&
+          !checkExpressionNode(indexNode, condition->root())) {
+        return false;
       }
     } else {
       // all other node types mandate a check

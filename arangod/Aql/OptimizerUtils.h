@@ -57,7 +57,7 @@ namespace utils {
 // otherwise. if false is returned, the contents of "attributes" must
 // be ignored by the caller.
 // note: this function will wipe "attributes" on every call.
-bool findProjections(ExecutionNode const* n, Variable const* v,
+bool findProjections(ExecutionNode* n, Variable const* v,
                      std::unordered_set<AttributeNamePath>& attributes);
 
 /// @brief Gets the best fitting index for an AQL condition.

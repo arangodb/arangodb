@@ -6171,10 +6171,6 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
       if (outVariable != nullptr && !options->producePathsVertices()) {
         if (arangodb::aql::utils::findProjections(n, outVariable, attributes) &&
             !attributes.empty() && attributes.size() <= maxProjections) {
-          LOG_DEVEL << "HAVE VERTEX PROJECTIONS:";
-          for (auto const& it : attributes) {
-            LOG_DEVEL << "- V: " << it.path;
-          }
           traversal->setVertexProjections(Projections(attributes));
           modified = true;
         }
@@ -6191,10 +6187,6 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
           attributes.emplace(StaticStrings::FromString);
           attributes.emplace(StaticStrings::ToString);
           if (attributes.size() <= maxProjections) {
-            LOG_DEVEL << "HAVE EDGE PROJECTIONS:";
-            for (auto const& it : attributes) {
-              LOG_DEVEL << "- E: " << it.path;
-            }
             // TODO: activate setEdgeProjections
             // traversal->setEdgeProjections(Projections(attributes));
             modified = true;
