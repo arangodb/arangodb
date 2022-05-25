@@ -126,72 +126,15 @@ https://github.com/lz4/lz4
 
 ## rocksdb
 
-(6.29.0, upstream commit e8f116deabc601a5eae011f2fd8a38d02d87be8d)
+v7.2.0
+RocksDB is pulled in as a submodule - the exact commit can be found there.
 
-Our branch is maintained at:
-https://github.com/arangodb-helper/rocksdb
+The submodule repository is located at https://github.com/arangodb/rocksdb
 
-Most changes can be ported upstream:
-https://github.com/facebook/rocksdb
-
-On Upgrade:
-- `./thirdparty.inc` needs to be adjusted to use the snappy we specify. This can be
-   adjusted by commenting out the section that sets Snappy-related CMake variables:
-
-    -set(SNAPPY_HOME $ENV{THIRDPARTY_HOME}/Snappy.Library)
-    -set(SNAPPY_INCLUDE ${SNAPPY_HOME}/build/native/inc/inc)
-    -set(SNAPPY_LIB_DEBUG ${SNAPPY_HOME}/lib/native/debug/amd64/snappy.lib)
-    -set(SNAPPY_LIB_RELEASE ${SNAPPY_HOME}/lib/native/retail/amd64/snappy.lib)
-    +#set(SNAPPY_HOME $ENV{THIRDPARTY_HOME}/Snappy.Library)
-    +#set(SNAPPY_INCLUDE ${SNAPPY_HOME}/build/native/inc/inc)
-    +#set(SNAPPY_LIB_DEBUG ${SNAPPY_HOME}/lib/native/debug/amd64/snappy.lib)
-    +#set(SNAPPY_LIB_RELEASE ${SNAPPY_HOME}/lib/native/retail/amd64/snappy.lib)
-
-The following other change has been made to CMakeLists.txt to allow compiling on ARM:
-```
-diff --git a/arangod/RocksDBEngine/CMakeLists.txt b/arangod/RocksDBEngine/CMakeLists.txt
-index 58205d5ca90..cb3f2c276d9 100644
---- a/arangod/RocksDBEngine/CMakeLists.txt
-+++ b/arangod/RocksDBEngine/CMakeLists.txt
-@@ -9,11 +9,6 @@ if(CMAKE_SYSTEM_NAME MATCHES "Cygwin")
-   add_definitions(-fno-builtin-memcmp -DCYGWIN)
- elseif(CMAKE_SYSTEM_NAME MATCHES "Darwin")
-   add_definitions(-DOS_MACOSX)
--  if(CMAKE_SYSTEM_PROCESSOR MATCHES arm)
--    add_definitions(-DIOS_CROSS_COMPILE -DROCKSDB_LITE)
--    # no debug info for IOS, that will make our library big
--    add_definitions(-DNDEBUG)
--  endif()
- elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
-   add_definitions(-DOS_LINUX)
- elseif(CMAKE_SYSTEM_NAME MATCHES "SunOS")
-```
-
-We also applied a small patch on top of `db/wal_manager.cc` which makes it handle
-expected errors (errors that occur when moving WAL files around while they are
-tailed) gracefully:
-```
-diff --git a/3rdParty/rocksdb/6.18/db/wal_manager.cc b/3rdParty/rocksdb/6.18/db/wal_manager.cc
-index 7e77e03618..c5bf3ee1b1 100644
---- a/3rdParty/rocksdb/6.18/db/wal_manager.cc
-+++ b/3rdParty/rocksdb/6.18/db/wal_manager.cc
-@@ -328,6 +339,15 @@ Status WalManager::GetSortedWalsOfType(const std::string& path,
-         }
-       }
-       if (!s.ok()) {
-+        if (log_type == kArchivedLogFile &&
-+            (s.IsNotFound() ||
-+             (s.IsIOError() && env_->FileExists(ArchivedLogFileName(path, number)).IsNotFound()))) {
-+          // It may happen that the iteration performed by GetChildren() found
-+          // a logfile in the archive, but that this file has been deleted by
-+          // another thread in the meantime. In this case just ignore it.
-+          s = Status::OK();
-+          continue;
-+        }
-         return s;
-       }
-
-```
+We have some changes for usage in arangodb, so we maintain our own branch with
+these changes called "arango-dev".
+To update to a new version pull from upstream (https://github.com/facebook/rocksdb)
+and merge the new version into the "arango-dev" branch.
 
 ## s2geometry
 

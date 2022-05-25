@@ -58,6 +58,13 @@ rocksdb::TransactionDBOptions rocksDBTrxDefaults;
 rocksdb::Options rocksDBDefaults;
 rocksdb::BlockBasedTableOptions rocksDBTableOptionsDefaults;
 
+// minimum size of a block cache shard. we want to at least store
+// that much data in each shard (rationale: a data block read from
+// disk must fit into the block cache if the block cache's strict
+// capacity limit is set. otherwise the block cache will fail reads
+// with Status::Incomplete()).
+constexpr uint64_t minShardSize = 128 * 1024 * 1024;
+
 uint64_t defaultBlockCacheSize() {
   if (PhysicalMemory::getValue() >= (static_cast<uint64_t>(4) << 30)) {
     // if we have at least 4GB of RAM, the default size is (RAM - 2GB) * 0.3
@@ -632,6 +639,46 @@ void RocksDBOptionFeature::validateOptions(
         _totalWriteBufferSize =
             std::min<uint64_t>(_totalWriteBufferSize, uint64_t(512) << 20);
       }
+    }
+  }
+
+  if (_enforceBlockCacheSizeLimit && !options->processingResult().touched(
+                                         "--rocksdb.block-cache-shard-bits")) {
+    // if block cache size limit is enforced, and the number of shard bits for
+    // the block cache hasn't been set, we set it dynamically:
+    // we would like that each block cache shard can hold data blocks of
+    // at least a common size. Rationale: data blocks can be quite large. if
+    // they don't fit into the block cache upon reading, the block cache will
+    // return Status::Incomplete() when the block cache's strict capacity limit
+    // is set. then we cannot read any data anymore.
+    // we are limiting the maximum number of shard bits to 10 here, which is
+    // 1024 shards. that should be enough shards even for very big caches.
+    // note that RocksDB also has an internal upper bound for the number of
+    // shards bits, which is 20.
+    _blockCacheShardBits = std::clamp(
+        int64_t(std::floor(
+            std::log2(static_cast<double>(_blockCacheSize) / ::minShardSize))),
+        int64_t(1), int64_t(10));
+  }
+}
+
+void RocksDBOptionFeature::prepare() {
+  if (_enforceBlockCacheSizeLimit && _blockCacheSize > 0) {
+    uint64_t shardSize =
+        _blockCacheSize / (uint64_t(1) << _blockCacheShardBits);
+    // if we can't store a data block of the mininmum size in the block cache,
+    // we may run into problems when trying to put a large data block into the
+    // cache. in this case the block cache may return a Status::Incomplete
+    // error and fail the entire read. warn the user about it!
+    if (shardSize < ::minShardSize) {
+      LOG_TOPIC("31d7c", WARN, Logger::ROCKSDB)
+          << "size of RocksDB block cache shards seems to be too low. "
+          << "block cache size: " << _blockCacheSize
+          << ", shard bits: " << _blockCacheShardBits
+          << ", shard size: " << shardSize
+          << ". it is probably useful to set "
+             "`--rocksdb.enforce-block-cache-size-limit` to false "
+          << "to avoid incomplete cache reads.";
     }
   }
 }

@@ -93,6 +93,9 @@ auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
                       })
                   .inc(paths::current()->version()->str());
             })
+      .precs()
+      .isNotEmpty(
+          paths::target()->replicatedLogs()->database(dbName)->log(log)->str())
       .end();
 }
 
