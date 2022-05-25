@@ -1085,7 +1085,7 @@ VPackBuilder getInvertedIndexPropertiesSlice(
       {
         VPackArrayBuilder arr(&fields);
         for (auto const& f : *sortedFields) {
-          VPackObjectBuilder field(&vpack);
+          VPackObjectBuilder field(&fields);
           fields.add("field", VPackValue(f.first));
           fields.add("direction", VPackValue(f.second ? "asc" : "desc"));
         }
