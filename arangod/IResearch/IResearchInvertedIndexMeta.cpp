@@ -397,7 +397,7 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
 
     // load analyzer definitions if requested (used on cluster)
     // @note must load definitions before loading 'analyzers' to ensure presence
-    if (readAnalyzerDefinition) {
+    if (readAnalyzerDefinition && slice.hasKey(kFieldName)) {
       auto field = slice.get(kFieldName);
 
       if (!field.isArray()) {
@@ -521,7 +521,6 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
       }
     }
   }
-  // end of the copied part
   // for index there is no recursive struct and fields array is mandatory
   auto field = slice.get(kFieldsFieldName);
   if (!field.isArray() || field.isEmptyArray()) {
