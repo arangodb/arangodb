@@ -32,9 +32,9 @@ const url = require('url');
 const _ = require("lodash");
         
 function getServers(role) {
-  const matchesRole = (d) => (_.toLower(d.role) === role);
-  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
-  return instanceInfo.arangods.filter(matchesRole);
+  const matchesRole = (d) => (_.toLower(d.instanceRole) === role);
+  const instanceManager = JSON.parse(require('internal').env.INSTANCEINFO);
+  return instanceManager.arangods.filter(matchesRole);
 }
 
 const cn = "UnitTestsQueries";
