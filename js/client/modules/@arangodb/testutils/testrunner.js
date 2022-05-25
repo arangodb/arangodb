@@ -421,6 +421,11 @@ class testRunner {
     
     let beforeStart = time();
 
+    this.instanceManager = new im.instanceManager(this.options.protocol,
+                                                  this.options,
+                                                  this.serverOptions,
+                                                  this.friendlyName);
+    this.instanceManager.prepareInstance();
     this.customInstanceInfos['preStart'] = this.preStart();
     if (this.customInstanceInfos.preStart.state === false) {
       return {
@@ -432,11 +437,6 @@ class testRunner {
       };
     }
 
-    this.instanceManager = new im.instanceManager(this.options.protocol,
-                                                  this.options,
-                                                  this.serverOptions,
-                                                  this.friendlyName);
-    this.instanceManager.prepareInstance();
     this.instanceManager.launchTcpDump("");
     if (this.instanceManager.launchInstance() === false) {
       this.customInstanceInfos['startFailed'] = this.startFailed();

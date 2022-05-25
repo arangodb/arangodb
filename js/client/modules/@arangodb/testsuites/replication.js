@@ -106,6 +106,14 @@ class replicationRunner extends tu.runInArangoshRunner {
     this.startReplication = startReplication;
   }
 
+  preStart() {
+    // our tests lean on accessing the `_users` collection, hence no auth for secondary
+    this.instanceManager.arangods[1].args['server.authentication'] = false;
+    return {
+      message: '',
+      state: true,
+    };
+  }
   postStart() {
     let message;
     print("starting replication slave: ");
