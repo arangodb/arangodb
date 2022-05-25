@@ -281,9 +281,11 @@ struct ReplicatedLogMethodsCoordinator final
     }
 
     auto dbservers = clusterInfo.getCurrentDBServers();
-    std::size_t expectedNumberOfServers =
-        std::min(dbservers.size(), std::size_t{3});
-    expectedNumberOfServers = options.servers.size();
+
+    auto expectedNumberOfServers = std::min(dbservers.size(), std::size_t{3});
+    if (!options.servers.empty()) {
+      expectedNumberOfServers = options.servers.size();
+    }
 
     if (!options.config.has_value()) {
       options.config = LogConfig{2, expectedNumberOfServers, false};
