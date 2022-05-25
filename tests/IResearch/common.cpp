@@ -1080,12 +1080,17 @@ VPackBuilder getInvertedIndexPropertiesSlice(
     }
 
     if (sortedFields && !sortedFields->empty()) {
-      VPackArrayBuilder arraySort(&vpack, "primarySort");
-      for (auto const& f : *sortedFields) {
-        VPackObjectBuilder field(&vpack);
-        vpack.add("field", VPackValue(f.first));
-        vpack.add("direction", VPackValue(f.second ? "asc" : "desc"));
+      VPackObjectBuilder arraySort(&vpack, "primarySort");
+      VPackBuilder fields;
+      {
+        VPackArrayBuilder arr(&fields);
+        for (auto const& f : *sortedFields) {
+          VPackObjectBuilder field(&vpack);
+          fields.add("field", VPackValue(f.first));
+          fields.add("direction", VPackValue(f.second ? "asc" : "desc"));
+        }
       }
+      vpack.add("fields", fields.slice());
     }
   }
   return vpack;
