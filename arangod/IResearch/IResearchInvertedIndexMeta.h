@@ -185,7 +185,7 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
 
     bool isArray() const noexcept {
       TRI_ASSERT(!_attribute.empty());
-      return _isArray || _attribute.back().shouldExpand;
+      return _isArray || _attribute.back().shouldExpand || !_nested.empty();
     }
 
     auto const& attribute() const noexcept {

@@ -775,7 +775,18 @@ void InvertedIndexFieldIterator::next() {
           _valueSlice = VPackSlice::noneSlice();
         }
       }
+#ifdef USE_ENTERPRISE
+      if (_parentIteratorField) {
+        _nameBuffer = _parentIteratorField->name();
+        kludge::mangleNested(_nameBuffer); // FIXME: store mangled version?
+        _nameBuffer += NESTING_LEVEL_DELIMITER;
+      } else {
+        _nameBuffer.clear();
+      }
+#else
       _nameBuffer.clear();
+#endif
+      
     }
     if (!_valueSlice.isNone()) {
       if (_nameBuffer.empty()) {
