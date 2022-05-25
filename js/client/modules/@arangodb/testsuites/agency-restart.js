@@ -168,7 +168,7 @@ function agencyRestart (options) {
       params.options.disableMonitor = options.disableMonitor;
       params.setup = false;
       try {
-        tu.writeTestResult(params.args['temp.path'], {
+        tu.writeTestResult(params.instance.args['temp.path'], {
           failed: 1,
           status: false,
           message: "unable to run agency_restart test " + test,
@@ -178,7 +178,7 @@ function agencyRestart (options) {
       runArangodRecovery(params, agencyConfig);
 
       results[test] = tu.readTestResult(
-        params.args['temp.path'],
+        params.instance.args['temp.path'],
         {
           status: false
         },
