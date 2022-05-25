@@ -1456,15 +1456,16 @@ void ClusterInfo::loadPlan() {
             for (size_t i = 0; i < col->second->size(); ++i) {
               newShardToProtoShard.try_emplace(col->second->at(i),
                                                protoCol->second->at(i));
-              LOG_DEVEL << "Mapping " << col->second->at(i) << " to "
-                        << protoCol->second->at(i);
             }
           } else {
-            LOG_DEVEL << "Strange, could not find collection: "
-                      << colPair.second.collection->name();
+            LOG_TOPIC("12f32", WARN, Logger::CLUSTER)
+                << "loadPlan: Strange, could not find collection: "
+                << colPair.second.collection->name();
           }
         } else {
-          LOG_DEVEL << "Strange, could not find proto collection: " << proto;
+          LOG_TOPIC("22312", WARN, Logger::CLUSTER)
+              << "loadPlan: Strange, could not find proto collection: "
+              << proto;
         }
       }
     }
@@ -1562,7 +1563,6 @@ void ClusterInfo::loadPlan() {
     _shards.swap(newShards);
     _shardServers.swap(newShardServers);
     _shardToProtoShard.swap(newShardToProtoShard);
-    LOG_DEVEL << "Setting new _shartToProtoShard:";
     _shardToName.swap(newShardToName);
   }
 
