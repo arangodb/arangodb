@@ -940,10 +940,12 @@ struct ReplicatedStateDBServerMethods
 struct ReplicatedStateCoordinatorMethods
     : std::enable_shared_from_this<ReplicatedStateCoordinatorMethods>,
       ReplicatedStateMethods {
-  explicit ReplicatedStateCoordinatorMethods(TRI_vocbase_t& vocbase)
-      : vocbase(vocbase),
-        clusterFeature(vocbase.server().getFeature<ClusterFeature>()),
-        clusterInfo(clusterFeature.clusterInfo()) {}
+  explicit ReplicatedStateCoordinatorMethods(ArangodServer& server,
+                                             std::string databaseName)
+      : server(server),
+        clusterFeature(server.getFeature<ClusterFeature>()),
+        clusterInfo(clusterFeature.clusterInfo()),
+        databaseName(std::move(databaseName)) {}
 
   auto createReplicatedState(replicated_state::agency::Target spec) const
       -> futures::Future<Result> override {
@@ -957,10 +959,10 @@ struct ReplicatedStateCoordinatorMethods
       if (dbservers.size() < spec.config.replicationFactor) {
         return Result{TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS};
       }
-      auto newEnd = std::remove_if(dbservers.begin(), dbservers.end(),
-                                   [&](std::string const& server) {
-                                     return spec.participants.contains(server);
-                                   });
+      auto newEnd = std::remove_if(
+          dbservers.begin(), dbservers.end(), [&](std::string const& serverId) {
+            return spec.participants.contains(serverId);
+          });
 
       std::shuffle(dbservers.begin(), newEnd,
                    RandomGenerator::UniformRandomGenerator<std::uint32_t>{});
@@ -973,7 +975,7 @@ struct ReplicatedStateCoordinatorMethods
       }
     }
 
-    return replication2::agency::methods::createReplicatedState(vocbase.name(),
+    return replication2::agency::methods::createReplicatedState(databaseName,
                                                                 spec)
         .thenValue([self = shared_from_this()](
                        ResultT<uint64_t>&& res) -> futures::Future<Result> {
@@ -1001,11 +1003,11 @@ struct ReplicatedStateCoordinatorMethods
     // target (or bigger)
     auto path = aliases::current()
                     ->replicatedStates()
-                    ->database(vocbase.name())
+                    ->database(databaseName)
                     ->state(id)
                     ->supervision();
     auto cb = std::make_shared<AgencyCallback>(
-        vocbase.server(), path->str(SkipComponents(1)),
+        server, path->str(SkipComponents(1)),
         [ctx](velocypack::Slice slice, consensus::index_t index) -> bool {
           if (slice.isNone()) {
             return false;
@@ -1046,13 +1048,13 @@ struct ReplicatedStateCoordinatorMethods
                           std::optional<ParticipantId> const& currentLeader)
       const -> futures::Future<Result> override {
     return replication2::agency::methods::replaceReplicatedStateParticipant(
-        vocbase, id, participantToRemove, participantToAdd, currentLeader);
+        databaseName, id, participantToRemove, participantToAdd, currentLeader);
   }
 
   auto setLeader(LogId id, std::optional<ParticipantId> const& leaderId) const
       -> futures::Future<Result> override {
     return replication2::agency::methods::replaceReplicatedSetLeader(
-        vocbase, id, leaderId);
+        databaseName, id, leaderId);
   }
 
   auto getGlobalSnapshotStatus(LogId id) const
@@ -1060,7 +1062,7 @@ struct ReplicatedStateCoordinatorMethods
     AsyncAgencyComm ac;
     auto f = ac.getValues(arangodb::cluster::paths::aliases::current()
                               ->replicatedStates()
-                              ->database(vocbase.name())
+                              ->database(databaseName)
                               ->state(id),
                           std::chrono::seconds{5});
     return std::move(f).then([self = shared_from_this()](
@@ -1087,10 +1089,10 @@ struct ReplicatedStateCoordinatorMethods
       return status;
     });
   }
-
-  TRI_vocbase_t& vocbase;
+  ArangodServer& server;
   ClusterFeature& clusterFeature;
   ClusterInfo& clusterInfo;
+  std::string const databaseName;
 };
 
 }  // namespace
@@ -1113,12 +1115,28 @@ auto ReplicatedStateMethods::createInstance(TRI_vocbase_t& vocbase)
     -> std::shared_ptr<ReplicatedStateMethods> {
   switch (ServerState::instance()->getRole()) {
     case ServerState::ROLE_DBSERVER:
-      return std::make_shared<ReplicatedStateDBServerMethods>(vocbase);
+      return createInstanceDBServer(vocbase);
     case ServerState::ROLE_COORDINATOR:
-      return std::make_shared<ReplicatedStateCoordinatorMethods>(vocbase);
+      return createInstanceCoordinator(vocbase.server(), vocbase.name());
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_NOT_IMPLEMENTED,
           "api only on available coordinators or dbservers");
   }
+}
+
+auto ReplicatedStateMethods::createInstanceDBServer(TRI_vocbase_t& vocbase)
+    -> std::shared_ptr<ReplicatedStateMethods> {
+  ADB_PROD_ASSERT(ServerState::instance()->getRole() ==
+                  ServerState::ROLE_DBSERVER);
+  return std::make_shared<ReplicatedStateDBServerMethods>(vocbase);
+}
+
+auto ReplicatedStateMethods::createInstanceCoordinator(ArangodServer& server,
+                                                       std::string databaseName)
+    -> std::shared_ptr<ReplicatedStateMethods> {
+  ADB_PROD_ASSERT(ServerState::instance()->getRole() ==
+                  ServerState::ROLE_COORDINATOR);
+  return std::make_shared<ReplicatedStateCoordinatorMethods>(
+      server, std::move(databaseName));
 }

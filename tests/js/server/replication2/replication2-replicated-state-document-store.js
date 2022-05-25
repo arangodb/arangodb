@@ -31,7 +31,6 @@ const db = arangodb.db;
 const request = require("@arangodb/request");
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const sh = require("@arangodb/testutils/replicated-state-helper");
-const {sleep} = require('internal');
 
 const database = "replication2_document_store_test_db";
 
@@ -90,15 +89,29 @@ const replicatedStateDocumentStoreSuite = function () {
       let shardDistribution = getShardDistribution(coordUrl, database, collectionName);
       assertTrue(shardDistribution !== undefined);
 
-      sleep(3);
-      for (const shard of collection.shards()) {
-        let {target} = sh.readReplicatedStateAgency(database, shardIdToLogId(shard));
-        assertEqual(dbServersIdToName[target.leader], shardDistribution.Current[shard].leader);
-        for (const p of Object.keys(target.participants)) {
+      const checkTarget = (state, shard) => {
+        assertEqual(dbServersIdToName[state.leader], shardDistribution.Current[shard].leader);
+        for (const p of Object.keys(state.participants)) {
           let name = dbServersIdToName[p];
           assertTrue(name === shardDistribution.Current[shard].leader
               || shardDistribution.Current[shard].followers.includes(name));
         }
+      };
+
+      const checkCurrent = (state, shard) => {
+        assertEqual(state.supervision.version, 1);
+        for (const [p, status] of Object.entries(state.participants)) {
+          let name = dbServersIdToName[p];
+          assertTrue(name === shardDistribution.Current[shard].leader
+              || shardDistribution.Current[shard].followers.includes(name));
+          assertEqual(status.snapshot.status, "Completed");
+        }
+      };
+
+      for (const shard of collection.shards()) {
+        let {target, current} = sh.readReplicatedStateAgency(database, shardIdToLogId(shard));
+        checkTarget(target, shard);
+        checkCurrent(current, shard);
       }
     },
   };

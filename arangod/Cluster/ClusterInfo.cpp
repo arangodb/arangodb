@@ -59,6 +59,7 @@
 #include "Metrics/LogScale.h"
 #include "Metrics/MetricsFeature.h"
 #include "Random/RandomGenerator.h"
+#include "Replication2/Methods.h"
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
@@ -2878,6 +2879,7 @@ Result ClusterInfo::createCollectionsCoordinator(
   std::vector<AgencyPrecondition> precs;
   containers::FlatHashSet<std::string> conditions;
   containers::FlatHashSet<ServerID> allServers;
+  std::vector<replication2::replicated_state::agency::Target> replicatedStates;
 
   // current thread owning 'cacheMutex' write lock (workaround for non-recursive
   // Mutex)
@@ -3053,7 +3055,8 @@ Result ClusterInfo::createCollectionsCoordinator(
     opers.emplace_back(CreateCollectionOrder(databaseName, info.collectionID,
                                              info.isBuildingSlice()));
 
-    // Create a replicated state for each shard
+    // Create a replicated state for each shard.
+    replicatedStates.reserve(replicatedStates.size() + shardServers.size());
     for (auto const& [shardId, serverIds] : shardServers) {
       replication2::replicated_state::agency::Target spec;
 
@@ -3091,6 +3094,7 @@ Result ClusterInfo::createCollectionsCoordinator(
                 << databaseName << " using path " << path;
       opers.emplace_back(AgencyOperation(path, AgencyValueOperationType::SET,
                                          std::move(builder)));
+      replicatedStates.emplace_back(std::move(spec));
     }
 
     // Ensure preconditions on the agency
@@ -3321,6 +3325,34 @@ Result ClusterInfo::createCollectionsCoordinator(
   LOG_TOPIC("98bca", DEBUG, Logger::CLUSTER)
       << "createCollectionCoordinator, Plan changed, waiting for success...";
 
+  auto replicatedStateMethods =
+      arangodb::replication2::ReplicatedStateMethods::createInstanceCoordinator(
+          _server, databaseName);
+
+  auto replicatedStatesWait = std::invoke([&] {
+    std::vector<futures::Future<ResultT<consensus::index_t>>> futureStates;
+    futureStates.reserve(replicatedStates.size());
+    for (auto const& spec : replicatedStates) {
+      futureStates.emplace_back(
+          replicatedStateMethods->waitForStateReady(spec.id, *spec.version));
+    }
+    return futures::collectAll(futureStates)
+        .thenValue([&server = this->_server](auto&& raftIndices) {
+          consensus::index_t maximum = std::transform_reduce(
+              raftIndices.begin(), raftIndices.end(), (consensus::index_t)0,
+              [](consensus::index_t l, consensus::index_t r) {
+                return std::max(l, r);
+              },
+              [](auto&& value) {
+                // TODO - figure out error handling
+                return value.get().get();
+              });
+
+          return server.getFeature<ClusterFeature>().clusterInfo().waitForPlan(
+              maximum);
+        });
+  });
+
   do {
     auto tmpRes = dbServerResult->load(std::memory_order_acquire);
     if (TRI_microtime() > endTime) {
@@ -3340,7 +3372,8 @@ Result ClusterInfo::createCollectionsCoordinator(
       }
     }
 
-    if (nrDone->load(std::memory_order_acquire) == infos.size()) {
+    if (nrDone->load(std::memory_order_acquire) == infos.size() &&
+        replicatedStatesWait.isReady()) {
       // We do not need to lock all condition variables
       // we are save by cacheMutex
       cbGuard.fire();
