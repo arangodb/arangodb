@@ -443,9 +443,6 @@ class runInArangoshRunner extends testRunnerBase{
   getEndpoint() {
     return this.instanceManager.findEndpoint();
   }
-  getRootDir() {
-    return this.instanceManager.rootDir;
-  }
   runOneTest(file) {
     require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
     let args = pu.makeArgs.arangosh(this.options);
@@ -467,8 +464,8 @@ class runInArangoshRunner extends testRunnerBase{
       args = Object.assign(args, this.addArgs);
     }
     // TODO require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager);
-    let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), this.options, 'arangosh', this.getRootDir(), this.options.coreCheck);
-    return readTestResult(this.getRootDir(), rc, args['javascript.unit-tests']);
+    let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), this.options, 'arangosh', this.instanceManager.rootDir, this.options.coreCheck);
+    return readTestResult(this.instanceManager.rootDir, rc, args['javascript.unit-tests']);
   }
 }
 

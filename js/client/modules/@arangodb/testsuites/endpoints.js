@@ -40,6 +40,7 @@ const internal = require('internal');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const inst = require('@arangodb/testutils/instance');
+const im = require('@arangodb/testutils/instance-manager');
 const sleep = internal.sleep;
 
 const platform = require('internal').platform;
@@ -72,11 +73,14 @@ class endpointRunner extends tu.runInArangoshRunner {
   getEndpoint() {
     return this.endpoint;
   }
-  getRootDir() {
-    return this.instance.rootDir;
-  }
   run() {
     let obj = this;
+    this.instanceManager = new im.instanceManager(this.options.protocol,
+                                                  this.options,
+                                                  this.serverOptions,
+                                                  this.friendlyName);
+    this.instanceManager['arangods'] = [this.instance];
+    this.instanceManager.rootDir = this.instance.rootDir;
     pu.cleanupDBDirectoriesAppend(this.dummyDir);
     
     const keyFile = fs.join(tu.pathForTesting('.'), '..', '..', 'UnitTests', 'server.pem');
