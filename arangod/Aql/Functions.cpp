@@ -9250,9 +9250,11 @@ AqlValue Functions::SelectSmartDistributeGraphInput(
                                        input.toJson());
   }
   auto fromId = input.get(StaticStrings::IdString).stringView();
+  // TODO [EnterpriseGraphs]: Boolean <false> needs to be handled in below
+  // function call.
   auto res =
       SmartGraphValidationHelper::SmartValidationResult::validateVertexId(
-          fromId);
+          fromId, false);
   if (res.ok()) {
     return AqlValue{input};
   }
