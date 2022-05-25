@@ -72,7 +72,8 @@ class RefactoredTraverserCache {
       arangodb::aql::TraversalStats& stats,
       std::unordered_map<std::string, std::vector<std::string>> const&
           collectionToShardMap,
-      arangodb::aql::Projections vertexProjections);
+      arangodb::aql::Projections const& vertexProjections,
+      arangodb::aql::Projections const& edgeProjections);
 
   ~RefactoredTraverserCache();
 
@@ -189,7 +190,11 @@ class RefactoredTraverserCache {
   /// during the traversal
   bool const _allowImplicitCollections;
 
-  aql::Projections _vertexProjections;
+  /// @brief Projections on vertex data, responsibility is with BaseOptions
+  aql::Projections const& _vertexProjections;
+
+  /// @brief Projections on edge data, responsibility is with BaseOptions
+  aql::Projections const& _edgeProjections;
 };
 
 }  // namespace graph
