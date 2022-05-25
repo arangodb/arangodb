@@ -44,6 +44,44 @@ static inline auto isLeaderHealth() {
   });
 }
 
+static inline auto isParticipantPlanned(
+    replication2::ParticipantId participant) {
+  return MC_BOOL_PRED(global, {
+    AgencyState const& state = global.state;
+    if (state.replicatedLog && state.replicatedLog->plan) {
+      return state.replicatedLog->plan->participantsConfig.participants
+          .contains(participant);
+    }
+    return false;
+  });
+}
+
+static inline auto isParticipantNotPlanned(
+    replication2::ParticipantId participant) {
+  return MC_BOOL_PRED(global, {
+    AgencyState const& state = global.state;
+    if (state.replicatedLog && state.replicatedLog->plan) {
+      return !state.replicatedLog->plan->participantsConfig.participants
+                  .contains(participant);
+    }
+    return true;
+  });
+}
+
+static inline auto isParticipantCurrent(
+    replication2::ParticipantId participant) {
+  return MC_BOOL_PRED(global, {
+    AgencyState const& state = global.state;
+    if (state.replicatedLog && state.replicatedLog->current &&
+        state.replicatedLog->current->leader &&
+        state.replicatedLog->current->leader->committedParticipantsConfig) {
+      return state.replicatedLog->current->leader->committedParticipantsConfig
+          ->participants.contains(participant);
+    }
+    return false;
+  });
+}
+
 static inline auto serverIsLeader(std::string_view id) {
   return MC_BOOL_PRED(global, {
     AgencyState const& state = global.state;

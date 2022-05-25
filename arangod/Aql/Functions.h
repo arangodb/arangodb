@@ -543,6 +543,12 @@ struct Functions {
                                            AstNode const&,
                                            VPackFunctionParametersView);
 
+#ifdef USE_ENTERPRISE
+  static AqlValue SelectSmartDistributeGraphInput(
+      arangodb::aql::ExpressionContext*, AstNode const&,
+      VPackFunctionParametersView);
+#endif
+
   static AqlValue DecayGauss(arangodb::aql::ExpressionContext*, AstNode const&,
                              VPackFunctionParametersView);
 

@@ -31,72 +31,32 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
+#include <fmt/core.h>
+#include <variant>
+
 using namespace arangodb::replication2::agency;
 namespace paths = arangodb::cluster::paths::aliases;
 
 namespace arangodb::replication2::replicated_log {
 
-auto to_string(Action const& action) -> std::string_view {
-  return std::visit([](auto&& arg) { return arg.name; }, action);
-}
+auto executeAction(Log log, Action& action) -> ActionContext {
+  auto currentSupervision =
+      std::invoke([&]() -> std::optional<LogCurrentSupervision> {
+        if (log.current.has_value()) {
+          return log.current->supervision;
+        } else {
+          return std::nullopt;
+        }
+      });
 
-void toVelocyPack(Action const& action, VPackBuilder& builder) {
-  std::visit([&builder](auto&& arg) { serialize(builder, arg); }, action);
-}
-
-auto execute(Action const& action, DatabaseID const& dbName, LogId const& log,
-             std::optional<LogPlanSpecification> const& plan,
-             std::optional<LogCurrent> const& current,
-             arangodb::agency::envelope envelope)
-    -> arangodb::agency::envelope {
-  auto planPath =
-      paths::plan()->replicatedLogs()->database(dbName)->log(log)->str();
-
-  auto currentPath = paths::current()
-                         ->replicatedLogs()
-                         ->database(dbName)
-                         ->log(log)
-                         ->supervision()
-                         ->str();
-
-  if (std::holds_alternative<EmptyAction>(action)) {
-    return envelope;
+  if (!currentSupervision.has_value()) {
+    currentSupervision.emplace();
   }
 
-  auto ctx = ActionContext{plan, current};
+  auto ctx = ActionContext{std::move(log.plan), std::move(currentSupervision)};
 
-  std::visit([&](auto& action) { action.execute(ctx); }, action);
-
-  if (std::holds_alternative<EmptyAction>(action)) {
-    return envelope;
-  }
-
-  return envelope
-      .write()
-      // this is here to trigger all waitForPlan, even if we only
-      // update current.
-      .inc(paths::plan()->version()->str())
-      .cond(ctx.hasPlanModification(),
-            [&](arangodb::agency::envelope::write_trx&& trx) {
-              return std::move(trx).emplace_object(
-                  planPath, [&](VPackBuilder& builder) {
-                    ctx.getPlan().toVelocyPack(builder);
-                  });
-            })
-      .cond(ctx.hasCurrentModification(),
-            [&](arangodb::agency::envelope::write_trx&& trx) {
-              return std::move(trx)
-                  .emplace_object(
-                      currentPath,
-                      [&](VPackBuilder& builder) {
-                        ctx.getCurrent().supervision->toVelocyPack(builder);
-                      })
-                  .inc(paths::current()->version()->str());
-            })
-      .precs()
-      .isNotEmpty(
-          paths::target()->replicatedLogs()->database(dbName)->log(log)->str())
-      .end();
+  std::visit([&](auto&& action) { action.execute(ctx); }, action);
+  return ctx;
 }
 
 }  // namespace arangodb::replication2::replicated_log

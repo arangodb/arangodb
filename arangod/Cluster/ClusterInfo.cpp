@@ -52,17 +52,19 @@
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+#include "Inspection/VPack.h"
 #include "Logger/Logger.h"
-#include "Random/RandomGenerator.h"
-#include "Replication2/AgencyCollectionSpecification.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Rest/CommonDefines.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/MetricsFeature.h"
+#include "Random/RandomGenerator.h"
+#include "Replication2/AgencyCollectionSpecification.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Rest/CommonDefines.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingInfo.h"
@@ -1490,8 +1492,8 @@ void ClusterInfo::loadPlan() {
              VPackObjectIterator(logsSlice)) {
           auto spec =
               std::make_shared<replication2::agency::LogPlanSpecification>(
-                  replication2::agency::LogPlanSpecification::fromVelocyPack(
-                      logSlice));
+                  velocypack::deserialize<
+                      replication2::agency::LogPlanSpecification>(logSlice));
           newLogs.emplace(spec->id, spec);
         }
         stuff->replicatedLogs = std::move(newLogs);

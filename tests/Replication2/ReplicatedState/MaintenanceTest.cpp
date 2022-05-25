@@ -46,7 +46,7 @@ auto decodeFromString(std::string_view src) -> std::optional<T> {
   auto buffer = arangodb::basics::StringUtils::decodeBase64(src);
   auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(buffer.c_str()));
   if (!slice.isNone()) {
-    return T::fromVelocyPack(slice);
+    return velocypack::deserialize<T>(slice);
   }
 
   return std::nullopt;

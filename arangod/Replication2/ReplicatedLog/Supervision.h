@@ -33,6 +33,7 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
+#include "Replication2/ReplicatedLog/SupervisionContext.h"
 
 using namespace arangodb::replication2::agency;
 
@@ -44,21 +45,6 @@ using LogCurrentLocalStates =
 auto isLeaderFailed(LogPlanTermSpecification::Leader const& leader,
                     ParticipantsHealth const& health) -> bool;
 
-auto getAddedParticipant(ParticipantsFlagsMap const& target,
-                         ParticipantsFlagsMap const& plan)
-    -> std::optional<std::pair<ParticipantId, ParticipantFlags>>;
-
-auto getRemovedParticipant(ParticipantsFlagsMap const& target,
-                           ParticipantsFlagsMap const& plan)
-    -> std::optional<std::pair<ParticipantId, ParticipantFlags>>;
-
-auto getParticipantWithUpdatedFlags(
-    ParticipantsFlagsMap const& targetParticipants,
-    ParticipantsFlagsMap const& planParticipants,
-    std::optional<ParticipantId> const& targetLeader,
-    ParticipantId const& currentTermLeader)
-    -> std::optional<std::pair<ParticipantId, ParticipantFlags>>;
-
 auto computeReason(std::optional<LogCurrentLocalState> const& maybeStatus,
                    bool healthy, bool excluded, LogTerm term)
     -> LogCurrentSupervisionElection::ErrorCode;
@@ -68,23 +54,25 @@ auto runElectionCampaign(LogCurrentLocalStates const& states,
                          ParticipantsHealth const& health, LogTerm term)
     -> LogCurrentSupervisionElection;
 
-auto doLeadershipElection(LogPlanSpecification const& plan,
-                          LogCurrent const& current,
-                          ParticipantsHealth const& health) -> Action;
-
 auto getParticipantsAcceptableAsLeaders(
     ParticipantId const& currentLeader,
     ParticipantsFlagsMap const& participants) -> std::vector<ParticipantId>;
 
-auto dictateLeader(LogTarget const& target, LogPlanSpecification const& plan,
-                   LogCurrent const& current, ParticipantsHealth const& health)
-    -> Action;
-
 // Actions capture entries in log, so they have to stay
 // valid until the returned action has been executed (or discarded)
-auto checkReplicatedLog(LogTarget const& target,
-                        std::optional<LogPlanSpecification> const& plan,
-                        std::optional<LogCurrent> const& current,
-                        ParticipantsHealth const& health) -> Action;
+auto checkReplicatedLog(SupervisionContext& ctx, Log const& log,
+                        ParticipantsHealth const& health) -> void;
+
+auto executeCheckReplicatedLog(DatabaseID const& database,
+                               std::string const& logIdString, Log log,
+                               ParticipantsHealth const& health,
+                               arangodb::agency::envelope envelope) noexcept
+    -> arangodb::agency::envelope;
+
+auto buildAgencyTransaction(DatabaseID const& dbName, LogId const& logId,
+                            SupervisionContext& sctx, ActionContext& actx,
+                            size_t maxActionsTraceLength,
+                            arangodb::agency::envelope envelope)
+    -> arangodb::agency::envelope;
 
 }  // namespace arangodb::replication2::replicated_log
