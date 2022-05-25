@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "IResearchDataStoreMeta.h"
 #include "IResearchLinkMeta.h"
 #include "IResearchViewStoredValues.h"
 
@@ -118,7 +119,9 @@ class IResearchInvertedIndexSort {
   icu::Locale _locale;
 };
 
-struct IResearchInvertedIndexMeta {
+struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
+
+  IResearchInvertedIndexMeta() = default;
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize IResearchInvertedIndexMeta with values from a JSON
   /// description
@@ -137,6 +140,8 @@ struct IResearchInvertedIndexMeta {
             irs::string_ref const defaultVocbase);
 
   bool dense() const noexcept { return !_sort.empty(); }
+
+  static const IResearchInvertedIndexMeta& DEFAULT();
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description

@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "IResearchViewMeta.h"
+#include "IResearchDataStoreMeta.h"
 #include "Containers.h"
 #include "IResearchCommon.h"
 #include "IResearchPrimaryKeyFilter.h"
@@ -233,8 +233,8 @@ class IResearchDataStore {
   /// @brief update runtine data processing properties
   /// @return success
   //////////////////////////////////////////////////////////////////////////////
-  Result properties(IResearchViewMeta const& meta);
-  static void properties(LinkLock linkLock, IResearchViewMeta const& meta);
+  Result properties(IResearchDataStoreMeta const& meta);
+  static void properties(LinkLock linkLock, IResearchDataStoreMeta const& meta);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief index stats
@@ -285,7 +285,7 @@ class IResearchDataStore {
   /// @brief the underlying iresearch data store
   //////////////////////////////////////////////////////////////////////////////
   struct DataStore {
-    IResearchViewMeta _meta;  // runtime meta for a data store (not persisted)
+    IResearchDataStoreMeta _meta;  // runtime meta for a data store (not persisted)
     irs::directory::ptr _directory;
     basics::ReadWriteLock _mutex;  // for use with member '_meta'
     irs::utf8_path _path;
@@ -327,7 +327,7 @@ class IResearchDataStore {
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
   UnsafeOpResult consolidateUnsafe(
-      IResearchViewMeta::ConsolidationPolicy const& policy,
+      IResearchDataStoreMeta::ConsolidationPolicy const& policy,
       irs::merge_writer::flush_progress_t const& progress,
       bool& emptyConsolidation);
 
@@ -349,7 +349,7 @@ class IResearchDataStore {
   /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
   //////////////////////////////////////////////////////////////////////////////
   Result consolidateUnsafeImpl(
-      IResearchViewMeta::ConsolidationPolicy const& policy,
+      IResearchDataStoreMeta::ConsolidationPolicy const& policy,
       irs::merge_writer::flush_progress_t const& progress,
       bool& emptyConsolidation);
 

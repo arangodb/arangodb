@@ -153,6 +153,16 @@ class FieldIterator {
 
   void reset(velocypack::Slice slice, FieldMeta const& linkMeta);
 
+#ifdef USE_ENTERPRISE
+  FieldIterator makeNestedIterator() const {
+    return FieldIterator(*_trx, _collection, _linkId);
+  }
+
+  Field const& parentField() const {
+    return _value;
+  }
+#endif
+
  private:
   using AnalyzerIterator = FieldMeta::Analyzer const*;
 
@@ -234,9 +244,17 @@ class InvertedIndexFieldIterator {
                                       irs::string_ref collection,
                                       IndexId indexId);
 
+#ifdef USE_ENTERPRISE
+  InvertedIndexFieldIterator makeNestedIterator() const;
+  Field const& parentField() const {
+    return _parentField;
+  }
+#endif
+
   bool valid() const noexcept { return _fieldsMeta && _begin != _end; }
 
-  void reset(velocypack::Slice slice,
+
+  void reset(VPackSlice slice,
              IResearchInvertedIndexMeta const& fieldsMeta) {
     _slice = slice;
     _fieldsMeta = &fieldsMeta;
@@ -247,6 +265,12 @@ class InvertedIndexFieldIterator {
   }
 
  private:
+
+#ifdef USE_ENTERPRISE
+  explicit InvertedIndexFieldIterator(
+      InvertedIndexFieldIterator const& parent,
+      IResearchInvertedIndexMeta::Fields const& fields);
+#endif
   void next();
   bool setValue(VPackSlice const value,
                 FieldMeta::Analyzer const& valueAnalyzer);
@@ -272,6 +296,10 @@ class InvertedIndexFieldIterator {
   std::vector<VPackArrayIterator> _arrayStack;
   std::string _nameBuffer;
   VPackBuffer<uint8_t> _buffer;  // buffer for stored values
+#ifdef USE_ENTERPRISE
+  Field const* _parentIteratorField{nullptr};
+  Field _parentField;
+#endif
 };
 
 ////////////////////////////////////////////////////////////////////////////////
