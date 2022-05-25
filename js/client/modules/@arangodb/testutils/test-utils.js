@@ -319,7 +319,7 @@ class runOnArangodRunner extends testRunnerBase{
   runOneTest(file) {
     try {
       let testCode = getTestCode(file, this.options, this.instanceManager);
-      let httpOptions = pu.makeAuthorizationHeaders(this.options, this.instanceManager.arangods[0].args);
+      let httpOptions = _.clone(this.instanceManager.httpAuthOptions);
       httpOptions.method = 'POST';
 
       httpOptions.timeout = this.options.oneTestTimeout;
