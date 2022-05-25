@@ -134,7 +134,7 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
     // TODO check if any Step besides SmartGraphStep actually has the
     // isResponsible Implemented.
     // only explore here if we're responsible
-    if (!step.isResponsible(_provider.trx())) {
+    if (!_provider.isResponsible(step)) {
       // This server cannot decide on this specific vertex.
       // Include it in results, to report back that we
       // found this undecided path

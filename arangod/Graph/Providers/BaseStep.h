@@ -75,7 +75,7 @@ class BaseStep {
     }
 
     std::string colName = idHashed.substr(0, pos).toString();
-    return std::make_pair(colName, pos);
+    return std::make_pair(std::move(colName), pos);
   }
 
  private:

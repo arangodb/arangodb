@@ -122,6 +122,11 @@ class SingleServerProvider {
 
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();
+  /**
+   * Return true if the vertex whose id is stored in the class (in _vertex) has
+   * its data on this DB-server.
+   */
+  bool isResponsible(Step const& step) const;
   [[nodiscard]] bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 
  private:

@@ -611,6 +611,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
                                                         bool useSystem,
                                                         bool isReady,
                                                         bool allInSync) const {
+  TRI_ASSERT(_sharding != nullptr);
   if (system() && !useSystem) {
     return;
   }
@@ -668,6 +669,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 
 Result LogicalCollection::appendVPack(velocypack::Builder& build,
                                       Serialization ctx, bool) const {
+  TRI_ASSERT(_sharding != nullptr);
   bool const forPersistence = (ctx == Serialization::Persistence ||
                                ctx == Serialization::PersistenceWithInProgress);
   bool const showInProgress = (ctx == Serialization::PersistenceWithInProgress);
@@ -774,6 +776,7 @@ void LogicalCollection::includeVelocyPackEnterprise(
 void LogicalCollection::increaseV8Version() { ++_v8CacheVersion; }
 
 Result LogicalCollection::properties(velocypack::Slice slice, bool) {
+  TRI_ASSERT(_sharding != nullptr);
   // the following collection properties are intentionally not updated,
   // as updating them would be very complicated:
   // - _cid
