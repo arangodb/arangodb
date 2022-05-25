@@ -42,8 +42,7 @@ namespace iresearch {
 VPackComparer::VPackComparer()
     : VPackComparer(IResearchViewMeta::DEFAULT()._primarySort) {}
 
-bool VPackComparer::less(const irs::bytes_ref& lhs,
-                         const irs::bytes_ref& rhs) const {
+bool VPackComparer::less(irs::bytes_ref lhs, irs::bytes_ref rhs) const {
   TRI_ASSERT(_sort);
   TRI_ASSERT(_sort->size() >= _size);
   TRI_ASSERT(!lhs.empty());

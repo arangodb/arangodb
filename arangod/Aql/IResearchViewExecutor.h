@@ -660,7 +660,7 @@ class IResearchViewMergeExecutor
 
  private:
   std::vector<Segment> _segments;
-  irs::external_heap_iterator<MinHeapContext> _heap_it;
+  irs::ExternalHeapIterator<MinHeapContext> _heap_it;
 };  // IResearchViewMergeExecutor
 
 template<bool copyStored, bool ordered,

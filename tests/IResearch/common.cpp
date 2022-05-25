@@ -112,8 +112,9 @@ std::ostream& operator<<(std::ostream& os, by_term const& term) {
 }
 
 std::ostream& operator<<(std::ostream& os, irs::ByNestedFilter const& filter) {
-  auto& [parent, child, _] = filter.options();
-  os << "NESTED[PARENT[" << *parent << "], CHILD[" << *child << "]]";
+  auto& [parent, child, match, _] = filter.options();
+  os << "NESTED[MATCH[" << match.Min << ", " << match.Max << "], PARENT["
+     << *parent << "], CHILD[" << *child << "]]";
   return os;
 }
 
