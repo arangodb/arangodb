@@ -339,6 +339,7 @@ struct RocksDBOptions : arangodb::RocksDBOptionsProvider {
 
   struct TableOptions {
     struct LruCacheOptions {
+      LruCacheOptions();
       uint64_t blockCacheSize;
       int blockCacheShardBits{-1};
       bool enforceBlockCacheSizeLimit{true};

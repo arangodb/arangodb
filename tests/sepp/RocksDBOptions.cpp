@@ -101,16 +101,17 @@ uint64_t defaultMinWriteBufferNumberToMerge(uint64_t totalSize,
 
 namespace arangodb::sepp {
 
+RocksDBOptions::TableOptions::LruCacheOptions::LruCacheOptions()
+    : blockCacheSize(::defaultBlockCacheSize()),
+      blockCacheShardBits(-1),
+      enforceBlockCacheSizeLimit(true) {}
+
 RocksDBOptions::RocksDBOptions()
     : _dbOptions{.numStripes = std::thread::hardware_concurrency(),
                  .transactionLockTimeout =
                      rocksDBTrxDefaults.transaction_lock_timeout},
       _tableOptions{
-          .blockCache =
-              TableOptions::LruCacheOptions{
-                  .blockCacheSize = ::defaultBlockCacheSize(),
-                  .blockCacheShardBits = -1,
-                  .enforceBlockCacheSizeLimit = true},
+          .blockCache = TableOptions::LruCacheOptions{},
           .cacheIndexAndFilterBlocks = true,
           .cacheIndexAndFilterBlocksWithHighPriority =
               rocksDBTableOptionsDefaults
