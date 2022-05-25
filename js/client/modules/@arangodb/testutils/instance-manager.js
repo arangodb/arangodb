@@ -826,7 +826,7 @@ class instanceManager {
 
       if (!reply.error && reply.code === 200) {
         let res = JSON.parse(reply.body);
-        //print("Response ====> " + reply.body);
+        print("Response ====> " + reply.body);
         let leader = res[0].arango.Plan.AsyncReplication.Leader;
         if (leader) {
           break;
