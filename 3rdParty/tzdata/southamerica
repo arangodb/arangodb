@@ -574,7 +574,7 @@ Zone America/Argentina/Ushuaia -4:33:12 - LMT	1894 Oct 31
 			-3:00	-	-03
 
 # Aruba
-Link America/Curacao America/Aruba
+# See America/Puerto_Rico.
 
 # Bolivia
 # Zone	NAME		STDOFF	RULES	FORMAT	[UNTIL]
@@ -1086,7 +1086,7 @@ Zone America/Rio_Branco	-4:31:12 -	LMT	1914
 
 # Chile
 
-# From Paul Eggert (2015-04-03):
+# From Paul Eggert (2022-03-15):
 # Shanks & Pottenger says America/Santiago introduced standard time in
 # 1890 and rounds its UT offset to 70W40; guess that in practice this
 # was the same offset as in 1916-1919.  It also says Pacific/Easter
@@ -1109,7 +1109,7 @@ Zone America/Rio_Branco	-4:31:12 -	LMT	1914
 # Historia de la hora oficial de Chile (retrieved 2012-10-24).  See:
 # https://web.archive.org/web/20121024234627/http://www.horaoficial.cl/horaof.htm
 # A fancier Spanish version (requiring mouse-clicking) is at:
-# http://www.horaoficial.cl/historia_hora.html
+# http://www.horaoficial.cl/historia_hora.php
 # Conflicts between [1] and [2] were resolved as follows:
 #
 #  - [1] says the 1910 transition was Jan 1, [2] says Jan 10 and cites
@@ -1118,7 +1118,8 @@ Zone America/Rio_Branco	-4:31:12 -	LMT	1914
 #  - [1] says SMT was -4:42:45, [2] says Chile's official time from
 #    1916 to 1919 was -4:42:46.3, the meridian of Chile's National
 #    Astronomical Observatory (OAN), then located in what is now
-#    Quinta Normal in Santiago.  Go with [2], rounding it to -4:42:46.
+#    Quinta Normal in Santiago.  Go with [1], as this matches the meridian
+#    referred to by the relevant Chilean laws to this day.
 #
 #  - [1] says the 1918 transition was Sep 1, [2] says Sep 10 and cites
 #    Boletín No. 22, Aviso No. 129/1918 (1918-08-23).  Go with [2].
@@ -1139,6 +1140,32 @@ Zone America/Rio_Branco	-4:31:12 -	LMT	1914
 # Pacific/Easter is always two hours behind America/Santiago;
 # this is known to work for DST transitions starting in 2008 and
 # may well be true for earlier transitions.
+
+# From Tim Parenti (2022-03-15):
+# For a brief period of roughly six weeks in 1946, DST was only observed on an
+# emergency basis in specific regions of central Chile; namely, "the national
+# territory between the provinces of Coquimbo and Concepción, inclusive".
+# This was enacted by Decree 3,891, dated 1946-07-13, and took effect
+# 1946-07-14 24:00, advancing these central regions to -03.
+# https://www.diariooficial.interior.gob.cl/versiones-anteriores/do-h/19460715/#page/1
+# The decree contemplated "[t]hat this advancement of the Official Time, even
+# though it has been proposed for the cities of Santiago and Valparaíso only,
+# must be agreed with that of other cities, due to the connection of various
+# activities that require it, such as, for example, the operation of rail
+# services".  It was originally set to expire after 30 days but was extended
+# through 1946-08-31 by Decree 4,506, dated 1946-08-13.
+# https://www.diariooficial.interior.gob.cl/versiones-anteriores/do-h/19460814/#page/1
+#
+# Law Number 8,522, promulgated 1946-08-27, reunified Chilean clocks at their
+# new "Summer Time" of -04, reckoned as that of "the meridian of the
+# Astronomical Observatory of Lo Espejo, advanced by 42 minutes and 45
+# seconds".
+# https://www.diariooficial.interior.gob.cl/versiones-anteriores/do-h/19460828/#page/1
+# After a brief "Winter Time" stint at -05 beginning 1947-04-01, Law Number
+# 8,777, promulgated 1947-05-17, established year-round -04 "from 23:00 on the
+# second day after it is published in the 'Diario Oficial'."  It was published
+# on Monday 1947-05-19 and so took effect from Wednesday 1947-05-21 23:00.
+# https://www.diariooficial.interior.gob.cl/versiones-anteriores/do-h/19470519/#page/1
 
 # From Eduardo Krell (1995-10-19):
 # The law says to switch to DST at midnight [24:00] on the second SATURDAY
@@ -1298,12 +1325,12 @@ Rule	Chile	2019	max	-	Sep	Sun>=2	4:00u	1:00	-
 # IATA SSIM anomalies: (1992-02) says 1992-03-14;
 # (1996-09) says 1998-03-08.  Ignore these.
 # Zone	NAME		STDOFF	RULES	FORMAT	[UNTIL]
-Zone America/Santiago	-4:42:46 -	LMT	1890
-			-4:42:46 -	SMT	1910 Jan 10 # Santiago Mean Time
+Zone America/Santiago	-4:42:45 -	LMT	1890
+			-4:42:45 -	SMT	1910 Jan 10 # Santiago Mean Time
 			-5:00	-	-05	1916 Jul  1
-			-4:42:46 -	SMT	1918 Sep 10
+			-4:42:45 -	SMT	1918 Sep 10
 			-4:00	-	-04	1919 Jul  1
-			-4:42:46 -	SMT	1927 Sep  1
+			-4:42:45 -	SMT	1927 Sep  1
 			-5:00	Chile	-05/-04	1932 Sep  1
 			-4:00	-	-04	1942 Jun  1
 			-5:00	-	-05	1942 Aug  1
@@ -1313,11 +1340,11 @@ Zone America/Santiago	-4:42:46 -	LMT	1890
 			-5:00	-	-05	1947 May 21 23:00
 			-4:00	Chile	-04/-03
 Zone America/Punta_Arenas -4:43:40 -	LMT	1890
-			-4:42:46 -	SMT	1910 Jan 10
+			-4:42:45 -	SMT	1910 Jan 10
 			-5:00	-	-05	1916 Jul  1
-			-4:42:46 -	SMT	1918 Sep 10
+			-4:42:45 -	SMT	1918 Sep 10
 			-4:00	-	-04	1919 Jul  1
-			-4:42:46 -	SMT	1927 Sep  1
+			-4:42:45 -	SMT	1927 Sep  1
 			-5:00	Chile	-05/-04	1932 Sep  1
 			-4:00	-	-04	1942 Jun  1
 			-5:00	-	-05	1942 Aug  1
@@ -1369,35 +1396,14 @@ Zone	America/Bogota	-4:56:16 -	LMT	1884 Mar 13
 # no information; probably like America/Bogota
 
 # Curaçao
-
-# Milne gives 4:35:46.9 for Curaçao mean time; round to nearest.
+# See America/Puerto_Rico.
 #
-# From Paul Eggert (2006-03-22):
-# Shanks & Pottenger say that The Bottom and Philipsburg have been at
-# -4:00 since standard time was introduced on 1912-03-02; and that
-# Kralendijk and Rincon used Kralendijk Mean Time (-4:33:08) from
-# 1912-02-02 to 1965-01-01.  The former is dubious, since S&P also say
-# Saba Island has been like Curaçao.
-# This all predates our 1970 cutoff, though.
-#
-# By July 2007 Curaçao and St Maarten are planned to become
-# associated states within the Netherlands, much like Aruba;
-# Bonaire, Saba and St Eustatius would become directly part of the
-# Netherlands as Kingdom Islands.  This won't affect their time zones
-# though, as far as we know.
-#
-# Zone	NAME		STDOFF	RULES	FORMAT	[UNTIL]
-Zone	America/Curacao	-4:35:47 -	LMT	1912 Feb 12 # Willemstad
-			-4:30	-	-0430	1965
-			-4:00	-	AST
-
 # From Arthur David Olson (2011-06-15):
 # use links for places with new iso3166 codes.
 # The name "Lower Prince's Quarter" is both longer than fourteen characters
-# and contains an apostrophe; use "Lower_Princes" below.
-
-Link	America/Curacao	America/Lower_Princes	# Sint Maarten
-Link	America/Curacao	America/Kralendijk	# Caribbean Netherlands
+# and contains an apostrophe; use "Lower_Princes"....
+# From Paul Eggert (2021-09-29):
+# These backward-compatibility links now are in the 'northamerica' file.
 
 # Ecuador
 #
@@ -1540,11 +1546,40 @@ Zone America/Cayenne	-3:29:20 -	LMT	1911 Jul
 			-3:00	-	-03
 
 # Guyana
+
+# From P Chan (2020-11-27):
+# https://books.google.com/books?id=5-5CAQAAMAAJ&pg=SA1-PA547
+# The Official Gazette of British Guiana. (New Series.) Vol. XL. July to
+# December, 1915, p 1547, lists as several notes:
+# "Local Mean Time 3 hours 52 mins. 39 secs. slow of Greenwich Mean Time
+# (Georgetown.) From 1st August, 1911, British Guiana Standard Mean Time 4
+# hours slow of Greenwich Mean Time, by notice in Official Gazette on 1st July,
+# 1911.  From 1st March, 1915, British Guiana Standard Mean Time 3 hours 45
+# mins. 0 secs. slow of Greenwich Mean Time, by notice in Official Gazette on
+# 23rd January, 1915."
+#
+# https://parliament.gov.gy/documents/acts/10923-act_no._27_of_1975_-_interpretation_and_general_clauses_(amendment)_act_1975.pdf
+# Interpretation and general clauses (Amendment) Act 1975 (Act No. 27 of 1975)
+# [dated 1975-07-31]
+# "This Act...shall come into operation on 1st August, 1975."
+# "...where any expression of time occurs...the time referred to shall signify
+# the standard time of Guyana which shall be three hours behind Greenwich Mean
+# Time."
+#
+# Circular No. 10/1992 dated 1992-03-20
+# https://dps.gov.gy/wp-content/uploads/2018/12/1992-03-20-Circular-010.pdf
+# "...cabinet has decided that with effect from Sunday 29th March, 1992, Guyana
+# Standard Time would be re-established at 01:00 hours by adjusting the hands
+# of the clock back to 24:00 hours."
+# Legislated in the Interpretation and general clauses (Amendment) Act 1992
+# (Act No. 6 of 1992) [passed 1992-03-27, published 1992-04-18]
+# https://parliament.gov.gy/documents/acts/5885-6_of_1992_interpretation_and_general_clauses_(amendment)_act_1992.pdf
+
 # Zone	NAME		STDOFF	RULES	FORMAT	[UNTIL]
-Zone	America/Guyana	-3:52:40 -	LMT	1915 Mar    # Georgetown
-			-3:45	-	-0345	1975 Jul 31
-			-3:00	-	-03	1991
-# IATA SSIM (1996-06) says -4:00.  Assume a 1991 switch.
+Zone	America/Guyana	-3:52:39 -	LMT	1911 Aug  1 # Georgetown
+			-4:00	-	-04	1915 Mar  1
+			-3:45	-	-0345	1975 Aug  1
+			-3:00	-	-03	1992 Mar 29  1:00
 			-4:00	-	-04
 
 # Paraguay
@@ -1685,24 +1720,7 @@ Zone America/Paramaribo	-3:40:40 -	LMT	1911
 			-3:00	-	-03
 
 # Trinidad and Tobago
-# Zone	NAME		STDOFF	RULES	FORMAT	[UNTIL]
-Zone America/Port_of_Spain -4:06:04 -	LMT	1912 Mar 2
-			-4:00	-	AST
-
-# These all agree with Trinidad and Tobago since 1970.
-Link America/Port_of_Spain America/Anguilla
-Link America/Port_of_Spain America/Antigua
-Link America/Port_of_Spain America/Dominica
-Link America/Port_of_Spain America/Grenada
-Link America/Port_of_Spain America/Guadeloupe
-Link America/Port_of_Spain America/Marigot	# St Martin (French part)
-Link America/Port_of_Spain America/Montserrat
-Link America/Port_of_Spain America/St_Barthelemy # St Barthélemy
-Link America/Port_of_Spain America/St_Kitts	# St Kitts & Nevis
-Link America/Port_of_Spain America/St_Lucia
-Link America/Port_of_Spain America/St_Thomas	# Virgin Islands (US)
-Link America/Port_of_Spain America/St_Vincent
-Link America/Port_of_Spain America/Tortola	# Virgin Islands (UK)
+# See America/Puerto_Rico.
 
 # Uruguay
 # From Paul Eggert (1993-11-18):
