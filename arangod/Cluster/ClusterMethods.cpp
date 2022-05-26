@@ -2808,6 +2808,8 @@ ClusterMethods::persistCollectionsInAgency(
   // support cross-database operations and they cannot be triggered by
   // users)
   auto const dbName = collections[0]->vocbase().name();
+  auto const replicationVersion =
+      collections[0]->vocbase().replicationVersion();
   ClusterInfo& ci = feature.clusterInfo();
 
   std::vector<ClusterCollectionCreationInfo> infos;
@@ -2926,7 +2928,8 @@ ClusterMethods::persistCollectionsInAgency(
 
     // pass in the *endTime* here, not a timeout!
     Result res = ci.createCollectionsCoordinator(
-        dbName, infos, endTime, isNewDatabase, colToDistributeLike);
+        dbName, infos, endTime, isNewDatabase, colToDistributeLike,
+        replicationVersion);
 
     if (res.ok()) {
       // success! exit the loop and go on

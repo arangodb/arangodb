@@ -2746,7 +2746,8 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
     velocypack::Slice json,  // collection definition
     double timeout,          // request timeout,
     bool isNewDatabase,
-    std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
+    std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
+    replication::Version replicationVersion) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   auto serverState = ServerState::instance();
   std::vector<ClusterCollectionCreationInfo> infos{
@@ -2757,7 +2758,8 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   return createCollectionsCoordinator(databaseName, infos, endTime,
-                                      isNewDatabase, colToDistributeShardsLike);
+                                      isNewDatabase, colToDistributeShardsLike,
+                                      replicationVersion);
 }
 
 /// @brief this method does an atomic check of the preconditions for the
@@ -2827,7 +2829,8 @@ Result ClusterInfo::createCollectionsCoordinator(
     std::string const& databaseName,
     std::vector<ClusterCollectionCreationInfo>& infos, double endTime,
     bool isNewDatabase,
-    std::shared_ptr<const LogicalCollection> const& colToDistributeShardsLike) {
+    std::shared_ptr<const LogicalCollection> const& colToDistributeShardsLike,
+    replication::Version replicationVersion) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   using arangodb::velocypack::Slice;
 
@@ -3055,46 +3058,45 @@ Result ClusterInfo::createCollectionsCoordinator(
     opers.emplace_back(CreateCollectionOrder(databaseName, info.collectionID,
                                              info.isBuildingSlice()));
 
-    // Create a replicated state for each shard.
-    replicatedStates.reserve(replicatedStates.size() + shardServers.size());
-    for (auto const& [shardId, serverIds] : shardServers) {
-      replication2::replicated_state::agency::Target spec;
+    if (replicationVersion == replication::Version::TWO) {
+      // Create a replicated state for each shard.
+      replicatedStates.reserve(replicatedStates.size() + shardServers.size());
+      for (auto const& [shardId, serverIds] : shardServers) {
+        replication2::replicated_state::agency::Target spec;
 
-      auto stateId{std::string_view(shardId).substr(1, shardId.size() - 1)};
-      auto logId = replication2::LogId::fromString(stateId);
-      ADB_PROD_ASSERT(logId.has_value())
-          << " converting " << stateId
-          << " to LogId failed, during replicated state creation for shard "
-          << shardId;
+        auto stateId{std::string_view(shardId).substr(1, shardId.size() - 1)};
+        auto logId = replication2::LogId::fromString(stateId);
+        ADB_PROD_ASSERT(logId.has_value())
+            << " converting " << stateId
+            << " to LogId failed, during replicated state creation for shard "
+            << shardId;
 
-      spec.id = logId.value();
-      spec.properties.implementation.type = "black-hole";
-      TRI_ASSERT(!serverIds.empty());
-      spec.leader = serverIds.front();
+        spec.id = logId.value();
+        spec.properties.implementation.type = "black-hole";
+        TRI_ASSERT(!serverIds.empty());
+        spec.leader = serverIds.front();
 
-      for (auto const& serverId : serverIds) {
-        spec.participants.emplace(
-            serverId,
-            replication2::replicated_state::agency::Target::Participant{});
+        for (auto const& serverId : serverIds) {
+          spec.participants.emplace(
+              serverId,
+              replication2::replicated_state::agency::Target::Participant{});
+        }
+
+        spec.config.writeConcern = info.writeConcern;
+        spec.config.replicationFactor = info.replicationFactor;
+        spec.config.softWriteConcern = info.replicationFactor;
+        spec.config.waitForSync = false;
+        spec.version = 1;
+
+        auto builder = std::make_shared<VPackBuilder>();
+        velocypack::serialize(*builder, spec);
+        auto path = basics::StringUtils::joinT("/", "Target/ReplicatedStates",
+                                               databaseName, spec.id);
+
+        opers.emplace_back(AgencyOperation(path, AgencyValueOperationType::SET,
+                                           std::move(builder)));
+        replicatedStates.emplace_back(std::move(spec));
       }
-
-      spec.config.writeConcern = info.writeConcern;
-      spec.config.replicationFactor = info.replicationFactor;
-      spec.config.softWriteConcern = info.replicationFactor;
-      spec.config.waitForSync = false;
-      spec.version = 1;
-
-      auto builder = std::make_shared<VPackBuilder>();
-      velocypack::serialize(*builder, spec);
-      auto path = basics::StringUtils::joinT("/", "Target/ReplicatedStates",
-                                             databaseName, spec.id);
-
-      LOG_DEVEL << "building replicated state with id " << spec.id
-                << " for collection " << info.name << " and database "
-                << databaseName << " using path " << path;
-      opers.emplace_back(AgencyOperation(path, AgencyValueOperationType::SET,
-                                         std::move(builder)));
-      replicatedStates.emplace_back(std::move(spec));
     }
 
     // Ensure preconditions on the agency
@@ -3325,33 +3327,37 @@ Result ClusterInfo::createCollectionsCoordinator(
   LOG_TOPIC("98bca", DEBUG, Logger::CLUSTER)
       << "createCollectionCoordinator, Plan changed, waiting for success...";
 
-  auto replicatedStateMethods =
-      arangodb::replication2::ReplicatedStateMethods::createInstanceCoordinator(
-          _server, databaseName);
+  futures::Future<Result> replicatedStatesWait{std::in_place};
+  if (replicationVersion == replication::Version::TWO) {
+    auto replicatedStateMethods =
+        arangodb::replication2::ReplicatedStateMethods::
+            createInstanceCoordinator(_server, databaseName);
 
-  auto replicatedStatesWait = std::invoke([&] {
-    std::vector<futures::Future<ResultT<consensus::index_t>>> futureStates;
-    futureStates.reserve(replicatedStates.size());
-    for (auto const& spec : replicatedStates) {
-      futureStates.emplace_back(
-          replicatedStateMethods->waitForStateReady(spec.id, *spec.version));
-    }
-    return futures::collectAll(futureStates)
-        .thenValue([&server = this->_server](auto&& raftIndices) {
-          consensus::index_t maximum = std::transform_reduce(
-              raftIndices.begin(), raftIndices.end(), (consensus::index_t)0,
-              [](consensus::index_t l, consensus::index_t r) {
-                return std::max(l, r);
-              },
-              [](auto&& value) {
-                // TODO - figure out error handling
-                return value.get().get();
-              });
+    replicatedStatesWait = std::invoke([&] {
+      std::vector<futures::Future<ResultT<consensus::index_t>>> futureStates;
+      futureStates.reserve(replicatedStates.size());
+      for (auto const& spec : replicatedStates) {
+        futureStates.emplace_back(
+            replicatedStateMethods->waitForStateReady(spec.id, *spec.version));
+      }
+      return futures::collectAll(futureStates)
+          .thenValue([&server = this->_server](auto&& raftIndices) {
+            consensus::index_t maximum = std::transform_reduce(
+                raftIndices.begin(), raftIndices.end(), (consensus::index_t)0,
+                [](consensus::index_t l, consensus::index_t r) {
+                  return std::max(l, r);
+                },
+                [](auto&& value) {
+                  // TODO - figure out error handling
+                  return value.get().get();
+                });
 
-          return server.getFeature<ClusterFeature>().clusterInfo().waitForPlan(
-              maximum);
-        });
-  });
+            return server.getFeature<ClusterFeature>()
+                .clusterInfo()
+                .waitForPlan(maximum);
+          });
+    });
+  }
 
   do {
     auto tmpRes = dbServerResult->load(std::memory_order_acquire);

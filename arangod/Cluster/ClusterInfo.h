@@ -697,7 +697,8 @@ class ClusterInfo final {
       bool waitForReplication, arangodb::velocypack::Slice json,
       double timeout,  // request timeout
       bool isNewDatabase,
-      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike);
+      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
+      replication::Version replicationVersion = replication::Version::ONE);
 
   /// @brief this method does an atomic check of the preconditions for the
   /// collections to be created, using the currently loaded plan.
@@ -714,8 +715,8 @@ class ClusterInfo final {
       std::string const& databaseName,
       std::vector<ClusterCollectionCreationInfo>&, double endTime,
       bool isNewDatabase,
-      std::shared_ptr<const LogicalCollection> const&
-          colToDistributeShardsLike);
+      std::shared_ptr<const LogicalCollection> const& colToDistributeShardsLike,
+      replication::Version replicationVersion);
 
   /// @brief drop collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
