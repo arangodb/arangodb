@@ -35,7 +35,7 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Recovery.h"
 #include "Pregel/Utils.h"
-#include "Pregel/Structs/WorkerStatusUpdate.h"
+#include "Pregel/Structs/WorkerStatus.h"
 #include "Pregel/Structs/ConductorStatus.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -340,8 +340,8 @@ void Conductor::workerStatusUpdate(VPackSlice const& data) {
   _status.edgesLoaded = 0;
 
   for (auto&& [_, workerStatus] : _status.workers) {
-    _status.verticesLoaded += workerStatus.verticesLoaded;
-    _status.edgesLoaded += workerStatus.edgesLoaded;
+    _status.verticesLoaded += workerStatus.graphStoreStats.numberVerticesLoaded;
+    _status.edgesLoaded += workerStatus.graphStoreStats.numberEdgesLoaded;
   }
 }
 
@@ -372,6 +372,10 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   }
 
   _computationStartTimeSecs = TRI_microtime();
+
+  auto const now = std::chrono::system_clock::now();
+  _status.timing.loading.end = now;
+  _status.timing.running.start = now;
   _startGlobalStep();
 }
 
@@ -865,6 +869,7 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   _aggregators->serializeValues(debugOut);
   debugOut.close();
 
+  _status.timing.running.end = std::chrono::system_clock::now();
   if (_finalizationStartTimeSecs < _computationStartTimeSecs) {
     // prevent negative computation times from being reported
     _finalizationStartTimeSecs = _computationStartTimeSecs;

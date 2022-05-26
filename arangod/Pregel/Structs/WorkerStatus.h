@@ -30,6 +30,7 @@
 #include <Inspection/Transformers.h>
 
 #include <Pregel/Common.h>
+#include <Pregel/Structs/GraphStoreStats.h>
 
 #include "StaticStrings.h"
 
@@ -38,13 +39,10 @@ using TimeStamp = std::chrono::system_clock::time_point;
 namespace arangodb::pregel {
 struct WorkerStatus {
   TimeStamp timeStamp;
-  std::size_t verticesLoaded;
-  std::size_t edgesLoaded;
 
-  WorkerStatus()
-      : timeStamp{std::chrono::system_clock::now()},
-        verticesLoaded{0},
-        edgesLoaded{0} {}
+  GraphStoreStats graphStoreStats;
+
+  WorkerStatus() : timeStamp{std::chrono::system_clock::now()} {}
 };
 
 template<typename Inspector>
@@ -52,8 +50,7 @@ auto inspect(Inspector& f, WorkerStatus& x) {
   return f.object(x).fields(
       f.field(static_strings::timeStamp, x.timeStamp)
           .transformWith(inspection::TimeStampTransformer{}),
-      f.field(static_strings::verticesLoaded, x.verticesLoaded),
-      f.field(static_strings::edgesLoaded, x.edgesLoaded));
+      f.field(static_strings::graphStoreStats, x.graphStoreStats));
 }
 
 }  // namespace arangodb::pregel

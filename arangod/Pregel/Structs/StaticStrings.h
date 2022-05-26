@@ -33,8 +33,25 @@
 namespace arangodb::pregel::static_strings {
 
 constexpr auto timeStamp = std::string_view{"timeStamp"};
-constexpr auto verticesLoaded = std::string_view{"verticesLoaded"};
-constexpr auto edgesLoaded = std::string_view{"edgesLoaded"};
+constexpr auto numberVerticesLoaded = std::string_view{"numberVerticesLoaded"};
+constexpr auto vertexStorageBytes = std::string_view{"vertexStorageBytes"};
+constexpr auto vertexStorageBytesUsed =
+    std::string_view{"vertexStorageBytesUsed"};
+constexpr auto vertexKeyStorageBytes =
+    std::string_view{"vertexKeyStorageBytes"};
+constexpr auto vertexKeyStorageBytesUsed =
+    std::string_view{"vertexKeyStorageBytesUsed"};
+constexpr auto numberEdgesLoaded = std::string_view{"numberEdgesLoaded"};
+constexpr auto edgeStorageBytes = std::string_view{"edgeStorageBytes"};
+constexpr auto edgeStorageBytesUsed = std::string_view{"edgeStorageBytesUsed"};
+constexpr auto edgeKeyStorageBytes = std::string_view{"edgeKeyStorageBytes"};
+constexpr auto edgeKeyStorageBytesUsed =
+    std::string_view{"edgeKeyStorageBytesUsed"};
 constexpr auto workerStatus = std::string_view{"workerStatus"};
+constexpr auto timing = std::string_view{"timing"};
+constexpr auto loading = std::string_view{"loading"};
+constexpr auto running = std::string_view{"running"};
+constexpr auto storing = std::string_view{"storing"};
+constexpr auto graphStoreStats = std::string_view{"graphStoreStats"};
 
 }  // namespace arangodb::pregel::static_strings

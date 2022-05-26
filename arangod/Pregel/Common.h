@@ -23,7 +23,32 @@
 #pragma once
 
 #include <chrono>
+#include <string>
+
+#include <Inspection/VPack.h>
+#include <Inspection/Transformers.h>
 
 namespace arangodb::pregel {
+
+namespace static_strings {
+constexpr auto start = std::string_view{"start"};
+constexpr auto end = std::string_view{"end"};
+
+}  // namespace static_strings
+
 using TimeStamp = std::chrono::system_clock::time_point;
+
+struct TimeInterval {
+  std::optional<TimeStamp> start;
+  std::optional<TimeStamp> end;
+};
+
+template<typename Inspector>
+auto inspect(Inspector& f, TimeInterval& x) {
+  return f.object(x).fields(
+      f.field(static_strings::start, x.start)
+          .transformWith(inspection::TimeStampTransformer{}),
+      f.field(static_strings::end, x.end)
+          .transformWith(inspection::TimeStampTransformer{}));
 }
+}  // namespace arangodb::pregel

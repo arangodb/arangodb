@@ -162,8 +162,7 @@ void Worker<V, E, M>::setupWorker() {
   std::function<void()> statusUpdateCallback = [self = shared_from_this(),
                                                 this] {
     auto update = WorkerStatus();
-    update.verticesLoaded = _graphStore->verticesLoadedCount();
-    update.edgesLoaded = _graphStore->edgesLoadedCount();
+    update.graphStoreStats = _graphStore->getStats();
     VPackBuilder statusUpdateMsg;
     {
       auto ob = VPackObjectBuilder(&statusUpdateMsg);
