@@ -24,6 +24,8 @@
 #include <chrono>
 #include <thread>
 
+#include <fmt/core.h>
+
 #include "Conductor.h"
 
 #include "Pregel/Aggregator.h"
@@ -33,6 +35,8 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Recovery.h"
 #include "Pregel/Utils.h"
+#include "Pregel/Structs/WorkerStatusUpdate.h"
+#include "Pregel/Structs/ConductorStatus.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
@@ -51,6 +55,7 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <Inspection/VPack.h>
 #include <velocypack/Iterator.h>
 
 using namespace arangodb;
@@ -313,6 +318,31 @@ bool Conductor::_startGlobalStep() {
 }
 
 // ============ Conductor callbacks ===============
+
+// The worker can (and should) periodically call back
+// to update its status
+void Conductor::workerStatusUpdate(VPackSlice const& data) {
+  MUTEX_LOCKER(guard, _callbackMutex);
+  // TODO: for these updates we do not care about uniqueness of responses
+  // _ensureUniqueResponse(data);
+
+  auto update = deserialize<WorkerStatus>(data.get(Utils::payloadKey));
+
+  LOG_PREGEL("76632", INFO) << fmt::format("Update received {}", data.toJson());
+
+  auto sender = data.get(Utils::senderKey).copyString();
+  _status.workers.at(sender) = update;
+
+  _status.timeStamp = update.timeStamp;
+  _status.verticesLoaded = 0;
+  _status.edgesLoaded = 0;
+
+  for (auto&& [_, workerStatus] : _status.workers) {
+    _status.verticesLoaded += workerStatus.verticesLoaded;
+    _status.edgesLoaded += workerStatus.edgesLoaded;
+  }
+}
+
 void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   _ensureUniqueResponse(data);
@@ -640,6 +670,7 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
   _dbServers.clear();
   for (auto const& pair : vertexMap) {
     _dbServers.push_back(pair.first);
+    _status.workers.emplace(pair.first, WorkerStatus{});
   }
   // do not reload all shard id's, this list must stay in the same order
   if (_allShards.size() == 0) {
@@ -951,6 +982,10 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
     VPackObjectBuilder ob(&result, "masterContext");
     _masterContext->serializeValues(result);
   }
+
+  result.add(VPackValue("status"));
+  serialize(result, _status);
+
   result.close();
 }
 

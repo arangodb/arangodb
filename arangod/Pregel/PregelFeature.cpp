@@ -442,7 +442,9 @@ void PregelFeature::handleConductorRequest(TRI_vocbase_t& vocbase,
             std::to_string(exeNum));
   }
 
-  if (path == Utils::finishedStartupPath) {
+  if (path == Utils::statusUpdatePath) {
+    co->workerStatusUpdate(body);
+  } else if (path == Utils::finishedStartupPath) {
     co->finishedWorkerStartup(body);
   } else if (path == Utils::finishedWorkerStepPath) {
     outBuilder = co->finishedWorkerStep(body);

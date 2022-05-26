@@ -32,12 +32,12 @@
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterFeature.h"
 #include "Indexes/IndexIterator.h"
+#include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/IndexHelpers.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/TypedBuffer.h"
 #include "Pregel/Utils.h"
-#include "Pregel/Algos/AIR/AIR.h"
 #include "Pregel/WorkerConfig.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -109,8 +109,9 @@ static const char* shardError =
     " use distributeShardsLike";
 
 template<typename V, typename E>
-void GraphStore<V, E>::loadShards(WorkerConfig* config,
-                                  std::function<void()> const& cb) {
+void GraphStore<V, E>::loadShards(
+    WorkerConfig* config, std::function<void()> const& statusUpdateCallback,
+    std::function<void()> const& finishedLoadingCallback) {
   _config = config;
   TRI_ASSERT(_runningThreads == 0);
 
@@ -179,13 +180,14 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
           continue;
         }
         auto task = std::make_shared<basics::LambdaTask>(
-            queue, [this, vertexShard, edges]() -> Result {
+            queue,
+            [this, vertexShard, edges, statusUpdateCallback]() -> Result {
               if (_vocbaseGuard.database().server().isStopping()) {
                 LOG_PREGEL("4355b", WARN) << "Aborting graph loading";
                 return {TRI_ERROR_SHUTTING_DOWN};
               }
               try {
-                loadVertices(vertexShard, edges);
+                loadVertices(vertexShard, edges, statusUpdateCallback);
                 return Result();
               } catch (basics::Exception const& ex) {
                 LOG_PREGEL("8682a", WARN)
@@ -219,7 +221,11 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
     THROW_ARANGO_EXCEPTION(queue->status());
   }
 
-  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, cb);
+  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                     statusUpdateCallback);
+
+  SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                     finishedLoadingCallback);
 }
 
 template<typename V, typename E>
@@ -321,8 +327,9 @@ std::unique_ptr<TypedBuffer<M>> createBuffer(WorkerConfig const& config,
 }  // namespace
 
 template<typename V, typename E>
-void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
-                                    std::vector<ShardID> const& edgeShards) {
+void GraphStore<V, E>::loadVertices(
+    ShardID const& vertexShard, std::vector<ShardID> const& edgeShards,
+    std::function<void()> const& statusUpdateCallback) {
   LOG_PREGEL("24838", DEBUG) << "Loading from vertex shard " << vertexShard
                              << ", edge shards: " << edgeShards;
 
@@ -433,8 +440,10 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
     }
 
     if (batchSize > numVertices) {
+      _verticesLoadedCount += numVertices;
       numVertices = 0;
     } else {
+      _verticesLoadedCount += batchSize;
       numVertices -= batchSize;
     }
 
@@ -446,7 +455,12 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
                                  << numVertices << " left to load";
     }
     segmentSize = std::min<size_t>(numVertices, vertexSegmentSize());
+
+    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
+                                       statusUpdateCallback);
   }
+  LOG_DEVEL << "num_vertices " << numVertices;
+  _verticesLoadedCount += numVertices;
 
   // we must not overflow the range we have been assigned to
   TRI_ASSERT(vertexIdRange <= vertexIdRangeStart + numVerticesOriginal);
@@ -553,6 +567,7 @@ void GraphStore<V, E>::loadEdges(
           return true;
         },
         1000)) { /* continue loading */
+      // Might overcount a bit;
     }
   } else {
     while (cursor->nextDocument(
@@ -572,11 +587,13 @@ void GraphStore<V, E>::loadEdges(
           return true;
         },
         1000)) { /* continue loading */
+      // Might overcount a bit;
     }
   }
 
   // Add up all added elements
   _localEdgeCount += addedEdges;
+  _edgesLoadedCount += addedEdges;
 }
 
 template<typename V, typename E>
