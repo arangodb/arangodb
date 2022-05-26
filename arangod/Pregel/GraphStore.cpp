@@ -388,6 +388,7 @@ void GraphStore<V, E>::loadVertices(
     if (vertexBuff == nullptr || vertexBuff->remainingCapacity() == 0) {
       vertices.push_back(createBuffer<Vertex<V, E>>(*_config, segmentSize));
       vertexBuff = vertices.back().get();
+      _stats.vertexStorageBytes += vertexBuff->memoryUseInBytes();
     }
 
     Vertex<V, E>* ventry = vertexBuff->appendElement();
@@ -399,16 +400,22 @@ void GraphStore<V, E>::loadVertices(
       vKeys.push_back(createBuffer<char>(
           *_config, ::stringChunkSize(vKeys.size(), numVertices, true)));
       keyBuff = vKeys.back().get();
+      _stats.vertexKeyStorageBytes += keyBuff->memoryUseInBytes();
     }
 
     ventry->setShard(sourceShard);
     ventry->setKey(keyBuff->end(), static_cast<uint16_t>(keyLen));
     ventry->setActive(true);
+
+    _stats.vertexStorageBytesUsed += sizeof(Vertex<V, E>);
+
     TRI_ASSERT(keyLen <= std::numeric_limits<uint16_t>::max());
 
     // actually copy in the key
     memcpy(keyBuff->end(), key, keyLen);
     keyBuff->advance(keyLen);
+
+    _stats.vertexKeyStorageBytesUsed += keyLen;
 
     // load vertex data
     documentId = trx.extractIdString(slice);
@@ -425,6 +432,7 @@ void GraphStore<V, E>::loadVertices(
       loadEdges(trx, *ventry, edgeShard, documentId, edges, eKeys, numVertices,
                 info);
     }
+    ++_stats.numberVerticesLoaded;
     return true;
   };
 
@@ -440,10 +448,8 @@ void GraphStore<V, E>::loadVertices(
     }
 
     if (batchSize > numVertices) {
-      _verticesLoadedCount += numVertices;
       numVertices = 0;
     } else {
-      _verticesLoadedCount += batchSize;
       numVertices -= batchSize;
     }
 
@@ -459,8 +465,6 @@ void GraphStore<V, E>::loadVertices(
     SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
                                        statusUpdateCallback);
   }
-  LOG_DEVEL << "num_vertices " << numVertices;
-  _verticesLoadedCount += numVertices;
 
   // we must not overflow the range we have been assigned to
   TRI_ASSERT(vertexIdRange <= vertexIdRangeStart + numVerticesOriginal);
@@ -470,7 +474,6 @@ void GraphStore<V, E>::loadVertices(
   ::moveAppend(vKeys, _vertexKeys);
   ::moveAppend(edges, _edges);
   ::moveAppend(eKeys, _edgeKeys);
-
   LOG_PREGEL("6d389", DEBUG)
       << "Pregel worker: done loading from vertex shard " << vertexShard;
 }
@@ -492,12 +495,14 @@ void GraphStore<V, E>::loadEdges(
     if (edgeBuff == nullptr || edgeBuff->remainingCapacity() == 0) {
       edges.push_back(createBuffer<Edge<E>>(*_config, edgeSegmentSize()));
       edgeBuff = edges.back().get();
+      _stats.edgeStorageBytes += edgeBuff->memoryUseInBytes();
     }
     if (keyBuff == nullptr || keyLen > keyBuff->remainingCapacity()) {
       TRI_ASSERT(keyLen < ::maxStringChunkSize);
       edgeKeys.push_back(createBuffer<char>(
           *_config, ::stringChunkSize(edgeKeys.size(), numVertices, false)));
       keyBuff = edgeKeys.back().get();
+      _stats.edgeKeyStorageBytes += keyBuff->memoryUseInBytes();
     }
   };
 
@@ -508,10 +513,12 @@ void GraphStore<V, E>::loadEdges(
   size_t addedEdges = 0;
   auto buildEdge = [&](Edge<E>* edge, std::string_view toValue) {
     ++addedEdges;
+    ++_stats.numberEdgesLoaded;
     if (vertex.addEdge(edge) == vertex.maxEdgeCount()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "too many edges for vertex");
     }
+    _stats.edgeStorageBytesUsed += sizeof(Edge<E>);
 
     std::size_t pos = toValue.find('/');
     collectionName = std::string(toValue.substr(0, pos));
@@ -520,6 +527,8 @@ void GraphStore<V, E>::loadEdges(
     edge->_toKeyLength = static_cast<uint16_t>(key.size());
     TRI_ASSERT(key.size() <= std::numeric_limits<uint16_t>::max());
     keyBuff->advance(key.size());
+
+    _stats.edgeKeyStorageBytesUsed += key.size();
 
     // actually copy in the key
     memcpy(edge->_toKey, key.data(), key.size());
@@ -593,7 +602,6 @@ void GraphStore<V, E>::loadEdges(
 
   // Add up all added elements
   _localEdgeCount += addedEdges;
-  _edgesLoadedCount += addedEdges;
 }
 
 template<typename V, typename E>

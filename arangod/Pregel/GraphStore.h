@@ -29,12 +29,15 @@
 #include "Pregel/Iterators.h"
 #include "Pregel/Reports.h"
 #include "Pregel/TypedBuffer.h"
+#include "Pregel/Structs/GraphStoreStats.h"
 #include "Utils/DatabaseGuard.h"
 
 #include <atomic>
 #include <cstdint>
 #include <memory>
 #include <set>
+
+#include <fmt/core.h>
 
 struct TRI_vocbase_t;
 
@@ -72,6 +75,27 @@ class GraphStore final {
   uint64_t localEdgeCount() const { return _localEdgeCount; }
   size_t verticesLoadedCount() const { return _verticesLoadedCount; }
   size_t edgesLoadedCount() const { return _edgesLoadedCount; }
+  auto getStats() -> GraphStoreStats const { return _stats.snapshot(); }
+  auto computeStats() -> GraphStoreStats const {
+    auto stats = GraphStoreStats{};
+
+    std::lock_guard<std::mutex> guard(_bufferMutex);
+    for (auto&& v : _vertices) {
+      stats.numberVerticesLoaded += v->size();
+      stats.vertexStorageBytes += v->memoryUseInBytes();
+    }
+    for (auto&& vk : _vertexKeys) {
+      stats.vertexKeyStorageBytes += vk->memoryUseInBytes();
+    }
+    for (auto&& e : _edges) {
+      stats.numberEdgesLoaded += e->size();
+      stats.edgeStorageBytes += e->memoryUseInBytes();
+    }
+    for (auto&& ek : _edgeKeys) {
+      stats.edgeKeyStorageBytes += ek->memoryUseInBytes();
+    }
+    return stats;
+  }
 
   GraphFormat<V, E> const* graphFormat() { return _graphFormat.get(); }
 
@@ -133,6 +157,9 @@ class GraphStore final {
   std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>> _edges;
   std::vector<TypedBuffer<Edge<E>>*> _nextEdgeBuffer;
   std::vector<std::unique_ptr<TypedBuffer<char>>> _edgeKeys;
+
+  std::mutex _statsMutex;
+  AtomicGraphStoreStats _stats;
 
   // cache the amount of vertices
   std::set<ShardID> _loadedShards;

@@ -81,6 +81,7 @@ struct TypedBuffer {
     TRI_ASSERT(_end >= _begin);
     return static_cast<size_t>(_end - _begin);
   }
+  size_t memoryUseInBytes() const noexcept { return capacity() * sizeof(T); }
   /// get number of actually mapped bytes
   size_t capacity() const noexcept {
     TRI_ASSERT(_capacity >= _begin);

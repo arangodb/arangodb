@@ -38,11 +38,28 @@
 
 namespace arangodb::pregel {
 
+struct ConductorTiming {
+  TimeInterval loading;
+  TimeInterval running;
+  TimeInterval storing;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, ConductorTiming& x) {
+  return f.object(x).fields(f.field(static_strings::loading, x.loading),
+                            f.field(static_strings::running, x.running),
+                            f.field(static_strings::storing, x.storing));
+}
+
 struct ConductorStatus {
   TimeStamp timeStamp;
   std::size_t verticesLoaded;
   std::size_t edgesLoaded;
   std::unordered_map<ServerID, WorkerStatus> workers;
+
+  TimeStamp created;
+  TimeStamp expires;
+
+  ConductorTiming timing;
 
   ConductorStatus()
       : timeStamp{std::chrono::system_clock::now()},
@@ -56,8 +73,9 @@ auto inspect(Inspector& f, ConductorStatus& x) {
   return f.object(x).fields(
       f.field(static_strings::timeStamp, x.timeStamp)
           .transformWith(inspection::TimeStampTransformer{}),
-      f.field(static_strings::verticesLoaded, x.verticesLoaded),
-      f.field(static_strings::edgesLoaded, x.edgesLoaded),
+      f.field(static_strings::numberVerticesLoaded, x.verticesLoaded),
+      f.field(static_strings::numberEdgesLoaded, x.edgesLoaded),
+      f.field(static_strings::timing, x.timing),
       f.field(static_strings::workerStatus, x.workers));
 }
 
