@@ -36,9 +36,11 @@
 
 using namespace arangodb;
 using namespace arangodb::iresearch;
+using namespace arangodb::basics;
+using namespace std::literals;
 
 namespace {
-  void analyzerFeaturesChecker(Features const& features, std::vector<std::string> expected) {
+  void analyzerFeaturesChecker(std::vector<std::string> expected, Features const& features) {
     VPackBuilder b;
     features.toVelocyPack(b);
     auto featuresSlice = b.slice();
@@ -49,7 +51,7 @@ namespace {
       actual.push_back(itr.copyString());
     }
 
-    ASSERT_EQ(actual.size(), expected.size());
+    ASSERT_EQ(expected.size(), actual.size());
     std::sort(expected.begin(), expected.end());
     std::sort(actual.begin(), actual.end());
 
@@ -62,8 +64,8 @@ namespace {
     }
   }
 
-  void serializationChecker(ArangodServer& server, std::string_view jsonAsSring) {
-    auto json = VPackParser::fromJson({jsonAsSring.data(), jsonAsSring.size()});
+  void serializationChecker(ArangodServer& server, std::string_view jsonAsString) {
+    auto json = VPackParser::fromJson({jsonAsString.data(), jsonAsString.size()});
 
     arangodb::iresearch::IResearchInvertedIndexMeta metaLhs, metaRhs;
     std::string errorString;
@@ -83,7 +85,6 @@ namespace {
       VPackObjectBuilder obj(&serializedLhs);
       ASSERT_TRUE(metaLhs.json(server, serializedLhs, true, &vocbase));
     }
-    //  std::cout << serializedLhs.slice().toString() << std::endl << std::endl<< std::endl << std::endl;
 
     res = metaRhs.init(server, serializedLhs.slice(), true, errorString,
                          irs::string_ref(vocbase.name()));
@@ -99,22 +100,21 @@ namespace {
       ASSERT_TRUE(metaLhs.json(server, serializedRhs, true, &vocbase));
 
     }
-    //  std::cout << serializedRhs.slice().toString() << std::endl;
 
     ASSERT_EQ(serializedLhs.slice().toString(), serializedRhs.slice().toString());
-    //  ASSERT_EQ(metaLhs, metaRhs); // FIXME: PrimarySort, StoredValues and etc should present in metaRhs. At this momemnt we loose it since serialization works wrong
+    ASSERT_EQ(metaLhs, metaRhs); // FIXME: PrimarySort, StoredValues and etc should present in metaRhs. At this momemnt we loose it since serialization works wrong
 
   }
 }
 
-const std::string complexJsonDefinition1 = R"(
+std::string_view complexJsonDefinition1 = R"(
 {
   "fields": [
      "simple",
       {
         "expression": "RETURN MERGE(@param, {foo: 'bar'}) ",
         "override": true,
-        "name": "huypuy",
+        "name": "field_name_1",
         "analyzer": "test_text",
         "features": ["norm", "frequency"],
         "isArray":false
@@ -128,7 +128,7 @@ const std::string complexJsonDefinition1 = R"(
       {
         "expression": "RETURN SPLIT(@param, ',') ",
         "override": true,
-        "name": "huypuy2",
+        "name": "field_name_2",
         "analyzer": "test_text",
         "features": ["norm", "frequency"],
         "isArray":true,
@@ -196,7 +196,7 @@ const std::string complexJsonDefinition1 = R"(
   "analyzerDefinitions":[{"name":"test_text", "type":"identity", "properties":{}}]
 })";
 
-const std::string complexJsonDefinition2 = R"(
+std::string_view complexJsonDefinition2 = R"(
 {
   "fields": [
      "dummy",
@@ -319,10 +319,10 @@ class IResearchInvertedIndexMetaTest
   }
 };
 
-TEST_F(IResearchInvertedIndexMetaTest, test_wrongDefinition) {
+TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinition) {
 
   // Nested is incompatibe with trackListPositions
-  const std::string wrongDefinition1 = R"(
+  std::string_view wrongDefinition1 = R"(
   {
     "fields": [
       {
@@ -349,8 +349,9 @@ TEST_F(IResearchInvertedIndexMetaTest, test_wrongDefinition) {
    ]
    })"; // FIXME: This definition is not crashed
 
+
   // invalid analyzer
-  const std::string wrongDefinition2 = R"(
+  std::string_view wrongDefinition2 = R"(
   {
       "fields": [
           {
@@ -370,7 +371,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_wrongDefinition) {
   })";
 
   // not existing analyzer
-  const std::string wrongDefinition3 = R"(
+  std::string_view wrongDefinition3 = R"(
   {
       "fields": [
           {
@@ -397,7 +398,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_wrongDefinition) {
   })";
 
   // analyzer with only 'position' feature
-  const std::string wrongDefinition4 = R"(
+  std::string_view wrongDefinition4 = R"(
   {
       "fields": [
           {
@@ -423,7 +424,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_wrongDefinition) {
   })";
 
   // invalid feature name
-  const std::string wrongDefinition5 = R"(
+  std::string_view wrongDefinition5 = R"(
   {
       "fields": [
           {
@@ -449,7 +450,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_wrongDefinition) {
   })";
 
   // define field name more than 1 time
-  const std::string wrongDefinition6 = R"(
+  std::string_view wrongDefinition6 = R"(
   {
       "fields": [
           {
@@ -472,7 +473,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_wrongDefinition) {
   })"; // FIXME: This definition is not crashed
 
   // only one expansion [*] is allowed
-  const std::string wrongDefinition7 = R"(
+  std::string_view wrongDefinition7 = R"(
   {
       "fields": [
           {
@@ -498,7 +499,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_wrongDefinition) {
   })";
 
   // expansion [*] in nested is not allowed
-  const std::string wrongDefinition8 = R"(
+  std::string_view wrongDefinition8 = R"(
   {
       "fields": [
           {
@@ -523,15 +524,62 @@ TEST_F(IResearchInvertedIndexMetaTest, test_wrongDefinition) {
       ]
   })";
 
-  std::vector<std::string_view> badJsons{
-    //wrongDefinition1, FIXME: This definition is not failing
+  // "fields" in "primarySort" is empty
+  std::string_view wrongDefinition9 = R"(
+  {
+      "fields": [
+          {
+              "name": "foo",
+              "analyzer": "identity",
+              "nested": [
+                  {
+                      "name": "bar.bud[*].buz"
+                  }
+              ]
+          }
+      ],
+      "primarySort": {
+         "fields":[],
+         "compression": "none",
+         "locale": "myLocale"
+      }
+  })";
+
+  // Empty fields array
+  std::string_view wrongDefinition10 = R"(
+  {
+    "fields": [],
+    "trackListPositions": true,
+    "analyzerDefinitions":[
+      {
+       "name":"stem_analyzer",
+       "type":"stem",
+       "properties": {
+         "locale": "en.utf-8"
+       },
+       "features": ["norm"]
+      }
+   ]
+   })";
+
+  // empty object
+  std::string_view wrongDefinition11 = R"({})";
+
+
+
+
+  std::array<std::string_view, 9> badJsons{
+//    wrongDefinition1, //FIXME: This definition is not failing
     wrongDefinition2,
     wrongDefinition3,
     wrongDefinition4,
     wrongDefinition5,
-    //wrongDefinition6, FIXME: This definition is not failing
+//    wrongDefinition6, //FIXME: This definition is not failing
     wrongDefinition7,
-    wrongDefinition8
+    wrongDefinition8,
+    wrongDefinition9,
+    wrongDefinition10,
+    wrongDefinition11
   };
 
   int i = 1;
@@ -553,58 +601,138 @@ TEST_F(IResearchInvertedIndexMetaTest, test_wrongDefinition) {
   }
 }
 
-TEST_F(IResearchInvertedIndexMetaTest, test_normalization) {
+TEST_F(IResearchInvertedIndexMetaTest, testCornerCases) {
+
+  // Empty analyzerDefinitions array
+  std::string_view definition2 = R"(
+  {
+    "fields": ["foo"],
+    "analyzerDefinitions":[]
+   })";
 
 
-  const std::string simpleDefinition = R"(
+  // "fields" in storedValues is empty
+  std::string_view definition4 = R"(
+  {
+      "fields": [
+          {
+              "name": "foo",
+              "analyzer": "identity"
+          }
+      ],
+      "storedValues": [
+          {
+              "fields": [],
+              "compression": "none"
+          }
+      ]
+  })";
+
+  // "fields" in storedValues is empty
+  std::string_view definition5 = R"(
+  {
+      "fields": [
+          {
+              "name": "foo",
+              "analyzer": "identity"
+          }
+      ],
+      "storedValues": [{ "fields": [], "compression": "none"}]
+  })";
+
+  // "nested" is empty
+  std::string_view definition6 = R"(
+  {
+      "fields": [
+          {
+              "name": "foo",
+              "analyzer": "identity",
+              "nested": []
+          }
+      ]
+  })";
+
+  // "features" is empty
+  std::string_view definition7 = R"(
   {
     "fields": [
        "simple"
-    ]
+    ],
+    "features": []
   })";
 
-  auto json = VPackParser::fromJson(simpleDefinition);
-
-  arangodb::iresearch::IResearchInvertedIndexMeta meta;
-  std::string errorString;
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                        testDBInfo(server.server()));
-  auto res = meta.init(server.server(), json->slice(), true, errorString,
-                       irs::string_ref(vocbase.name()));
+  // Duplication of analyzers names
+  std::string_view definition8 = R"(
   {
-    SCOPED_TRACE(::testing::Message("Unexpected error:") << errorString);
-    ASSERT_TRUE(res);
+    "fields": [
+      "foo"
+    ],
+    "analyzerDefinitions":[
+      {
+        "name":"myAnalyzer",
+        "type":"stem",
+        "properties": {
+          "locale": "en.utf-8"
+        },
+        "features": ["norm"]
+      },
+      {
+        "name":"myAnalyzer",
+        "type":"delimiter",
+        "properties": {
+          "delimiter" : "."
+        },
+        "features": ["frequency"]
+      }
+    ]
+   })";
+
+
+  std::array<std::string_view, 5> jsons{
+//    definition2,
+    definition4,
+    definition5,
+    definition6,
+    definition7,
+    definition8
+  };
+
+  int i = 1;
+  for (auto jsonD : jsons) {
+    auto json = VPackParser::fromJson(jsonD.data(), jsonD.size());
+
+    arangodb::iresearch::IResearchInvertedIndexMeta meta;
+    std::string errorString;
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
+    auto res = meta.init(server.server(), json->slice(), true, errorString,
+                         irs::string_ref(vocbase.name()));
+    {
+      SCOPED_TRACE(::testing::Message("Unexpected error in ") << i << " definition: " << errorString);
+      ASSERT_TRUE(res);
+    }
+    ASSERT_TRUE(errorString.empty());
+    ++i;
   }
-  ASSERT_TRUE(errorString.empty());
-
-  VPackBuilder serialize;
-  {
-    VPackObjectBuilder obj(&serialize);
-    ASSERT_TRUE(meta.json(server.server(), serialize, true, &vocbase));
-  }
-
-  std::cout << serialize.toString() << std::endl;
-
 }
 
-TEST_F(IResearchInvertedIndexMetaTest, test_defaults) {
+TEST_F(IResearchInvertedIndexMetaTest, testDefaults) {
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
 
   ASSERT_EQ(0, meta._analyzerDefinitions.size());
   ASSERT_TRUE(true == meta._fields.empty());
   ASSERT_TRUE(meta._sort.empty());
   ASSERT_TRUE(meta._storedValues.empty());
-  ASSERT_EQ(meta._sort.sortCompression(), irs::type<irs::compression::lz4>::id());
+  ASSERT_EQ(irs::type<irs::compression::lz4>::id(), meta._sort.sortCompression());
   ASSERT_TRUE(meta._analyzerDefinitions.empty());
   ASSERT_FALSE(meta.dense());
-  ASSERT_EQ(meta._version,
-            static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX));
-  ASSERT_EQ(meta. _consistency, Consistency::kEventual);
+  ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX), meta._version);
+  ASSERT_EQ(Consistency::kEventual, meta. _consistency);
   ASSERT_TRUE(meta._defaultAnalyzerName.empty());
   ASSERT_FALSE(meta._features);
 }
 
-TEST_F(IResearchInvertedIndexMetaTest, test_readDefaults) {
+TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
   auto json = VPackParser::fromJson(R"({
     "fields": ["dummy"]
   })");
@@ -621,12 +749,11 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readDefaults) {
     ASSERT_EQ("dummy", meta._fields.front().toString());
     ASSERT_TRUE(meta._sort.empty());
     ASSERT_TRUE(meta._storedValues.empty());
-    ASSERT_EQ(meta._sort.sortCompression(), irs::type<irs::compression::lz4>::id());
+    ASSERT_EQ(irs::type<irs::compression::lz4>::id(), meta._sort.sortCompression());
     ASSERT_TRUE(meta._analyzerDefinitions.empty());
     ASSERT_FALSE(meta.dense());
-    ASSERT_EQ(meta._version,
-              static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX));
-    ASSERT_EQ(meta._consistency, Consistency::kEventual);
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX), meta._version);
+    ASSERT_EQ(Consistency::kEventual, meta._consistency);
     ASSERT_TRUE(meta._defaultAnalyzerName.empty());
     ASSERT_FALSE(meta._features);
   }
@@ -644,20 +771,36 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readDefaults) {
     ASSERT_EQ("dummy", meta._fields.front().toString());
     ASSERT_TRUE(meta._sort.empty());
     ASSERT_TRUE(meta._storedValues.empty());
-    ASSERT_EQ(meta._sort.sortCompression(), irs::type<irs::compression::lz4>::id());
+    ASSERT_EQ(irs::type<irs::compression::lz4>::id(), meta._sort.sortCompression());
     ASSERT_TRUE(meta._analyzerDefinitions.empty());
     ASSERT_FALSE(meta.dense());
-    ASSERT_EQ(meta._version,
-              static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX));
-    ASSERT_EQ(meta._consistency, Consistency::kEventual);
+    ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX), meta._version);
+    ASSERT_EQ(Consistency::kEventual, meta._consistency);
     ASSERT_TRUE(meta._defaultAnalyzerName.empty());
     ASSERT_FALSE(meta._features);
   }
 }
 
-TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues1) {
+TEST_F(IResearchInvertedIndexMetaTest, testReadCustomizedValues1) {
   // without active vocbase
-  auto json = VPackParser::fromJson(complexJsonDefinition1);
+
+  std::string_view wrongDefinition10 = R"(
+  {
+      "fields": [
+          {
+              "name": "foo",
+              "analyzer": "identity"
+          }
+      ],
+      "storedValues": [
+          {
+              "fields": ["foo"],
+              "compression": "none"
+          }
+      ]
+  })";
+
+  auto json = VPackParser::fromJson(wrongDefinition10.data(), wrongDefinition10.size());
 
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
   std::string errorString;
@@ -682,13 +825,14 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues1) {
   // Check primary sort
   ASSERT_FALSE(meta._sort.empty());
   const auto& primarySortFields = meta._sort.fields();
-  ASSERT_EQ(primarySortFields.size(), 1);
+  ASSERT_EQ(1, primarySortFields.size());
+
   auto& psField = primarySortFields[0];
-  ASSERT_EQ(psField.size(), 1);
-  ASSERT_EQ(psField[0].name, "foo");
-  ASSERT_FALSE(psField[0].shouldExpand);
+  ASSERT_EQ(1, psField.size());
+  ASSERT_EQ(psField[0], (AttributeName{"foo"sv, false}));
+
   ASSERT_FALSE(meta._sort.direction(0));
-  ASSERT_EQ(meta._sort.Locale(), "mylocale");
+  ASSERT_EQ("mylocale", meta._sort.Locale());
   EXPECT_EQ(irs::type<irs::compression::lz4>::id(),
             meta._sort.sortCompression());
 
@@ -697,15 +841,15 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues1) {
   // Check stored values
   ASSERT_FALSE(meta._storedValues.empty());
   auto storedValues = meta._storedValues.columns();
-  ASSERT_EQ(storedValues.size(), 1);
+  ASSERT_EQ(1, storedValues.size());
   ASSERT_FALSE(storedValues[0].name.empty()); // field name with delimiter. Hard to compare it. Just check emptyness
-  ASSERT_EQ(storedValues[0].compression().id(), irs::type<irs::compression::none>::id());
-  ASSERT_EQ(storedValues[0].fields.size(), 1);
-  ASSERT_EQ(storedValues[0].fields[0].first, "foo.boo.nest"); // Now verify field name
+  ASSERT_EQ(irs::type<irs::compression::none>::id(), storedValues[0].compression().id());
+  ASSERT_EQ(1, storedValues[0].fields.size());
+  ASSERT_EQ("foo.boo.nest", storedValues[0].fields[0].first); // Now verify field name
 
   ASSERT_EQ(meta._version,
             static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MIN));
-  ASSERT_EQ(meta._consistency, Consistency::kImmediate);
+  ASSERT_EQ(Consistency::kImmediate, meta._consistency);
   ASSERT_TRUE(meta._defaultAnalyzerName.empty()); // FIXME: HOW COME?
   ASSERT_TRUE(meta._features);
   ASSERT_TRUE(meta._includeAllFields);
@@ -717,70 +861,63 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues1) {
     ASSERT_TRUE(meta.json(server.server(), serialized, false, &vocbase));
 
   }
-//  std::cout << serialized.slice().toString() << std::endl;
 
   // Iterating through fields and check them
   {
     auto& field0 = meta._fields[0];
 
-    ASSERT_EQ(field0.attribute().size(), 1);
-    auto& attr = field0.attribute()[0];
-    ASSERT_EQ(attr.name, "simple");
-    ASSERT_FALSE(attr.shouldExpand);
+    ASSERT_EQ(1, field0.attribute().size());
+    ASSERT_EQ(field0.attribute()[0], (AttributeName{"simple"sv, false}));
 
     ASSERT_FALSE(field0.overrideValue());
-    ASSERT_EQ(field0.expansion().size(), 0);
-    ASSERT_EQ(field0.nested().size(), 0);
-    ASSERT_EQ(field0.expression().size(), 0);
+    ASSERT_EQ(0, field0.expansion().size());
+    ASSERT_EQ(0, field0.nested().size());
+    ASSERT_EQ(0, field0.expression().size());
 
-    ASSERT_EQ(field0.analyzerName(), "identity"); // identity by default. FIXME: Default should be changed by root analyzer
+    ASSERT_EQ("identity", field0.analyzerName()); // identity by default. FIXME: Default should be changed by root analyzer
     ASSERT_FALSE(field0.features().has_value()); // Features are not specified in current field
     ASSERT_TRUE(meta._features.has_value()); // However, we will use features from meta
-    analyzerFeaturesChecker(meta._features.value(), {"norm", "frequency", "position"});
+    analyzerFeaturesChecker({"norm", "frequency", "position"}, meta._features.value());
 
     ASSERT_FALSE(field0.isArray());
     ASSERT_FALSE(field0.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
-    ASSERT_FALSE(field0.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
+    ASSERT_TRUE(field0.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
   }
 
   {
     auto& field1 = meta._fields[1];
 
-    ASSERT_EQ(field1.attribute().size(), 1);
-    auto& attr = field1.attribute()[0];
-    ASSERT_EQ(attr.name, "huypuy");
-    ASSERT_FALSE(attr.shouldExpand);
+    ASSERT_EQ(1, field1.attribute().size());
+    ASSERT_EQ(field1.attribute()[0], (AttributeName{"field_name_1"sv, false}));
 
     ASSERT_TRUE(field1.overrideValue());
-    ASSERT_EQ(field1.expansion().size(), 0);
-    ASSERT_EQ(field1.nested().size(), 0);
-    ASSERT_EQ(field1.expression(), "RETURN MERGE(@param, {foo: 'bar'}) ");
+    ASSERT_EQ(0, field1.expansion().size());
+    ASSERT_EQ(0, field1.nested().size());
+    ASSERT_EQ("RETURN MERGE(@param, {foo: 'bar'}) ", field1.expression());
 
-    ASSERT_EQ(field1.analyzerName(), vocbase.name() + "::test_text");
+    ASSERT_EQ(vocbase.name() + "::test_text", field1.analyzerName());
     ASSERT_TRUE(field1.features().has_value());
-    analyzerFeaturesChecker(field1.features().value(), {"norm", "frequency"});
+    analyzerFeaturesChecker({"norm", "frequency"}, field1.features().value());
 
 
     ASSERT_FALSE(field1.isArray());
-    ASSERT_FALSE(field1.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
+    ASSERT_TRUE(field1.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
     ASSERT_FALSE(field1.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
   }
 
   {
     auto& field2 = meta._fields[2];
-    ASSERT_EQ(field2.attribute().size(), 1);
-    auto& attr = field2.attribute()[0];
-    ASSERT_EQ(attr.name, "foo");
-    ASSERT_FALSE(attr.shouldExpand);
+    ASSERT_EQ(1, field2.attribute().size());
+    ASSERT_EQ(field2.attribute()[0], (AttributeName{"foo"sv, false}));
 
     ASSERT_FALSE(field2.overrideValue());
-    ASSERT_EQ(field2.expansion().size(), 0);
-    ASSERT_EQ(field2.nested().size(), 0);
-    ASSERT_EQ(field2.expression(), "");
+    ASSERT_EQ(0, field2.expansion().size());
+    ASSERT_EQ(0, field2.nested().size());
+    ASSERT_EQ("", field2.expression());
 
-    ASSERT_EQ(field2.analyzerName(), vocbase.name() + "::test_text");
+    ASSERT_EQ(vocbase.name() + "::test_text", field2.analyzerName());
     ASSERT_TRUE(field2.features().has_value());
-    analyzerFeaturesChecker(field2.features().value(), {"position", "norm", "frequency"});
+    analyzerFeaturesChecker({"position", "norm", "frequency"}, field2.features().value());
 
     ASSERT_FALSE(field2.isArray());
     ASSERT_FALSE(field2.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
@@ -790,19 +927,17 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues1) {
   {
     auto& field3 = meta._fields[3];
 
-    ASSERT_EQ(field3.attribute().size(), 1);
-    auto& attr = field3.attribute()[0];
-    ASSERT_EQ(attr.name, "huypuy2");
-    ASSERT_FALSE(attr.shouldExpand);
+    ASSERT_EQ(1, field3.attribute().size());
+    ASSERT_EQ(field3.attribute()[0], (AttributeName{"field_name_2"sv, false}));
 
     ASSERT_TRUE(field3.overrideValue());
-    ASSERT_EQ(field3.expansion().size(), 0);
-    ASSERT_EQ(field3.nested().size(), 0);
-    ASSERT_EQ(field3.expression(), "RETURN SPLIT(@param, ',') ");
+    ASSERT_EQ(0, field3.expansion().size());
+    ASSERT_EQ(0, field3.nested().size());
+    ASSERT_EQ("RETURN SPLIT(@param, ',') ", field3.expression());
 
-    ASSERT_EQ(field3.analyzerName(), vocbase.name() + "::test_text");
+    ASSERT_EQ(vocbase.name() + "::test_text", field3.analyzerName());
     ASSERT_TRUE(field3.features().has_value());
-    analyzerFeaturesChecker(field3.features().value(), {"frequency", "norm"});
+    analyzerFeaturesChecker({"frequency", "norm"}, field3.features().value());
 
     ASSERT_TRUE(field3.isArray());
     ASSERT_TRUE(field3.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
@@ -812,179 +947,126 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues1) {
   {
     auto& field4 = meta._fields[4];
 
-    ASSERT_EQ(field4.attribute().size(), 3);
+    ASSERT_EQ(3, field4.attribute().size());
+
+    std::vector<AttributeName> attrs{{"foo"sv, false}, {"boo"sv, false}, {"too"sv, true}};
+    ASSERT_EQ(field4.attribute(), attrs);
     {
-      auto& attr1 = field4.attribute()[0];
-      ASSERT_EQ(attr1.name, "foo");
-      ASSERT_FALSE(attr1.shouldExpand);
-    }
-    {
-      auto& attr2 = field4.attribute()[1];
-      ASSERT_EQ(attr2.name, "boo");
-      ASSERT_FALSE(attr2.shouldExpand);
-    }
-    {
-      auto& attr3 = field4.attribute()[2];
-      ASSERT_EQ(attr3.name, "too");
-      ASSERT_TRUE(attr3.shouldExpand);
-    }
-    {
-      auto& expansions = field4.expansion();
-      ASSERT_EQ(field4.expansion().size(), 3);
-      {
-        auto& attr4 = expansions[0];
-        ASSERT_EQ(attr4.name, "doo");
-        ASSERT_FALSE(attr4.shouldExpand);
-      }
-      {
-        auto& attr5 = expansions[1];
-        ASSERT_EQ(attr5.name, "aoo");
-        ASSERT_FALSE(attr5.shouldExpand);
-      }
-      {
-        auto& attr6 = expansions[2];
-        ASSERT_EQ(attr6.name, "noo");
-        ASSERT_FALSE(attr6.shouldExpand);
-      }
+      // check expansion
+      ASSERT_EQ(3, field4.expansion().size());
+      std::vector<AttributeName> expAttrs{{"doo"sv, false}, {"aoo"sv, false}, {"noo"sv, false}};
+      ASSERT_EQ(field4.expansion(), expAttrs);
     }
 
     ASSERT_FALSE(field4.overrideValue());
-    ASSERT_EQ(field4.expansion().size(), 3);
-    ASSERT_EQ(field4.nested().size(), 0);
-    ASSERT_EQ(field4.expression(), "");
+    ASSERT_EQ(3, field4.expansion().size());
+    ASSERT_EQ(0, field4.nested().size());
+    ASSERT_EQ("", field4.expression());
 
-    ASSERT_EQ(field4.analyzerName(), "identity"); // identity by default. FIXME: Default should be changed by root analyzer
+    ASSERT_EQ("identity", field4.analyzerName()); // identity by default. FIXME: Default should be changed by root analyzer
     ASSERT_TRUE(field4.features().has_value());
-    analyzerFeaturesChecker(field4.features().value(), {"norm"});
+    analyzerFeaturesChecker({"norm"}, field4.features().value());
 
     ASSERT_TRUE(field4.isArray()); // IS IT ACTUALLY TRUE?
     ASSERT_FALSE(field4.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
-    ASSERT_FALSE(field4.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
+    ASSERT_TRUE(field4.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
   }
 
   {
     auto& field5 = meta._fields[5];
 
-    ASSERT_EQ(field5.attribute().size(), 3);
-    {
-      auto& attr1 = field5.attribute()[0];
-      ASSERT_EQ(attr1.name, "foo");
-      ASSERT_FALSE(attr1.shouldExpand);
-    }
-    {
-      auto& attr2 = field5.attribute()[1];
-      ASSERT_EQ(attr2.name, "boo");
-      ASSERT_FALSE(attr2.shouldExpand);
-    }
-    {
-      auto& attr3 = field5.attribute()[2];
-      ASSERT_EQ(attr3.name, "nest");
-      ASSERT_FALSE(attr3.shouldExpand);
-    }
+    ASSERT_EQ(3, field5.attribute().size());
+    std::vector<AttributeName> attrs{{"foo"sv, false}, {"boo"sv, false}, {"nest"sv, false}};
+    ASSERT_EQ(field5.attribute(), attrs);
 
     ASSERT_FALSE(field5.overrideValue());
-    ASSERT_EQ(field5.expansion().size(), 0);
-    ASSERT_EQ(field5.expression(), "");
+    ASSERT_EQ(0, field5.expansion().size());
+    ASSERT_EQ("", field5.expression());
 
-    ASSERT_EQ(field5.analyzerName(), vocbase.name() + "::test_text"); // identity by default. FIXME: Default should be changed by root analyzer
+    ASSERT_EQ(vocbase.name() + "::test_text", field5.analyzerName()); // identity by default. FIXME: Default should be changed by root analyzer
     ASSERT_TRUE(field5.features().has_value());
-    analyzerFeaturesChecker(field5.features().value(), {"norm"});
+    analyzerFeaturesChecker({"norm"}, field5.features().value());
 
     ASSERT_FALSE(field5.isArray());
     ASSERT_FALSE(field5.trackListPositions());
-    ASSERT_FALSE(field5.includeAllFields());
+    ASSERT_TRUE(field5.includeAllFields());
 
-    ASSERT_EQ(field5.nested().size(), 2);
+    ASSERT_EQ(2, field5.nested().size());
     {
       auto& nested0 = field5.nested()[0];
 
-      ASSERT_EQ(nested0.attribute().size(), 1);
-      auto& attr = nested0.attribute()[0];
-      ASSERT_EQ(attr.name, "A");
-      ASSERT_FALSE(attr.shouldExpand);
+      ASSERT_EQ(1, nested0.attribute().size());
+      ASSERT_EQ(nested0.attribute()[0], (AttributeName{"A"sv, false}));
 
       ASSERT_FALSE(nested0.overrideValue());
-      ASSERT_EQ(nested0.expansion().size(), 0);
-      ASSERT_EQ(nested0.nested().size(), 0);
-      ASSERT_EQ(nested0.expression(), "");
+      ASSERT_EQ(0, nested0.expansion().size());
+      ASSERT_EQ(0, nested0.nested().size());
+      ASSERT_EQ("", nested0.expression());
 
-      ASSERT_EQ(nested0.analyzerName(), "identity"); // FIXME: SHOULD BE DEFAULT VALUE FROM PARENT FIELD
+      ASSERT_EQ("identity", nested0.analyzerName()); // FIXME: SHOULD BE DEFAULT VALUE FROM PARENT FIELD
       ASSERT_FALSE(nested0.features().has_value()); // Features are not specified in current field
       ASSERT_TRUE(meta._features.has_value()); // However, we will use features from meta
-      analyzerFeaturesChecker(meta._features.value(), {"norm", "position", "frequency"});
+      analyzerFeaturesChecker({"norm", "position", "frequency"}, meta._features.value());
 
       ASSERT_FALSE(nested0.isArray());
       ASSERT_FALSE(nested0.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
-      ASSERT_FALSE(nested0.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
+      ASSERT_TRUE(nested0.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
     }
     {
       auto& nested1 = field5.nested()[1];
 
-      ASSERT_EQ(nested1.attribute().size(), 1);
-      auto& attr = nested1.attribute()[0];
-      ASSERT_EQ(attr.name, "Sub");
-      ASSERT_FALSE(attr.shouldExpand);
+      ASSERT_EQ(1, nested1.attribute().size());
+      ASSERT_EQ(nested1.attribute()[0], (AttributeName{"Sub"sv, false}));
 
       ASSERT_FALSE(nested1.overrideValue());
-      ASSERT_EQ(nested1.expansion().size(), 0);
-      ASSERT_EQ(nested1.expression(), "");
+      ASSERT_EQ(0, nested1.expansion().size());
+      ASSERT_EQ("", nested1.expression());
 
-      ASSERT_EQ(nested1.analyzerName(), "identity");
+      ASSERT_EQ("identity", nested1.analyzerName());
       ASSERT_FALSE(nested1.features().has_value()); // Features are not specified in current field
       ASSERT_TRUE(meta._features.has_value()); // However, we will use features from meta
-      analyzerFeaturesChecker(meta._features.value(), {"frequency", "position", "norm"});
+      analyzerFeaturesChecker({"frequency", "position", "norm"}, meta._features.value());
 
       ASSERT_FALSE(nested1.isArray());
       ASSERT_FALSE(nested1.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
-      ASSERT_FALSE(nested1.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
+      ASSERT_TRUE(nested1.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
 
-      ASSERT_EQ(nested1.nested().size(), 2);
+      ASSERT_EQ(2, nested1.nested().size());
 
       {
         auto& nested10 = nested1.nested()[0];
 
-        ASSERT_EQ(nested10.attribute().size(), 2);
-        {
-          auto& nested10Attr0 = nested10.attribute()[0];
-          ASSERT_EQ(nested10Attr0.name, "SubSub");
-          ASSERT_FALSE(nested10Attr0.shouldExpand);
-        }
-        {
-          auto& nested10Attr1 = nested10.attribute()[1];
-          ASSERT_EQ(nested10Attr1.name, "foo");
-          ASSERT_FALSE(nested10Attr1.shouldExpand);
-        }
+        ASSERT_EQ(2, nested10.attribute().size());
+
+        ASSERT_EQ(nested1.attribute()[0], (AttributeName{"SubSub"sv, false}));
+        ASSERT_EQ(nested1.attribute()[1], (AttributeName{"foo"sv, false}));
 
         ASSERT_TRUE(nested10.overrideValue());
-        ASSERT_EQ(nested10.expansion().size(), 0);
-        ASSERT_EQ(nested10.expression(), "RETURN SPLIT(@param, '.') ");
+        ASSERT_EQ(0, nested10.expansion().size());
+        ASSERT_EQ("RETURN SPLIT(@param, '.') ", nested10.expression());
 
-        ASSERT_EQ(nested10.analyzerName(), vocbase.name() + "::test_text");
+        ASSERT_EQ(vocbase.name() + "::test_text", nested10.analyzerName());
         ASSERT_TRUE(nested10.features().has_value());
-        analyzerFeaturesChecker(nested10.features().value(), {"position"});
+        analyzerFeaturesChecker({"position"}, nested10.features().value());
 
         ASSERT_FALSE(nested10.isArray());
         ASSERT_FALSE(nested10.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
-        ASSERT_FALSE(nested10.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
+        ASSERT_TRUE(nested10.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
       }
 
       {
         auto& nested11 = nested1.nested()[1];
 
-        ASSERT_EQ(nested11.attribute().size(), 1);
-        {
-          auto& nested11Attr0 = nested11.attribute()[0];
-          ASSERT_EQ(nested11Attr0.name, "woo");
-          ASSERT_FALSE(nested11Attr0.shouldExpand);
-        }
+        ASSERT_EQ(1, nested11.attribute().size());
+        ASSERT_EQ(nested1.attribute()[0], (AttributeName{"woo"sv, false}));
 
         ASSERT_FALSE(nested11.overrideValue());
-        ASSERT_EQ(nested11.expansion().size(), 0);
-        ASSERT_EQ(nested11.expression(), "");
+        ASSERT_EQ(0, nested11.expansion().size());
+        ASSERT_EQ("", nested11.expression());
 
-        ASSERT_EQ(nested11.analyzerName(), "identity"); // FIXME: SHOULD BE DEFAULT VALUE FROM PARENT FIELD
+        ASSERT_EQ("identity", nested11.analyzerName()); // FIXME: SHOULD BE DEFAULT VALUE FROM PARENT FIELD
         ASSERT_TRUE(nested11.features().has_value());
-        analyzerFeaturesChecker(nested11.features().value(), {"norm", "frequency"});
+        analyzerFeaturesChecker({"norm", "frequency"}, nested11.features().value());
 
         ASSERT_FALSE(nested11.isArray());
         ASSERT_TRUE(nested11.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
@@ -996,67 +1078,47 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues1) {
   {
     auto& field6 = meta._fields[6];
 
-    ASSERT_EQ(field6.attribute().size(), 2);
-    {
-      auto& attr0 = field6.attribute()[0];
-      ASSERT_EQ(attr0.name, "foobar");
-      ASSERT_FALSE(attr0.shouldExpand);
-    }
-    {
-      auto& attr1 = field6.attribute()[1];
-      ASSERT_EQ(attr1.name, "baz");
-      ASSERT_TRUE(attr1.shouldExpand);
-    }
-    ASSERT_EQ(field6.expansion().size(), 1);
-    {
-      auto& attr2 = field6.expansion()[0];
-      ASSERT_EQ(attr2.name, "bam");
-      ASSERT_FALSE(attr2.shouldExpand);
+    ASSERT_EQ(2, field6.attribute().size());
+    ASSERT_EQ(field6.attribute()[0], (AttributeName{"foobar"sv, false}));
+    ASSERT_EQ(field6.attribute()[1], (AttributeName{"baz"sv, false}));
 
-    }
+    ASSERT_EQ(1, field6.expansion().size());
+    ASSERT_EQ(field6.expansion()[0], (AttributeName{"bam"sv, false}));
 
-    ASSERT_EQ(field6.expansion().size(), 1);
+    ASSERT_EQ(1, field6.expansion().size());
     ASSERT_FALSE(field6.overrideValue());
-    ASSERT_EQ(field6.expression(), "");
+    ASSERT_EQ("", field6.expression());
 
-    ASSERT_EQ(field6.analyzerName(), "identity"); // FIXME: SHOULD BE DEFAULT VALUE FROM PARENT FIELD
+    ASSERT_EQ("identity", field6.analyzerName()); // FIXME: SHOULD BE DEFAULT VALUE FROM PARENT FIELD
     ASSERT_TRUE(field6.features().has_value());
-    analyzerFeaturesChecker(field6.features().value(), {"norm"});
+    analyzerFeaturesChecker({"norm"}, field6.features().value());
 
     ASSERT_TRUE(field6.isArray());
     ASSERT_FALSE(field6.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
-    ASSERT_FALSE(field6.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
+    ASSERT_TRUE(field6.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
 
-    ASSERT_EQ(field6.nested().size(), 1);
+    ASSERT_EQ(1, field6.nested().size());
     {
       auto& nested = field6.nested()[0];
 
-      ASSERT_EQ(nested.attribute().size(), 2);
-      {
-        auto& attr0 = nested.attribute()[0];
-        ASSERT_EQ(attr0.name, "bus");
-        ASSERT_FALSE(attr0.shouldExpand);
-      }
-      {
-        auto& attr1 = nested.attribute()[1];
-        ASSERT_EQ(attr1.name, "duz");
-        ASSERT_FALSE(attr1.shouldExpand);
-      }
+      ASSERT_EQ(2, nested.attribute().size());
+      ASSERT_EQ(nested.attribute()[0], (AttributeName{"bus"sv, false}));
+      ASSERT_EQ(nested.attribute()[1], (AttributeName{"duz"sv, false}));
 
-      ASSERT_EQ(nested.expression(), "RETURN SPLIT(@param, '#') ");
-      analyzerFeaturesChecker(nested.features().value(), {"position"});
+      ASSERT_EQ("RETURN SPLIT(@param, '#') ", nested.expression());
+      analyzerFeaturesChecker({"position"}, nested.features().value());
       ASSERT_TRUE(nested.overrideValue());
 
       ASSERT_FALSE(nested.isArray());
       ASSERT_FALSE(nested.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
-      ASSERT_FALSE(nested.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
+      ASSERT_TRUE(nested.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
     }
   }
 }
 
-TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues2) {
+TEST_F(IResearchInvertedIndexMetaTest, testReadCustomizedValues2) {
 
-  auto json = VPackParser::fromJson(complexJsonDefinition2);
+  auto json = VPackParser::fromJson(complexJsonDefinition2.data(), complexJsonDefinition2.size());
 
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
   std::string errorString;
@@ -1070,7 +1132,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues2) {
   }
   ASSERT_TRUE(errorString.empty());
 
-  ASSERT_EQ(3, meta._analyzerDefinitions.size());
+  ASSERT_EQ(meta._analyzerDefinitions.size(), 3);
   ASSERT_NE(meta._analyzerDefinitions.find(vocbase.name() + "::delimiter_analyzer"),
             meta._analyzerDefinitions.end());
   ASSERT_NE(meta._analyzerDefinitions.find(vocbase.name() + "::stem_analyzer"),
@@ -1081,26 +1143,20 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues2) {
   // Check primary sort
   ASSERT_FALSE(meta._sort.empty());
   const auto& primarySortFields = meta._sort.fields();
-  ASSERT_EQ(primarySortFields.size(), 2);
+  ASSERT_EQ(2, primarySortFields.size());
   {
-    auto& psField0 = primarySortFields[0];
-    ASSERT_EQ(psField0.size(), 1);
-    ASSERT_EQ(psField0[0].name, "foo");
-    ASSERT_FALSE(psField0[0].shouldExpand);
+    ASSERT_EQ(1, primarySortFields[0].size());
+    ASSERT_EQ(primarySortFields[0][0], (AttributeName{"foo"sv, false}));
   }
   {
-    auto& psField1 = primarySortFields[1];
-    ASSERT_EQ(psField1.size(), 2);
-    ASSERT_EQ(psField1[0].name, "foo");
-    ASSERT_FALSE(psField1[0].shouldExpand);
-
-    ASSERT_EQ(psField1[1].name, "boo");
-    ASSERT_FALSE(psField1[1].shouldExpand);
+    ASSERT_EQ(2, primarySortFields[1].size());
+    ASSERT_EQ(primarySortFields[1][0], (AttributeName{"foo"sv, false}));
+    ASSERT_EQ(primarySortFields[1][1], (AttributeName{"boo"sv, false}));
   }
 
   ASSERT_TRUE(meta._sort.direction(0));
   ASSERT_FALSE(meta._sort.direction(1));
-  ASSERT_EQ(meta._sort.Locale(), "de_DE_PHONEBOOK");
+  ASSERT_EQ("de_DE_PHONEBOOK", meta._sort.Locale());
   EXPECT_EQ(irs::type<irs::compression::lz4>::id(),
             meta._sort.sortCompression());
 
@@ -1109,203 +1165,173 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues2) {
   // Check stored values
   ASSERT_FALSE(meta._storedValues.empty());
   auto storedValues = meta._storedValues.columns();
-  ASSERT_EQ(storedValues.size(), 2);
+  ASSERT_EQ(2, storedValues.size());
   {
     auto& storedValuesField0 = storedValues[0];
     ASSERT_FALSE(storedValuesField0.name.empty()); // field name with delimiter. Hard to compare it. Just check emptyness
-    ASSERT_EQ(storedValuesField0.compression().id(), irs::type<irs::compression::lz4>::id());
-    ASSERT_EQ(storedValuesField0.fields.size(), 1);
-    ASSERT_EQ(storedValuesField0.fields[0].first, "foo.boo"); // Now verify field name
+    ASSERT_EQ(irs::type<irs::compression::lz4>::id(), storedValuesField0.compression().id());
+    ASSERT_EQ(1, storedValuesField0.fields.size());
+    ASSERT_EQ("foo.boo", storedValuesField0.fields[0].first); // Now verify field name
   }
   {
     auto& storedValuesField1 = storedValues[1];
     ASSERT_FALSE(storedValuesField1.name.empty()); // field name with delimiter. Hard to compare it. Just check emptyness
-    ASSERT_EQ(storedValuesField1.compression().id(), irs::type<irs::compression::lz4>::id());
-    ASSERT_EQ(storedValuesField1.fields.size(), 1);
-    ASSERT_EQ(storedValuesField1.fields[0].first, "foo.goo"); // Now verify field name
+    ASSERT_EQ(irs::type<irs::compression::lz4>::id(), storedValuesField1.compression().id());
+    ASSERT_EQ(1, storedValuesField1.fields.size());
+    ASSERT_EQ("foo.goo", storedValuesField1.fields[0].first); // Now verify field name
   }
 
   ASSERT_EQ(meta._version,
             static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX));
-  ASSERT_EQ(meta._consistency, Consistency::kEventual);
+  ASSERT_EQ(Consistency::kEventual, meta._consistency);
   ASSERT_TRUE(meta._defaultAnalyzerName.empty()); // FIXME: HOW COME?
   ASSERT_FALSE(meta._features);
   ASSERT_FALSE(meta._includeAllFields);
   ASSERT_TRUE(meta._trackListPositions);
 
-  ASSERT_EQ(5, meta._fields.size());
+  ASSERT_EQ(meta._fields.size(), 5);
 
   // Iterating through fields and check them
   {
     auto& field0 = meta._fields[0];
 
-    ASSERT_EQ(field0.attribute().size(), 1);
-    auto& attr = field0.attribute()[0];
-    ASSERT_EQ(attr.name, "dummy");
-    ASSERT_FALSE(attr.shouldExpand);
+    ASSERT_EQ(1, field0.attribute().size());
+    ASSERT_EQ(field0.attribute()[0], (AttributeName{"dummy"sv, false}));
 
     ASSERT_FALSE(field0.overrideValue());
-    ASSERT_EQ(field0.expansion().size(), 0);
-    ASSERT_EQ(field0.nested().size(), 0);
-    ASSERT_EQ(field0.expression().size(), 0);
+    ASSERT_EQ(0, field0.expansion().size());
+    ASSERT_EQ(0, field0.nested().size());
+    ASSERT_EQ(0, field0.expression().size());
 
-    ASSERT_EQ(field0.analyzerName(), "identity"); // identity by default. FIXME: Default should be changed by root analyzer
+    ASSERT_EQ("identity", field0.analyzerName()); // identity by default. FIXME: Default should be changed by root analyzer
     ASSERT_FALSE(field0.features().has_value()); // Features are not specified in current field
     ASSERT_FALSE(meta._features.has_value()); // Features are not specified in meta
-    analyzerFeaturesChecker(field0.analyzer()->features(), {"norm", "frequency"}); // FIXME: which features should be defined by default?
+    analyzerFeaturesChecker({"norm", "frequency"}, field0.analyzer()->features()); // FIXME: which features should be defined by default?
 
     ASSERT_FALSE(field0.isArray());
-    ASSERT_FALSE(field0.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
+    ASSERT_TRUE(field0.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
     ASSERT_FALSE(field0.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
   }
 
   {
     auto& field1 = meta._fields[1];
 
-    ASSERT_EQ(field1.attribute().size(), 1);
-    auto& attr = field1.attribute()[0];
-    ASSERT_EQ(attr.name, "foo");
-    ASSERT_FALSE(attr.shouldExpand);
+    ASSERT_EQ(1, field1.attribute().size());
+    ASSERT_EQ(field1.attribute()[0], (AttributeName{"foo"sv, false}));
 
     ASSERT_FALSE(field1.overrideValue());
-    ASSERT_EQ(field1.expansion().size(), 0);
-    ASSERT_EQ(field1.nested().size(), 0);
-    ASSERT_EQ(field1.expression(), "Abc");
+    ASSERT_EQ(0, field1.expansion().size());
+    ASSERT_EQ(0, field1.nested().size());
+    ASSERT_EQ("Abc", field1.expression());
 
-    ASSERT_EQ(field1.analyzerName(), "identity"); // identity by default. FIXME: Default should be changed by root analyzer
+    ASSERT_EQ("identity", field1.analyzerName()); // identity by default. FIXME: Default should be changed by root analyzer
     ASSERT_FALSE(field1.features().has_value()); // Features are not specified in current field
     ASSERT_FALSE(meta._features.has_value()); // Features are not specified in meta
-    analyzerFeaturesChecker(field1.analyzer()->features(), {"norm", "frequency"});
+    analyzerFeaturesChecker({"norm", "frequency"}, field1.analyzer()->features());
 
     ASSERT_FALSE(field1.isArray());
-    ASSERT_FALSE(field1.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
+    ASSERT_TRUE(field1.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
     ASSERT_FALSE(field1.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
   }
 
   {
     auto& field2 = meta._fields[2];
 
-    ASSERT_EQ(field2.attribute().size(), 2);
-    {
-      auto& attr0 = field2.attribute()[0];
-      ASSERT_EQ(attr0.name, "foo");
-      ASSERT_FALSE(attr0.shouldExpand);
-    }
-    {
-      auto& attr1 = field2.attribute()[1];
-      ASSERT_EQ(attr1.name, "boo");
-      ASSERT_FALSE(attr1.shouldExpand);
-    }
+    ASSERT_EQ(2, field2.attribute().size());
+    ASSERT_EQ(field2.attribute()[0], (AttributeName{"foo"sv, false}));
+    ASSERT_EQ(field2.attribute()[1], (AttributeName{"boo"sv, false}));
 
     ASSERT_TRUE(field2.overrideValue());
-    ASSERT_EQ(field2.expansion().size(), 0);
-    ASSERT_EQ(field2.nested().size(), 0);
-    ASSERT_EQ(field2.expression(), "");
+    ASSERT_EQ(0, field2.expansion().size());
+    ASSERT_EQ(0, field2.nested().size());
+    ASSERT_EQ("", field2.expression());
 
-    ASSERT_EQ(field2.analyzerName(), vocbase.name() + "::delimiter_analyzer"); // identity by default. FIXME: Default should be changed by root analyzer
+    ASSERT_EQ(vocbase.name() + "::delimiter_analyzer", field2.analyzerName()); // identity by default. FIXME: Default should be changed by root analyzer
     ASSERT_FALSE(field2.features().has_value()); // Features are not specified in current field
     ASSERT_FALSE(meta._features.has_value()); // Features are not specified in meta
-    analyzerFeaturesChecker(field2.analyzer()->features(), {"frequency"});
+    analyzerFeaturesChecker({"frequency"}, field2.analyzer()->features());
 
     ASSERT_FALSE(field2.isArray());
-    ASSERT_FALSE(field2.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
+    ASSERT_TRUE(field2.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
     ASSERT_FALSE(field2.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
   }
 
   {
     auto& field3 = meta._fields[3];
 
-    ASSERT_EQ(field3.attribute().size(), 2);
-    {
-      auto& attr0 = field3.attribute()[0];
-      ASSERT_EQ(attr0.name, "foo");
-      ASSERT_FALSE(attr0.shouldExpand);
-    }
-    {
-      auto& attr1 = field3.attribute()[1];
-      ASSERT_EQ(attr1.name, "goo");
-      ASSERT_FALSE(attr1.shouldExpand);
-    }
+    ASSERT_EQ(2, field3.attribute().size());
+    ASSERT_EQ(field3.attribute()[0], (AttributeName{"foo"sv, false}));
+    ASSERT_EQ(field3.attribute()[1], (AttributeName{"goo"sv, false}));
 
     ASSERT_TRUE(field3.overrideValue());
-    ASSERT_EQ(field3.expansion().size(), 0);
-    ASSERT_EQ(field3.nested().size(), 0);
-    ASSERT_EQ(field3.expression(), "");
+    ASSERT_EQ(0, field3.expansion().size());
+    ASSERT_EQ(0, field3.nested().size());
+    ASSERT_EQ("", field3.expression());
 
-    ASSERT_EQ(field3.analyzerName(), vocbase.name() + "::stem_analyzer"); // identity by default. FIXME: Default should be changed by root analyzer
+    ASSERT_EQ(vocbase.name() + "::stem_analyzer", field3.analyzerName()); // identity by default. FIXME: Default should be changed by root analyzer
     ASSERT_FALSE(field3.features().has_value()); // Features are not specified in current field
     ASSERT_FALSE(meta._features.has_value()); // Features are not specified in meta
-    analyzerFeaturesChecker(field3.analyzer()->features(), {"norm"});
+    analyzerFeaturesChecker({"norm"}, field3.analyzer()->features());
 
     ASSERT_FALSE(field3.isArray());
-    ASSERT_FALSE(field3.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
+    ASSERT_TRUE(field3.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
     ASSERT_FALSE(field3.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
   }
 
   {
     auto& field4 = meta._fields[4];
 
-    ASSERT_EQ(field4.attribute().size(), 1);
-    {
-      auto& attr0 = field4.attribute()[0];
-      ASSERT_EQ(attr0.name, "zoo");
-      ASSERT_TRUE(attr0.shouldExpand);
-    }
+    ASSERT_EQ(1, field4.attribute().size());
+    ASSERT_EQ(field4.attribute()[1], (AttributeName{"zoo"sv, false}));
 
     ASSERT_TRUE(field4.overrideValue());
-    ASSERT_EQ(field4.expansion().size(), 0);
-    ASSERT_EQ(field4.expression(), "");
+    ASSERT_EQ(0, field4.expansion().size());
+    ASSERT_EQ("", field4.expression());
 
-    ASSERT_EQ(field4.analyzerName(), "identity"); // identity by default. FIXME: Default should be changed by root analyzer
+    ASSERT_EQ("identity", field4.analyzerName()); // identity by default. FIXME: Default should be changed by root analyzer
     ASSERT_FALSE(field4.features().has_value()); // Features are not specified in current field
     ASSERT_FALSE(meta._features.has_value()); // Features are not specified in meta
-    analyzerFeaturesChecker(field4.analyzer()->features(), {"norm", "frequency"});
+    analyzerFeaturesChecker({"norm", "frequency"}, field4.analyzer()->features());
 
     ASSERT_TRUE(field4.isArray());
-    ASSERT_FALSE(field4.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
+    ASSERT_TRUE(field4.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
     ASSERT_FALSE(field4.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
 
-    ASSERT_EQ(field4.nested().size(), 2);
+    ASSERT_EQ(2, field4.nested().size());
     {
       auto& nested0 = field4.nested()[0];
-      ASSERT_EQ(nested0.attribute().size(), 1);
-
-      auto& attr0 = nested0.attribute()[0];
-      ASSERT_EQ(attr0.name, "zoo");
-      ASSERT_FALSE(attr0.shouldExpand);
+      ASSERT_EQ(1, nested0.attribute().size());
+      ASSERT_EQ(nested0.attribute()[0], (AttributeName{"zoo"sv, false}));
 
       ASSERT_FALSE(nested0.overrideValue());
-      ASSERT_EQ(nested0.expansion().size(), 0);
-      ASSERT_EQ(nested0.nested().size(), 0);
-      ASSERT_EQ(nested0.expression(), "");
+      ASSERT_EQ(0, nested0.expansion().size());
+      ASSERT_EQ(0, nested0.nested().size());
+      ASSERT_EQ("", nested0.expression());
 
-      ASSERT_EQ(field4.analyzerName(), "identity"); // identity by default. FIXME: Default should be changed by root analyzer
+      ASSERT_EQ("identity", field4.analyzerName()); // identity by default. FIXME: Default should be changed by root analyzer
       ASSERT_FALSE(field4.features().has_value()); // Features are not specified in current field
       ASSERT_FALSE(meta._features.has_value()); // Features are not specified in meta
-      analyzerFeaturesChecker(field4.analyzer()->features(), {"norm", "frequency"});
+      analyzerFeaturesChecker({"norm", "frequency"}, field4.analyzer()->features());
 
       ASSERT_FALSE(nested0.isArray());
-      ASSERT_FALSE(nested0.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
+      ASSERT_TRUE(nested0.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
       ASSERT_FALSE(nested0.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
     }
 
     {
       auto& nested1 = field4.nested()[1];
-      ASSERT_EQ(nested1.attribute().size(), 1);
-
-      auto& attr0 = nested1.attribute()[0];
-      ASSERT_EQ(attr0.name, "doo");
-      ASSERT_FALSE(attr0.shouldExpand);
+      ASSERT_EQ(1, nested1.attribute().size());
+      ASSERT_EQ(nested1.attribute()[0], (AttributeName{"doo"sv, false}));
 
       ASSERT_TRUE(nested1.overrideValue());
-      ASSERT_EQ(nested1.expansion().size(), 0);
-      ASSERT_EQ(nested1.nested().size(), 0);
-      ASSERT_EQ(nested1.expression(), "");
+      ASSERT_EQ(0, nested1.expansion().size());
+      ASSERT_EQ(0, nested1.nested().size());
+      ASSERT_EQ("", nested1.expression());
 
-      ASSERT_EQ(nested1.analyzerName(), vocbase.name() + "::stem_analyzer"); // identity by default. FIXME: Default should be changed by root analyzer
+      ASSERT_EQ(vocbase.name() + "::stem_analyzer", nested1.analyzerName()); // identity by default. FIXME: Default should be changed by root analyzer
       ASSERT_FALSE(meta._features.has_value()); // Features are not specified in meta
       ASSERT_TRUE(nested1.features().has_value());
-      analyzerFeaturesChecker(nested1.features().value(), {"frequency"});
+      analyzerFeaturesChecker({"frequency"}, nested1.features().value());
 
       ASSERT_FALSE(nested1.isArray());
       ASSERT_TRUE(nested1.trackListPositions()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
@@ -1314,9 +1340,9 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues2) {
   }
 }
 
-TEST_F(IResearchInvertedIndexMetaTest, test_serialization) {
+TEST_F(IResearchInvertedIndexMetaTest, testSerialization) {
 
-  std::vector<std::string_view> jsons{complexJsonDefinition1, complexJsonDefinition2};
+  std::array<std::string_view, 2> jsons{complexJsonDefinition1, complexJsonDefinition2};
 
   for (const auto& json : jsons) {
     serializationChecker(server.server(), json);
