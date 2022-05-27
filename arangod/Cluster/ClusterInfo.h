@@ -61,6 +61,10 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 
+namespace replication2 {
+class LogId;
+}  // namespace replication2
+
 namespace replication2::agency {
 struct LogPlanSpecification;
 struct CollectionGroupId;
@@ -727,8 +731,8 @@ class ClusterInfo final {
   Result dropCollectionCoordinator(     // drop collection
       std::string const& databaseName,  // database name
       std::string const& collectionID,  // collection identifier
-      double timeout                    // request timeout
-  );
+      double timeout,                   // request timeout
+      replication::Version replicationVersion = replication::Version::ONE);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set collection properties in coordinator
@@ -1112,8 +1116,8 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
   auto deleteReplicatedStates(
       std::string const& databaseName,
-      std::vector<replication2::replicated_state::agency::Target> const&
-          replicatedStates) -> futures::Future<Result>;
+      std::vector<replication2::LogId> replicatedStatesIds)
+      -> futures::Future<Result>;
 
   /// underlying application server
   ArangodServer& _server;

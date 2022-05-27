@@ -597,17 +597,17 @@ auto ClusterInfo::waitForReplicatedStatesCreation(
 
 auto ClusterInfo::deleteReplicatedStates(
     std::string const& databaseName,
-    std::vector<replication2::replicated_state::agency::Target> const&
-        replicatedStates) -> futures::Future<Result> {
+    std::vector<replication2::LogId> replicatedStatesIds)
+    -> futures::Future<Result> {
   auto replicatedStateMethods =
       arangodb::replication2::ReplicatedStateMethods::createInstanceCoordinator(
           this->_server, databaseName);
 
   std::vector<futures::Future<Result>> deletedStates;
-  deletedStates.reserve(replicatedStates.size());
-  for (auto const& spec : replicatedStates) {
+  deletedStates.reserve(replicatedStatesIds.size());
+  for (auto const& id : replicatedStatesIds) {
     deletedStates.emplace_back(
-        replicatedStateMethods->deleteReplicatedState(spec.id));
+        replicatedStateMethods->deleteReplicatedState(id));
   }
 
   return futures::collectAll(std::move(deletedStates))
@@ -3309,8 +3309,16 @@ Result ClusterInfo::createCollectionsCoordinator(
 
       auto replicatedStatesCleanup = futures::Future<Result>{std::in_place};
       if (replicationVersion == replication::Version::TWO) {
+        std::vector<replication2::LogId> stateIds;
+        std::transform(
+            replicatedStates.begin(), replicatedStates.end(),
+            std::back_inserter(stateIds),
+            [](replication2::replicated_state::agency::Target const& spec) {
+              return spec.id;
+            });
+
         replicatedStatesCleanup =
-            this->deleteReplicatedStates(databaseName, replicatedStates);
+            this->deleteReplicatedStates(databaseName, std::move(stateIds));
       }
 
       using namespace std::chrono;
@@ -3442,8 +3450,8 @@ Result ClusterInfo::createCollectionsCoordinator(
 
   auto replicatedStatesWait = std::invoke([&]() -> futures::Future<Result> {
     if (replicationVersion == replication::Version::TWO) {
-      return this->waitForReplicatedStatesCreation(databaseName,
-                                                   replicatedStates);
+      // TODO could the version of a replicated state change in the meantime?
+      return waitForReplicatedStatesCreation(databaseName, replicatedStates);
     }
     return Result{};
   });
@@ -3651,8 +3659,8 @@ Result ClusterInfo::createCollectionsCoordinator(
 Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     std::string const& dbName,                  // database name
     std::string const& collectionID,
-    double timeout  // request timeout
-) {
+    double timeout,  // request timeout
+    replication::Version replicationVersion) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   if (dbName.empty() || (dbName[0] > '0' && dbName[0] < '9')) {
     events::DropCollection(dbName, collectionID,
@@ -3815,9 +3823,29 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     return Result(TRI_ERROR_NO_ERROR);
   }
 
+  // Delete replicated states in case we are using Replication2
+  auto replicatedStatesCleanup = futures::Future<Result>{std::in_place};
+  if (replicationVersion == replication::Version::TWO) {
+    std::vector<replication2::LogId> stateIds;
+    for (auto pair : VPackObjectIterator(shardsSlice)) {
+      auto shardId = pair.key.copyString();
+      auto stateId = std::string_view{shardId.substr(1, shardId.size() - 1)};
+      auto logId = replication2::LogId::fromString(stateId);
+      ADB_PROD_ASSERT(logId.has_value())
+          << " converting " << stateId
+          << " to LogId failed, during replicated state deletion for shard "
+          << shardId;
+      stateIds.emplace_back(logId.value());
+    }
+    replicatedStatesCleanup =
+        deleteReplicatedStates(dbName, std::move(stateIds));
+  }
+
   while (true) {
     auto tmpRes = dbServerResult->load();
-    if (tmpRes.has_value()) {
+    if (tmpRes.has_value() &&
+        (replicationVersion == replication::Version::ONE ||
+         replicatedStatesCleanup.isReady())) {
       cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
       // ...remove the entire directory for the collection
       AgencyOperation delCurrentCollection(
