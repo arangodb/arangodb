@@ -153,6 +153,9 @@ Conductor::~Conductor() {
 
 void Conductor::start() {
   MUTEX_LOCKER(guard, _callbackMutex);
+
+  _status.timing.loading.start = std::chrono::system_clock::now();
+
   _startTimeSecs = TRI_microtime();
   _computationStartTimeSecs = _startTimeSecs;
   _finalizationStartTimeSecs = _startTimeSecs;
@@ -812,9 +815,11 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
 }
 
 ErrorCode Conductor::_finalizeWorkers() {
+  _status.timing.running.end = std::chrono::system_clock::now();
+  _status.timing.storing.end = std::chrono::system_clock::now();
+
   _callbackMutex.assertLockedByCurrentThread();
   _finalizationStartTimeSecs = TRI_microtime();
-
   bool store = _state == ExecutionState::STORING;
   if (_masterContext) {
     _masterContext->postApplication();
@@ -877,6 +882,8 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   TRI_ASSERT(compTime >= 0);
   if (didStore) {
     _storeTimeSecs = TRI_microtime() - _finalizationStartTimeSecs;
+
+    _status.timing.storing.end = std::chrono::system_clock::now();
   }
 
   LOG_PREGEL("063b5", INFO)
