@@ -33,6 +33,7 @@ const lh = require("@arangodb/testutils/replicated-logs-helper");
 const sh = require("@arangodb/testutils/replicated-state-helper");
 
 const database = "replication2_document_store_test_db";
+const collectionName = "testCollection";
 
 const shardIdToLogId = function (shardId) {
   return shardId.slice(1);
@@ -76,12 +77,19 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
 
   return {
     setUpAll, tearDownAll,
-    setUp: lh.registerAgencyTestBegin,
-    tearDown: lh.registerAgencyTestEnd,
+    setUp: function () {
+      lh.registerAgencyTestBegin();
+      db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
+    },
+    tearDown: function () {
+      if (db._collection(collectionName) !== null) {
+        db._drop(collectionName);
+      }
+      lh.registerAgencyTestEnd();
+    },
 
     testCreateReplicatedStateForEachShard: function() {
-      const collectionName = "testCollection";
-      let collection = db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
+      let collection = db._collection(collectionName);
 
       let dbServersIdToName = getDbServersById();
       let coord = lh.coordinators[0];
@@ -112,6 +120,16 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
         let {target, current} = sh.readReplicatedStateAgency(database, shardIdToLogId(shard));
         checkTarget(target, shard);
         checkCurrent(current, shard);
+      }
+    },
+
+    testDeleteReplicatedStateForEachShard: function() {
+      let collection = db._collection(collectionName);
+      let shards = collection.shards();
+      db._drop(collectionName);
+      for (const shard of shards) {
+        let {target} = sh.readReplicatedStateAgency(database, shardIdToLogId(shard));
+        assertEqual(target, undefined);
       }
     },
   };
@@ -145,7 +163,6 @@ const replicatedStateDocumentStoreSuiteReplication1 = function () {
     tearDown: lh.registerAgencyTestEnd,
 
     testDoNotCreateReplicatedStateForEachShard: function() {
-      const collectionName = "testCollection";
       let collection = db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
       for (const shard of collection.shards()) {
         let {target} = sh.readReplicatedStateAgency(database, shardIdToLogId(shard));
