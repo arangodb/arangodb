@@ -67,6 +67,10 @@ struct CollectionGroupId;
 struct CollectionGroup;
 }  // namespace replication2::agency
 
+namespace replication2::replicated_state::agency {
+struct Target;
+}  // namespace replication2::replicated_state::agency
+
 class ClusterInfo;
 class LogicalCollection;
 struct ClusterCollectionCreationInfo;
@@ -1084,6 +1088,32 @@ class ClusterInfo final {
   /// @brief triggers a new background thread to obtain the next batch of ids
   //////////////////////////////////////////////////////////////////////////////
   void triggerBackgroundGetIds();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief a replicated state is created for each shard, only when using
+  /// Replication2
+  //////////////////////////////////////////////////////////////////////////////
+  static auto createReplicatedStateSpec(
+      std::string const& shardId, std::vector<std::string> const& serverIds,
+      std::size_t writeConcern, std::size_t softWriteConcern)
+      -> replication2::replicated_state::agency::Target;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns a future which can be used to wait for the successful
+  /// creation of replicated states
+  //////////////////////////////////////////////////////////////////////////////
+  auto waitForReplicatedStatesCreation(
+      std::string const& databaseName,
+      std::vector<replication2::replicated_state::agency::Target> const&
+          replicatedStates) -> futures::Future<Result>;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief deletes replicated states corresponding to shards
+  //////////////////////////////////////////////////////////////////////////////
+  auto deleteReplicatedStates(
+      std::string const& databaseName,
+      std::vector<replication2::replicated_state::agency::Target> const&
+          replicatedStates) -> futures::Future<Result>;
 
   /// underlying application server
   ArangodServer& _server;

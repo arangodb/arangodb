@@ -515,6 +515,131 @@ void ClusterInfo::triggerBackgroundGetIds() {
   }
 }
 
+auto ClusterInfo::createReplicatedStateSpec(
+    std::string const& shardId, std::vector<std::string> const& serverIds,
+    std::size_t writeConcern, std::size_t softWriteConcern)
+    -> replication2::replicated_state::agency::Target {
+  replication2::replicated_state::agency::Target spec;
+
+  auto stateId{std::string_view(shardId).substr(1, shardId.size() - 1)};
+  auto logId = replication2::LogId::fromString(stateId);
+  ADB_PROD_ASSERT(logId.has_value())
+      << " converting " << stateId
+      << " to LogId failed, during replicated state creation for shard "
+      << shardId;
+
+  spec.id = logId.value();
+  spec.properties.implementation.type = "black-hole";
+  TRI_ASSERT(!serverIds.empty());
+  spec.leader = serverIds.front();
+
+  for (auto const& serverId : serverIds) {
+    spec.participants.emplace(
+        serverId,
+        replication2::replicated_state::agency::Target::Participant{});
+  }
+
+  spec.config.writeConcern = writeConcern;
+  spec.config.softWriteConcern = softWriteConcern;
+  spec.config.waitForSync = false;
+  spec.version = 1;
+
+  return spec;
+}
+
+auto ClusterInfo::waitForReplicatedStatesCreation(
+    std::string const& databaseName,
+    std::vector<replication2::replicated_state::agency::Target> const&
+        replicatedStates) -> futures::Future<Result> {
+  auto replicatedStateMethods =
+      arangodb::replication2::ReplicatedStateMethods::createInstanceCoordinator(
+          _server, databaseName);
+
+  std::vector<futures::Future<ResultT<consensus::index_t>>> futureStates;
+  futureStates.reserve(replicatedStates.size());
+  for (auto const& spec : replicatedStates) {
+    futureStates.emplace_back(
+        replicatedStateMethods->waitForStateReady(spec.id, *spec.version));
+  }
+
+  return futures::collectAll(std::move(futureStates))
+      .thenValue(
+          [&clusterInfo = _server.getFeature<ClusterFeature>().clusterInfo()](
+              auto&& raftIndices) {
+            consensus::index_t highestRaftIndex = std::transform_reduce(
+                raftIndices.begin(), raftIndices.end(), (consensus::index_t)0,
+                [](consensus::index_t l, consensus::index_t r) {
+                  return std::max(l, r);
+                },
+                [](auto&& value) { return value.get().get(); });
+
+            return clusterInfo.waitForPlan(highestRaftIndex);
+          })
+      .then([](auto&& tryResult) {
+        auto result =
+            basics::catchToResult([&] { return std::move(tryResult.get()); });
+        if (result.fail()) {
+          if (result.is(TRI_ERROR_NO_ERROR)) {
+            result = Result(TRI_ERROR_INTERNAL);
+          }
+
+          result = result.mapError([](result::Error error) {
+            error.appendErrorMessage(
+                "Failed to create a corresponding replicated state "
+                "for each shard!");
+            return error;
+          });
+        }
+
+        return result;
+      });
+}
+
+auto ClusterInfo::deleteReplicatedStates(
+    std::string const& databaseName,
+    std::vector<replication2::replicated_state::agency::Target> const&
+        replicatedStates) -> futures::Future<Result> {
+  auto replicatedStateMethods =
+      arangodb::replication2::ReplicatedStateMethods::createInstanceCoordinator(
+          this->_server, databaseName);
+
+  std::vector<futures::Future<Result>> deletedStates;
+  deletedStates.reserve(replicatedStates.size());
+  for (auto const& spec : replicatedStates) {
+    deletedStates.emplace_back(
+        replicatedStateMethods->deleteReplicatedState(spec.id));
+  }
+
+  return futures::collectAll(std::move(deletedStates))
+      .then([](futures::Try<std::vector<futures::Try<Result>>>&& tryResult) {
+        auto deletionResults =
+            basics::catchToResultT([&] { return std::move(tryResult.get()); });
+
+        auto result = deletionResults.result();
+        if (result.fail()) {
+          return result.mapError([](result::Error error) {
+            error.appendErrorMessage(
+                "Failed to delete replicated states corresponding to shards!");
+            return error;
+          });
+        }
+        for (auto shardResult : deletionResults.get()) {
+          auto r = basics::catchToResult(
+              [&] { return std::move(shardResult.get()); });
+          if (r.fail()) {
+            return result.mapError([](result::Error error) {
+              error.appendErrorMessage(
+                  "Failed to delete replicated states corresponding to "
+                  "shards!");
+              return error;
+            });
+          }
+        }
+
+        return result;
+      });
+}
+
 /// @brief produces an agency dump and logs it
 void ClusterInfo::logAgencyDump() const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -3064,30 +3189,8 @@ Result ClusterInfo::createCollectionsCoordinator(
       // Create a replicated state for each shard.
       replicatedStates.reserve(replicatedStates.size() + shardServers.size());
       for (auto const& [shardId, serverIds] : shardServers) {
-        replication2::replicated_state::agency::Target spec;
-
-        auto stateId{std::string_view(shardId).substr(1, shardId.size() - 1)};
-        auto logId = replication2::LogId::fromString(stateId);
-        ADB_PROD_ASSERT(logId.has_value())
-            << " converting " << stateId
-            << " to LogId failed, during replicated state creation for shard "
-            << shardId;
-
-        spec.id = logId.value();
-        spec.properties.implementation.type = "black-hole";
-        TRI_ASSERT(!serverIds.empty());
-        spec.leader = serverIds.front();
-
-        for (auto const& serverId : serverIds) {
-          spec.participants.emplace(
-              serverId,
-              replication2::replicated_state::agency::Target::Participant{});
-        }
-
-        spec.config.writeConcern = info.writeConcern;
-        spec.config.softWriteConcern = info.replicationFactor;
-        spec.config.waitForSync = false;
-        spec.version = 1;
+        auto spec = createReplicatedStateSpec(
+            shardId, serverIds, info.writeConcern, info.replicationFactor);
 
         auto builder = std::make_shared<VPackBuilder>();
         velocypack::serialize(*builder, spec);
@@ -3173,8 +3276,9 @@ Result ClusterInfo::createCollectionsCoordinator(
     }
   }
 
-  auto deleteCollectionGuard = scopeGuard([&infos, &databaseName, this,
-                                           &ac]() noexcept {
+  auto deleteCollectionGuard = scopeGuard([&infos, &databaseName, this, &ac,
+                                           replicationVersion,
+                                           &replicatedStates]() noexcept {
     try {
       using namespace arangodb::cluster::paths;
       using namespace arangodb::cluster::paths::aliases;
@@ -3203,6 +3307,12 @@ Result ClusterInfo::createCollectionsCoordinator(
                          AgencySimpleOperationType::INCREMENT_OP);
       auto trx = AgencyWriteTransaction{opers, precs};
 
+      auto replicatedStatesCleanup = futures::Future<Result>{std::in_place};
+      if (replicationVersion == replication::Version::TWO) {
+        replicatedStatesCleanup =
+            this->deleteReplicatedStates(databaseName, replicatedStates);
+      }
+
       using namespace std::chrono;
       using namespace std::chrono_literals;
       auto const begin = steady_clock::now();
@@ -3215,7 +3325,9 @@ Result ClusterInfo::createCollectionsCoordinator(
         // If the collections were removed (res.ok()), we may abort. If we run
         // into precondition failed, the collections were successfully created,
         // so we're fine too.
-        if (res.successful()) {
+        if (res.successful() &&
+            (replicationVersion == replication::Version::ONE ||
+             replicatedStatesCleanup.isReady())) {
           if (VPackSlice resultsSlice = res.slice().get("results");
               resultsSlice.length() > 0) {
             [[maybe_unused]] Result r =
@@ -3328,53 +3440,13 @@ Result ClusterInfo::createCollectionsCoordinator(
   LOG_TOPIC("98bca", DEBUG, Logger::CLUSTER)
       << "createCollectionCoordinator, Plan changed, waiting for success...";
 
-  futures::Future<Result> replicatedStatesWait{std::in_place};
-  if (replicationVersion == replication::Version::TWO) {
-    auto replicatedStateMethods =
-        arangodb::replication2::ReplicatedStateMethods::
-            createInstanceCoordinator(_server, databaseName);
-
-    replicatedStatesWait = std::invoke([&] {
-      std::vector<futures::Future<ResultT<consensus::index_t>>> futureStates;
-      futureStates.reserve(replicatedStates.size());
-      for (auto const& spec : replicatedStates) {
-        futureStates.emplace_back(
-            replicatedStateMethods->waitForStateReady(spec.id, *spec.version));
-      }
-
-      return futures::collectAll(futureStates)
-          .thenValue([&server = this->_server](auto&& raftIndices) {
-            consensus::index_t maximum = std::transform_reduce(
-                raftIndices.begin(), raftIndices.end(), (consensus::index_t)0,
-                [](consensus::index_t l, consensus::index_t r) {
-                  return std::max(l, r);
-                },
-                [](auto&& value) { return value.get().get(); });
-
-            return server.getFeature<ClusterFeature>()
-                .clusterInfo()
-                .waitForPlan(maximum);
-          })
-          .then([](auto&& tryResult) {
-            auto result = basics::catchToResult(
-                [&] { return std::move(tryResult.get()); });
-            if (result.fail()) {
-              if (result.is(TRI_ERROR_NO_ERROR)) {
-                result = Result(TRI_ERROR_INTERNAL);
-              }
-
-              result = result.mapError([](result::Error error) {
-                error.appendErrorMessage(
-                    "Failed to create a corresponding replicated state "
-                    "for each shard!");
-                return error;
-              });
-            }
-
-            return result;
-          });
-    });
-  }
+  auto replicatedStatesWait = std::invoke([&]() -> futures::Future<Result> {
+    if (replicationVersion == replication::Version::TWO) {
+      return this->waitForReplicatedStatesCreation(databaseName,
+                                                   replicatedStates);
+    }
+    return Result{};
+  });
 
   do {
     auto tmpRes = dbServerResult->load(std::memory_order_acquire);
@@ -3402,7 +3474,7 @@ Result ClusterInfo::createCollectionsCoordinator(
     }
 
     if (nrDone->load(std::memory_order_acquire) == infos.size() &&
-        (replicationVersion != replication::Version::TWO ||
+        (replicationVersion == replication::Version::ONE ||
          replicatedStatesWait.isReady())) {
       if (replicationVersion == replication::Version::TWO) {
         auto result = replicatedStatesWait.get();
