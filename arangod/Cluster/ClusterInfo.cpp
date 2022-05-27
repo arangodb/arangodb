@@ -3340,6 +3340,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         futureStates.emplace_back(
             replicatedStateMethods->waitForStateReady(spec.id, *spec.version));
       }
+
       return futures::collectAll(futureStates)
           .thenValue([&server = this->_server](auto&& raftIndices) {
             consensus::index_t maximum = std::transform_reduce(
@@ -3347,14 +3348,29 @@ Result ClusterInfo::createCollectionsCoordinator(
                 [](consensus::index_t l, consensus::index_t r) {
                   return std::max(l, r);
                 },
-                [](auto&& value) {
-                  // TODO - figure out error handling
-                  return value.get().get();
-                });
+                [](auto&& value) { return value.get().get(); });
 
             return server.getFeature<ClusterFeature>()
                 .clusterInfo()
                 .waitForPlan(maximum);
+          })
+          .then([](auto&& tryResult) {
+            auto result = basics::catchToResult(
+                [&] { return std::move(tryResult.get()); });
+            if (result.fail()) {
+              if (result.is(TRI_ERROR_NO_ERROR)) {
+                result = Result(TRI_ERROR_INTERNAL);
+              }
+
+              result = result.mapError([](result::Error error) {
+                error.appendErrorMessage(
+                    "Failed to create a corresponding replicated state "
+                    "for each shard!");
+                return error;
+              });
+            }
+
+            return std::move(result);
           });
     });
   }
@@ -3370,6 +3386,12 @@ Result ClusterInfo::createCollectionsCoordinator(
             << "\njson: " << info.json.toString();
       }
 
+      if (replicationVersion == replication::Version::TWO) {
+        LOG_TOPIC("6d279", ERR, Logger::REPLICATION2)
+            << "Replicated states readiness: " << std::boolalpha
+            << replicatedStatesWait.isReady();
+      }
+
       // Get a full agency dump for debugging
       logAgencyDump();
 
@@ -3379,7 +3401,21 @@ Result ClusterInfo::createCollectionsCoordinator(
     }
 
     if (nrDone->load(std::memory_order_acquire) == infos.size() &&
-        replicatedStatesWait.isReady()) {
+        (replicationVersion != replication::Version::TWO ||
+         replicatedStatesWait.isReady())) {
+      if (replicationVersion == replication::Version::TWO) {
+        auto result = replicatedStatesWait.get();
+        if (result.fail()) {
+          LOG_TOPIC("ce2be", WARN, Logger::CLUSTER)
+              << "Failed createCollectionsCoordinator for " << infos.size()
+              << " collections in database " << databaseName
+              << " isNewDatabase: " << isNewDatabase
+              << " first collection name: " << infos[0].name
+              << " result: " << result.errorNumber();
+          return result;
+        }
+      }
+
       // We do not need to lock all condition variables
       // we are save by cacheMutex
       cbGuard.fire();
