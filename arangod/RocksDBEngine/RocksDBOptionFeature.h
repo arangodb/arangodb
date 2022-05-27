@@ -62,7 +62,8 @@ class RocksDBOptionFeature final : public ArangodFeature,
   rocksdb::Options getOptions() const override;
   rocksdb::BlockBasedTableOptions getTableOptions() const override;
   rocksdb::ColumnFamilyOptions getColumnFamilyOptions(
-      RocksDBColumnFamilyManager::Family family) const override;
+      RocksDBColumnFamilyManager::Family family, rocksdb::Options const& base,
+      rocksdb::BlockBasedTableOptions const& tableBase) const override;
 
   bool exclusiveWrites() const noexcept { return _exclusiveWrites; }
   bool useFileLogging() const noexcept override { return _useFileLogging; }

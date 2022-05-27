@@ -33,8 +33,9 @@ RocksDBOptionsProvider::RocksDBOptionsProvider()
     : _vpackCmp(std::make_unique<RocksDBVPackComparator>()) {}
 
 rocksdb::ColumnFamilyOptions RocksDBOptionsProvider::getColumnFamilyOptions(
-    RocksDBColumnFamilyManager::Family family) const {
-  rocksdb::ColumnFamilyOptions result(getOptions());
+    RocksDBColumnFamilyManager::Family family, rocksdb::Options const& base,
+    rocksdb::BlockBasedTableOptions const& tableBase) const {
+  rocksdb::ColumnFamilyOptions result(base);
 
   switch (family) {
     case RocksDBColumnFamilyManager::Family::Definitions:
@@ -62,7 +63,7 @@ rocksdb::ColumnFamilyOptions RocksDBOptionsProvider::getColumnFamilyOptions(
     case RocksDBColumnFamilyManager::Family::EdgeIndex: {
       result.prefix_extractor = std::make_shared<RocksDBPrefixExtractor>();
       // also use hash-search based SST file format
-      rocksdb::BlockBasedTableOptions tableOptions(getTableOptions());
+      rocksdb::BlockBasedTableOptions tableOptions(tableBase);
       tableOptions.index_type =
           rocksdb::BlockBasedTableOptions::IndexType::kHashSearch;
       result.table_factory = std::shared_ptr<rocksdb::TableFactory>(
@@ -71,7 +72,7 @@ rocksdb::ColumnFamilyOptions RocksDBOptionsProvider::getColumnFamilyOptions(
     }
     case RocksDBColumnFamilyManager::Family::VPackIndex: {
       // velocypack based index variants with custom comparator
-      rocksdb::BlockBasedTableOptions tableOptions(getTableOptions());
+      rocksdb::BlockBasedTableOptions tableOptions(tableBase);
       tableOptions.filter_policy.reset();  // intentionally no bloom filter here
       result.table_factory = std::shared_ptr<rocksdb::TableFactory>(
           rocksdb::NewBlockBasedTableFactory(tableOptions));

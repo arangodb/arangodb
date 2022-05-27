@@ -41,7 +41,8 @@ struct RocksDBOptionsProvider {
   virtual rocksdb::Options getOptions() const = 0;
   virtual rocksdb::BlockBasedTableOptions getTableOptions() const = 0;
   virtual rocksdb::ColumnFamilyOptions getColumnFamilyOptions(
-      RocksDBColumnFamilyManager::Family family) const;
+      RocksDBColumnFamilyManager::Family family, rocksdb::Options const& base,
+      rocksdb::BlockBasedTableOptions const& tableBase) const;
 
   virtual bool useFileLogging() const noexcept { return false; }
   virtual bool limitOpenFilesAtStartup() const noexcept { return false; }

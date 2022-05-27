@@ -918,9 +918,10 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::getTableOptions() const {
 }
 
 rocksdb::ColumnFamilyOptions RocksDBOptionFeature::getColumnFamilyOptions(
-    RocksDBColumnFamilyManager::Family family) const {
+    RocksDBColumnFamilyManager::Family family, rocksdb::Options const& base,
+    rocksdb::BlockBasedTableOptions const& tableBase) const {
   rocksdb::ColumnFamilyOptions result =
-      RocksDBOptionsProvider::getColumnFamilyOptions(family);
+      RocksDBOptionsProvider::getColumnFamilyOptions(family, base, tableBase);
 
   // override
   std::size_t index = static_cast<

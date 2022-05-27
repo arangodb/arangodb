@@ -776,12 +776,14 @@ void RocksDBEngine::start() {
            "to 4 because it is lower than recommended";
   }
 
+  rocksdb::BlockBasedTableOptions tableOptions =
+      _optionsProvider.getTableOptions();
   // create column families
   std::vector<rocksdb::ColumnFamilyDescriptor> cfFamilies;
-  auto addFamily = [this,
+  auto addFamily = [this, &tableOptions,
                     &cfFamilies](RocksDBColumnFamilyManager::Family family) {
     rocksdb::ColumnFamilyOptions specialized =
-        _optionsProvider.getColumnFamilyOptions(family);
+        _optionsProvider.getColumnFamilyOptions(family, _options, tableOptions);
     std::string name = RocksDBColumnFamilyManager::name(family);
     cfFamilies.emplace_back(name, specialized);
   };
