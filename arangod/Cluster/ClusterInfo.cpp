@@ -3085,7 +3085,6 @@ Result ClusterInfo::createCollectionsCoordinator(
         }
 
         spec.config.writeConcern = info.writeConcern;
-        spec.config.replicationFactor = info.replicationFactor;
         spec.config.softWriteConcern = info.replicationFactor;
         spec.config.waitForSync = false;
         spec.version = 1;
