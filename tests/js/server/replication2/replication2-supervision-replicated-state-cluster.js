@@ -102,9 +102,8 @@ const replicatedStateSuite = function (stateType) {
       lh.waitFor(spreds.replicatedStateStatusAvailable(database, stateId));
       lh.waitFor(lpreds.replicatedLogLeaderCommitFail(database, stateId, "NonEligibleServerRequiredForQuorum"));
 
-
       const report = sh.getReplicatedStateStatus(database, stateId);
-      assertEqual(1, report.length);
+      assertEqual(1, report.length, `asserting report.length == 1, report is ${JSON.stringify(report)}`);
       assertEqual("LogParticipantNotYetGone", report[0].code);
       const secondFollower = report[0].participant;
 
