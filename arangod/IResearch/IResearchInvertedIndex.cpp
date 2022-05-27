@@ -46,95 +46,95 @@
 #include "utils/utf8_path.hpp"
 
 // FIXME: this part should be moved to the upstream library
-namespace iresearch {
-DEFINE_FACTORY_DEFAULT(proxy_filter);
-
-bool lazy_filter_bitset_iterator::next() {
-  while (!word_) {
-    if (bitset_.get(word_idx_, &word_)) {
-      ++word_idx_;  // move only if ok. Or we could be overflowed!
-      base_ += irs::bits_required<lazy_bitset::word_t>();
-      doc_.value = base_ - 1;
-      continue;
-    }
-    doc_.value = irs::doc_limits::eof();
-    word_ = 0;
-    return false;
-  }
-  const irs::doc_id_t delta = std::countr_zero(word_);
-  assert(delta < irs::bits_required<lazy_bitset::word_t>());
-  word_ >>= (delta + 1);
-  doc_.value += 1 + delta;
-  return true;
-}
-
-irs::doc_id_t lazy_filter_bitset_iterator::seek(irs::doc_id_t target) {
-  word_idx_ = target / irs::bits_required<lazy_bitset::word_t>();
-  if (bitset_.get(word_idx_, &word_)) {
-    const irs::doc_id_t bit_idx =
-        target % irs::bits_required<lazy_bitset::word_t>();
-    base_ = word_idx_ * irs::bits_required<lazy_bitset::word_t>();
-    word_ >>= bit_idx;
-    doc_.value = base_ - 1 + bit_idx;
-    ++word_idx_;  // mark this word as consumed
-    // FIXME consider inlining to speedup
-    next();
-    return doc_.value;
-  } else {
-    doc_.value = irs::doc_limits::eof();
-    word_ = 0;
-    return doc_.value;
-  }
-}
-
-irs::attribute* lazy_filter_bitset_iterator::get_mutable(
-    irs::type_info::type_id id) noexcept {
-  if (irs::type<irs::document>::id() == id) {
-    return &doc_;
-  }
-  return irs::type<irs::cost>::id() == id ? &cost_ : nullptr;
-}
-
-void lazy_filter_bitset_iterator::reset() noexcept {
-  word_idx_ = 0;
-  word_ = 0;
-  base_ = irs::doc_limits::invalid() -
-          irs::bits_required<lazy_bitset::word_t>();  // before the first word
-  doc_.value = irs::doc_limits::invalid();
-}
-
-bool lazy_bitset::get(size_t word_idx, word_t* data) {
-  constexpr auto BITS{irs::bits_required<word_t>()};
-  if (!set_) {
-    const size_t bits = segment_->docs_count() + irs::doc_limits::min();
-    words_ = irs::bitset::bits_to_words(bits);
-    set_ = irs::memory::make_unique<word_t[]>(words_);
-    std::memset(set_.get(), 0, sizeof(word_t) * words_);
-    real_doc_itr_ = segment_->mask(filter_.execute(*segment_));
-    real_doc_ = irs::get<irs::document>(*real_doc_itr_);
-    begin_ = set_.get();
-    end_ = begin_;
-  }
-  if (word_idx >= words_) {
-    return false;
-  }
-  word_t* requested = set_.get() + word_idx;
-  if (requested >= end_) {
-    auto block_limit = ((word_idx + 1) * BITS) - 1;
-    auto doc_id{irs::doc_limits::invalid()};
-    while (real_doc_itr_->next()) {
-      doc_id = real_doc_->value;
-      irs::set_bit(set_[doc_id / BITS], doc_id % BITS);
-      if (doc_id >= block_limit) {
-        break;  // we've filled requested word
-      }
-    }
-    end_ = requested + 1;
-  }
-  *data = *requested;
-  return true;
-}
-}  // namespace iresearch
+//namespace iresearch {
+//DEFINE_FACTORY_DEFAULT(proxy_filter);
+//
+//bool lazy_filter_bitset_iterator::next() {
+//  while (!word_) {
+//    if (bitset_.get(word_idx_, &word_)) {
+//      ++word_idx_;  // move only if ok. Or we could be overflowed!
+//      base_ += irs::bits_required<lazy_bitset::word_t>();
+//      doc_.value = base_ - 1;
+//      continue;
+//    }
+//    doc_.value = irs::doc_limits::eof();
+//    word_ = 0;
+//    return false;
+//  }
+//  const irs::doc_id_t delta = std::countr_zero(word_);
+//  assert(delta < irs::bits_required<lazy_bitset::word_t>());
+//  word_ >>= (delta + 1);
+//  doc_.value += 1 + delta;
+//  return true;
+//}
+//
+//irs::doc_id_t lazy_filter_bitset_iterator::seek(irs::doc_id_t target) {
+//  word_idx_ = target / irs::bits_required<lazy_bitset::word_t>();
+//  if (bitset_.get(word_idx_, &word_)) {
+//    const irs::doc_id_t bit_idx =
+//        target % irs::bits_required<lazy_bitset::word_t>();
+//    base_ = word_idx_ * irs::bits_required<lazy_bitset::word_t>();
+//    word_ >>= bit_idx;
+//    doc_.value = base_ - 1 + bit_idx;
+//    ++word_idx_;  // mark this word as consumed
+//    // FIXME consider inlining to speedup
+//    next();
+//    return doc_.value;
+//  } else {
+//    doc_.value = irs::doc_limits::eof();
+//    word_ = 0;
+//    return doc_.value;
+//  }
+//}
+//
+//irs::attribute* lazy_filter_bitset_iterator::get_mutable(
+//    irs::type_info::type_id id) noexcept {
+//  if (irs::type<irs::document>::id() == id) {
+//    return &doc_;
+//  }
+//  return irs::type<irs::cost>::id() == id ? &cost_ : nullptr;
+//}
+//
+//void lazy_filter_bitset_iterator::reset() noexcept {
+//  word_idx_ = 0;
+//  word_ = 0;
+//  base_ = irs::doc_limits::invalid() -
+//          irs::bits_required<lazy_bitset::word_t>();  // before the first word
+//  doc_.value = irs::doc_limits::invalid();
+//}
+//
+//bool lazy_bitset::get(size_t word_idx, word_t* data) {
+//  constexpr auto BITS{irs::bits_required<word_t>()};
+//  if (!set_) {
+//    const size_t bits = segment_->docs_count() + irs::doc_limits::min();
+//    words_ = irs::bitset::bits_to_words(bits);
+//    set_ = irs::memory::make_unique<word_t[]>(words_);
+//    std::memset(set_.get(), 0, sizeof(word_t) * words_);
+//    real_doc_itr_ = segment_->mask(filter_.execute(*segment_));
+//    real_doc_ = irs::get<irs::document>(*real_doc_itr_);
+//    begin_ = set_.get();
+//    end_ = begin_;
+//  }
+//  if (word_idx >= words_) {
+//    return false;
+//  }
+//  word_t* requested = set_.get() + word_idx;
+//  if (requested >= end_) {
+//    auto block_limit = ((word_idx + 1) * BITS) - 1;
+//    auto doc_id{irs::doc_limits::invalid()};
+//    while (real_doc_itr_->next()) {
+//      doc_id = real_doc_->value;
+//      irs::set_bit(set_[doc_id / BITS], doc_id % BITS);
+//      if (doc_id >= block_limit) {
+//        break;  // we've filled requested word
+//      }
+//    }
+//    end_ = requested + 1;
+//  }
+//  *data = *requested;
+//  return true;
+//}
+//}  // namespace iresearch
 
 namespace {
 using namespace arangodb;
@@ -367,7 +367,7 @@ class CoveringVector final : public IndexIteratorCoveringData {
 class IResearchSnapshotState final : public TransactionState::Cookie {
  public:
   IResearchDataStore::Snapshot snapshot;
-  std::map<aql::AstNode const*, irs::proxy_query::proxy_cache>
+  std::map<aql::AstNode const*, irs::proxy_filter::cache_ptr>
       _immutablePartCache;
 };
 
@@ -465,16 +465,17 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
                   builder.toJson(), "'"));
         }
         irs::boolean_filter* conditionJoiner{nullptr};
-        std::unique_ptr<irs::boolean_filter> immutableRoot;
+      
+
         if (condition->type == aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND) {
           conditionJoiner = &root.add<irs::And>();
-          immutableRoot = std::make_unique<irs::And>();
         } else {
           TRI_ASSERT((condition->type ==
                       aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR));
           conditionJoiner = &root.add<irs::Or>();
-          immutableRoot = std::make_unique<irs::Or>();
         }
+
+
         auto& mutable_root = conditionJoiner->add<irs::Or>();
         auto rv =
             FilterFactory::filter(&mutable_root, queryCtx,
@@ -490,29 +491,48 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
                   "inverted index, query '",
                   builder.toJson(), "': ", rv.errorMessage()));
         }
-        auto const conditionSize =
-            static_cast<int64_t>(condition->numMembers());
-        for (int64_t i = 0; i < conditionSize; ++i) {
-          if (i != _mutableConditionIdx) {
-            auto& tmp_root = immutableRoot->add<irs::Or>();
-            auto rv = FilterFactory::filter(&tmp_root, queryCtx,
-                                            *condition->getMember(i), false,
-                                            &analyzerProvider);
-            if (rv.fail()) {
-              arangodb::velocypack::Builder builder;
-              condition->toVelocyPack(builder, true);
-              THROW_ARANGO_EXCEPTION_MESSAGE(
-                  rv.errorNumber(),
-                  basics::StringUtils::concatT(
-                      "failed to build immutable filter part while querying "
-                      "inverted index, query '",
-                      builder.toJson(), "': ", rv.errorMessage()));
+
+        auto& proxy_filter = conditionJoiner->add<irs::proxy_filter>();
+        auto existingCache = ctx->_immutablePartCache.find(condition);
+        if (existingCache != ctx->_immutablePartCache.end()) {
+          proxy_filter.set_cache(existingCache->second);
+        } else {
+          irs::boolean_filter* immutableRoot;
+          irs::proxy_filter::cache_ptr newCache;
+          if (condition->type ==
+              aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND) {
+            auto res = proxy_filter.set_filter<irs::And>();
+            ctx->_immutablePartCache[condition] = res.second;
+            immutableRoot = &res.first;
+          } else {
+            TRI_ASSERT((condition->type ==
+                        aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR));
+            auto res = proxy_filter.set_filter<irs::Or>();
+            ctx->_immutablePartCache[condition] = res.second;
+            immutableRoot = &res.first;
+          }
+          
+          auto const conditionSize =
+              static_cast<int64_t>(condition->numMembers());
+          for (int64_t i = 0; i < conditionSize; ++i) {
+            if (i != _mutableConditionIdx) {
+              auto& tmp_root = immutableRoot->add<irs::Or>();
+              auto rv = FilterFactory::filter(&tmp_root, queryCtx,
+                                              *condition->getMember(i), false,
+                                              &analyzerProvider);
+              if (rv.fail()) {
+                arangodb::velocypack::Builder builder;
+                condition->toVelocyPack(builder, true);
+                THROW_ARANGO_EXCEPTION_MESSAGE(
+                    rv.errorNumber(),
+                    basics::StringUtils::concatT(
+                        "failed to build immutable filter part while querying "
+                        "inverted index, query '",
+                        builder.toJson(), "': ", rv.errorMessage()));
+              }
             }
           }
         }
-        conditionJoiner->add<irs::proxy_filter>()
-            .add(std::move(immutableRoot))
-            .set_cache(&(ctx->_immutablePartCache[condition]));
       }
     } else {
       // sorting case

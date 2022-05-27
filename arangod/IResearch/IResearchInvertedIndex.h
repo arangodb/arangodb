@@ -38,128 +38,129 @@
 #include "search/score.hpp"
 #include "search/conjunction.hpp"
 #include "search/cost.hpp"
+#include <search/proxy_filter.hpp>
 
 // FIXME: this part should be moved to the upstream library
-namespace iresearch {
-class lazy_bitset : private irs::util::noncopyable {
- public:
-  using word_t = size_t;
-
-  lazy_bitset(const irs::sub_reader& segment,
-              const irs::filter::prepared& filter) noexcept
-      : filter_(filter), segment_(&segment) {}
-
-  bool get(size_t word_id, word_t* data);
-
- private:
-  std::unique_ptr<word_t[]> set_;
-  const word_t* begin_{nullptr};
-  const word_t* end_{nullptr};
-  const irs::filter::prepared& filter_;
-  const irs::sub_reader* segment_;
-  irs::doc_iterator::ptr real_doc_itr_;
-  const irs::document* real_doc_{nullptr};
-  size_t words_{0};
-};
-
-class lazy_filter_bitset_iterator final : public irs::doc_iterator,
-                                          private irs::util::noncopyable {
- public:
-  lazy_filter_bitset_iterator(lazy_bitset& bitset,
-                              irs::cost::cost_t estimation) noexcept
-      : bitset_(bitset), cost_(estimation) {
-    reset();
-  }
-
-  bool next() final;
-  irs::doc_id_t seek(irs::doc_id_t target) final;
-  irs::doc_id_t value() const noexcept final { return doc_.value; }
-  irs::attribute* get_mutable(irs::type_info::type_id id) noexcept override;
-  void reset() noexcept;
-
- private:
-  lazy_bitset& bitset_;
-  irs::cost cost_;
-  irs::document doc_;
-  irs::doc_id_t word_idx_{0};
-  lazy_bitset::word_t word_{0};
-  irs::doc_id_t base_{irs::doc_limits::invalid()};
-};
-
-class proxy_query final : public irs::filter::prepared {
- public:
-  struct proxy_cache {
-    absl::flat_hash_map<const irs::sub_reader*, std::unique_ptr<lazy_bitset>>
-        readers_;
-    irs::filter::prepared::ptr prepared_real_filter_;
-  };
-
-  proxy_query(proxy_cache& cache, irs::filter::ptr&& filter,
-              const irs::index_reader& index, const irs::Order& order)
-      : cache_(cache),
-        real_filter_(std::move(filter)),
-        index_(index),
-        order_(order) {}
-
-  irs::doc_iterator::ptr execute(
-      const irs::sub_reader& rdr, const irs::Order&, irs::ExecutionMode,
-      const irs::attribute_provider* /*ctx*/) const override {
-    // first try to find segment in cache.
-    auto& [unused, cached] = *cache_.readers_.emplace(&rdr, nullptr).first;
-
-    if (!cached) {
-      if (!cache_.prepared_real_filter_) {
-        cache_.prepared_real_filter_ = real_filter_->prepare(index_, order_);
-      }
-      cached =
-          std::make_unique<lazy_bitset>(rdr, *cache_.prepared_real_filter_);
-    }
-
-    assert(cached);
-    return irs::memory::make_managed<lazy_filter_bitset_iterator>(
-        *cached, rdr.docs_count());
-  }
-
- private:
-  proxy_cache& cache_;
-  irs::filter::ptr real_filter_;
-  const irs::index_reader& index_;
-  const irs::Order& order_;
-};
-
-class proxy_filter final : public irs::filter {
- public:
-  static ptr make();
-
-  proxy_filter() noexcept : filter(irs::type<proxy_filter>::get()) {}
-
-  irs::filter::prepared::ptr prepare(
-      const irs::index_reader& rdr, const irs::Order& ord, irs::score_t boost,
-      const irs::attribute_provider* ctx) const override {
-    if (!real_filter_ || !cache_) {
-      TRI_ASSERT(false);
-      return irs::filter::prepared::empty();
-    }
-    return irs::memory::make_managed<proxy_query>(
-        *cache_, std::move(real_filter_), rdr, ord);
-  }
-
-  proxy_filter& add(irs::filter::ptr&& real_filter) {
-    real_filter_ = std::move(real_filter);
-    return *this;
-  }
-
-  proxy_filter& set_cache(proxy_query::proxy_cache* cache) {
-    cache_ = cache;
-    return *this;
-  }
-
- private:
-  mutable irs::filter::ptr real_filter_{nullptr};
-  mutable proxy_query::proxy_cache* cache_{nullptr};
-};
-
-}  // namespace iresearch
+//namespace iresearch {
+//class lazy_bitset : private irs::util::noncopyable {
+// public:
+//  using word_t = size_t;
+//
+//  lazy_bitset(const irs::sub_reader& segment,
+//              const irs::filter::prepared& filter) noexcept
+//      : filter_(filter), segment_(&segment) {}
+//
+//  bool get(size_t word_id, word_t* data);
+//
+// private:
+//  std::unique_ptr<word_t[]> set_;
+//  const word_t* begin_{nullptr};
+//  const word_t* end_{nullptr};
+//  const irs::filter::prepared& filter_;
+//  const irs::sub_reader* segment_;
+//  irs::doc_iterator::ptr real_doc_itr_;
+//  const irs::document* real_doc_{nullptr};
+//  size_t words_{0};
+//};
+//
+//class lazy_filter_bitset_iterator final : public irs::doc_iterator,
+//                                          private irs::util::noncopyable {
+// public:
+//  lazy_filter_bitset_iterator(lazy_bitset& bitset,
+//                              irs::cost::cost_t estimation) noexcept
+//      : bitset_(bitset), cost_(estimation) {
+//    reset();
+//  }
+//
+//  bool next() final;
+//  irs::doc_id_t seek(irs::doc_id_t target) final;
+//  irs::doc_id_t value() const noexcept final { return doc_.value; }
+//  irs::attribute* get_mutable(irs::type_info::type_id id) noexcept override;
+//  void reset() noexcept;
+//
+// private:
+//  lazy_bitset& bitset_;
+//  irs::cost cost_;
+//  irs::document doc_;
+//  irs::doc_id_t word_idx_{0};
+//  lazy_bitset::word_t word_{0};
+//  irs::doc_id_t base_{irs::doc_limits::invalid()};
+//};
+//
+//class proxy_query final : public irs::filter::prepared {
+// public:
+//  struct proxy_cache {
+//    absl::flat_hash_map<const irs::sub_reader*, std::unique_ptr<lazy_bitset>>
+//        readers_;
+//    irs::filter::prepared::ptr prepared_real_filter_;
+//  };
+//
+//  proxy_query(proxy_cache& cache, irs::filter::ptr&& filter,
+//              const irs::index_reader& index, const irs::Order& order)
+//      : cache_(cache),
+//        real_filter_(std::move(filter)),
+//        index_(index),
+//        order_(order) {}
+//
+//  irs::doc_iterator::ptr execute(
+//      const irs::sub_reader& rdr, const irs::Order&, irs::ExecutionMode,
+//      const irs::attribute_provider* /*ctx*/) const override {
+//    // first try to find segment in cache.
+//    auto& [unused, cached] = *cache_.readers_.emplace(&rdr, nullptr).first;
+//
+//    if (!cached) {
+//      if (!cache_.prepared_real_filter_) {
+//        cache_.prepared_real_filter_ = real_filter_->prepare(index_, order_);
+//      }
+//      cached =
+//          std::make_unique<lazy_bitset>(rdr, *cache_.prepared_real_filter_);
+//    }
+//
+//    assert(cached);
+//    return irs::memory::make_managed<lazy_filter_bitset_iterator>(
+//        *cached, rdr.docs_count());
+//  }
+//
+// private:
+//  proxy_cache& cache_;
+//  irs::filter::ptr real_filter_;
+//  const irs::index_reader& index_;
+//  const irs::Order& order_;
+//};
+//
+//class proxy_filter final : public irs::filter {
+// public:
+//  static ptr make();
+//
+//  proxy_filter() noexcept : filter(irs::type<proxy_filter>::get()) {}
+//
+//  irs::filter::prepared::ptr prepare(
+//      const irs::index_reader& rdr, const irs::Order& ord, irs::score_t boost,
+//      const irs::attribute_provider* ctx) const override {
+//    if (!real_filter_ || !cache_) {
+//      TRI_ASSERT(false);
+//      return irs::filter::prepared::empty();
+//    }
+//    return irs::memory::make_managed<proxy_query>(
+//        *cache_, std::move(real_filter_), rdr, ord);
+//  }
+//
+//  proxy_filter& add(irs::filter::ptr&& real_filter) {
+//    real_filter_ = std::move(real_filter);
+//    return *this;
+//  }
+//
+//  proxy_filter& set_cache(proxy_query::proxy_cache* cache) {
+//    cache_ = cache;
+//    return *this;
+//  }
+//
+// private:
+//  mutable irs::filter::ptr real_filter_{nullptr};
+//  mutable proxy_query::proxy_cache* cache_{nullptr};
+//};
+//
+//}  // namespace iresearch
 
 namespace arangodb {
 namespace iresearch {
