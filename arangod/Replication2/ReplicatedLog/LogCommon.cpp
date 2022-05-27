@@ -115,12 +115,6 @@ auto replication2::operator<<(std::ostream& os, TermIndexPair pair)
   return os << '(' << pair.term << ':' << pair.index << ')';
 }
 
-LogConfig::LogConfig(std::size_t writeConcern, std::size_t softWriteConcern,
-                     bool waitForSync) noexcept
-    : writeConcern(writeConcern),
-      softWriteConcern(softWriteConcern),
-      waitForSync(waitForSync) {}
-
 LogRange::LogRange(LogIndex from, LogIndex to) noexcept : from(from), to(to) {
   TRI_ASSERT(from <= to);
 }

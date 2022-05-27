@@ -116,61 +116,6 @@ TEST(LogCommonTest, commit_fail_reason) {
   EXPECT_ANY_THROW({ CommitFailReason::fromVelocyPack(jsonSlice); });
 }
 
-TEST(LogCommonTest, log_config) {
-  auto logConfig = LogConfig{1, 1, false};
-  VPackBuilder builder;
-  velocypack::serialize(builder, logConfig);
-  auto slice = builder.slice();
-  auto fromVPack = velocypack::deserialize<LogConfig>(slice);
-  EXPECT_EQ(logConfig, fromVPack);
-
-  auto jsonBuffer = R"({
-    "writeConcern": 1,
-    "softWriteConcern": 1,
-    "waitForSync": false
-  })"_vpack;
-  auto jsonSlice = velocypack::Slice(jsonBuffer->data());
-  EXPECT_TRUE(VelocyPackHelper::equal(jsonSlice, slice, true))
-      << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
-
-  // Test defaulting of softWriteConcern to writeConcern
-  jsonBuffer = R"({
-    "writeConcern": 2,
-    "waitForSync": false
-  })"_vpack;
-  jsonSlice = velocypack::Slice(jsonBuffer->data());
-  logConfig = velocypack::deserialize<LogConfig>(jsonSlice);
-  EXPECT_EQ(logConfig.softWriteConcern, logConfig.writeConcern);
-}
-
-TEST(LogCommonTest, log_config_inspector) {
-  auto logConfig = LogConfig{1, 1, false};
-  VPackBuilder builder;
-
-  serialize(builder, logConfig);
-  auto slice = builder.slice();
-  auto const fromVPack = deserialize<LogConfig>(slice);
-  EXPECT_EQ(logConfig, fromVPack);
-
-  auto jsonBuffer = R"({
-    "writeConcern": 1,
-    "softWriteConcern": 1,
-    "waitForSync": false
-  })"_vpack;
-  auto jsonSlice = velocypack::Slice(jsonBuffer->data());
-  EXPECT_TRUE(VelocyPackHelper::equal(jsonSlice, slice, true))
-      << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
-
-  // Test defaulting of softWriteConcern to writeConcern
-  jsonBuffer = R"({
-    "writeConcern": 2,
-    "waitForSync": false
-  })"_vpack;
-  jsonSlice = velocypack::Slice(jsonBuffer->data());
-  logConfig = deserialize<LogConfig>(jsonSlice);
-  EXPECT_EQ(logConfig.softWriteConcern, logConfig.writeConcern);
-}
-
 TEST(LogCommonTest, participant_flags) {
   {
     auto participantFlags = ParticipantFlags{
