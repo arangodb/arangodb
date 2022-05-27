@@ -295,6 +295,7 @@ auto inspect(Inspector& f, LogTarget& x) {
       f.field(StaticStrings::Config, x.config),
       f.field(StaticStrings::Leader, x.leader),
       f.field(static_strings::Version, x.version),
+      f.field(static_strings::Owner, x.owner),
       f.field(static_strings::Supervision, x.supervision));
 }
 

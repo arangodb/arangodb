@@ -42,7 +42,7 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
   auto spec = LogPlanSpecification{
       id,
       LogPlanTermSpecification{
-          LogTerm{1}, LogConfig{1, 1, 1, false},
+          LogTerm{1}, LogConfig{1, 1, false},
           LogPlanTermSpecification::Leader{"leaderId", RebootId{100}}},
       ParticipantsConfig{15, {{"p1", {true, false}}, {"p2", {}}}}};
 
@@ -59,7 +59,6 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
       "config": {
         "writeConcern": 1,
         "softWriteConcern": 1,
-        "replicationFactor": 1,
         "waitForSync": false
       },
       "leader": {
@@ -95,7 +94,6 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
       "config": {
         "writeConcern": 1,
         "softWriteConcern": 1,
-        "replicationFactor": 1,
         "waitForSync": false
       }
     },
@@ -148,7 +146,6 @@ TEST(AgencyLogSpecificationTest, log_target_supervision_test) {
 TEST(AgencyLogSpecificationTest, log_target_test) {
   {
     auto config = LogConfig();
-    config.replicationFactor = 3;
     config.writeConcern = 2;
     config.softWriteConcern = 2;
     config.waitForSync = false;
@@ -166,7 +163,6 @@ TEST(AgencyLogSpecificationTest, log_target_test) {
 
   {
     auto config = LogConfig();
-    config.replicationFactor = 3;
     config.writeConcern = 2;
     config.softWriteConcern = 2;
     config.waitForSync = true;
@@ -183,7 +179,6 @@ TEST(AgencyLogSpecificationTest, log_target_test) {
       "participants": { "A": { "allowedInQuorum": false } },
       "config": {
         "writeConcern": 2,
-        "replicationFactor": 3,
         "waitForSync": true },
       "leader": "A"
     })"_vpack;

@@ -140,8 +140,7 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
       ParticipantId id, LogTerm term,
       std::vector<std::shared_ptr<AbstractFollower>> const& follower,
       std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
-    auto config =
-        LogConfig{writeConcern, writeConcern, follower.size() + 1, false};
+    auto config = LogConfig{writeConcern, writeConcern, false};
     auto participants =
         std::unordered_map<ParticipantId, ParticipantFlags>{{id, {}}};
     for (auto const& participant : follower) {

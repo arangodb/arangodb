@@ -46,6 +46,9 @@
 #include "Methods.h"
 #include "Random/RandomGenerator.h"
 
+#include "Basics/Result.h"
+#include "Basics/Result.tpp"
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
@@ -281,17 +284,14 @@ struct ReplicatedLogMethodsCoordinator final
     }
 
     auto dbservers = clusterInfo.getCurrentDBServers();
-    std::size_t expectedNumberOfServers =
-        std::min(dbservers.size(), std::size_t{3});
-    if (options.config.has_value()) {
-      expectedNumberOfServers = options.config->replicationFactor;
-    } else if (!options.servers.empty()) {
+
+    auto expectedNumberOfServers = std::min(dbservers.size(), std::size_t{3});
+    if (!options.servers.empty()) {
       expectedNumberOfServers = options.servers.size();
     }
 
     if (!options.config.has_value()) {
-      options.config =
-          LogConfig{2, expectedNumberOfServers, expectedNumberOfServers, false};
+      options.config = LogConfig{2, expectedNumberOfServers, false};
     }
 
     if (expectedNumberOfServers > dbservers.size()) {
@@ -379,31 +379,6 @@ struct ReplicatedLogMethodsCoordinator final
 
   auto createReplicatedLog(replication2::agency::LogTarget spec) const
       -> futures::Future<Result> override {
-    if (spec.participants.size() > spec.config.replicationFactor) {
-      return Result{
-          TRI_ERROR_BAD_PARAMETER,
-          "More participants specified than indicated by replication factor"};
-    } else if (spec.participants.size() < spec.config.replicationFactor) {
-      // add more servers to the list
-      auto dbservers = clusterInfo.getCurrentDBServers();
-      if (dbservers.size() < spec.config.replicationFactor) {
-        return Result{TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS};
-      }
-      auto newEnd = std::remove_if(dbservers.begin(), dbservers.end(),
-                                   [&](std::string const& server) {
-                                     return spec.participants.contains(server);
-                                   });
-
-      std::shuffle(dbservers.begin(), newEnd,
-                   RandomGenerator::UniformRandomGenerator<std::uint32_t>{});
-      auto iter = dbservers.begin();
-      while (spec.participants.size() < spec.config.replicationFactor) {
-        TRI_ASSERT(iter != newEnd);
-        spec.participants.emplace(*iter, ParticipantFlags{});
-        iter += 1;
-      }
-    }
-
     return replication2::agency::methods::createReplicatedLog(vocbase.name(),
                                                               spec)
         .thenValue([self = shared_from_this()](
@@ -734,8 +709,8 @@ struct ReplicatedLogMethodsCoordinator final
                             std::chrono::seconds{5});
 
       return std::move(f).then(
-          [self =
-               shared_from_this()](futures::Try<AgencyReadResult>&& tryResult)
+          [self = shared_from_this(),
+           id](futures::Try<AgencyReadResult>&& tryResult)
               -> ResultT<std::shared_ptr<
                   arangodb::replication2::agency::LogPlanSpecification const>> {
             auto result = basics::catchToResultT(
@@ -746,7 +721,8 @@ struct ReplicatedLogMethodsCoordinator final
             }
 
             if (result->value().isNone()) {
-              return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
+              return Result::fmt(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
+                                 id.id());
             }
 
             auto spec = velocypack::deserialize<
@@ -896,7 +872,8 @@ struct ReplicatedStateDBServerMethods
     THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_NOT_IMPLEMENTED);
   }
 
-  auto deleteReplicatedLog(LogId id) const -> futures::Future<Result> override {
+  auto deleteReplicatedState(LogId id) const
+      -> futures::Future<Result> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_NOT_IMPLEMENTED);
   }
 
@@ -949,32 +926,6 @@ struct ReplicatedStateCoordinatorMethods
 
   auto createReplicatedState(replicated_state::agency::Target spec) const
       -> futures::Future<Result> override {
-    if (spec.participants.size() > spec.config.replicationFactor) {
-      return Result{
-          TRI_ERROR_BAD_PARAMETER,
-          "More participants specified than indicated by replication factor"};
-    } else if (spec.participants.size() < spec.config.replicationFactor) {
-      // add more servers to the list
-      auto dbservers = clusterInfo.getCurrentDBServers();
-      if (dbservers.size() < spec.config.replicationFactor) {
-        return Result{TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS};
-      }
-      auto newEnd = std::remove_if(
-          dbservers.begin(), dbservers.end(), [&](std::string const& serverId) {
-            return spec.participants.contains(serverId);
-          });
-
-      std::shuffle(dbservers.begin(), newEnd,
-                   RandomGenerator::UniformRandomGenerator<std::uint32_t>{});
-      auto iter = dbservers.begin();
-      while (spec.participants.size() < spec.config.replicationFactor) {
-        TRI_ASSERT(iter != newEnd);
-        spec.participants.emplace(
-            *iter, replicated_state::agency::Target::Participant{});
-        iter += 1;
-      }
-    }
-
     return replication2::agency::methods::createReplicatedState(databaseName,
                                                                 spec)
         .thenValue([self = shared_from_this()](
@@ -1034,8 +985,18 @@ struct ReplicatedStateCoordinatorMethods
     });
   }
 
-  auto deleteReplicatedLog(LogId id) const -> futures::Future<Result> override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  auto deleteReplicatedState(LogId id) const
+      -> futures::Future<Result> override {
+    return replication2::agency::methods::deleteReplicatedState(databaseName,
+                                                                id)
+        .thenValue([self = shared_from_this()](
+                       ResultT<uint64_t>&& res) -> futures::Future<Result> {
+          if (res.fail()) {
+            return futures::Future<Result>{std::in_place, res.result()};
+          }
+
+          return self->clusterInfo.waitForPlan(res.get());
+        });
   }
 
   auto getLocalStatus(LogId id) const
@@ -1065,8 +1026,8 @@ struct ReplicatedStateCoordinatorMethods
                               ->database(databaseName)
                               ->state(id),
                           std::chrono::seconds{5});
-    return std::move(f).then([self = shared_from_this()](
-                                 futures::Try<AgencyReadResult>&& tryResult)
+    return std::move(f).then([self = shared_from_this(),
+                              id](futures::Try<AgencyReadResult>&& tryResult)
                                  -> ResultT<GlobalSnapshotStatus> {
       auto result =
           basics::catchToResultT([&] { return std::move(tryResult.get()); });
@@ -1075,7 +1036,8 @@ struct ReplicatedStateCoordinatorMethods
         return result.result();
       }
       if (result->value().isNone()) {
-        return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
+        return Result::fmt(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
+                           id.id());
       }
       auto current = velocypack::deserialize<replicated_state::agency::Current>(
           result->value());
@@ -1089,6 +1051,7 @@ struct ReplicatedStateCoordinatorMethods
       return status;
     });
   }
+
   ArangodServer& server;
   ClusterFeature& clusterFeature;
   ClusterInfo& clusterInfo;

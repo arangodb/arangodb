@@ -166,7 +166,7 @@ struct ReplicatedStateMethods {
 
   virtual auto createReplicatedState(replicated_state::agency::Target spec)
       const -> futures::Future<Result> = 0;
-  virtual auto deleteReplicatedLog(LogId id) const
+  virtual auto deleteReplicatedState(LogId id) const
       -> futures::Future<Result> = 0;
 
   virtual auto getLocalStatus(LogId) const

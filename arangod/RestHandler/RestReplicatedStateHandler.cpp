@@ -193,8 +193,24 @@ auto arangodb::RestReplicatedStateHandler::handleDeleteRequest(
     arangodb::replication2::ReplicatedStateMethods const& methods)
     -> arangodb::RestStatus {
   auto const& suffixes = _request->suffixes();
-  if (std::string_view logIdStr;
-      rest::Match(suffixes).against(&logIdStr, "leader")) {
+  if (std::string_view logIdStr; rest::Match(suffixes).against(&logIdStr)) {
+    auto const logId = replication2::LogId::fromString(logIdStr);
+    if (!logId) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    basics::StringUtils::concatT("Not a log id: ", logIdStr));
+      return RestStatus::DONE;
+    }
+    return waitForFuture(
+        methods.deleteReplicatedState(*logId).thenValue([this](auto&& result) {
+          if (result.ok()) {
+            generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
+          } else {
+            generateError(result);
+          }
+        }));
+
+  } else if (std::string_view logIdStr;
+             rest::Match(suffixes).against(&logIdStr, "leader")) {
     auto const logId = replication2::LogId::fromString(logIdStr);
     if (!logId) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
