@@ -27,7 +27,10 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
 
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+
+using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2 {
 

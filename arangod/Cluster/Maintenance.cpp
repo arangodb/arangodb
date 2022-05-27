@@ -1503,7 +1503,7 @@ static auto reportCurrentReplicatedLogLeader(
   });
 
   if (requiresUpdate) {
-    std::optional<arangodb::replication2::ParticipantsConfig>
+    std::optional<arangodb::replication2::agency::ParticipantsConfig>
         committedParticipantsConfig;
     if (status.committedParticipantsConfig != nullptr) {
       committedParticipantsConfig = *status.committedParticipantsConfig;

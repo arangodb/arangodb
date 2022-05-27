@@ -73,7 +73,7 @@ struct AgencyLogBuilder {
     if (!plan.currentTerm.has_value()) {
       plan.currentTerm.emplace();
       plan.currentTerm->term = LogTerm{1};
-      plan.currentTerm->config = RLA::LogPlanConfig(
+      plan.participantsConfig.config = RLA::LogPlanConfig(
           _log.target.config.writeConcern, _log.target.config.softWriteConcern,
           _log.target.config.waitForSync);
     }

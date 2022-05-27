@@ -35,6 +35,8 @@
 #include "Replication2/ReplicatedLog/types.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
+using namespace arangodb::replication2::agency;
+
 namespace arangodb::replication2::replicated_log {
 
 enum class ParticipantRole { kUnconfigured, kLeader, kFollower };

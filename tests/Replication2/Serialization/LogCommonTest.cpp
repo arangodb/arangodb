@@ -28,9 +28,11 @@
 #include "Aql/VelocyPackHelper.h"
 #include "Inspection/VPack.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
+using namespace arangodb::replication2::agency;
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::basics;
 using namespace arangodb::tests;

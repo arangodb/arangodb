@@ -42,9 +42,10 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
   auto spec = LogPlanSpecification{
       id,
       LogPlanTermSpecification{
-          LogTerm{1}, LogPlanConfig{1, 1, false},
+          LogTerm{1},
           LogPlanTermSpecification::Leader{"leaderId", RebootId{100}}},
-      ParticipantsConfig{15, {{"p1", {true, false}}, {"p2", {}}}}};
+      ParticipantsConfig{
+          15, {{"p1", {true, false}}, {"p2", {}}}, LogPlanConfig{1, 1, false}}};
 
   VPackBuilder builder;
   velocypack::serialize(builder, spec);

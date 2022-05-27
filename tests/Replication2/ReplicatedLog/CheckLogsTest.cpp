@@ -54,7 +54,6 @@ struct CheckLogsAlgorithmTest : ::testing::Test {
       -> agency::LogPlanTermSpecification {
     auto termSpec = agency::LogPlanTermSpecification{};
     termSpec.term = term;
-    termSpec.config = config;
     return termSpec;
   }
 
