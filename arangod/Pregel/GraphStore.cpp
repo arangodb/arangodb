@@ -229,25 +229,6 @@ void GraphStore<V, E>::loadShards(
 }
 
 template<typename V, typename E>
-void GraphStore<V, E>::loadDocument(WorkerConfig* config,
-                                    std::string const& documentID) {
-  // figure out if we got this vertex locally
-  PregelID _id = config->documentIdToPregel(documentID);
-  if (config->isLocalVertexShard(_id.shard)) {
-    loadDocument(config, _id.shard, std::string_view(_id.key));
-  }
-}
-
-template<typename V, typename E>
-void GraphStore<V, E>::loadDocument(WorkerConfig* config,
-                                    PregelShard sourceShard,
-                                    std::string_view key) {
-  // Apparently this code has not been implemented yet; find out whether it's
-  // needed at all or remove
-  TRI_ASSERT(false);
-}
-
-template<typename V, typename E>
 RangeIterator<Vertex<V, E>> GraphStore<V, E>::vertexIterator() {
   if (_vertices.empty()) {
     return RangeIterator<Vertex<V, E>>(_vertices, 0, nullptr, 0);

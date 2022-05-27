@@ -28,8 +28,8 @@
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Iterators.h"
 #include "Pregel/Reports.h"
-#include "Pregel/TypedBuffer.h"
 #include "Pregel/Structs/GraphStoreStats.h"
+#include "Pregel/TypedBuffer.h"
 #include "Utils/DatabaseGuard.h"
 
 #include <atomic>
@@ -103,9 +103,6 @@ class GraphStore final {
   void loadShards(WorkerConfig* config,
                   std::function<void()> const& stautusUpdateCallback,
                   std::function<void()> const& finishedLoadingCallback);
-  void loadDocument(WorkerConfig* config, std::string const& documentID);
-  void loadDocument(WorkerConfig* config, PregelShard sourceShard,
-                    std::string_view key);
   // ======================================================================
 
   // only thread safe if your threads coordinate access to memory locations
@@ -155,7 +152,6 @@ class GraphStore final {
   std::vector<std::unique_ptr<TypedBuffer<Vertex<V, E>>>> _vertices;
   std::vector<std::unique_ptr<TypedBuffer<char>>> _vertexKeys;
   std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>> _edges;
-  std::vector<TypedBuffer<Edge<E>>*> _nextEdgeBuffer;
   std::vector<std::unique_ptr<TypedBuffer<char>>> _edgeKeys;
 
   std::mutex _statsMutex;
