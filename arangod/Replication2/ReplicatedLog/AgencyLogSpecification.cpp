@@ -40,12 +40,14 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::agency;
 
+LogPlanConfig::LogPlanConfig(std::size_t effectiveWriteConcern,
+                             bool waitForSync) noexcept
+    : effectiveWriteConcern(effectiveWriteConcern), waitForSync(waitForSync) {}
+
 LogPlanConfig::LogPlanConfig(std::size_t writeConcern,
                              std::size_t softWriteConcern,
                              bool waitForSync) noexcept
-    : writeConcern(writeConcern),
-      softWriteConcern(softWriteConcern),
-      waitForSync(waitForSync) {}
+    : effectiveWriteConcern(writeConcern), waitForSync(waitForSync) {}
 
 LogPlanTermSpecification::LogPlanTermSpecification(LogTerm term,
                                                    LogPlanConfig config,

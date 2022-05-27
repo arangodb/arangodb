@@ -39,13 +39,12 @@ auto TestReplicatedLog::becomeLeader(
     ParticipantId const& id, LogTerm term,
     std::vector<std::shared_ptr<replicated_log::AbstractFollower>> const&
         follower,
-    std::size_t writeConcern, bool waitForSync,
+    std::size_t effectiveWriteConcern, bool waitForSync,
     std::shared_ptr<cluster::IFailureOracle> failureOracle)
     -> std::shared_ptr<replicated_log::LogLeader> {
   agency::LogPlanConfig config;
-  config.writeConcern = writeConcern;
+  config.effectiveWriteConcern = effectiveWriteConcern;
   config.waitForSync = waitForSync;
-  config.softWriteConcern = writeConcern;
 
   auto participants =
       std::unordered_map<ParticipantId, ParticipantFlags>{{id, {}}};

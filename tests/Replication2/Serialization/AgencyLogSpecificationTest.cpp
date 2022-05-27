@@ -57,8 +57,7 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
     "currentTerm": {
       "term": 1,
       "config": {
-        "writeConcern": 1,
-        "softWriteConcern": 1,
+        "effectiveWriteConcern": 1,
         "waitForSync": false
       },
       "leader": {
@@ -92,8 +91,7 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
     "currentTerm": {
       "term": 1,
       "config": {
-        "writeConcern": 1,
-        "softWriteConcern": 1,
+        "effectiveWriteConcern": 1,
         "waitForSync": false
       }
     },

@@ -308,7 +308,7 @@ auto replicated_log::LogLeader::construct(
                    });
     auto message = basics::StringUtils::concatT(
         "LogCore missing when constructing LogLeader, leader id: ", id,
-        "term: ", term, "writeConcern: ", config.writeConcern,
+        "term: ", term, "effectiveWriteConcern: ", config.effectiveWriteConcern,
         "followers: ", basics::StringUtils::join(followerIds, ", "));
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(message));
   }
@@ -369,9 +369,10 @@ auto replicated_log::LogLeader::construct(
         commonLogContext, followers, localFollower, lastIndex);
     leaderDataGuard->activeParticipantsConfig = participantsConfig;
     leader->_localFollower = std::move(localFollower);
-    TRI_ASSERT(leaderDataGuard->_follower.size() >= config.writeConcern)
+    TRI_ASSERT(leaderDataGuard->_follower.size() >=
+               config.effectiveWriteConcern)
         << "actual followers: " << leaderDataGuard->_follower.size()
-        << " writeConcern: " << config.writeConcern;
+        << " effectiveWriteConcern: " << config.effectiveWriteConcern;
     TRI_ASSERT(leaderDataGuard->_follower.size() ==
                leaderDataGuard->activeParticipantsConfig->participants.size());
     TRI_ASSERT(std::all_of(leaderDataGuard->_follower.begin(),
@@ -939,10 +940,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
 
   auto [newCommitIndex, commitFailReason, quorum] =
       algorithms::calculateCommitIndex(
-          indexes,
-          algorithms::CalculateCommitIndexOptions{
-              _self._config.writeConcern, _self._config.softWriteConcern},
-          _commitIndex, _inMemoryLog.getLastTermIndexPair());
+          indexes, _self._config.effectiveWriteConcern, _commitIndex,
+          _inMemoryLog.getLastTermIndexPair());
   _lastCommitFailReason = commitFailReason;
 
   LOG_CTX("6a6c0", TRACE, _self._logContext)

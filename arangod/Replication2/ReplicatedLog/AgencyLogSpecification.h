@@ -41,11 +41,11 @@ using ParticipantsFlagsMap =
     std::unordered_map<ParticipantId, ParticipantFlags>;
 
 struct LogPlanConfig {
-  std::size_t writeConcern = 1;
-  std::size_t softWriteConcern = 1;
+  std::size_t effectiveWriteConcern = 1;
   bool waitForSync = false;
 
   LogPlanConfig() noexcept = default;
+  LogPlanConfig(std::size_t effectiveWriteConcern, bool waitForSync) noexcept;
   LogPlanConfig(std::size_t writeConcern, std::size_t softWriteConcern,
                 bool waitForSync) noexcept;
 
@@ -55,10 +55,9 @@ struct LogPlanConfig {
 
 template<class Inspector>
 auto inspect(Inspector& f, LogPlanConfig& x) {
-  return f.object(x).fields(f.field("writeConcern", x.writeConcern),
-                            f.field("softWriteConcern", x.softWriteConcern)
-                                .fallback(std::ref(x.writeConcern)),
-                            f.field("waitForSync", x.waitForSync));
+  return f.object(x).fields(
+      f.field("effectiveWriteConcern", x.effectiveWriteConcern),
+      f.field("waitForSync", x.waitForSync));
 }
 
 struct LogPlanTermSpecification {

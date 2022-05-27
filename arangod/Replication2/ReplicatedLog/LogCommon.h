@@ -359,8 +359,6 @@ struct CommitFailReason {
         -> bool = default;
   };
   struct FewerParticipantsThanWriteConcern {
-    std::size_t writeConcern{};
-    std::size_t softWriteConcern{};
     std::size_t effectiveWriteConcern{};
     std::size_t numParticipants{};
     static auto fromVelocyPack(velocypack::Slice)
