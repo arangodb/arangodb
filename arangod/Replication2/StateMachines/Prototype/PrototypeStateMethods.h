@@ -119,6 +119,7 @@ struct PrototypeStateMethods {
 
   virtual auto waitForApplied(LogId id, LogIndex waitForIndex) const
       -> futures::Future<Result> = 0;
+  virtual auto drop(LogId id) const -> futures::Future<Result> = 0;
 
   struct PrototypeStatus {
     // TODO

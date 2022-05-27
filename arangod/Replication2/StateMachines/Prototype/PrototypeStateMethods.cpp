@@ -163,6 +163,10 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
+  auto drop(LogId id) const -> futures::Future<Result> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
  private:
   [[nodiscard]] auto getPrototypeStateLeaderById(LogId id) const
       -> std::shared_ptr<PrototypeLeaderState> {
@@ -403,6 +407,12 @@ struct PrototypeStateMethodsCoordinator final
         .thenValue([](network::Response&& resp) -> LogIndex {
           return processLogIndexResponse(std::move(resp));
         });
+  }
+
+  auto drop(LogId id) const -> futures::Future<Result> override {
+    auto methods =
+        replication2::ReplicatedStateMethods::createInstance(_vocbase);
+    return methods->deleteReplicatedState(id);
   }
 
   auto waitForApplied(LogId id, LogIndex waitForIndex) const

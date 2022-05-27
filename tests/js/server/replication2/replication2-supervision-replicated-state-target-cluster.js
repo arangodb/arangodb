@@ -224,6 +224,13 @@ const replicatedStateSuite = function (stateType) {
       lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, 4));
     },
 
+    ["testDropFromTarget_" + stateType]: function () {
+      const {stateId} = createReplicatedState();
+      sh.replicatedStateDeleteTarget(database, stateId);
+
+      lh.waitFor(lpreds.replicatedLogIsGone(database, stateId));
+      lh.waitFor(spreds.replicatedStateIsGone(database, stateId));
+    },
   };
 };
 

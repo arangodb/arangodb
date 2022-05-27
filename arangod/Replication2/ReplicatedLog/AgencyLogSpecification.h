@@ -284,6 +284,7 @@ struct LogTarget {
   };
 
   std::optional<Supervision> supervision;
+  std::optional<std::string> owner;
 
   LogTarget() = default;
 
