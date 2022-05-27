@@ -775,21 +775,16 @@ void InvertedIndexFieldIterator::next() {
           _valueSlice = VPackSlice::noneSlice();
         }
       }
-#ifdef USE_ENTERPRISE
-      if (_parentIteratorField) {
-        _nameBuffer = _parentIteratorField->name();
-        kludge::mangleNested(_nameBuffer); // FIXME: store mangled version?
-        _nameBuffer += NESTING_LEVEL_DELIMITER;
-      } else {
-        _nameBuffer.clear();
-      }
-#else
       _nameBuffer.clear();
-#endif
-      
     }
     if (!_valueSlice.isNone()) {
       if (_nameBuffer.empty()) {
+#ifdef USE_ENTERPRISE
+        if (!_parentNameBuffer.empty()) {
+          _nameBuffer = _parentNameBuffer;
+          _nameBuffer += NESTING_LEVEL_DELIMITER;
+        }
+#endif
         bool isFirst = true;
         for (auto& a : _begin->attribute()) {
           if (!isFirst) {
@@ -828,6 +823,11 @@ void InvertedIndexFieldIterator::next() {
               _nameBuffer.c_str());
           return;  // never reached
         case VPackValueType::Array: {
+#ifdef USE_ENTERPRISE
+          if (!_begin->nested().empty()) {
+            return;
+          }
+#endif
           if (_begin->isArray() && _arrayStack.empty()) {
             _arrayStack.push_back(VPackArrayIterator(_valueSlice));
             _prefixLength = _nameBuffer.size();

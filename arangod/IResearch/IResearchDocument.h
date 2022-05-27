@@ -161,6 +161,19 @@ class FieldIterator {
   Field const& parentField() const {
     return _value;
   }
+
+  VPackSlice getCurrentValue() const noexcept {
+    return _valueSlice;
+  }
+
+  bool hasNested() const noexcept {
+    return false;
+  }
+
+  void resetNested(VPackSlice slice) {
+    
+  }
+
 #endif
 
  private:
@@ -245,7 +258,23 @@ class InvertedIndexFieldIterator {
                                       IndexId indexId);
 
 #ifdef USE_ENTERPRISE
+  explicit InvertedIndexFieldIterator(
+      InvertedIndexFieldIterator const& parent,
+      IResearchInvertedIndexMeta::Fields const& fields);
+
   InvertedIndexFieldIterator makeNestedIterator() const;
+  
+  VPackSlice getCurrentValue() const noexcept {
+    return _valueSlice;
+  }
+
+  void resetNested(VPackSlice slice);
+
+  bool hasNested() const noexcept {
+    return valid() && !_begin->nested().empty() &&
+           _valueSlice.isArray();
+  }
+
   Field const& parentField() const {
     return _parentField;
   }
@@ -265,12 +294,6 @@ class InvertedIndexFieldIterator {
   }
 
  private:
-
-#ifdef USE_ENTERPRISE
-  explicit InvertedIndexFieldIterator(
-      InvertedIndexFieldIterator const& parent,
-      IResearchInvertedIndexMeta::Fields const& fields);
-#endif
   void next();
   bool setValue(VPackSlice const value,
                 FieldMeta::Analyzer const& valueAnalyzer);
@@ -297,8 +320,9 @@ class InvertedIndexFieldIterator {
   std::string _nameBuffer;
   VPackBuffer<uint8_t> _buffer;  // buffer for stored values
 #ifdef USE_ENTERPRISE
-  Field const* _parentIteratorField{nullptr};
   Field _parentField;
+  std::string _parentNameBuffer;
+  InvertedIndexFieldIterator const* _parent{nullptr};
 #endif
 };
 

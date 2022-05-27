@@ -597,8 +597,12 @@ class IResearchInvertedIndexIterator final
         // always init all iterators as we do not know if it will be
         // skip-next-covering mixture of the calls
         _pkDocItr = ::pkColumn(segmentReader);
-        _pkValue = irs::get<irs::payload>(*_pkDocItr);
-        if (ADB_UNLIKELY(!_pkValue)) {
+        if (_pkDocItr) {
+          _pkValue = irs::get<irs::payload>(*_pkDocItr);
+          if (ADB_UNLIKELY(!_pkValue)) {
+            _pkValue = &NoPayload;
+          }
+        } else {
           _pkValue = &NoPayload;
         }
         _projections.reset(segmentReader);
