@@ -80,7 +80,6 @@ const replicatedStateSuite = function (stateType) {
   const targetConfig = {
     writeConcern: 2,
     softWriteConcern: 2,
-    replicationFactor: 3,
     waitForSync: false,
   };
 

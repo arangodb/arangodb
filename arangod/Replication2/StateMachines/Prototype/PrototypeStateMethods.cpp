@@ -437,15 +437,12 @@ struct PrototypeStateMethodsCoordinator final
     auto dbservers = _clusterInfo.getCurrentDBServers();
     std::size_t expectedNumberOfServers =
         std::min(dbservers.size(), std::size_t{3});
-    if (options.config.has_value()) {
-      expectedNumberOfServers = options.config->replicationFactor;
-    } else if (!options.servers.empty()) {
+    if (!options.servers.empty()) {
       expectedNumberOfServers = options.servers.size();
     }
 
     if (!options.config.has_value()) {
-      options.config =
-          LogConfig{2, expectedNumberOfServers, expectedNumberOfServers, false};
+      options.config = LogConfig{2, expectedNumberOfServers, false};
     }
 
     if (expectedNumberOfServers > dbservers.size()) {

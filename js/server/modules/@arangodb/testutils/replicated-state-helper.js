@@ -149,8 +149,11 @@ const getReplicatedStateStatus = function (database, stateId) {
   return current.supervision.statusReport;
 };
 
-const createReplicatedStateTarget = function (database, targetConfig, type) {
-  const servers = _.sampleSize(LH.dbservers, targetConfig.replicationFactor);
+const createReplicatedStateTarget = function (database, targetConfig, type, replicationFactor) {
+  if (replicationFactor === undefined) {
+    replicationFactor = 3;
+  }
+  const servers = _.sampleSize(LH.dbservers, replicationFactor);
   return createReplicatedStateTargetWithServers(database, targetConfig, type, servers);
 };
 

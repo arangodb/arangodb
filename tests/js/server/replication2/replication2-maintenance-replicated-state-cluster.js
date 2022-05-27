@@ -45,7 +45,6 @@ const createReplicatedState = function (database, logId, servers, leader, stateT
       currentTerm: {
         term: 1,
         config: {
-          replicationFactor: 3,
           writeConcern: 2,
           softWriteConcern: 2,
           waitForSync: false,
@@ -81,7 +80,6 @@ const createReplicatedState = function (database, logId, servers, leader, stateT
 };
 
 const replicatedStateSuite = function (stateType) {
-
 
   return {
     setUpAll, tearDownAll, setUp, tearDown,

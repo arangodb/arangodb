@@ -115,7 +115,7 @@ TEST_F(EstablishLeadershipTest, excluded_follower) {
 
   auto follower = followerLog->becomeFollower("follower", LogTerm{4}, "leader");
 
-  auto config = LogConfig{2, 2, 2, false};
+  auto config = LogConfig{2, 2, false};
   auto participants = std::unordered_map<ParticipantId, ParticipantFlags>{
       {"leader", {}}, {"follower", {.allowedInQuorum = false}}};
   auto participantsConfig =

@@ -116,10 +116,9 @@ auto replication2::operator<<(std::ostream& os, TermIndexPair pair)
 }
 
 LogConfig::LogConfig(std::size_t writeConcern, std::size_t softWriteConcern,
-                     std::size_t replicationFactor, bool waitForSync) noexcept
+                     bool waitForSync) noexcept
     : writeConcern(writeConcern),
       softWriteConcern(softWriteConcern),
-      replicationFactor(replicationFactor),
       waitForSync(waitForSync) {}
 
 LogRange::LogRange(LogIndex from, LogIndex to) noexcept : from(from), to(to) {
