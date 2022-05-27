@@ -3371,7 +3371,7 @@ Result ClusterInfo::createCollectionsCoordinator(
               });
             }
 
-            return std::move(result);
+            return result;
           });
     });
   }
