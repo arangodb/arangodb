@@ -128,8 +128,8 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       let shards = collection.shards();
       db._drop(collectionName);
       for (const shard of shards) {
-        let {target} = sh.readReplicatedStateAgency(database, shardIdToLogId(shard));
-        assertEqual(target, undefined);
+        let {plan} = sh.readReplicatedStateAgency(database, shardIdToLogId(shard));
+        assertEqual(plan, undefined);
       }
     },
   };

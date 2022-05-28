@@ -597,7 +597,7 @@ auto ClusterInfo::waitForReplicatedStatesCreation(
 
 auto ClusterInfo::deleteReplicatedStates(
     std::string const& databaseName,
-    std::vector<replication2::LogId> replicatedStatesIds)
+    std::vector<replication2::LogId> const& replicatedStatesIds)
     -> futures::Future<Result> {
   auto replicatedStateMethods =
       arangodb::replication2::ReplicatedStateMethods::createInstanceCoordinator(
@@ -3318,7 +3318,7 @@ Result ClusterInfo::createCollectionsCoordinator(
             });
 
         replicatedStatesCleanup =
-            this->deleteReplicatedStates(databaseName, std::move(stateIds));
+            this->deleteReplicatedStates(databaseName, stateIds);
       }
 
       using namespace std::chrono;
@@ -3837,8 +3837,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
           << shardId;
       stateIds.emplace_back(logId.value());
     }
-    replicatedStatesCleanup =
-        deleteReplicatedStates(dbName, std::move(stateIds));
+    replicatedStatesCleanup = deleteReplicatedStates(dbName, stateIds);
   }
 
   while (true) {
@@ -3846,6 +3845,13 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     if (tmpRes.has_value() &&
         (replicationVersion == replication::Version::ONE ||
          replicatedStatesCleanup.isReady())) {
+      if (replicatedStatesCleanup.get().fail()) {
+        LOG_TOPIC("ce2be", ERR, Logger::CLUSTER)
+            << "Failed to successfully remove replicated states"
+            << " database: " << dbName << " collection ID: " << collectionID
+            << " collection name: " << coll->name();
+      }
+
       cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
       // ...remove the entire directory for the collection
       AgencyOperation delCurrentCollection(

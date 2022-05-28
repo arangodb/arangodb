@@ -1116,7 +1116,7 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
   auto deleteReplicatedStates(
       std::string const& databaseName,
-      std::vector<replication2::LogId> replicatedStatesIds)
+      std::vector<replication2::LogId> const& replicatedStatesIds)
       -> futures::Future<Result>;
 
   /// underlying application server
