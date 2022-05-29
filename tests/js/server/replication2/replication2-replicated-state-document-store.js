@@ -141,8 +141,6 @@ const replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2 = function (
     return {
       setUpAll: function () {
         previousDatabase = db._name();
-        require('internal').print('#####################');
-        require('internal').print(db._databases());
         if (!_.includes(db._databases(), database)) {
           db._createDatabase(database, {"replicationVersion": "2"});
           databaseExisted = false;
