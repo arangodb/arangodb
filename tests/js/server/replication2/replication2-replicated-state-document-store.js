@@ -135,6 +135,48 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
   };
 };
 
+const replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2 = function () {
+  const {setUpAll, tearDownAll} = (function () {
+    let previousDatabase, databaseExisted = true;
+    return {
+      setUpAll: function () {
+        previousDatabase = db._name();
+        require('internal').print('#####################');
+        require('internal').print(db._databases());
+        if (!_.includes(db._databases(), database)) {
+          db._createDatabase(database, {"replicationVersion": "2"});
+          databaseExisted = false;
+        }
+        db._useDatabase(database);
+      },
+
+      tearDownAll: function () {
+        db._useDatabase(previousDatabase);
+        if (_.includes(db._databases(), database) && !databaseExisted) {
+          db._dropDatabase(database);
+        }
+      },
+    };
+  }());
+
+  return {
+    setUpAll, tearDownAll,
+    setUp: lh.registerAgencyTestBegin,
+    tearDown: lh.registerAgencyTestEnd,
+
+    testDatabaseDeletion: function() {
+      let collection = db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
+      let shards = collection.shards();
+      db._useDatabase("_system");
+      db._dropDatabase(database);
+      for (const shard of shards) {
+        let {plan} = sh.readReplicatedStateAgency(database, shardIdToLogId(shard));
+        assertEqual(plan, undefined);
+      }
+    },
+  };
+};
+
 const replicatedStateDocumentStoreSuiteReplication1 = function () {
   const {setUpAll, tearDownAll} = (function () {
     let previousDatabase, databaseExisted = true;
@@ -173,5 +215,6 @@ const replicatedStateDocumentStoreSuiteReplication1 = function () {
 };
 
 jsunity.run(replicatedStateDocumentStoreSuiteReplication2);
+jsunity.run(replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2);
 jsunity.run(replicatedStateDocumentStoreSuiteReplication1);
 return jsunity.done();

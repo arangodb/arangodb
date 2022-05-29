@@ -731,8 +731,8 @@ class ClusterInfo final {
   Result dropCollectionCoordinator(     // drop collection
       std::string const& databaseName,  // database name
       std::string const& collectionID,  // collection identifier
-      double timeout,                   // request timeout
-      replication::Version replicationVersion = replication::Version::ONE);
+      double timeout                    // request timeout
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set collection properties in coordinator

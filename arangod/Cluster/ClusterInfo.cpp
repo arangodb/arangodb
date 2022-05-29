@@ -521,14 +521,7 @@ auto ClusterInfo::createReplicatedStateSpec(
     -> replication2::replicated_state::agency::Target {
   replication2::replicated_state::agency::Target spec;
 
-  auto stateId{std::string_view(shardId).substr(1, shardId.size() - 1)};
-  auto logId = replication2::LogId::fromString(stateId);
-  ADB_PROD_ASSERT(logId.has_value())
-      << " converting " << stateId
-      << " to LogId failed, during replicated state creation for shard "
-      << shardId;
-
-  spec.id = logId.value();
+  spec.id = LogicalCollection::shardIdToLogId(shardId);
   spec.properties.implementation.type = "black-hole";
   TRI_ASSERT(!serverIds.empty());
   spec.leader = serverIds.front();
@@ -601,7 +594,7 @@ auto ClusterInfo::deleteReplicatedStates(
     -> futures::Future<Result> {
   auto replicatedStateMethods =
       arangodb::replication2::ReplicatedStateMethods::createInstanceCoordinator(
-          this->_server, databaseName);
+          _server, databaseName);
 
   std::vector<futures::Future<Result>> deletedStates;
   deletedStates.reserve(replicatedStatesIds.size());
@@ -2760,6 +2753,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
+  auto collections = getCollections(name);
 
   auto dbServerResult =
       std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
@@ -2826,10 +2820,28 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
     }
   }
 
+  auto replicatedStatesCleanup = futures::Future<Result>{std::in_place};
+  if (!collections.empty() &&
+      collections.front()->replicationVersion() == replication::Version::TWO) {
+    std::vector<replication2::LogId> replicatedStates;
+    for (auto const& collection : collections) {
+      auto shardIds = collection->shardIds();
+      replicatedStates.reserve(replicatedStates.size() + shardIds->size());
+      std::transform(
+          shardIds->begin(), shardIds->end(),
+          std::back_inserter(replicatedStates), [](auto const& shardPair) {
+            return LogicalCollection::shardIdToLogId(shardPair.first);
+          });
+    }
+    collections.clear();
+    replicatedStatesCleanup = deleteReplicatedStates(name, replicatedStates);
+  }
+
   // Now wait stuff in Current to disappear and thus be complete:
   {
     while (true) {
-      if (dbServerResult->load(std::memory_order_acquire).has_value()) {
+      if (dbServerResult->load(std::memory_order_acquire).has_value() &&
+          replicatedStatesCleanup.isReady()) {
         cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
         AgencyOperation delCurrentCollection(
             where, AgencySimpleOperationType::DELETE_OP);
@@ -2838,7 +2850,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
         AgencyWriteTransaction cx(
             {delCurrentCollection, incrementCurrentVersion});
         res = ac.sendTransactionWithFailover(cx);
-        if (res.successful()) {
+        if (res.successful() && replicatedStatesCleanup.get().ok()) {
           return Result(TRI_ERROR_NO_ERROR);
         }
         return Result(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT);
@@ -3659,8 +3671,8 @@ Result ClusterInfo::createCollectionsCoordinator(
 Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     std::string const& dbName,                  // database name
     std::string const& collectionID,
-    double timeout,  // request timeout
-    replication::Version replicationVersion) {
+    double timeout  // request timeout
+) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   if (dbName.empty() || (dbName[0] > '0' && dbName[0] < '9')) {
     events::DropCollection(dbName, collectionID,
@@ -3825,7 +3837,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
 
   // Delete replicated states in case we are using Replication2
   auto replicatedStatesCleanup = futures::Future<Result>{std::in_place};
-  if (replicationVersion == replication::Version::TWO) {
+  if (coll->replicationVersion() == replication::Version::TWO) {
     std::vector<replication2::LogId> stateIds;
     for (auto pair : VPackObjectIterator(shardsSlice)) {
       auto shardId = pair.key.copyString();
@@ -3842,9 +3854,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
 
   while (true) {
     auto tmpRes = dbServerResult->load();
-    if (tmpRes.has_value() &&
-        (replicationVersion == replication::Version::ONE ||
-         replicatedStatesCleanup.isReady())) {
+    if (tmpRes.has_value() && replicatedStatesCleanup.isReady()) {
       if (replicatedStatesCleanup.get().fail()) {
         LOG_TOPIC("ce2be", ERR, Logger::CLUSTER)
             << "Failed to successfully remove replicated states"

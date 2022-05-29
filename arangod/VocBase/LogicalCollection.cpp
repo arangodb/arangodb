@@ -36,6 +36,7 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Replication/ReplicationFeature.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -274,6 +275,10 @@ size_t LogicalCollection::replicationFactor() const noexcept {
 size_t LogicalCollection::writeConcern() const noexcept {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->writeConcern();
+}
+
+replication::Version LogicalCollection::replicationVersion() const noexcept {
+  return vocbase().replicationVersion();
 }
 
 std::string const& LogicalCollection::distributeShardsLike() const noexcept {
@@ -1210,6 +1215,14 @@ void LogicalCollection::addInternalValidator(
 void LogicalCollection::decorateWithInternalValidators() {
   // Community validators go in here.
   decorateWithInternalEEValidators();
+}
+
+replication2::LogId LogicalCollection::shardIdToLogId(ShardID const& shardId) {
+  auto stateId = std::string_view(shardId).substr(1, shardId.size() - 1);
+  auto logId = replication2::LogId::fromString(stateId);
+  ADB_PROD_ASSERT(logId.has_value())
+      << " converting " << shardId << " to LogId failed";
+  return logId.value();
 }
 
 #ifndef USE_ENTERPRISE
