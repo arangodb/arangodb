@@ -566,7 +566,7 @@ auto ClusterInfo::waitForReplicatedStatesCreation(
             return clusterInfo.waitForPlan(maxIndex);
           })
       .then([](auto&& tryResult) {
-        auto result =
+        Result result =
             basics::catchToResult([&] { return std::move(tryResult.get()); });
         if (result.fail()) {
           if (result.is(TRI_ERROR_NO_ERROR)) {
@@ -606,12 +606,12 @@ auto ClusterInfo::deleteReplicatedStates(
             basics::catchToResultT([&] { return std::move(tryResult.get()); });
 
         auto makeResult = [](auto&& result) {
-          auto r = result.mapError([](result::Error error) {
+          Result r = result.mapError([](result::Error error) {
             error.appendErrorMessage(
                 "Failed to delete replicated states corresponding to shards!");
             return error;
           });
-          return std::move(r);
+          return r;
         };
 
         auto result = deletionResults.result();

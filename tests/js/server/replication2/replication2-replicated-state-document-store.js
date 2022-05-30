@@ -54,29 +54,23 @@ const getDbServersById = function() {
 
 
 const replicatedStateDocumentStoreSuiteReplication2 = function () {
-  const {setUpAll, tearDownAll} = (function () {
-    let previousDatabase, databaseExisted = true;
-    return {
-      setUpAll: function () {
-        previousDatabase = db._name();
-        if (!_.includes(db._databases(), database)) {
-          db._createDatabase(database, {"replicationVersion": "2"});
-          databaseExisted = false;
-        }
-        db._useDatabase(database);
-      },
-
-      tearDownAll: function () {
-        db._useDatabase(previousDatabase);
-        if (!databaseExisted) {
-          db._dropDatabase(database);
-        }
-      },
-    };
-  }());
-
+  let previousDatabase, databaseExisted = true;
   return {
-    setUpAll, tearDownAll,
+    setUpAll: function () {
+      previousDatabase = db._name();
+      if (!_.includes(db._databases(), database)) {
+        db._createDatabase(database, {"replicationVersion": "2"});
+        databaseExisted = false;
+      }
+      db._useDatabase(database);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase(previousDatabase);
+      if (!databaseExisted) {
+        db._dropDatabase(database);
+      }
+    },
     setUp: function () {
       lh.registerAgencyTestBegin();
       db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
@@ -136,29 +130,23 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
 };
 
 const replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2 = function () {
-  const {setUpAll, tearDownAll} = (function () {
-    let previousDatabase, databaseExisted = true;
-    return {
-      setUpAll: function () {
-        previousDatabase = db._name();
-        if (!_.includes(db._databases(), database)) {
-          db._createDatabase(database, {"replicationVersion": "2"});
-          databaseExisted = false;
-        }
-        db._useDatabase(database);
-      },
-
-      tearDownAll: function () {
-        db._useDatabase(previousDatabase);
-        if (_.includes(db._databases(), database) && !databaseExisted) {
-          db._dropDatabase(database);
-        }
-      },
-    };
-  }());
-
+  let previousDatabase, databaseExisted = true;
   return {
-    setUpAll, tearDownAll,
+    setUpAll: function () {
+      previousDatabase = db._name();
+      if (!_.includes(db._databases(), database)) {
+        db._createDatabase(database, {"replicationVersion": "2"});
+        databaseExisted = false;
+      }
+      db._useDatabase(database);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase(previousDatabase);
+      if (_.includes(db._databases(), database) && !databaseExisted) {
+        db._dropDatabase(database);
+      }
+    },
     setUp: lh.registerAgencyTestBegin,
     tearDown: lh.registerAgencyTestEnd,
 
@@ -176,29 +164,23 @@ const replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2 = function (
 };
 
 const replicatedStateDocumentStoreSuiteReplication1 = function () {
-  const {setUpAll, tearDownAll} = (function () {
-    let previousDatabase, databaseExisted = true;
-    return {
-      setUpAll: function () {
-        previousDatabase = db._name();
-        if (!_.includes(db._databases(), database)) {
-          db._createDatabase(database, {"replicationVersion": "1"});
-          databaseExisted = false;
-        }
-        db._useDatabase(database);
-      },
-
-      tearDownAll: function () {
-        db._useDatabase(previousDatabase);
-        if (!databaseExisted) {
-          db._dropDatabase(database);
-        }
-      },
-    };
-  }());
-
+  let previousDatabase, databaseExisted = true;
   return {
-    setUpAll, tearDownAll,
+    setUpAll: function () {
+      previousDatabase = db._name();
+      if (!_.includes(db._databases(), database)) {
+        db._createDatabase(database, {"replicationVersion": "1"});
+        databaseExisted = false;
+      }
+      db._useDatabase(database);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase(previousDatabase);
+      if (!databaseExisted) {
+        db._dropDatabase(database);
+      }
+    },
     setUp: lh.registerAgencyTestBegin,
     tearDown: lh.registerAgencyTestEnd,
 
