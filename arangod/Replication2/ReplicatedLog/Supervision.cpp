@@ -213,18 +213,18 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
 
   // Check whether there are enough participants to reach a quorum
   if (plan.participantsConfig.participants.size() + 1 <=
-      plan.currentTerm->config.writeConcern) {
+      plan.currentTerm->config.effectiveWriteConcern) {
     ctx.reportStatus<LogCurrentSupervision::LeaderElectionImpossible>();
     ctx.createAction<NoActionPossibleAction>();
     return;
   }
 
   TRI_ASSERT(plan.participantsConfig.participants.size() + 1 >
-             plan.currentTerm->config.writeConcern);
+             plan.currentTerm->config.effectiveWriteConcern);
 
   auto const requiredNumberOfOKParticipants =
       plan.participantsConfig.participants.size() + 1 -
-      plan.currentTerm->config.writeConcern;
+      plan.currentTerm->config.effectiveWriteConcern;
 
   // Find the participants that are healthy and that have the best LogTerm
   auto election = runElectionCampaign(
@@ -510,8 +510,11 @@ auto checkLogExists(SupervisionContext& ctx, Log const& log,
     } else {
       auto leader = pickLeader(target.leader, target.participants, health,
                                log.target.id.id());
+      auto config = LogPlanConfig(target.config.writeConcern,
+                                  target.config.softWriteConcern,
+                                  target.config.waitForSync);
       ctx.createAction<AddLogToPlanAction>(target.id, target.participants,
-                                           target.config, leader);
+                                           config, leader);
     }
   }
 }
@@ -623,23 +626,7 @@ auto checkParticipantWithFlagsToUpdate(SupervisionContext& ctx, Log const& log,
 
 auto checkConfigUpdated(SupervisionContext& ctx, Log const& log,
                         ParticipantsHealth const& health) -> void {
-  auto const& target = log.target;
-
-  if (!log.plan.has_value()) {
-    return;
-  }
-  TRI_ASSERT(log.plan.has_value());
-  auto const& plan = *log.plan;
-
-  if (!plan.currentTerm.has_value()) {
-    return;
-  }
-  TRI_ASSERT(plan.currentTerm.has_value());
-  auto const& currentTerm = *plan.currentTerm;
-
-  if (target.config != currentTerm.config) {
-    ctx.reportStatus<LogCurrentSupervision::ConfigChangeNotImplemented>();
-  }
+  ctx.reportStatus<LogCurrentSupervision::ConfigChangeNotImplemented>();
 }
 
 auto checkConverged(SupervisionContext& ctx, Log const& log) {

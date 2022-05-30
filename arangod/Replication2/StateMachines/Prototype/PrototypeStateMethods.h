@@ -57,7 +57,7 @@ struct PrototypeStateMethods {
   struct CreateOptions {
     bool waitForReady{false};
     std::optional<LogId> id;
-    std::optional<LogConfig> config;
+    std::optional<agency::LogTargetConfig> config;
     std::vector<ParticipantId> servers;
   };
 
