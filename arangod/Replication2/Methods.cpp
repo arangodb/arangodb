@@ -291,7 +291,8 @@ struct ReplicatedLogMethodsCoordinator final
     }
 
     if (!options.config.has_value()) {
-      options.config = LogConfig{2, expectedNumberOfServers, false};
+      options.config = arangodb::replication2::agency::LogTargetConfig{
+          2, expectedNumberOfServers, false};
     }
 
     if (expectedNumberOfServers > dbservers.size()) {

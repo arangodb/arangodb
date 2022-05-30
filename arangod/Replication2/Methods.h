@@ -26,6 +26,7 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogEntries.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
 
 #include <string>
@@ -71,7 +72,7 @@ struct ReplicatedLogMethods {
   struct CreateOptions {
     bool waitForReady{true};
     std::optional<LogId> id;
-    std::optional<LogConfig> config;
+    std::optional<agency::LogTargetConfig> config;
     std::optional<ParticipantId> leader;
     std::vector<ParticipantId> servers;
   };

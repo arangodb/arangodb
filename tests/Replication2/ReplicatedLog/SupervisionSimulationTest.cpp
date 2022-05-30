@@ -22,8 +22,8 @@
 
 #include <gtest/gtest.h>
 
-#include <fmt/ostream.h>
 #include <fmt/core.h>
+#include <fmt/ostream.h>
 
 #include "Replication2/Helper/AgencyLogBuilder.h"
 #include "Replication2/Helper/AgencyStateBuilder.h"
@@ -47,14 +47,14 @@ using namespace arangodb::test;
 using namespace arangodb::replication2;
 
 struct ReplicatedLogSupervisionSimulationTest : ::testing::Test {
-  LogConfig const defaultConfig = {2, 2, false};
+  LogTargetConfig const defaultConfig = {2, 2, false};
   LogId const logId{23};
   ParticipantFlags const defaultFlags{};
 };
 
 TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_created) {
   AgencyLogBuilder log;
-  log.setTargetConfig(LogConfig(2, 2, true))
+  log.setTargetConfig(LogTargetConfig(2, 2, true))
       .setId(logId)
       .setTargetParticipant("A", defaultFlags)
       .setTargetParticipant("B", defaultFlags)
@@ -94,7 +94,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_created) {
 
 TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_leader_fails) {
   AgencyLogBuilder log;
-  log.setTargetConfig(LogConfig(2, 2, true))
+  log.setTargetConfig(LogTargetConfig(2, 2, true))
       .setId(logId)
       .setTargetParticipant("A", defaultFlags)
       .setTargetParticipant("B", defaultFlags)
@@ -132,7 +132,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_leader_fails) {
 
 TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_any_fails) {
   AgencyLogBuilder log;
-  log.setTargetConfig(LogConfig(2, 2, true))
+  log.setTargetConfig(LogTargetConfig(2, 2, true))
       .setId(logId)
       .setTargetParticipant("A", defaultFlags)
       .setTargetParticipant("B", defaultFlags)
@@ -171,7 +171,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_any_fails) {
 TEST_F(ReplicatedLogSupervisionSimulationTest,
        check_participant_added_created) {
   AgencyLogBuilder log;
-  log.setTargetConfig(LogConfig(2, 2, true))
+  log.setTargetConfig(LogTargetConfig(2, 2, true))
       .setId(logId)
       .setTargetParticipant("A", defaultFlags)
       .setTargetParticipant("B", defaultFlags)
@@ -216,7 +216,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest,
 
 TEST_F(ReplicatedLogSupervisionSimulationTest, check_log) {
   AgencyLogBuilder log;
-  log.setTargetConfig(LogConfig(2, 2, true))
+  log.setTargetConfig(LogTargetConfig(2, 2, true))
       .setId(logId)
       .setTargetParticipant("A", defaultFlags)
       .setTargetParticipant("B", defaultFlags)
@@ -260,7 +260,7 @@ TEST_F(ReplicatedLogSupervisionSimulationTest, check_log) {
 
 TEST_F(ReplicatedLogSupervisionSimulationTest, check_log_set_leader) {
   AgencyLogBuilder log;
-  log.setTargetConfig(LogConfig(2, 2, true))
+  log.setTargetConfig(LogTargetConfig(2, 2, true))
       .setId(logId)
       .setTargetParticipant("A", defaultFlags)
       .setTargetParticipant("B", defaultFlags)

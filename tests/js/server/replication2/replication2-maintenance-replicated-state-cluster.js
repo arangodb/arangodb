@@ -45,8 +45,7 @@ const createReplicatedState = function (database, logId, servers, leader, stateT
       currentTerm: {
         term: 1,
         config: {
-          writeConcern: 2,
-          softWriteConcern: 2,
+          effectiveWriteConcern: 2,
           waitForSync: false,
         },
         leader: {

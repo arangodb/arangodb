@@ -27,6 +27,7 @@
 #include "Basics/StaticStrings.h"
 #include "Inspection/VPack.h"
 #include "Inspection/Transformers.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedState/StateCommon.h"
 
@@ -213,7 +214,7 @@ struct Target {
   };
 
   std::unordered_map<ParticipantId, Participant> participants;
-  LogConfig config;
+  arangodb::replication2::agency::LogTargetConfig config;
   std::optional<std::uint64_t> version;
 
   struct Supervision {};

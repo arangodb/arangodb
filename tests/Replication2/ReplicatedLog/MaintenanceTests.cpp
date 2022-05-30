@@ -23,6 +23,7 @@
 
 #include "Cluster/Maintenance.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
 using namespace arangodb;
 using namespace arangodb::maintenance;
@@ -43,7 +44,7 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_we_are_participant) {
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{};
-  auto const defaultConfig = LogConfig{};
+  auto const defaultConfig = agency::LogPlanConfig{};
 
   auto const planLogs = ReplicatedLogSpecMap{{
       logId,
@@ -80,7 +81,7 @@ TEST_F(ReplicationMaintenanceTest,
   auto const logId = LogId{12};
   auto const database = DatabaseID{"mydb"};
   auto const localLogs = ReplicatedLogStatusMap{};
-  auto const defaultConfig = LogConfig{};
+  auto const defaultConfig = agency::LogPlanConfig{};
 
   auto const planLogs = ReplicatedLogSpecMap{{
       logId,
@@ -119,7 +120,7 @@ TEST_F(ReplicationMaintenanceTest,
        replicated_log::QuickLogStatus{
            replicated_log::ParticipantRole::kUnconfigured}},
   };
-  auto const defaultConfig = LogConfig{};
+  auto const defaultConfig = agency::LogPlanConfig{};
 
   auto const planLogs = ReplicatedLogSpecMap{{
       logId,
@@ -161,7 +162,7 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_unconfigured) {
        replicated_log::QuickLogStatus{
            replicated_log::ParticipantRole::kUnconfigured}},
   };
-  auto const defaultConfig = LogConfig{};
+  auto const defaultConfig = agency::LogPlanConfig{};
 
   auto const planLogs = ReplicatedLogSpecMap{{
       logId,
@@ -205,7 +206,7 @@ TEST_F(ReplicationMaintenanceTest, create_replicated_log_detect_wrong_term) {
           .term = LogTerm{4},
           .local = {}},
   }};
-  auto const defaultConfig = LogConfig{};
+  auto const defaultConfig = agency::LogPlanConfig{};
 
   auto const planLogs = ReplicatedLogSpecMap{{
       logId,
@@ -264,7 +265,7 @@ TEST_F(ReplicationMaintenanceTest,
   auto localLogs = ReplicatedLogStatusMap{
       {logId, replicated_log::QuickLogStatus{std::move(leaderStatus)}},
   };
-  auto const defaultConfig = LogConfig{};
+  auto const defaultConfig = agency::LogPlanConfig{};
 
   // Modify generation to trigger an update
   participantsConfig.generation = 2;

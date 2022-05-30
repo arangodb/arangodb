@@ -31,6 +31,7 @@
 #include "Replication2/StateMachines/Prototype/PrototypeLeaderState.h"
 #include "Replication2/StateMachines/Prototype/PrototypeStateMachine.h"
 #include "Replication2/Mocks/AsyncFollower.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -140,7 +141,7 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
       ParticipantId id, LogTerm term,
       std::vector<std::shared_ptr<AbstractFollower>> const& follower,
       std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
-    auto config = LogConfig{writeConcern, writeConcern, false};
+    auto config = agency::LogPlanConfig{writeConcern, writeConcern, false};
     auto participants =
         std::unordered_map<ParticipantId, ParticipantFlags>{{id, {}}};
     for (auto const& participant : follower) {
