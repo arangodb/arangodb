@@ -3838,13 +3838,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     std::vector<replication2::LogId> stateIds;
     for (auto pair : VPackObjectIterator(shardsSlice)) {
       auto shardId = pair.key.copyString();
-      auto stateId = std::string_view{shardId.substr(1, shardId.size() - 1)};
-      auto logId = replication2::LogId::fromString(stateId);
-      ADB_PROD_ASSERT(logId.has_value())
-          << " converting " << stateId
-          << " to LogId failed, during replicated state deletion for shard "
-          << shardId;
-      stateIds.emplace_back(logId.value());
+      stateIds.emplace_back(LogicalCollection::shardIdToStateId(shardId));
     }
     replicatedStatesCleanup = deleteReplicatedStates(dbName, stateIds);
   }
