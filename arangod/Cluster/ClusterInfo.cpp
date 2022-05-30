@@ -559,12 +559,10 @@ auto ClusterInfo::waitForReplicatedStatesCreation(
       .thenValue(
           [&clusterInfo = _server.getFeature<ClusterFeature>().clusterInfo()](
               auto&& raftIndices) {
-            consensus::index_t highestRaftIndex = std::transform_reduce(
-                raftIndices.begin(), raftIndices.end(), (consensus::index_t)0,
-                [](consensus::index_t l, consensus::index_t r) {
-                  return std::max(l, r);
-                },
-                [](auto&& value) { return value.get().get(); });
+            consensus::index_t maxIndex = 0;
+            for (auto& v : raftIndices) {
+              maxIndex = std::max(maxIndex, v.get().get());
+            }
 
             return clusterInfo.waitForPlan(highestRaftIndex);
           })
