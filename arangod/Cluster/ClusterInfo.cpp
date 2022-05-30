@@ -563,8 +563,7 @@ auto ClusterInfo::waitForReplicatedStatesCreation(
             for (auto& v : raftIndices) {
               maxIndex = std::max(maxIndex, v.get().get());
             }
-
-            return clusterInfo.waitForPlan(highestRaftIndex);
+            return clusterInfo.waitForPlan(maxIndex);
           })
       .then([](auto&& tryResult) {
         auto result =
