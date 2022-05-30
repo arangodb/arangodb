@@ -36,8 +36,6 @@ struct RocksDBOptions : arangodb::RocksDBOptionsProvider {
   RocksDBOptions();
 
   rocksdb::TransactionDBOptions getTransactionDBOptions() const override;
-  rocksdb::Options getOptions() const override;
-  rocksdb::BlockBasedTableOptions getTableOptions() const override;
 
   uint64_t maxTotalWalSize() const noexcept override;
   uint32_t numThreadsHigh() const noexcept override;
@@ -426,6 +424,10 @@ struct RocksDBOptions : arangodb::RocksDBOptionsProvider {
         f.field("db", o._dbOptions).fallback(f.keep()),
         f.field("table", o._tableOptions).fallback(f.keep()));
   }
+
+ protected:
+  rocksdb::Options doGetOptions() const override;
+  rocksdb::BlockBasedTableOptions doGetTableOptions() const override;
 
  private:
   DBOptions _dbOptions;

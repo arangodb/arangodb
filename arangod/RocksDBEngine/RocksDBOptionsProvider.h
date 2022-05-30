@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include <optional>
+
 #include <rocksdb/options.h>
 #include <rocksdb/table.h>
 #include <rocksdb/utilities/transaction_db.h>
@@ -38,11 +40,10 @@ struct RocksDBOptionsProvider {
   virtual ~RocksDBOptionsProvider() = default;
 
   virtual rocksdb::TransactionDBOptions getTransactionDBOptions() const = 0;
-  virtual rocksdb::Options getOptions() const = 0;
-  virtual rocksdb::BlockBasedTableOptions getTableOptions() const = 0;
+  rocksdb::Options const& getOptions() const;
+  rocksdb::BlockBasedTableOptions const& getTableOptions() const;
   virtual rocksdb::ColumnFamilyOptions getColumnFamilyOptions(
-      RocksDBColumnFamilyManager::Family family, rocksdb::Options const& base,
-      rocksdb::BlockBasedTableOptions const& tableBase) const;
+      RocksDBColumnFamilyManager::Family family) const;
 
   virtual bool useFileLogging() const noexcept { return false; }
   virtual bool limitOpenFilesAtStartup() const noexcept { return false; }
@@ -50,9 +51,15 @@ struct RocksDBOptionsProvider {
   virtual uint32_t numThreadsHigh() const noexcept = 0;
   virtual uint32_t numThreadsLow() const noexcept = 0;
 
+ protected:
+  virtual rocksdb::Options doGetOptions() const = 0;
+  virtual rocksdb::BlockBasedTableOptions doGetTableOptions() const = 0;
+
  private:
   /// arangodb comparator - required because of vpack in keys
   std::unique_ptr<RocksDBVPackComparator> _vpackCmp;
+  mutable std::optional<rocksdb::Options> _options;
+  mutable std::optional<rocksdb::BlockBasedTableOptions> _tableOptions;
 };
 
 }  // namespace arangodb

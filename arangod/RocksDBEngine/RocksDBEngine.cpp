@@ -690,17 +690,18 @@ void RocksDBEngine::start() {
   rocksdb::TransactionDBOptions transactionOptions =
       _optionsProvider.getTransactionDBOptions();
 
-  _options = _optionsProvider.getOptions();
-  if (_options.wal_dir.empty()) {
-    _options.wal_dir = basics::FileUtils::buildFilename(_path, "journals");
+  // we only want to modify DBOptions here, no ColumnFamily options or the like
+  _dbOptions = _optionsProvider.getOptions();
+  if (_dbOptions.wal_dir.empty()) {
+    _dbOptions.wal_dir = basics::FileUtils::buildFilename(_path, "journals");
   }
   LOG_TOPIC("bc82a", TRACE, arangodb::Logger::ENGINES)
       << "initializing RocksDB, path: '" << _path << "', WAL directory '"
-      << _options.wal_dir << "'";
+      << _dbOptions.wal_dir << "'";
 
   if (_createShaFiles) {
     _checksumEnv = NewChecksumEnv(rocksdb::Env::Default(), _path);
-    _options.env = _checksumEnv.get();
+    _dbOptions.env = _checksumEnv.get();
     static_cast<checksum::ChecksumEnv*>(_checksumEnv.get())
         ->getHelper()
         ->checkMissingShaFiles();  // this works even if done before
@@ -711,23 +712,22 @@ void RocksDBEngine::start() {
                                    // in the directory and writes the missing
                                    // sha files.
   } else {
-    _options.env = rocksdb::Env::Default();
+    _dbOptions.env = rocksdb::Env::Default();
   }
 
 #ifdef USE_ENTERPRISE
-  configureEnterpriseRocksDBOptions(_options, createdEngineDir);
-
+  configureEnterpriseRocksDBOptions(_dbOptions, createdEngineDir);
 #endif
 
-  _options.env->SetBackgroundThreads(
+  _dbOptions.env->SetBackgroundThreads(
       static_cast<int>(_optionsProvider.numThreadsHigh()),
       rocksdb::Env::Priority::HIGH);
-  _options.env->SetBackgroundThreads(
+  _dbOptions.env->SetBackgroundThreads(
       static_cast<int>(_optionsProvider.numThreadsLow()),
       rocksdb::Env::Priority::LOW);
 
   if (_debugLogging) {
-    _options.info_log_level = rocksdb::InfoLogLevel::DEBUG_LEVEL;
+    _dbOptions.info_log_level = rocksdb::InfoLogLevel::DEBUG_LEVEL;
   }
 
   std::shared_ptr<RocksDBLogger> logger;
@@ -735,8 +735,8 @@ void RocksDBEngine::start() {
   if (!_optionsProvider.useFileLogging()) {
     // if option "--rocksdb.use-file-logging" is set to false, we will use
     // our own logger that logs to ArangoDB's logfile
-    logger = std::make_shared<RocksDBLogger>(_options.info_log_level);
-    _options.info_log = logger;
+    logger = std::make_shared<RocksDBLogger>(_dbOptions.info_log_level);
+    _dbOptions.info_log = logger;
 
     if (!_debugLogging) {
       logger->disable();
@@ -748,42 +748,22 @@ void RocksDBEngine::start() {
         _throttleSlots, _throttleFrequency, _throttleScalingFactor,
         _throttleMaxWriteRate, _throttleSlowdownWritesTrigger,
         _throttleLowerBoundBps);
-    _options.listeners.push_back(_throttleListener);
+    _dbOptions.listeners.push_back(_throttleListener);
   }
 
   _errorListener = std::make_shared<RocksDBBackgroundErrorListener>();
-  _options.listeners.push_back(_errorListener);
-  _options.listeners.push_back(
+  _dbOptions.listeners.push_back(_errorListener);
+  _dbOptions.listeners.push_back(
       std::make_shared<RocksDBMetricsListener>(server()));
-
-  if (!server().options()->processingResult().touched(
-          "rocksdb.max-write-buffer-number")) {
-    // TODO It is unclear if this value makes sense as a default, but we aren't
-    // changing it yet, in order to maintain backwards compatibility.
-
-    // user hasn't explicitly set the number of write buffers, so we use a
-    // default value based on the number of column families this is
-    // cfFamilies.size() + 2 ... but _option needs to be set before
-    //  building cfFamilies
-    // Update max_write_buffer_number above if you change number of families
-    // used
-    _options.max_write_buffer_number = 7 + 2;
-  } else if (_options.max_write_buffer_number < 4) {
-    // user set the value explicitly, and it is lower than recommended
-    _options.max_write_buffer_number = 4;
-    LOG_TOPIC("d5c49", WARN, Logger::ENGINES)
-        << "overriding value for option `--rocksdb.max-write-buffer-number` "
-           "to 4 because it is lower than recommended";
-  }
 
   rocksdb::BlockBasedTableOptions tableOptions =
       _optionsProvider.getTableOptions();
   // create column families
   std::vector<rocksdb::ColumnFamilyDescriptor> cfFamilies;
-  auto addFamily = [this, &tableOptions,
+  auto addFamily = [this,
                     &cfFamilies](RocksDBColumnFamilyManager::Family family) {
     rocksdb::ColumnFamilyOptions specialized =
-        _optionsProvider.getColumnFamilyOptions(family, _options, tableOptions);
+        _optionsProvider.getColumnFamilyOptions(family);
     std::string name = RocksDBColumnFamilyManager::name(family);
     cfFamilies.emplace_back(name, specialized);
   };
@@ -802,7 +782,7 @@ void RocksDBEngine::start() {
 
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
   rocksdb::Status status = rocksdb::TransactionDB::Open(
-      _options, transactionOptions, _path, cfFamilies, &cfHandles, &_db);
+      _dbOptions, transactionOptions, _path, cfFamilies, &cfHandles, &_db);
 
   if (!status.ok()) {
     std::string error;
@@ -2366,7 +2346,7 @@ void RocksDBEngine::pruneWalFiles() {
           << "deleting RocksDB WAL file '" << (*it).first << "'";
       rocksdb::Status s;
       if (basics::FileUtils::exists(basics::FileUtils::buildFilename(
-              _options.wal_dir, (*it).first))) {
+              _dbOptions.wal_dir, (*it).first))) {
         // only attempt file deletion if the file actually exists.
         // otherwise RocksDB may complain about non-existing files and log a big
         // error message
@@ -2892,7 +2872,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   };
 
   builder.openObject();
-  for (int i = 0; i < _options.num_levels; ++i) {
+  for (int i = 0; i < _optionsProvider.getOptions().num_levels; ++i) {
     addIntAllCf(rocksdb::DB::Properties::kNumFilesAtLevelPrefix +
                 std::to_string(i));
     // ratio needs new calculation with all cf, not a simple add operation
@@ -2936,19 +2916,20 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addInt(rocksdb::DB::Properties::kActualDelayedWriteRate);
   addInt(rocksdb::DB::Properties::kIsWriteStopped);
 
-  if (_options.statistics) {
+  if (_dbOptions.statistics) {
     for (auto const& stat : rocksdb::TickersNameMap) {
-      builder.add(stat.second,
-                  VPackValue(_options.statistics->getTickerCount(stat.first)));
+      builder.add(
+          stat.second,
+          VPackValue(_dbOptions.statistics->getTickerCount(stat.first)));
     }
 
     uint64_t walWrite, flushWrite, compactionWrite, userWrite;
-    walWrite = _options.statistics->getTickerCount(rocksdb::WAL_FILE_BYTES);
+    walWrite = _dbOptions.statistics->getTickerCount(rocksdb::WAL_FILE_BYTES);
     flushWrite =
-        _options.statistics->getTickerCount(rocksdb::FLUSH_WRITE_BYTES);
+        _dbOptions.statistics->getTickerCount(rocksdb::FLUSH_WRITE_BYTES);
     compactionWrite =
-        _options.statistics->getTickerCount(rocksdb::COMPACT_WRITE_BYTES);
-    userWrite = _options.statistics->getTickerCount(rocksdb::BYTES_WRITTEN);
+        _dbOptions.statistics->getTickerCount(rocksdb::COMPACT_WRITE_BYTES);
+    userWrite = _dbOptions.statistics->getTickerCount(rocksdb::BYTES_WRITTEN);
     builder.add(
         "rocksdbengine.write.amplification.x100",
         VPackValue((0 != userWrite)
@@ -3382,7 +3363,7 @@ bool RocksDBEngine::checkExistingDB(
   testOptions.create_missing_column_families = false;
   testOptions.avoid_flush_during_recovery = true;
   testOptions.avoid_flush_during_shutdown = true;
-  testOptions.env = _options.env;
+  testOptions.env = _dbOptions.env;
 
   std::vector<std::string> existingColumnFamilies;
   rocksdb::Status status = rocksdb::DB::ListColumnFamilies(

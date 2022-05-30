@@ -231,7 +231,7 @@ rocksdb::TransactionDBOptions RocksDBOptions::getTransactionDBOptions() const {
   return result;
 }
 
-rocksdb::Options RocksDBOptions::getOptions() const {
+rocksdb::Options RocksDBOptions::doGetOptions() const {
   rocksdb::Options result;
   result.allow_fallocate = _options.allowFAllocate;
   result.enable_pipelined_write = _options.enablePipelinedWrite;
@@ -342,7 +342,7 @@ rocksdb::Options RocksDBOptions::getOptions() const {
   return result;
 }
 
-rocksdb::BlockBasedTableOptions RocksDBOptions::getTableOptions() const {
+rocksdb::BlockBasedTableOptions RocksDBOptions::doGetTableOptions() const {
   rocksdb::BlockBasedTableOptions result;
 
   result.block_cache = std::visit(

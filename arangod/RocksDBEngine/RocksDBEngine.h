@@ -409,7 +409,7 @@ class RocksDBEngine final : public StorageEngine {
 #endif
   }
 
-  rocksdb::Options const& rocksDBOptions() const { return _options; }
+  rocksdb::DBOptions const& rocksDBOptions() const { return _dbOptions; }
 
   /// @brief recovery manager
   RocksDBSettingsManager* settingsManager() const {
@@ -466,7 +466,7 @@ class RocksDBEngine final : public StorageEngine {
   void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void validateEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void prepareEnterprise();
-  void configureEnterpriseRocksDBOptions(rocksdb::Options& options,
+  void configureEnterpriseRocksDBOptions(rocksdb::DBOptions& options,
                                          bool createdEngineDir);
   void validateJournalFiles() const;
 
@@ -493,7 +493,7 @@ class RocksDBEngine final : public StorageEngine {
   /// single rocksdb database used in this storage engine
   rocksdb::TransactionDB* _db;
   /// default read options
-  rocksdb::Options _options;
+  rocksdb::DBOptions _dbOptions;
   /// path used by rocksdb (inside _basePath)
   std::string _path;
   /// path to arangodb data dir

@@ -755,7 +755,7 @@ rocksdb::TransactionDBOptions RocksDBOptionFeature::getTransactionDBOptions()
   return result;
 }
 
-rocksdb::Options RocksDBOptionFeature::getOptions() const {
+rocksdb::Options RocksDBOptionFeature::doGetOptions() const {
   rocksdb::Options result;
   result.allow_fallocate = _allowFAllocate;
   result.enable_pipelined_write = _enablePipelinedWrite;
@@ -885,10 +885,31 @@ rocksdb::Options RocksDBOptionFeature::getOptions() const {
   // TODO: enable memtable_insert_with_hint_prefix_extractor?
   result.bloom_locality = 1;
 
+  if (!server().options()->processingResult().touched(
+          "rocksdb.max-write-buffer-number")) {
+    // TODO It is unclear if this value makes sense as a default, but we aren't
+    // changing it yet, in order to maintain backwards compatibility.
+
+    // user hasn't explicitly set the number of write buffers, so we use a
+    // default value based on the number of column families this is
+    // cfFamilies.size() + 2 ... but _option needs to be set before
+    //  building cfFamilies
+    // Update max_write_buffer_number above if you change number of families
+    // used
+    result.max_write_buffer_number = 8 + 2;
+  } else if (result.max_write_buffer_number < 4) {
+    // user set the value explicitly, and it is lower than recommended
+    result.max_write_buffer_number = 4;
+    LOG_TOPIC("d5c49", WARN, Logger::ENGINES)
+        << "overriding value for option `--rocksdb.max-write-buffer-number` "
+           "to 4 because it is lower than recommended";
+  }
+
   return result;
 }
 
-rocksdb::BlockBasedTableOptions RocksDBOptionFeature::getTableOptions() const {
+rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
+    const {
   rocksdb::BlockBasedTableOptions result;
 
   if (_blockCacheSize > 0) {
@@ -918,10 +939,9 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::getTableOptions() const {
 }
 
 rocksdb::ColumnFamilyOptions RocksDBOptionFeature::getColumnFamilyOptions(
-    RocksDBColumnFamilyManager::Family family, rocksdb::Options const& base,
-    rocksdb::BlockBasedTableOptions const& tableBase) const {
+    RocksDBColumnFamilyManager::Family family) const {
   rocksdb::ColumnFamilyOptions result =
-      RocksDBOptionsProvider::getColumnFamilyOptions(family, base, tableBase);
+      RocksDBOptionsProvider::getColumnFamilyOptions(family);
 
   // override
   std::size_t index = static_cast<

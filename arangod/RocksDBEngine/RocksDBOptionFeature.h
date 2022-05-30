@@ -59,11 +59,8 @@ class RocksDBOptionFeature final : public ArangodFeature,
   void start() override final;
 
   rocksdb::TransactionDBOptions getTransactionDBOptions() const override;
-  rocksdb::Options getOptions() const override;
-  rocksdb::BlockBasedTableOptions getTableOptions() const override;
   rocksdb::ColumnFamilyOptions getColumnFamilyOptions(
-      RocksDBColumnFamilyManager::Family family, rocksdb::Options const& base,
-      rocksdb::BlockBasedTableOptions const& tableBase) const override;
+      RocksDBColumnFamilyManager::Family family) const override;
 
   bool exclusiveWrites() const noexcept { return _exclusiveWrites; }
   bool useFileLogging() const noexcept override { return _useFileLogging; }
@@ -75,6 +72,10 @@ class RocksDBOptionFeature final : public ArangodFeature,
   }
   uint32_t numThreadsHigh() const noexcept override { return _numThreadsHigh; }
   uint32_t numThreadsLow() const noexcept override { return _numThreadsLow; }
+
+ protected:
+  rocksdb::Options doGetOptions() const override;
+  rocksdb::BlockBasedTableOptions doGetTableOptions() const override;
 
  private:
   uint64_t _transactionLockStripes;
