@@ -2632,9 +2632,11 @@ size_t Ast::countReferences(AstNode const* node, Variable const* search) {
 // - v                  => no projections
 // - v[0]               => no projections
 // - v[0][1]            => no projections
-// - v[0].x             => ["x"]
+// - v.x                => ["x"]
+// - v[0].x             => no projections
 // - v[0][1].x          => no projections
-// - v[0].x[1].x        => ["x"]
+// - v[0].x[1].x        => no projections
+// - v.x.y              => [["x", "y"]]
 // - p                  => no projections
 // - p[0].vertices      => no projections
 // - p.vertices         => no projections
@@ -2661,8 +2663,156 @@ bool Ast::getReferencedAttributesRecursive(
                        {},
                        attributes};
 
-  auto visitor = [&state](AstNode const* node) -> bool {
+  auto evalStack = [&state]() -> bool {
+    TRI_ASSERT(!state.seen.empty());
+    AstNode const* top = state.seen.back();
+    TRI_ASSERT(top->type == NODE_TYPE_REFERENCE);
+
+    auto v = static_cast<Variable const*>(top->getData());
+    state.seen.pop_back();
+
+    if (v == state.variable) {
+      // the target variable we are looking for.
+      // e.g.
+      // - p.vertices....
+      //   ^
+      // - v.x
+      //   ^
+      if (state.seen.empty()) {
+        // only the variable found.
+        return false;
+      }
+
+      if (!state.expectedAttribute.empty()) {
+        // p.vertices....
+        //   ^
+        top = state.seen.back();
+        if (top->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+          return false;
+        }
+
+        // take attribute name off the stack
+        if (top->getStringView() != state.expectedAttribute) {
+          // different attribute, e.g. p.lump
+          return true;
+        }
+
+        // p.vertices
+        //   ^
+        state.seen.pop_back();
+
+        if (state.seen.empty()) {
+          return false;
+        }
+
+        top = state.seen.back();
+
+        if (top->type != NODE_TYPE_INDEXED_ACCESS &&
+            top->type != NODE_TYPE_EXPANSION) {
+          return false;
+        }
+
+        // p.vertices[0]...
+        //           ^
+        // or
+        //
+        // v[0]...
+        //  ^
+        state.seen.pop_back();
+
+        if (state.seen.empty()) {
+          return false;
+        }
+      }
+
+      TRI_ASSERT(!state.seen.empty());
+      top = state.seen.back();
+
+      if (top->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+        // something following that we cannot handle
+        return false;
+      }
+
+      // now take off all projections from the stack
+      std::vector<std::string> path;
+      while (top->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        path.emplace_back(top->getString());
+        state.seen.pop_back();
+        if (state.seen.empty()) {
+          break;
+        }
+        top = state.seen.back();
+      }
+
+      TRI_ASSERT(!path.empty());
+      state.attributes.emplace(std::move(path));
+    }
+
+    return true;
+  };
+
+  auto visitor = [&](AstNode const* node) -> bool {
     if (node == nullptr || !state.isSafeForOptimization) {
+      return false;
+    }
+
+    if (node->type == NODE_TYPE_EXPANSION) {
+      // special stunt needed here for the [*] operator...
+      if (node->numMembers() >= 5) {
+        if (node->getMember(2)->type != NODE_TYPE_NOP ||
+            node->getMember(4)->type != NODE_TYPE_NOP) {
+          // expansion has a filter or a projection set, e.g.
+          // p.vertices[FILTER CURRENT.x == 1 RETURN CURRENT.y].
+          // we currently cannot handle this.
+          state.isSafeForOptimization = false;
+          state.seen.clear();
+          return false;
+        }
+
+        if (node->getIntValue(true) != 1) {
+          // incompatible flattening level: p.vertices[**]...
+          state.isSafeForOptimization = false;
+          state.seen.clear();
+          return false;
+        }
+        AstNode const* lhs = node->getMember(0);
+        TRI_ASSERT(lhs->type == NODE_TYPE_ITERATOR);
+        TRI_ASSERT(lhs->numMembers() == 2);
+
+        AstNode const* rhs = node->getMember(1);
+
+        while (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+               rhs->type == NODE_TYPE_INDEXED_ACCESS) {
+          state.seen.push_back(rhs);
+          rhs = rhs->getMember(0);
+        }
+
+        if (rhs->type == NODE_TYPE_REFERENCE) {
+          AstNode const* iterLhs = lhs->getMember(0);
+          TRI_ASSERT(rhs->getData() == iterLhs->getData());
+
+          AstNode const* iterRhs = lhs->getMember(1);
+          // push the expansion on the stack
+          state.seen.push_back(node);
+
+          while (iterRhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+                 iterRhs->type == NODE_TYPE_INDEXED_ACCESS) {
+            state.seen.push_back(iterRhs);
+            iterRhs = iterRhs->getMember(0);
+          }
+
+          if (iterRhs->type == NODE_TYPE_REFERENCE) {
+            state.seen.push_back(iterRhs);
+            // finally the stack is complete... now eval it to find the
+            // projection
+            if (!evalStack()) {
+              state.isSafeForOptimization = false;
+            }
+          }
+        }
+      }
+      state.seen.clear();
+      // don't descend into the expansion itself (already handled it)
       return false;
     }
 
@@ -2674,94 +2824,18 @@ bool Ast::getReferencedAttributesRecursive(
 
     if (node->type == NODE_TYPE_REFERENCE) {
       // reference to a variable
-      auto v = static_cast<Variable const*>(node->getData());
-      if (v == state.variable) {
-        // the target variable we are looking for.
-        // e.g.
-        // - p.vertices....
-        //   ^
-        // - v.x
-        //   ^
-        if (state.seen.empty()) {
-          // only the variable found.
-          state.isSafeForOptimization = false;
-          return false;
-        }
-
-        if (!state.expectedAttribute.empty()) {
-          // p.vertices....
-          //   ^
-          AstNode const* top = state.seen.back();
-          if (top->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
-            state.isSafeForOptimization = false;
-            return false;
-          }
-
-          // take attribute name off the stack
-          if (top->getStringView() != state.expectedAttribute) {
-            // different attribute, e.g. p.lump
-            state.seen.clear();
-            return true;
-          }
-
-          // p.vertices
-          //   ^
-          state.seen.pop_back();
-        }
-
-        if (state.seen.empty()) {
-          state.isSafeForOptimization = false;
-          return false;
-        }
-
-        AstNode const* top = state.seen.back();
-
-        if (top->type == NODE_TYPE_INDEXED_ACCESS) {
-          // p.vertices[0]...
-          //           ^
-          // or
-          //
-          // v[0]...
-          //  ^
-          state.seen.pop_back();
-
-          if (state.seen.empty()) {
-            state.isSafeForOptimization = false;
-            return false;
-          }
-          top = state.seen.back();
-        } else if (!state.expectedAttribute.empty()) {
-          // p.vertices..., not followed by an index access
-          state.isSafeForOptimization = false;
-          return false;
-        }
-
-        if (top->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
-          // something following that we cannot handle
-          state.isSafeForOptimization = false;
-          return false;
-        }
-
-        // now take off all projections from the stack
-        std::vector<std::string> path;
-        while (top->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-          path.emplace_back(top->getString());
-          state.seen.pop_back();
-          if (state.seen.empty()) {
-            break;
-          }
-          top = state.seen.back();
-        }
-
-        TRI_ASSERT(!path.empty());
-        state.attributes.emplace(std::move(path));
+      state.seen.push_back(node);
+      // evaluate whatever we have on the stack
+      if (!evalStack()) {
+        state.isSafeForOptimization = false;
       }
-      // fall-through
+      // fall-through intentional
     }
 
     // different node type. no idea how to handle it...
     state.seen.clear();
-    return true;
+    // go deeper or don't.
+    return state.isSafeForOptimization;
   };
 
   traverseReadOnly(node, visitor, ::doNothingVisitor);
