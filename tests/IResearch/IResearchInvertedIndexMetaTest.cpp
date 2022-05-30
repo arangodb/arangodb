@@ -103,182 +103,8 @@ namespace {
 
     ASSERT_EQ(serializedLhs.slice().toString(), serializedRhs.slice().toString());
     ASSERT_EQ(metaLhs, metaRhs); // FIXME: PrimarySort, StoredValues and etc should present in metaRhs. At this momemnt we loose it since serialization works wrong
-
   }
 }
-
-std::string_view complexJsonDefinition1 = R"(
-{
-  "fields": [
-     "simple",
-      {
-        "expression": "RETURN MERGE(@param, {foo: 'bar'}) ",
-        "override": true,
-        "name": "field_name_1",
-        "analyzer": "test_text",
-        "features": ["norm", "frequency"],
-        "isArray":false
-      },
-      {
-        "name": "foo",
-        "analyzer": "test_text",
-        "features": ["norm", "frequency", "position"],
-        "includeAllFields":true
-      },
-      {
-        "expression": "RETURN SPLIT(@param, ',') ",
-        "override": true,
-        "name": "field_name_2",
-        "analyzer": "test_text",
-        "features": ["norm", "frequency"],
-        "isArray":true,
-        "trackListPositions": true
-      },
-      {
-        "name": "foo.boo.too[*].doo.aoo.noo",
-        "features": ["norm"]
-      },
-      {
-        "name": "foo.boo.nest",
-        "features": ["norm"],
-        "analyzer": "test_text",
-        "nested": [
-          {
-            "name":"A"
-          },
-          {
-            "name":"Sub",
-            "analyzer":"identity",
-            "nested": [
-               {
-                 "expression": "RETURN SPLIT(@param, '.') ",
-                 "override": true,
-                 "name":"SubSub.foo",
-                 "analyzer":"test_text",
-                 "features": ["position"]
-               },
-               {
-                  "name": "woo",
-                  "features": ["norm", "frequency"],
-                  "override": false,
-                  "includeAllFields":true,
-                  "trackListPositions": true
-               }
-            ]
-          }
-        ]
-      },
-      {
-        "name": "foobar.baz[*].bam",
-        "features": ["norm"],
-        "nested": [
-           {
-             "expression": "RETURN SPLIT(@param, '#') ",
-             "name":"bus.duz",
-             "override": true,
-             "features": ["position"]
-           }
-        ]
-      }
-  ],
-  "primarySort": {
-     "fields":[{ "field" : "foo", "direction": "desc" }],
-     "compression": "none",
-     "locale": "myLocale"
-  },
-  "consistency": "immediate",
-  "version":0,
-  "storedValues": [{ "fields": ["foo.boo.nest"], "compression": "none"}],
-  "analyzer": "test_text",
-  "features": ["norm", "position", "frequency"],
-  "includeAllFields":true,
-  "trackListPositions": false,
-  "analyzerDefinitions":[{"name":"test_text", "type":"identity", "properties":{}}]
-})";
-
-std::string_view complexJsonDefinition2 = R"(
-{
-  "fields": [
-     "dummy",
-    {
-      "name": "foo",
-      "analyzer": "identity",
-      "expression": "Abc"
-    },
-    {
-      "name": "foo.boo",
-      "analyzer": "delimiter_analyzer",
-      "override": true
-    },
-    {
-      "name": "foo.goo",
-      "analyzer": "stem_analyzer",
-      "override": true
-    },
-    {
-      "name": "zoo[*]",
-      "override": true,
-      "nested": [
-        "zoo",
-        {
-          "name": "doo",
-          "analyzer": "stem_analyzer",
-          "features": ["frequency"],
-          "override": true,
-          "includeAllFields":true,
-          "trackListPositions": true
-        }
-      ]
-    }
-  ],
-  "primarySort": {
-     "fields":[
-        {
-           "field" : "foo",
-           "direction": "asc"
-        },
-        {
-           "field" : "foo.boo",
-           "direction": "desc"
-        }
-     ],
-     "compression": "lz4",
-     "locale": "de_DE@phonebook"
-  },
-  "consistency": "eventual",
-  "version":1,
-  "storedValues": [
-    {
-      "fields": ["foo.boo"],
-      "compression": "lz4"
-    },
-    {
-      "fields": ["foo.goo"],
-      "compression": "lz4"
-    }
-  ],
-  "includeAllFields":false,
-  "trackListPositions": true,
-  "analyzerDefinitions":[
-    {
-      "name":"delimiter_analyzer",
-      "type":"delimiter",
-      "properties": {
-        "delimiter" : "."
-      },
-      "features": ["frequency"]
-    },
-    {
-      "name":"stem_analyzer",
-      "type":"stem",
-      "properties": {
-        "locale": "en.utf-8"
-      },
-      "features": ["norm"]
-    }
- ]
- })";
-// "analyzer": "delimiter_analyzer", FIXME
 
 class IResearchInvertedIndexMetaTest
     : public ::testing::Test,
@@ -319,7 +145,7 @@ class IResearchInvertedIndexMetaTest
   }
 };
 
-TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinition) {
+TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
 
   // Nested is incompatibe with trackListPositions
   std::string_view wrongDefinition1 = R"(
@@ -437,20 +263,47 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinition) {
               ]
           }
       ],
+      "features": ["features"],
       "analyzerDefinitions": [
           {
               "name": "stem_analyzer",
               "type": "stem",
               "properties": {
                   "locale": "en.utf-8"
+              }
+          }
+      ]
+  })";
+
+  // invalid properties for analyzer
+  std::string_view wrongDefinition6 = R"(
+  {
+      "fields": [
+          {
+              "name": "foo",
+              "analyzer": "stem_analyzer",
+              "nested": [
+                  {
+                      "name": "bar"
+                  }
+              ]
+          }
+      ],
+      "analyzerDefinitions": [
+          {
+              "name": "stem_analyzer",
+              "type": "stem",
+              "properties": {
+                  "delimiter": "."
               },
               "features": ["features"]
           }
       ]
   })";
 
+
   // define field name more than 1 time
-  std::string_view wrongDefinition6 = R"(
+  std::string_view wrongDefinition7 = R"(
   {
       "fields": [
           {
@@ -473,7 +326,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinition) {
   })"; // FIXME: This definition is not crashed
 
   // only one expansion [*] is allowed
-  std::string_view wrongDefinition7 = R"(
+  std::string_view wrongDefinition8 = R"(
   {
       "fields": [
           {
@@ -499,7 +352,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinition) {
   })";
 
   // expansion [*] in nested is not allowed
-  std::string_view wrongDefinition8 = R"(
+  std::string_view wrongDefinition9 = R"(
   {
       "fields": [
           {
@@ -525,7 +378,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinition) {
   })";
 
   // "fields" in "primarySort" is empty
-  std::string_view wrongDefinition9 = R"(
+  std::string_view wrongDefinition10 = R"(
   {
       "fields": [
           {
@@ -545,41 +398,166 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinition) {
       }
   })";
 
-  // Empty fields array
-  std::string_view wrongDefinition10 = R"(
+  // wrong compression in "primarySort"
+  std::string_view wrongDefinition11 = R"(
   {
-    "fields": [],
-    "trackListPositions": true,
-    "analyzerDefinitions":[
-      {
-       "name":"stem_analyzer",
-       "type":"stem",
-       "properties": {
-         "locale": "en.utf-8"
-       },
-       "features": ["norm"]
+      "fields": [
+          {
+              "name": "foo",
+              "analyzer": "identity",
+              "nested": [
+                  {
+                      "name": "bar.bud[*].buz"
+                  }
+              ]
+          }
+      ],
+      "primarySort": {
+         "fields": ["foo"],
+         "compression": "lzma"
       }
-   ]
-   })";
+  })";
+
+  // Empty fields array
+  std::string_view wrongDefinition12 = R"(
+  {
+      "fields": [],
+      "trackListPositions": true,
+      "analyzerDefinitions": [
+          {
+              "name": "stem_analyzer",
+              "type": "stem",
+              "properties": {
+                  "locale": "en.utf-8"
+              },
+              "features": [
+                  "norm"
+              ]
+          }
+      ]
+  })";
 
   // empty object
-  std::string_view wrongDefinition11 = R"({})";
+  std::string_view wrongDefinition13 = R"({})";
+
+  // simple definition with more than 1 expansion
+  std::string_view wrongDefinition14 = R"(
+  {
+      "fields": [
+          "foo.bar[*].buz[*]"
+      ]
+  })";
+
+  // wrong 'features' field
+  std::string_view wrongDefinition15 = R"(
+  {
+      "fields": [
+        "foo"
+      ],
+       "features": "norm",
+      "analyzerDefinitions": [
+          {
+              "name": "stem_analyzer",
+              "type": "stem",
+              "properties": {
+                  "locale": "en.utf-8"
+              }
+          }
+      ]
+  })";
+
+  // wrong 'features' field
+  std::string_view wrongDefinition16 = R"(
+  {
+      "fields": [
+        "foo"
+      ],
+      "features": [0],
+      "analyzerDefinitions": [
+          {
+              "name": "stem_analyzer",
+              "type": "stem",
+              "properties": {
+                  "locale": "en.utf-8"
+              }
+          }
+      ]
+  })";
+
+  // wrong verison
+  std::string_view wrongDefinition17 = R"(
+  {
+      "fields": [
+          "foo"
+      ],
+      "version": 42
+  })";
+
+  // wrong type of consolidation policy
+  std::string_view wrongDefinition18 = R"(
+  {
+      "fields": [
+          "foo"
+      ],
+      "consolidationPolicy": {
+        "type" : "abc",
+        "segmentsBytesFloor" : 42,
+        "segmentsBytesMax" : 42,
+        "segmentsMax" : 42,
+        "segmentsMin" : 42,
+        "minScore" : 42
+      }
+  })";
+
+  // nested is not an array
+  std::string_view wrongDefinition19 = R"(
+  {
+      "fields": [
+          {
+              "name": "foo",
+              "nested": {
+                  "name": "bar"
+              }
+          }
+      ]
+  })";
+
+  // wrong compression in storedValues
+  std::string_view wrongDefinition20= R"(
+  {
+      "fields": [
+          {
+              "name": "foo",
+              "analyzer": "identity"
+          }
+      ],
+      "storedValues": [{ "fields": ["foo"], "compression": "lzma"}]
+  })";
 
 
 
 
-  std::array<std::string_view, 9> badJsons{
+  std::array<std::string_view, 18> badJsons{
 //    wrongDefinition1, //FIXME: This definition is not failing
     wrongDefinition2,
     wrongDefinition3,
     wrongDefinition4,
     wrongDefinition5,
-//    wrongDefinition6, //FIXME: This definition is not failing
-    wrongDefinition7,
+    wrongDefinition6,
+//    wrongDefinition7, //FIXME: This definition is not failing
     wrongDefinition8,
     wrongDefinition9,
     wrongDefinition10,
-    wrongDefinition11
+    wrongDefinition11,
+    wrongDefinition12,
+    wrongDefinition13,
+    wrongDefinition14,
+    wrongDefinition15,
+    wrongDefinition16,
+    wrongDefinition17,
+    wrongDefinition18,
+    wrongDefinition19,
+    wrongDefinition20
   };
 
   int i = 1;
@@ -601,10 +579,26 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinition) {
   }
 }
 
-TEST_F(IResearchInvertedIndexMetaTest, testCornerCases) {
+TEST_F(IResearchInvertedIndexMetaTest, testCorrectDefinitions) {
+
+  // simple definition with 1 expansion
+  std::string_view definition1 = R"(
+  {
+    "fields": [
+      "foo[*]"
+    ]
+   })";
+
+  // simple definition with 1 expansion
+  std::string_view definition2 = R"(
+  {
+    "fields": [
+      "foo.bar[*]"
+    ]
+   })";
 
   // Empty analyzerDefinitions array
-  std::string_view definition2 = R"(
+  std::string_view definition3 = R"(
   {
     "fields": ["foo"],
     "analyzerDefinitions":[]
@@ -628,20 +622,8 @@ TEST_F(IResearchInvertedIndexMetaTest, testCornerCases) {
       ]
   })";
 
-  // "fields" in storedValues is empty
-  std::string_view definition5 = R"(
-  {
-      "fields": [
-          {
-              "name": "foo",
-              "analyzer": "identity"
-          }
-      ],
-      "storedValues": [{ "fields": [], "compression": "none"}]
-  })";
-
   // "nested" is empty
-  std::string_view definition6 = R"(
+  std::string_view definition5 = R"(
   {
       "fields": [
           {
@@ -653,7 +635,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testCornerCases) {
   })";
 
   // "features" is empty
-  std::string_view definition7 = R"(
+  std::string_view definition6 = R"(
   {
     "fields": [
        "simple"
@@ -662,7 +644,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testCornerCases) {
   })";
 
   // Duplication of analyzers names
-  std::string_view definition8 = R"(
+  std::string_view definition7 = R"(
   {
     "fields": [
       "foo"
@@ -688,13 +670,14 @@ TEST_F(IResearchInvertedIndexMetaTest, testCornerCases) {
    })";
 
 
-  std::array<std::string_view, 5> jsons{
-//    definition2,
+  std::array<std::string_view, 7> jsons{
+    definition1,
+    definition2,
+    definition3,
     definition4,
     definition5,
     definition6,
-    definition7,
-    definition8
+    definition7
   };
 
   int i = 1;
@@ -712,24 +695,256 @@ TEST_F(IResearchInvertedIndexMetaTest, testCornerCases) {
       ASSERT_TRUE(res);
     }
     ASSERT_TRUE(errorString.empty());
+    serializationChecker(server.server(), jsonD);
+
     ++i;
   }
 }
 
+TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitionsUseAnalyzerInMeta) {
+
+  std::string_view definitionWithAnalyzers = R"(
+  {
+    "fields": [
+      {
+        "name": "foo"
+      }
+    ],
+    "analyzer": "myAnalyzer",
+    "analyzerDefinitions":[
+      {
+        "name":"myAnalyzer",
+        "type":"stem",
+        "properties": {
+          "locale": "en.utf-8"
+        },
+        "features": ["norm"]
+      }
+    ]
+   })";
+
+
+  auto json = VPackParser::fromJson(definitionWithAnalyzers.data(),
+                                    definitionWithAnalyzers.size());
+
+  arangodb::iresearch::IResearchInvertedIndexMeta meta;
+  std::string errorString;
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
+  auto res = meta.init(server.server(), json->slice(), false, errorString,
+                       irs::string_ref(vocbase.name()));
+  {
+    SCOPED_TRACE(::testing::Message("Unexpected error in ") << errorString);
+    ASSERT_TRUE(res);
+  }
+  ASSERT_TRUE(errorString.empty());
+  ASSERT_EQ(0, meta._analyzerDefinitions.size());
+}
+
+TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitionsUseAnalyzerInField) {
+
+  std::string_view definitionWithAnalyzers = R"(
+  {
+    "fields": [
+      {
+        "name": "foo",
+        "analyzer": "myAnalyzer"
+      }
+    ],
+    "analyzerDefinitions":[
+      {
+        "name":"myAnalyzer",
+        "type":"stem",
+        "properties": {
+          "locale": "en.utf-8"
+        },
+        "features": ["norm"]
+      }
+    ]
+   })";
+
+  auto json = VPackParser::fromJson(definitionWithAnalyzers.data(),
+                                    definitionWithAnalyzers.size());
+
+  arangodb::iresearch::IResearchInvertedIndexMeta meta;
+  std::string errorString;
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                        testDBInfo(server.server()));
+  auto res = meta.init(server.server(), json->slice(), false, errorString,
+                       irs::string_ref(vocbase.name()));
+  {
+    SCOPED_TRACE(::testing::Message("Unexpected error in ") << errorString);
+    ASSERT_FALSE(res);
+  }
+  ASSERT_FALSE(errorString.empty());
+  ASSERT_EQ(0, meta._analyzerDefinitions.size());
+}
+
+TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitions) {
+
+  std::string_view definitionWithAnalyzers = R"(
+  {
+    "fields": [
+      {
+        "name": "foo"
+      }
+    ],
+    "analyzerDefinitions":[
+      {
+        "name":"myAnalyzer",
+        "type":"stem",
+        "properties": {
+          "locale": "en.utf-8"
+        },
+        "features": ["norm"]
+      }
+    ]
+   })";
+
+  std::string_view definitionWithoutAnalyzers = R"(
+  {
+    "fields": [
+      {
+        "name": "foo"
+      }
+    ]
+   })";
+
+
+  arangodb::iresearch::IResearchInvertedIndexMeta metaLhs;
+  std::string lhsJsonAsStirng;
+
+  {
+    auto json = VPackParser::fromJson(definitionWithAnalyzers.data(),
+                                      definitionWithAnalyzers.size());
+
+    std::string errorString;
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
+    auto res = metaLhs.init(server.server(), json->slice(), false, errorString,
+                         irs::string_ref(vocbase.name()));
+    {
+      SCOPED_TRACE(::testing::Message("Unexpected error in ") << errorString);
+      ASSERT_TRUE(res);
+    }
+    ASSERT_TRUE(errorString.empty());
+    ASSERT_EQ(0, metaLhs._analyzerDefinitions.size());
+
+    VPackBuilder b;
+    {
+      VPackObjectBuilder obj(&b);
+      ASSERT_TRUE(metaLhs.json(server.server(), b, false, &vocbase));
+    }
+
+   lhsJsonAsStirng = b.slice().toString();
+  }
+
+  arangodb::iresearch::IResearchInvertedIndexMeta metaRhs;
+  std::string rhsJsonAsStirng;
+
+  {
+    auto json = VPackParser::fromJson(definitionWithoutAnalyzers.data(),
+                                      definitionWithoutAnalyzers.size());
+
+    std::string errorString;
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
+    auto res = metaRhs.init(server.server(), json->slice(), false, errorString,
+                         irs::string_ref(vocbase.name()));
+    {
+      SCOPED_TRACE(::testing::Message("Unexpected error in ") << errorString);
+      ASSERT_TRUE(res);
+    }
+    ASSERT_TRUE(errorString.empty());
+    ASSERT_EQ(0, metaRhs._analyzerDefinitions.size());
+
+    VPackBuilder b;
+    {
+      VPackObjectBuilder obj(&b);
+      ASSERT_TRUE(metaRhs.json(server.server(), b, false, &vocbase));
+    }
+
+    rhsJsonAsStirng = b.slice().toString();
+  }
+
+  ASSERT_EQ(metaLhs, metaRhs);
+  ASSERT_EQ(lhsJsonAsStirng, rhsJsonAsStirng);
+}
+
 TEST_F(IResearchInvertedIndexMetaTest, testDefaults) {
+
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
 
   ASSERT_EQ(0, meta._analyzerDefinitions.size());
-  ASSERT_TRUE(true == meta._fields.empty());
+  ASSERT_TRUE(meta._fields.empty());
   ASSERT_TRUE(meta._sort.empty());
   ASSERT_TRUE(meta._storedValues.empty());
-  ASSERT_EQ(irs::type<irs::compression::lz4>::id(), meta._sort.sortCompression());
-  ASSERT_TRUE(meta._analyzerDefinitions.empty());
-  ASSERT_FALSE(meta.dense());
-  ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX), meta._version);
   ASSERT_EQ(Consistency::kEventual, meta. _consistency);
   ASSERT_TRUE(meta._defaultAnalyzerName.empty());
   ASSERT_FALSE(meta._features);
+  ASSERT_FALSE(meta._trackListPositions);
+  ASSERT_FALSE(meta._includeAllFields);
+
+  ASSERT_EQ(irs::type<irs::compression::lz4>::id(), meta._sort.sortCompression());
+  ASSERT_FALSE(meta.dense());
+  ASSERT_EQ(static_cast<uint32_t>(arangodb::iresearch::LinkVersion::MAX), meta._version);
+  ASSERT_EQ(2, meta._cleanupIntervalStep);
+  ASSERT_EQ(1000, meta._commitIntervalMsec);
+  ASSERT_EQ(1000, meta._consolidationIntervalMsec);
+  ASSERT_EQ(1, meta._version);
+  ASSERT_EQ(0, meta._writebufferActive);
+  ASSERT_EQ(64, meta._writebufferIdle);
+  ASSERT_EQ(33554432, meta._writebufferSizeMax);
+
+  auto propSlice = meta._consolidationPolicy.properties();
+  ASSERT_TRUE(propSlice.isObject());
+  {
+    ASSERT_TRUE(propSlice.hasKey("type"));
+    auto typeSlice = propSlice.get("type");
+    ASSERT_TRUE(typeSlice.isString());
+    auto type = typeSlice.copyString();
+    ASSERT_EQ("tier", type);
+  }
+  {
+    ASSERT_TRUE(propSlice.hasKey("segmentsBytesFloor"));
+    auto valueSlice = propSlice.get("segmentsBytesFloor");
+    ASSERT_TRUE(valueSlice.isNumber());
+    size_t segmentsBytesFloor;
+    ASSERT_TRUE(getNumber(segmentsBytesFloor, valueSlice));
+    ASSERT_EQ(2097152, segmentsBytesFloor);
+  }
+  {
+    ASSERT_TRUE(propSlice.hasKey("segmentsBytesMax"));
+    auto valueSlice = propSlice.get("segmentsBytesMax");
+    ASSERT_TRUE(valueSlice.isNumber());
+    size_t segmentsBytesMax;
+    ASSERT_TRUE(getNumber(segmentsBytesMax, valueSlice));
+    ASSERT_EQ(5368709120, segmentsBytesMax);
+  }
+  {
+    ASSERT_TRUE(propSlice.hasKey("segmentsMax"));
+    auto typeSlice = propSlice.get("segmentsMax");
+    ASSERT_TRUE(typeSlice.isNumber());
+    size_t segmentsMax;
+    ASSERT_TRUE(getNumber(segmentsMax, typeSlice));
+    ASSERT_EQ(10, segmentsMax);
+  }
+  {
+    ASSERT_TRUE(propSlice.hasKey("segmentsMin"));
+    auto valueSlice = propSlice.get("segmentsMin");
+    ASSERT_TRUE(valueSlice.isNumber());
+    size_t segmentsMin;
+    ASSERT_TRUE(getNumber(segmentsMin, valueSlice));
+    ASSERT_EQ(1, segmentsMin);
+  }
+  {
+    ASSERT_TRUE(propSlice.hasKey("minScore"));
+    auto valueSlice = propSlice.get("minScore");
+    ASSERT_TRUE(valueSlice.isNumber());
+    size_t minScore;
+    ASSERT_TRUE(getNumber(minScore, valueSlice));
+    ASSERT_EQ(0, minScore);
+  }
 }
 
 TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
@@ -782,25 +997,97 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
 }
 
 TEST_F(IResearchInvertedIndexMetaTest, testReadCustomizedValues1) {
-  // without active vocbase
 
-  std::string_view wrongDefinition10 = R"(
+  std::string_view complexJsonDefinition1 = R"(
   {
-      "fields": [
-          {
-              "name": "foo",
-              "analyzer": "identity"
-          }
-      ],
-      "storedValues": [
-          {
-              "fields": ["foo"],
-              "compression": "none"
-          }
-      ]
+    "fields": [
+       "simple",
+        {
+          "expression": "RETURN MERGE(@param, {foo: 'bar'}) ",
+          "override": true,
+          "name": "field_name_1",
+          "analyzer": "test_text",
+          "features": ["norm", "frequency"],
+          "isArray":false
+        },
+        {
+          "name": "foo",
+          "analyzer": "test_text",
+          "features": ["norm", "frequency", "position"],
+          "includeAllFields":true
+        },
+        {
+          "expression": "RETURN SPLIT(@param, ',') ",
+          "override": true,
+          "name": "field_name_2",
+          "analyzer": "test_text",
+          "features": ["norm", "frequency"],
+          "isArray":true,
+          "trackListPositions": true
+        },
+        {
+          "name": "foo.boo.too[*].doo.aoo.noo",
+          "features": ["norm"]
+        },
+        {
+          "name": "foo.boo.nest",
+          "features": ["norm"],
+          "analyzer": "test_text",
+          "nested": [
+            {
+              "name":"A"
+            },
+            {
+              "name":"Sub",
+              "analyzer":"identity",
+              "nested": [
+                 {
+                   "expression": "RETURN SPLIT(@param, '.') ",
+                   "override": true,
+                   "name":"SubSub.foo",
+                   "analyzer":"test_text",
+                   "features": ["position"]
+                 },
+                 {
+                    "name": "woo",
+                    "features": ["norm", "frequency"],
+                    "override": false,
+                    "includeAllFields":true,
+                    "trackListPositions": true
+                 }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "foobar.baz[*].bam",
+          "features": ["norm"],
+          "nested": [
+             {
+               "expression": "RETURN SPLIT(@param, '#') ",
+               "name":"bus.duz",
+               "override": true,
+               "features": ["position"]
+             }
+          ]
+        }
+    ],
+    "primarySort": {
+       "fields":[{ "field" : "foo", "direction": "desc" }],
+       "compression": "none",
+       "locale": "myLocale"
+    },
+    "consistency": "immediate",
+    "version":0,
+    "storedValues": [{ "fields": ["foo.boo.nest"], "compression": "none"}],
+    "analyzer": "test_text",
+    "features": ["norm", "position", "frequency"],
+    "includeAllFields":true,
+    "trackListPositions": false,
+    "analyzerDefinitions":[{"name":"test_text", "type":"identity", "properties":{}}]
   })";
 
-  auto json = VPackParser::fromJson(wrongDefinition10.data(), wrongDefinition10.size());
+  auto json = VPackParser::fromJson(complexJsonDefinition1.data(), complexJsonDefinition1.size());
 
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
   std::string errorString;
@@ -859,7 +1146,6 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadCustomizedValues1) {
   {
     VPackObjectBuilder obj(&serialized);
     ASSERT_TRUE(meta.json(server.server(), serialized, false, &vocbase));
-
   }
 
   // Iterating through fields and check them
@@ -976,8 +1262,8 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadCustomizedValues1) {
     auto& field5 = meta._fields[5];
 
     ASSERT_EQ(3, field5.attribute().size());
-    std::vector<AttributeName> attrs{{"foo"sv, false}, {"boo"sv, false}, {"nest"sv, false}};
-    ASSERT_EQ(field5.attribute(), attrs);
+
+    ASSERT_EQ(std::vector<AttributeName>({{"foo"sv, false}, {"boo"sv, false}, {"nest"sv, false}}), field5.attribute());
 
     ASSERT_FALSE(field5.overrideValue());
     ASSERT_EQ(0, field5.expansion().size());
@@ -1038,8 +1324,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadCustomizedValues1) {
 
         ASSERT_EQ(2, nested10.attribute().size());
 
-        ASSERT_EQ(nested1.attribute()[0], (AttributeName{"SubSub"sv, false}));
-        ASSERT_EQ(nested1.attribute()[1], (AttributeName{"foo"sv, false}));
+        ASSERT_EQ(std::vector<AttributeName>({{"SubSub"sv, false}, {"foo"sv, false}}), nested1.attribute());
 
         ASSERT_TRUE(nested10.overrideValue());
         ASSERT_EQ(0, nested10.expansion().size());
@@ -1079,8 +1364,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadCustomizedValues1) {
     auto& field6 = meta._fields[6];
 
     ASSERT_EQ(2, field6.attribute().size());
-    ASSERT_EQ(field6.attribute()[0], (AttributeName{"foobar"sv, false}));
-    ASSERT_EQ(field6.attribute()[1], (AttributeName{"baz"sv, false}));
+    ASSERT_EQ(std::vector<AttributeName>({{"foobar"sv, false}, {"baz"sv, false}}), field6.attribute());
 
     ASSERT_EQ(1, field6.expansion().size());
     ASSERT_EQ(field6.expansion()[0], (AttributeName{"bam"sv, false}));
@@ -1102,8 +1386,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadCustomizedValues1) {
       auto& nested = field6.nested()[0];
 
       ASSERT_EQ(2, nested.attribute().size());
-      ASSERT_EQ(nested.attribute()[0], (AttributeName{"bus"sv, false}));
-      ASSERT_EQ(nested.attribute()[1], (AttributeName{"duz"sv, false}));
+      ASSERT_EQ(std::vector<AttributeName>({{"bus"sv, false}, {"duz"sv, false}}), field6.attribute());
 
       ASSERT_EQ("RETURN SPLIT(@param, '#') ", nested.expression());
       analyzerFeaturesChecker({"position"}, nested.features().value());
@@ -1114,9 +1397,94 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadCustomizedValues1) {
       ASSERT_TRUE(nested.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
     }
   }
+
+  serializationChecker(server.server(), complexJsonDefinition1);
 }
 
 TEST_F(IResearchInvertedIndexMetaTest, testReadCustomizedValues2) {
+
+  std::string_view complexJsonDefinition2 = R"(
+  {
+    "fields": [
+       "dummy",
+      {
+        "name": "foo",
+        "analyzer": "identity",
+        "expression": "Abc"
+      },
+      {
+        "name": "foo.boo",
+        "analyzer": "delimiter_analyzer",
+        "override": true
+      },
+      {
+        "name": "foo.goo",
+        "analyzer": "stem_analyzer",
+        "override": true
+      },
+      {
+        "name": "zoo[*]",
+        "override": true,
+        "nested": [
+          "zoo",
+          {
+            "name": "doo",
+            "analyzer": "stem_analyzer",
+            "features": ["frequency"],
+            "override": true,
+            "includeAllFields":true,
+            "trackListPositions": true
+          }
+        ]
+      }
+    ],
+    "primarySort": {
+       "fields":[
+          {
+             "field" : "foo",
+             "direction": "asc"
+          },
+          {
+             "field" : "foo.boo",
+             "direction": "desc"
+          }
+       ],
+       "compression": "lz4",
+       "locale": "de_DE@phonebook"
+    },
+    "consistency": "eventual",
+    "version":1,
+    "storedValues": [
+      {
+        "fields": ["foo.boo"],
+        "compression": "lz4"
+      },
+      {
+        "fields": ["foo.goo"],
+        "compression": "lz4"
+      }
+    ],
+    "includeAllFields":false,
+    "trackListPositions": true,
+    "analyzerDefinitions":[
+      {
+        "name":"delimiter_analyzer",
+        "type":"delimiter",
+        "properties": {
+          "delimiter" : "."
+        },
+        "features": ["frequency"]
+      },
+      {
+        "name":"stem_analyzer",
+        "type":"stem",
+        "properties": {
+          "locale": "en.utf-8"
+        },
+        "features": ["norm"]
+      }
+   ]
+   })";
 
   auto json = VPackParser::fromJson(complexJsonDefinition2.data(), complexJsonDefinition2.size());
 
@@ -1150,8 +1518,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadCustomizedValues2) {
   }
   {
     ASSERT_EQ(2, primarySortFields[1].size());
-    ASSERT_EQ(primarySortFields[1][0], (AttributeName{"foo"sv, false}));
-    ASSERT_EQ(primarySortFields[1][1], (AttributeName{"boo"sv, false}));
+    ASSERT_EQ(std::vector<AttributeName>({{"foo"sv, false}, {"boo"sv, false}}), primarySortFields[1]);
   }
 
   ASSERT_TRUE(meta._sort.direction(0));
@@ -1238,8 +1605,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadCustomizedValues2) {
     auto& field2 = meta._fields[2];
 
     ASSERT_EQ(2, field2.attribute().size());
-    ASSERT_EQ(field2.attribute()[0], (AttributeName{"foo"sv, false}));
-    ASSERT_EQ(field2.attribute()[1], (AttributeName{"boo"sv, false}));
+    ASSERT_EQ(std::vector<AttributeName>({{"foo"sv, false}, {"boo"sv, false}}), field2.attribute());
 
     ASSERT_TRUE(field2.overrideValue());
     ASSERT_EQ(0, field2.expansion().size());
@@ -1260,8 +1626,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadCustomizedValues2) {
     auto& field3 = meta._fields[3];
 
     ASSERT_EQ(2, field3.attribute().size());
-    ASSERT_EQ(field3.attribute()[0], (AttributeName{"foo"sv, false}));
-    ASSERT_EQ(field3.attribute()[1], (AttributeName{"goo"sv, false}));
+    ASSERT_EQ(std::vector<AttributeName>({{"foo"sv, false}, {"goo"sv, false}}), field3.attribute());
 
     ASSERT_TRUE(field3.overrideValue());
     ASSERT_EQ(0, field3.expansion().size());
@@ -1338,13 +1703,109 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadCustomizedValues2) {
       ASSERT_TRUE(nested1.includeAllFields()); // FIXME: SHOULD BE DEFAULT VALUE FROM ROOT
     }
   }
+
+  serializationChecker(server.server(), complexJsonDefinition2);
 }
 
-TEST_F(IResearchInvertedIndexMetaTest, testSerialization) {
+TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
 
-  std::array<std::string_view, 2> jsons{complexJsonDefinition1, complexJsonDefinition2};
+  std::string_view definitionWithDataStoreFields  = R"(
+  {
+    "cleanupIntervalStep" : 42,
+    "commitIntervalMsec" : 42,
+    "consolidationIntervalMsec" : 42,
+    "consolidationPolicy" : {
+      "type" : "tier",
+      "segmentsBytesFloor" : 42,
+      "segmentsBytesMax" : 42,
+      "segmentsMax" : 42,
+      "segmentsMin" : 42,
+      "minScore" : 42
+    },
+    "version" : 1,
+    "writebufferActive" : 42,
+    "writebufferIdle" : 42,
+    "writebufferSizeMax" : 42,
+    "fields": [
+      "foo"
+    ]
+   })";
 
-  for (const auto& json : jsons) {
-    serializationChecker(server.server(), json);
+  arangodb::iresearch::IResearchInvertedIndexMeta meta;
+
+  {
+    auto json = VPackParser::fromJson(definitionWithDataStoreFields.data(),
+                                      definitionWithDataStoreFields.size());
+
+    std::string errorString;
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                          testDBInfo(server.server()));
+    auto res = meta.init(server.server(), json->slice(), true, errorString,
+                         irs::string_ref(vocbase.name()));
+    {
+      SCOPED_TRACE(::testing::Message("Unexpected error in ") << errorString);
+      ASSERT_TRUE(res);
+    }
+    ASSERT_TRUE(errorString.empty());
+    ASSERT_EQ(42, meta._analyzerDefinitions.size());
+    ASSERT_EQ(42, meta._cleanupIntervalStep);
+    ASSERT_EQ(42, meta._commitIntervalMsec);
+    ASSERT_EQ(42, meta._consolidationIntervalMsec);
+    ASSERT_EQ(42, meta._version);
+    ASSERT_EQ(42, meta._writebufferActive);
+    ASSERT_EQ(42, meta._writebufferIdle);
+    ASSERT_EQ(42, meta._writebufferSizeMax);
+
+    auto propSlice = meta._consolidationPolicy.properties();
+    ASSERT_TRUE(propSlice.isObject());
+    {
+      ASSERT_TRUE(propSlice.hasKey("type"));
+      auto typeSlice = propSlice.get("type");
+      ASSERT_TRUE(typeSlice.isString());
+      auto type = typeSlice.copyString();
+      ASSERT_EQ("tier", type);
+    }
+    {
+      ASSERT_TRUE(propSlice.hasKey("segmentsBytesFloor"));
+      auto valueSlice = propSlice.get("segmentsBytesFloor");
+      ASSERT_TRUE(valueSlice.isNumber());
+      size_t segmentsBytesFloor;
+      ASSERT_TRUE(getNumber(segmentsBytesFloor, valueSlice));
+      ASSERT_EQ(42, segmentsBytesFloor);
+    }
+    {
+      ASSERT_TRUE(propSlice.hasKey("segmentsBytesMax"));
+      auto valueSlice = propSlice.get("segmentsBytesMax");
+      ASSERT_TRUE(valueSlice.isNumber());
+      size_t segmentsBytesMax;
+      ASSERT_TRUE(getNumber(segmentsBytesMax, valueSlice));
+      ASSERT_EQ(42, segmentsBytesMax);
+    }
+    {
+      ASSERT_TRUE(propSlice.hasKey("segmentsMax"));
+      auto typeSlice = propSlice.get("segmentsMax");
+      ASSERT_TRUE(typeSlice.isNumber());
+      size_t segmentsMax;
+      ASSERT_TRUE(getNumber(segmentsMax, typeSlice));
+      ASSERT_EQ(42, segmentsMax);
+    }
+    {
+      ASSERT_TRUE(propSlice.hasKey("segmentsMin"));
+      auto valueSlice = propSlice.get("segmentsMin");
+      ASSERT_TRUE(valueSlice.isNumber());
+      size_t segmentsMin;
+      ASSERT_TRUE(getNumber(segmentsMin, valueSlice));
+      ASSERT_EQ(42, segmentsMin);
+    }
+    {
+      ASSERT_TRUE(propSlice.hasKey("minScore"));
+      auto valueSlice = propSlice.get("minScore");
+      ASSERT_TRUE(valueSlice.isNumber());
+      size_t minScore;
+      ASSERT_TRUE(getNumber(minScore, valueSlice));
+      ASSERT_EQ(42, minScore);
+    }
   }
+
+  serializationChecker(server.server(), definitionWithDataStoreFields);
 }
