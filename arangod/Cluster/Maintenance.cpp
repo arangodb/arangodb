@@ -1742,6 +1742,8 @@ static void reportCurrentReplicatedState(
     report.add(VPackValue("payload"));
     velocypack::serialize(report, update);
     {
+      // Assert that State/Plan/<db>/<id>/id is still there and equal to <id>.
+      // This is true if and only if the state was not yet dropped from Plan.
       VPackObjectBuilder preconditionBuilder(&report, "precondition");
       report.add(preconditionPath, VPackValue(id));
     }
