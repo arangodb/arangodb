@@ -27,6 +27,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -56,8 +57,10 @@ namespace utils {
 // "v" to only the projections stored in "attributes". returns false
 // otherwise. if false is returned, the contents of "attributes" must
 // be ignored by the caller.
-// note: this function will wipe "attributes" on every call.
+// note: this function will not wipe "attributes" if there is already
+// some data in it.
 bool findProjections(ExecutionNode* n, Variable const* v,
+                     std::string_view expectedAttribute,
                      std::unordered_set<AttributeNamePath>& attributes);
 
 /// @brief Gets the best fitting index for an AQL condition.

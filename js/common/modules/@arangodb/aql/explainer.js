@@ -1145,7 +1145,7 @@ function processQuery(query, explain, planIndex) {
         }
         return p;
       });
-      return ', ' + label + ': `' + p.join('`, `') + '`';
+      return ' (' + label + ': `' + p.join('`, `') + '`)';
     }
     return '';
   };
@@ -1365,10 +1365,18 @@ function processQuery(query, explain, planIndex) {
         if (node.hasOwnProperty('pathOutVariable')) {
           let pathParts = [];
           if (node.options.producePathsVertices) {
-            pathParts.push("vertices");
+            if (node.hasOwnProperty('vertexOutVariable')) {
+              pathParts.push("vertices");
+            } else {
+              pathParts.push("vertices" + projections(node.options, 'vertexProjections', 'projections'));
+            }
           }
           if (node.options.producePathsEdges) {
-            pathParts.push("edges");
+            if (node.hasOwnProperty('edgeOutVariable')) {
+              pathParts.push("edges");
+            } else {
+              pathParts.push("edges" + projections(node.options, 'edgeProjections', 'projections'));
+            }
           }
           if (node.options.producePathsWeights) {
             pathParts.push("weights");

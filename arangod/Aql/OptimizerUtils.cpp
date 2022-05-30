@@ -666,25 +666,27 @@ namespace arangodb::aql::utils {
 // "v" to only the projections stored in "attributes". returns false
 // otherwise. if false is returned, the contents of "attributes" must
 // be ignored by the caller.
-// note: this function will wipe "attributes" on every call.
+// note: this function will *not* wipe "attributes" if there is already
+// some data in it.
 bool findProjections(ExecutionNode* n, Variable const* v,
+                     std::string_view expectedAttribute,
                      std::unordered_set<AttributeNamePath>& attributes) {
   using EN = arangodb::aql::ExecutionNode;
 
   VarSet vars;
 
-  auto checkExpressionNode = [&vars, &attributes, v](
+  auto checkExpressionNode = [&vars, &attributes, expectedAttribute, v](
                                  ExecutionNode const* current,
                                  AstNode const* node) -> bool {
     vars.clear();
     current->getVariablesUsedHere(vars);
 
     if (vars.find(v) != vars.end() &&
-        !Ast::getReferencedAttributesRecursive(node, v, attributes)) {
+        !Ast::getReferencedAttributesRecursive(
+            node, v, /*expectedAttribute*/ expectedAttribute, attributes)) {
       // cannot use projections for this variable
       return false;
     }
-
     return true;
   };
 
@@ -692,8 +694,6 @@ bool findProjections(ExecutionNode* n, Variable const* v,
                                                 Expression const* exp) -> bool {
     return (exp == nullptr || checkExpressionNode(current, exp->node()));
   };
-
-  attributes.clear();
 
   ExecutionNode* current = n;
   while (current != nullptr) {
@@ -721,8 +721,8 @@ bool findProjections(ExecutionNode* n, Variable const* v,
 
         if (std::find(pruneVars.begin(), pruneVars.end(), v) !=
                 pruneVars.end() &&
-            !Ast::getReferencedAttributesRecursive(pruneExpression->node(), v,
-                                                   attributes)) {
+            !Ast::getReferencedAttributesRecursive(
+                pruneExpression->node(), v, expectedAttribute, attributes)) {
           // cannot use projections for this variable
           return false;
         }

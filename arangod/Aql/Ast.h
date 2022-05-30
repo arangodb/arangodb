@@ -456,15 +456,10 @@ class Ast {
   /// @brief count how many times a variable is referenced in an expression
   static size_t countReferences(AstNode const*, Variable const*);
 
-  /// @brief determines the top-level attributes used in an expression for the
-  /// specified variable
-  static bool getReferencedAttributes(AstNode const*, Variable const*,
-                                      std::unordered_set<std::string>&);
-
   /// @brief determines the attributes and subattributes used in an expression
   /// for the specified variable
   static bool getReferencedAttributesRecursive(
-      AstNode const*, Variable const*,
+      AstNode const*, Variable const*, std::string_view expectedAttribute,
       std::unordered_set<arangodb::aql::AttributeNamePath>&);
 
   /// @brief replace an attribute access with just the variable

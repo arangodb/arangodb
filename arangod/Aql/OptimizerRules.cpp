@@ -914,7 +914,7 @@ bool optimizeTraversalPathVariable(
 
   // path is used later, but lets check which of its sub-attributes
   // "vertices" or "edges" are in use (or the complete path)
-  std::unordered_set<std::string> attributes;
+  std::unordered_set<AttributeNamePath> attributes;
   VarSet vars;
 
   ExecutionNode* current = traversal->getFirstParent();
@@ -928,7 +928,8 @@ bool optimizeTraversalPathVariable(
           Expression* exp =
               ExecutionNode::castTo<CalculationNode*>(current)->expression();
           AstNode const* node = exp->node();
-          if (!Ast::getReferencedAttributes(node, variable, attributes)) {
+          if (!Ast::getReferencedAttributesRecursive(
+                  node, variable, /*expectedAttribute*/ "", attributes)) {
             // full path variable is used, or accessed in a way that we don't
             // understand, e.g. "p" or "p[0]" or "p[*]..."
             return false;
@@ -951,13 +952,24 @@ bool optimizeTraversalPathVariable(
   }
 
   // check which attributes from the path are actually used
-  bool producePathsVertices =
-      (attributes.find(StaticStrings::GraphQueryVertices) != attributes.end());
-  bool producePathsEdges =
-      (attributes.find(StaticStrings::GraphQueryEdges) != attributes.end());
-  bool producePathsWeights =
-      (attributes.find(StaticStrings::GraphQueryWeights) != attributes.end()) &&
-      (options->mode == traverser::TraverserOptions::Order::WEIGHTED);
+  bool producePathsVertices = false;
+  bool producePathsEdges = false;
+  bool producePathsWeights = false;
+
+  for (auto const& it : attributes) {
+    TRI_ASSERT(!it.path.empty());
+    if (!producePathsVertices &&
+        it.path[0] == StaticStrings::GraphQueryVertices) {
+      producePathsVertices = true;
+    } else if (!producePathsEdges &&
+               it.path[0] == StaticStrings::GraphQueryEdges) {
+      producePathsEdges = true;
+    } else if (!producePathsWeights &&
+               options->mode == traverser::TraverserOptions::Order::WEIGHTED &&
+               it.path[0] == StaticStrings::GraphQueryWeights) {
+      producePathsWeights = true;
+    }
+  }
 
   if (!producePathsVertices && !producePathsEdges && !producePathsWeights &&
       !attributes.empty()) {
@@ -6114,6 +6126,11 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     std::vector<Variable const*> pruneVars;
     traversal->getPruneVariables(pruneVars);
 
+    // optimize path output variable
+    auto pathOutVariable = traversal->pathOutVariable();
+    modified |=
+        optimizeTraversalPathVariable(pathOutVariable, traversal, pruneVars);
+
     // note that we can NOT optimize away the vertex output variable
     // yet, as many traversal internals depend on the number of vertices
     // found/built
@@ -6130,7 +6147,8 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
               pruneVars.end()) {
         outVariable = traversal->pathOutVariable();
         if (outVariable == nullptr ||
-            (!n->isVarUsedLater(outVariable) &&
+            ((!n->isVarUsedLater(outVariable) ||
+              !options->producePathsVertices()) &&
              std::find(pruneVars.begin(), pruneVars.end(), outVariable) ==
                  pruneVars.end())) {
           // both traversal vertex and path outVariables not used later
@@ -6153,46 +6171,63 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
       }
     }
 
-    // optimize path output variable
-    outVariable = traversal->pathOutVariable();
-    modified |=
-        optimizeTraversalPathVariable(outVariable, traversal, pruneVars);
-
     // handle projections (must be done after path variable optimization)
     {
       // TODO: make maxProjections configurable
       constexpr size_t maxProjections = 10;
 
       // find projections for vertex output variable
-      auto outVariable = traversal->vertexOutVariable();
+      attributes.clear();
+      bool useVertexProjections = true;
 
       // if the path does not include vertices, we can restrict the vertex
       // gathering to only the required attributes
-      if (outVariable != nullptr && !options->producePathsVertices()) {
-        if (arangodb::aql::utils::findProjections(n, outVariable, attributes) &&
-            !attributes.empty() && attributes.size() <= maxProjections) {
-          traversal->setVertexProjections(Projections(attributes));
+      if (traversal->vertexOutVariable() != nullptr) {
+        useVertexProjections = arangodb::aql::utils::findProjections(
+            n, traversal->vertexOutVariable(), /*expectedAttribute*/ "",
+            attributes);
+      }
+
+      if (useVertexProjections && options->producePathsVertices() &&
+          pathOutVariable != nullptr) {
+        useVertexProjections = arangodb::aql::utils::findProjections(
+            n, pathOutVariable, StaticStrings::GraphQueryVertices, attributes);
+      }
+
+      if (useVertexProjections && !attributes.empty() &&
+          attributes.size() <= maxProjections) {
+        traversal->setVertexProjections(Projections(std::move(attributes)));
+        modified = true;
+      }
+
+      // find projections for edge output variable
+      attributes.clear();
+      bool useEdgeProjections = true;
+
+      if (traversal->edgeOutVariable() != nullptr) {
+        useEdgeProjections = arangodb::aql::utils::findProjections(
+            n, traversal->edgeOutVariable(), /*expectedAttribute*/ "",
+            attributes);
+      }
+
+      if (useEdgeProjections && options->producePathsEdges() &&
+          pathOutVariable != nullptr) {
+        useEdgeProjections = arangodb::aql::utils::findProjections(
+            n, pathOutVariable, StaticStrings::GraphQueryEdges, attributes);
+      }
+
+      if (useEdgeProjections) {
+        // if we found any projections, make sure that they include _from and
+        // _to, as the traversal code will refer to these attributes later.
+        attributes.emplace(StaticStrings::FromString);
+        attributes.emplace(StaticStrings::ToString);
+
+        if (attributes.size() <= maxProjections) {
+          traversal->setEdgeProjections(Projections(std::move(attributes)));
           modified = true;
         }
       }
 
-      // find projections for edge output variable
-      outVariable = traversal->edgeOutVariable();
-
-      if (outVariable != nullptr && !options->producePathsEdges()) {
-        if (arangodb::aql::utils::findProjections(n, outVariable, attributes) &&
-            !attributes.empty()) {
-          // if we found any projections, make sure that they include _from and
-          // _to, as the traversal code will refer to these attributes later.
-          attributes.emplace(StaticStrings::FromString);
-          attributes.emplace(StaticStrings::ToString);
-
-          if (attributes.size() <= maxProjections) {
-            traversal->setEdgeProjections(Projections(attributes));
-            modified = true;
-          }
-        }
-      }
     }  // end projections handling
 
     // check if we can make use of the optimized neighbors enumerator
@@ -6352,6 +6387,7 @@ void arangodb::aql::removeTraversalPathVariable(
   bool modified = false;
   // first make a pass over all traversal nodes and remove unused
   // variables from them
+
   for (auto const& n : tNodes) {
     TraversalNode* traversal = ExecutionNode::castTo<TraversalNode*>(n);
     auto outVariable = traversal->pathOutVariable();

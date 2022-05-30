@@ -101,8 +101,9 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           TRI_ERROR_INTERNAL, "cannot convert node to DocumentProducingNode");
     }
 
-    bool foundProjections =
-        arangodb::aql::utils::findProjections(n, e->outVariable(), attributes);
+    attributes.clear();
+    bool foundProjections = arangodb::aql::utils::findProjections(
+        n, e->outVariable(), /*expectedAttribute*/ "", attributes);
 
     if (foundProjections && !attributes.empty() &&
         attributes.size() <= e->maxProjections()) {
