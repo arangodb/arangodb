@@ -3856,7 +3856,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     auto tmpRes = dbServerResult->load();
     if (tmpRes.has_value() && replicatedStatesCleanup.isReady()) {
       if (replicatedStatesCleanup.get().fail()) {
-        LOG_TOPIC("ce2be", ERR, Logger::CLUSTER)
+        LOG_TOPIC("f5063", ERR, Logger::CLUSTER)
             << "Failed to successfully remove replicated states"
             << " database: " << dbName << " collection ID: " << collectionID
             << " collection name: " << coll->name();
