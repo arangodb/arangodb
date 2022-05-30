@@ -106,6 +106,10 @@ class MockGraph {
     return _vertexCollectionName;
   }
 
+  std::string const& getSatVertexCollectionName() const {
+    return _satVertexCollectionName;
+  }
+
   std::string const& getEdgeCollectionName() const {
     return _edgeCollectionName;
   }
@@ -156,6 +160,7 @@ class MockGraph {
   std::vector<EdgeDef> _edges;
   std::unordered_set<VertexDef, hashVertexDef> _vertices;
   std::string _vertexCollectionName{"v"};
+  std::string _satVertexCollectionName{"satColl"};
   std::string _edgeCollectionName{"e"};
 
  private:

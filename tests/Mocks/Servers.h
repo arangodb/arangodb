@@ -231,6 +231,11 @@ class MockClusterServer
           shardNameToServerNamePairs,
       TRI_col_type_e type,
       VPackSlice additionalProperties = VPackSlice{VPackSlice::nullSlice()});
+
+  std::shared_ptr<LogicalCollection> createSatCollection(
+      const std::string& dbName, std::string collectionName,
+      std::string shardName, std::vector<std::string> allServerNames,
+      TRI_col_type_e type, VPackSlice additionalProperties);
 #endif
 
   void buildCollectionProperties(VPackBuilder& props,
