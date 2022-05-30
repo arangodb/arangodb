@@ -1727,12 +1727,24 @@ static void reportCurrentReplicatedState(
   update.generation = status.getGeneration();
   update.snapshot = status.getSnapshotInfo();
 
+  auto preconditionPath =
+      cluster::paths::aliases::plan()
+          ->replicatedStates()
+          ->database(dbName)
+          ->state(id)
+          ->id()
+          ->str(cluster::paths::SkipComponents(
+              1) /* skip first path component, i.e. 'arango' */);
   report.add(VPackValue(updatePath->str(cluster::paths::SkipComponents(1))));
   {
     VPackObjectBuilder o(&report);
     report.add(OP, VP_SET);
     report.add(VPackValue("payload"));
     velocypack::serialize(report, update);
+    {
+      VPackObjectBuilder preconditionBuilder(&report, "precondition");
+      report.add(preconditionPath, VPackValue(id));
+    }
   }
 }
 
