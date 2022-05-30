@@ -605,24 +605,24 @@ auto ClusterInfo::deleteReplicatedStates(
         auto deletionResults =
             basics::catchToResultT([&] { return std::move(tryResult.get()); });
 
-        auto result = deletionResults.result();
-        if (result.fail()) {
-          return result.mapError([](result::Error error) {
+        auto makeResult = [](auto&& result) {
+          result = result.mapError([](result::Error error) {
             error.appendErrorMessage(
                 "Failed to delete replicated states corresponding to shards!");
             return error;
           });
+          return result;
+        };
+
+        auto result = deletionResults.result();
+        if (result.fail()) {
+          return makeResult(std::move(result));
         }
         for (auto shardResult : deletionResults.get()) {
           auto r = basics::catchToResult(
               [&] { return std::move(shardResult.get()); });
           if (r.fail()) {
-            return result.mapError([](result::Error error) {
-              error.appendErrorMessage(
-                  "Failed to delete replicated states corresponding to "
-                  "shards!");
-              return error;
-            });
+            return makeResult(std::move(r));
           }
         }
 
