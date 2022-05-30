@@ -3501,7 +3501,7 @@ Result ClusterInfo::createCollectionsCoordinator(
               << " collections in database " << databaseName
               << " isNewDatabase: " << isNewDatabase
               << " first collection name: " << infos[0].name
-              << " result: " << result.errorNumber();
+              << " result: " << result;
           return result;
         }
       }
