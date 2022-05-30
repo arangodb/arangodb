@@ -2624,66 +2624,6 @@ size_t Ast::countReferences(AstNode const* node, Variable const* search) {
   return result.count;
 }
 
-/// @brief determines the top-level attributes referenced in an expression,
-/// grouped by variable name
-TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node,
-                                                bool& isSafeForOptimization) {
-  TopLevelAttributes result;
-
-  // traversal state
-  char const* attributeName = nullptr;
-  size_t nameLength = 0;
-  isSafeForOptimization = true;
-
-  auto visitor = [&](AstNode const* node) {
-    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      attributeName = node->getStringValue();
-      nameLength = node->getStringLength();
-      return true;
-    }
-
-    if (node->type == NODE_TYPE_REFERENCE) {
-      // reference to a variable
-      if (attributeName == nullptr) {
-        // we haven't seen an attribute access directly before...
-        // this may have been an access to an indexed property, e.g value[0] or
-        // a reference to the complete value, e.g. FUNC(value)
-        // note that this is unsafe to optimize this away
-        isSafeForOptimization = false;
-        return true;
-      }
-
-      TRI_ASSERT(attributeName != nullptr);
-
-      auto variable = static_cast<Variable const*>(node->getData());
-
-      if (variable == nullptr) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-      }
-
-      auto [it, emp] =
-          result.try_emplace(variable, arangodb::lazyConstruct([&] {
-                               return std::unordered_set<std::string>(
-                                   {std::string(attributeName, nameLength)});
-                             }));
-      if (emp) {
-        // insert attributeName only
-        (*it).second.emplace(attributeName, nameLength);
-      }
-
-      // fall-through
-    }
-
-    attributeName = nullptr;
-    nameLength = 0;
-    return true;
-  };
-
-  traverseReadOnly(node, visitor, ::doNothingVisitor);
-
-  return result;
-}
-
 /// @brief determines the top-level attributes referenced in an expression for
 /// the specified out variable
 bool Ast::getReferencedAttributes(AstNode const* node, Variable const* variable,

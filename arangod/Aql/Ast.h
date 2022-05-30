@@ -62,9 +62,6 @@ class QueryContext;
 class AqlFunctionsInternalCache;
 struct Variable;
 
-typedef std::unordered_map<Variable const*, std::unordered_set<std::string>>
-    TopLevelAttributes;
-
 /// @brief type for Ast flags
 using AstPropertiesFlagsType = uint32_t;
 
@@ -458,10 +455,6 @@ class Ast {
 
   /// @brief count how many times a variable is referenced in an expression
   static size_t countReferences(AstNode const*, Variable const*);
-
-  /// @brief determines the top-level attributes used in an expression, grouped
-  /// by variable
-  static TopLevelAttributes getReferencedAttributes(AstNode const*, bool&);
 
   /// @brief determines the top-level attributes used in an expression for the
   /// specified variable
