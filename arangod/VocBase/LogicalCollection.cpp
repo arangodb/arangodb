@@ -1217,7 +1217,8 @@ void LogicalCollection::decorateWithInternalValidators() {
   decorateWithInternalEEValidators();
 }
 
-replication2::LogId LogicalCollection::shardIdToLogId(ShardID const& shardId) {
+replication2::LogId LogicalCollection::shardIdToStateId(
+    ShardID const& shardId) {
   auto stateId = std::string_view(shardId).substr(1, shardId.size() - 1);
   auto logId = replication2::LogId::fromString(stateId);
   ADB_PROD_ASSERT(logId.has_value())

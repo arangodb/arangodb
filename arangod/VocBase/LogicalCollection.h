@@ -112,7 +112,7 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief current version for collections
   static constexpr Version currentVersion() { return Version::v37; }
 
-  static replication2::LogId shardIdToLogId(ShardID const& shardId);
+  static replication2::LogId shardIdToStateId(ShardID const& shardId);
 
   // SECTION: Meta Information
   Version version() const { return _version; }

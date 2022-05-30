@@ -521,7 +521,7 @@ auto ClusterInfo::createReplicatedStateSpec(
     -> replication2::replicated_state::agency::Target {
   replication2::replicated_state::agency::Target spec;
 
-  spec.id = LogicalCollection::shardIdToLogId(shardId);
+  spec.id = LogicalCollection::shardIdToStateId(shardId);
   spec.properties.implementation.type = "black-hole";
   TRI_ASSERT(!serverIds.empty());
   spec.leader = serverIds.front();
@@ -2828,7 +2828,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
       std::transform(
           shardIds->begin(), shardIds->end(),
           std::back_inserter(replicatedStates), [](auto const& shardPair) {
-            return LogicalCollection::shardIdToLogId(shardPair.first);
+            return LogicalCollection::shardIdToStateId(shardPair.first);
           });
     }
     collections.clear();
