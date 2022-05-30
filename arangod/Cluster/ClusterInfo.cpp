@@ -555,6 +555,15 @@ auto ClusterInfo::waitForReplicatedStatesCreation(
         replicatedStateMethods->waitForStateReady(spec.id, *spec.version));
   }
 
+  // we need to define this here instead of using an inline lambda expression
+  // because MSVC is too stupid to compile it otherwise
+  auto appendErrorMessage = [](result::Error error) {
+    error.appendErrorMessage(
+        "Failed to create a corresponding replicated state "
+        "for each shard!");
+    return error;
+  };
+
   return futures::collectAll(std::move(futureStates))
       .thenValue(
           [&clusterInfo = _server.getFeature<ClusterFeature>().clusterInfo()](
@@ -565,22 +574,15 @@ auto ClusterInfo::waitForReplicatedStatesCreation(
             }
             return clusterInfo.waitForPlan(maxIndex);
           })
-      .then([](auto&& tryResult) {
+      .then([&appendErrorMessage](auto&& tryResult) {
         Result result =
             basics::catchToResult([&] { return std::move(tryResult.get()); });
         if (result.fail()) {
           if (result.is(TRI_ERROR_NO_ERROR)) {
             result = Result(TRI_ERROR_INTERNAL, result.errorMessage());
           }
-
-          result = result.mapError([](result::Error error) {
-            error.appendErrorMessage(
-                "Failed to create a corresponding replicated state "
-                "for each shard!");
-            return error;
-          });
+          result = result.mapError(appendErrorMessage);
         }
-
         return result;
       });
 }
