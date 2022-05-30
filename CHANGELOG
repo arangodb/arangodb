@@ -1,6 +1,25 @@
 devel
 -----
 
+* Updated arangosync to v2.10.0-preview-1.
+
+* Enterprise only: Restricted behaviour of Hybrid Disjoint Smart Graphs. Within a single
+  traversal or path query we now restrict that you can only switch between
+  Smart and Satellite sharding once, all queries where  more than one switch
+  is (in theory) possible will be rejected. e.g:
+  ```
+    FOR v IN 2 OUTBOUND @start smartToSatEdges, satToSmartEdges
+  ```
+  will be rejected (we can go smart -> sat -> smart, so two switches)
+  ```
+  FOR v1 IN 1 OUTBOUND @start smartToSatEdges
+    FOR v2 IN 1 OUTBOUND v1 satToSmartEdges
+  ```
+  will still be allowed, as each statement only switches once.
+  We have decided to take this restrictions as especially for ShortestPath
+  queries the results are not well-defined. If you have a use-case where
+  this restriction hits you, please contact us.
+
 * Change default value of `--rocksdb.block-cache-shard-bits` to an automatic
   default value that allows data blocks of at least 128MiB to be stored in each
   cache shard if the block cache's strict capacity limit is used. The strict 
