@@ -194,55 +194,60 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
          },
          {}});
 
-    server.addFeatures(
-        Visitor{[]<typename T>(auto& server, TypeTag<T>) {
-                  return std::make_unique<T>(server);
-                },
-                [](auto& server, TypeTag<GreetingsFeaturePhase>) {
-                  return std::make_unique<GreetingsFeaturePhase>(
-                      server, std::false_type{});
-                },
-                [&ret](auto& server, TypeTag<CheckVersionFeature>) {
-                  return std::make_unique<CheckVersionFeature>(
-                      server, &ret, kNonServerFeatures);
-                },
-                [&name](auto& server, TypeTag<ConfigFeature>) {
-                  return std::make_unique<ConfigFeature>(server, name);
-                },
-                [](auto& server, TypeTag<InitDatabaseFeature>) {
-                  return std::make_unique<InitDatabaseFeature>(
-                      server, kNonServerFeatures);
-                },
-                [](auto& server, TypeTag<LoggerFeature>) {
-                  return std::make_unique<LoggerFeature>(server, true);
-                },
-                [&ret](auto& server, TypeTag<ScriptFeature>) {
-                  return std::make_unique<ScriptFeature>(server, &ret);
-                },
-                [&ret](auto& server, TypeTag<ServerFeature>) {
-                  return std::make_unique<ServerFeature>(server, &ret);
-                },
-                [](auto& server, TypeTag<ShutdownFeature>) {
-                  return std::make_unique<ShutdownFeature>(
-                      server, std::array{ArangodServer::id<ScriptFeature>()});
-                },
-                [&name](auto& server, TypeTag<TempFeature>) {
-                  return std::make_unique<TempFeature>(server, name);
-                },
-                [](auto& server, TypeTag<SslServerFeature>) {
+    server.addFeatures(Visitor{
+        []<typename T>(auto& server, TypeTag<T>) {
+          return std::make_unique<T>(server);
+        },
+        [](auto& server, TypeTag<GreetingsFeaturePhase>) {
+          return std::make_unique<GreetingsFeaturePhase>(server,
+                                                         std::false_type{});
+        },
+        [&ret](auto& server, TypeTag<CheckVersionFeature>) {
+          return std::make_unique<CheckVersionFeature>(server, &ret,
+                                                       kNonServerFeatures);
+        },
+        [&name](auto& server, TypeTag<ConfigFeature>) {
+          return std::make_unique<ConfigFeature>(server, name);
+        },
+        [](auto& server, TypeTag<InitDatabaseFeature>) {
+          return std::make_unique<InitDatabaseFeature>(server,
+                                                       kNonServerFeatures);
+        },
+        [](auto& server, TypeTag<LoggerFeature>) {
+          return std::make_unique<LoggerFeature>(server, true);
+        },
+        [](auto& server, TypeTag<RocksDBEngine>) {
+          return std::make_unique<RocksDBEngine>(
+              server,
+              server.template getFeature<arangodb::RocksDBOptionFeature>());
+        },
+        [&ret](auto& server, TypeTag<ScriptFeature>) {
+          return std::make_unique<ScriptFeature>(server, &ret);
+        },
+        [&ret](auto& server, TypeTag<ServerFeature>) {
+          return std::make_unique<ServerFeature>(server, &ret);
+        },
+        [](auto& server, TypeTag<ShutdownFeature>) {
+          return std::make_unique<ShutdownFeature>(
+              server, std::array{ArangodServer::id<ScriptFeature>()});
+        },
+        [&name](auto& server, TypeTag<TempFeature>) {
+          return std::make_unique<TempFeature>(server, name);
+        },
+        [](auto& server, TypeTag<SslServerFeature>) {
 #ifdef USE_ENTERPRISE
-                  return std::make_unique<SslServerFeatureEE>(server);
+          return std::make_unique<SslServerFeatureEE>(server);
 #else
-                  return std::make_unique<SslServerFeature>(server);
+          return std::make_unique<SslServerFeature>(server);
 #endif
-                },
-                [&ret](auto& server, TypeTag<UpgradeFeature>) {
-                  return std::make_unique<UpgradeFeature>(server, &ret,
-                                                          kNonServerFeatures);
-                },
-                [](auto& server, TypeTag<HttpEndpointProvider>) {
-                  return std::make_unique<EndpointFeature>(server);
-                }});
+        },
+        [&ret](auto& server, TypeTag<UpgradeFeature>) {
+          return std::make_unique<UpgradeFeature>(server, &ret,
+                                                  kNonServerFeatures);
+        },
+        [](auto& server, TypeTag<HttpEndpointProvider>) {
+          return std::make_unique<EndpointFeature>(server);
+        }});
 
     try {
       server.run(argc, argv);

@@ -40,6 +40,7 @@
 #include "Enterprise/RocksDBEngine/RocksDBEngineEE.h"
 #endif
 
+#include <rocksdb/db.h>
 #include <rocksdb/options.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -77,6 +78,7 @@ struct Options;
 }  // namespace transaction
 
 class RocksDBEngine;  // forward
+struct RocksDBOptionsProvider;
 
 /// @brief helper class to make file-purging thread-safe
 /// while there is an object of this type around, it will prevent
@@ -131,7 +133,8 @@ class RocksDBEngine final : public StorageEngine {
   static constexpr std::string_view name() noexcept { return "RocksDBEngine"; }
 
   // create the storage engine
-  explicit RocksDBEngine(Server& server);
+  explicit RocksDBEngine(Server& server,
+                         RocksDBOptionsProvider const& optionsProvider);
   ~RocksDBEngine();
 
   // inherited from ApplicationFeature
@@ -406,7 +409,7 @@ class RocksDBEngine final : public StorageEngine {
 #endif
   }
 
-  rocksdb::Options const& rocksDBOptions() const { return _options; }
+  rocksdb::DBOptions const& rocksDBOptions() const { return _dbOptions; }
 
   /// @brief recovery manager
   RocksDBSettingsManager* settingsManager() const {
@@ -463,7 +466,7 @@ class RocksDBEngine final : public StorageEngine {
   void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void validateEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
   void prepareEnterprise();
-  void configureEnterpriseRocksDBOptions(rocksdb::Options& options,
+  void configureEnterpriseRocksDBOptions(rocksdb::DBOptions& options,
                                          bool createdEngineDir);
   void validateJournalFiles() const;
 
@@ -482,10 +485,15 @@ class RocksDBEngine final : public StorageEngine {
   static constexpr std::string_view kEngineName = "rocksdb";
 
  private:
+  bool checkExistingDB(
+      std::vector<rocksdb::ColumnFamilyDescriptor> const& cfFamilies);
+
+  RocksDBOptionsProvider const& _optionsProvider;
+
   /// single rocksdb database used in this storage engine
   rocksdb::TransactionDB* _db;
   /// default read options
-  rocksdb::Options _options;
+  rocksdb::DBOptions _dbOptions;
   /// path used by rocksdb (inside _basePath)
   std::string _path;
   /// path to arangodb data dir
