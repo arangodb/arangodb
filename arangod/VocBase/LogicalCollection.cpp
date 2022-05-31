@@ -1155,9 +1155,13 @@ void LogicalCollection::schemaToVelocyPack(VPackBuilder& b) const {
   }
 }
 
-Result LogicalCollection::validate(VPackSlice s,
+std::shared_ptr<ValidatorBase> LogicalCollection::schema() const {
+  return std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
+}
+
+Result LogicalCollection::validate(std::shared_ptr<ValidatorBase> const& schema,
+                                   VPackSlice s,
                                    VPackOptions const* options) const {
-  auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
   if (schema != nullptr) {
     auto res = schema->validate(s, VPackSlice::noneSlice(), true, options);
     if (res.fail()) {
@@ -1173,9 +1177,11 @@ Result LogicalCollection::validate(VPackSlice s,
   return {};
 }
 
-Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc,
+Result LogicalCollection::validate(std::shared_ptr<ValidatorBase> const& schema,
+                                   VPackSlice modifiedDoc, VPackSlice oldDoc,
                                    VPackOptions const* options) const {
-  auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
+  //  auto schema = std::atomic_load_explicit(&_schema,
+  //  std::memory_order_relaxed);
   if (schema != nullptr) {
     auto res = schema->validate(modifiedDoc, oldDoc, false, options);
     if (res.fail()) {
