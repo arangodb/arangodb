@@ -30,26 +30,7 @@ const jsunity = require("jsunity");
 const db = require("internal").db;
 const request = require("@arangodb/request");
 const _ = require("lodash");
-
-function getCoordinators() {
-  const isCoordinator = (d) => (_.toLower(d.instanceRole) === 'coordinator');
-  const toEndpoint = (d) => (d.endpoint);
-  const endpointToURL = (endpoint) => {
-    if (endpoint.substr(0, 6) === 'ssl://') {
-      return 'https://' + endpoint.substr(6);
-    }
-    let pos = endpoint.indexOf('://');
-    if (pos === -1) {
-      return 'http://' + endpoint;
-    }
-    return 'http' + endpoint.substr(pos);
-  };
-
-  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
-  return instanceInfo.arangods.filter(isCoordinator)
-                              .map(toEndpoint)
-                              .map(endpointToURL);
-}
+const getCoordinators = require('@arangodb/test-helper').getCoordinators;
 
 const servers = getCoordinators();
 

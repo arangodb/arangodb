@@ -34,27 +34,8 @@ const request = require("@arangodb/request");
 const url = require('url');
 const userModule = require("@arangodb/users");
 const _ = require("lodash");
+const getCoordinators = require('@arangodb/test-helper').getCoordinators;
 
-
-function getCoordinators() {
-  const isCoordinator = (d) => (_.toLower(d.instanceRole) === 'coordinator');
-  const toEndpoint = (d) => (d.endpoint);
-  const endpointToURL = (endpoint) => {
-    if (endpoint.substr(0, 6) === 'ssl://') {
-      return 'https://' + endpoint.substr(6);
-    }
-    var pos = endpoint.indexOf('://');
-    if (pos === -1) {
-      return 'http://' + endpoint;
-    }
-    return 'http' + endpoint.substr(pos);
-  };
-
-  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
-  return instanceInfo.arangods.filter(isCoordinator)
-                              .map(toEndpoint)
-                              .map(endpointToURL);
-}
 
 const servers = getCoordinators();
 

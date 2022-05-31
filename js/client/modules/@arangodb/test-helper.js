@@ -392,3 +392,23 @@ exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 
     internal.wait(1);
   }
 };
+
+exports.getCoordinators = function () {
+  const isCoordinator = (d) => (_.toLower(d.instanceRole) === 'coordinator');
+  const toEndpoint = (d) => (d.endpoint);
+  const endpointToURL = (endpoint) => {
+    if (endpoint.substr(0, 6) === 'ssl://') {
+      return 'https://' + endpoint.substr(6);
+    }
+    var pos = endpoint.indexOf('://');
+    if (pos === -1) {
+      return 'http://' + endpoint;
+    }
+    return 'http' + endpoint.substr(pos);
+  };
+
+  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
+  return instanceInfo.arangods.filter(isCoordinator)
+                              .map(toEndpoint)
+                              .map(endpointToURL);
+};
