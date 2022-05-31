@@ -112,7 +112,7 @@ function runArangodRecovery (params) {
     params.options.disableMonitor = true;
     params.options =  ensureServers(params.options);
     let args = {};
-    args['temp.path'] = params.instanceManager.rootDir;
+    // args['temp.path'] = params.instanceManager.rootDir;
     
     // enable development debugging if extremeVerbosity is set
     if (params.options.extremeVerbosity === true) {
@@ -154,10 +154,11 @@ function runArangodRecovery (params) {
 
   if (params.setup) {
     params.args = Object.assign(params.args, additionalParams);
-    params.instanceManager = pu.startInstance(params.options.protocol,
-                                           params.options,
-                                           params.args,
-                                           fs.join('recovery_cluster', params.count.toString()));
+    params.instanceManager = new im.instanceManager(params.options.protocol,
+                                                    params.options,
+                                                    params.args,
+                                                    fs.join('recovery_cluster',
+                                                            params.count.toString()));
     params.instanceManager.prepareInstance();
     params.instanceManager.launchTcpDump("");
     if (!params.instanceManager.launchInstance()) {
@@ -184,7 +185,7 @@ function runArangodRecovery (params) {
   if (params.args['log.level']) {
     agentArgs['log.level'] = params.args['log.level'];
   }
-  agentArgs['temp.path'] = params.instanceManager.rootDir;
+  // agentArgs['temp.path'] = params.instanceManager.rootDir;
   Object.assign(agentArgs, additionalTestParams);
   require('internal').env.INSTANCEINFO = JSON.stringify(params.instanceManager.getStructure());
   try {
@@ -300,7 +301,7 @@ function recovery (options) {
       }
 
       results[test] = tu.readTestResult(
-        params.args['temp.path'],
+        params.instanceManager.arangods[0].args['temp.path'],
         {
           status: false
         },
