@@ -31,6 +31,8 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::agency;
@@ -57,10 +59,6 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
     "id": 1234,
     "currentTerm": {
       "term": 1,
-      "config": {
-        "effectiveWriteConcern": 1,
-        "waitForSync": false
-      },
       "leader": {
         "serverId": "leaderId",
         "rebootId": 100
@@ -68,6 +66,10 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
     },
     "participantsConfig": {
       "generation": 15,
+      "config": {
+        "effectiveWriteConcern": 1,
+        "waitForSync": false
+      },
       "participants": {
         "p1": {
           "forced": true,
@@ -90,14 +92,14 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
   jsonBuffer = R"({
     "id": 1234,
     "currentTerm": {
-      "term": 1,
-      "config": {
-        "effectiveWriteConcern": 1,
-        "waitForSync": false
-      }
+      "term": 1
     },
     "participantsConfig": {
       "generation": 15,
+      "config": {
+        "effectiveWriteConcern": 1,
+        "waitForSync": false
+      },
       "participants": {}
     }
   })"_vpack;
@@ -110,7 +112,12 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
     "id": 1234,
     "participantsConfig": {
       "generation": 15,
-      "participants": {}
+      "participants": {
+      },
+      "config": {
+        "effectiveWriteConcern": 1,
+        "waitForSync": false
+      }
     }
   })"_vpack;
 

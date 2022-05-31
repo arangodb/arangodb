@@ -88,8 +88,8 @@ const replicatedLogSuite = function () {
       const term = 1;
       lh.replicatedLogSetPlan(database, logId, {
         id: logId,
-        currentTerm: lh.createTermSpecification(term, servers, planConfig, leader),
-        participantsConfig: lh.createParticipantsConfig(1, servers),
+        currentTerm: lh.createTermSpecification(term, servers, leader),
+        participantsConfig: lh.createParticipantsConfig(1, planConfig, servers),
       });
 
       // wait for all servers to have reported in current
@@ -104,8 +104,8 @@ const replicatedLogSuite = function () {
       const term = 1;
       lh.replicatedLogSetPlan(database, logId, {
         id: logId,
-        currentTerm: lh.createTermSpecification(term, servers, planConfig),
-        participantsConfig: lh.createParticipantsConfig(1, servers),
+        currentTerm: lh.createTermSpecification(term, servers),
+        participantsConfig: lh.createParticipantsConfig(1, planConfig, servers),
       });
 
       // wait for all servers to have reported in current
@@ -153,7 +153,7 @@ const replicatedLogSuite = function () {
 
     testUpdateTermInPlanLog: function () {
       const {logId, term, servers, leader} = lh.createReplicatedLogPlanOnly(database, planConfig, replicationFactor);
-      const newTerm = lh.createTermSpecification(term + 1, servers, planConfig, leader);
+      const newTerm = lh.createTermSpecification(term + 1, servers, leader);
       lh.replicatedLogSetPlanTerm(database, logId, newTerm);
 
       // wait again for all servers to have acked term
@@ -165,7 +165,7 @@ const replicatedLogSuite = function () {
       const {logId, term, servers} = lh.createReplicatedLogPlanOnly(database, planConfig, replicationFactor);
       // wait again for all servers to have acked term
       const otherLeader = servers[1];
-      const newTerm = lh.createTermSpecification(term + 1, servers, planConfig, otherLeader);
+      const newTerm = lh.createTermSpecification(term + 1, servers, otherLeader);
       lh.replicatedLogSetPlanTerm(database, logId, newTerm);
       lh.waitFor(lp.replicatedLogIsReady(database, logId, term + 1, servers, otherLeader));
       lh.replicatedLogDeletePlan(database, logId);
@@ -193,8 +193,8 @@ const replicatedLogSuite = function () {
       const newServers = [...servers, toBeRemoved];
       lh.replicatedLogSetPlan(database, logId, {
         id: logId,
-        currentTerm: lh.createTermSpecification(term, newServers, planConfig, leader),
-        participantsConfig: lh.createParticipantsConfig(1, newServers),
+        currentTerm: lh.createTermSpecification(term, newServers, leader),
+        participantsConfig: lh.createParticipantsConfig(1, planConfig, newServers),
       });
 
       // wait for all servers to have reported in current
