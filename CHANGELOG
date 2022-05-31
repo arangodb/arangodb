@@ -1,6 +1,8 @@
 v3.8.7 (XXXX-XX-XX)
 -------------------
 
+* Updated arangosync to v2.10.0.
+
 * Fix behavior when accessing a view instead of a collection by name in a REST
   document operation. Now return a proper error.
 
@@ -41,8 +43,6 @@ v3.8.7 (XXXX-XX-XX)
   the attributes will not be added to the collection structure.
   If the attributes are already present in the dump data, they will not be
   modified by arangorestore irrespective of the setting of this option.
-
-* Updated arangosync to v2.9.1.
 
 * Make sure that newly created TTL indexes do not use index estimates, which
   wouldn't be used for TTL indexes anyway.
