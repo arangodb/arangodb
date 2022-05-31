@@ -96,6 +96,11 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
   void load() override {}
   void unload() override;
 
+  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) override {
+    IResearchDataStore::afterTruncate(tick, trx);
+  }
+
+
   bool matchesDefinition(
       arangodb::velocypack::Slice const& other) const override;
 

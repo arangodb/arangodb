@@ -180,19 +180,6 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
   auto doc = ctx.insert();
   auto& field = *body;
 
-  // User fields
-  while (body.valid()) {
-#ifdef USE_ENTERPRISE
-    handleNestedFields(ctx, body.makeNestedIterator());
-#endif
-    if (ValueStorage::NONE == field._storeValues) {
-      doc.insert<irs::Action::INDEX>(field);
-    } else {
-      doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
-    }
-    ++body;
-  }
-
   // Sorted field
   {
     struct SortedField {
@@ -218,14 +205,33 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
     }
   }
 
-  // System fields
-
-  // Indexed and Stored: LocalDocumentId
+    // Indexed and Stored: LocalDocumentId
   auto docPk = DocumentPrimaryKey::encode(documentId);
 
   // reuse the 'Field' instance stored inside the 'FieldIterator'
   Field::setPkValue(const_cast<Field&>(field), docPk);
   doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
+
+  // User fields
+  while (body.valid()) {
+#ifdef USE_ENTERPRISE
+    if (handleNestedFields(ctx, doc, body)) {
+      ++body;
+      continue;
+    }
+#endif
+
+    if (ValueStorage::NONE == field._storeValues) {
+      doc.insert<irs::Action::INDEX>(field);
+    } else {
+      doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
+    }
+    ++body;
+  }
+
+  // System fields
+
+
 
   if (!doc) {
     return {TRI_ERROR_INTERNAL,

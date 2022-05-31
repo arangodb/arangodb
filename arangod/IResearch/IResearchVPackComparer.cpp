@@ -45,8 +45,7 @@ VPackComparer<Sort>::VPackComparer()
     : _sort(nullptr), _size(0) {}
 
 template<typename Sort>
-bool VPackComparer<Sort>::less(const irs::bytes_ref& lhs,
-                         const irs::bytes_ref& rhs) const {
+bool VPackComparer<Sort>::less(irs::bytes_ref lhs, irs::bytes_ref rhs) const {
   TRI_ASSERT(_sort);
   TRI_ASSERT(_sort->size() >= _size);
   TRI_ASSERT(!lhs.empty());
