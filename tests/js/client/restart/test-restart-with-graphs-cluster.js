@@ -30,8 +30,6 @@ const pu = require('@arangodb/testutils/process-utils');
 const crypto = require('@arangodb/crypto');
 const db = require("@arangodb").db;
 const request = require("@arangodb/request");
-const suspendExternal = require("internal").suspendExternal;
-const continueExternal = require("internal").continueExternal;
 const time = require("internal").time;
 const { getCtrlCoordinators } = require('@arangodb/test-helper');
 
@@ -65,24 +63,6 @@ function testSuite() {
       let res = request({ method: "get", url: server.url + "/_api/version", timeout: 3 });
       assertEqual(expectedCode, res.status);
     });
-  };
-
-  let suspend = function (servers) {
-    require("console").warn("suspending servers with pid " + servers.map((s) => s.pid).join(", "));
-    servers.forEach(function(server) {
-      assertTrue(suspendExternal(server.pid));
-      server.suspended = true;
-    });
-    require("console").warn("successfully suspended servers with pid " + servers.map((s) => s.pid).join(", "));
-  };
-  
-  let resume = function (servers) {
-    require("console").warn("resuming servers with pid " + servers.map((s) => s.pid).join(", "));
-    servers.forEach(function(server) {
-      assertTrue(continueExternal(server.pid));
-      delete server.suspended;
-    });
-    require("console").warn("successfully resumed servers with pid " + servers.map((s) => s.pid).join(", "));
   };
 
   return {
