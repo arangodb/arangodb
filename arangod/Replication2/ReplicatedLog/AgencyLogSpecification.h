@@ -74,6 +74,7 @@ struct ParticipantsConfig {
 template<class Inspector>
 auto inspect(Inspector& f, ParticipantsConfig& x) {
   return f.object(x).fields(f.field("generation", x.generation),
+                            f.field("config", x.config),
                             f.field("participants", x.participants));
 }
 
