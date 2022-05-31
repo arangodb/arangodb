@@ -94,11 +94,17 @@ static inline std::size_t hash_value(ParticipantFlags const& s) {
 }
 }  // namespace arangodb::replication2
 namespace arangodb::replication2::agency {
+static inline std::size_t hash_value(LogPlanConfig const& s) {
+  std::size_t seed = 0;
+  boost::hash_combine(seed, s.effectiveWriteConcern);
+  boost::hash_combine(seed, s.waitForSync);
+  return seed;
+}
 static inline std::size_t hash_value(ParticipantsConfig const& s) {
   std::size_t seed = 0;
   boost::hash_combine(seed, s.generation);
   boost::hash_combine(seed, s.participants);
-  //  boost::hash_combine(seed, s.config);
+  boost::hash_combine(seed, s.config);
   return seed;
 }
 static inline std::size_t hash_value(LogTarget const& s) {

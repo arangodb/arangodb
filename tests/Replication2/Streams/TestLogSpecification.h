@@ -73,11 +73,10 @@ struct LogMultiplexerTestBase
     for (auto const& participant : follower) {
       participants.emplace(participant->getParticipantId(), ParticipantFlags{});
     }
-    auto participantsConfig =
-        std::make_shared<ParticipantsConfig>(ParticipantsConfig{
-            .generation = 1,
-            .participants = std::move(participants),
-        });
+    auto participantsConfig = std::make_shared<agency::ParticipantsConfig>(
+        agency::ParticipantsConfig{.generation = 1,
+                                   .participants = std::move(participants),
+                                   .config = config});
     return log->becomeLeader(config, std::move(id), term, follower,
                              std::move(participantsConfig),
                              std::make_shared<FakeFailureOracle>());

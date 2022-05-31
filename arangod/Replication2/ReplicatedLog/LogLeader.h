@@ -95,7 +95,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   [[nodiscard]] static auto construct(
       agency::LogPlanConfig config, std::unique_ptr<LogCore> logCore,
       std::vector<std::shared_ptr<AbstractFollower>> const& followers,
-      std::shared_ptr<ParticipantsConfig const> participantsConfig,
+      std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
       ParticipantId id, LogTerm term, LoggerContext const& logContext,
       std::shared_ptr<ReplicatedLogMetrics> logMetrics,
       std::shared_ptr<ReplicatedLogGlobalSettings const> options,
@@ -160,7 +160,7 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
 
   // Updates the flags of the participants.
   auto updateParticipantsConfig(
-      std::shared_ptr<ParticipantsConfig const> const& config,
+      std::shared_ptr<agency::ParticipantsConfig const> const& config,
       std::function<std::shared_ptr<replicated_log::AbstractFollower>(
           ParticipantId const&)> const& buildFollower) -> LogIndex;
 
@@ -327,10 +327,11 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
     CommitFailReason _lastCommitFailReason;
 
     // active - that is currently used to check for committed entries
-    std::shared_ptr<ParticipantsConfig const> activeParticipantsConfig;
+    std::shared_ptr<agency::ParticipantsConfig const> activeParticipantsConfig;
     // committed - latest active config that has committed at least one entry
     // Note that this will be nullptr until leadership is established!
-    std::shared_ptr<ParticipantsConfig const> committedParticipantsConfig;
+    std::shared_ptr<agency::ParticipantsConfig const>
+        committedParticipantsConfig;
   };
 
   LoggerContext const _logContext;
@@ -347,7 +348,8 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
   // a single mutex.
   Guarded<GuardedLeaderData> _guardedLeaderData;
 
-  void establishLeadership(std::shared_ptr<ParticipantsConfig const> config);
+  void establishLeadership(
+      std::shared_ptr<agency::ParticipantsConfig const> config);
 
   [[nodiscard]] static auto instantiateFollowers(
       LoggerContext const&,

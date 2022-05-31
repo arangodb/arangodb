@@ -103,8 +103,10 @@ TEST_F(EstablishLeadershipTest, check_meta_create_leader_entry) {
     auto const& info = std::get<LogMetaPayload::FirstEntryOfTerm>(meta.info);
     EXPECT_EQ(info.leader, "leader");
 
-    auto const expectedConfiguration = ParticipantsConfig{
-        .generation = 1, .participants = {{"leader", {}}, {"follower", {}}}};
+    auto const expectedConfiguration = agency::ParticipantsConfig{
+        .generation = 1,
+        .participants = {{"leader", {}}, {"follower", {}}},
+        .config = agency::LogPlanConfig(2, false)};
 
     EXPECT_EQ(info.participants, expectedConfiguration);
   }
@@ -120,7 +122,7 @@ TEST_F(EstablishLeadershipTest, excluded_follower) {
   auto participants = std::unordered_map<ParticipantId, ParticipantFlags>{
       {"leader", {}}, {"follower", {.allowedInQuorum = false}}};
   auto participantsConfig =
-      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
+      std::make_shared<agency::ParticipantsConfig>(agency::ParticipantsConfig{
           .generation = 1,
           .participants = std::move(participants),
       });
@@ -160,7 +162,7 @@ TEST_F(EstablishLeadershipTest, excluded_follower) {
   {
     auto oldConfig =
         leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
-    auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
+    auto newConfig = std::make_shared<agency::ParticipantsConfig>(oldConfig);
     newConfig->generation = 2;
     newConfig->participants["follower"] = replication2::ParticipantFlags{};
     leader->updateParticipantsConfig(newConfig, nullptr);

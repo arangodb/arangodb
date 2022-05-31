@@ -293,7 +293,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 auto replicated_log::LogLeader::construct(
     agency::LogPlanConfig config, std::unique_ptr<LogCore> logCore,
     std::vector<std::shared_ptr<AbstractFollower>> const& followers,
-    std::shared_ptr<ParticipantsConfig const> participantsConfig,
+    std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
     ParticipantId id, LogTerm term, LoggerContext const& logContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
@@ -1209,7 +1209,7 @@ auto replicated_log::LogLeader::isLeadershipEstablished() const noexcept
 }
 
 void replicated_log::LogLeader::establishLeadership(
-    std::shared_ptr<ParticipantsConfig const> config) {
+    std::shared_ptr<agency::ParticipantsConfig const> config) {
   LOG_CTX("f3aa8", TRACE, _logContext) << "trying to establish leadership";
   auto waitForIndex =
       _guardedLeaderData.doUnderLock([&](GuardedLeaderData& data) {
@@ -1286,7 +1286,7 @@ auto const keySetDifference = [](auto const& left, auto const& right) {
 }  // namespace
 
 auto replicated_log::LogLeader::updateParticipantsConfig(
-    std::shared_ptr<ParticipantsConfig const> const& config,
+    std::shared_ptr<agency::ParticipantsConfig const> const& config,
     std::function<std::shared_ptr<replicated_log::AbstractFollower>(
         ParticipantId const&)> const& buildFollower) -> LogIndex {
   LOG_CTX("ac277", TRACE, _logContext)

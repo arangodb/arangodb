@@ -35,8 +35,6 @@
 #include "Replication2/ReplicatedLog/types.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
-using namespace arangodb::replication2::agency;
-
 namespace arangodb::replication2::replicated_log {
 
 enum class ParticipantRole { kUnconfigured, kLeader, kFollower };
@@ -53,10 +51,11 @@ struct QuickLogStatus {
   std::optional<CommitFailReason> commitFailReason{};
 
   // The following make sense only for a leader.
-  std::shared_ptr<ParticipantsConfig const> activeParticipantsConfig{};
+  std::shared_ptr<agency::ParticipantsConfig const> activeParticipantsConfig{};
   // Note that committedParticipantsConfig will be nullptr until leadership has
   // been established!
-  std::shared_ptr<ParticipantsConfig const> committedParticipantsConfig{};
+  std::shared_ptr<agency::ParticipantsConfig const>
+      committedParticipantsConfig{};
 
   [[nodiscard]] auto getCurrentTerm() const noexcept -> std::optional<LogTerm>;
   [[nodiscard]] auto getLocalStatistics() const noexcept
@@ -75,11 +74,13 @@ struct ParticipantRoleStringTransformer {
 
 template<typename Inspector>
 auto inspect(Inspector& f, QuickLogStatus& x) {
-  auto activeParticipantsConfig = std::shared_ptr<ParticipantsConfig>();
-  auto committedParticipantsConfig = std::shared_ptr<ParticipantsConfig>();
+  auto activeParticipantsConfig = std::shared_ptr<agency::ParticipantsConfig>();
+  auto committedParticipantsConfig =
+      std::shared_ptr<agency::ParticipantsConfig>();
   if constexpr (!Inspector::isLoading) {
-    activeParticipantsConfig = std::make_shared<ParticipantsConfig>();
-    committedParticipantsConfig = std::make_shared<ParticipantsConfig>();
+    activeParticipantsConfig = std::make_shared<agency::ParticipantsConfig>();
+    committedParticipantsConfig =
+        std::make_shared<agency::ParticipantsConfig>();
   }
   auto res = f.object(x).fields(
       f.field("role", x.role).transformWith(ParticipantRoleStringTransformer{}),
@@ -135,8 +136,8 @@ struct LeaderStatus {
   // now() - insertTP of last uncommitted entry
   std::chrono::duration<double, std::milli> commitLagMS;
   CommitFailReason lastCommitStatus;
-  ParticipantsConfig activeParticipantsConfig;
-  std::optional<ParticipantsConfig> committedParticipantsConfig;
+  agency::ParticipantsConfig activeParticipantsConfig;
+  std::optional<agency::ParticipantsConfig> committedParticipantsConfig;
 
   friend auto operator==(LeaderStatus const& left,
                          LeaderStatus const& right) noexcept -> bool = default;
