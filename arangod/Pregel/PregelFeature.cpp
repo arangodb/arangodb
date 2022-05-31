@@ -291,6 +291,7 @@ void PregelFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           "default parallelism to use in a Pregel job if none is specified",
           new SizeTParameter(&_defaultParallelism),
           arangodb::options::makeFlags(
+              arangodb::options::Flags::Dynamic,
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnCoordinator,
               arangodb::options::Flags::OnSingle))
@@ -311,6 +312,7 @@ void PregelFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   "maximum parallelism usable in a Pregel job",
                   new SizeTParameter(&_maxParallelism),
                   arangodb::options::makeFlags(
+                      arangodb::options::Flags::Dynamic,
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
