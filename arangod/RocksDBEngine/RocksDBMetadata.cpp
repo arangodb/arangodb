@@ -81,6 +81,7 @@ void RocksDBMetadata::DocCount::toVelocyPack(velocypack::Builder& b) const {
 
 RocksDBMetadata::RocksDBMetadata()
     : _maxBlockersSequenceNumber(0),
+      _documentCountAdjustmentTicket(1),
       _numberDocuments(0),
       _revisionId(RevisionId::none()) {}
 
@@ -274,6 +275,34 @@ bool RocksDBMetadata::applyAdjustments(rocksdb::SequenceNumber commitSeq) {
   std::lock_guard guard{_bufferLock};
   _count._committedSeq = commitSeq;
   return didWork;
+}
+
+/// @brief returns the collection's current document-count adjustment ticket.
+uint64_t RocksDBMetadata::documentCountAdjustmentTicket() noexcept {
+  return _documentCountAdjustmentTicket.load(std::memory_order_relaxed);
+}
+
+/// @brief buffer a counter adjustment, using a ticket
+void RocksDBMetadata::adjustNumberDocumentsWithTicket(
+    uint64_t documentCountAdjustmentTicket, rocksdb::SequenceNumber seq,
+    RevisionId revId, int64_t adj) {
+  TRI_ASSERT(documentCountAdjustmentTicket > 0);
+
+  uint64_t expected = documentCountAdjustmentTicket;
+  uint64_t desired = documentCountAdjustmentTicket + 1;
+  if (desired == 0) {
+    // handle unlikely case of overflow from UINT64_MAX to 0...
+    desired = 1;
+  }
+  TRI_ASSERT(expected != desired);
+
+  if (_documentCountAdjustmentTicket.compare_exchange_strong(expected,
+                                                             desired)) {
+    // only forward the call if the ticket number is still the same.
+    // if the ticket number has already changed, someone else updated the
+    // counts, and it is not safe for us to update them as well.
+    adjustNumberDocuments(seq, revId, adj);
+  }
 }
 
 /// @brief buffer a counter adjustment
