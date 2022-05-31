@@ -291,7 +291,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 }
 
 auto replicated_log::LogLeader::construct(
-    agency::LogPlanConfig config, std::unique_ptr<LogCore> logCore,
+    std::unique_ptr<LogCore> logCore,
     std::vector<std::shared_ptr<AbstractFollower>> const& followers,
     std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
     ParticipantId id, LogTerm term, LoggerContext const& logContext,
@@ -299,6 +299,8 @@ auto replicated_log::LogLeader::construct(
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     std::shared_ptr<cluster::IFailureOracle const> failureOracle)
     -> std::shared_ptr<LogLeader> {
+  auto const& config = participantsConfig->config;
+
   if (ADB_UNLIKELY(logCore == nullptr)) {
     auto followerIds = std::vector<std::string>{};
     std::transform(followers.begin(), followers.end(),

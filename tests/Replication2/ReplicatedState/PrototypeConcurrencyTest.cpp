@@ -152,7 +152,7 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
             .generation = 1,
             .participants = std::move(participants),
         });
-    return log->becomeLeader(config, std::move(id), term, follower,
+    return log->becomeLeader(std::move(id), term, follower,
                              std::move(participantsConfig),
                              std::make_shared<FakeFailureOracle>());
   }
