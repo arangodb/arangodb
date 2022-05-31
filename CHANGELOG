@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated arangosync to v2.10.0.
+
 * Added several startup option to configure parallelism for individual Pregel 
   jobs:
 
