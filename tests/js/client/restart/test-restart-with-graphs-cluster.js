@@ -33,6 +33,9 @@ const request = require("@arangodb/request");
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
 const time = require("internal").time;
+const {
+  getCoordinators
+} = require('@arangodb/test-helper');
 
 const graphs = require('@arangodb/general-graph');
 
@@ -42,10 +45,6 @@ const en = "UnitTestsEdge";
 
 function testSuite() {
   const jwtSecret = 'haxxmann';
-
-  let getServers = function (role) {
-    return global.theInstanceManager.arangods.filter((instance) => instance.instanceRole === role);
-  };
 
   let waitForAlive = function (timeout, baseurl, data) {
     let tries = 0, res;
@@ -94,7 +93,7 @@ function testSuite() {
         graphs._drop(gn, true);
       } catch (err) {}
       // Need to restart without authentication for other tests to succeed:
-      let coordinators = getServers('coordinator');
+      let coordinators = getCoordinators();
       let coordinator = coordinators[0];
       coordinator.shutdownArangod(false);
       coordinator.waitForInstanceShutdown(30);
@@ -129,7 +128,7 @@ function testSuite() {
       c.insert(docs);
       assertEqual(10, c.count());
 
-      let coordinators = getServers('coordinator');
+      let coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
       coordinator.shutdownArangod(false);

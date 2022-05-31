@@ -28,6 +28,7 @@
 
 const jsunity = require("jsunity");
 const _ = require("lodash");
+const { getDBServers } = require('@arangodb/test-helper');
 
 function headersClusterSuite () {
   'use strict';
@@ -64,13 +65,7 @@ function headersClusterSuite () {
 
     // test executing requests on DB-Servers
     testDBServer: function() {
-      let getServers = role => {
-        const matchesRole = (d) => (_.toLower(d.instanceRole) === role);
-        const instanceManager = JSON.parse(require('internal').env.INSTANCEINFO);
-        return instanceManager.arangods.filter(matchesRole);
-      };
-
-      const dbservers = getServers("dbserver");
+      const dbservers = getDBServers();
       assertTrue(dbservers.length > 0, "no dbservers found");
        
       dbservers.forEach(function(dbserver, i) {

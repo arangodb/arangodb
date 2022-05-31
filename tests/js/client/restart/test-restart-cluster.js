@@ -37,12 +37,13 @@ const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
 const time = require("internal").time;
 
+const {
+  getCoordinators,
+  getDBServers
+} = require('@arangodb/test-helper');
+
 function testSuite() {
   const jwtSecret = 'haxxmann';
-
-  let getServers = function (role) {
-    return global.theInstanceManager.arangods.filter((instance) => instance.instanceRole === role);
-  };
 
   let waitForAlive = function (timeout, baseurl, data) {
     let tries = 0, res;
@@ -88,7 +89,7 @@ function testSuite() {
   return {
     tearDownAll : function() {
       // Need to restart without authentication for other tests to succeed:
-      let coordinators = getServers('coordinator');
+      let coordinators = getCoordinators();
       let coordinator = coordinators[0];
       coordinator.exitStatus = null;
       coordinator.shutdownArangod(false);
@@ -105,7 +106,7 @@ function testSuite() {
     },
 
     testRestartCoordinatorNormal : function() {
-      let coordinators = getServers('coordinator');
+      let coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
       coordinator.shutdownArangod(false);
@@ -122,11 +123,11 @@ function testSuite() {
     },
     
     testRestartCoordinatorNoDBServersNoAuthentication : function() {
-      let dbServers = getServers('dbserver');
+      let dbServers = getDBServers();
       // assume all db servers are reachable
       checkAvailability(dbServers, 200);
 
-      let coordinators = getServers('coordinator');
+      let coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -163,11 +164,11 @@ function testSuite() {
     },
     
     testRestartCoordinatorNoDBServersAuthenticationWrongUser : function() {
-      let dbServers = getServers('dbserver');
+      let dbServers = getDBServers();
       // assume all db servers are reachable
       checkAvailability(dbServers, 200);
 
-      let coordinators = getServers('coordinator');
+      let coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -204,11 +205,11 @@ function testSuite() {
     },
     
     testRestartCoordinatorNoDBServersAuthenticationRootUser : function() {
-      let dbServers = getServers('dbserver');
+      let dbServers = getDBServers();
       // assume all db servers are reachable
       checkAvailability(dbServers, 200);
 
-      let coordinators = getServers('coordinator');
+      let coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 

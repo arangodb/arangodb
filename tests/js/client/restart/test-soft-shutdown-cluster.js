@@ -37,6 +37,9 @@ const db = require("internal").db;
 const time = internal.time;
 const wait = internal.wait;
 const statusExternal = internal.statusExternal;
+const {
+  getCoordinators
+} = require('@arangodb/test-helper');
 
 var graph_module = require("@arangodb/general-graph");
 var EPS = 0.0001;
@@ -56,10 +59,6 @@ function testAlgoCheck(pid) {
   console.warn("Pregel status:", stats);
   return stats.state !== "running" && stats.state !== "storing";
 }
-
-function getServers(role) {
-  return global.theInstanceManager.arangods.filter((instance) => instance.instanceRole === role);
-};
 
 function waitForAlive(timeout, baseurl, data) {
   let res;
@@ -100,7 +99,7 @@ function testSuite() {
     },
 
     testSoftShutdownWithoutTraffic : function() {
-      let coordinators = getServers('coordinator');
+      let coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -118,7 +117,7 @@ function testSuite() {
     },
 
     testSoftShutdownWithAQLCursor : function() {
-      let coordinators = getServers('coordinator');
+      let coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -164,7 +163,7 @@ function testSuite() {
     },
 
     testSoftShutdownWithAQLCursorDeleted : function() {
-      let coordinators = getServers('coordinator');
+      let coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -213,7 +212,7 @@ function testSuite() {
     },
 
     testSoftShutdownWithStreamingTrx : function() {
-      let coordinators = getServers('coordinator');
+      let coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -252,7 +251,7 @@ function testSuite() {
     },
 
     testSoftShutdownWithAQLStreamingTrxAborted : function() {
-      let coordinators = getServers('coordinator');
+      let coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -292,7 +291,7 @@ function testSuite() {
     },
 
     testSoftShutdownWithAsyncRequest : function() {
-      let coordinators = getServers('coordinator');
+      let coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -344,7 +343,7 @@ function testSuite() {
     },
 
     testSoftShutdownWithQueuedLowPrio : function() {
-      let coordinators = getServers('coordinator');
+      let coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -488,7 +487,7 @@ function testSuitePregel() {
     },
 
     testPageRank: function () {
-      let coordinators = getServers('coordinator');
+      let coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 

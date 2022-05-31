@@ -37,32 +37,10 @@ const { deriveTestSuite, getEndpointById, getMetric } = require('@arangodb/test-
   
 const cn = "UnitTestsCollection";
 
-let getServers = function(role) {
-  const isRole = (d) => (_.toLower(d.instanceRole) === role);
-  const endpointToURL = (server) => {
-    let endpoint = server.endpoint;
-    if (endpoint.substr(0, 6) === 'ssl://') {
-      return 'https://' + endpoint.substr(6);
-    }
-    let pos = endpoint.indexOf('://');
-    if (pos === -1) {
-      return 'http://' + endpoint;
-    }
-    return 'http' + endpoint.substr(pos);
-  };
-
-  return global.instanceManager.arangods.filter(isRole)
-                              .map((server) => { 
-                                return { url: endpointToURL(server), id: server.id };
-                              });
-};
-
-let getDBServers = function() {
-  return getServers('dbserver');
-};
-let getCoordinators = function() {
-  return getServers('coordinator');
-};
+const {
+  getCoordinators,
+  getDBServers
+} = require('@arangodb/test-helper');
 
 let clearFailurePoints = function (failurePointsToKeep) {
   getDBServers().forEach((server) => {

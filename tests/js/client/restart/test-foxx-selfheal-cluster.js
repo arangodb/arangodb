@@ -42,13 +42,13 @@ const basePath = path.resolve(require("internal").pathForTesting('common'), 'tes
 
 const originalEndpoint = arango.getEndpoint();
 const originalUser = arango.connectedUser();
+const {
+  getCoordinators,
+  getDBServers
+} = require('@arangodb/test-helper');
 
 function testSuite() {
   const jwtSecret = 'haxxmann';
-
-  let getServers = function (role) {
-    return global.theInstanceManager.arangods.filter((instance) => instance.instanceRole === role);
-  };
 
   let waitForAlive = function (timeout, baseurl, data) {
     let tries = 0, res;
@@ -130,11 +130,11 @@ function testSuite() {
      */
 
     testRequestFoxxAppWithoutSelfHeal : function() {
-      let dbServers = getServers('dbserver');
+      let dbServers = getDBServers();
       // assume all db servers are reachable
       checkAvailability(dbServers, 200);
         
-      let coordinators = getServers('coordinator');
+      let coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -177,12 +177,12 @@ function testSuite() {
     },
     
     testRequestFoxxAppWithForcedSelfHeal : function() {
-      let dbServers = getServers('dbserver');
+      let dbServers = getDBServers();
       // assume all db servers are reachable
       checkAvailability(dbServers, 200);
 
       // restart coordinator
-      let coordinators = getServers('coordinator');
+      let coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
       // shut down and restart coordinator.
@@ -213,12 +213,12 @@ function testSuite() {
     },
     
     testRequestFoxxAppWithSelfHealAtStartup : function() {
-      let dbServers = getServers('dbserver');
+      let dbServers = getDBServers();
       // assume all db servers are reachable
       checkAvailability(dbServers, 200);
 
       // restart coordinator
-      let coordinators = getServers('coordinator');
+      let coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
