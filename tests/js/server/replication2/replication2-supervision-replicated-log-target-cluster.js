@@ -943,13 +943,12 @@ const replicatedLogSuite = function () {
 
       {
         const actions = helper.getLastNSupervisionActionsType(database, logId, 4);
-        const expectedActions = [
-          "UpdateParticipantFlagsAction",
-          "RemoveParticipantFromPlanAction",
-          "UpdateParticipantFlagsAction",
-          "RemoveParticipantFromPlanAction",
-        ];
-        assertEqual(actions, expectedActions);
+        const counts = helper.countActionsByType(actions);
+        const expected = {
+          "RemoveParticipantFromPlanAction": 2,
+          "UpdateParticipantFlagsAction": 2,
+        };
+        assertEqual(counts, expected);
       }
 
       replicatedLogDeleteTarget(database, logId);
@@ -958,7 +957,7 @@ const replicatedLogSuite = function () {
     testReplaceLeaderAndOneFollower: function () {
       const {servers, leader, followers, logId, term} = createReplicatedLogAndWaitForLeader(database);
 
-      const initialNumberOfActions = helper.getSupervisionActionTypes(database, logId).length;
+      //const initialNumberOfActions = helper.getSupervisionActionTypes(database, logId).length;
 
       const otherServer = _.difference(dbservers, servers);
       const [newLeader, newFollower] = _.sampleSize(otherServer, 2);
