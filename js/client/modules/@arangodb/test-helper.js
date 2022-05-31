@@ -394,8 +394,8 @@ exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 
   }
 };
 
-exports.getCoordinators = function () {
-  const isCoordinator = (d) => (_.toLower(d.instanceRole) === 'coordinator');
+exports.getEndpoints = function (role) {
+  const isRole = (d) => (d.instanceRole === role);
   const toEndpoint = (d) => (d.endpoint);
   const endpointToURL = (endpoint) => {
     if (endpoint.substr(0, 6) === 'ssl://') {
@@ -409,17 +409,34 @@ exports.getCoordinators = function () {
   };
 
   const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
-  return instanceInfo.arangods.filter(isCoordinator)
+  return instanceInfo.arangods.filter(isRole)
                               .map(toEndpoint)
                               .map(endpointToURL);
+};
+
+exports.getCoordinatorEndpoints = function () {
+  return exports.getEndpoints(inst.instanceRole.coordinator);
+};
+exports.getDBServerEndpoints = function () {
+  return exports.getEndpoints(inst.instanceRole.dbServer);
+};
+exports.getAgentEndpoints = function () {
+  return exports.getEndpoints(inst.instanceRole.agent);
 };
 
 exports.getServers = function (role) {
   const matchesRole = (d) => (_.toLower(d.instanceRole) === role);
   const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
-  return instanceInfo.arangods.filter(matchesRole);
+  let ret = instanceInfo.arangods.filter(matchesRole);
+  if (ret.length === 0) {
+    throw new Error("No instance matched the type " + role);
+  }
+  return ret;
 };
 
+exports.getCoordinators = function () {
+  return exports.getServers(inst.instanceRole.coordinator);
+};
 exports.getDBServers = function () {
   return exports.getServers(inst.instanceRole.dbServer);
 };
