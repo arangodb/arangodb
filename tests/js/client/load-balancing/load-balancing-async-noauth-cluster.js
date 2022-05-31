@@ -32,9 +32,9 @@ const db = require("internal").db;
 const request = require("@arangodb/request");
 const url = require('url');
 const _ = require("lodash");
-const getCoordinators = require('@arangodb/test-helper').getCoordinators;
+const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
 
-const servers = getCoordinators();
+const servers = getCoordinatorEndpoints();
 
 function AsyncSuite () {
   'use strict';
@@ -79,7 +79,7 @@ function AsyncSuite () {
 
   return {
     setUp: function() {
-      coordinators = getCoordinators();
+      coordinators = getCoordinatorEndpoints();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }

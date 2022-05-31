@@ -30,9 +30,9 @@ const jsunity = require("jsunity");
 const db = require("internal").db;
 const request = require("@arangodb/request");
 const _ = require("lodash");
-const getCoordinators = require('@arangodb/test-helper').getCoordinators;
+const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
 
-const servers = getCoordinators();
+const servers = getCoordinatorEndpoints();
 
 function FoxxQueuesSuite () {
   'use strict';
@@ -67,7 +67,7 @@ function FoxxQueuesSuite () {
   return {
     
     setUpAll: function() {
-      coordinators = getCoordinators();
+      coordinators = getCoordinatorEndpoints();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }

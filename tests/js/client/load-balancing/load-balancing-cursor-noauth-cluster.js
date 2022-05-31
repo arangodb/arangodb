@@ -34,9 +34,9 @@ const url = require('url');
 const _ = require("lodash");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const dbs = ["testDatabase", "abc123", "maçã", "mötör", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "かわいい犬"];
-const getCoordinators = require('@arangodb/test-helper').getCoordinators;
+const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
 
-const servers = getCoordinators();
+const servers = getCoordinatorEndpoints();
 
 function CursorSyncSuite (databaseName) {
   'use strict';
@@ -75,7 +75,7 @@ function CursorSyncSuite (databaseName) {
   return {
     
     setUpAll: function() {
-      coordinators = getCoordinators();
+      coordinators = getCoordinatorEndpoints();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }
