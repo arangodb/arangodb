@@ -29,7 +29,7 @@ const jsunity = require('jsunity');
 const _ = require('lodash');
 const rh = require('@arangodb/testutils/restart-helper');
 const {db, errors} = require('@arangodb');
-const { getDBServers } = require('@arangodb/test-helper');
+const { getCtrlDBServers } = require('@arangodb/test-helper');
 
 const retryWithExceptions = function (check) {
   let i = 0, lastError = null;
@@ -70,7 +70,7 @@ function testSuite() {
 
     testRestartDatabaseServers: function () {
       disableMaintenanceMode();
-      const dbServers = getDBServers();
+      const dbServers = getCtrlDBServers();
       const servers = _.sampleSize(dbServers, 3);
       const state = db._createPrototypeState({servers});
       state.write({"foo": "bar"});

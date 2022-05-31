@@ -38,18 +38,23 @@ const ArangoError = require('@arangodb').ArangoError;
 const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePoints;
 
 /* Functions: */
-const toArgv = internal.toArgv;
-const executeExternal = internal.executeExternal;
-const executeExternalAndWait = internal.executeExternalAndWait;
-const killExternal = internal.killExternal;
-const statusExternal = internal.statusExternal;
-const statisticsExternal = internal.statisticsExternal;
-const base64Encode = internal.base64Encode;
-const testPort = internal.testPort;
-const download = internal.download;
-const time = internal.time;
-const wait = internal.wait;
-const sleep = internal.sleep;
+const {
+  toArgv,
+  executeExternal,
+  executeExternalAndWait,
+  killExternal,
+  statusExternal,
+  statisticsExternal,
+  suspendExternal,
+  continueExternal,
+  base64Encode,
+  testPort,
+  download,
+  platform,
+  time,
+  wait,
+  sleep
+} = internal;
 
 /* Constants: */
 // const BLUE = internal.COLORS.COLOR_BLUE;
@@ -60,7 +65,6 @@ const RESET = internal.COLORS.COLOR_RESET;
 // const YELLOW = internal.COLORS.COLOR_YELLOW;
 const IS_A_TTY = RED.length !== 0;
 
-const platform = internal.platform;
 
 const abortSignal = 6;
 const termSignal = 15;
@@ -110,7 +114,7 @@ class portManager {
         return port;
       }
 
-      internal.wait(0.1, false);
+      wait(0.1, false);
     }
   }
 }
@@ -423,6 +427,7 @@ class instance {
       sockStat += getSockStatFile(this.pid);
       return sockStat;
     }
+    return "";
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -566,13 +571,15 @@ class instance {
   }
   launchInstance(moreArgs) {
     if (this.pid !== null) {
-      print(RED + "can not re-launch when PID still there. " + this.name + " - " + this.pid); 
+      print(RED + "can not re-launch when PID still there. " + this.name + " - " + this.pid);
+      throw new Error("kill the instance before relaunching it!");
       return;
     }
     try {
       let args = _.defaults(moreArgs, this.args);
       /// TODO Y? Where?
       this.pid = this._executeArangod(args).pid;
+      
     } catch (x) {
       print(Date() + ' failed to run arangod - ' + JSON.stringify(x) + " - " + JSON.stringify(this.getStructure()));
 
@@ -596,7 +603,7 @@ class instance {
       this.exitStatus = null;
       return;
     }
-    this.exitStatus = internal.statusExternal(this.pid, true);
+    this.exitStatus = statusExternal(this.pid, true);
     if (this.exitStatus.status !== 'TERMINATED') {
       throw new Error(this.name + " didn't exit in a regular way: " + JSON.stringify(this.exitStatus));
     }
@@ -604,13 +611,16 @@ class instance {
     this.pid = null;
   }
 
-  restartOneInstance(moreArgs) {
+  restartOneInstance(moreArgs, unAuthOK) {
+    if (unAuthOK === undefined) {
+      unAuthOK = false;
+    }
     const startTime = time();
     this.exitStatus = null;
     this.pid = null;
     this.upAndRunning = false;
 
-    print("relaunching: " + JSON.stringify(this.getStructure()));
+    print(CYAN + Date()  + " relaunching: " + this.name + RESET);
     this.launchInstance(moreArgs);
     while(true) {
       const reply = download(this.url + '/_api/version', '');
@@ -618,7 +628,12 @@ class instance {
       if (!reply.error && reply.code === 200) {
         break;
       }
-      print('.');
+      if (unAuthOK && reply.code === 401) {
+        break;
+      }
+      if (this.options.extremeVerbosity) {
+        print(this.name + ' answered: ' + JSON.stringify(reply));
+      }
       sleep(0.5);
       if (!this.checkArangoAlive()) {
         print("instance gone! " + this.name);
@@ -626,6 +641,7 @@ class instance {
         throw new Error("restart failed! " + this.name);
       }
     }
+    print(CYAN + Date() + this.name + " running again with PID " + this.pid + RESET);
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief periodic checks whether spawned arangod processes are still alive
@@ -703,6 +719,7 @@ class instance {
   }
   killWithCoreDump () {
     if (this.pid === null) {
+      print(RED + Date() + this.name + " is not running, doesn't have a PID" + RESET);
       return;
     }
     if (platform.substr(0, 3) === 'win') {
@@ -718,7 +735,7 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   shutdownArangod (forceTerminate) {
-    print('stopping ' + this.name + ' force terminate: ' + forceTerminate + ' ' + this.protocol);
+    print(CYAN + Date() +' stopping ' + this.name + ' force terminate: ' + forceTerminate + ' ' + this.protocol + RESET);
     if (forceTerminate === undefined) {
       forceTerminate = false;
     }
@@ -739,10 +756,12 @@ class instance {
       if (forceTerminate) {
         let sockStat = this.getSockStat("Force killing - sockstat before: ");
         this.killWithCoreDump();
+        this.pid = null;
         this.analyzeServerCrash('shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun ' + sockStat);
       } else if (this.options.useKillExternal) {
         let sockStat = this.getSockStat("Shutdown by kill - sockstat before: ");
         this.exitStatus = killExternal(this.pid);
+        this.pid = null;
         print(sockStat);
       } else if (this.protocol === 'unix') {
         let sockStat = this.getSockStat("Sock stat for: ");
@@ -763,6 +782,7 @@ class instance {
           this.shutdownArangod(true);
         } else if (!this.options.noStartStopLogs) {
           print(sockStat);
+          this.pid = null;
         }
         if (this.options.extremeVerbosity) {
           print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
@@ -799,6 +819,9 @@ class instance {
   }
 
   waitForInstanceShutdown(timeout) {
+    if (this.pid === null) {
+      throw new Error(this.name + " already exited!");
+    }
     while (timeout > 0) {
       this.exitStatus = statusExternal(this.pid, false);
       if (!crashUtils.checkMonitorAlive(pu.ARANGOD_BIN, this, this.options, this.exitStatus)) {
@@ -814,7 +837,7 @@ class instance {
   }
 
   shutDownOneInstance(counters, forceTerminate, timeout) {
-    let shutdownTime = internal.time();
+    let shutdownTime = time();
     if (this.exitStatus === null) {
       this.shutdownArangod(forceTerminate);
       if (forceTerminate) {
@@ -842,7 +865,7 @@ class instance {
       if (this.isAgent()) {
         localTimeout = localTimeout + 60;
       }
-      if ((internal.time() - shutdownTime) > localTimeout) {
+      if ((time() - shutdownTime) > localTimeout) {
         this.agencyConfig.wholeCluster.dumpAgency();
         print(Date() + ' forcefully terminating ' + yaml.safeDump(this.getStructure()) +
               ' after ' + timeout + 's grace period; marking crashy.');
@@ -882,6 +905,31 @@ class instance {
       return false;
     }
   }
+
+  suspend() {
+    if (this.suspended) {
+      print(CYAN + Date() + ' NOT suspending "' + this.name + " again!" + RESET);
+      return;
+    }
+    print(CYAN + Date() + ' suspending ' + this.name + RESET);
+    if (!suspendExternal(this.pid)) {
+      throw new Error("Failed to suspend " + this.name);
+    }
+    this.suspended = true;
+  }
+
+  resume() {
+    if (!this.suspended) {
+      print(CYAN + Date() + ' NOT resuming "' + this.name + " again!" + RESET);
+      return;
+    }
+    print(CYAN + Date() + ' resuming ' + this.name + RESET);
+    if (!continueExternal(this.pid)) {
+      throw new Error("Failed to resume " + this.name);
+    }
+    this.suspended = false;
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief the bad has happened, tell it the user and try to gather more
   // /        information about the incident. (arangod wrapper for the crash-utils)

@@ -43,8 +43,8 @@ const basePath = path.resolve(require("internal").pathForTesting('common'), 'tes
 const originalEndpoint = arango.getEndpoint();
 const originalUser = arango.connectedUser();
 const {
-  getCoordinators,
-  getDBServers
+  getCtrlCoordinators,
+  getCtrlDBServers
 } = require('@arangodb/test-helper');
 
 function testSuite() {
@@ -74,21 +74,15 @@ function testSuite() {
   };
 
   let suspend = function (servers) {
-    require("console").warn("suspending servers with pid " + servers.map((s) => s.pid).join(", "));
     servers.forEach(function(server) {
-      assertTrue(suspendExternal(server.pid));
-      server.suspended = true;
+      server.suspend();
     });
-    require("console").warn("successfully suspended servers with pid " + servers.map((s) => s.pid).join(", "));
   };
   
   let resume = function (servers) {
-    require("console").warn("resuming servers with pid " + servers.map((s) => s.pid).join(", "));
     servers.forEach(function(server) {
-      assertTrue(continueExternal(server.pid));
-      server.suspended = false;
+      server.resume();
     });
-    require("console").warn("successfully resumed servers with pid " + servers.map((s) => s.pid).join(", "));
   };
       
   const mount = '/test';
@@ -130,11 +124,11 @@ function testSuite() {
      */
 
     testRequestFoxxAppWithoutSelfHeal : function() {
-      let dbServers = getDBServers();
+      let dbServers = getCtrlDBServers();
       // assume all db servers are reachable
       checkAvailability(dbServers, 200);
         
-      let coordinators = getCoordinators();
+      let coordinators = getCtrlCoordinators();
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 
@@ -177,12 +171,12 @@ function testSuite() {
     },
     
     testRequestFoxxAppWithForcedSelfHeal : function() {
-      let dbServers = getDBServers();
+      let dbServers = getCtrlDBServers();
       // assume all db servers are reachable
       checkAvailability(dbServers, 200);
 
       // restart coordinator
-      let coordinators = getCoordinators();
+      let coordinators = getCtrlCoordinators();
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
       // shut down and restart coordinator.
@@ -213,12 +207,12 @@ function testSuite() {
     },
     
     testRequestFoxxAppWithSelfHealAtStartup : function() {
-      let dbServers = getDBServers();
+      let dbServers = getCtrlDBServers();
       // assume all db servers are reachable
       checkAvailability(dbServers, 200);
 
       // restart coordinator
-      let coordinators = getCoordinators();
+      let coordinators = getCtrlCoordinators();
       assertTrue(coordinators.length > 0);
       let coordinator = coordinators[0];
 

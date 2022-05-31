@@ -426,3 +426,18 @@ exports.getDBServers = function () {
 exports.getAgents = function () {
   return exports.getServers(inst.instanceRole.agent);
 };
+
+exports.getControleableServers = function (role) {
+  return global.theInstanceManager.arangods.filter((instance) => instance.instanceRole === role);
+};
+
+// These functions lean on special runners to export the actual instance object into the global namespace.
+exports.getCtrlAgents = function() {
+  return exports.getControleableServers(inst.instanceRole.agent);
+};
+exports.getCtrlDBServers = function() {
+  return exports.getControleableServers(inst.instanceRole.dbServer);
+};
+exports.getCtrlCoordinators = function() {
+  return exports.getControleableServers(inst.instanceRole.coordinator);
+};
