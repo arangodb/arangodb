@@ -1101,12 +1101,26 @@ Future<OperationResult> transaction::Methods::insertLocal(
   ManagedDocumentResult docResult;
   ManagedDocumentResult prevDocResult;  // return OLD (with override option)
 
+  if (options.validate && !options.isRestore &&
+      options.isSynchronousReplicationFrom.empty()) {
+    options.schema = collection->schema();
+  } else {
+    options.schema = nullptr;
+  }
+
   auto workForOneDocument = [&](VPackSlice value, bool isBabies,
                                 bool& excludeFromReplication) -> Result {
     excludeFromReplication = false;
 
     if (!value.isObject()) {
       return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    }
+
+    auto r =
+        transaction::Methods::validateSmartJoinAttribute(*collection, value);
+
+    if (r != TRI_ERROR_NO_ERROR) {
+      return Result(r);
     }
 
     docResult.clear();
@@ -1477,6 +1491,13 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   VPackBuilder resultBuilder;  // building the complete result
   ManagedDocumentResult previous;
   ManagedDocumentResult result;
+
+  if (options.validate && !options.isRestore &&
+      options.isSynchronousReplicationFrom.empty()) {
+    options.schema = collection->schema();
+  } else {
+    options.schema = nullptr;
+  }
 
   // lambda //////////////
   auto workForOneDocument =
