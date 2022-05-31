@@ -35,12 +35,9 @@ namespace {
 std::vector<ShardID> const emptyEdgeCollectionRestrictions;
 }
 
-WorkerConfig::WorkerConfig(TRI_vocbase_t* vocbase, VPackSlice params)
-    : _vocbase(vocbase) {
-  updateConfig(params);
-}
+WorkerConfig::WorkerConfig(TRI_vocbase_t* vocbase) : _vocbase(vocbase) {}
 
-void WorkerConfig::updateConfig(VPackSlice params) {
+void WorkerConfig::updateConfig(PregelFeature& feature, VPackSlice params) {
   VPackSlice coordID = params.get(Utils::coordinatorIdKey);
   VPackSlice vertexShardMap = params.get(Utils::vertexShardsKey);
   VPackSlice edgeShardMap = params.get(Utils::edgeShardsKey);
@@ -60,17 +57,20 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   _executionNumber = execNum.getUInt();
   _coordinatorId = coordID.copyString();
   _asynchronousMode = async.getBool();
-  _useMemoryMaps = params.get(Utils::useMemoryMapsKey).getBool();
+
+  // memory mapping
+  // start off with default value
+  _useMemoryMaps = feature.useMemoryMaps();
+  if (VPackSlice memoryMaps = params.get(Utils::useMemoryMapsKey);
+      memoryMaps.isBoolean()) {
+    // update from user config if specified there
+    _useMemoryMaps = memoryMaps.getBool();
+  }
 
   VPackSlice userParams = params.get(Utils::userParametersKey);
-  VPackSlice parallel = userParams.get(Utils::parallelismKey);
 
-  size_t maxP = PregelFeature::availableParallelism();
-  _parallelism = std::max<size_t>(1, std::min<size_t>(maxP / 4, 16));
-  if (parallel.isInteger()) {
-    _parallelism =
-        std::min<size_t>(std::max<size_t>(1, parallel.getUInt()), maxP);
-  }
+  // parallelism
+  _parallelism = WorkerConfig::parallelism(feature, userParams);
 
   // list of all shards, equal on all workers. Used to avoid storing strings of
   // shard names
@@ -133,6 +133,22 @@ void WorkerConfig::updateConfig(VPackSlice params) {
                                               std::move(shards));
     }
   }
+}
+
+size_t WorkerConfig::parallelism(PregelFeature& feature, VPackSlice params) {
+  // start off with default parallelism
+  size_t parallelism = feature.defaultParallelism();
+  if (params.isObject()) {
+    // then update parallelism value from user config
+    if (VPackSlice parallel = params.get(Utils::parallelismKey);
+        parallel.isInteger()) {
+      // limit parallelism to configured bounds
+      parallelism =
+          std::clamp(parallel.getNumber<size_t>(), feature.minParallelism(),
+                     feature.maxParallelism());
+    }
+  }
+  return parallelism;
 }
 
 std::vector<ShardID> const& WorkerConfig::edgeCollectionRestrictions(
