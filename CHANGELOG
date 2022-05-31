@@ -59,12 +59,14 @@ devel
 
 * Pregel status now reports whether memory mapped files are used in a job.
 
+* Fixed issue BTS-875.
+
 * Updated arangosync to v2.10.0-preview-1.
 
-* Enterprise only: Restricted behaviour of Hybrid Disjoint Smart Graphs. Within a single
-  traversal or path query we now restrict that you can only switch between
-  Smart and Satellite sharding once, all queries where  more than one switch
-  is (in theory) possible will be rejected. e.g:
+* Enterprise only: Restricted behaviour of Hybrid Disjoint Smart Graphs. Within 
+  a single traversal or path query we now restrict that you can only switch 
+  between Smart and Satellite sharding once, all queries where more than one 
+  switch is (in theory) possible will be rejected. e.g:
   ```
     FOR v IN 2 OUTBOUND @start smartToSatEdges, satToSmartEdges
   ```
