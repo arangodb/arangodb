@@ -223,7 +223,7 @@ function recovery (options) {
         params.options.disableMonitor = options.disableMonitor;
         params.setup = false;
         try {
-          tu.writeTestResult(params.args['temp.path'], {
+          tu.writeTestResult(params.instance.args['temp.path'], {
             failed: 1,
             status: false, 
             message: "unable to run recovery test " + test,
@@ -233,7 +233,7 @@ function recovery (options) {
         runArangodRecovery(params);
 
         results[test] = tu.readTestResult(
-          params.args['temp.path'],
+          params.instance.args['temp.path'],
           {
             status: false
           },
