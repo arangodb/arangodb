@@ -1295,7 +1295,20 @@ Future<OperationResult> transaction::Methods::insertLocal(
 
   std::shared_ptr<VPackBufferUInt8> resDocs = resultBuilder.steal();
   if (res.ok()) {
-    if (replicationType == ReplicationType::LEADER && !followers->empty()) {
+    bool isMock = false;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+    StorageEngine& engine = collection->vocbase()
+                                .server()
+                                .getFeature<EngineSelectorFeature>()
+                                .engine();
+
+    if (engine.typeName() == "Mock") {
+      isMock = true;
+    }
+#endif
+
+    if (!isMock && replicationType == ReplicationType::LEADER &&
+        !followers->empty()) {
       TRI_ASSERT(collection != nullptr);
 
       // In the multi babies case res is always TRI_ERROR_NO_ERROR if we

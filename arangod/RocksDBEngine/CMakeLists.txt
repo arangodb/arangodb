@@ -69,6 +69,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBMetadata.cpp
   RocksDBEngine/RocksDBOptimizerRules.cpp
   RocksDBEngine/RocksDBOptionFeature.cpp
+  RocksDBEngine/RocksDBOptionsProvider.cpp
   RocksDBEngine/RocksDBPersistedLog.cpp
   RocksDBEngine/RocksDBPrimaryIndex.cpp
   RocksDBEngine/RocksDBRecoveryManager.cpp
