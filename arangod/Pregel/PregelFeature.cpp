@@ -355,7 +355,7 @@ void PregelFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void PregelFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!_tempLocationCustomPath.empty() && _tempLocationType != "custom") {
-    LOG_TOPIC("5a607", FATAL, Logger::PREGEL)
+    LOG_TOPIC("0dd1d", FATAL, Logger::PREGEL)
         << "invalid settings for Pregel's temporary files: if a custom path is "
            "provided, "
         << "`--pregel.memory-mapped-files-location-type` must have a value of "
