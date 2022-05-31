@@ -97,12 +97,13 @@ auto getCurrentSupervision(TRI_vocbase_t& vocbase, LogId id)
     -> LogCurrentSupervision;
 
 auto replaceReplicatedStateParticipant(
-    TRI_vocbase_t& vocbase, LogId id, ParticipantId const& participantToRemove,
+    std::string const& databaseName, LogId id,
+    ParticipantId const& participantToRemove,
     ParticipantId const& participantToAdd,
     std::optional<ParticipantId> const& currentLeader)
     -> futures::Future<Result>;
 
-auto replaceReplicatedSetLeader(TRI_vocbase_t& vocbase, LogId id,
+auto replaceReplicatedSetLeader(std::string const& databaseName, LogId id,
                                 std::optional<ParticipantId> const& leaderId)
     -> futures::Future<Result>;
 

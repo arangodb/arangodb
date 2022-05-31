@@ -320,12 +320,13 @@ auto methods::createReplicatedState(
 }
 
 auto methods::replaceReplicatedStateParticipant(
-    TRI_vocbase_t& vocbase, LogId id, ParticipantId const& participantToRemove,
+    std::string const& databaseName, LogId id,
+    ParticipantId const& participantToRemove,
     ParticipantId const& participantToAdd,
     std::optional<ParticipantId> const& currentLeader)
     -> futures::Future<Result> {
   auto path =
-      paths::target()->replicatedStates()->database(vocbase.name())->state(id);
+      paths::target()->replicatedStates()->database(databaseName)->state(id);
 
   bool replaceLeader = currentLeader == participantToRemove;
   // note that replaceLeader => currentLeader.has_value()
@@ -376,10 +377,10 @@ auto methods::replaceReplicatedStateParticipant(
 }
 
 auto methods::replaceReplicatedSetLeader(
-    TRI_vocbase_t& vocbase, LogId id,
+    std::string const& databaseName, LogId id,
     std::optional<ParticipantId> const& leaderId) -> futures::Future<Result> {
   auto path =
-      paths::target()->replicatedStates()->database(vocbase.name())->state(id);
+      paths::target()->replicatedStates()->database(databaseName)->state(id);
 
   VPackBufferUInt8 trx;
   {

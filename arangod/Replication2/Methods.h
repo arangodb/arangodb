@@ -187,6 +187,11 @@ struct ReplicatedStateMethods {
   static auto createInstance(TRI_vocbase_t& vocbase)
       -> std::shared_ptr<ReplicatedStateMethods>;
 
+  static auto createInstanceDBServer(TRI_vocbase_t& vocbase) -> std::shared_ptr<ReplicatedStateMethods>;
+
+  static auto createInstanceCoordinator(ArangodServer& server, std::string databaseName)
+  -> std::shared_ptr<ReplicatedStateMethods>;
+
   [[nodiscard]] virtual auto replaceParticipant(
       LogId, ParticipantId const& participantToRemove,
       ParticipantId const& participantToAdd,
