@@ -522,7 +522,7 @@ auto ClusterInfo::createReplicatedStateSpec(
   replication2::replicated_state::agency::Target spec;
 
   spec.id = LogicalCollection::shardIdToStateId(shardId);
-  spec.properties.implementation.type = "black-hole";
+  spec.properties.implementation.type = "document";
   TRI_ASSERT(!serverIds.empty());
   spec.leader = serverIds.front();
 
