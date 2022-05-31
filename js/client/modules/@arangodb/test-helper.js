@@ -44,6 +44,7 @@ const {
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const _ = require('lodash');
+const inst = require('@arangodb/testutils/instance');
     
 exports.getServerById = getServerById;
 exports.getServersByType = getServersByType;
@@ -411,4 +412,17 @@ exports.getCoordinators = function () {
   return instanceInfo.arangods.filter(isCoordinator)
                               .map(toEndpoint)
                               .map(endpointToURL);
+};
+
+exports.getServers = function (role) {
+  const matchesRole = (d) => (_.toLower(d.instanceRole) === role);
+  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
+  return instanceInfo.arangods.filter(matchesRole);
+};
+
+exports.getDBServers = function () {
+  return exports.getServers(inst.instanceRole.dbServer);
+};
+exports.getAgents = function () {
+  return exports.getServers(inst.instanceRole.agent);
 };
