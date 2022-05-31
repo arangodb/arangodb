@@ -27,10 +27,12 @@
 
 #include "Aql/VelocyPackHelper.h"
 #include "Inspection/VPack.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
+using namespace arangodb::replication2::agency;
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::basics;
 using namespace arangodb::tests;
@@ -190,6 +192,10 @@ TEST(LogCommonTest, participants_config_inspector) {
 
   auto jsonBuffer = R"({
       "generation": 15,
+      "config": {
+        "effectiveWriteConcern":1,
+        "waitForSync":false
+      },
       "participants": {
         "A": {
           "forced": false,

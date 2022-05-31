@@ -213,18 +213,18 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
 
   // Check whether there are enough participants to reach a quorum
   if (plan.participantsConfig.participants.size() + 1 <=
-      plan.currentTerm->config.effectiveWriteConcern) {
+      plan.participantsConfig.config.effectiveWriteConcern) {
     ctx.reportStatus<LogCurrentSupervision::LeaderElectionImpossible>();
     ctx.createAction<NoActionPossibleAction>();
     return;
   }
 
   TRI_ASSERT(plan.participantsConfig.participants.size() + 1 >
-             plan.currentTerm->config.effectiveWriteConcern);
+             plan.participantsConfig.config.effectiveWriteConcern);
 
   auto const requiredNumberOfOKParticipants =
       plan.participantsConfig.participants.size() + 1 -
-      plan.currentTerm->config.effectiveWriteConcern;
+      plan.participantsConfig.config.effectiveWriteConcern;
 
   // Find the participants that are healthy and that have the best LogTerm
   auto election = runElectionCampaign(

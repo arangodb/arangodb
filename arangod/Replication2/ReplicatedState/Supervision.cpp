@@ -32,6 +32,7 @@
 #include "Logger/LogMacros.h"
 
 using namespace arangodb;
+using namespace arangodb::replication2::agency;
 
 /*
  * This is the flow graph of the replicated state supervision. Operations that

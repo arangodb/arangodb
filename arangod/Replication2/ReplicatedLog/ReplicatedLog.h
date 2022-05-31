@@ -90,7 +90,7 @@ struct alignas(64) ReplicatedLog {
   auto becomeLeader(
       agency::LogPlanConfig config, ParticipantId id, LogTerm term,
       std::vector<std::shared_ptr<AbstractFollower>> const& follower,
-      std::shared_ptr<ParticipantsConfig const> participantsConfig,
+      std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
       std::shared_ptr<cluster::IFailureOracle const> failureOracle)
       -> std::shared_ptr<LogLeader>;
   auto becomeFollower(ParticipantId id, LogTerm term,

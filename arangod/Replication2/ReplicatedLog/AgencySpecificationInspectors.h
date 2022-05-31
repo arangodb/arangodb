@@ -69,7 +69,6 @@ auto inspect(Inspector& f, LogPlanTermSpecification::Leader& x) {
 template<class Inspector>
 auto inspect(Inspector& f, LogPlanTermSpecification& x) {
   return f.object(x).fields(f.field(StaticStrings::Term, x.term),
-                            f.field(StaticStrings::Config, x.config),
                             f.field(StaticStrings::Leader, x.leader));
 }
 

@@ -50,9 +50,8 @@ LogPlanConfig::LogPlanConfig(std::size_t writeConcern,
     : effectiveWriteConcern(writeConcern), waitForSync(waitForSync) {}
 
 LogPlanTermSpecification::LogPlanTermSpecification(LogTerm term,
-                                                   LogPlanConfig config,
                                                    std::optional<Leader> leader)
-    : term(term), config(config), leader(std::move(leader)) {}
+    : term(term), leader(std::move(leader)) {}
 
 LogPlanSpecification::LogPlanSpecification(
     LogId id, std::optional<LogPlanTermSpecification> term)

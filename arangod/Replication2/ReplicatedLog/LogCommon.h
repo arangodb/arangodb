@@ -254,25 +254,6 @@ auto inspect(Inspector& f, ParticipantFlags& x) {
 
 auto operator<<(std::ostream&, ParticipantFlags const&) -> std::ostream&;
 
-using ParticipantsFlagsMap =
-    std::unordered_map<ParticipantId, ParticipantFlags>;
-
-struct ParticipantsConfig {
-  std::size_t generation = 0;
-  ParticipantsFlagsMap participants;
-
-  // to be defaulted soon
-  friend auto operator==(ParticipantsConfig const& left,
-                         ParticipantsConfig const& right) noexcept
-      -> bool = default;
-};
-
-template<class Inspector>
-auto inspect(Inspector& f, ParticipantsConfig& x) {
-  return f.object(x).fields(f.field("generation", x.generation),
-                            f.field("participants", x.participants));
-}
-
 // These settings are initialised by the ReplicatedLogFeature based on command
 // line arguments
 struct ReplicatedLogGlobalSettings {

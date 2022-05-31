@@ -60,9 +60,26 @@ auto inspect(Inspector& f, LogPlanConfig& x) {
       f.field("waitForSync", x.waitForSync));
 }
 
+struct ParticipantsConfig {
+  std::size_t generation = 0;
+  ParticipantsFlagsMap participants;
+  LogPlanConfig config;
+
+  // to be defaulted soon
+  friend auto operator==(ParticipantsConfig const& left,
+                         ParticipantsConfig const& right) noexcept
+      -> bool = default;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ParticipantsConfig& x) {
+  return f.object(x).fields(f.field("generation", x.generation),
+                            f.field("config", x.config),
+                            f.field("participants", x.participants));
+}
+
 struct LogPlanTermSpecification {
   LogTerm term;
-  LogPlanConfig config;
   struct Leader {
     ParticipantId serverId;
     RebootId rebootId;
@@ -77,8 +94,7 @@ struct LogPlanTermSpecification {
 
   LogPlanTermSpecification() = default;
 
-  LogPlanTermSpecification(LogTerm term, LogPlanConfig config,
-                           std::optional<Leader>);
+  LogPlanTermSpecification(LogTerm term, std::optional<Leader>);
 
   friend auto operator==(LogPlanTermSpecification const&,
                          LogPlanTermSpecification const&) noexcept

@@ -31,6 +31,8 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::agency;
@@ -42,9 +44,10 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
   auto spec = LogPlanSpecification{
       id,
       LogPlanTermSpecification{
-          LogTerm{1}, LogPlanConfig{1, 1, false},
+          LogTerm{1},
           LogPlanTermSpecification::Leader{"leaderId", RebootId{100}}},
-      ParticipantsConfig{15, {{"p1", {true, false}}, {"p2", {}}}}};
+      ParticipantsConfig{
+          15, {{"p1", {true, false}}, {"p2", {}}}, LogPlanConfig{1, 1, false}}};
 
   VPackBuilder builder;
   velocypack::serialize(builder, spec);
@@ -56,10 +59,6 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
     "id": 1234,
     "currentTerm": {
       "term": 1,
-      "config": {
-        "effectiveWriteConcern": 1,
-        "waitForSync": false
-      },
       "leader": {
         "serverId": "leaderId",
         "rebootId": 100
@@ -67,6 +66,10 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
     },
     "participantsConfig": {
       "generation": 15,
+      "config": {
+        "effectiveWriteConcern": 1,
+        "waitForSync": false
+      },
       "participants": {
         "p1": {
           "forced": true,
@@ -89,14 +92,14 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
   jsonBuffer = R"({
     "id": 1234,
     "currentTerm": {
-      "term": 1,
-      "config": {
-        "effectiveWriteConcern": 1,
-        "waitForSync": false
-      }
+      "term": 1
     },
     "participantsConfig": {
       "generation": 15,
+      "config": {
+        "effectiveWriteConcern": 1,
+        "waitForSync": false
+      },
       "participants": {}
     }
   })"_vpack;
@@ -109,7 +112,12 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
     "id": 1234,
     "participantsConfig": {
       "generation": 15,
-      "participants": {}
+      "participants": {
+      },
+      "config": {
+        "effectiveWriteConcern": 1,
+        "waitForSync": false
+      }
     }
   })"_vpack;
 

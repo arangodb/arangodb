@@ -44,10 +44,6 @@ const createReplicatedState = function (database, logId, servers, leader, stateT
       id: logId,
       currentTerm: {
         term: 1,
-        config: {
-          effectiveWriteConcern: 2,
-          waitForSync: false,
-        },
         leader: {
           serverId: leader,
           rebootId: LH.getServerRebootId(leader),
@@ -55,6 +51,10 @@ const createReplicatedState = function (database, logId, servers, leader, stateT
       },
       participantsConfig: {
         generation: 1,
+        config: {
+          effectiveWriteConcern: 2,
+          waitForSync: false,
+        },
         participants: {},
       }
     };

@@ -77,15 +77,16 @@ const getParticipantsObjectForServers = function (servers) {
   }, {});
 };
 
-const createParticipantsConfig = function (generation, servers) {
+const createParticipantsConfig = function (generation, config, servers) {
   return {
     generation,
+    config,
     participants: getParticipantsObjectForServers(servers),
   };
 };
 
-const createTermSpecification = function (term, servers, config, leader) {
-  let spec = {term, config};
+const createTermSpecification = function (term, servers, leader) {
+  let spec = {term};
   if (leader !== undefined) {
     if (!_.includes(servers, leader)) {
       throw Error("leader is not part of the participants");
@@ -364,8 +365,8 @@ const createReplicatedLogPlanOnly = function (database, targetConfig, replicatio
   const generation = 1;
   replicatedLogSetPlan(database, logId, {
     id: logId,
-    currentTerm: createTermSpecification(term, servers, targetConfig, leader),
-    participantsConfig: createParticipantsConfig(generation, servers),
+    currentTerm: createTermSpecification(term, servers, leader),
+    participantsConfig: createParticipantsConfig(generation, targetConfig, servers),
   });
 
   // wait for all servers to have reported in current

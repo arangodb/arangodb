@@ -101,8 +101,9 @@ struct AddLogToPlanAction {
 
   auto execute(ActionContext& ctx) const -> void {
     auto newPlan = LogPlanSpecification(
-        _id, LogPlanTermSpecification(LogTerm{1}, _config, _leader),
-        ParticipantsConfig{.generation = 1, .participants = _participants});
+        _id, LogPlanTermSpecification(LogTerm{1}, _leader),
+        ParticipantsConfig{
+            .generation = 1, .participants = _participants, .config = _config});
     newPlan.owner = "target";
     ctx.setValue<LogPlanSpecification>(std::move(newPlan));
   }
@@ -325,8 +326,8 @@ using Action =
 auto executeAction(Log log, Action& action) -> ActionContext;
 }  // namespace arangodb::replication2::replicated_log
 
-#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Inspection/VPack.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
 template<>
 struct fmt::formatter<arangodb::replication2::replicated_log::Action>

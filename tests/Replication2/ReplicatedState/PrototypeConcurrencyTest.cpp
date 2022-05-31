@@ -148,7 +148,7 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
       participants.emplace(participant->getParticipantId(), ParticipantFlags{});
     }
     auto participantsConfig =
-        std::make_shared<ParticipantsConfig>(ParticipantsConfig{
+        std::make_shared<agency::ParticipantsConfig>(agency::ParticipantsConfig{
             .generation = 1,
             .participants = std::move(participants),
         });
