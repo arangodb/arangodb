@@ -823,7 +823,10 @@ auto buildAgencyTransaction(DatabaseID const& dbName, LogId const& logId,
                                     ->supervision()
                                     ->str();
 
-  if (sctx.hasAction() && maxActionsTraceLength > 0) {
+  // If we want to keep a trace of actions, then only record actions
+  // that actually modify the data structure. This excludes the EmptyAction
+  // and the NoActionPossibleAction.
+  if (sctx.hasModifyingAction() && maxActionsTraceLength > 0) {
     envelope = envelope.write()
                    .push_queue_emplace(
                        arangodb::cluster::paths::aliases::current()
