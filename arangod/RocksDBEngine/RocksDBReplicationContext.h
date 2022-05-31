@@ -37,6 +37,7 @@
 #include "VocBase/vocbase.h"
 
 #include <rocksdb/options.h>
+#include <rocksdb/types.h>
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
@@ -88,8 +89,10 @@ class RocksDBReplicationContext {
     uint64_t numberDocuments;
     /// @brief number of documents we iterated over in /dump
     uint64_t numberDocumentsDumped;
-    /// @brief snapshot and number documents were fetched exclusively
-    bool isNumberDocumentsExclusive;
+    /// @brief if > 0, then snapshot and number documents were fetched
+    /// exclusively. this ticket is also later used to update the collection
+    /// count on the leader if it is considered to be wrong.
+    uint64_t documentCountAdjustmentTicket;
 
     rocksdb::ReadOptions const& readOptions() const { return _readOptions; }
     bool sorted() const { return _sortedIterator; }
@@ -250,7 +253,11 @@ class RocksDBReplicationContext {
 
   void releaseDumpIterator(CollectionIterator*);
 
- private:
+  void handleCollectionCountAdjustment(uint64_t documentCountAdjustmentTicket,
+                                       int64_t adjustment,
+                                       rocksdb::SequenceNumber blockerSeq,
+                                       CollectionIterator* cIter);
+
   RocksDBEngine& _engine;
   TRI_voc_tick_t const _id;  // batch id
   mutable Mutex _contextLock;
