@@ -1482,10 +1482,6 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
 
     quantifierNode = quantifierAndFilterNode->getMember(0);
     TRI_ASSERT(quantifierNode != nullptr);
-    TRI_ASSERT(quantifierNode->type == NODE_TYPE_NOP ||
-               quantifierNode->isIntValue() ||
-               quantifierNode->type == NODE_TYPE_QUANTIFIER ||
-               quantifierNode->type == NODE_TYPE_RANGE);
 
     filterNode = quantifierAndFilterNode->getMember(1);
 
@@ -1622,6 +1618,21 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
   } else {
     // note: quantifierNode can be a NODE_TYPE_QUANTIFIER (ALL|ANY|NONE),
     // a number (e.g. 3), or a range (e.g. 1..5)
+    auto getRangeBound = [&ctx](AstNode const* node) -> int64_t {
+      bool localMustDestroy;
+      AqlValue sub =
+          executeSimpleExpression(ctx, node, localMustDestroy, false);
+      int64_t value = sub.toInt64();
+      if (value < 0) {
+        value = 0;
+      }
+      value = static_cast<size_t>(value);
+      if (localMustDestroy) {
+        sub.destroy();
+      }
+      return value;
+    };
+
     if (quantifierNode->type == NODE_TYPE_QUANTIFIER) {
       // ALL|ANY|NONE
       std::tie(minRequiredItems, maxRequiredItems) =
@@ -1629,24 +1640,14 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
     } else if (quantifierNode->type == NODE_TYPE_RANGE) {
       // range
       TRI_ASSERT(quantifierNode->numMembers() == 2);
-      TRI_ASSERT(quantifierNode->getMember(0)->isIntValue());
 
-      minRequiredItems =
-          static_cast<size_t>(quantifierNode->getMember(0)->getIntValue());
-      TRI_ASSERT(quantifierNode->getMember(1)->isIntValue());
-      maxRequiredItems =
-          static_cast<size_t>(quantifierNode->getMember(1)->getIntValue());
-    } else if (quantifierNode->isIntValue()) {
-      // exact value
-      minRequiredItems = maxRequiredItems =
-          static_cast<size_t>(quantifierNode->getIntValue());
+      minRequiredItems = getRangeBound(quantifierNode->getMember(0));
+      maxRequiredItems = getRangeBound(quantifierNode->getMember(1));
     } else {
-      // quantifier type was already validated before.
-      TRI_ASSERT(false);
+      // exact value
+      minRequiredItems = maxRequiredItems = getRangeBound(quantifierNode);
     }
   }
-
-  TRI_ASSERT(minRequiredItems <= maxRequiredItems);
 
   for (size_t i = 0; i < n; ++i) {
     bool localMustDestroy;
