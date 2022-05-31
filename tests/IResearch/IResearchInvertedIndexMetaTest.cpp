@@ -145,7 +145,7 @@ class IResearchInvertedIndexMetaTest
   }
 };
 
-TEST_F(IResearchInvertedIndexMetaTest, testkWrongDefinitions) {
+TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
 
   // Nested is incompatibe with trackListPositions
   constexpr std::string_view kWrongDefinition1 = R"(
@@ -414,7 +414,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testkWrongDefinitions) {
       ],
       "primarySort": {
          "fields": ["foo"],
-         "compression": "lzma"
+         "compression": "invalid_compression"
       }
   })";
 
@@ -531,13 +531,53 @@ TEST_F(IResearchInvertedIndexMetaTest, testkWrongDefinitions) {
               "analyzer": "identity"
           }
       ],
-      "storedValues": [{ "fields": ["foo"], "compression": "lzma"}]
+      "storedValues": [{ "fields": ["foo"], "compression": "invalid_compression"}]
   })";
 
+  // array instead of object
+  constexpr std::string_view kWrongDefinition21 = R"(["name"])";
+
+  // string instead of object
+  constexpr std::string_view kWrongDefinition22 = R"("field_name")";
 
 
+  // fields duplication in "nested"
+  constexpr std::string_view kWrongDefinition23 = R"(
+  {
+      "fields": [
+          {
+              "name": "foo",
+              "nested": [
+                  {
+                      "name": "bar"
+                  },
+                  {
+                      "name": "bar"
+                  },
+                  {
+                      "name": "bar"
+                  }
+              ]
+          }
+      ]
+  })";
 
-  std::array badJsons{
+  // wrong locale in "primarySort"
+  constexpr std::string_view kWrongDefinition24 = R"(
+  {
+      "fields": [
+          {
+              "name": "foo"
+          }
+      ],
+      "primarySort": {
+         "fields": ["foo"],
+         "compression": "lz4",
+         "locale": "wrong_locale_name"
+      }
+  })";
+
+  constexpr std::array badJsons{
 //    kWrongDefinition1, //FIXME: This definition is not failing
     kWrongDefinition2,
     kWrongDefinition3,
@@ -557,10 +597,13 @@ TEST_F(IResearchInvertedIndexMetaTest, testkWrongDefinitions) {
     kWrongDefinition17,
     kWrongDefinition18,
     kWrongDefinition19,
-    kWrongDefinition20
+    kWrongDefinition20,
+    kWrongDefinition21,
+    kWrongDefinition22,
+    kWrongDefinition23,
+    kWrongDefinition24
   };
 
-  int i = 1;
   for (auto jsonD : badJsons) {
     auto json = VPackParser::fromJson(jsonD.data(), jsonD.size());
 
@@ -571,11 +614,10 @@ TEST_F(IResearchInvertedIndexMetaTest, testkWrongDefinitions) {
     auto res = meta.init(server.server(), json->slice(), true, errorString,
                          irs::string_ref(vocbase.name()));
     {
-      SCOPED_TRACE(::testing::Message("Unexpected error in ") << i << " definition: " << errorString);
+      SCOPED_TRACE(::testing::Message("Definition is not failing: ") << jsonD);
       ASSERT_FALSE(res);
+      ASSERT_FALSE(errorString.empty());
     }
-    ASSERT_FALSE(errorString.empty());
-    ++i;
   }
 }
 
@@ -670,7 +712,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testCorrectDefinitions) {
    })";
 
 
-  std::array jsons{
+  constexpr std::array jsons{
     kDefinition1,
     kDefinition2,
     kDefinition3,
@@ -691,7 +733,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testCorrectDefinitions) {
     auto res = meta.init(server.server(), json->slice(), true, errorString,
                          irs::string_ref(vocbase.name()));
     {
-      SCOPED_TRACE(::testing::Message("Unexpected error in ") << i << " definition: " << errorString);
+      SCOPED_TRACE(::testing::Message("Definition is failing: ") << jsonD);
       ASSERT_TRUE(res);
     }
     ASSERT_TRUE(errorString.empty());
@@ -1711,21 +1753,21 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
 
   constexpr std::string_view kDefinitionWithDataStoreFields  = R"(
   {
-    "cleanupIntervalStep" : 42,
-    "commitIntervalMsec" : 42,
-    "consolidationIntervalMsec" : 42,
+    "cleanupIntervalStep" : 2,
+    "commitIntervalMsec" : 3,
+    "consolidationIntervalMsec" : 4,
     "consolidationPolicy" : {
       "type" : "tier",
-      "segmentsBytesFloor" : 42,
-      "segmentsBytesMax" : 42,
-      "segmentsMax" : 42,
-      "segmentsMin" : 42,
-      "minScore" : 42
+      "segmentsBytesFloor" : 5,
+      "segmentsBytesMax" : 6,
+      "segmentsMax" : 7,
+      "segmentsMin" : 8,
+      "minScore" : 9
     },
     "version" : 1,
-    "writebufferActive" : 42,
-    "writebufferIdle" : 42,
-    "writebufferSizeMax" : 42,
+    "writebufferActive" : 10,
+    "writebufferIdle" : 11,
+    "writebufferSizeMax" : 12,
     "fields": [
       "foo"
     ]
@@ -1747,14 +1789,14 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
       ASSERT_TRUE(res);
     }
     ASSERT_TRUE(errorString.empty());
-    ASSERT_EQ(42, meta._analyzerDefinitions.size());
-    ASSERT_EQ(42, meta._cleanupIntervalStep);
-    ASSERT_EQ(42, meta._commitIntervalMsec);
-    ASSERT_EQ(42, meta._consolidationIntervalMsec);
-    ASSERT_EQ(42, meta._version);
-    ASSERT_EQ(42, meta._writebufferActive);
-    ASSERT_EQ(42, meta._writebufferIdle);
-    ASSERT_EQ(42, meta._writebufferSizeMax);
+    ASSERT_EQ(0, meta._analyzerDefinitions.size());
+    ASSERT_EQ(2, meta._cleanupIntervalStep);
+    ASSERT_EQ(3, meta._commitIntervalMsec);
+    ASSERT_EQ(4, meta._consolidationIntervalMsec);
+    ASSERT_EQ(1, meta._version);
+    ASSERT_EQ(10, meta._writebufferActive);
+    ASSERT_EQ(11, meta._writebufferIdle);
+    ASSERT_EQ(12, meta._writebufferSizeMax);
 
     auto propSlice = meta._consolidationPolicy.properties();
     ASSERT_TRUE(propSlice.isObject());
@@ -1771,7 +1813,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
       ASSERT_TRUE(valueSlice.isNumber());
       size_t segmentsBytesFloor;
       ASSERT_TRUE(getNumber(segmentsBytesFloor, valueSlice));
-      ASSERT_EQ(42, segmentsBytesFloor);
+      ASSERT_EQ(5, segmentsBytesFloor);
     }
     {
       ASSERT_TRUE(propSlice.hasKey("segmentsBytesMax"));
@@ -1779,7 +1821,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
       ASSERT_TRUE(valueSlice.isNumber());
       size_t segmentsBytesMax;
       ASSERT_TRUE(getNumber(segmentsBytesMax, valueSlice));
-      ASSERT_EQ(42, segmentsBytesMax);
+      ASSERT_EQ(6, segmentsBytesMax);
     }
     {
       ASSERT_TRUE(propSlice.hasKey("segmentsMax"));
@@ -1787,7 +1829,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
       ASSERT_TRUE(typeSlice.isNumber());
       size_t segmentsMax;
       ASSERT_TRUE(getNumber(segmentsMax, typeSlice));
-      ASSERT_EQ(42, segmentsMax);
+      ASSERT_EQ(7, segmentsMax);
     }
     {
       ASSERT_TRUE(propSlice.hasKey("segmentsMin"));
@@ -1795,7 +1837,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
       ASSERT_TRUE(valueSlice.isNumber());
       size_t segmentsMin;
       ASSERT_TRUE(getNumber(segmentsMin, valueSlice));
-      ASSERT_EQ(42, segmentsMin);
+      ASSERT_EQ(8, segmentsMin);
     }
     {
       ASSERT_TRUE(propSlice.hasKey("minScore"));
@@ -1803,7 +1845,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
       ASSERT_TRUE(valueSlice.isNumber());
       size_t minScore;
       ASSERT_TRUE(getNumber(minScore, valueSlice));
-      ASSERT_EQ(42, minScore);
+      ASSERT_EQ(9, minScore);
     }
   }
 

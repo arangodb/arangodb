@@ -107,7 +107,7 @@ class IResearchInvertedIndexSort {
     return _directions[i];
   }
 
-  std::string Locale() const noexcept {
+  std::string_view Locale() const noexcept {
     return _locale.getName();
   }
 
