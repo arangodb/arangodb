@@ -135,6 +135,8 @@ class ServerState {
   /// @brief set server read-only
   static bool setReadOnly(ReadOnlyMode);
 
+  static void reset();
+
  public:
   /// @brief sets the initialized flag
   void setInitialized() { _initialized = true; }
