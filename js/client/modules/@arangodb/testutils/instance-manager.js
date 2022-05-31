@@ -1018,7 +1018,11 @@ class instanceManager {
 
     try {
       if (this.endpoint !== null) {
-        arango.reconnect(this.endpoint, '_system', 'root', '');
+        let passvoid = '';
+        if (this.arangods[0].args.hasOwnProperty('database.password')) {
+          passvoid = this.arangods[0].args['database.password'];
+        }
+        arango.reconnect(this.endpoint, '_system', 'root', passvoid);
       } else {
         print("Don't have a frontend instance to connect to");
       }
