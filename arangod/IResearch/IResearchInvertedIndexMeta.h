@@ -45,7 +45,7 @@ class IResearchInvertedIndexSort {
 
   bool operator==(IResearchInvertedIndexSort const& rhs) const noexcept {
     return _fields == rhs._fields && _directions == rhs._directions &&
-           std::string(_locale.getName()) == std::string(rhs._locale.getName());
+           std::string_view(_locale.getName()) == std::string_view(rhs._locale.getName());
   }
 
   bool operator!=(IResearchInvertedIndexSort const& rhs) const noexcept {

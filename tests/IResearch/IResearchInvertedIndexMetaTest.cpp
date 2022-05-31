@@ -145,10 +145,10 @@ class IResearchInvertedIndexMetaTest
   }
 };
 
-TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
+TEST_F(IResearchInvertedIndexMetaTest, testkWrongDefinitions) {
 
   // Nested is incompatibe with trackListPositions
-  std::string_view wrongDefinition1 = R"(
+  constexpr std::string_view kWrongDefinition1 = R"(
   {
     "fields": [
       {
@@ -177,7 +177,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
 
 
   // invalid analyzer
-  std::string_view wrongDefinition2 = R"(
+  constexpr std::string_view kWrongDefinition2 = R"(
   {
       "fields": [
           {
@@ -197,7 +197,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
   })";
 
   // not existing analyzer
-  std::string_view wrongDefinition3 = R"(
+  constexpr std::string_view kWrongDefinition3 = R"(
   {
       "fields": [
           {
@@ -224,7 +224,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
   })";
 
   // analyzer with only 'position' feature
-  std::string_view wrongDefinition4 = R"(
+  constexpr std::string_view kWrongDefinition4 = R"(
   {
       "fields": [
           {
@@ -250,7 +250,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
   })";
 
   // invalid feature name
-  std::string_view wrongDefinition5 = R"(
+  constexpr std::string_view kWrongDefinition5 = R"(
   {
       "fields": [
           {
@@ -276,7 +276,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
   })";
 
   // invalid properties for analyzer
-  std::string_view wrongDefinition6 = R"(
+  constexpr std::string_view kWrongDefinition6 = R"(
   {
       "fields": [
           {
@@ -303,7 +303,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
 
 
   // define field name more than 1 time
-  std::string_view wrongDefinition7 = R"(
+  constexpr std::string_view kWrongDefinition7 = R"(
   {
       "fields": [
           {
@@ -326,7 +326,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
   })"; // FIXME: This definition is not crashed
 
   // only one expansion [*] is allowed
-  std::string_view wrongDefinition8 = R"(
+  constexpr std::string_view kWrongDefinition8 = R"(
   {
       "fields": [
           {
@@ -352,7 +352,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
   })";
 
   // expansion [*] in nested is not allowed
-  std::string_view wrongDefinition9 = R"(
+  constexpr std::string_view kWrongDefinition9 = R"(
   {
       "fields": [
           {
@@ -378,7 +378,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
   })";
 
   // "fields" in "primarySort" is empty
-  std::string_view wrongDefinition10 = R"(
+  constexpr std::string_view kWrongDefinition10 = R"(
   {
       "fields": [
           {
@@ -399,7 +399,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
   })";
 
   // wrong compression in "primarySort"
-  std::string_view wrongDefinition11 = R"(
+  constexpr std::string_view kWrongDefinition11 = R"(
   {
       "fields": [
           {
@@ -419,7 +419,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
   })";
 
   // Empty fields array
-  std::string_view wrongDefinition12 = R"(
+  constexpr std::string_view kWrongDefinition12 = R"(
   {
       "fields": [],
       "trackListPositions": true,
@@ -438,10 +438,10 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
   })";
 
   // empty object
-  std::string_view wrongDefinition13 = R"({})";
+  constexpr std::string_view kWrongDefinition13 = R"({})";
 
   // simple definition with more than 1 expansion
-  std::string_view wrongDefinition14 = R"(
+  constexpr std::string_view kWrongDefinition14 = R"(
   {
       "fields": [
           "foo.bar[*].buz[*]"
@@ -449,7 +449,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
   })";
 
   // wrong 'features' field
-  std::string_view wrongDefinition15 = R"(
+  constexpr std::string_view kWrongDefinition15 = R"(
   {
       "fields": [
         "foo"
@@ -467,7 +467,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
   })";
 
   // wrong 'features' field
-  std::string_view wrongDefinition16 = R"(
+  constexpr std::string_view kWrongDefinition16 = R"(
   {
       "fields": [
         "foo"
@@ -485,7 +485,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
   })";
 
   // wrong verison
-  std::string_view wrongDefinition17 = R"(
+  constexpr std::string_view kWrongDefinition17 = R"(
   {
       "fields": [
           "foo"
@@ -494,7 +494,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
   })";
 
   // wrong type of consolidation policy
-  std::string_view wrongDefinition18 = R"(
+  constexpr std::string_view kWrongDefinition18 = R"(
   {
       "fields": [
           "foo"
@@ -510,7 +510,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
   })";
 
   // nested is not an array
-  std::string_view wrongDefinition19 = R"(
+  constexpr std::string_view kWrongDefinition19 = R"(
   {
       "fields": [
           {
@@ -523,7 +523,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
   })";
 
   // wrong compression in storedValues
-  std::string_view wrongDefinition20= R"(
+  constexpr std::string_view kWrongDefinition20= R"(
   {
       "fields": [
           {
@@ -537,27 +537,27 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
 
 
 
-  std::array<std::string_view, 18> badJsons{
-//    wrongDefinition1, //FIXME: This definition is not failing
-    wrongDefinition2,
-    wrongDefinition3,
-    wrongDefinition4,
-    wrongDefinition5,
-    wrongDefinition6,
-//    wrongDefinition7, //FIXME: This definition is not failing
-    wrongDefinition8,
-    wrongDefinition9,
-    wrongDefinition10,
-    wrongDefinition11,
-    wrongDefinition12,
-    wrongDefinition13,
-    wrongDefinition14,
-    wrongDefinition15,
-    wrongDefinition16,
-    wrongDefinition17,
-    wrongDefinition18,
-    wrongDefinition19,
-    wrongDefinition20
+  std::array badJsons{
+//    kWrongDefinition1, //FIXME: This definition is not failing
+    kWrongDefinition2,
+    kWrongDefinition3,
+    kWrongDefinition4,
+    kWrongDefinition5,
+    kWrongDefinition6,
+//    kWrongDefinition7, //FIXME: This definition is not failing
+    kWrongDefinition8,
+    kWrongDefinition9,
+    kWrongDefinition10,
+    kWrongDefinition11,
+    kWrongDefinition12,
+    kWrongDefinition13,
+    kWrongDefinition14,
+    kWrongDefinition15,
+    kWrongDefinition16,
+    kWrongDefinition17,
+    kWrongDefinition18,
+    kWrongDefinition19,
+    kWrongDefinition20
   };
 
   int i = 1;
@@ -582,7 +582,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
 TEST_F(IResearchInvertedIndexMetaTest, testCorrectDefinitions) {
 
   // simple definition with 1 expansion
-  std::string_view definition1 = R"(
+  constexpr std::string_view kDefinition1 = R"(
   {
     "fields": [
       "foo[*]"
@@ -590,7 +590,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testCorrectDefinitions) {
    })";
 
   // simple definition with 1 expansion
-  std::string_view definition2 = R"(
+  constexpr std::string_view kDefinition2 = R"(
   {
     "fields": [
       "foo.bar[*]"
@@ -598,7 +598,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testCorrectDefinitions) {
    })";
 
   // Empty analyzerDefinitions array
-  std::string_view definition3 = R"(
+  constexpr std::string_view kDefinition3 = R"(
   {
     "fields": ["foo"],
     "analyzerDefinitions":[]
@@ -606,7 +606,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testCorrectDefinitions) {
 
 
   // "fields" in storedValues is empty
-  std::string_view definition4 = R"(
+  constexpr std::string_view kDefinition4 = R"(
   {
       "fields": [
           {
@@ -623,7 +623,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testCorrectDefinitions) {
   })";
 
   // "nested" is empty
-  std::string_view definition5 = R"(
+  constexpr std::string_view kDefinition5 = R"(
   {
       "fields": [
           {
@@ -635,7 +635,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testCorrectDefinitions) {
   })";
 
   // "features" is empty
-  std::string_view definition6 = R"(
+  constexpr std::string_view kDefinition6 = R"(
   {
     "fields": [
        "simple"
@@ -644,7 +644,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testCorrectDefinitions) {
   })";
 
   // Duplication of analyzers names
-  std::string_view definition7 = R"(
+  constexpr std::string_view kDefinition7 = R"(
   {
     "fields": [
       "foo"
@@ -670,14 +670,14 @@ TEST_F(IResearchInvertedIndexMetaTest, testCorrectDefinitions) {
    })";
 
 
-  std::array<std::string_view, 7> jsons{
-    definition1,
-    definition2,
-    definition3,
-    definition4,
-    definition5,
-    definition6,
-    definition7
+  std::array jsons{
+    kDefinition1,
+    kDefinition2,
+    kDefinition3,
+    kDefinition4,
+    kDefinition5,
+    kDefinition6,
+    kDefinition7
   };
 
   int i = 1;
@@ -703,7 +703,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testCorrectDefinitions) {
 
 TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitionsUseAnalyzerInMeta) {
 
-  std::string_view definitionWithAnalyzers = R"(
+  constexpr std::string_view kDefinitionWithAnalyzers = R"(
   {
     "fields": [
       {
@@ -724,8 +724,8 @@ TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitionsUseAnalyzerI
    })";
 
 
-  auto json = VPackParser::fromJson(definitionWithAnalyzers.data(),
-                                    definitionWithAnalyzers.size());
+  auto json = VPackParser::fromJson(kDefinitionWithAnalyzers.data(),
+                                    kDefinitionWithAnalyzers.size());
 
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
   std::string errorString;
@@ -743,7 +743,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitionsUseAnalyzerI
 
 TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitionsUseAnalyzerInField) {
 
-  std::string_view definitionWithAnalyzers = R"(
+  constexpr std::string_view kDefinitionWithAnalyzers = R"(
   {
     "fields": [
       {
@@ -763,8 +763,8 @@ TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitionsUseAnalyzerI
     ]
    })";
 
-  auto json = VPackParser::fromJson(definitionWithAnalyzers.data(),
-                                    definitionWithAnalyzers.size());
+  auto json = VPackParser::fromJson(kDefinitionWithAnalyzers.data(),
+                                    kDefinitionWithAnalyzers.size());
 
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
   std::string errorString;
@@ -782,7 +782,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitionsUseAnalyzerI
 
 TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitions) {
 
-  std::string_view definitionWithAnalyzers = R"(
+  constexpr std::string_view kDefinitionWithAnalyzers = R"(
   {
     "fields": [
       {
@@ -801,7 +801,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitions) {
     ]
    })";
 
-  std::string_view definitionWithoutAnalyzers = R"(
+  constexpr std::string_view kDefinitionWithoutAnalyzers = R"(
   {
     "fields": [
       {
@@ -815,8 +815,8 @@ TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitions) {
   std::string lhsJsonAsStirng;
 
   {
-    auto json = VPackParser::fromJson(definitionWithAnalyzers.data(),
-                                      definitionWithAnalyzers.size());
+    auto json = VPackParser::fromJson(kDefinitionWithAnalyzers.data(),
+                                      kDefinitionWithAnalyzers.size());
 
     std::string errorString;
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
@@ -843,8 +843,8 @@ TEST_F(IResearchInvertedIndexMetaTest, testIgnoreAnalyzerDefinitions) {
   std::string rhsJsonAsStirng;
 
   {
-    auto json = VPackParser::fromJson(definitionWithoutAnalyzers.data(),
-                                      definitionWithoutAnalyzers.size());
+    auto json = VPackParser::fromJson(kDefinitionWithoutAnalyzers.data(),
+                                      kDefinitionWithoutAnalyzers.size());
 
     std::string errorString;
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
@@ -1709,7 +1709,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadCustomizedValues2) {
 
 TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
 
-  std::string_view definitionWithDataStoreFields  = R"(
+  constexpr std::string_view kDefinitionWithDataStoreFields  = R"(
   {
     "cleanupIntervalStep" : 42,
     "commitIntervalMsec" : 42,
@@ -1734,8 +1734,8 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
 
   {
-    auto json = VPackParser::fromJson(definitionWithDataStoreFields.data(),
-                                      definitionWithDataStoreFields.size());
+    auto json = VPackParser::fromJson(kDefinitionWithDataStoreFields.data(),
+                                      kDefinitionWithDataStoreFields.size());
 
     std::string errorString;
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
@@ -1807,5 +1807,5 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
     }
   }
 
-  serializationChecker(server.server(), definitionWithDataStoreFields);
+  serializationChecker(server.server(), kDefinitionWithDataStoreFields);
 }
