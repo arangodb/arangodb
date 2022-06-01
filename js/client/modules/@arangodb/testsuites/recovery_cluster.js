@@ -173,7 +173,7 @@ function runArangodRecovery (params) {
     print(BLUE + "Restarting cluster " + RESET);
     params.instanceManager.reStartInstance();
     let tryCount = 10;
-    while(tryCount > 0 && !params.instanceManager.checkServersGOOD()) {
+    while(tryCount > 0 && !params.instanceManager._checkServersGOOD()) {
       print(RESET + "Waiting for all servers to go GOOD");
       internal.sleep(3); // give agency time to bootstrap DBServers
       --tryCount;
