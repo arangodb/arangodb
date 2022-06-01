@@ -79,6 +79,7 @@ function runArangodRecovery (params) {
     'server.statistics': 'false',
     'log.foreground-tty': 'true',
     'database.ignore-datafile-errors': 'false', // intentionally false!
+    'temp.path': params.temp_path
   };
   
   // for cluster runs we have separate parameter set for servers and for testagent(arangosh)
@@ -269,7 +270,8 @@ function recovery (options) {
         script: test,
         setup: true,
         count: count,
-        testDir: ""
+        testDir: "",
+        temp_path: fs.join(tempDir, count.toString())
       };
       runArangodRecovery(params);
 
@@ -301,7 +303,7 @@ function recovery (options) {
       }
 
       results[test] = tu.readTestResult(
-        params.instanceManager.arangods[0].args['temp.path'],
+        params.temp_path,
         {
           status: false
         },
