@@ -394,40 +394,24 @@ exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 
   }
 };
 
-exports.getEndpoints = function (role) {
-  const isRole = (d) => (d.instanceRole === role);
-  const toEndpoint = (d) => (d.endpoint);
-  const endpointToURL = (endpoint) => {
-    if (endpoint.substr(0, 6) === 'ssl://') {
-      return 'https://' + endpoint.substr(6);
-    }
-    var pos = endpoint.indexOf('://');
-    if (pos === -1) {
-      return 'http://' + endpoint;
-    }
-    return 'http' + endpoint.substr(pos);
-  };
-
-  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
-  return instanceInfo.arangods.filter(isRole)
-                              .map(toEndpoint)
-                              .map(endpointToURL);
+exports.getControleableServers = function (role) {
+  return global.theInstanceManager.arangods.filter((instance) => instance.isRole(role));
 };
 
-exports.getCoordinatorEndpoints = function () {
-  return exports.getEndpoints(inst.instanceRole.coordinator);
+// These functions lean on special runners to export the actual instance object into the global namespace.
+exports.getCtrlAgents = function() {
+  return exports.getControleableServers(inst.instanceRole.agent);
 };
-exports.getDBServerEndpoints = function () {
-  return exports.getEndpoints(inst.instanceRole.dbServer);
+exports.getCtrlDBServers = function() {
+  return exports.getControleableServers(inst.instanceRole.dbServer);
 };
-exports.getAgentEndpoints = function () {
-  return exports.getEndpoints(inst.instanceRole.agent);
+exports.getCtrlCoordinators = function() {
+  return exports.getControleableServers(inst.instanceRole.coordinator);
 };
 
 exports.getServers = function (role) {
-  const matchesRole = (d) => (_.toLower(d.instanceRole) === role);
   const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
-  let ret = instanceInfo.arangods.filter(matchesRole);
+  let ret = instanceInfo.arangods.filter(inst => inst.instanceRole === role);
   if (ret.length === 0) {
     throw new Error("No instance matched the type " + role);
   }
@@ -444,17 +428,33 @@ exports.getAgents = function () {
   return exports.getServers(inst.instanceRole.agent);
 };
 
-exports.getControleableServers = function (role) {
-  return global.theInstanceManager.arangods.filter((instance) => instance.instanceRole === role);
+exports.getEndpoints = function (role) {
+  const endpointToURL = (instance) => {
+    let protocol = instance.endpoint.split('://')[0];
+    switch(protocol) {
+    case 'ssl':
+      return 'https://' + instance.endpoint.substr(6);
+      break;
+    case 'tcp':
+      return 'http://' + instance.endpoint.substr(6);
+      break;
+    default:
+      var pos = instance.endpoint.indexOf('://');
+      if (pos === -1) {
+        return 'http://' + instance.endpoint;
+      }
+      return 'http' + instance.endpoint.substr(pos);
+    }
+  };
+  return exports.getServers(role).map(endpointToURL);
 };
 
-// These functions lean on special runners to export the actual instance object into the global namespace.
-exports.getCtrlAgents = function() {
-  return exports.getControleableServers(inst.instanceRole.agent);
+exports.getCoordinatorEndpoints = function () {
+  return exports.getEndpoints(inst.instanceRole.coordinator);
 };
-exports.getCtrlDBServers = function() {
-  return exports.getControleableServers(inst.instanceRole.dbServer);
+exports.getDBServerEndpoints = function () {
+  return exports.getEndpoints(inst.instanceRole.dbServer);
 };
-exports.getCtrlCoordinators = function() {
-  return exports.getControleableServers(inst.instanceRole.coordinator);
+exports.getAgentEndpoints = function () {
+  return exports.getEndpoints(inst.instanceRole.agent);
 };
