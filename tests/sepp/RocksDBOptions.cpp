@@ -121,6 +121,16 @@ RocksDBOptions::RocksDBOptions()
                   .pin_l0_filter_and_index_blocks_in_cache,
           .pinTopLevelIndexAndFilter =
               rocksDBTableOptionsDefaults.pin_top_level_index_and_filter,
+          .enableIndexCompression =
+              rocksDBTableOptionsDefaults.enable_index_compression,
+          .prepopulateBlockCache =
+              rocksDBTableOptionsDefaults.prepopulate_block_cache ==
+              rocksdb::BlockBasedTableOptions::PrepopulateBlockCache::
+                  kFlushOnly,
+          .reserveTableBuilderMemory =
+              rocksDBTableOptionsDefaults.reserve_table_builder_memory,
+          .reserveTableReaderMemory =
+              rocksDBTableOptionsDefaults.reserve_table_reader_memory,
 
           .blockSize = std::max(
               rocksDBTableOptionsDefaults.block_size,
@@ -368,6 +378,13 @@ rocksdb::BlockBasedTableOptions RocksDBOptions::doGetTableOptions() const {
       _tableOptions.pinl0FilterAndIndexBlocksInCache;
   result.pin_top_level_index_and_filter =
       _tableOptions.pinTopLevelIndexAndFilter;
+  result.enable_index_compression = _tableOptions.enableIndexCompression;
+  result.prepopulate_block_cache =
+      _tableOptions.prepopulateBlockCache
+          ? rocksdb::BlockBasedTableOptions::PrepopulateBlockCache::kFlushOnly
+          : rocksdb::BlockBasedTableOptions::PrepopulateBlockCache::kDisable;
+  result.reserve_table_builder_memory = _tableOptions.reserveTableBuilderMemory;
+  result.reserve_table_reader_memory = _tableOptions.reserveTableReaderMemory;
 
   result.block_size = _tableOptions.blockSize;
   result.filter_policy = std::visit(
