@@ -153,7 +153,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
           results.status = false;
         }
         else {
-          pu.cleanupLastDirectory(clonedOpts);
+          // pu.cleanupLastDirectory(clonedOpts);
         }
       } else {
         if (obj.options.extremeVerbosity !== 'silent') {
@@ -161,6 +161,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
         }
       }
     });
+    results.status = false;
     return results;
   }
 }
