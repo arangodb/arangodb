@@ -169,15 +169,15 @@ struct SupervisionLogTest : ::testing::Test {};
 TEST_F(SupervisionLogTest, test_log_created) {
   SupervisionContext ctx;
 
-  auto const config = LogConfig(3, 2, 3, true);
   auto const participants = ParticipantsFlagsMap{
       {"A", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       {"B", ParticipantFlags{.forced = false, .allowedAsLeader = true}},
       {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
-  auto const log = Log{.target = LogTarget(LogId{44}, participants, config),
-                       .plan = std::nullopt,
-                       .current = std::nullopt};
+  auto const log = Log{
+      .target = LogTarget(LogId{44}, participants, LogTargetConfig(3, 2, true)),
+      .plan = std::nullopt,
+      .current = std::nullopt};
 
   checkReplicatedLog(ctx, log, ParticipantsHealth{});
 
@@ -193,13 +193,13 @@ TEST_F(SupervisionLogTest, test_log_created) {
 TEST_F(SupervisionLogTest, test_log_not_created) {
   SupervisionContext ctx;
 
-  auto const config = LogConfig(3, 2, 3, true);
   auto const participants = ParticipantsFlagsMap{
       {"C", ParticipantFlags{.forced = false, .allowedAsLeader = true}}};
 
-  auto const log = Log{.target = LogTarget(LogId{44}, participants, config),
-                       .plan = std::nullopt,
-                       .current = std::nullopt};
+  auto const log = Log{
+      .target = LogTarget(LogId{44}, participants, LogTargetConfig(3, 2, true)),
+      .plan = std::nullopt,
+      .current = std::nullopt};
 
   checkReplicatedLog(ctx, log, ParticipantsHealth{});
 
@@ -275,28 +275,27 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
   SupervisionContext ctx;
 
   auto const& logId = LogId{44};
-  auto const& config = LogConfig(3, 3, 3, true);
-
   // Server D is missing in target
   auto const& target =
       LogTarget(logId,
                 ParticipantsFlagsMap{{"A", ParticipantFlags{}},
                                      {"B", ParticipantFlags{}},
                                      {"C", ParticipantFlags{}}},
-                config);
+                LogTargetConfig(3, 3, true));
 
   ParticipantsFlagsMap participantsFlags{{"A", ParticipantFlags{}},
                                          {"B", ParticipantFlags{}},
                                          {"C", ParticipantFlags{}},
                                          {"D", ParticipantFlags{}}};
   auto const& participantsConfig =
-      ParticipantsConfig{.generation = 1, .participants = participantsFlags};
+      ParticipantsConfig{.generation = 1,
+                         .participants = participantsFlags,
+                         .config = LogPlanConfig(3, 3, true)};
 
   auto const& plan = LogPlanSpecification(
       logId,
       LogPlanTermSpecification(
-          LogTerm{1}, config,
-          LogPlanTermSpecification::Leader{"A", RebootId{42}}),
+          LogTerm{1}, LogPlanTermSpecification::Leader{"A", RebootId{42}}),
       participantsConfig);
 
   auto current = LogCurrent();
@@ -343,7 +342,6 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
   SupervisionContext ctx;
 
   auto const& logId = LogId{44};
-  auto const& config = LogConfig(3, 3, 3, true);
 
   // Server D is missing in target and has set the allowedInQuorum flag to
   // false but the config is not yet committed
@@ -352,7 +350,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
                 ParticipantsFlagsMap{{"A", ParticipantFlags{}},
                                      {"B", ParticipantFlags{}},
                                      {"C", ParticipantFlags{}}},
-                config);
+                LogTargetConfig(3, 3, true));
 
   ParticipantsFlagsMap participantsFlags{
       {"A", ParticipantFlags{}},
@@ -360,13 +358,14 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
       {"C", ParticipantFlags{}},
       {"D", ParticipantFlags{.allowedInQuorum = false}}};
   auto const& participantsConfig =
-      ParticipantsConfig{.generation = 2, .participants = participantsFlags};
+      ParticipantsConfig{.generation = 2,
+                         .participants = participantsFlags,
+                         .config = LogPlanConfig(3, 3, true)};
 
   auto const& plan = LogPlanSpecification(
       logId,
       LogPlanTermSpecification(
-          LogTerm{1}, config,
-          LogPlanTermSpecification::Leader{"A", RebootId{42}}),
+          LogTerm{1}, LogPlanTermSpecification::Leader{"A", RebootId{42}}),
       participantsConfig);
 
   ParticipantsFlagsMap participantsFlagsOld{{"A", ParticipantFlags{}},
@@ -405,7 +404,9 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
 
   // TODO: we get two "Waiting for config committed", and the source
   //       of this report should be made obvious.
-  EXPECT_EQ(r.size(), 2);
+  //       The Third is config change not implemented and this is
+  //       temporary while config changes are implemented.
+  EXPECT_EQ(r.size(), 3);
 
   EXPECT_TRUE(
       std::holds_alternative<LogCurrentSupervision::WaitingForConfigCommitted>(
@@ -413,13 +414,15 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
   EXPECT_TRUE(
       std::holds_alternative<LogCurrentSupervision::WaitingForConfigCommitted>(
           r[1]));
+  EXPECT_TRUE(
+      std::holds_alternative<LogCurrentSupervision::ConfigChangeNotImplemented>(
+          r[2]));
 }
 
 TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
   SupervisionContext ctx;
 
   auto const& logId = LogId{44};
-  auto const& config = LogConfig(3, 3, 3, true);
 
   // Server D is missing in target and has set the allowedInQuorum flag to
   // false but the config is not yet committed
@@ -428,7 +431,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
                 ParticipantsFlagsMap{{"A", ParticipantFlags{}},
                                      {"B", ParticipantFlags{}},
                                      {"C", ParticipantFlags{}}},
-                config);
+                LogTargetConfig(3, 3, true));
 
   ParticipantsFlagsMap participantsFlags{
       {"A", ParticipantFlags{}},
@@ -436,13 +439,14 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
       {"C", ParticipantFlags{}},
       {"D", ParticipantFlags{.allowedInQuorum = false}}};
   auto const& participantsConfig =
-      ParticipantsConfig{.generation = 2, .participants = participantsFlags};
+      ParticipantsConfig{.generation = 2,
+                         .participants = participantsFlags,
+                         .config = LogPlanConfig(3, 3, true)};
 
   auto const& plan = LogPlanSpecification(
       logId,
       LogPlanTermSpecification(
-          LogTerm{1}, config,
-          LogPlanTermSpecification::Leader{"A", RebootId{42}}),
+          LogTerm{1}, LogPlanTermSpecification::Leader{"A", RebootId{42}}),
       participantsConfig);
 
   auto current = LogCurrent();
@@ -484,7 +488,6 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
   SupervisionContext ctx;
 
   auto const& logId = LogId{44};
-  auto const& config = LogConfig(3, 3, 3, true);
 
   auto const& target =
       LogTarget(logId,
@@ -492,7 +495,7 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
                                      {"B", ParticipantFlags{}},
                                      {"C", ParticipantFlags{}},
                                      {"D", ParticipantFlags{}}},
-                config);
+                LogTargetConfig(3, 3, true));
 
   ParticipantsFlagsMap participantsFlags{
       {"A", ParticipantFlags{}},
@@ -500,13 +503,14 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
       {"C", ParticipantFlags{}},
       {"D", ParticipantFlags{.allowedInQuorum = false}}};
   auto const& participantsConfig =
-      ParticipantsConfig{.generation = 2, .participants = participantsFlags};
+      ParticipantsConfig{.generation = 2,
+                         .participants = participantsFlags,
+                         .config = LogPlanConfig(3, 3, true)};
 
   auto const& plan = LogPlanSpecification(
       logId,
       LogPlanTermSpecification(
-          LogTerm{2}, config,
-          LogPlanTermSpecification::Leader{"A", RebootId{42}}),
+          LogTerm{2}, LogPlanTermSpecification::Leader{"A", RebootId{42}}),
       participantsConfig);
 
   ParticipantsFlagsMap participantsFlagsOld{{"A", ParticipantFlags{}},

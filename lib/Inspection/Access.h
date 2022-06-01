@@ -160,7 +160,7 @@ struct AccessBase {
                                                  std::string_view name,
                                                  bool isPresent, Value& val,
                                                  Transformer& transformer) {
-    typename Transformer::SerializedType v;
+    typename Transformer::SerializedType v{};
     return inspection::loadField(f, name, isPresent, v)             //
            | [&]() { return transformer.fromSerialized(v, val); };  //
   }

@@ -22,6 +22,7 @@
 
 #pragma once
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/ReplicatedState/Supervision.h"
 
@@ -50,7 +51,7 @@ struct AgencyLogBuilder {
     return *this;
   }
 
-  auto setTargetConfig(LogConfig config) -> AgencyLogBuilder& {
+  auto setTargetConfig(RLA::LogTargetConfig config) -> AgencyLogBuilder& {
     _log.target.config = config;
     return *this;
   }
@@ -72,7 +73,9 @@ struct AgencyLogBuilder {
     if (!plan.currentTerm.has_value()) {
       plan.currentTerm.emplace();
       plan.currentTerm->term = LogTerm{1};
-      plan.currentTerm->config = _log.target.config;
+      plan.participantsConfig.config = RLA::LogPlanConfig(
+          _log.target.config.writeConcern, _log.target.config.softWriteConcern,
+          _log.target.config.waitForSync);
     }
     return plan.currentTerm.value();
   }

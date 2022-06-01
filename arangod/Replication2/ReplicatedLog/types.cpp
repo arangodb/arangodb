@@ -214,60 +214,70 @@ auto FollowerState::withRequestInFlight(
   return FollowerState(std::in_place, RequestInFlight{duration});
 }
 
-constexpr static std::string_view upToDateString = "up-to-date";
-constexpr static std::string_view errorBackoffString = "error-backoff";
-constexpr static std::string_view requestInFlightString = "request-in-flight";
-
 auto FollowerState::fromVelocyPack(velocypack::Slice slice) -> FollowerState {
   auto state = slice.get("state").extract<std::string_view>();
-  if (state == errorBackoffString) {
-    return FollowerState::withErrorBackoff(
-        std::chrono::duration<double, std::milli>{
-            slice.get("durationMS").extract<double>()},
-        slice.get("retryCount").extract<std::size_t>());
-  } else if (state == requestInFlightString) {
-    return FollowerState::withRequestInFlight(
-        std::chrono::duration<double, std::milli>{
-            slice.get("durationMS").extract<double>()});
+  if (state == static_strings::errorBackoffString) {
+    return FollowerState{std::in_place,
+                         velocypack::deserialize<ErrorBackoff>(slice)};
+  } else if (state == static_strings::requestInFlightString) {
+    return FollowerState{std::in_place,
+                         velocypack::deserialize<RequestInFlight>(slice)};
   } else {
-    return FollowerState::withUpToDate();
+    return FollowerState{std::in_place,
+                         velocypack::deserialize<UpToDate>(slice)};
   }
 }
 
 void FollowerState::toVelocyPack(velocypack::Builder& builder) const {
-  struct ToVelocyPackVisitor {
-    auto operator()(FollowerState::UpToDate const&) {
-      builder.add("state", VPackValue(upToDateString));
-    }
-
-    auto operator()(FollowerState::ErrorBackoff const& err) {
-      builder.add("state", VPackValue(errorBackoffString));
-      builder.add("durationMS", VPackValue(err.durationMS.count()));
-      builder.add("retryCount", VPackValue(err.retryCount));
-    }
-
-    auto operator()(FollowerState::RequestInFlight const& rif) {
-      builder.add("state", VPackValue(requestInFlightString));
-      builder.add("durationMS", VPackValue(rif.durationMS.count()));
-    }
-
-    velocypack::Builder& builder;
-  };
-
-  VPackObjectBuilder ob(&builder);
-  std::visit(ToVelocyPackVisitor{builder}, value);
+  std::visit([&](auto const& v) { velocypack::serialize(builder, v); }, value);
 }
 
 auto to_string(FollowerState const& state) -> std::string_view {
   struct ToStringVisitor {
-    auto operator()(FollowerState::UpToDate const&) { return upToDateString; }
+    auto operator()(FollowerState::UpToDate const&) {
+      return static_strings::upToDateString;
+    }
     auto operator()(FollowerState::ErrorBackoff const& err) {
-      return errorBackoffString;
+      return static_strings::errorBackoffString;
     }
     auto operator()(FollowerState::RequestInFlight const& rif) {
-      return requestInFlightString;
+      return static_strings::requestInFlightString;
     }
   };
 
   return std::visit(ToStringVisitor{}, state.value);
+}
+
+auto AppendEntriesErrorReasonTypeStringTransformer::toSerialized(
+    AppendEntriesErrorReason::ErrorType source, std::string& target) const
+    -> inspection::Status {
+  target = to_string(source);
+  return {};
+}
+
+auto AppendEntriesErrorReasonTypeStringTransformer::fromSerialized(
+    std::string const& source,
+    AppendEntriesErrorReason::ErrorType& target) const -> inspection::Status {
+  if (source == kNoneString) {
+    target = AppendEntriesErrorReason::ErrorType::kNone;
+  } else if (source == kInvalidLeaderIdString) {
+    target = AppendEntriesErrorReason::ErrorType::kInvalidLeaderId;
+  } else if (source == kLostLogCoreString) {
+    target = AppendEntriesErrorReason::ErrorType::kLostLogCore;
+  } else if (source == kMessageOutdatedString) {
+    target = AppendEntriesErrorReason::ErrorType::kMessageOutdated;
+  } else if (source == kWrongTermString) {
+    target = AppendEntriesErrorReason::ErrorType::kWrongTerm;
+  } else if (source == kNoPrevLogMatchString) {
+    target = AppendEntriesErrorReason::ErrorType::kNoPrevLogMatch;
+  } else if (source == kPersistenceFailureString) {
+    target = AppendEntriesErrorReason::ErrorType::kPersistenceFailure;
+  } else if (source == kCommunicationErrorString) {
+    target = AppendEntriesErrorReason::ErrorType::kCommunicationError;
+  } else if (source == kPrevAppendEntriesInFlightString) {
+    target = AppendEntriesErrorReason::ErrorType::kPrevAppendEntriesInFlight;
+  } else {
+    return inspection::Status{"unknown error type " + source};
+  }
+  return {};
 }

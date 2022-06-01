@@ -35,6 +35,7 @@
 
 #include <chrono>
 #include <utility>
+#include <fmt/core.h>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -114,13 +115,6 @@ auto replication2::operator<<(std::ostream& os, TermIndexPair pair)
     -> std::ostream& {
   return os << '(' << pair.term << ':' << pair.index << ')';
 }
-
-LogConfig::LogConfig(std::size_t writeConcern, std::size_t softWriteConcern,
-                     std::size_t replicationFactor, bool waitForSync) noexcept
-    : writeConcern(writeConcern),
-      softWriteConcern(softWriteConcern),
-      replicationFactor(replicationFactor),
-      waitForSync(waitForSync) {}
 
 LogRange::LogRange(LogIndex from, LogIndex to) noexcept : from(from), to(to) {
   TRI_ASSERT(from <= to);
@@ -464,13 +458,10 @@ auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
     }
     auto operator()(
         CommitFailReason::FewerParticipantsThanWriteConcern const& reason) {
-      using namespace basics::StringUtils;
-      return concatT("Fewer participants than write concern. Have ",
-                     reason.numParticipants,
-                     " participants and effectiveWriteConcern=",
-                     reason.effectiveWriteConcern,
-                     ". With writeConcern=", reason.writeConcern,
-                     " and softWriteConcern=", reason.softWriteConcern, ".");
+      return fmt::format(
+          "Fewer participants than effectove write concern. Have {} ",
+          "participants and effectiveWriteConcern={}.", reason.numParticipants,
+          reason.effectiveWriteConcern);
     }
   };
 
@@ -502,16 +493,6 @@ auto replication2::operator<<(std::ostream& os, ParticipantFlags const& f)
   return os << "}";
 }
 
-void replication2::ParticipantsConfig::toVelocyPack(
-    velocypack::Builder& builder) const {
-  serialize(builder, *this);
-}
-
-auto replication2::ParticipantsConfig::fromVelocyPack(velocypack::Slice s)
-    -> ParticipantsConfig {
-  return deserialize<ParticipantsConfig>(s);
-}
-
 auto replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern::
     fromVelocyPack(velocypack::Slice)
         -> replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern {
@@ -524,8 +505,6 @@ auto replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern::
 void replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern::
     toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder obj(&builder);
-  builder.add(StaticStrings::WriteConcern, writeConcern);
-  builder.add(StaticStrings::SoftWriteConcern, softWriteConcern);
   builder.add(StaticStrings::EffectiveWriteConcern, effectiveWriteConcern);
 }
 

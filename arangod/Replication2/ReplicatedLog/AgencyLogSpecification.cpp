@@ -40,10 +40,18 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::agency;
 
+LogPlanConfig::LogPlanConfig(std::size_t effectiveWriteConcern,
+                             bool waitForSync) noexcept
+    : effectiveWriteConcern(effectiveWriteConcern), waitForSync(waitForSync) {}
+
+LogPlanConfig::LogPlanConfig(std::size_t writeConcern,
+                             std::size_t softWriteConcern,
+                             bool waitForSync) noexcept
+    : effectiveWriteConcern(writeConcern), waitForSync(waitForSync) {}
+
 LogPlanTermSpecification::LogPlanTermSpecification(LogTerm term,
-                                                   LogConfig config,
                                                    std::optional<Leader> leader)
-    : term(term), config(config), leader(std::move(leader)) {}
+    : term(term), leader(std::move(leader)) {}
 
 LogPlanSpecification::LogPlanSpecification(
     LogId id, std::optional<LogPlanTermSpecification> term)
@@ -87,6 +95,13 @@ auto agency::operator==(const LogCurrentSupervisionElection& left,
          left.detail == right.detail;
 }
 
+LogTargetConfig::LogTargetConfig(std::size_t writeConcern,
+                                 std::size_t softWriteConcern,
+                                 bool waitForSync) noexcept
+    : writeConcern(writeConcern),
+      softWriteConcern(softWriteConcern),
+      waitForSync(waitForSync) {}
+
 LogTarget::LogTarget(LogId id, ParticipantsFlagsMap const& participants,
-                     LogConfig const& config)
+                     LogTargetConfig const& config)
     : id{id}, participants{participants}, config(config) {}
