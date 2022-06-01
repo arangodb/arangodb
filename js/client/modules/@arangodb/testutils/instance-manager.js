@@ -59,7 +59,7 @@ const GREEN = internal.COLORS.COLOR_GREEN;
 const RED = internal.COLORS.COLOR_RED;
 const RESET = internal.COLORS.COLOR_RESET;
 // const YELLOW = internal.COLORS.COLOR_YELLOW;
-const IS_A_TTY = RED.length !== 0;
+const IS_A_TTY = internal.isATTy();
 
 const platform = internal.platform;
 
