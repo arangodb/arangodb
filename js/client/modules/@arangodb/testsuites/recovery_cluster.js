@@ -171,7 +171,7 @@ function runArangodRecovery (params) {
     }
   } else {
     print(BLUE + "Restarting cluster " + RESET);
-    params.instanceManager.restartInstance();
+    params.instanceManager.reStartInstance();
     let tryCount = 10;
     while(tryCount > 0 && !params.instanceManager.checkServersGOOD()) {
       print(RESET + "Waiting for all servers to go GOOD");
