@@ -71,7 +71,7 @@ replicated_log::ReplicatedLog::~ReplicatedLog() {
 }
 
 auto replicated_log::ReplicatedLog::becomeLeader(
-    agency::LogPlanConfig config, ParticipantId id, LogTerm newTerm,
+    ParticipantId id, LogTerm newTerm,
     std::vector<std::shared_ptr<AbstractFollower>> const& follower,
     std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
     std::shared_ptr<cluster::IFailureOracle const> failureOracle)
@@ -90,7 +90,7 @@ auto replicated_log::ReplicatedLog::becomeLeader(
     LOG_CTX("23d7b", DEBUG, _logContext)
         << "becoming leader in term " << newTerm;
     auto leader = LogLeader::construct(
-        config, std::move(logCore), follower, participantsConfig, std::move(id),
+        std::move(logCore), follower, participantsConfig, std::move(id),
         newTerm, _logContext, _metrics, _options, std::move(failureOracle));
     _participant = std::static_pointer_cast<ILogParticipant>(leader);
     _metrics->replicatedLogLeaderTookOverNumber->count();
