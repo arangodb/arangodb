@@ -113,7 +113,6 @@ function runArangodRecovery (params) {
     params.options.disableMonitor = true;
     params.options =  ensureServers(params.options);
     let args = {};
-    // args['temp.path'] = params.instanceManager.rootDir;
     
     // enable development debugging if extremeVerbosity is set
     if (params.options.extremeVerbosity === true) {
@@ -186,7 +185,7 @@ function runArangodRecovery (params) {
   if (params.args['log.level']) {
     agentArgs['log.level'] = params.args['log.level'];
   }
-  // agentArgs['temp.path'] = params.instanceManager.rootDir;
+
   Object.assign(agentArgs, additionalTestParams);
   require('internal').env.INSTANCEINFO = JSON.stringify(params.instanceManager.getStructure());
   try {
@@ -280,13 +279,13 @@ function recovery (options) {
       params.options.disableMonitor = options.disableMonitor;
       params.setup = false;
       try {
-        tu.writeTestResult(params.args['temp.path'], {
+        tu.writeTestResult(params.temp_path, {
           failed: 1,
           status: false, 
           message: "unable to run recovery test " + test,
           duration: -1
         });
-      } catch (er) {}
+    } catch (er) { print(er);}
       try {
         runArangodRecovery(params);
       } catch (err) {
