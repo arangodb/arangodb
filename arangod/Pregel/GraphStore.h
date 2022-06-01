@@ -27,8 +27,8 @@
 #include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Iterators.h"
-#include "Pregel/TypedBuffer.h"
 #include "Pregel/Reports.h"
+#include "Pregel/TypedBuffer.h"
 #include "Utils/DatabaseGuard.h"
 
 #include <atomic>
@@ -60,6 +60,28 @@ struct GraphFormat;
 
 class PregelFeature;
 
+struct MemRange {
+  uint8_t* from;
+  uint8_t* to;
+};
+template<typename V, typename E>
+struct ExpandingBuffer {
+  std::vector<std::unique_ptr<TypedBuffer<char>>> _storage;
+  size_t segmentSize;
+  GraphStore<V, E>& parent;
+
+  std::mutex allocLock;
+
+  auto ensureSpace(size_t size) -> void;
+  auto allocate(size_t size) -> MemRange;
+
+  ExpandingBuffer(GraphStore<V, E>& parent, size_t segmentSize);
+  ExpandingBuffer(ExpandingBuffer const&) = delete;
+  ExpandingBuffer(ExpandingBuffer&&) = delete;
+  auto operator=(ExpandingBuffer const&) = delete;
+  auto operator=(ExpandingBuffer&&) = delete;
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief carry graph data for a worker job. NOT THREAD SAFE ON DOCUMENT LOADS
 ////////////////////////////////////////////////////////////////////////////////
@@ -90,7 +112,17 @@ class GraphStore final {
   /// Write results to database
   void storeResults(WorkerConfig* config, std::function<void()>);
 
+  auto getConfig() const -> WorkerConfig* {
+    ADB_PROD_ASSERT(_config != nullptr);
+    return _config;
+  }
+  auto getFeature() const -> PregelFeature& { return _feature; }
+
   ReportManager* _reports;
+
+  auto allocateAuxiliaryStorage(size_t bytes) -> MemRange {
+    return _auxiliaryStorage.allocate(bytes);
+  };
 
  private:
   void loadVertices(ShardID const& vertexShard,
@@ -130,6 +162,22 @@ class GraphStore final {
   std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>> _edges;
   std::vector<TypedBuffer<Edge<E>>*> _nextEdgeBuffer;
   std::vector<std::unique_ptr<TypedBuffer<char>>> _edgeKeys;
+
+  //
+  // FIXME: This is a hack;
+  //
+  // For some algorithms, for example WCC, we need to store dynamic
+  // data; if we just allow heap allocations, we lose control over
+  // state being spilled to memory mapped files.
+  //
+  // This buffer is currently here to address this problem; the solution
+  // is not ideal, and will hopefulle be improved in future iterations
+  // on the code.
+  //
+  // note that ExpandingBuffer does locking, because it might be used
+  // concurrently by multiple threads.
+  //
+  ExpandingBuffer<V, E> _auxiliaryStorage;
 
   // cache the amount of vertices
   std::set<ShardID> _loadedShards;

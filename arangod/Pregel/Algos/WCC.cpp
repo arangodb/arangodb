@@ -26,6 +26,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Algorithm.h"
+#include "Pregel/CommonFormats.h"
 #include "Pregel/GraphStore.h"
 #include "Pregel/IncomingCache.h"
 #include "Pregel/VertexComputation.h"
@@ -79,12 +80,17 @@ struct WCCComputation
     // Either the sender has a wrong component or we have.
     bool shouldPropagate = globalSuperstep() == 0;
 
+    auto inNeighbors = std::vector<PregelID>();
+    auto inNeighborsByteSize = std::size_t{0};
+
     auto& myData = *mutableVertexData();
     for (const SenderMessage<uint64_t>* msg : messages) {
       if (globalSuperstep() == 1) {
         // In the first step, we need to retain all inbound connections
         // for propagation
-        myData.inboundNeighbors.emplace(msg->senderId);
+        inNeighbors.emplace_back(msg->senderId);
+        inNeighborsByteSize +=
+            sizeof(WCCValue::InNeighbor) + msg->senderId.key.length();
       }
       if (msg->value != myData.component) {
         // we have a difference. Send updates
@@ -95,6 +101,16 @@ struct WCCComputation
           myData.component = msg->value;
         }
       }
+    }
+
+    if (globalSuperstep() == 1) {
+      auto range = this->allocateAuxiliaryStorage(inNeighborsByteSize);
+      myData.inNeighbors.init(range, inNeighbors.size());
+
+      for (auto const& inNeighbor : inNeighbors) {
+        myData.inNeighbors.emplace(inNeighbor);
+      }
+      inNeighbors.clear();
     }
     return shouldPropagate;
   }
@@ -124,9 +140,9 @@ struct WCCComputation
 
       sendMessage(edge, message);
     }
-    // Also send to INBOUND neighbors
-    for (auto const& target : myData.inboundNeighbors) {
-      sendMessage(target, message);
+
+    for (auto pid : myData.inNeighbors) {
+      sendMessage(pid, message);
     }
   }
 

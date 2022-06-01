@@ -27,10 +27,12 @@
 
 #pragma once
 
+#include <iterator>
 #include <map>
 
 #include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"
+#include "Pregel/GraphStore.h"
 #include "Pregel/MessageFormat.h"
 
 namespace arangodb {
@@ -47,7 +49,6 @@ struct SLPAValue {
   std::map<uint64_t, uint64_t> memory;
 };
 
-// Label propagation
 struct LPValue {
   /// The desired partition the vertex want to migrate to.
   uint64_t currentCommunity = 0;
@@ -113,8 +114,88 @@ struct SCCValue {
 };
 
 struct WCCValue {
+  struct InNeighbor {
+    PregelShard fromShard;
+    uint16_t keylen;
+    char fromKey[];
+
+    auto toPregelID() const -> PregelID {
+      return PregelID(fromShard, std::string(fromKey, keylen));
+    }
+    auto size() const -> size_t { return sizeof(InNeighbor) + keylen; }
+  };
+  struct InNeighbors {
+    struct Iterator {
+      using iterator_category = std::input_iterator_tag;
+      using difference_type = std::ptrdiff_t;
+      using value_type = PregelID;
+      using pointer = PregelID*;
+      using reference = PregelID&;
+
+      Iterator(MemRange range) : range(range) {
+        if (range.from < range.to) {
+          id = reinterpret_cast<InNeighbor*>(range.from)->toPregelID();
+          ADB_PROD_ASSERT(id.isValid());
+        }
+      }
+      Iterator(Iterator const& other) : range(other.range), id(other.id) {}
+
+      reference operator*() const { return const_cast<reference>(id); }
+      pointer operator->() { return &id; }
+      Iterator& operator++() {
+        range.from += reinterpret_cast<InNeighbor*>(range.from)->size();
+        if (range.from < range.to) {
+          id = reinterpret_cast<InNeighbor*>(range.from)->toPregelID();
+          ADB_PROD_ASSERT(id.isValid());
+        }
+        return *this;
+      }
+      Iterator operator++(int) {
+        Iterator tmp = *this;
+        ++(*this);
+        return tmp;
+      }
+      friend bool operator==(const Iterator& l, const Iterator& r) {
+        return l.range.from == r.range.from;
+      }
+      friend bool operator!=(const Iterator& l, const Iterator& r) {
+        return l.range.from != r.range.from;
+      }
+
+      //     private:
+      MemRange range;
+      PregelID id;
+    };
+
+    MemRange storage = MemRange{.from = nullptr, .to = nullptr};
+    // FIXME: output iterator?
+    uint8_t* current = nullptr;
+    uint32_t count = 0;
+
+    auto init(MemRange inStorage, uint32_t inCount) -> void {
+      storage = inStorage;
+      current = const_cast<uint8_t*>(storage.from);
+      count = inCount;
+    }
+
+    auto emplace(PregelID pid) -> void {
+      auto storedInNeighbor = reinterpret_cast<InNeighbor*>(current);
+      storedInNeighbor->fromShard = pid.shard;
+      storedInNeighbor->keylen = pid.key.length();
+      memmove(storedInNeighbor->fromKey, pid.key.c_str(),
+              storedInNeighbor->keylen);
+
+      current += storedInNeighbor->size();
+    }
+
+    auto begin() const -> Iterator { return Iterator(storage); }
+    auto end() const -> Iterator {
+      return Iterator(MemRange{.from = storage.to, .to = storage.to});
+    }
+  };
+
   uint64_t component;
-  std::unordered_set<PregelID> inboundNeighbors;
+  InNeighbors inNeighbors;
 };
 
 template<typename T>

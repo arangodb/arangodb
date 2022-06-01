@@ -102,6 +102,8 @@ GraphStore<V, E>::GraphStore(PregelFeature& feature, TRI_vocbase_t& vocbase,
       _graphFormat(graphFormat),
       _config(nullptr),
       _vertexIdRangeStart(0),
+      // FIXME: remove this magic constant (64MB slab size)
+      _auxiliaryStorage(*this, 64ULL * 1024ULL * 1024ULL),
       _localVertexCount(0),
       _localEdgeCount(0),
       _runningThreads(0) {}
@@ -323,6 +325,34 @@ std::unique_ptr<TypedBuffer<M>> createBuffer(PregelFeature& feature,
   return std::make_unique<VectorTypedBuffer<M>>(cap);
 }
 }  // namespace
+
+template<typename V, typename E>
+ExpandingBuffer<V, E>::ExpandingBuffer(GraphStore<V, E>& parent,
+                                       size_t segmentSize)
+    : segmentSize(segmentSize), parent(parent) {}
+
+template<typename V, typename E>
+auto ExpandingBuffer<V, E>::ensureSpace(size_t size) -> void {
+  if (_storage.empty() || size > _storage.back()->remainingCapacity()) {
+    _storage.push_back(createBuffer<char>(
+        parent.getFeature(), *parent.getConfig(), std::max(segmentSize, size)));
+  }
+}
+
+template<typename V, typename E>
+auto ExpandingBuffer<V, E>::allocate(size_t size) -> MemRange {
+  auto guard = std::lock_guard<std::mutex>(allocLock);
+  ensureSpace(size);
+  auto& currentBuffer = _storage.back();
+  auto r = MemRange{};
+
+  r.from = reinterpret_cast<uint8_t*>(currentBuffer->end());
+  currentBuffer->advance(size);
+  r.to = reinterpret_cast<uint8_t*>(currentBuffer->end());
+
+  ADB_PROD_ASSERT(r.to == r.from + size);
+  return r;
+}
 
 template<typename V, typename E>
 void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
@@ -786,3 +816,5 @@ template class arangodb::pregel::GraphStore<SLPAValue, int8_t>;
 
 using namespace arangodb::pregel::algos::accumulators;
 template class arangodb::pregel::GraphStore<VertexData, EdgeData>;
+
+template struct arangodb::pregel::ExpandingBuffer<WCCValue, uint64_t>;

@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include <algorithm>
-#include <cstddef>
 #include "Basics/Common.h"
 #include "Pregel/Graph.h"
 #include "Pregel/GraphStore.h"
@@ -32,6 +30,8 @@
 #include "Pregel/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
 #include "Reports.h"
+#include <algorithm>
+#include <cstddef>
 
 namespace arangodb {
 namespace pregel {
@@ -92,14 +92,20 @@ class VertexContext {
     return _graphStore->edgeIterator(_vertexEntry);
   }
 
-  void setVertexData(V const& val) {
-    _graphStore->replaceVertexData(_vertexEntry, (void*)(&val), sizeof(V));
+  auto allocateAuxiliaryStorage(size_t bytes) -> MemRange {
+    return _graphStore->allocateAuxiliaryStorage(bytes);
   }
 
-  /// store data, will potentially move the data around
-  void setVertexData(void const* ptr, size_t size) {
-    _graphStore->replaceVertexData(_vertexEntry, (void*)ptr, size);
-  }
+  /*
+void setVertexData(V const& val) {
+  _graphStore->replaceVertexData(_vertexEntry, (void*)(&val), sizeof(V));
+}
+
+/// store data, will potentially move the data around
+void setVertexData(void const* ptr, size_t size) {
+  _graphStore->replaceVertexData(_vertexEntry, (void*)ptr, size);
+}
+*/
 
   void voteHalt() { _vertexEntry->setActive(false); }
   void voteActive() { _vertexEntry->setActive(true); }
