@@ -60,6 +60,7 @@ const testPaths = {
 class permissionsRunner extends tu.runLocalInArangoshRunner {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
+    this.options.extremeVerbosity = true;
     this.info = "runInDriverTest";
   }
   run(testlist) {
