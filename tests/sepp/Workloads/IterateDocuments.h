@@ -82,7 +82,7 @@ struct IterateDocuments::Thread : ExecutionThread {
   ~Thread();
   void run() override;
   [[nodiscard]] virtual ThreadReport report() const override {
-    return {.operations = _operations};
+    return {.data = {}, .operations = _operations};
   }
   auto shouldStop() const noexcept -> bool override;
 

@@ -188,9 +188,7 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
 }
 
 void Server::Impl::runServer(char const* exectuable) {
-  int ret{EXIT_FAILURE};
-
-  // TODO
+  // TODO - make cleanup optional
   std::filesystem::remove_all(_databaseDirectory);
 
   std::vector<std::string> args{exectuable, "--database.directory",
@@ -209,12 +207,10 @@ void Server::Impl::runServer(char const* exectuable) {
     LOG_TOPIC("5d508", ERR, arangodb::Logger::FIXME)
         << "sepp ArangodServer terminated because of an exception: "
         << ex.what();
-    ret = EXIT_FAILURE;
   } catch (...) {
     LOG_TOPIC("3c63a", ERR, arangodb::Logger::FIXME)
         << "sepp ArangodServer terminated because of an exception of "
            "unknown type";
-    ret = EXIT_FAILURE;
   }
   arangodb::Logger::flush();
 }

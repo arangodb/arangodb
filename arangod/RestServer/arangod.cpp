@@ -29,6 +29,8 @@
 #include <iostream>
 #endif
 
+// The list of includes for the features is defined in the following file -
+// please add new includes there!
 #include "RestServer/arangod_includes.h"
 
 using namespace arangodb;
