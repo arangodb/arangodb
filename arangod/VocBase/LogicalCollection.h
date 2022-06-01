@@ -112,6 +112,8 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief current version for collections
   static constexpr Version currentVersion() { return Version::v37; }
 
+  static replication2::LogId shardIdToStateId(ShardID const& shardId);
+
   // SECTION: Meta Information
   Version version() const { return _version; }
 
@@ -199,6 +201,7 @@ class LogicalCollection : public LogicalDataSource {
   size_t numberOfShards() const noexcept;
   size_t replicationFactor() const noexcept;
   size_t writeConcern() const noexcept;
+  replication::Version replicationVersion() const noexcept;
   std::string const& distributeShardsLike() const noexcept;
   std::vector<std::string> const& avoidServers() const noexcept;
   bool isSatellite() const noexcept;
@@ -340,13 +343,20 @@ class LogicalCollection : public LogicalDataSource {
       std::function<bool(LogicalCollection&)> const& callback);
 
   void schemaToVelocyPack(VPackBuilder&) const;
-  Result validate(VPackSlice newDoc, VPackOptions const*) const;  // insert
-  Result validate(VPackSlice modifiedDoc, VPackSlice oldDoc,
-                  VPackOptions const*) const;  // update / replace
+
+  // return a pointer to the schema. can be a nullptr if no schema
+  std::shared_ptr<ValidatorBase> schema() const;
+
+  // validate a document on INSERT
+  Result validate(std::shared_ptr<ValidatorBase> const& schema,
+                  VPackSlice newDoc, VPackOptions const*) const;
+  // validate a document on UPDATE/REPLACE
+  Result validate(std::shared_ptr<ValidatorBase> const& schema,
+                  VPackSlice modifiedDoc, VPackSlice oldDoc,
+                  VPackOptions const*) const;
 
   // Get a reference to this KeyGenerator.
-  // Caller is not allowed to free it.
-  KeyGenerator& keyGenerator() const { return *_keyGenerator; }
+  KeyGenerator& keyGenerator() const noexcept { return *_keyGenerator; }
 
   transaction::CountCache& countCache() { return _countCache; }
 

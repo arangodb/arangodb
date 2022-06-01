@@ -506,7 +506,7 @@ function BaseTestConfig () {
             return;
           }
           let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-          assertEqual(200, result.status);
+          assertEqual(200, result.status, result);
           total += result.json.count;
         });
         if (total === 3 * 100) {

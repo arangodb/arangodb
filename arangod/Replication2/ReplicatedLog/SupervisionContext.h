@@ -58,15 +58,19 @@ struct SupervisionContext {
   auto hasAction() noexcept -> bool {
     return not std::holds_alternative<EmptyAction>(_action);
   }
+
+  auto hasModifyingAction() const noexcept -> bool {
+    return not(std::holds_alternative<EmptyAction>(_action) or
+               std::holds_alternative<NoActionPossibleAction>(_action));
+  }
+
   auto getAction() -> Action& { return _action; }
   auto getReport() noexcept -> LogCurrentSupervision::StatusReport& {
     return _reports;
   }
 
   auto hasUpdates() noexcept -> bool {
-    return (not(std::holds_alternative<EmptyAction>(_action) or
-                std::holds_alternative<NoActionPossibleAction>(_action))) or
-           !_reports.empty();
+    return hasModifyingAction() or !_reports.empty();
   }
 
   auto isErrorReportingEnabled() const noexcept {

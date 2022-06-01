@@ -31,6 +31,7 @@
 
 namespace arangodb {
 class ExecContext;
+struct ValidatorBase;
 
 /// @brief Indicates whether we want to observe writes performed within the
 /// current (sub) transaction. This is only relevant for AQL queries.
@@ -103,7 +104,6 @@ struct OperationOptions {
   /// @brief determine the overwrite mode from the string value
   static OverwriteMode determineOverwriteMode(std::string_view value);
 
- public:
   // for synchronous replication operations, we have to mark them such that
   // we can deny them if we are a (new) leader, and that we can deny other
   // operation if we are merely a follower. Finally, we must deny replications
@@ -169,6 +169,10 @@ struct OperationOptions {
   // necessary for UPSERTS where the subquery relies on a non-unique secondary
   // index.
   bool canDisableIndexing = true;
+
+  // schema used for validation during INSERT/UPDATE/REPLACE. this value is only
+  // set temporarily.
+  std::shared_ptr<ValidatorBase> schema = nullptr;
 
   // get associated execution context
   ExecContext const& context() const;

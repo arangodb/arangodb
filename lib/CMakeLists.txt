@@ -87,8 +87,8 @@ add_library(arango STATIC
   Basics/EncodingUtils.cpp
   Basics/ErrorCode.cpp
   Basics/FeatureFlags.cpp
-  Basics/ResultError.cpp
-  Basics/Exceptions.cpp
+  Basics/ResultError.cpp Basics/ResultError.tpp Basics/ResultError.h
+  Basics/Exceptions.cpp Basics/Exceptions.tpp Basics/Exceptions.h
   Basics/FileUtils.cpp
   Basics/FunctionUtils.cpp
   Basics/GlobalResourceMonitor.cpp
@@ -223,7 +223,7 @@ else()
 endif()
 
 
-target_link_libraries(arango
+target_link_libraries(arango PUBLIC
   s2
   boost_system
   boost_boost
@@ -234,6 +234,8 @@ target_link_libraries(arango
   ${SYSTEM_LIBRARIES}
   ${ICU_LIBS}
 )
+
+target_link_libraries(arango PUBLIC fmt::fmt)
 
 # this is "."
 target_include_directories(arango PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -246,9 +248,9 @@ target_include_directories(arango SYSTEM PUBLIC ${PROJECT_SOURCE_DIR}/3rdParty/f
 target_include_directories(arango SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
 target_include_directories(arango SYSTEM PUBLIC ${ICU_INCLUDE_DIR})
 
-target_link_libraries(arango rocksdb_interface)
-target_link_libraries(arango zlib_interface)
-target_link_libraries(arango v8_interface)
+target_link_libraries(arango PUBLIC rocksdb_interface)
+target_link_libraries(arango PUBLIC zlib_interface)
+target_link_libraries(arango PUBLIC v8_interface)
 
 add_dependencies(arango v8_build)
 
@@ -260,12 +262,12 @@ target_include_directories(arango
 )
 
 add_dependencies(arango snappy)
-target_link_libraries(arango snappy)
+target_link_libraries(arango PUBLIC snappy)
 
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 
 if (USE_LIBUNWIND)
-  target_link_libraries(arango ${LIBUNWIND_LIB})
+  target_link_libraries(arango PUBLIC ${LIBUNWIND_LIB})
   target_include_directories(arango PRIVATE "${LIBUNWIND_HOME}/include")
   add_dependencies(arango libunwind_build)
 endif ()
@@ -367,6 +369,7 @@ target_link_libraries(arango_v8
   boost_boost
   velocypack
   )
+target_link_libraries(arango_v8 arango)
 
 target_include_directories(arango_v8 PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_include_directories(arango_v8 PRIVATE ${CMAKE_CURRENT_BINARY_DIR})

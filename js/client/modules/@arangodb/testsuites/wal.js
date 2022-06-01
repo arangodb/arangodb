@@ -42,7 +42,7 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 const download = require('internal').download;
 
 const testPaths = {
-  'walCleanup': [tu.pathForTesting('client/wal_cleanup')]
+  'wal_cleanup': [tu.pathForTesting('client/wal_cleanup')]
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,16 +51,17 @@ const testPaths = {
 
 function walCleanup (options) {
   print(CYAN + 'WAL cleanup tests...' + RESET);
-  let testCases = tu.scanTestPaths(testPaths.walCleanup, options);
+  let testCases = tu.scanTestPaths(testPaths.wal_cleanup, options);
 
   let opts = _.clone(options);
   opts.extraArgs['rocksdb.wal-file-timeout-initial'] = '3';
   opts.cluster = true;
 
-  let rc = tu.performTests(opts, testCases, 'wal_cleanup', tu.runInArangosh, {
-    'server.authentication': 'false',
-    'rocksdb.wal-file-timeout-initial': '3'
-  });
+  let rc = new tu.runInArangoshRunner(opts,
+                                      'wal_cleanup', {
+                                        'server.authentication': 'false',
+                                        'rocksdb.wal-file-timeout-initial': '3'
+                                      }).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
