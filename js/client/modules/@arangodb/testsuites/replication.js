@@ -116,7 +116,7 @@ class replicationRunner extends tu.runInArangoshRunner {
   }
   postStart() {
     let message;
-    print("starting replication slave: ");
+    print("starting replication follower: ");
     let state = true;
     this.addArgs['flatCommands'] = [this.instanceManager.arangods[1].endpoint];
     if (this.startReplication) {
