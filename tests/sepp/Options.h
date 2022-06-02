@@ -28,6 +28,7 @@
 
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
+#include "Basics/Thread.h"
 #include "RocksDBOptions.h"
 
 #include "Inspection/Types.h"
