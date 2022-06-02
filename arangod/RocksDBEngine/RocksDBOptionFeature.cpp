@@ -167,7 +167,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _level0StopTrigger(256),
       _pendingCompactionBytesSlowdownTrigger(128 * 1024ull),
       _pendingCompactionBytesStopTrigger(16 * 1073741824ull),
-      _checksumType("crc32"),
+      _checksumType("crc32c"),
       _formatVersion(3),
       _enableIndexCompression(
           rocksDBTableOptionsDefaults.enable_index_compression),
