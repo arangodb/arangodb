@@ -1097,9 +1097,9 @@ class ClusterInfo final {
   /// @brief a replicated state is created for each shard, only when using
   /// Replication2
   //////////////////////////////////////////////////////////////////////////////
-  static auto createReplicatedStateSpec(
-      std::string const& shardId, std::vector<std::string> const& serverIds,
-      std::size_t writeConcern, std::size_t softWriteConcern)
+  static auto createDocumentStateSpec(std::string const& shardId,
+                                      std::vector<std::string> const& serverIds,
+                                      ClusterCollectionCreationInfo const& info)
       -> replication2::replicated_state::agency::Target;
 
   //////////////////////////////////////////////////////////////////////////////

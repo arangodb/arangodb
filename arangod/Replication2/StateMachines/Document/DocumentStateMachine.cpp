@@ -28,6 +28,12 @@
 
 using namespace arangodb::replication2::replicated_state::document;
 
+auto DocumentCoreParameters::toSharedSlice() -> velocypack::SharedSlice {
+  VPackBuilder builder;
+  velocypack::serialize(builder, *this);
+  return builder.sharedSlice();
+}
+
 DocumentLeaderState::DocumentLeaderState(std::unique_ptr<DocumentCore> core)
     : _core(std::move(core)){};
 
@@ -70,7 +76,8 @@ auto DocumentFactory::constructLeader(std::unique_ptr<DocumentCore> core)
   return std::make_shared<DocumentLeaderState>(std::move(core));
 }
 
-auto DocumentFactory::constructCore(GlobalLogIdentifier const& gid)
+auto DocumentFactory::constructCore(GlobalLogIdentifier const& gid,
+                                    DocumentCoreParameters)
     -> std::unique_ptr<DocumentCore> {
   return std::make_unique<DocumentCore>();
 }
