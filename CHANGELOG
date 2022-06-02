@@ -1,6 +1,8 @@
 v3.9.2 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue BTS-875.
+
 * Updated arangosync to v2.10.0.
 
 * Make all requests which are needed for shard resync at least medium priority
