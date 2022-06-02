@@ -32,18 +32,6 @@
 
 #include "Workload.h"
 
-namespace {
-std::size_t getFolderSize(std::string_view path) {
-  return std::accumulate(std::filesystem::recursive_directory_iterator(path),
-                         std::filesystem::recursive_directory_iterator(), 0ull,
-                         [](auto size, auto const& path) {
-                           return std::filesystem::is_directory(path)
-                                      ? size
-                                      : size + std::filesystem::file_size(path);
-                         });
-}
-}  // namespace
-
 namespace arangodb::sepp {
 
 Execution::Execution(Options const& options, std::shared_ptr<Workload> workload)
@@ -130,7 +118,7 @@ Report Execution::buildReport(double runtime) {
                 .configBuilder = {},
                 .threads = std::move(threadReports),
                 .runtime = runtime,
-                .databaseSize = getFolderSize(_options.databaseDirectory)};
+                .databaseSize = {}};
   velocypack::serialize(report.configBuilder, _options);
   report.config = report.configBuilder.slice();
   return report;
