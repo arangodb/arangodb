@@ -576,7 +576,7 @@ class instance {
       return;
     }
     try {
-      let args = _.defaults(moreArgs, this.args);
+      let args = _.defaults(this.args, moreArgs);
       /// TODO Y? Where?
       this.pid = this._executeArangod(args).pid;
       

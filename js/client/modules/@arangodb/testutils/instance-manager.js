@@ -1131,9 +1131,9 @@ class instanceManager {
   }
   
   reStartInstance(moreArgs) {
-
     const startTime = time();
-
+    this.addArgs = _.defaults(this.addArgs, moreArgs);
+    this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
     this.arangods.forEach(function (oneInstance, i) {
       if (oneInstance.pid) {
         return;
@@ -1143,23 +1143,19 @@ class instanceManager {
       oneInstance.upAndRunning = false;
     });
 
-    if (this.options.cluster) {
-      let agencyInstances = [];
-      let success = true;
-      this.arangods.forEach(function (oneInstance, i) {
-        if (oneInstance.pid) {
-          return;
-        }
-        if (oneInstance.isAgent()) {
-          print("relaunching: " + oneInstance.name);
-          oneInstance.launchInstance(moreArgs);
-          agencyInstances.push(_.clone(oneInstance));
-          success = success && oneInstance.checkArangoAlive();
-        }
-      });
-      if (!success) {
-        throw new Error('startup of agency failed! bailing out!');
+    let success = true;
+    this.arangods.forEach(function (oneInstance, i) {
+      if (oneInstance.pid) {
+        return;
       }
+      if (oneInstance.isAgent()) {
+        print("relaunching: " + oneInstance.name);
+        oneInstance.launchInstance(moreArgs);
+        success = success && oneInstance.checkArangoAlive();
+      }
+    });
+    if (!success) {
+      throw new Error('startup of agency failed! bailing out!');
     }
     this.arangods.forEach(function (oneInstance, i) {
       if (oneInstance.pid !== null) {
