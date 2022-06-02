@@ -170,20 +170,20 @@ struct WCCValue {
     MemRange storage = MemRange{.from = nullptr, .to = nullptr};
     // FIXME: output iterator?
     uint8_t* current = nullptr;
-    uint32_t count = 0;
 
-    auto init(MemRange inStorage, uint32_t inCount) -> void {
+    auto init(MemRange inStorage) -> void {
       storage = inStorage;
-      current = const_cast<uint8_t*>(storage.from);
-      count = inCount;
+      current = storage.from;
     }
 
-    auto emplace(PregelID pid) -> void {
+    auto emplace(PregelID const& pid) -> void {
+      ADB_PROD_ASSERT(current + sizeof(InNeighbor) + pid.key.length() <=
+                      storage.to);
       auto storedInNeighbor = reinterpret_cast<InNeighbor*>(current);
       storedInNeighbor->fromShard = pid.shard;
       storedInNeighbor->keylen = pid.key.length();
-      memmove(storedInNeighbor->fromKey, pid.key.c_str(),
-              storedInNeighbor->keylen);
+      memcpy(storedInNeighbor->fromKey, pid.key.c_str(),
+             storedInNeighbor->keylen);
 
       current += storedInNeighbor->size();
     }

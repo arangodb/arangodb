@@ -122,7 +122,7 @@ class GraphStore final {
 
   auto allocateAuxiliaryStorage(size_t bytes) -> MemRange {
     return _auxiliaryStorage.allocate(bytes);
-  };
+  }
 
  private:
   void loadVertices(ShardID const& vertexShard,
@@ -171,7 +171,7 @@ class GraphStore final {
   // state being spilled to memory mapped files.
   //
   // This buffer is currently here to address this problem; the solution
-  // is not ideal, and will hopefulle be improved in future iterations
+  // is not ideal, and will hopefully be improved in future iterations
   // on the code.
   //
   // note that ExpandingBuffer does locking, because it might be used

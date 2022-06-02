@@ -96,17 +96,6 @@ class VertexContext {
     return _graphStore->allocateAuxiliaryStorage(bytes);
   }
 
-  /*
-void setVertexData(V const& val) {
-  _graphStore->replaceVertexData(_vertexEntry, (void*)(&val), sizeof(V));
-}
-
-/// store data, will potentially move the data around
-void setVertexData(void const* ptr, size_t size) {
-  _graphStore->replaceVertexData(_vertexEntry, (void*)ptr, size);
-}
-*/
-
   void voteHalt() { _vertexEntry->setActive(false); }
   void voteActive() { _vertexEntry->setActive(true); }
   bool isActive() { return _vertexEntry->active(); }

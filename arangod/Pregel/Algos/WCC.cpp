@@ -50,6 +50,12 @@ struct WCCComputation
     // We need to propagate on first step
     TRI_ASSERT(globalSuperstep() != 0 || shouldPropagate);
 
+    // On the first step we cache all incoming neighbors
+    // and effectively convert the graph into an undirected one.
+    if (globalSuperstep() == 1) {
+      collectInNeighbors(messages);
+    }
+
     if (shouldPropagate) {
       propagate();
     }
@@ -62,6 +68,27 @@ struct WCCComputation
   }
 
  private:
+  void collectInNeighbors(
+      MessageIterator<SenderMessage<uint64_t>> const& messages) {
+    auto& myData = *mutableVertexData();
+    auto inNeighbors = std::vector<PregelID>();
+    auto inNeighborsByteSize = std::size_t{0};
+
+    for (const SenderMessage<uint64_t>* msg : messages) {
+      // In the first step, we need to retain all inbound connections
+      // for propagation
+      inNeighbors.emplace_back(msg->senderId);
+      inNeighborsByteSize +=
+          sizeof(WCCValue::InNeighbor) + msg->senderId.key.length();
+    }
+
+    auto range = this->allocateAuxiliaryStorage(inNeighborsByteSize);
+    myData.inNeighbors.init(range);
+
+    for (auto const& inNeighbor : inNeighbors) {
+      myData.inNeighbors.emplace(inNeighbor);
+    }
+  }
   /**
    * @brief Scan the input, compare it pairwise with our current value.
    * We store the minimum into our current value.
@@ -80,18 +107,9 @@ struct WCCComputation
     // Either the sender has a wrong component or we have.
     bool shouldPropagate = globalSuperstep() == 0;
 
-    auto inNeighbors = std::vector<PregelID>();
-    auto inNeighborsByteSize = std::size_t{0};
-
     auto& myData = *mutableVertexData();
+
     for (const SenderMessage<uint64_t>* msg : messages) {
-      if (globalSuperstep() == 1) {
-        // In the first step, we need to retain all inbound connections
-        // for propagation
-        inNeighbors.emplace_back(msg->senderId);
-        inNeighborsByteSize +=
-            sizeof(WCCValue::InNeighbor) + msg->senderId.key.length();
-      }
       if (msg->value != myData.component) {
         // we have a difference. Send updates
         shouldPropagate = true;
@@ -103,15 +121,6 @@ struct WCCComputation
       }
     }
 
-    if (globalSuperstep() == 1) {
-      auto range = this->allocateAuxiliaryStorage(inNeighborsByteSize);
-      myData.inNeighbors.init(range, inNeighbors.size());
-
-      for (auto const& inNeighbor : inNeighbors) {
-        myData.inNeighbors.emplace(inNeighbor);
-      }
-      inNeighbors.clear();
-    }
     return shouldPropagate;
   }
 
@@ -141,7 +150,7 @@ struct WCCComputation
       sendMessage(edge, message);
     }
 
-    for (auto pid : myData.inNeighbors) {
+    for (auto const& pid : myData.inNeighbors) {
       sendMessage(pid, message);
     }
   }
