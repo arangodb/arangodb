@@ -1244,14 +1244,18 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
   result.reserve_table_reader_memory = _reserveTableReaderMemory;
   result.block_align = _blockAlignDataBlocks;
 
-  if (_checksumType == "xxHash") {
+  if (_checksumType == "crc32c") {
+    result.checksum = rocksdb::ChecksumType::kCRC32c;
+  } else if (_checksumType == "xxHash") {
     result.checksum = rocksdb::ChecksumType::kxxHash;
   } else if (_checksumType == "xxHash64") {
     result.checksum = rocksdb::ChecksumType::kxxHash64;
   } else if (_checksumType == "XXH3") {
     result.checksum = rocksdb::ChecksumType::kXXH3;
   } else {
-    result.checksum = rocksdb::ChecksumType::kCRC32c;
+    TRI_ASSERT(false);
+    LOG_TOPIC("8d602", WARN, arangodb::Logger::FIXME)
+        << "unexpected value for '--rocksdb.checksum-type'";
   }
 
   return result;

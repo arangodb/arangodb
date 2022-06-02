@@ -142,7 +142,7 @@ RocksDBOptions::RocksDBOptions()
                                               .useBlockBasedBuilder = true},
           .formatVersion = 3,
           .blockAlignDataBlocks = rocksDBTableOptionsDefaults.block_align,
-          .checksum = "crc32",  // TODO - use enum
+          .checksum = "crc32c",  // TODO - use enum
       },
       _options{
           .numThreadsLow = 1,
@@ -400,7 +400,7 @@ rocksdb::BlockBasedTableOptions RocksDBOptions::doGetTableOptions() const {
   result.checksum = [&checksum = _tableOptions.checksum]() {
     if (checksum == "none") {
       return rocksdb::kNoChecksum;
-    } else if (checksum == "crc32") {
+    } else if (checksum == "crc32c") {
       return rocksdb::kCRC32c;
     } else if (checksum == "xxHash") {
       return rocksdb::kxxHash;
