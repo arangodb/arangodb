@@ -130,6 +130,9 @@ void Runner::writeReport(Report const& report) {
 }
 
 void Runner::startServer() {
+  if (_options.clearDatabaseDirectory) {
+    std::filesystem::remove_all(_options.databaseDirectory);
+  }
   _server =
       std::make_unique<Server>(_options.rocksdb, _options.databaseDirectory);
   _server->start(_executable.data());

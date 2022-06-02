@@ -90,6 +90,7 @@ inline auto inspect(Inspector& f, WorkloadVariants& o) {
 
 struct Options {
   std::string databaseDirectory;
+  bool clearDatabaseDirectory{true};
 
   Setup setup;
 
@@ -105,9 +106,11 @@ auto inspect(Inspector& f, Options& o) {
           .fallback(basics::FileUtils::buildFilename(
               TRI_GetTempPath(),
               "sepp-" + std::to_string(Thread::currentProcessId()))),
-      f.field("setup", o.setup),                           //
+      f.field("clearDatabaseDirectory", o.clearDatabaseDirectory)
+          .fallback(true),
+      f.field("setup", o.setup).fallback(f.keep()),        //
       f.field("workload", o.workload).fallback(f.keep()),  //
-      f.field("rocksdb", o.rocksdb));
+      f.field("rocksdb", o.rocksdb).fallback(f.keep()));
 }
 
 }  // namespace arangodb::sepp
