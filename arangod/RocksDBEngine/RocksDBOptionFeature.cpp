@@ -918,9 +918,6 @@ void RocksDBOptionFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  if (_maxSubcompactions > _numThreadsLow) {
-    _maxSubcompactions = _numThreadsLow;
-  }
   _minWriteBufferNumberToMergeTouched = options->processingResult().touched(
       "--rocksdb.min-write-buffer-number-to-merge");
 
@@ -994,6 +991,18 @@ void RocksDBOptionFeature::start() {
   }
   if (_numThreadsLow == 0) {
     _numThreadsLow = clamped;
+  }
+
+  if (_maxSubcompactions > _numThreadsLow) {
+    if (server().options()->processingResult().touched(
+            "--rocksdb.max-subcompactions")) {
+      LOG_TOPIC("e7c85", WARN, Logger::ENGINES)
+          << "overriding value for option `--rocksdb.max-subcompactions` to "
+          << _numThreadsLow
+          << " because the specified value is greater than the number of "
+             "threads for low priority operations";
+    }
+    _maxSubcompactions = _numThreadsLow;
   }
 
   LOG_TOPIC("f66e4", TRACE, Logger::ROCKSDB)
