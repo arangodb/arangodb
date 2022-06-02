@@ -29,7 +29,8 @@ bool isReplicationTwoDB(Node::Children const& databases,
                         std::string const& dbName) {
   auto it = databases.find(dbName);
   if (it == databases.end()) {
-    // TODO - how should we handle this?
+    // this should actually never happen, but if it does we simply claim that
+    // this is an old replication 1 DB.
     return false;
   }
 
