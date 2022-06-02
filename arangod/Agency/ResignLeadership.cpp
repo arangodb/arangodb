@@ -363,9 +363,9 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
   std::vector<std::string> servers = availableServers(_snapshot);
 
   Node::Children const& databaseProperties =
-      _snapshot.hasAsChildren("/Plan/Databases").value().get();
+      _snapshot.hasAsChildren(planDBPrefix).value().get();
   Node::Children const& databases =
-      _snapshot.hasAsChildren("/Plan/Collections").value().get();
+      _snapshot.hasAsChildren(planColPrefix).value().get();
   size_t sub = 0;
 
   for (auto const& database : databases) {

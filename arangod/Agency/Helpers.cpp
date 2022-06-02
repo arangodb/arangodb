@@ -23,6 +23,9 @@
 
 #include "Agency/Helpers.h"
 
+#include "Basics/StaticStrings.h"
+#include "Replication2/Version.h"
+
 namespace arangodb::consensus {
 
 bool isReplicationTwoDB(Node::Children const& databases,
@@ -34,8 +37,9 @@ bool isReplicationTwoDB(Node::Children const& databases,
     return false;
   }
 
-  if (auto v = it->second->hasAsString("replicationVersion"); v) {
-    return v.value() == "2";
+  if (auto v = it->second->hasAsString(StaticStrings::ReplicationVersion); v) {
+    auto res = replication::parseVersion(v.value());
+    return res.ok() && res.get() == replication::Version::TWO;
   }
   return false;
 }
