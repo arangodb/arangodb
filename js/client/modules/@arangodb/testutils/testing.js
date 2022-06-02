@@ -591,7 +591,7 @@ function unitTest (cases, options) {
   if (options.memprof) {
     process.env['MALLOC_CONF'] = 'prof:true';
   }
-
+  options.extremeVerbosity = true;
   options.noStartStopLogs = !options.extremeVerbosity && options.noStartStopLogs;
 
   if (options.failed ||
