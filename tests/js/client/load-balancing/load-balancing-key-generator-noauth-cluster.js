@@ -112,14 +112,6 @@ function KeyGeneratorSuite() {
       assertTrue(Number(key) === Number(lastKey) + increment || lastKey === null, {key, lastKey});
       lastKey = key;
     }
-    let res = db._query(`FOR doc IN ${name} RETURN doc`).toArray();
-    assertTrue(res.length === 100000);
-    lastKey = null;
-    for (let i = 0; i < res.length; ++i) {
-      let key = res[i]._key;
-      assertTrue(Number(key) === Number(lastKey) + increment || lastKey === null, {key, lastKey});
-      lastKey = key;
-    }
   }
 
   return {
