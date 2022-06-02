@@ -72,6 +72,7 @@ class MockServer {
   void init();
 
   TRI_vocbase_t& getSystemDatabase() const;
+  TRI_vocbase_t const& getConstSystemDatabase() const;
   std::string const testFilesystemPath() const { return _testFilesystemPath; }
 
   // add a feature to the underlying server, keep track of it;

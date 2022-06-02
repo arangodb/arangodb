@@ -363,6 +363,14 @@ TRI_vocbase_t& MockServer::getSystemDatabase() const {
   return *system;
 }
 
+TRI_vocbase_t const& MockServer::getConstSystemDatabase() const {
+  TRI_ASSERT(_server.hasFeature<DatabaseFeature>());
+  auto& database = _server.getFeature<DatabaseFeature>();
+  auto system = database.useDatabase(StaticStrings::SystemDatabase);
+  TRI_ASSERT(system != nullptr);
+  return *system;
+}
+
 MockMetricsServer::MockMetricsServer(bool start) : MockServer() {
   // setup required application features
   SetupGreetingsPhase(*this);
