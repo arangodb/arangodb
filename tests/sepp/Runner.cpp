@@ -23,6 +23,7 @@
 
 #include "Runner.h"
 
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <numeric>
@@ -44,6 +45,18 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/Methods/Collections.h"
+
+namespace {
+std::size_t getFolderSize(std::string_view path) {
+  return std::accumulate(std::filesystem::recursive_directory_iterator(path),
+                         std::filesystem::recursive_directory_iterator(), 0ull,
+                         [](auto size, auto const& path) {
+                           return std::filesystem::is_directory(path)
+                                      ? size
+                                      : size + std::filesystem::file_size(path);
+                         });
+}
+}  // namespace
 
 namespace arangodb::sepp {
 
@@ -84,6 +97,12 @@ auto Runner::runBenchmark() -> Report {
   exec.createThreads(*_server);
   auto report = exec.run();
   report.timestamp = timestamp.count();
+
+  // we need to stop the server before we calculate the size of the DB folder
+  // because otherwise RocksDB might still write/delete some files
+  _server.reset();
+
+  report.databaseSize = getFolderSize(_options.databaseDirectory);
 
   return report;
 }
