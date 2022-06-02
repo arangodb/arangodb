@@ -127,7 +127,7 @@ struct InsertDocuments::Thread : ExecutionThread {
 
   void run() override;
   [[nodiscard]] auto report() const -> ThreadReport override {
-    return {.operations = _operations};
+    return {.data = {}, .operations = _operations};
   }
   auto shouldStop() const noexcept -> bool override;
 

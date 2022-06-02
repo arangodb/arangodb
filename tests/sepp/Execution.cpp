@@ -125,7 +125,10 @@ Report Execution::buildReport(double runtime) {
     threadReports.push_back(thread->report());
   }
 
-  Report report{.threads = std::move(threadReports),
+  Report report{.timestamp = {},
+                .config = {},
+                .configBuilder = {},
+                .threads = std::move(threadReports),
                 .runtime = runtime,
                 .databaseSize = getFolderSize(_options.databaseDirectory)};
   velocypack::serialize(report.configBuilder, _options);
