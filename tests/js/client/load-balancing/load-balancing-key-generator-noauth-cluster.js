@@ -50,13 +50,13 @@ function getCoordinators() {
 
   const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
   return instanceInfo.arangods.filter(isCoordinator)
-                              .map(toEndpoint)
-                              .map(endpointToURL);
+    .map(toEndpoint)
+    .map(endpointToURL);
 }
 
 const servers = getCoordinators();
 
-function KeyGeneratorSuite () {
+function KeyGeneratorSuite() {
   'use strict';
   const cn = 'UnitTestsCollection';
   let coordinators = [];
@@ -75,7 +75,7 @@ function KeyGeneratorSuite () {
         envelope.body = body;
       }
       res = request(envelope);
-    } catch(err) {
+    } catch (err) {
       console.error(`Exception processing ${method} ${endpoint}`, err.stack);
       return {};
     }
@@ -90,18 +90,60 @@ function KeyGeneratorSuite () {
     return res;
   }
 
+  function generateCollectionDocs(name) {
+    // check that the generated keys are sequential when we send the requests
+    // via multiple coordinators.
+    db._create(name, {keyOptions: {type: "autoincrement"}});
+    assertNotEqual("", db[name].properties().distributeShardsLike);
+    let lastKey = null;
+    let url = "/_db/" + cn + "/_api/document/" + name;
+    // send documents to both coordinators
+    let i = 0;
+    let startingKey = null;
+    if (Number(name[name.length - 1]) === 1) {
+      startingKey = "abc123";
+    } else if (Number(name[name.length - 1]) === 2) {
+      startingKey = "150000";
+    }
+    for (i; i < 100000; ++i) {
+      let doc = {};
+      if (startingKey === null || i > 0) {
+        doc = {"x": 0, "c": 1};
+      } else {
+        doc = {"_key": `${startingKey}`, "x": 0, "c": 1};
+      }
+      let result = sendRequest('POST', url, /*payload*/ {"x": 0, "c": 1}, {}, i % 2 === 0);
+      assertEqual(result.status, 202);
+      let key = result.body._key;
+      assertTrue(Number(key) === Number(lastKey) + 1 || lastKey === null, {key, lastKey});
+      lastKey = key;
+    }
+    let res = db._query(`FOR doc IN ${name} FILTER doc.x == 0 RETURN doc`).toArray();
+    assertTrue(res.length === 100000);
+    lastKey = null;
+    for (i = 0; i < res.length; ++i) {
+      let key = res[i].key;
+      assertTrue(Number(key) === Number(lastKey) + 1 || lastKey === null, {key, lastKey});
+      assertTrue(res[i].hasOwnProperty("x"));
+      assertTrue(res[i].x === 0);
+      assertTrue(res[i].hasOwnProperty("c"));
+      assertTrue(res[i].c === 1);
+      lastKey = key;
+    }
+  }
+
   return {
-    setUpAll: function() {
+    setUpAll: function () {
       coordinators = getCoordinators();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }
     },
 
-    testPadded: function() {
+    testPadded: function () {
       // check that the generated keys are sequential when we send the requests
       // via multiple coordinators.
-      db._create(cn, { numberOfShards: 1, keyOptions: { type: "padded" } });
+      db._create(cn, {numberOfShards: 1, keyOptions: {type: "padded"}});
 
       try {
         let lastKey = null;
@@ -111,26 +153,26 @@ function KeyGeneratorSuite () {
           let result = sendRequest('POST', url, /*payload*/ {}, {}, i % 2 === 0);
           assertEqual(result.status, 202);
           let key = result.body._key;
-          assertTrue(key > lastKey || lastKey === null, { key, lastKey });
+          assertTrue(key > lastKey || lastKey === null, {key, lastKey});
           lastKey = key;
         }
       } finally {
         db._drop(cn);
       }
     },
-    
-    testPaddedOnOneShard: function() {
+
+    testPaddedOnOneShard: function () {
       if (!isEnterprise) {
         return;
       }
 
-      db._createDatabase(cn, { sharding: "single" });
+      db._createDatabase(cn, {sharding: "single"});
       try {
         db._useDatabase(cn);
 
         // check that the generated keys are sequential when we send the requests
         // via multiple coordinators.
-        db._create(cn, { keyOptions: { type: "padded" } });
+        db._create(cn, {keyOptions: {type: "padded"}});
         assertNotEqual("", db[cn].properties().distributeShardsLike);
 
         let lastKey = null;
@@ -140,7 +182,7 @@ function KeyGeneratorSuite () {
           let result = sendRequest('POST', url, /*payload*/ {}, {}, i % 2 === 0);
           assertEqual(result.status, 202);
           let key = result.body._key;
-          assertTrue(key > lastKey || lastKey === null, { key, lastKey });
+          assertTrue(key > lastKey || lastKey === null, {key, lastKey});
           lastKey = key;
         }
       } finally {
@@ -148,7 +190,32 @@ function KeyGeneratorSuite () {
         db._dropDatabase(cn);
       }
     },
-    
+
+    testAutoincrementOnMultipleShards: function () {
+      // check that the generated keys are sequential when we send the requests
+      // via multiple coordinators.
+      try {
+        db._create(cn, {numberOfShards: 5, keyOptions: {type: "autoincrement"}});
+      } catch (error) {
+        assertTrue(error.message === "the specified key generator is not supported for collections with more than one shard");
+      } finally {
+        db._drop(cn);
+      }
+    },
+
+    testAutoincrementOnOneShard: function () {
+      db._createDatabase(cn, {sharding: "single"});
+      try {
+        db._useDatabase(cn);
+        for (let i = 1; i < 3; ++i) {
+          generateCollectionDocs(cn + i);
+        }
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(cn);
+      }
+    },
+
   };
 }
 
