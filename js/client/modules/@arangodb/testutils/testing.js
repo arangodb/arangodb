@@ -592,7 +592,7 @@ function unitTest (cases, options) {
   _.defaults(options, optionsDefaults);
 
   options.noStartStopLogs = !options.extremeVerbosity && options.noStartStopLogs;
-
+  options.extremeVerbosity = true;
   if (options.failed ||
       (Array.isArray(options.commandSwitches) && options.commandSwitches.includes("failed"))) {
     options.failed = rp.getFailedTestCases(options);
