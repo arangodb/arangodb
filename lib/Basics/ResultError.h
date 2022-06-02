@@ -38,6 +38,11 @@ class Error final {
       noexcept(std::string::allocator_type()));
 
   Error(ErrorCode errorNumber, std::string_view errorMessage);
+
+  // Include ResultError.tpp when you want to call this function.
+  template<typename... Args>
+  static auto fmt(ErrorCode, Args&&...) -> Error;
+
   [[nodiscard]] auto errorNumber() const noexcept -> ErrorCode;
   [[nodiscard]] auto errorMessage() const& noexcept -> std::string_view;
   [[nodiscard]] auto errorMessage() && noexcept -> std::string;

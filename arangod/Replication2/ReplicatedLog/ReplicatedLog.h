@@ -28,6 +28,7 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetrics.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
 #include <iosfwd>
 #include <memory>
@@ -87,9 +88,9 @@ struct alignas(64) ReplicatedLog {
   auto getId() const noexcept -> LogId;
   auto getGlobalLogId() const noexcept -> GlobalLogIdentifier const&;
   auto becomeLeader(
-      LogConfig config, ParticipantId id, LogTerm term,
+      agency::LogPlanConfig config, ParticipantId id, LogTerm term,
       std::vector<std::shared_ptr<AbstractFollower>> const& follower,
-      std::shared_ptr<ParticipantsConfig const> participantsConfig,
+      std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
       std::shared_ptr<cluster::IFailureOracle const> failureOracle)
       -> std::shared_ptr<LogLeader>;
   auto becomeFollower(ParticipantId id, LogTerm term,

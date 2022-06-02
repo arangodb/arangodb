@@ -58,14 +58,16 @@ class WorkerConfig;
 template<typename V, typename E>
 struct GraphFormat;
 
+class PregelFeature;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief carry graph data for a worker job. NOT THREAD SAFE ON DOCUMENT LOADS
 ////////////////////////////////////////////////////////////////////////////////
 template<typename V, typename E>
 class GraphStore final {
  public:
-  GraphStore(TRI_vocbase_t& vocbase, uint64_t executionNumber,
-             GraphFormat<V, E>* graphFormat);
+  GraphStore(PregelFeature& feature, TRI_vocbase_t& vocbase,
+             uint64_t executionNumber, GraphFormat<V, E>* graphFormat);
 
   uint64_t numberVertexSegments() const { return _vertices.size(); }
   uint64_t localVertexCount() const { return _localVertexCount; }
@@ -113,6 +115,7 @@ class GraphStore final {
   }
 
  private:
+  PregelFeature& _feature;
   DatabaseGuard _vocbaseGuard;
   uint64_t const _executionNumber;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;

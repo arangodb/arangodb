@@ -100,6 +100,12 @@ ArangoPrototypeState.prototype.waitForApplied = function (waitForIndex) {
   return requestResult.result;
 };
 
+ArangoPrototypeState.prototype.drop = function () {
+  let requestResult = this._database._connection.DELETE(this._baseurl());
+  arangosh.checkRequestResult(requestResult);
+  return requestResult.result;
+};
+
 ArangoPrototypeState.prototype.toString = function () {
   return `[object ArangoPrototypeState ${this._database._name()}/${this.id()}]`;
 };

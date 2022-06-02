@@ -113,7 +113,7 @@ auto methods::updateParticipantsConfigTrx(
   return envelope.write()
       .emplace_object(logPath->participantsConfig()->str(),
                       [&](VPackBuilder& builder) {
-                        participantsConfig.toVelocyPack(builder);
+                        velocypack::serialize(builder, participantsConfig);
                       })
       .inc(paths::plan()->version()->str())
       .precs()
@@ -164,6 +164,42 @@ auto methods::deleteReplicatedLog(DatabaseID const& database, LogId id)
     VPackBuilder builder(trx);
     deleteReplicatedLogTrx(arangodb::agency::envelope::into_builder(builder),
                            database, id)
+        .done();
+  }
+
+  return sendAgencyWriteTransaction(std::move(trx));
+}
+
+auto methods::deleteReplicatedStateTrx(arangodb::agency::envelope envelope,
+                                       DatabaseID const& database, LogId id)
+    -> arangodb::agency::envelope {
+  auto planPath =
+      paths::plan()->replicatedStates()->database(database)->state(id)->str();
+  auto targetPath =
+      paths::target()->replicatedStates()->database(database)->state(id)->str();
+  auto currentPath = paths::current()
+                         ->replicatedStates()
+                         ->database(database)
+                         ->state(id)
+                         ->str();
+
+  return envelope.write()
+      .remove(planPath)
+      .inc(paths::plan()->version()->str())
+      .remove(targetPath)
+      .inc(paths::target()->version()->str())
+      .remove(currentPath)
+      .inc(paths::current()->version()->str())
+      .end();
+}
+
+auto methods::deleteReplicatedState(DatabaseID const& database, LogId id)
+    -> futures::Future<ResultT<uint64_t>> {
+  VPackBufferUInt8 trx;
+  {
+    VPackBuilder builder(trx);
+    deleteReplicatedStateTrx(arangodb::agency::envelope::into_builder(builder),
+                             database, id)
         .done();
   }
 
@@ -284,12 +320,13 @@ auto methods::createReplicatedState(
 }
 
 auto methods::replaceReplicatedStateParticipant(
-    TRI_vocbase_t& vocbase, LogId id, ParticipantId const& participantToRemove,
+    std::string const& databaseName, LogId id,
+    ParticipantId const& participantToRemove,
     ParticipantId const& participantToAdd,
     std::optional<ParticipantId> const& currentLeader)
     -> futures::Future<Result> {
   auto path =
-      paths::target()->replicatedStates()->database(vocbase.name())->state(id);
+      paths::target()->replicatedStates()->database(databaseName)->state(id);
 
   bool replaceLeader = currentLeader == participantToRemove;
   // note that replaceLeader => currentLeader.has_value()
@@ -340,10 +377,10 @@ auto methods::replaceReplicatedStateParticipant(
 }
 
 auto methods::replaceReplicatedSetLeader(
-    TRI_vocbase_t& vocbase, LogId id,
+    std::string const& databaseName, LogId id,
     std::optional<ParticipantId> const& leaderId) -> futures::Future<Result> {
   auto path =
-      paths::target()->replicatedStates()->database(vocbase.name())->state(id);
+      paths::target()->replicatedStates()->database(databaseName)->state(id);
 
   VPackBufferUInt8 trx;
   {

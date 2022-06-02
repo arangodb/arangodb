@@ -29,127 +29,9 @@
 #include <iostream>
 #endif
 
-#include "Actions/ActionFeature.h"
-#include "Agency/AgencyFeature.h"
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/GreetingsFeature.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ApplicationFeatures/LanguageFeature.h"
-#include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/ShutdownFeature.h"
-#include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/V8PlatformFeature.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
-#include "Aql/AqlFunctionFeature.h"
-#include "Aql/OptimizerRulesFeature.h"
-#include "Basics/ArangoGlobalContext.h"
-#include "Basics/Common.h"
-#include "Basics/CrashHandler.h"
-#include "Basics/FileUtils.h"
-#include "Basics/directories.h"
-#include "Basics/operating-system.h"
-#include "Basics/tri-strings.h"
-#include "Cache/CacheManagerFeature.h"
-#include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterUpgradeFeature.h"
-#include "Cluster/MaintenanceFeature.h"
-#include "Cluster/FailureOracleFeature.h"
-#include "Cluster/ReplicationTimeoutFeature.h"
-#include "Cluster/ServerState.h"
-#include "ClusterEngine/ClusterEngine.h"
-#include "FeaturePhases/AgencyFeaturePhase.h"
-#include "FeaturePhases/AqlFeaturePhase.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
-#include "FeaturePhases/ClusterFeaturePhase.h"
-#include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "FeaturePhases/FinalFeaturePhase.h"
-#include "FeaturePhases/FoxxFeaturePhase.h"
-#include "FeaturePhases/ServerFeaturePhase.h"
-#include "FeaturePhases/V8FeaturePhase.h"
-#include "GeneralServer/AuthenticationFeature.h"
-#include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/ServerSecurityFeature.h"
-#include "GeneralServer/SslServerFeature.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
-#include "IResearch/IResearchFeature.h"
-#include "Logger/LoggerFeature.h"
-#include "Metrics/ClusterMetricsFeature.h"
-#include "Metrics/MetricsFeature.h"
-#include "Network/NetworkFeature.h"
-#include "Pregel/PregelFeature.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "Random/RandomFeature.h"
-#include "Replication/ReplicationFeature.h"
-#include "Replication/ReplicationMetricsFeature.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
-#include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
-#include "Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.h"
-#include "Replication2/StateMachines/Prototype/PrototypeStateMachineFeature.h"
-#include "RestServer/AqlFeature.h"
-#include "RestServer/BootstrapFeature.h"
-#include "RestServer/CheckVersionFeature.h"
-#include "RestServer/ConsoleFeature.h"
-#include "RestServer/CpuUsageFeature.h"
-#include "RestServer/DaemonFeature.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabasePathFeature.h"
-#include "RestServer/EndpointFeature.h"
-#include "RestServer/EnvironmentFeature.h"
-#include "RestServer/FileDescriptorsFeature.h"
-#include "RestServer/FlushFeature.h"
-#include "RestServer/FortuneFeature.h"
-#include "RestServer/FrontendFeature.h"
-#include "RestServer/InitDatabaseFeature.h"
-#include "RestServer/LanguageCheckFeature.h"
-#include "RestServer/LockfileFeature.h"
-#include "RestServer/LogBufferFeature.h"
-#include "RestServer/MaxMapCountFeature.h"
-#include "RestServer/NonceFeature.h"
-#include "RestServer/PrivilegeFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/RestartAction.h"
-#include "RestServer/ScriptFeature.h"
-#include "RestServer/ServerFeature.h"
-#include "RestServer/ServerIdFeature.h"
-#include "RestServer/SharedPRNGFeature.h"
-#include "RestServer/SoftShutdownFeature.h"
-#include "RestServer/SupervisorFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TimeZoneFeature.h"
-#include "RestServer/TtlFeature.h"
-#include "RestServer/UpgradeFeature.h"
-#include "RestServer/ViewTypesFeature.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBOptionFeature.h"
-#include "RocksDBEngine/RocksDBRecoveryManager.h"
-#include "Scheduler/SchedulerFeature.h"
-#include "Sharding/ShardingFeature.h"
-#include "Ssl/SslFeature.h"
-#include "Statistics/StatisticsFeature.h"
-#include "Statistics/StatisticsWorker.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngineFeature.h"
-#include "Transaction/ManagerFeature.h"
-#include "V8Server/FoxxFeature.h"
-#include "V8Server/V8DealerFeature.h"
-
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#include "RestServer/WindowsServiceFeature.h"
-#endif
-
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Audit/AuditFeature.h"
-#include "Enterprise/Encryption/EncryptionFeature.h"
-#include "Enterprise/Ldap/LdapFeature.h"
-#include "Enterprise/License/LicenseFeature.h"
-#include "Enterprise/RClone/RCloneFeature.h"
-#include "Enterprise/Ssl/SslServerFeatureEE.h"
-#include "Enterprise/StorageEngine/HotBackupFeature.h"
-#endif
+// The list of includes for the features is defined in the following file -
+// please add new includes there!
+#include "RestServer/arangod_includes.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -194,55 +76,60 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
          },
          {}});
 
-    server.addFeatures(
-        Visitor{[]<typename T>(auto& server, TypeTag<T>) {
-                  return std::make_unique<T>(server);
-                },
-                [](auto& server, TypeTag<GreetingsFeaturePhase>) {
-                  return std::make_unique<GreetingsFeaturePhase>(
-                      server, std::false_type{});
-                },
-                [&ret](auto& server, TypeTag<CheckVersionFeature>) {
-                  return std::make_unique<CheckVersionFeature>(
-                      server, &ret, kNonServerFeatures);
-                },
-                [&name](auto& server, TypeTag<ConfigFeature>) {
-                  return std::make_unique<ConfigFeature>(server, name);
-                },
-                [](auto& server, TypeTag<InitDatabaseFeature>) {
-                  return std::make_unique<InitDatabaseFeature>(
-                      server, kNonServerFeatures);
-                },
-                [](auto& server, TypeTag<LoggerFeature>) {
-                  return std::make_unique<LoggerFeature>(server, true);
-                },
-                [&ret](auto& server, TypeTag<ScriptFeature>) {
-                  return std::make_unique<ScriptFeature>(server, &ret);
-                },
-                [&ret](auto& server, TypeTag<ServerFeature>) {
-                  return std::make_unique<ServerFeature>(server, &ret);
-                },
-                [](auto& server, TypeTag<ShutdownFeature>) {
-                  return std::make_unique<ShutdownFeature>(
-                      server, std::array{ArangodServer::id<ScriptFeature>()});
-                },
-                [&name](auto& server, TypeTag<TempFeature>) {
-                  return std::make_unique<TempFeature>(server, name);
-                },
-                [](auto& server, TypeTag<SslServerFeature>) {
+    server.addFeatures(Visitor{
+        []<typename T>(auto& server, TypeTag<T>) {
+          return std::make_unique<T>(server);
+        },
+        [](auto& server, TypeTag<GreetingsFeaturePhase>) {
+          return std::make_unique<GreetingsFeaturePhase>(server,
+                                                         std::false_type{});
+        },
+        [&ret](auto& server, TypeTag<CheckVersionFeature>) {
+          return std::make_unique<CheckVersionFeature>(server, &ret,
+                                                       kNonServerFeatures);
+        },
+        [&name](auto& server, TypeTag<ConfigFeature>) {
+          return std::make_unique<ConfigFeature>(server, name);
+        },
+        [](auto& server, TypeTag<InitDatabaseFeature>) {
+          return std::make_unique<InitDatabaseFeature>(server,
+                                                       kNonServerFeatures);
+        },
+        [](auto& server, TypeTag<LoggerFeature>) {
+          return std::make_unique<LoggerFeature>(server, true);
+        },
+        [](auto& server, TypeTag<RocksDBEngine>) {
+          return std::make_unique<RocksDBEngine>(
+              server,
+              server.template getFeature<arangodb::RocksDBOptionFeature>());
+        },
+        [&ret](auto& server, TypeTag<ScriptFeature>) {
+          return std::make_unique<ScriptFeature>(server, &ret);
+        },
+        [&ret](auto& server, TypeTag<ServerFeature>) {
+          return std::make_unique<ServerFeature>(server, &ret);
+        },
+        [](auto& server, TypeTag<ShutdownFeature>) {
+          return std::make_unique<ShutdownFeature>(
+              server, std::array{ArangodServer::id<ScriptFeature>()});
+        },
+        [&name](auto& server, TypeTag<TempFeature>) {
+          return std::make_unique<TempFeature>(server, name);
+        },
+        [](auto& server, TypeTag<SslServerFeature>) {
 #ifdef USE_ENTERPRISE
-                  return std::make_unique<SslServerFeatureEE>(server);
+          return std::make_unique<SslServerFeatureEE>(server);
 #else
-                  return std::make_unique<SslServerFeature>(server);
+          return std::make_unique<SslServerFeature>(server);
 #endif
-                },
-                [&ret](auto& server, TypeTag<UpgradeFeature>) {
-                  return std::make_unique<UpgradeFeature>(server, &ret,
-                                                          kNonServerFeatures);
-                },
-                [](auto& server, TypeTag<HttpEndpointProvider>) {
-                  return std::make_unique<EndpointFeature>(server);
-                }});
+        },
+        [&ret](auto& server, TypeTag<UpgradeFeature>) {
+          return std::make_unique<UpgradeFeature>(server, &ret,
+                                                  kNonServerFeatures);
+        },
+        [](auto& server, TypeTag<HttpEndpointProvider>) {
+          return std::make_unique<EndpointFeature>(server);
+        }});
 
     try {
       server.run(argc, argv);

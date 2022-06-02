@@ -64,7 +64,8 @@ auto StatusCodeStringTransformer::fromSerialized(std::string const& source,
   return {};
 }
 
-auto agency::to_string(StatusCode code) noexcept -> std::string_view {
+auto replicated_state::agency::to_string(StatusCode code) noexcept
+    -> std::string_view {
   switch (code) {
     case Current::Supervision::kLogNotCreated:
       return "LogNotCreated";

@@ -69,6 +69,10 @@ class Result final {
    */
   Result(Result&& other) noexcept = default;
 
+  // Include Result.tpp when you want to call this function.
+  template<typename... Args>
+  static auto fmt(ErrorCode, Args&&...) -> Result;
+
   /**
    * @brief Assignment operator
    * @param  other  To assign from

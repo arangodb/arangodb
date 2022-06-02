@@ -40,9 +40,46 @@ namespace arangodb::replication2::agency {
 using ParticipantsFlagsMap =
     std::unordered_map<ParticipantId, ParticipantFlags>;
 
+struct LogPlanConfig {
+  std::size_t effectiveWriteConcern = 1;
+  bool waitForSync = false;
+
+  LogPlanConfig() noexcept = default;
+  LogPlanConfig(std::size_t effectiveWriteConcern, bool waitForSync) noexcept;
+  LogPlanConfig(std::size_t writeConcern, std::size_t softWriteConcern,
+                bool waitForSync) noexcept;
+
+  friend auto operator==(LogPlanConfig const& left,
+                         LogPlanConfig const& right) noexcept -> bool = default;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, LogPlanConfig& x) {
+  return f.object(x).fields(
+      f.field("effectiveWriteConcern", x.effectiveWriteConcern),
+      f.field("waitForSync", x.waitForSync));
+}
+
+struct ParticipantsConfig {
+  std::size_t generation = 0;
+  ParticipantsFlagsMap participants;
+  LogPlanConfig config;
+
+  // to be defaulted soon
+  friend auto operator==(ParticipantsConfig const& left,
+                         ParticipantsConfig const& right) noexcept
+      -> bool = default;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ParticipantsConfig& x) {
+  return f.object(x).fields(f.field("generation", x.generation),
+                            f.field("config", x.config),
+                            f.field("participants", x.participants));
+}
+
 struct LogPlanTermSpecification {
   LogTerm term;
-  LogConfig config;
   struct Leader {
     ParticipantId serverId;
     RebootId rebootId;
@@ -57,8 +94,7 @@ struct LogPlanTermSpecification {
 
   LogPlanTermSpecification() = default;
 
-  LogPlanTermSpecification(LogTerm term, LogConfig config,
-                           std::optional<Leader>);
+  LogPlanTermSpecification(LogTerm term, std::optional<Leader>);
 
   friend auto operator==(LogPlanTermSpecification const&,
                          LogPlanTermSpecification const&) noexcept
@@ -269,10 +305,32 @@ struct LogCurrent {
       -> bool = default;
 };
 
+struct LogTargetConfig {
+  std::size_t writeConcern = 1;
+  std::size_t softWriteConcern = 1;
+  bool waitForSync = false;
+
+  LogTargetConfig() noexcept = default;
+  LogTargetConfig(std::size_t writeConcern, std::size_t softWriteConcern,
+                  bool waitForSync) noexcept;
+
+  friend auto operator==(LogTargetConfig const& left,
+                         LogTargetConfig const& right) noexcept
+      -> bool = default;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, LogTargetConfig& x) {
+  return f.object(x).fields(f.field("writeConcern", x.writeConcern),
+                            f.field("softWriteConcern", x.softWriteConcern)
+                                .fallback(std::ref(x.writeConcern)),
+                            f.field("waitForSync", x.waitForSync));
+}
+
 struct LogTarget {
   LogId id;
   ParticipantsFlagsMap participants;
-  LogConfig config;
+  LogTargetConfig config;
 
   std::optional<ParticipantId> leader;
   std::optional<uint64_t> version;
@@ -284,11 +342,12 @@ struct LogTarget {
   };
 
   std::optional<Supervision> supervision;
+  std::optional<std::string> owner;
 
   LogTarget() = default;
 
   LogTarget(LogId id, ParticipantsFlagsMap const& participants,
-            LogConfig const& config);
+            LogTargetConfig const& config);
 
   friend auto operator==(LogTarget const&, LogTarget const&) noexcept
       -> bool = default;

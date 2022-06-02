@@ -35,6 +35,7 @@ class ServerIdFeature final : public ArangodFeature {
   static constexpr std::string_view name() noexcept { return "ServerId"; }
 
   explicit ServerIdFeature(Server& server);
+  ~ServerIdFeature();
 
   void start() override final;
 
