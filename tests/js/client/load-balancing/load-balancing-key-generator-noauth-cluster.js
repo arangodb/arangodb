@@ -123,14 +123,14 @@ function KeyGeneratorSuite() {
   }
 
   return {
-    setUpAll: function () {
+    setUpAll: function() {
       coordinators = getCoordinators();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }
     },
 
-    testPadded: function () {
+    testPadded: function() {
       // check that the generated keys are sequential when we send the requests
       // via multiple coordinators.
       db._create(cn, {numberOfShards: 1, keyOptions: {type: "padded"}});
@@ -151,7 +151,7 @@ function KeyGeneratorSuite() {
       }
     },
 
-    testPaddedOnOneShard: function () {
+    testPaddedOnOneShard: function() {
       if (!isEnterprise) {
         return;
       }
@@ -181,7 +181,7 @@ function KeyGeneratorSuite() {
       }
     },
 
-    testAutoincrementOnMultipleShards: function () {
+    testAutoincrementOnMultipleShards: function() {
       try {
         db._create(cn, {numberOfShards: 5, keyOptions: {type: "autoincrement"}});
       } catch (error) {
@@ -189,7 +189,7 @@ function KeyGeneratorSuite() {
       }
     },
 
-    testAutoincrementOnOneShard: function () {
+    testAutoincrementOnOneShard: function() {
       if (!isEnterprise || !isCluster) {
         return;
       }
