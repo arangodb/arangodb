@@ -1,6 +1,8 @@
 devel
 -----
 
+* Update RocksDB internal table checksum type to xxHash64.
+
 * Updated arangosync to v2.10.0.
 
 * Added several startup option to configure parallelism for individual Pregel 
