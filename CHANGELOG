@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add support for LZ4 and LZ4HC compression in RocksDB.
+
 * Updated arangosync to v2.10.0.
 
 * Added several startup option to configure parallelism for individual Pregel 

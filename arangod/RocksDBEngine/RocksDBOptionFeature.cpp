@@ -56,6 +56,9 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 namespace {
+std::unordered_set<std::string> const compressionTypes = {
+    {"snappy"}, {"lz4"}, {"lz4hc"}, {"none"}};
+
 rocksdb::TransactionDBOptions rocksDBTrxDefaults;
 rocksdb::Options rocksDBDefaults;
 rocksdb::BlockBasedTableOptions rocksDBTableOptionsDefaults;
@@ -135,6 +138,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _transactionLockStripes(
           std::max(NumberOfCores::getValue(), std::size_t(16))),
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
+      _compressionType("snappy"),
       _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
       _maxWriteBufferNumber(8 + 2),  // number of column families plus 2
@@ -239,6 +243,13 @@ void RocksDBOptionFeature::collectOptions(
           new UInt64Parameter(&_targetFileSizeMultiplier, /*base*/ 1,
                               /*minValue*/ 1))
       .setIntroducedIn(30701);
+
+  options
+      ->addOption("--rocksdb.compression-type",
+                  "compression algorithm to use within RocksDB",
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_compressionType, ::compressionTypes))
+      .setIntroducedIn(31000);
 
   options
       ->addOption("--rocksdb.transaction-lock-stripes",
@@ -699,6 +710,7 @@ void RocksDBOptionFeature::start() {
   LOG_TOPIC("f66e4", TRACE, Logger::ROCKSDB)
       << "using RocksDB options:"
       << " wal_dir: '" << _walDirectory << "'"
+      << ", compression type: " << _compressionType
       << ", write_buffer_size: " << _writeBufferSize
       << ", total_write_buffer_size: " << _totalWriteBufferSize
       << ", max_write_buffer_number: " << _maxWriteBufferNumber
@@ -807,13 +819,28 @@ rocksdb::Options RocksDBOptionFeature::doGetOptions() const {
   result.max_subcompactions = _maxSubcompactions;
   result.use_fsync = _useFSync;
 
+  rocksdb::CompressionType compressionType = rocksdb::kNoCompression;
+  if (_compressionType == "none") {
+    compressionType = rocksdb::kNoCompression;
+  } else if (_compressionType == "snappy") {
+    compressionType = rocksdb::kSnappyCompression;
+  } else if (_compressionType == "lz4") {
+    compressionType = rocksdb::kLZ4Compression;
+  } else if (_compressionType == "lz4hc") {
+    compressionType = rocksdb::kLZ4HCCompression;
+  } else {
+    TRI_ASSERT(false);
+    LOG_TOPIC("74b7f", FATAL, arangodb::Logger::STARTUP)
+        << "unexpected compression type '" << _compressionType << "'";
+    FATAL_ERROR_EXIT();
+  }
+
   // only compress levels >= 2
   result.compression_per_level.resize(result.num_levels);
   for (int level = 0; level < result.num_levels; ++level) {
     result.compression_per_level[level] =
-        (((uint64_t)level >= _numUncompressedLevels)
-             ? rocksdb::kSnappyCompression
-             : rocksdb::kNoCompression);
+        (((uint64_t)level >= _numUncompressedLevels) ? compressionType
+                                                     : rocksdb::kNoCompression);
   }
 
   // Number of files to trigger level-0 compaction. A value <0 means that
