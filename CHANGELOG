@@ -1,5 +1,7 @@
 devel
 -----
+* Pregel Weakly Connected Components (WCC) now allocates incoming neighbors
+  in TypedBuffers as a measure to be able to spill into memory mapped files.
 
 * Updated arangosync to v2.10.0.
 
