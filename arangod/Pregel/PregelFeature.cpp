@@ -37,6 +37,8 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -96,7 +98,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
     TRI_vocbase_t& vocbase, std::string algorithm,
     std::vector<std::string> const& vertexCollections,
     std::vector<std::string> const& edgeCollections,
-    std::unordered_map<std::string, std::vector<std::string>> const&
+    containers::FlatHashMap<std::string, std::vector<std::string>> const&
         edgeCollectionRestrictions,
     VPackSlice const& params) {
   if (isStopping() || _softShutdownOngoing.load(std::memory_order_relaxed)) {

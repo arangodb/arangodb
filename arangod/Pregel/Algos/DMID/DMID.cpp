@@ -178,7 +178,7 @@ struct DMIDComputation
   void superstep1(MessageIterator<DMIDMessage> const& messages) {
     float weightedInDegree = 0.0;
     /** vertices that need a reply containing this vertexs weighted indegree */
-    std::unordered_set<PregelID> predecessors;
+    containers::FlatHashSet<PregelID> predecessors;
 
     for (DMIDMessage const* message : messages) {
       /**
@@ -373,7 +373,7 @@ struct DMIDComputation
     float maxInfValue = 0;
 
     /** Set of possible local leader for this vertex. Contains VertexID's */
-    std::set<PregelID> leaderSet;
+    containers::FlatHashSet<PregelID> leaderSet;
 
     /** Find possible local leader */
     for (DMIDMessage const* message : messages) {

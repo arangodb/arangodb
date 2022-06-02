@@ -74,7 +74,7 @@ void RecoveryManager::monitorCollections(
     }
 
     for (ShardID const& shard : *(shards.get())) {
-      std::set<Conductor*>& conductors = _listeners[shard];
+      containers::FlatHashSet<Conductor*>& conductors = _listeners[shard];
       if (conductors.find(listener) != conductors.end()) {
         continue;
       }

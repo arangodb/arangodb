@@ -44,7 +44,7 @@ struct SLPAValue {
   uint64_t numCommunities = 0;
   /// Memory used to hold the labelId and the count
   // used for memorizing communities
-  std::map<uint64_t, uint64_t> memory;
+  containers::FlatHashMap<uint64_t, uint64_t> memory;
 };
 
 // Label propagation
@@ -67,8 +67,8 @@ struct HITSValue {
 struct DMIDValue {
   constexpr static float INVALID_DEGREE = -1;
   float weightedInDegree = INVALID_DEGREE;
-  std::map<PregelID, float> membershipDegree;
-  std::map<PregelID, float> disCol;
+  containers::FlatHashMap<PregelID, float> membershipDegree;
+  containers::FlatHashMap<PregelID, float> disCol;
 };
 
 struct DMIDMessage {
@@ -114,7 +114,7 @@ struct SCCValue {
 
 struct WCCValue {
   uint64_t component;
-  std::unordered_set<PregelID> inboundNeighbors;
+  containers::FlatHashSet<PregelID> inboundNeighbors;
 };
 
 template<typename T>

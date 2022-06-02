@@ -143,8 +143,8 @@ struct StatsManager {
   size_t clientCount() const { return _serverStats.size(); }
 
  private:
-  std::map<std::string, uint64_t> _activeStats;
-  std::map<std::string, MessageStats> _serverStats;
+  containers::FlatHashMap<std::string, uint64_t> _activeStats;
+  containers::FlatHashMap<std::string, MessageStats> _serverStats;
 };
 }  // namespace pregel
 }  // namespace arangodb

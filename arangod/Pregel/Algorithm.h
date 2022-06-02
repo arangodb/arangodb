@@ -110,8 +110,8 @@ struct Algorithm : IAlgorithm {
   virtual vertex_compensation* createCompensation(WorkerConfig const*) const {
     return nullptr;
   }
-  virtual std::set<std::string> initialActiveSet() {
-    return std::set<std::string>();
+  virtual containers::FlatHashSet<std::string> initialActiveSet() {
+    return containers::FlatHashSet<std::string>();
   }
 
   virtual uint32_t messageBatchSize(WorkerConfig const& config,

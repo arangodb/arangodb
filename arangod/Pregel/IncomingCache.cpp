@@ -108,7 +108,8 @@ ArrayInCache<M>::ArrayInCache(WorkerConfig const* config,
                               MessageFormat<M> const* format)
     : InCache<M>(format) {
   if (config != nullptr) {
-    std::set<PregelShard> const& shardIDs = config->localPregelShardIDs();
+    containers::FlatHashSet<PregelShard> const& shardIDs =
+        config->localPregelShardIDs();
     // one mutex per shard, we will see how this scales
     for (PregelShard shardID : shardIDs) {
       this->_bucketLocker[shardID];
@@ -131,7 +132,8 @@ void ArrayInCache<M>::mergeCache(WorkerConfig const& config,
   this->_containedMessageCount += other->_containedMessageCount;
 
   // ranomize access to buckets, don't wait for the lock
-  std::set<PregelShard> const& shardIDs = config.localPregelShardIDs();
+  containers::FlatHashSet<PregelShard> const& shardIDs =
+      config.localPregelShardIDs();
   std::vector<PregelShard> randomized(shardIDs.begin(), shardIDs.end());
 
   std::random_device rd;
@@ -226,7 +228,8 @@ CombiningInCache<M>::CombiningInCache(WorkerConfig const* config,
                                       MessageCombiner<M> const* combiner)
     : InCache<M>(format), _combiner(combiner) {
   if (config != nullptr) {
-    std::set<PregelShard> const& shardIDs = config->localPregelShardIDs();
+    containers::FlatHashSet<PregelShard> const& shardIDs =
+        config->localPregelShardIDs();
     // one mutex per shard, we will see how this scales
     for (PregelShard shardID : shardIDs) {
       this->_bucketLocker[shardID];
@@ -255,7 +258,8 @@ void CombiningInCache<M>::mergeCache(WorkerConfig const& config,
   this->_containedMessageCount += other->_containedMessageCount;
 
   // ranomize access to buckets, don't wait for the lock
-  std::set<PregelShard> const& shardIDs = config.localPregelShardIDs();
+  containers::FlatHashSet<PregelShard> const& shardIDs =
+      config.localPregelShardIDs();
   std::vector<PregelShard> randomized(shardIDs.begin(), shardIDs.end());
   std::random_device rd;
   std::mt19937 g(rd());

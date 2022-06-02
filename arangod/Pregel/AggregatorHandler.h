@@ -26,8 +26,9 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <functional>
-#include <map>
+
 #include "Basics/ReadWriteLock.h"
+#include "Containers/FlatHashMap.h"
 #include "Pregel/Aggregator.h"
 
 namespace arangodb {
@@ -38,7 +39,7 @@ struct IAlgorithm;
 /// Thread safe wrapper around handles
 class AggregatorHandler {
   const IAlgorithm* _algorithm;
-  std::map<std::string, IAggregator*> _values;
+  containers::FlatHashMap<std::string, IAggregator*> _values;
   mutable basics::ReadWriteLock _lock;
 
  public:

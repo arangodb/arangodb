@@ -1759,7 +1759,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8ToVPack(isolate, paramBuilder, args[3], false);
   }
 
-  std::unordered_map<std::string, std::vector<std::string>>
+  containers::FlatHashMap<std::string, std::vector<std::string>>
       paramEdgeCollectionRestrictions;
   if (paramBuilder.slice().isObject()) {
     VPackSlice s = paramBuilder.slice().get("edgeCollectionRestrictions");

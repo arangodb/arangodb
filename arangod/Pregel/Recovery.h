@@ -42,9 +42,11 @@ class RecoveryManager {
   AgencyComm _agency;
   // AgencyCallbackRegistry* _agencyCallbackRegistry;  // weak
 
-  std::map<ShardID, std::set<Conductor*>> _listeners;
-  std::map<ShardID, ServerID> _primaryServers;
-  std::map<ShardID, std::shared_ptr<AgencyCallback>> _agencyCallbacks;
+  containers::FlatHashMap<ShardID, containers::FlatHashSet<Conductor*>>
+      _listeners;
+  containers::FlatHashMap<ShardID, ServerID> _primaryServers;
+  containers::FlatHashMap<ShardID, std::shared_ptr<AgencyCallback>>
+      _agencyCallbacks;
 
   // void _monitorShard(DatabaseID const& database,
   //                   CollectionID const& cid,
@@ -71,7 +73,7 @@ template
 class CheckpointingManager {
   friend class RestPregelHandler;
 
-  std::map<ShardID, ServerID> _secondaries;
+  containers::FlatHashMap<ShardID, ServerID> _secondaries;
   ServerID const* secondaryForShard(ShardID const& shard) { return nullptr; }
 
   // receivedBackupData(VPackSlice slice);

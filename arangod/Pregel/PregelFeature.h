@@ -39,6 +39,8 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 
 struct TRI_vocbase_t;
 
@@ -59,7 +61,7 @@ class PregelFeature final : public ArangodFeature {
       TRI_vocbase_t& vocbase, std::string algorithm,
       std::vector<std::string> const& vertexCollections,
       std::vector<std::string> const& edgeCollections,
-      std::unordered_map<std::string, std::vector<std::string>> const&
+      containers::FlatHashMap<std::string, std::vector<std::string>> const&
           edgeCollectionRestrictions,
       VPackSlice const& params);
 
@@ -153,8 +155,9 @@ class PregelFeature final : public ArangodFeature {
     std::shared_ptr<Conductor> conductor;
   };
 
-  std::unordered_map<uint64_t, ConductorEntry> _conductors;
-  std::unordered_map<uint64_t, std::pair<std::string, std::shared_ptr<IWorker>>>
+  containers::FlatHashMap<uint64_t, ConductorEntry> _conductors;
+  containers::FlatHashMap<uint64_t,
+                          std::pair<std::string, std::shared_ptr<IWorker>>>
       _workers;
 
   std::atomic<bool> _softShutdownOngoing;

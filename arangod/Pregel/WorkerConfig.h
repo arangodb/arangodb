@@ -71,18 +71,18 @@ class WorkerConfig {
   inline std::string const& database() const { return _vocbase->name(); }
 
   // collection shards on this worker
-  inline std::map<CollectionID, std::vector<ShardID>> const&
+  inline containers::FlatHashMap<CollectionID, std::vector<ShardID>> const&
   vertexCollectionShards() const {
     return _vertexCollectionShards;
   }
 
   // collection shards on this worker
-  inline std::map<CollectionID, std::vector<ShardID>> const&
+  inline containers::FlatHashMap<CollectionID, std::vector<ShardID>> const&
   edgeCollectionShards() const {
     return _edgeCollectionShards;
   }
 
-  inline std::unordered_map<CollectionID, std::string> const&
+  inline containers::FlatHashMap<CollectionID, std::string> const&
   collectionPlanIdMap() const {
     return _collectionPlanIdMap;
   }
@@ -113,7 +113,8 @@ class WorkerConfig {
   }
 
   /// Actual set of pregel shard id's located here
-  inline std::set<PregelShard> const& localPregelShardIDs() const {
+  inline containers::FlatHashSet<PregelShard> const& localPregelShardIDs()
+      const {
     return _localPregelShardIDs;
   }
 
@@ -152,20 +153,20 @@ class WorkerConfig {
   std::vector<ShardID> _globalShardIDs;
   std::vector<ShardID> _localVertexShardIDs, _localEdgeShardIDs;
 
-  std::unordered_map<std::string, std::string> _collectionPlanIdMap;
-  std::map<ShardID, std::string> _shardToCollectionName;
+  containers::FlatHashMap<std::string, std::string> _collectionPlanIdMap;
+  containers::FlatHashMap<ShardID, std::string> _shardToCollectionName;
 
   // Map from edge collection to their shards, only iterated over keep sorted
-  std::map<CollectionID, std::vector<ShardID>> _vertexCollectionShards,
-      _edgeCollectionShards;
+  containers::FlatHashMap<CollectionID, std::vector<ShardID>>
+      _vertexCollectionShards, _edgeCollectionShards;
 
-  std::unordered_map<CollectionID, std::vector<ShardID>>
+  containers::FlatHashMap<CollectionID, std::vector<ShardID>>
       _edgeCollectionRestrictions;
 
   /// cache these ids as much as possible, since we access them often
-  std::unordered_map<std::string, PregelShard> _pregelShardIDs;
-  std::set<PregelShard> _localPregelShardIDs;
-  std::unordered_set<PregelShard> _localPShardIDs_hash;
+  containers::FlatHashMap<std::string, PregelShard> _pregelShardIDs;
+  containers::FlatHashSet<PregelShard> _localPregelShardIDs;
+  containers::FlatHashSet<PregelShard> _localPShardIDs_hash;
 };
 
 }  // namespace arangodb::pregel

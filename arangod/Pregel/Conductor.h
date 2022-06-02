@@ -82,7 +82,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   // maps from vertex collection name to a list of edge collections that this
   // vertex collection is restricted to. only use for a collection if there is
   // at least one entry for the collection!
-  std::unordered_map<CollectionID, std::vector<CollectionID>>
+  containers::FlatHashMap<CollectionID, std::vector<CollectionID>>
       _edgeCollectionRestrictions;
 
   // initialized on startup
@@ -90,7 +90,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   std::unique_ptr<MasterContext> _masterContext;
   /// tracks the servers which responded, only used for stages where we expect
   /// an unique response, not necessarily during the async mode
-  std::set<ServerID> _respondedServers;
+  containers::FlatHashSet<ServerID> _respondedServers;
   uint64_t _globalSuperstep = 0;
   /// adjustable maximum gss for some algorithms
   uint64_t _maxSuperstep = 500;
@@ -135,13 +135,14 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   std::vector<ShardID> getShardIds(ShardID const& collection) const;
 
  public:
-  Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
-            std::vector<CollectionID> const& vertexCollections,
-            std::vector<CollectionID> const& edgeCollections,
-            std::unordered_map<std::string, std::vector<std::string>> const&
-                edgeCollectionRestrictions,
-            std::string const& algoName, VPackSlice const& userConfig,
-            PregelFeature& feature);
+  Conductor(
+      uint64_t executionNumber, TRI_vocbase_t& vocbase,
+      std::vector<CollectionID> const& vertexCollections,
+      std::vector<CollectionID> const& edgeCollections,
+      containers::FlatHashMap<std::string, std::vector<std::string>> const&
+          edgeCollectionRestrictions,
+      std::string const& algoName, VPackSlice const& userConfig,
+      PregelFeature& feature);
 
   ~Conductor();
 

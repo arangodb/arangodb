@@ -132,7 +132,7 @@ class GraphStore final {
   std::vector<std::unique_ptr<TypedBuffer<char>>> _edgeKeys;
 
   // cache the amount of vertices
-  std::set<ShardID> _loadedShards;
+  containers::FlatHashSet<ShardID> _loadedShards;
 
   // actual count of loaded vertices / edges
   std::atomic<size_t> _localVertexCount;

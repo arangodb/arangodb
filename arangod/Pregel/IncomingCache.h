@@ -47,7 +47,9 @@ processing */
 template<typename M>
 class InCache {
  protected:
-  mutable std::map<PregelShard, std::mutex> _bucketLocker;
+  mutable std::unordered_map<PregelShard, std::mutex> _bucketLocker;
+  // mutable std::unordered_mapcontainers::FlatHashMap<PregelShard, std::mutex>
+  // _bucketLocker;
   std::atomic<uint64_t> _containedMessageCount;
   MessageFormat<M> const* _format;
 
@@ -95,8 +97,8 @@ class InCache {
 /// containing all messages for this vertex
 template<typename M>
 class ArrayInCache : public InCache<M> {
-  typedef std::unordered_map<std::string, std::vector<M>> HMap;
-  std::map<PregelShard, HMap> _shardMap;
+  typedef containers::FlatHashMap<std::string, std::vector<M>> HMap;
+  containers::FlatHashMap<PregelShard, HMap> _shardMap;
 
  protected:
   void _set(PregelShard shard, std::string_view const& vertexId,
@@ -119,10 +121,10 @@ class ArrayInCache : public InCache<M> {
 /// Cache which stores one value per vertex id
 template<typename M>
 class CombiningInCache : public InCache<M> {
-  typedef std::unordered_map<std::string, M> HMap;
+  typedef containers::FlatHashMap<std::string, M> HMap;
 
   MessageCombiner<M> const* _combiner;
-  std::map<PregelShard, HMap> _shardMap;
+  containers::FlatHashMap<PregelShard, HMap> _shardMap;
 
  protected:
   void _set(PregelShard shard, std::string_view const& vertexId,

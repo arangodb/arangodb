@@ -129,10 +129,10 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
   // assuming edges are sharded after _from, vertices after _key
   // then every ith vertex shard has the corresponding edges in
   // the ith edge shard
-  std::map<CollectionID, std::vector<ShardID>> const& vertexCollMap =
-      _config->vertexCollectionShards();
-  std::map<CollectionID, std::vector<ShardID>> const& edgeCollMap =
-      _config->edgeCollectionShards();
+  containers::FlatHashMap<CollectionID, std::vector<ShardID>> const&
+      vertexCollMap = _config->vertexCollectionShards();
+  containers::FlatHashMap<CollectionID, std::vector<ShardID>> const&
+      edgeCollMap = _config->edgeCollectionShards();
   size_t numShards = SIZE_MAX;
 
   auto poster = [](std::function<void()> fn) -> void {

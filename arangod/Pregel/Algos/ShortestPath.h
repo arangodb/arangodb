@@ -55,7 +55,7 @@ struct ShortestPathAlgorithm : public Algorithm<int64_t, int64_t, int64_t> {
   VertexComputation<int64_t, int64_t, int64_t>* createComputation(
       WorkerConfig const* config) const override;
   IAggregator* aggregator(std::string const& name) const override;
-  std::set<std::string> initialActiveSet() override;
+  containers::FlatHashSet<std::string> initialActiveSet() override;
 };
 }  // namespace algos
 }  // namespace pregel

@@ -38,9 +38,9 @@ namespace arangodb {
 namespace pregel {
 
 struct VertexSumAggregator : public IAggregator {
-  typedef std::map<PregelShard, std::unordered_map<std::string, double>>
+  typedef std::map<PregelShard, containers::FlatHashMap<std::string, double>>
       VertexMap;
-  typedef std::pair<PregelShard, std::unordered_map<std::string, double>>
+  typedef std::pair<PregelShard, containers::FlatHashMap<std::string, double>>
       MyPair;
 
   VertexSumAggregator(bool perm = false) : _permanent(perm) {}
@@ -135,7 +135,8 @@ struct VertexSumAggregator : public IAggregator {
       std::function<void(PregelID const& _id, double value)> func) const {
     for (auto const& pair : _entries) {
       PregelShard shard = pair.first;
-      std::unordered_map<std::string, double> const& vertexMap = pair.second;
+      containers::FlatHashMap<std::string, double> const& vertexMap =
+          pair.second;
       for (auto const& vertexMessage : vertexMap) {
         func(PregelID(shard, vertexMessage.first), vertexMessage.second);
       }

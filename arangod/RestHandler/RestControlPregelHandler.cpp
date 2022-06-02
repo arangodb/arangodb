@@ -28,6 +28,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Containers/FlatHashMap.h"
 #include "Graph/Graph.h"
 #include "Graph/GraphManager.h"
 #include "Pregel/Conductor.h"
@@ -127,7 +128,7 @@ void RestControlPregelHandler::startExecution() {
   // extract the collections
   std::vector<std::string> vertexCollections;
   std::vector<std::string> edgeCollections;
-  std::unordered_map<std::string, std::vector<std::string>>
+  containers::FlatHashMap<std::string, std::vector<std::string>>
       edgeCollectionRestrictions;
   auto vc = body.get("vertexCollections");
   auto ec = body.get("edgeCollections");

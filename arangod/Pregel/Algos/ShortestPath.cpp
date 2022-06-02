@@ -110,8 +110,8 @@ ShortestPathAlgorithm::ShortestPathAlgorithm(
   _target = val2.copyString();
 }
 
-std::set<std::string> ShortestPathAlgorithm::initialActiveSet() {
-  return std::set<std::string>{_source};
+containers::FlatHashSet<std::string> ShortestPathAlgorithm::initialActiveSet() {
+  return containers::FlatHashSet<std::string>{_source};
 }
 
 GraphFormat<int64_t, int64_t>* ShortestPathAlgorithm::inputFormat() const {

@@ -68,7 +68,7 @@ Conductor::Conductor(
     uint64_t executionNumber, TRI_vocbase_t& vocbase,
     std::vector<CollectionID> const& vertexCollections,
     std::vector<CollectionID> const& edgeCollections,
-    std::unordered_map<std::string, std::vector<std::string>> const&
+    containers::FlatHashMap<std::string, std::vector<std::string>> const&
         edgeCollectionRestrictions,
     std::string const& algoName, VPackSlice const& config,
     PregelFeature& feature)
@@ -567,8 +567,10 @@ void Conductor::startRecovery() {
 // resolves into an ordered list of shards for each collection on each server
 static void resolveInfo(
     TRI_vocbase_t* vocbase, CollectionID const& collectionID,
-    std::map<CollectionID, std::string>& collectionPlanIdMap,
-    std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>>& serverMap,
+    containers::FlatHashMap<CollectionID, std::string>& collectionPlanIdMap,
+    containers::FlatHashMap<
+        ServerID, containers::FlatHashMap<CollectionID, std::vector<ShardID>>>&
+        serverMap,
     std::vector<ShardID>& allShards) {
   ServerState* ss = ServerState::instance();
   if (!ss->isRunningInCluster()) {  // single server mode
@@ -622,9 +624,10 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
   std::string const path = Utils::baseUrl(Utils::workerPrefix) + suffix;
 
   // int64_t vertexCount = 0, edgeCount = 0;
-  std::map<CollectionID, std::string> collectionPlanIdMap;
-  std::map<ServerID, std::map<CollectionID, std::vector<ShardID>>> vertexMap,
-      edgeMap;
+  containers::FlatHashMap<CollectionID, std::string> collectionPlanIdMap;
+  containers::FlatHashMap<
+      ServerID, containers::FlatHashMap<CollectionID, std::vector<ShardID>>>
+      vertexMap, edgeMap;
   std::vector<ShardID> shardList;
 
   // resolve plan id's and shards on the servers
@@ -656,10 +659,10 @@ ErrorCode Conductor::_initializeWorkers(std::string const& suffix,
 
   for (auto const& it : vertexMap) {
     ServerID const& server = it.first;
-    std::map<CollectionID, std::vector<ShardID>> const& vertexShardMap =
-        it.second;
-    std::map<CollectionID, std::vector<ShardID>> const& edgeShardMap =
-        edgeMap[it.first];
+    containers::FlatHashMap<CollectionID, std::vector<ShardID>> const&
+        vertexShardMap = it.second;
+    containers::FlatHashMap<CollectionID, std::vector<ShardID>> const&
+        edgeShardMap = edgeMap[it.first];
 
     VPackBuffer<uint8_t> buffer;
     VPackBuilder b(buffer);

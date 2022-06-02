@@ -108,8 +108,8 @@ void ArrayOutCache<M>::flushMessages() {
   std::vector<futures::Future<network::Response>> responses;
   for (auto const& it : _shardMap) {
     PregelShard shard = it.first;
-    std::unordered_map<std::string, std::vector<M>> const& vertexMessageMap =
-        it.second;
+    containers::FlatHashMap<std::string, std::vector<M>> const&
+        vertexMessageMap = it.second;
     if (vertexMessageMap.size() == 0) {
       continue;
     }
@@ -183,7 +183,7 @@ void CombiningOutCache<M>::appendMessage(PregelShard shard,
       this->_sendCount++;
     }
   } else {
-    std::unordered_map<std::string_view, M>& vertexMap = _shardMap[shard];
+    containers::FlatHashMap<std::string_view, M>& vertexMap = _shardMap[shard];
     auto it = vertexMap.find(key);
     if (it != vertexMap.end()) {  // more than one message
       auto& ref = (*it).second;   // will be modified by combine(...)
@@ -220,7 +220,8 @@ void CombiningOutCache<M>::flushMessages() {
   std::vector<futures::Future<network::Response>> responses;
   for (auto const& it : _shardMap) {
     PregelShard shard = it.first;
-    std::unordered_map<std::string_view, M> const& vertexMessageMap = it.second;
+    containers::FlatHashMap<std::string_view, M> const& vertexMessageMap =
+        it.second;
     if (vertexMessageMap.size() == 0) {
       continue;
     }

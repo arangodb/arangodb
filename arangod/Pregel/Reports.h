@@ -28,12 +28,14 @@
 #include <velocypack/Iterator.h>
 #include "Pregel/Graph.h"
 
+#include "Containers/FlatHashMap.h"
+
 namespace arangodb::pregel {
 
 enum class ReportLevel { DEBUG, INFO, WARN, ERR };
 std::string to_string(ReportLevel);
 
-using ReportAnnotations = std::unordered_map<std::string, VPackBuilder>;
+using ReportAnnotations = containers::FlatHashMap<std::string, VPackBuilder>;
 
 struct Report {
   std::string message;
