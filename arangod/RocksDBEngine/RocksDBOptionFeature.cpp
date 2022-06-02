@@ -787,8 +787,9 @@ void RocksDBOptionFeature::collectOptions(
       .setIntroducedIn(30504)
       .setDeprecatedIn(30800);
 
-  std::unordered_set<std::string> checksumTypes = {"crc32", "xxHash",
+  std::unordered_set<std::string> checksumTypes = {"crc32c", "xxHash",
                                                    "xxHash64", "XXH3"};
+  TRI_ASSERT(checksumTypes.contains(_checksumType));
   options
       ->addOption("--rocksdb.checksum-type",
                   "checksum type to use for table files",
