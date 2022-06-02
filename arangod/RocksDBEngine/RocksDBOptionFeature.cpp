@@ -830,7 +830,7 @@ rocksdb::Options RocksDBOptionFeature::doGetOptions() const {
     compressionType = rocksdb::kLZ4HCCompression;
   } else {
     TRI_ASSERT(false);
-    LOG_TOPIC("74b7f", FATAL, arangodb::Logger::STARTUP)
+    LOG_TOPIC("edc91", FATAL, arangodb::Logger::STARTUP)
         << "unexpected compression type '" << _compressionType << "'";
     FATAL_ERROR_EXIT();
   }
