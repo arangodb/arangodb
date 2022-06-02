@@ -665,6 +665,7 @@ set(LIB_ARANGO_AGENCY_SOURCES
   Agency/FailedFollower.cpp
   Agency/FailedLeader.cpp
   Agency/FailedServer.cpp
+  Agency/Helpers.cpp
   Agency/Inception.cpp
   Agency/Job.cpp
   Agency/JobContext.cpp
