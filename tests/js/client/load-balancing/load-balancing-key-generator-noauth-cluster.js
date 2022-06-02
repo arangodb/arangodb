@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global assertTrue, assertFalse, assertEqual, assertNotUndefined, assertNotEqual, require*/
+/* global assertTrue, assertEqual, assertNotEqual, require*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -30,9 +30,9 @@ const jsunity = require("jsunity");
 
 const db = require("internal").db;
 const request = require("@arangodb/request");
-const url = require('url');
 const _ = require("lodash");
 const isEnterprise = require("internal").isEnterprise();
+let isCluster = require("internal").isCluster();
 
 function getCoordinators() {
   const isCoordinator = (d) => (_.toLower(d.role) === 'coordinator');
@@ -53,8 +53,6 @@ function getCoordinators() {
     .map(toEndpoint)
     .map(endpointToURL);
 }
-
-const servers = getCoordinators();
 
 function KeyGeneratorSuite() {
   'use strict';
@@ -91,43 +89,35 @@ function KeyGeneratorSuite() {
   }
 
   function generateCollectionDocs(name) {
-    // check that the generated keys are sequential when we send the requests
-    // via multiple coordinators.
-    db._create(name, {keyOptions: {type: "autoincrement"}});
-    assertNotEqual("", db[name].properties().distributeShardsLike);
     let lastKey = null;
     let url = "/_db/" + cn + "/_api/document/" + name;
-    // send documents to both coordinators
-    let i = 0;
-    let startingKey = null;
+    let keyOptions = {};
+    let increment = 1;
     if (Number(name[name.length - 1]) === 1) {
-      startingKey = "abc123";
+      keyOptions = {keyOptions: {type: "autoincrement"}};
     } else if (Number(name[name.length - 1]) === 2) {
-      startingKey = "150000";
+      increment = 55;
+      keyOptions = {keyOptions: {type: "autoincrement", offset: 10, increment: increment}};
+    } else {
+      increment = 10;
+      keyOptions = {keyOptions: {type: "autoincrement", offset: 4, increment: increment}};
     }
-    for (i; i < 100000; ++i) {
-      let doc = {};
-      if (startingKey === null || i > 0) {
-        doc = {"x": 0, "c": 1};
-      } else {
-        doc = {"_key": `${startingKey}`, "x": 0, "c": 1};
-      }
-      let result = sendRequest('POST', url, /*payload*/ {"x": 0, "c": 1}, {}, i % 2 === 0);
+    db._create(name, keyOptions);
+    assertNotEqual("", db[name].properties().distributeShardsLike);
+
+    for (let i = 0; i < 100000; ++i) {
+      let result = sendRequest('POST', url, /*payload*/ {}, {}, i % 2 === 0);
       assertEqual(result.status, 202);
       let key = result.body._key;
-      assertTrue(Number(key) === Number(lastKey) + 1 || lastKey === null, {key, lastKey});
+      assertTrue(Number(key) === Number(lastKey) + increment || lastKey === null, {key, lastKey});
       lastKey = key;
     }
-    let res = db._query(`FOR doc IN ${name} FILTER doc.x == 0 RETURN doc`).toArray();
+    let res = db._query(`FOR doc IN ${name} RETURN doc`).toArray();
     assertTrue(res.length === 100000);
     lastKey = null;
-    for (i = 0; i < res.length; ++i) {
-      let key = res[i].key;
-      assertTrue(Number(key) === Number(lastKey) + 1 || lastKey === null, {key, lastKey});
-      assertTrue(res[i].hasOwnProperty("x"));
-      assertTrue(res[i].x === 0);
-      assertTrue(res[i].hasOwnProperty("c"));
-      assertTrue(res[i].c === 1);
+    for (let i = 0; i < res.length; ++i) {
+      let key = res[i]._key;
+      assertTrue(Number(key) === Number(lastKey) + increment || lastKey === null, {key, lastKey});
       lastKey = key;
     }
   }
@@ -192,22 +182,21 @@ function KeyGeneratorSuite() {
     },
 
     testAutoincrementOnMultipleShards: function () {
-      // check that the generated keys are sequential when we send the requests
-      // via multiple coordinators.
       try {
         db._create(cn, {numberOfShards: 5, keyOptions: {type: "autoincrement"}});
       } catch (error) {
-        assertTrue(error.message === "the specified key generator is not supported for collections with more than one shard");
-      } finally {
-        db._drop(cn);
+        assertEqual(error.code, 501);
       }
     },
 
     testAutoincrementOnOneShard: function () {
+      if (!isEnterprise || !isCluster) {
+        return;
+      }
       db._createDatabase(cn, {sharding: "single"});
       try {
         db._useDatabase(cn);
-        for (let i = 1; i < 3; ++i) {
+        for (let i = 1; i < 4; ++i) {
           generateCollectionDocs(cn + i);
         }
       } finally {
