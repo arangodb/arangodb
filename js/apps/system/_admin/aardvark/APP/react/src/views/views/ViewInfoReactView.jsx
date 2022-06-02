@@ -1,9 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { ArangoTable, ArangoTD, ArangoTH } from '../../components/arango/table';
+import ToolTip from '../../components/arango/tootip';
 import Checkbox from '../../components/pure-css/form/Checkbox';
 import { isAdminUser as userIsAdmin, usePermissions } from '../../utils/helpers';
-import { buildSubNav, useView } from './helpers';
-import ToolTip from '../../components/arango/tootip';
+import { SaveButton } from './Actions';
+import { useNavbar, useView } from './helpers';
+
 const PrimarySortView = ({ primarySort = [] }) => {
   return primarySort.length
     ? <ArangoTable style={{ marginLeft: 0 }}>
@@ -56,12 +58,9 @@ const ViewInfoReactView = ({ name }) => {
   const view = useView(name);
   const permissions = usePermissions();
   const [isAdminUser, setIsAdminUser] = useState(false);
+  const [changed, setChanged] = useState(!!window.sessionStorage.getItem(`${name}-changed`));
 
-  useEffect(() => {
-    const observer = buildSubNav(isAdminUser, name, 'Info');
-
-    return () => observer.disconnect();
-  }, [isAdminUser, name]);
+  useNavbar(name, isAdminUser, changed, 'Info');
 
   const tempIsAdminUser = userIsAdmin(permissions);
   if (tempIsAdminUser !== isAdminUser) { // Prevents an infinite render loop.
@@ -240,6 +239,13 @@ const ViewInfoReactView = ({ name }) => {
           </ArangoTable>
         </div>
       </div>
+      {
+        isAdminUser && changed
+          ? <div className="modal-footer">
+            <SaveButton view={view} oldName={name} setChanged={setChanged}/>
+          </div>
+          : null
+      }
     </div>
   </div>;
 };

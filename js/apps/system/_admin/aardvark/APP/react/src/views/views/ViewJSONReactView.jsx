@@ -8,7 +8,7 @@ import { getReducer, isAdminUser as userIsAdmin, usePermissions } from '../../ut
 import { SaveButton } from './Actions';
 import CopyFromInput from './forms/inputs/CopyFromInput';
 import JsonForm from './forms/JsonForm';
-import { buildSubNav, postProcessor, useView } from './helpers';
+import { postProcessor, useNavbar, useView } from './helpers';
 
 const ViewJSONReactView = ({ name }) => {
   const [isAdminUser, setIsAdminUser] = useState(false);
@@ -19,9 +19,10 @@ const ViewJSONReactView = ({ name }) => {
     formCache: { name },
     renderKey: uniqueId('force_re-render_')
   });
-  const [state, dispatch] = useReducer(getReducer(initialState.current, postProcessor),
-    initialState.current);
   const view = useView(name);
+  const [changed, setChanged] = useState(!!window.sessionStorage.getItem(`${name}-changed`));
+  const [state, dispatch] = useReducer(getReducer(initialState.current, postProcessor, setChanged, name),
+    initialState.current);
   const permissions = usePermissions();
   const [views, setViews] = useState([]);
 
@@ -29,7 +30,7 @@ const ViewJSONReactView = ({ name }) => {
     initialState.current.formCache = cloneDeep(view);
 
     dispatch({
-      type: 'setFormState',
+      type: 'initFormState',
       formState: view
     });
     dispatch({
@@ -37,11 +38,7 @@ const ViewJSONReactView = ({ name }) => {
     });
   }, [view]);
 
-  useEffect(() => {
-    const observer = buildSubNav(isAdminUser, name, 'JSON');
-
-    return () => observer.disconnect();
-  }, [isAdminUser, name]);
+  useNavbar(name, isAdminUser, changed, 'JSON');
 
   const tempIsAdminUser = userIsAdmin(permissions);
   if (tempIsAdminUser !== isAdminUser) { // Prevents an infinite render loop.
@@ -81,18 +78,24 @@ const ViewJSONReactView = ({ name }) => {
               <Cell size={'1'}>
                 {
                   isAdminUser
-                  ? <JsonForm formState={formState} dispatch={dispatch} renderKey={state.renderKey}/>
-                  : <Textarea label={'JSON Dump'} disabled={true} value={jsonFormState} rows={jsonRows}
-                              style={{ cursor: 'text' }}/>
+                    ? <JsonForm formState={formState} dispatch={dispatch}
+                                renderKey={state.renderKey}/>
+                    : <Textarea label={'JSON Dump'} disabled={true} value={jsonFormState}
+                                rows={jsonRows}
+                                style={{ cursor: 'text' }}/>
                 }
               </Cell>
             </Grid>
           </div>
         </div>
       </div>
-      <div className="modal-footer">
-        <SaveButton view={formState} oldName={name} menu={'json'}/>
-      </div>
+      {
+        isAdminUser && changed
+          ? <div className="modal-footer">
+            <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged}/>
+          </div>
+          : null
+      }
     </div>
   </div>;
 };

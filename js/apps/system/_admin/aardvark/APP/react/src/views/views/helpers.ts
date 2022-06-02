@@ -4,7 +4,7 @@ import { formSchema, FormState, linksSchema } from './constants';
 import { useEffect, useMemo, useState } from 'react';
 import { DispatchArgs, State } from '../../utils/constants';
 import { getPath } from '../../utils/helpers';
-import { chain, cloneDeep, escape, isNull, merge, omit, set, truncate } from 'lodash';
+import { chain, cloneDeep, escape, get, isNull, merge, omit, set, truncate } from 'lodash';
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../utils/arangoClient";
 
@@ -25,7 +25,7 @@ export const validateAndFix = ajv.addSchema(linksSchema).compile(formSchema);
 export function useLinkState (formState: { [key: string]: any }, formField: string) {
   const [innerField, setInnerField] = useState('');
   const [addDisabled, setAddDisabled] = useState(true);
-  const innerFields = useMemo(() => (formState[formField] || {}), [formField, formState]);
+  const innerFields = useMemo(() => get(formState, formField, {}), [formField, formState]);
 
   useEffect(() => {
     const innerFieldKeys = chain(innerFields).omitBy(isNull).keys().value();
@@ -37,7 +37,7 @@ export function useLinkState (formState: { [key: string]: any }, formField: stri
 }
 
 export function useView (name: string) {
-  const [view, setView] = useState<object>({ name });
+  const [view, setView] = useState<Partial<FormState>>({ name });
   const { data, error } = useSWR(`/view/${name}/properties`,
     path => getApiRouteForCurrentDB().get(path), {
       revalidateOnFocus: false
@@ -55,7 +55,7 @@ export function useView (name: string) {
     if (data) {
       let viewState = omit(data.body, 'error', 'code') as FormState;
 
-      const cachedViewStateStr = window.sessionStorage.getItem(viewState.globallyUniqueId);
+      const cachedViewStateStr = window.sessionStorage.getItem(name);
       if (cachedViewStateStr) {
         viewState = JSON.parse(cachedViewStateStr);
       }
@@ -67,7 +67,7 @@ export function useView (name: string) {
   return view;
 }
 
-export const postProcessor = (state: State<FormState>, action: DispatchArgs<FormState>) => {
+export const postProcessor = (state: State<FormState>, action: DispatchArgs<FormState>, setChanged: (changed: boolean) => void, oldName: string) => {
   if (action.type === 'setField' && action.field) {
     const path = getPath(action.basePath, action.field.path);
 
@@ -83,13 +83,19 @@ export const postProcessor = (state: State<FormState>, action: DispatchArgs<Form
     }
   }
 
-  window.sessionStorage.setItem(state.formState.globallyUniqueId, JSON.stringify(state.formState));
+  if (['setFormState', 'setField', 'unsetField'].includes(action.type)) {
+    window.sessionStorage.setItem(oldName, JSON.stringify(state.formState));
+    window.sessionStorage.setItem(`${oldName}-changed`, "true");
+    setChanged(true);
+  }
 };
 
-export const buildSubNav = (isAdminUser: boolean, name: string, activeKey: string) => {
+export const buildSubNav = (isAdminUser: boolean, name: string, activeKey: string, changed: boolean) => {
   let breadCrumb = 'View: ' + escape(truncate(name, { length: 64 }));
   if (!isAdminUser) {
     breadCrumb += ' (read-only)';
+  } else if (changed) {
+    breadCrumb += '* (unsaved changes)';
   }
 
   const defaultRoute = '#view/' + encodeURIComponent(name);
@@ -151,3 +157,11 @@ export const buildSubNav = (isAdminUser: boolean, name: string, activeKey: strin
 
   return observer;
 };
+
+export function useNavbar (name: string, isAdminUser: boolean, changed: boolean, key: string) {
+  useEffect(() => {
+    const observer = buildSubNav(isAdminUser, name, key, changed);
+
+    return () => observer.disconnect();
+  });
+}

@@ -1,7 +1,7 @@
 import { FormProps } from "../../../../utils/constants";
 import { LinkProperties } from "../../constants";
 import React, { ChangeEvent, useEffect, useMemo, useState } from "react";
-import { chain, isEmpty, noop, without } from "lodash";
+import { chain, get, isEmpty, noop, without } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
 import { ArangoTable, ArangoTD } from "../../../../components/arango/table";
@@ -20,11 +20,11 @@ type LinkPropertiesInputProps = FormProps<LinkProperties> & {
 };
 
 const LinkPropertiesInput = ({
-  formState,
-  dispatch,
-  disabled,
-  basePath
-}: LinkPropertiesInputProps) => {
+                               formState,
+                               dispatch,
+                               disabled,
+                               basePath
+                             }: LinkPropertiesInputProps) => {
   const [field, setField, addDisabled, fields] = useLinkState(
     formState,
     "fields"
@@ -34,9 +34,7 @@ const LinkPropertiesInput = ({
   );
   const [options, setOptions] = useState<string[]>([]);
 
-  const analyzers = useMemo(() => formState.analyzers || [], [
-    formState.analyzers
-  ]);
+  const analyzers = useMemo(() => get(formState, 'analyzers', [] as string[]), [formState]);
 
   const setCurrentField = noop;
 
@@ -122,7 +120,7 @@ const LinkPropertiesInput = ({
     });
   };
 
-  const storeIdValues = formState.storeValues === "id";
+  const storeIdValues = get(formState, 'storeValues') === 'id';
   const hideInBackgroundField = disabled || basePath.includes(".fields");
   return (
     <Grid>
@@ -132,27 +130,27 @@ const LinkPropertiesInput = ({
             {disabled ? null : (
               <ArangoTable>
                 <tbody>
-                  <tr>
-                    <ArangoTD seq={0} colSpan={2}>
-                      <Textbox
-                        type={"text"}
-                        placeholder={"Field"}
-                        onChange={updateField}
-                        value={field}
-                      />
-                    </ArangoTD>
-                    <ArangoTD seq={1}>
-                      <IconButton
-                        style={{ marginTop: "12px" }}
-                        icon={"plus"}
-                        type={"warning"}
-                        onClick={addField}
-                        disabled={addDisabled}
-                      >
-                        Add
-                      </IconButton>
-                    </ArangoTD>
-                  </tr>
+                <tr>
+                  <ArangoTD seq={0} colSpan={2}>
+                    <Textbox
+                      type={"text"}
+                      placeholder={"Field"}
+                      onChange={updateField}
+                      value={field}
+                    />
+                  </ArangoTD>
+                  <ArangoTD seq={1}>
+                    <IconButton
+                      style={{ marginTop: "12px" }}
+                      icon={"plus"}
+                      type={"warning"}
+                      onClick={addField}
+                      disabled={addDisabled}
+                    >
+                      Add
+                    </IconButton>
+                  </ArangoTD>
+                </tr>
                 </tbody>
               </ArangoTable>
             )}
@@ -162,7 +160,10 @@ const LinkPropertiesInput = ({
 
       <Cell size={"1-1"}>
         <Grid style={{ marginTop: 24 }}>
-          <Cell size={"1-3"} style={{ marginBottom: 24, marginLeft: 10 }}>
+          <Cell size={"1-3"} style={{
+            marginBottom: 24,
+            marginLeft: 10
+          }}>
             <AutoCompleteMultiSelect
               values={analyzers}
               onRemove={removeAnalyzer}
@@ -172,7 +173,10 @@ const LinkPropertiesInput = ({
               disabled={disabled}
             />
           </Cell>
-          <Cell size={"1-1"} style={{ margingTop: 24, marginLeft: 10 }}>
+          <Cell size={"1-1"} style={{
+            margingTop: 24,
+            marginLeft: 10
+          }}>
             <Cell size={hideInBackgroundField ? "1-5" : "1-6"}>
               <Checkbox
                 onChange={getBooleanFieldSetter(

@@ -2,23 +2,24 @@
 
 import { cloneDeep } from 'lodash';
 import React, { useEffect, useReducer, useRef, useState } from 'react';
-import Textbox from '../../components/pure-css/form/Textbox';
 import ToolTip from '../../components/arango/tootip';
+import Textbox from '../../components/pure-css/form/Textbox';
 import {
   getNumericFieldSetter, getNumericFieldValue, getReducer, isAdminUser as userIsAdmin,
   usePermissions
 } from '../../utils/helpers';
 import { DeleteButton, SaveButton } from './Actions';
-import { buildSubNav, postProcessor, useView } from './helpers';
+import { postProcessor, useNavbar, useView } from './helpers';
 
 const ViewSettingsReactView = ({ name }) => {
   const initialState = useRef({
     formState: { name },
     formCache: { name }
   });
-  const [state, dispatch] = useReducer(getReducer(initialState.current, postProcessor),
-    initialState.current);
   const view = useView(name);
+  const [changed, setChanged] = useState(!!window.sessionStorage.getItem(`${name}-changed`));
+  const [state, dispatch] = useReducer(getReducer(initialState.current, postProcessor, setChanged, name),
+    initialState.current);
   const permissions = usePermissions();
   const [isAdminUser, setIsAdminUser] = useState(false);
 
@@ -26,16 +27,12 @@ const ViewSettingsReactView = ({ name }) => {
     initialState.current.formCache = cloneDeep(view);
 
     dispatch({
-      type: 'setFormState',
+      type: 'initFormState',
       formState: view
     });
   }, [view, name]);
 
-  useEffect(() => {
-    const observer = buildSubNav(isAdminUser, name, 'Settings');
-
-    return () => observer.disconnect();
-  }, [isAdminUser, name]);
+  useNavbar(name, isAdminUser, changed, 'Settings');
 
   const updateName = (event) => {
     dispatch({
@@ -147,7 +144,11 @@ const ViewSettingsReactView = ({ name }) => {
           ? <div className="modal-footer">
             <DeleteButton view={formState}
                           modalCid={`modal-content-delete-${formState.globallyUniqueId}`}/>
-            <SaveButton view={formState} oldName={name}/>
+            {
+              changed
+                ? <SaveButton view={formState} oldName={name} setChanged={setChanged}/>
+                : null
+            }
           </div>
           : null
       }

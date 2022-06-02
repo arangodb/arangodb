@@ -17,6 +17,7 @@ type ButtonProps = {
 type SaveButtonProps = ButtonProps & {
   oldName?: string;
   menu?: string;
+  setChanged: (changed: boolean) => void;
 };
 
 type BackButtonProps = {
@@ -41,7 +42,8 @@ export const BackButton = ({ disabled }: BackButtonProps) => {
 export const handleSave = async ({
                                    view,
                                    oldName,
-                                   menu
+                                   menu,
+                                   setChanged
                                  }: SaveButtonProps) => {
   const route = getApiRouteForCurrentDB();
   let result;
@@ -93,7 +95,9 @@ export const handleSave = async ({
           });
         }
 
-        window.sessionStorage.removeItem(view.globallyUniqueId);
+        window.sessionStorage.removeItem(oldName);
+        window.sessionStorage.removeItem(`${oldName}-changed`);
+        setChanged(false);
 
         arangoHelper.arangoNotification(
           "Success",
@@ -112,7 +116,8 @@ export const handleSave = async ({
 export const SaveButton = ({
                              view,
                              oldName,
-                             menu
+                             menu,
+                             setChanged
                            }: SaveButtonProps) => {
 
 
@@ -120,7 +125,8 @@ export const SaveButton = ({
     <IconButton icon={"save"} onClick={() => handleSave({
       view,
       oldName,
-      menu
+      menu,
+      setChanged
     })} type={"success"}>
       Save
     </IconButton>

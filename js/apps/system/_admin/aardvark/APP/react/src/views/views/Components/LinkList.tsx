@@ -38,7 +38,7 @@ const DeleteButton = ({ collection, modalCid }: DeleteButtonProps) => {
 };
 
 const LinkList = ({ name }: ViewProps) => {
-  const { formState: fs, isAdminUser } = useContext(ViewContext);
+  const { formState: fs, isAdminUser, changed, setChanged } = useContext(ViewContext);
   const match = useRouteMatch();
 
   const formState = fs as FormState;
@@ -99,9 +99,9 @@ const LinkList = ({ name }: ViewProps) => {
         </ArangoTable>
       </div>
       {
-        isAdminUser
+        isAdminUser && changed
           ? <div className="modal-footer">
-            <SaveButton view={formState} oldName={name}/>
+            <SaveButton view={formState} oldName={name} setChanged={setChanged}/>
           </div>
           : null
       }

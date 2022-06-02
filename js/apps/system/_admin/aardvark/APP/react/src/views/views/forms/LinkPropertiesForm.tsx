@@ -10,11 +10,8 @@ import { Route, Switch, useRouteMatch } from "react-router-dom";
 import { BackButton, SaveButton } from "../Actions";
 import { FormState, ViewContext } from "../constants";
 
-type LinksPropertiesFormProps = {
-  disabled?: boolean;
-};
-const LinkPropertiesForm = ({ disabled }: LinksPropertiesFormProps) => {
-  const { formState, isAdminUser } = useContext(ViewContext);
+const LinkPropertiesForm = () => {
+  const { formState, isAdminUser, changed, setChanged } = useContext(ViewContext);
   const match = useRouteMatch();
   const [collection, setCollection, addDisabled, links] = useLinkState(
      formState,
@@ -26,6 +23,7 @@ const LinkPropertiesForm = ({ disabled }: LinksPropertiesFormProps) => {
   const [options, setOptions] = useState<string[]>([]);
 
   const link = get(match.params, 'link');
+  const disabled = !isAdminUser;
 
   useEffect(() => {
     if (data) {
@@ -39,31 +37,6 @@ const LinkPropertiesForm = ({ disabled }: LinksPropertiesFormProps) => {
       setOptions(tempOptions);
     }
   }, [data, links]);
-
-  const getLink = (str: string) => {
-    let formatedStr;
-    let parentField;
-
-    const replaceSquareBrackets = (
-      str: string,
-      idnt: string,
-      index: number
-    ) => {
-      return str.split(idnt)[index].replace("]", "");
-    };
-    if (str !== "") {
-      let link = replaceSquareBrackets(str, "[", 1);
-      formatedStr = link;
-      if (str.includes(".")) {
-        link = replaceSquareBrackets(str.split(".")[0], "[", 1);
-        parentField = replaceSquareBrackets(str.split(".")[1], "[", 1);
-        formatedStr = `${link}/${parentField}`;
-      } else {
-        formatedStr = link;
-      }
-    }
-    return formatedStr;
-  };
 
   return <div
     id={'modal-dialog'}
@@ -109,7 +82,7 @@ const LinkPropertiesForm = ({ disabled }: LinksPropertiesFormProps) => {
                       basePath={'field.basePath'}
                       viewField={noop}
                       fieldName={'field.field'}
-                      link={getLink('field.basePath')}
+                      link={'link'}
                     />
                   </Route>
                 </Switch>
@@ -121,8 +94,8 @@ const LinkPropertiesForm = ({ disabled }: LinksPropertiesFormProps) => {
      <div className="modal-footer">
       <BackButton disabled={false /* !!newLink */}/>
       {
-        isAdminUser
-          ? <SaveButton view={formState as FormState}/>
+        isAdminUser && changed
+          ? <SaveButton view={formState as FormState} setChanged={setChanged}/>
           : null
       }
      </div>

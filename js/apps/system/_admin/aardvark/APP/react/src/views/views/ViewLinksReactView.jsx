@@ -6,27 +6,25 @@ import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { getReducer, isAdminUser as userIsAdmin, usePermissions } from '../../utils/helpers';
 import LinkList from './Components/LinkList';
 import NewLink from './Components/NewLink';
-import LinkPropertiesForm from './forms/LinkPropertiesForm';
-import { buildSubNav, postProcessor, useLinkState, useView } from './helpers';
 import { ViewContext } from './constants';
+import LinkPropertiesForm from './forms/LinkPropertiesForm';
+import { postProcessor, useLinkState, useNavbar, useView } from './helpers';
 
 const ViewLinksReactView = ({ name }) => {
   const initialState = useRef({
     formState: { name },
     formCache: { name }
   });
+  const view = useView(name);
+  const [changed, setChanged] = useState(!!window.sessionStorage.getItem(`${name}-changed`));
   const [state, dispatch] = useReducer(
-    getReducer(initialState.current, postProcessor),
+    getReducer(initialState.current, postProcessor, setChanged, name),
     initialState.current
   );
-  const view = useView(name);
   const permissions = usePermissions();
   const [isAdminUser, setIsAdminUser] = useState(false);
-  const [collection, setCollection, addDisabled, links] = useLinkState(
-    state.formState,
-    "links"
-  );
-  const { data } = useSWR(["/collection", "excludeSystem=true"], (path, qs) =>
+  const [collection, setCollection, addDisabled, links] = useLinkState(state.formState, 'links');
+  const { data } = useSWR(['/collection', 'excludeSystem=true'], (path, qs) =>
     getApiRouteForCurrentDB().get(path, qs)
   );
   const [options, setOptions] = useState([]);
@@ -37,7 +35,7 @@ const ViewLinksReactView = ({ name }) => {
         .omitBy(isNull)
         .keys()
         .value();
-      const collNames = map(data.body.result, "name");
+      const collNames = map(data.body.result, 'name');
       const tempOptions = difference(collNames, linkKeys).sort();
 
       setOptions(tempOptions);
@@ -48,16 +46,12 @@ const ViewLinksReactView = ({ name }) => {
     initialState.current.formCache = cloneDeep(view);
 
     dispatch({
-      type: 'setFormState',
+      type: 'initFormState',
       formState: view
     });
   }, [view]);
 
-  useEffect(() => {
-    const observer = buildSubNav(isAdminUser, name, 'Links');
-
-    return () => observer.disconnect();
-  }, [isAdminUser, name]);
+  useNavbar(name, isAdminUser, changed, 'Links');
 
   const tempIsAdminUser = userIsAdmin(permissions);
   if (tempIsAdminUser !== isAdminUser) {
@@ -71,17 +65,19 @@ const ViewLinksReactView = ({ name }) => {
     value={{
       formState,
       dispatch,
-      isAdminUser
+      isAdminUser,
+      changed,
+      setChanged
     }}
   >
     <div className={'centralContent'} id={'content'}>
-      <HashRouter basename={`view/${name}/links/`} hashType={'noslash'}>
+      <HashRouter basename={`view/${name}/links`} hashType={'noslash'}>
         <Switch>
           <Route exact path={'/'}>
-            <LinkList/>
+            <LinkList name={name}/>
           </Route>
           <Route exact path={'/_add'}>
-             {
+            {
               isAdminUser
                 ? <NewLink
                   disabled={addDisabled || !options.includes(collection)}
@@ -90,10 +86,10 @@ const ViewLinksReactView = ({ name }) => {
                   options={options}
                 />
                 : null
-             }
+            }
           </Route>
           <Route path={'/:link'}>
-            <LinkPropertiesForm disabled={!isAdminUser}/>
+            <LinkPropertiesForm/>
           </Route>
         </Switch>
       </HashRouter>
