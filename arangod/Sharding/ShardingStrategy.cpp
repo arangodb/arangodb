@@ -25,12 +25,23 @@
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Sharding/ShardingStrategyEE.h"
+#endif
+
 #include <velocypack/Builder.h>
 
 using namespace arangodb;
 
 bool ShardingStrategy::isCompatible(ShardingStrategy const* other) const {
-  return name() == other->name();
+#ifdef USE_ENTERPRISE
+  // TODO [EnterpriseGraphs]: I do not like this approach. This needs to be
+  // discussed and changed (!).
+  return (name() == other->name() ||
+          other->name() == ShardingStrategyEnterpriseHexSmartVertex::NAME);
+#else
+  return (name() == other->name());
+#endif
 }
 
 void ShardingStrategy::toVelocyPack(VPackBuilder& result) const {

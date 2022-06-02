@@ -366,20 +366,13 @@ void ShardingInfo::distributeShardsLike(std::string const& cid,
         "a collection with a different number of shard key attributes");
   }
 
-  if ((_collection->isSmartChild() || _collection->isSmart()) &&
-      _collection->type() == TRI_COL_TYPE_EDGE &&
-      _collection->smartGraphAttribute().empty()) {
-    // EnterpriseGraph case
-    LOG_DEVEL << "Improve me - not done yet - we should hit this case!";
-  } else {
-    if (!usesSameShardingStrategy(other)) {
-      auto& server = _collection->vocbase().server();
-      auto& shr = server.getFeature<ShardingFeature>();
-      // other collection has a different sharding strategy
-      // adjust our sharding so it uses the same strategy as the other
-      // collection
-      _shardingStrategy = shr.create(other->shardingStrategyName(), this);
-    }
+  if (!usesSameShardingStrategy(other)) {
+    auto& server = _collection->vocbase().server();
+    auto& shr = server.getFeature<ShardingFeature>();
+    // other collection has a different sharding strategy
+    // adjust our sharding so it uses the same strategy as the other
+    // collection
+    _shardingStrategy = shr.create(other->shardingStrategyName(), this);
   }
 
   _distributeShardsLike = cid;
