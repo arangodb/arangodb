@@ -107,10 +107,16 @@ void ExportFeature::collectOptions(
           "runtime threshold for AQL queries (in seconds, 0 = no limit)",
           new DoubleParameter(&_customQueryMaxRuntime))
       .setIntroducedIn(30800);
+  options
+      ->addOption("--custom-query-file",
+                  "path to a file with the custom query to be used",
+                  new StringParameter(&_customQueryFile))
+      .setIntroducedIn(31000);
 
   options
       ->addOption("--custom-query-bindvars",
-                  "bind parameters to be used in the 'custom-query' testcase.",
+                  "bind parameters to be used with '--custom-query' or "
+                  "custom-query-file'",
                   new StringParameter(&_customQueryBindVars))
       .setIntroducedIn(31000);
 
@@ -187,6 +193,23 @@ void ExportFeature::validateOptions(
     _outputDirectory.pop_back();
   }
   TRI_NormalizePath(_outputDirectory);
+
+  if (!_customQueryFile.empty()) {
+    if (!_customQuery.empty()) {
+      LOG_TOPIC("2b57e", FATAL, Logger::CONFIG)
+          << "expecting either `--custom-query` or `--custom-query-file'";
+      FATAL_ERROR_EXIT();
+    }
+
+    try {
+      basics::FileUtils::slurp(_customQueryFile, _customQuery);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("45275", FATAL, Logger::CONFIG)
+          << "unable to read custom query from file '" << _customQueryFile
+          << "': " << ex.what();
+      FATAL_ERROR_EXIT();
+    }
+  }
 
   if (_graphName.empty() && _collections.empty() && _customQuery.empty()) {
     LOG_TOPIC("488d8", FATAL, Logger::CONFIG)

@@ -33,6 +33,7 @@
 #include <velocypack/Iterator.h>
 
 #include "Inspection/Access.h"
+#include "Inspection/Types.h"
 
 namespace arangodb::inspection {
 
@@ -83,9 +84,16 @@ struct InspectorBase {
   }
 
   template<typename T>
+  [[nodiscard]] auto field(std::string_view name, T&& value) const noexcept {
+    using TT = std::remove_cvref_t<T>;
+    return field(name, static_cast<TT const&>(value));
+  }
+
+  template<typename T>
   [[nodiscard]] RawField<T> field(std::string_view name,
                                   T& value) const noexcept {
-    static_assert(!std::is_const<T>::value || !Derived::isLoading);
+    static_assert(!std::is_const<T>::value || !Derived::isLoading,
+                  "Loading inspector must pass non-const lvalue reference");
     return RawField<T>{{name}, value};
   }
 
@@ -411,19 +419,6 @@ struct InspectorBase {
     }
   }
 };
-
-namespace detail {
-template<class T>
-struct AlternativeType {
-  using Type = T;
-  std::string_view const tag;
-};
-}  // namespace detail
-
-template<class T>
-detail::AlternativeType<T> type(std::string_view tag) {
-  return detail::AlternativeType<T>{tag};
-}
 
 #undef EMPTY_BASE
 

@@ -487,12 +487,12 @@ void transaction::Methods::buildDocumentIdentity(
   if (_state->isRunningInCluster()) {
     std::string resolved = resolver()->getCollectionNameCluster(cid);
 #ifdef USE_ENTERPRISE
-    if (resolved.compare(0, 7, "_local_") == 0) {
-      resolved.erase(0, 7);
-    } else if (resolved.compare(0, 6, "_from_") == 0) {
-      resolved.erase(0, 6);
-    } else if (resolved.compare(0, 4, "_to_") == 0) {
-      resolved.erase(0, 4);
+    if (resolved.starts_with(StaticStrings::FullLocalPrefix)) {
+      resolved.erase(0, StaticStrings::FullLocalPrefix.size());
+    } else if (resolved.starts_with(StaticStrings::FullFromPrefix)) {
+      resolved.erase(0, StaticStrings::FullFromPrefix.size());
+    } else if (resolved.starts_with(StaticStrings::FullToPrefix)) {
+      resolved.erase(0, StaticStrings::FullToPrefix.size());
     }
 #endif
     // build collection name
@@ -1082,6 +1082,13 @@ Future<OperationResult> transaction::Methods::insertLocal(
   ManagedDocumentResult docResult;
   ManagedDocumentResult prevDocResult;  // return OLD (with override option)
 
+  if (options.validate && !options.isRestore &&
+      options.isSynchronousReplicationFrom.empty()) {
+    options.schema = collection->schema();
+  } else {
+    options.schema = nullptr;
+  }
+
   [[maybe_unused]] size_t numExclusions = 0;
 
   auto workForOneDocument = [&](VPackSlice value, bool isBabies,
@@ -1090,6 +1097,13 @@ Future<OperationResult> transaction::Methods::insertLocal(
 
     if (!value.isObject()) {
       return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    }
+
+    auto r =
+        transaction::Methods::validateSmartJoinAttribute(*collection, value);
+
+    if (r != TRI_ERROR_NO_ERROR) {
+      return Result(r);
     }
 
     docResult.clear();
@@ -1139,9 +1153,11 @@ Future<OperationResult> transaction::Methods::insertLocal(
       if (options.overwriteMode == OperationOptions::OverwriteMode::Ignore) {
         // in case of unique constraint violation: ignore and do nothing (no
         // write!)
-        buildDocumentIdentity(collection.get(), resultBuilder, cid,
-                              key.stringView(), oldRevisionId,
-                              RevisionId::none(), nullptr, nullptr);
+        if (replicationType != ReplicationType::FOLLOWER) {
+          buildDocumentIdentity(collection.get(), resultBuilder, cid,
+                                key.stringView(), oldRevisionId,
+                                RevisionId::none(), nullptr, nullptr);
+        }
         // we have not written anything, so exclude this document from
         // replication!
         excludeFromReplication = true;
@@ -1187,10 +1203,12 @@ Future<OperationResult> transaction::Methods::insertLocal(
           prevDocResult.revisionId().isSet()) {
         TRI_ASSERT(didReplace);
 
-        buildDocumentIdentity(collection.get(), resultBuilder, cid,
-                              value.get(StaticStrings::KeyString).stringView(),
-                              prevDocResult.revisionId(), RevisionId::none(),
-                              nullptr, nullptr);
+        if (replicationType != ReplicationType::FOLLOWER) {
+          buildDocumentIdentity(
+              collection.get(), resultBuilder, cid,
+              value.get(StaticStrings::KeyString).stringView(),
+              prevDocResult.revisionId(), RevisionId::none(), nullptr, nullptr);
+        }
       }
       return res;
     }
@@ -1213,10 +1231,13 @@ Future<OperationResult> transaction::Methods::insertLocal(
                         .stringView();
       }
 
-      buildDocumentIdentity(collection.get(), resultBuilder, cid, keyString,
-                            docResult.revisionId(), prevDocResult.revisionId(),
-                            showReplaced ? &prevDocResult : nullptr,
-                            options.returnNew ? &docResult : nullptr);
+      if (replicationType != ReplicationType::FOLLOWER) {
+        buildDocumentIdentity(collection.get(), resultBuilder, cid, keyString,
+                              docResult.revisionId(),
+                              prevDocResult.revisionId(),
+                              showReplaced ? &prevDocResult : nullptr,
+                              options.returnNew ? &docResult : nullptr);
+      }
     }
     return res;
   };
@@ -1288,7 +1309,20 @@ Future<OperationResult> transaction::Methods::insertLocal(
 
   std::shared_ptr<VPackBufferUInt8> resDocs = resultBuilder.steal();
   if (res.ok()) {
-    if (replicationType == ReplicationType::LEADER && !followers->empty()) {
+    bool isMock = false;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+    StorageEngine& engine = collection->vocbase()
+                                .server()
+                                .getFeature<EngineSelectorFeature>()
+                                .engine();
+
+    if (engine.typeName() == "Mock") {
+      isMock = true;
+    }
+#endif
+
+    if (!isMock && replicationType == ReplicationType::LEADER &&
+        !followers->empty()) {
       TRI_ASSERT(collection != nullptr);
 
       // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
@@ -1489,6 +1523,13 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   VPackBuilder resultBuilder;  // building the complete result
   ManagedDocumentResult previous;
   ManagedDocumentResult result;
+
+  if (options.validate && !options.isRestore &&
+      options.isSynchronousReplicationFrom.empty()) {
+    options.schema = collection->schema();
+  } else {
+    options.schema = nullptr;
+  }
 
   [[maybe_unused]] size_t numExclusions = 0;
 

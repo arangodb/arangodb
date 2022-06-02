@@ -154,9 +154,17 @@ struct RocksDBMetadata final {
   rocksdb::SequenceNumber committableSeq(
       rocksdb::SequenceNumber maxCommitSeq) const;
 
+  /// @brief returns the collections current document-count adjustment ticket.
+  uint64_t documentCountAdjustmentTicket() noexcept;
+
   /// @brief buffer a counter adjustment
   void adjustNumberDocuments(rocksdb::SequenceNumber seq, RevisionId revId,
                              int64_t adj);
+
+  /// @brief buffer a counter adjustment, using a ticket
+  void adjustNumberDocumentsWithTicket(uint64_t documentCountAdjustmentTicket,
+                                       rocksdb::SequenceNumber seq,
+                                       RevisionId revId, int64_t adj);
 
   /// @brief buffer a counter adjustment ONLY in recovery, optimized to use less
   /// memory
@@ -210,6 +218,16 @@ struct RocksDBMetadata final {
   rocksdb::SequenceNumber _maxBlockersSequenceNumber;
 
   DocCount _count;  /// @brief document count struct
+
+  /// @brief collection's current document count adjustment ticket value
+  /// (always >= 1). many callers can ask the collection for a ticket,
+  /// and it is fine if multiple callers get the same ticket value.
+  /// however, if one of the callers later wants to perform an adjustment
+  /// of the collection's count value, it has to provide its ticket
+  /// value to the adjustNumberDocumentsWithTicket function. that
+  /// function will only update the counts if the ticket value is
+  /// unchanged.
+  std::atomic<uint64_t> _documentCountAdjustmentTicket;
 
   /// document counter adjustment
   struct Adjustment {

@@ -62,6 +62,8 @@ struct EdgeDocumentToken;
 
 class RefactoredTraverserCache {
  public:
+  enum EdgeReadType { ONLYID, DOCUMENT, ID_DOCUMENT };
+
   explicit RefactoredTraverserCache(
       arangodb::transaction::Methods* trx, aql::QueryContext* query,
       arangodb::ResourceMonitor& resourceMonitor,
@@ -92,6 +94,18 @@ class RefactoredTraverserCache {
                               velocypack::Builder& builder);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Inserts { [...], _id : edge, [...] } into the given builder.
+  /// The builder has to be an open Object.
+  //////////////////////////////////////////////////////////////////////////////
+  void insertEdgeIntoLookupMap(graph::EdgeDocumentToken const& etkn,
+                               velocypack::Builder& builder);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Returns the Translated Edge _id value, translating the custom type
+  //////////////////////////////////////////////////////////////////////////////
+  std::string getEdgeId(EdgeDocumentToken const& idToken);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document identified by the _id string
   //////////////////////////////////////////////////////////////////////////////
   void insertVertexIntoResult(
@@ -120,12 +134,14 @@ class RefactoredTraverserCache {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Lookup an edge document from the database.
   ///        if this returns false the result is unmodified
-  ///        if onlyId is set to true, the result will only contain the _Id
-  ///        value not the document itself.
+  ///        if readType is set to ONLYID: the result will only contain the _Id
+  ///        if readType is set to DOCUMENT: the result will contain the data
+  ///        if readType is set to ID_DOCUMENT: the result will contain {id:
+  ///        data}
   //////////////////////////////////////////////////////////////////////////////
 
   template<typename ResultType>
-  bool appendEdge(graph::EdgeDocumentToken const& etkn, bool onlyId,
+  bool appendEdge(graph::EdgeDocumentToken const& etkn, EdgeReadType readType,
                   ResultType& result);
 
   //////////////////////////////////////////////////////////////////////////////

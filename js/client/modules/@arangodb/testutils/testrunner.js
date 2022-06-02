@@ -45,19 +45,29 @@ let didSplitBuckets = false;
 // //////////////////////////////////////////////////////////////////////////////
 let usersTests = {
   name: 'users',
-  setUp: function (te) {
-    this.usersCount = userManager.all().length;
+  setUp: function (obj, te) {
+    try {
+      this.usersCount = userManager.all().length;
+    } catch (x) {
+      obj.results[te] = {
+        status: false,
+        message: 'failed to fetch the users on the system before the test: ' + x.message
+      };
+      obj.continueTesting = false;
+      obj.serverDead = true;
+      return false;
+    }
     return true;
   },
-  runCheck: function (te) {
+  runCheck: function (obj, te) {
     if (userManager.all().length !== this.usersCount) {
-      this.continueTesting = false;
-      this.results[te] = {
+      obj.continueTesting = false;
+      obj.results[te] = {
         status: false,
         message: 'Cleanup of users missing - found users left over: [ ' +
           JSON.stringify(userManager.all()) +
           ' ] - Original test status: ' +
-          JSON.stringify(this.results[te])
+          JSON.stringify(obj.results[te])
       };
       return false;
     }
@@ -212,6 +222,7 @@ let databasesTest = {
     // TODO: we are currently filtering out the UnitTestDB here because it is 
     // created and not cleaned up by a lot of the `authentication` tests. This
     // should be fixed eventually
+    db._useDatabase('_system');
     let databasesAfter = db._databases().filter((name) => name !== 'UnitTestDB');
     if (databasesAfter.length !== 1 || databasesAfter[0] !== '_system') {
       obj.results[te] = {
@@ -303,8 +314,13 @@ class testRunner {
   // / @brief checks whether the SUT is alive and well:
   // //////////////////////////////////////////////////////////////////////////////
   healthCheck() {
-    return pu.arangod.check.instanceAlive(this.instanceInfo, this.options) &&
-      this.alive();
+    if (pu.arangod.check.instanceAlive(this.instanceInfo, this.options) &&
+        this.alive()) {
+      return true;
+    } else {
+      this.continueTesting = false;
+      return false;
+    }
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -513,6 +529,9 @@ class testRunner {
                 continue;
               }
             }
+          } else {
+            this.results[te].message = "Instance not healthy! " + JSON.stringify(reply);
+            continue;
           }
           first = false;
 

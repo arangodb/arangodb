@@ -116,6 +116,9 @@ class BaseTraverserEngine : public BaseEngine {
   virtual void smartSearch(arangodb::velocypack::Slice,
                            arangodb::velocypack::Builder&) = 0;
 
+  virtual void smartSearchUnified(arangodb::velocypack::Slice,
+                                  arangodb::velocypack::Builder&) = 0;
+
   EngineType getType() const override { return TRAVERSER; }
 
   bool produceVertices() const override;
@@ -177,6 +180,9 @@ class TraverserEngine : public BaseTraverserEngine {
 
   void smartSearch(arangodb::velocypack::Slice,
                    arangodb::velocypack::Builder&) override;
+
+  void smartSearchUnified(arangodb::velocypack::Slice,
+                          arangodb::velocypack::Builder&) override;
 };
 
 }  // namespace traverser

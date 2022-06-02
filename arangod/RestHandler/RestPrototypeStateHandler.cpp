@@ -63,6 +63,8 @@ RestStatus RestPrototypeStateHandler::executeByMethod(
       return handleGetRequest(methods);
     case rest::RequestType::DELETE_REQ:
       return handleDeleteRequest(methods);
+    case rest::RequestType::PUT:
+      return handlePutRequest(methods);
     default:
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                     TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
@@ -96,6 +98,32 @@ RestStatus RestPrototypeStateHandler::handleCreateState(
               }));
 }
 
+RestStatus RestPrototypeStateHandler::handlePutRequest(
+    replication2::PrototypeStateMethods const& methods) {
+  std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {  // error message generated in parseVPackBody
+    return RestStatus::DONE;
+  }
+
+  if (suffixes.size() != 2) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expect PUT /_api/prototype-state/<state-id>/[verb]");
+    return RestStatus::DONE;
+  }
+
+  LogId logId{basics::StringUtils::uint64(suffixes[0])};
+  if (auto& verb = suffixes[1]; verb == "cmp-ex") {
+    return handlePutCompareExchange(methods, logId, body);
+  } else {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                  "expected 'cmp-ex'");
+  }
+  return RestStatus::DONE;
+}
+
 RestStatus RestPrototypeStateHandler::handlePostRequest(
     PrototypeStateMethods const& methods) {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
@@ -126,6 +154,68 @@ RestStatus RestPrototypeStateHandler::handlePostRequest(
                   "expected one of the resources 'insert', 'multi-get'");
   }
   return RestStatus::DONE;
+}
+
+RestStatus RestPrototypeStateHandler::handlePutCompareExchange(
+    replication2::PrototypeStateMethods const& methods,
+    replication2::LogId logId, velocypack::Slice payload) {
+  if (!payload.isObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  basics::StringUtils::concatT("expected object containing "
+                                               "key-value pairs, but got ",
+                                               payload.toJson()));
+    return RestStatus::DONE;
+  }
+
+  std::unordered_map<std::string, std::pair<std::string, std::string>> entries;
+  for (auto const& [key, value] : VPackObjectIterator{payload}) {
+    if (key.isString() && value.isObject()) {
+      if (auto oldValue{value.get("oldValue")}, newValue{value.get("newValue")};
+          oldValue.isString() && newValue.isString()) {
+        entries.emplace(
+            key.copyString(),
+            std::make_pair(oldValue.copyString(), newValue.copyString()));
+      } else {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                      basics::StringUtils::concatT(
+                          "expected key-value pair of strings but got {",
+                          oldValue.toJson(), ": ", newValue.toJson(), "}"));
+        return RestStatus::DONE;
+      }
+    }
+  }
+
+  if (entries.size() != 1) {
+    generateError(
+        rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        basics::StringUtils::concatT("the compare-exchange operation currently "
+                                     "supports one key at the time, but got ",
+                                     entries.size(), " keys"));
+    return RestStatus::DONE;
+  }
+
+  auto options = PrototypeStateMethods::PrototypeWriteOptions{};
+  options.waitForApplied =
+      _request->parsedValue<bool>("waitForApplied").value_or(true);
+
+  auto [key, values] = *entries.begin();
+  return waitForFuture(
+      methods.compareExchange(logId, key, values.first, values.second, options)
+          .thenValue([this, options](ResultT<LogIndex>&& waitForResult) {
+            if (waitForResult.fail()) {
+              generateError(waitForResult.result());
+            } else {
+              VPackBuilder result;
+              {
+                VPackObjectBuilder ob(&result);
+                result.add("index", VPackValue(waitForResult.get()));
+              }
+              generateOk(options.waitForApplied ? rest::ResponseCode::OK
+                                                : rest::ResponseCode::ACCEPTED,
+                         result.slice());
+            }
+            return RestStatus::DONE;
+          }));
 }
 
 RestStatus RestPrototypeStateHandler::handlePostInsert(
@@ -200,12 +290,14 @@ RestStatus RestPrototypeStateHandler::handlePostRetrieveMulti(
     keys.push_back(entry.copyString());
   }
 
-  auto waitForApplied = LogIndex{
+  PrototypeStateMethods::ReadOptions readOptions;
+  readOptions.waitForApplied = LogIndex{
       _request->parsedValue<decltype(LogIndex::value)>("waitForApplied")
           .value_or(0)};
+  readOptions.readFrom = _request->parsedValue<ParticipantId>("readFrom");
 
   return waitForFuture(
-      methods.get(logId, std::move(keys), waitForApplied)
+      methods.get(logId, std::move(keys), readOptions)
           .thenValue([this](
                          ResultT<std::unordered_map<std::string, std::string>>&&
                              waitForResult) {
@@ -255,9 +347,12 @@ RestStatus RestPrototypeStateHandler::handleGetRequest(
     return handleGetEntry(methods, logId);
   } else if (verb == "snapshot") {
     return handleGetSnapshot(methods, logId);
+  } else if (verb == "wait-for-applied") {
+    return handleGetWaitForApplied(methods, logId);
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-                  "expected one of the resources 'entry', 'snapshot'");
+                  "expected one of the resources 'entry', 'snapshot', "
+                  "'wait-for-applied'");
   }
   return RestStatus::DONE;
 }
@@ -271,12 +366,14 @@ RestStatus RestPrototypeStateHandler::handleGetEntry(
     return RestStatus::DONE;
   }
 
-  auto waitForApplied = LogIndex{
+  PrototypeStateMethods::ReadOptions readOptions;
+  readOptions.waitForApplied = LogIndex{
       _request->parsedValue<decltype(LogIndex::value)>("waitForApplied")
           .value_or(0)};
+  readOptions.readFrom = _request->parsedValue<ParticipantId>("readFrom");
 
   return waitForFuture(
-      methods.get(logId, suffixes[2], waitForApplied)
+      methods.get(logId, suffixes[2], readOptions)
           .thenValue([this, key = suffixes[2]](auto&& waitForResult) {
             if (waitForResult.fail()) {
               generateError(waitForResult.result());
@@ -295,6 +392,30 @@ RestStatus RestPrototypeStateHandler::handleGetEntry(
               }
             }
           }));
+}
+
+RestStatus RestPrototypeStateHandler::handleGetWaitForApplied(
+    const replication2::PrototypeStateMethods& methods,
+    replication2::LogId logId) {
+  auto const& suffixes = _request->suffixes();
+  if (suffixes.size() != 3) {
+    generateError(
+        rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expect GET /_api/prototype-state/<state-id>/wait-for-applied/<idx>");
+    return RestStatus::DONE;
+  }
+
+  LogIndex idx{basics::StringUtils::uint64(suffixes[2])};
+
+  return waitForFuture(methods.waitForApplied(logId, idx)
+                           .thenValue([this](auto&& waitForResult) {
+                             if (waitForResult.fail()) {
+                               generateError(waitForResult);
+                             } else {
+                               generateOk(rest::ResponseCode::OK,
+                                          VPackSlice::noneSlice());
+                             }
+                           }));
 }
 
 RestStatus RestPrototypeStateHandler::handleGetSnapshot(
@@ -332,14 +453,23 @@ RestStatus RestPrototypeStateHandler::handleGetSnapshot(
 RestStatus RestPrototypeStateHandler::handleDeleteRequest(
     replication2::PrototypeStateMethods const& methods) {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
-  if (suffixes.size() < 2) {
+  if (suffixes.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expected DELETE /_api/prototype-state/<state-id>/[verb]");
+                  "expected DELETE /_api/prototype-state/<state-id>(/[verb])");
     return RestStatus::DONE;
   }
 
   LogId logId{basics::StringUtils::uint64(suffixes[0])};
-  if (auto& verb = suffixes[1]; verb == "entry") {
+  if (suffixes.size() == 1) {
+    return waitForFuture(methods.drop(logId).thenValue([this](auto&& result) {
+      if (result.ok()) {
+        generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
+      } else {
+        generateError(result);
+      }
+    }));
+
+  } else if (auto& verb = suffixes[1]; verb == "entry") {
     return handleDeleteRemove(methods, logId);
   } else if (verb == "multi-remove") {
     bool parseSuccess = false;

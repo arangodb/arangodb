@@ -46,7 +46,7 @@ enum class ViewVersion : uint32_t {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief defines the implementation version of the iresearch link interface
+/// @brief defines the implementation version of the iresearch index interface
 ///        e.g. which how data is stored in iresearch
 ////////////////////////////////////////////////////////////////////////////////
 enum class LinkVersion : uint32_t {
@@ -55,14 +55,14 @@ enum class LinkVersion : uint32_t {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @return default link version
+/// @return default index version
 ////////////////////////////////////////////////////////////////////////////////
 constexpr LinkVersion getDefaultVersion(bool isUserRequest) noexcept {
   return isUserRequest ? LinkVersion::MAX : LinkVersion::MIN;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @return format identifier according to a specified link version
+/// @return format identifier according to a specified index version
 ////////////////////////////////////////////////////////////////////////////////
 constexpr std::string_view getFormat(LinkVersion version) noexcept {
   constexpr std::array<std::string_view, 2> IRESEARCH_FORMATS{
@@ -74,7 +74,7 @@ constexpr std::string_view getFormat(LinkVersion version) noexcept {
 }
 
 struct StaticStrings {
-  static constexpr std::string_view DataSourceType = "arangosearch";
+  static constexpr std::string_view ViewType = "arangosearch";
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the name of the field in the IResearch View definition denoting the

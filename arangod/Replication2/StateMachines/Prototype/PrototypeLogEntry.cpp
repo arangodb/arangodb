@@ -33,8 +33,29 @@ auto PrototypeLogEntry::getType() noexcept -> std::string_view {
       overload{
           [](PrototypeLogEntry::DeleteOperation const& o) { return kDelete; },
           [](PrototypeLogEntry::InsertOperation const& o) { return kInsert; },
+          [](PrototypeLogEntry::CompareExchangeOperation const& o) {
+            return kCompareExchange;
+          },
       },
       op);
+}
+
+auto PrototypeLogEntry::createInsert(
+    std::unordered_map<std::string, std::string> map) -> PrototypeLogEntry {
+  return PrototypeLogEntry{PrototypeLogEntry::InsertOperation{std::move(map)}};
+}
+
+auto PrototypeLogEntry::createDelete(std::vector<std::string> keys)
+    -> PrototypeLogEntry {
+  return PrototypeLogEntry{PrototypeLogEntry::DeleteOperation{std::move(keys)}};
+}
+
+auto PrototypeLogEntry::createCompareExchange(std::string key,
+                                              std::string oldValue,
+                                              std::string newValue)
+    -> PrototypeLogEntry {
+  return PrototypeLogEntry{PrototypeLogEntry::CompareExchangeOperation{
+      std::move(key), std::move(oldValue), std::move(newValue)}};
 }
 
 auto replicated_state::EntryDeserializer<

@@ -38,10 +38,10 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-
 class RestPregelHandler;
+}
 
-namespace pregel {
+namespace arangodb::pregel {
 
 class PregelFeature;
 
@@ -172,5 +172,4 @@ class Worker : public IWorker {
   void aqlResult(VPackBuilder&, bool withId) const override;
 };
 
-}  // namespace pregel
-}  // namespace arangodb
+}  // namespace arangodb::pregel

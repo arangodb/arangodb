@@ -136,6 +136,8 @@ class RefactoredSingleServerEdgeCursor {
   bool evaluateEdgeExpression(arangodb::aql::Expression* expression,
                               VPackSlice value);
 
+  bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
+
  private:
   auto getLookupInfos(uint64_t depth) -> std::vector<LookupInfo>&;
 };

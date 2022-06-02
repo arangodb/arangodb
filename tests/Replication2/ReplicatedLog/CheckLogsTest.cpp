@@ -49,11 +49,11 @@ struct CheckLogsAlgorithmTest : ::testing::Test {
     return {std::move(leader), rebootId};
   }
 
-  static auto makeTermSpecification(LogTerm term, LogConfig const& config)
+  static auto makeTermSpecification(LogTerm term,
+                                    agency::LogPlanConfig const& config)
       -> agency::LogPlanTermSpecification {
     auto termSpec = agency::LogPlanTermSpecification{};
     termSpec.term = term;
-    termSpec.config = config;
     return termSpec;
   }
 

@@ -228,6 +228,8 @@ void reportPrimaryIndexInconsistency(arangodb::Result const& res,
 
 namespace arangodb {
 
+void syncIndexOnCreate(Index&);
+
 RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                                      arangodb::velocypack::Slice info)
     : RocksDBMetaCollection(collection, info),
@@ -572,9 +574,11 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     arangodb::aql::PlanCache::instance()->invalidate(vocbase);
 #endif
 
+    syncIndexOnCreate(*newIdx.get());
+
     // inBackground index might not recover selectivity estimate w/o sync
     if (inBackground && !newIdx->unique() && newIdx->hasSelectivityEstimate()) {
-      engine.settingsManager()->sync(false);
+      engine.settingsManager()->sync(/*force*/ false);
     }
 
     // Step 6. persist in rocksdb
@@ -765,7 +769,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx,
     rocksdb::DB* db = engine.db()->GetRootDB();
 
     TRI_IF_FAILURE("RocksDBCollection::truncate::forceSync") {
-      engine.settingsManager()->sync(false);
+      engine.settingsManager()->sync(/*force*/ false);
     }
 
     // pre commit sequence needed to place a blocker
@@ -1091,19 +1095,12 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       options.isSynchronousReplicationFrom.empty()) {
     // only do schema validation when we are not restoring/replicating
     res = _logicalCollection.validate(
-        newSlice, trx->transactionContextPtr()->getVPackOptions());
+        options.schema, newSlice,
+        trx->transactionContextPtr()->getVPackOptions());
 
     if (res.fail()) {
       return res;
     }
-  }
-
-  auto r = transaction::Methods::validateSmartJoinAttribute(_logicalCollection,
-                                                            newSlice);
-
-  if (r != TRI_ERROR_NO_ERROR) {
-    res.reset(r);
-    return res;
   }
 
   LocalDocumentId const documentId =
@@ -1268,7 +1265,8 @@ Result RocksDBCollection::performUpdateOrReplace(
 
   if (options.validate && options.isSynchronousReplicationFrom.empty()) {
     res = _logicalCollection.validate(
-        newDoc, oldDoc, trx->transactionContextPtr()->getVPackOptions());
+        options.schema, newDoc, oldDoc,
+        trx->transactionContextPtr()->getVPackOptions());
     if (res.fail()) {
       return res;
     }
@@ -1454,13 +1452,13 @@ void RocksDBCollection::figuresSpecific(
   rocksdb::Range r(bounds.start(), bounds.end());
 
   uint64_t out = 0;
-  db->GetApproximateSizes(
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::Documents),
-      &r, 1, &out,
-      static_cast<uint8_t>(
-          rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
-          rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+
+  rocksdb::SizeApproximationOptions options{.include_memtables = true,
+                                            .include_files = true};
+  db->GetApproximateSizes(options,
+                          RocksDBColumnFamilyManager::get(
+                              RocksDBColumnFamilyManager::Family::Documents),
+                          &r, 1, &out);
 
   builder.add("documentsSize", VPackValue(out));
   bool cacheInUse = useCache();

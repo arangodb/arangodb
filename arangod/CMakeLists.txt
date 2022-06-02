@@ -84,6 +84,7 @@ list(APPEND ARANGO_IRESEARCH_HEADERS
   IResearch/IResearchViewSort.h
   IResearch/IResearchViewStoredValues.h
   IResearch/VelocyPackHelper.h
+  IResearch/ViewSnapshot.h
   RestHandler/RestAnalyzerHandler.h
   )
 
@@ -126,6 +127,7 @@ list(APPEND ARANGO_IRESEARCH_SOURCES
   IResearch/IResearchViewSort.cpp
   IResearch/IResearchViewStoredValues.cpp
   IResearch/VelocyPackHelper.cpp
+  IResearch/ViewSnapshot.cpp
   RestHandler/RestAnalyzerHandler.cpp
   )
 
@@ -194,12 +196,10 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Aql/PruneExpressionEvaluator.cpp
   Cluster/CallbackGuard.cpp
   Cluster/ClusterEdgeCursor.cpp
-  Cluster/ClusterTraverser.cpp
   Cluster/ServerDefaults.cpp
   Cluster/TraverserEngine.cpp
   Graph/AttributeWeightShortestPathFinder.cpp
   Graph/BaseOptions.cpp
-  Graph/BreadthFirstEnumerator.cpp
   Graph/ClusterGraphDatalake.cpp
   Graph/ClusterTraverserCache.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
@@ -207,24 +207,20 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/GraphManager.cpp
   Graph/GraphOperations.cpp
   Graph/KShortestPathsFinder.cpp
-  Graph/NeighborsEnumerator.cpp
-  Graph/PathEnumerator.cpp
   Graph/ShortestPathFinder.cpp
   Graph/ShortestPathOptions.cpp
   Graph/ShortestPathResult.cpp
   Graph/ShortestPathType.cpp
   Graph/SingleServerEdgeCursor.cpp
-  Graph/SingleServerTraverser.cpp
-  Graph/Traverser.cpp
-  Graph/TraverserCache.cpp
+  Graph/TraverserCache.cpp # maybe remove
   Graph/TraverserCacheFactory.cpp
   Graph/TraverserDocumentCache.cpp
   Graph/TraverserOptions.cpp
-  Graph/WeightedEnumerator.cpp
   Graph/Cursors/RefactoredSingleServerEdgeCursor.cpp
   Graph/Cache/RefactoredTraverserCache.cpp
   Graph/Cache/RefactoredClusterTraverserCache.cpp
   Graph/Enumerators/OneSidedEnumerator.cpp
+  Graph/Enumerators/OneSidedEnumeratorInterface.cpp
   Graph/Enumerators/TwoSidedEnumerator.cpp
   Graph/Helpers/TraceEntry.cpp
   Graph/Queues/QueueTracer.cpp
@@ -515,7 +511,6 @@ set(LIB_ARANGO_VOCBASE_SOURCES
 
 set(LIB_ARANGO_UTILS_SOURCES
   Utils/ExecContext.cpp
-  Utils/FlushThread.cpp
   Utils/OperationOptions.cpp
   Utils/UrlHelper.cpp
   ${ENTERPRISE_FILES}
@@ -596,6 +591,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/Exceptions/ParticipantResignedException.h
   Replication2/Methods.cpp
   Replication2/ReplicatedLog/AgencyLogSpecification.cpp
+  Replication2/ReplicatedLog/AgencySpecificationInspectors.cpp
   Replication2/ReplicatedLog/Algorithms.cpp
   Replication2/ReplicatedLog/ILogInterfaces.cpp
   Replication2/ReplicatedLog/InMemoryLog.cpp
@@ -629,6 +625,8 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedState/UpdateReplicatedState.h
   Replication2/StateMachines/BlackHole/BlackHoleStateMachine.cpp
   Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.cpp
+  Replication2/StateMachines/Document/DocumentStateMachine.cpp
+  Replication2/StateMachines/Document/DocumentStateMachineFeature.cpp
   Replication2/StateMachines/Prototype/PrototypeLogEntry.cpp
   Replication2/StateMachines/Prototype/PrototypeLeaderState.cpp
   Replication2/StateMachines/Prototype/PrototypeCore.cpp
@@ -1131,6 +1129,7 @@ target_link_libraries(arango_replication arango_vocbase)
 
 target_link_libraries(arango_replication2 arango)
 target_link_libraries(arango_replication2 immer)
+target_link_libraries(arango_replication2 fmt)
 target_link_libraries(arango_replication2 arango_network)
 
 target_link_libraries(arango_rocksdb rocksdb)

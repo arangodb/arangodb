@@ -635,6 +635,92 @@ function restoreIntegrationSuite () {
       }
     },
     
+    testRestoreWithoutUsesRevisions: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            name: cn,
+            type: 2
+          }
+        }));
+
+        let args = ['--collection', cn, '--import-data', 'false'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        let props = c.properties();
+        assertTrue(props.hasOwnProperty("syncByRevision"));
+        assertTrue(props.syncByRevision);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
+    testRestoreWithUsesRevisionsFalse: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            usesRevisionsAsDocumentIds: false,
+            name: cn,
+            type: 2
+          }
+        }));
+
+        let args = ['--collection', cn, '--import-data', 'false'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        let props = c.properties();
+        assertTrue(props.hasOwnProperty("syncByRevision"));
+        assertFalse(props.syncByRevision);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
+    testRestoreWithUsesRevisionsTrue: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            usesRevisionsAsDocumentIds: true,
+            name: cn,
+            type: 2
+          }
+        }));
+
+        let args = ['--collection', cn, '--import-data', 'false'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        let props = c.properties();
+        assertTrue(props.hasOwnProperty("syncByRevision"));
+        assertTrue(props.syncByRevision);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
     testRestoreNumericGloballyUniqueId: function () {
       let path = fs.getTempFile();
       try {
@@ -1076,6 +1162,93 @@ function restoreIntegrationSuite () {
         db._useDatabase("_system");
       }
     },
+
+    testRestoreEnableRevisionTreesTrue: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            name: cn,
+            type: 2
+          }
+        }));
+
+        let args = ['--collection', cn, '--import-data', 'false', '--enable-revision-trees', 'true'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        let props = c.properties();
+        assertTrue(props.hasOwnProperty("syncByRevision"));
+        assertTrue(props.syncByRevision);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },    
+    
+    testRestoreEnableRevisionTreesFalse1: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            name: cn,
+            type: 2,
+            usesRevisionsAsDocumentIds: true,
+          }
+        }));
+
+        let args = ['--collection', cn, '--import-data', 'false', '--enable-revision-trees', 'false'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        let props = c.properties();
+        assertTrue(props.hasOwnProperty("syncByRevision"));
+        assertTrue(props.syncByRevision);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },    
+    
+    testRestoreEnableRevisionTreesFalse2: function () {
+      let path = fs.getTempFile();
+      try {
+        fs.makeDirectory(path);
+        let fn = fs.join(path, cn + ".structure.json");
+
+        fs.write(fn, JSON.stringify({
+          indexes: [],
+          parameters: {
+            name: cn,
+            type: 2,
+            usesRevisionsAsDocumentIds: false,
+            syncByRevision: false,
+          }
+        }));
+
+        let args = ['--collection', cn, '--import-data', 'false', '--enable-revision-trees', 'false'];
+        runRestore(path, args, 0); 
+
+        let c = db._collection(cn);
+        let props = c.properties();
+        assertTrue(props.hasOwnProperty("syncByRevision"));
+        assertFalse(props.syncByRevision);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },    
   };
 }
 
