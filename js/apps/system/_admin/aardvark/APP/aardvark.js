@@ -1239,6 +1239,11 @@ authRouter.get('/g6graph/:name', function (req, res) {
 
     var nodesObj = {};
     var nodesArr = [];
+    var nodesColorAttributes = [];
+    if(config.nodesColorAttributes) {
+      nodesColorAttributes = JSON.parse(config.nodesColorAttributes);
+    }
+
     var nodeNames = {};
     var edgesObj = {};
     var edgesArr = [];
@@ -1392,7 +1397,7 @@ authRouter.get('/g6graph/:name', function (req, res) {
             y: Math.random()
           };
           */
-        var calculatedNodeColor = '#dee072';
+        var calculatedNodeColor = '#fbe08e';
         if (config.nodeColor !== undefined) {
           if(!config.nodeColor.startsWith('#')) {
             calculatedNodeColor = '#' + config.nodeColor;
@@ -1422,11 +1427,46 @@ authRouter.get('/g6graph/:name', function (req, res) {
               nodeObj.color = tmpObjNodes[coll];
             }
           } else if (config.nodeColorAttribute !== '') {
+            if(node[config.nodeColorAttribute]) {
+              nodeObj.colorCategory = node[config.nodeColorAttribute] || '';
+              const tempNodeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
+              
+              const value2 = {
+                'name': node[config.nodeColorAttribute] || '',
+                'color': tempNodeColor
+              };
+
+              const nodesColorAttributeIndex = nodesColorAttributes.findIndex(object => object.name === value2.name);
+              if (nodesColorAttributeIndex === -1) {
+                nodesColorAttributes.push(value2);
+              }
+            }
+
+            /*
+            if (config.nodeLabel) {
+              if (config.nodeLabel.indexOf('.') > -1) {
+                nodeLabel = getAttributeByKey(node, config.nodeLabel);
+                if (nodeLabel === undefined || nodeLabel === '') {
+                  nodeLabel = node._id;
+                }
+              } else {
+                nodeLabel = node[config.nodeLabel];
+              }
+            } else {
+              nodeLabel = node._key;
+            }
+            */
+
             var attr = node[config.nodeColorAttribute];
             if (attr) {
               if (tmpObjNodes.hasOwnProperty(attr)) {
-                nodeObj.color = tmpObjNodes[attr];
-                nodeObj.style.fill = tmpObjNodes[attr] || '#ff0'; 
+                //nodeObj.color = tmpObjNodes[attr];
+                nodeObj.color = '#' + nodesColorAttributes.find(obj => obj.name === attr).color;
+                //nodeObj.style.fill = tmpObjNodes[attr] || '#ff0';
+                nodeObj.style.fill = '#' + nodesColorAttributes.find(obj => obj.name === attr).color;
+                nodeObj[config.nodeColorAttribute] = attr;
+                nodeObj.attributeColor = tmpObjNodes[attr];
+                nodeObj['viking'] = '#' + nodesColorAttributes.find(obj => obj.name === attr).color;
               } else {
                 tmpObjNodes[attr] = colors.jans[Object.keys(tmpObjNodes).length];
                 nodeObj.color = tmpObjNodes[attr];
@@ -1470,7 +1510,8 @@ authRouter.get('/g6graph/:name', function (req, res) {
       edges: edgesArr,
       settings: {
         vertexCollections: vertexCollections,
-        startVertex: startVertex
+        startVertex: startVertex,
+        nodesColorAttributes: nodesColorAttributes
       }
     };
     if (isEnterprise) {

@@ -30,6 +30,7 @@ import URLPARAMETERS from "./UrlParameters";
 import ButtonScrollTo from "./ButtonScrollTo";
 import FetchData from "./FetchData";
 import G6FuncComponent from "./G6FuncComponent";
+import G6GraphView from "./G6GraphView";
 import './tooltip.css';
 
 const G6JsGraph = () => {
@@ -66,6 +67,7 @@ const G6JsGraph = () => {
 
   const [urlParams, setUrlParams] = useState(urlParamsObject);
   const [lookedUpData, setLookedUpData] = useState([]);
+  const [nodesColorAttributes, setNodesColorAttributes] = useState({});
 
   let apiParameters = Object.keys(urlParams)
   .map((key) => key + "=" + urlParams[key])
@@ -117,6 +119,8 @@ const G6JsGraph = () => {
   const [vertexCollectionsColors, setVertexCollectionsColors] = useState();
   const [edgeCollections, setEdgeCollections] = useState([]);
   const [edgeModelToAdd, setEdgeModelToAdd] = useState([]);
+  const [nodeToEdit, setNodeToEdit] = useState({});
+  /*
   const [nodeToEdit, setNodeToEdit] = useState(
   {
     "keys": [
@@ -124,6 +128,7 @@ const G6JsGraph = () => {
     ],
     "collection": "germanCity"
   });
+  */
   const [edgeToEdit, setEdgeToEdit] = useState(
     {
       "keys": [
@@ -546,21 +551,9 @@ const G6JsGraph = () => {
   }
 
   const openEditModal = (node) => {
-    console.log(">>>>>>>>>>>> openEditModal (node): ", node);
     const slashPos = node.indexOf("/");
-    const label = node.substring(slashPos + 1) + " - " + node.substring(0, slashPos);
-    const data = [{
-      "keys": [
-        "Berlin"
-      ],
-      "collection": "germanCity"
-    }];
     setNodeToEdit(node);
-    //setNodeKey('Paris');
-    console.log(">>>>>>>>>>>> openEditModal (nodeKey): ", node.substring(slashPos + 1));
     setNodeKey(node.substring(slashPos + 1));
-    //setNodeCollection('frenchCity');
-    console.log(">>>>>>>>>>>> openEditModal (nodeCollection): ", node.substring(0, slashPos));
     setNodeCollection(node.substring(0, slashPos));
     const nodeDataObject = {
       "keys": [
@@ -568,30 +561,24 @@ const G6JsGraph = () => {
       ],
       "collection": node.substring(0, slashPos)
     };
-      arangoFetch(arangoHelper.databaseUrl("/_api/simple/lookup-by-keys"), {
-        method: "PUT",
-        body: JSON.stringify(nodeDataObject),
-      })
-      .then(response => response.json())
-      .then(data => {
-        console.log("Document info loaded before opening EditModal component: ");
-        console.log("Document info loaded before opening EditModal component (data): ", data);
-        console.log("Document info loaded before opening EditModal component (data.documents): ", data.documents);
-        console.log("Document info loaded before opening EditModal component (data.documents[0]): ", data.documents[0]);
-        const allowedDocuments = omit(data.documents[0], '_id', '_key', '_rev');
-        console.log("allowedDocuments: ", allowedDocuments);
-        console.log("data.documents[0]: ", data.documents[0]);
-        setNodeDataToEdit(allowedDocuments);
-        //setNodeDataToEdit(data.documents[0]);
-        setBasicNodeDataToEdit(pick(data.documents[0], ['_id', '_key', '_rev']));
-        console.log("pick: ", pick(data.documents[0], ['_id', '_key', '_rev']));
-      })
-      .catch((err) => {
-        console.log(err);
-      });
-    console.log("openEditModal: change nodeToEdit now");
+
+    arangoFetch(arangoHelper.databaseUrl("/_api/simple/lookup-by-keys"), {
+      method: "PUT",
+      body: JSON.stringify(nodeDataObject),
+    })
+    .then(response => response.json())
+    .then(data => {
+      const allowedDocuments = omit(data.documents[0], '_id', '_key', '_rev');
+      setNodeDataToEdit(allowedDocuments);
+      setBasicNodeDataToEdit(pick(data.documents[0], ['_id', '_key', '_rev']));
+    })
+    .catch((error) => {
+      arangoHelper.arangoError('Graph', 'Could not look up this node.');
+      console.log("Error looking up this node: ", error);
+      setShowEditModal(false);
+    });
+
     setIsNewNodeToEdit(true);
-    //return <LoadDocument node={node} />
     setShowEditModal(true);
   }
 
@@ -674,44 +661,12 @@ const G6JsGraph = () => {
   }
 
   const openAddNodeModal = () => {
-    console.log(">>>>>>>>>>>> openAddNodeModal");
-    const data = [{
-      "keys": [
-        "Munich"
-      ],
-      "collection": "germanCity"
-    }];
     setNodeToAdd({});
-    //setNodeToAddKey("Munich");
-    //setNodeToAddCollection("germanCity");
-    const nodeToAddDataObject = {
-      /*
-      "keys": [
-        "Munich"
-      ],
-      "collection": "germanCity"
-      */
-    };
-      arangoFetch(arangoHelper.databaseUrl("/_api/simple/lookup-by-keys"), {
-        method: "POST",
-        body: JSON.stringify(nodeToAddDataObject),
-      })
-      .then(response => response.json())
-      .then(data => {
-        const allowedDocuments = omit(data.documents[0], '_id', '_key');
-        console.log("allowedDocuments: ", allowedDocuments);
-        setNodeToAddData(data.documents[0]);
-        //setNodeDataToEdit(data);
-      })
-      .catch((err) => {
-        console.log(err);
-      });
-    console.log("openEditModal: change nodeToEdit now");
-    //return <LoadDocument node={node} />
     setShowNodeToAddModal(true);
   }
 
   const expandNode = (node) => {
+    console.log("nodesColorAttributes: ", nodesColorAttributes);
     console.log("urlParameters from context at expanding node: ", urlParameters);
     console.log("urlParameters.edgeLabelByCollection: ", urlParameters.edgeLabelByCollection);
     console.log("urlParameters.nodeLabelByCollection: ", urlParameters.nodeLabelByCollection);
@@ -721,13 +676,14 @@ const G6JsGraph = () => {
     //const url = `/_admin/aardvark/graph/routeplanner?nodeLabelByCollection=false&nodeColorByCollection=true&nodeSizeByEdges=true&edgeLabelByCollection=false&edgeColorByCollection=false&nodeStart=frenchCity/Caen&depth=2&limit=250&nodeLabel=_key&nodeColor=#2ecc71&nodeColorAttribute=&nodeSize=&edgeLabel=&edgeColor=#cccccc&edgeColorAttribute=&edgeEditable=true&query=FOR v, e, p IN 1..1 ANY "frenchCity/Caen" GRAPH "routeplanner" RETURN p`;
     //const url = `/_admin/aardvark/graph/${graphName}?depth=2&limit=250&nodeColor=#2ecc71&nodeColorAttribute=&nodeColorByCollection=true&edgeColor=#cccccc&edgeColorAttribute=&edgeColorByCollection=false&nodeLabel=_key&edgeLabel=&nodeSize=&nodeSizeByEdges=true&edgeEditable=true&nodeLabelByCollection=false&edgeLabelByCollection=false&nodeStart=&barnesHutOptimize=true&query=FOR v, e, p IN 1..1 ANY "${node}" GRAPH "${graphName}" RETURN p`;
     //const url = `/_admin/aardvark/graph/${graphName}?depth=2&limit=250&nodeColor=%232ecc71&nodeColorAttribute=&nodeColorByCollection=false&edgeColor=%23cccccc&edgeColorAttribute=&edgeColorByCollection=false&nodeLabel=_key&edgeLabel=&nodeSize=&nodeSizeByEdges=${urlParameters.nodeSizeByEdges}&edgeEditable=true&nodeLabelByCollection=false&edgeLabelByCollection=false&nodeStart=&barnesHutOptimize=true&query=FOR v, e, p IN 1..1 ANY "${node}" GRAPH "${graphName}" RETURN p`;
+    //const url = `/_admin/aardvark/g6graph/${graphName}?depth=${urlParameters.depth}&limit=${urlParameters.limit}&nodeColor=%23${urlParameters.nodeColor}&nodeColorAttribute=${urlParameters.nodeColorAttribute}&nodeColorByCollection=${urlParameters.nodeColorByCollection}&edgeColor=%23${urlParameters.edgeColor}&edgeColorAttribute=${urlParameters.edgeColorAttribute}&edgeColorByCollection=${urlParameters.edgeColorByCollection}&nodeLabel=${urlParameters.nodeLabel}&edgeLabel=${urlParameters.edgeLabel}&nodeSize=${urlParameters.nodeSize}&nodeSizeByEdges=${urlParameters.nodeSizeByEdges}&edgeEditable=${urlParameters.edgeEditable}&nodeLabelByCollection=${urlParameters.nodeLabelByCollection}&edgeLabelByCollection=${urlParameters.edgeLabelByCollection}&nodeStart=${urlParameters.nodeStart}&barnesHutOptimize=${urlParameters.barnesHutOptimize}&nodesColorAttributes=${JSON.stringify(nodesColorAttributes)}&query=FOR v, e, p IN 1..1 ANY "${node}" GRAPH "${graphName}" RETURN p`;
     const url = `/_admin/aardvark/g6graph/${graphName}?depth=${urlParameters.depth}&limit=${urlParameters.limit}&nodeColor=%23${urlParameters.nodeColor}&nodeColorAttribute=${urlParameters.nodeColorAttribute}&nodeColorByCollection=${urlParameters.nodeColorByCollection}&edgeColor=%23${urlParameters.edgeColor}&edgeColorAttribute=${urlParameters.edgeColorAttribute}&edgeColorByCollection=${urlParameters.edgeColorByCollection}&nodeLabel=${urlParameters.nodeLabel}&edgeLabel=${urlParameters.edgeLabel}&nodeSize=${urlParameters.nodeSize}&nodeSizeByEdges=${urlParameters.nodeSizeByEdges}&edgeEditable=${urlParameters.edgeEditable}&nodeLabelByCollection=${urlParameters.nodeLabelByCollection}&edgeLabelByCollection=${urlParameters.edgeLabelByCollection}&nodeStart=${urlParameters.nodeStart}&barnesHutOptimize=${urlParameters.barnesHutOptimize}&query=FOR v, e, p IN 1..1 ANY "${node}" GRAPH "${graphName}" RETURN p`;
       arangoFetch(arangoHelper.databaseUrl(url), {
         method: "GET"
       })
       .then(response => response.json())
       .then(data => {
-        console.log("Received expanded garph data: ", data);
+        console.log("############ Received expanded garph data: ", data);
         console.log("Current nodes: ", graphData.nodes);
         console.log("Received nodes: ", data.nodes);
         console.log("Current edges: ", graphData.edges);
@@ -889,6 +845,36 @@ const G6JsGraph = () => {
         <button onClick={() => changeGraphDataTest()}>Change graph data test</button>
         <button onClick={() => updateGraphDataWithEdge(edgeModelToAdd)}>Add edge to graph drawing</button>
         <div>urlParameters: {JSON.stringify(urlParameters)}</div>
+
+        <h3>G6FuncComponent</h3>
+        <G6FuncComponent
+          data={graphData}
+        />
+
+        <h3>G6GraphView</h3>
+        <G6GraphView data={graphData} />
+
+
+
+
+
+        <button onClick={() => printGraphData()}>Print graphData</button>
+        <button onClick={() => currentUrlParams()}>current Url Params</button>
+        <button onClick={() => testApiParams()}>Test API Params</button>
+        <button onClick={() => changeGraphDataTest()}>Change graph data test</button>
+        <button onClick={() => updateGraphDataWithEdge(edgeModelToAdd)}>Add edge to graph drawing</button>
+        <button onClick={() => setLookedUpData({'whetever': 'chocolate'})}>Change lookedupdata</button>
+        <button onClick={() => console.log("nodesColorAttributes: ", nodesColorAttributes)}>Print nodesColorAttributes</button>
+        <button onClick={() => console.log("nodesColorAttributes[0]: ", nodesColorAttributes[0])}>Print nodesColorAttributes[0]</button>
+        <button onClick={() => console.log("nodesColorAttributes[0].color: ", nodesColorAttributes[0].color)}>Print nodesColorAttributes[0].color</button>
+        <div>urlParameters: {JSON.stringify(urlParameters)}</div>
+
+        <button onClick={() => {
+          console.log("LocalStorage: ",localStorage.getItem("arangoviking"));
+          console.log("nodesColorAttributes: ", nodesColorAttributes)
+          }}>Print nodesColorAttributes</button>
+        
+        
         */
         
   return (
@@ -990,14 +976,16 @@ const G6JsGraph = () => {
           }}
           node={'nodeToEdit'}
           vertexCollections={vertexCollections}
-          nodeData={[]}
+          nodeData={{}}
           editorContent={'nodeToEdit'}
           onAddNode={() => {
             //setGraphData(newGraphData);
             setShowNodeToAddModal(false);
           }}
-          nodeKey={'Munich'}
-          nodeCollection={'germanCity'}
+          //nodeKey={'Munich'}
+          //nodeCollection={'germanCity'}
+          nodeKey={''}
+          nodeCollection={''}
           onNodeCreation={(newNode) => {
             console.log("newNode in G6JsGraph: ", newNode);
             updateGraphDataWithNode(newNode)
@@ -1034,10 +1022,20 @@ const G6JsGraph = () => {
               onChangeGraphData={(newGraphData) => setGraphData(newGraphData)}
               onClickDocument={(document) => lookUpDocument(document)}
               onLoadFullGraph={() => setShowFetchFullGraphModal(true)}
-              onGraphDataLoaded={(newGraphData) => setGraphData(newGraphData)}
+              onGraphDataLoaded={(newGraphData) => {
+                //nodeColorAttribute
+                console.log("newGraphData after fetching with nodeColorAttribute: ", newGraphData);
+                if(newGraphData.settings.nodesColorAttributes) {
+                  setNodesColorAttributes(newGraphData.settings.nodesColorAttributes);
+                  console.log("newGraphData.settings.nodesColorAttributes: ", newGraphData.settings.nodesColorAttributes);
+                }
+                setGraphData(newGraphData);
+              }}
               vertexCollectionsColors={vertexCollectionsColors}
               nodeColor={urlParameters.nodeColor}
               edgeType={urlParameters.edgeType}
+              nodesColorAttributes={nodesColorAttributes}
+              nodeColorAttribute={urlParameters.nodeColorAttribute}
         />
         <AttributesInfo attributes={lookedUpData} />
         <ButtonScrollTo />

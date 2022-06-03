@@ -20,10 +20,6 @@ const ButtonSave = ({ graphName, onGraphDataLoaded, onIsLoadingData }) => {
         contentType: 'application/json',
         data: urlParameters[0],
         success: function (data) {
-          console.log("Graph based on urlParameter context loaded: ", data);
-          console.log("data.nodes: ", data.nodes);
-          console.log("data.nodes[0]: ", data.nodes[0]);
-          console.log("data.nodes[0].color: ", data.nodes[0].color);
           const element = document.getElementById("graph-card");
           console.log("element: ", element);
           element.scrollIntoView({ behavior: "smooth" });

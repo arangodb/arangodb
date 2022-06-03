@@ -188,7 +188,7 @@ export class GraphView extends React.Component {
         preventOverlap: true,
         //damping: 0.99,
         fitView: true,
-        //linkDistance: 100
+        linkDistance: 100
       },
       modes: {
         default: [
@@ -252,17 +252,19 @@ export class GraphView extends React.Component {
       },
       nodeStateStyles: {
         hover: {
-          fill: '#' + this.props.nodeColor,
+          //fill: '#' + this.props.nodeColor,
           stroke: '#ffffff',
           lineWidth: 2,
-          shadowColor: '#' + this.props.nodeColor,
+          //shadowColor: '#' + this.props.nodeColor,
+          shadowColor: '#cccccc',
           shadowBlur: 20,
           cursor: 'pointer',
           style: {
-            fill: '#' + this.props.nodeColor,
+            //fill: '#' + this.props.nodeColor,
             stroke: '#ffffff',
             lineWidth: 2,
-            shadowColor: '#' + this.props.nodeColor,
+            //shadowColor: '#' + this.props.nodeColor,
+            shadowColor: '#cccccc',
             shadowBlur: 20,
             cursor: 'pointer'
           },
@@ -407,6 +409,7 @@ export class GraphView extends React.Component {
     this.graph.on('node:mouseenter', (evt) => {
       console.log("this.props.nodeColor: ", this.props.nodeColor);
       const node = evt.item;
+      console.log("node: ", node);
       this.graph.setItemState(node, 'hover', true);
     });
 
@@ -417,6 +420,7 @@ export class GraphView extends React.Component {
 
     this.graph.on('edge:mouseenter', (evt) => {
       const edge = evt.item;
+      console.log("edge: ", edge);
       this.graph.setItemState(edge, 'hover', true);
     });
 
@@ -458,6 +462,10 @@ export class GraphView extends React.Component {
     this.graph.changeSize(container.offsetWidth, container.offsetHeight);
     this.graph.data(this.props.data);
     this.graph.render();
+    if(this.props.nodeColorAttribute) {
+      console.log(">>>>>>>>>>>>>>>>this.props.nodeColorAttribute: ", this.props.nodeColorAttribute);
+      this.colorNodesByAttribute();
+    }
   }
 
   getNodes = () => {
@@ -655,6 +663,53 @@ export class GraphView extends React.Component {
       }
       */
     });
+  }
+
+  colorNodesByAttribute = () => {
+    const nodes = this.graph.getNodes();
+    nodes.forEach((node) => {
+      console.log("START");
+      console.log("node: ", node);
+      console.log("node._cfg.model.colorCategory: ", node._cfg.model.colorCategory);
+      console.log("this.props.nodesColorAttributes: ", this.props.nodesColorAttributes);
+      //console.log("this.props.nodesColorAttributes.name[node._cfg.model.colorCategory]: ", this.props.nodesColorAttributes.name[node._cfg.model.colorCategory]);
+
+      // When expanding
+      //console.log("this.props.nodesColorAttributes.find(object => object.name === node.colorCategory).color: ", this.props.nodesColorAttributes.find(object => object.name === node.colorCategory).color);
+
+      const tempNodeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
+
+      const value2 = {
+        'name': node._cfg.model.colorCategory || '',
+        'color': tempNodeColor
+      };
+
+      const nodesColorAttributeIndex = this.props.nodesColorAttributes.findIndex(object => object.name === value2.name);
+      if (nodesColorAttributeIndex === -1) {
+        this.props.nodesColorAttributes.push(value2);
+      }
+
+      console.log("categoryObj: ", this.props.nodesColorAttributes.find(object => object.name === node._cfg.model.colorCategory));
+      const categoryObj = this.props.nodesColorAttributes.find(object => object.name === node._cfg.model.colorCategory);
+      console.log("this.props.nodesColorAttributes.find(object => object.name === node._cfg.model.colorCategory).color: ", this.props.nodesColorAttributes.find(object => object.name === node._cfg.model.colorCategory).color);
+      const categoryColor = '#' + this.props.nodesColorAttributes.find(object => object.name === node._cfg.model.colorCategory).color;
+      console.log("categoryColor: ", categoryColor);
+      console.log("END");
+
+      console.log("categoryColor: ", categoryColor);
+      const model = {
+        color: categoryColor,
+        //color: '#f00',
+        style: {
+          fill: categoryColor,
+          //fill: '#0f0',
+          stroke: categoryColor
+        },
+      };
+      this.graph.updateItem(node, model);
+      
+    });
+    this.graph.render();
   }
 
   updateEdgeModel = () => {
@@ -875,6 +930,7 @@ export class GraphView extends React.Component {
         });
       }}>Find node Paris</button>
       <LoadingSpinner />
+      <button onClick={() => this.colorNodesByAttribute()}>Color nodes by attribute</button>
   */
 
   render() {
@@ -883,6 +939,7 @@ export class GraphView extends React.Component {
         graphName={this.props.graphName}
         graphData={this.props.data}
         responseDuration={this.props.responseDuration}
+        nodesColorAttributes={this.props.nodesColorAttributes}
         onDownloadScreenshot={() => this.downloadScreenshot()}
         onDownloadFullScreenshot={() => this.downloadFullScreenshot()}
         onChangeLayout={(layout) => {

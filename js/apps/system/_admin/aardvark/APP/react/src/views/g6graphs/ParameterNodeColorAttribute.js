@@ -5,7 +5,7 @@ import { InfoCircleFilled } from '@ant-design/icons';
 import Textinput from "./components/pure-css/form/Textinput.tsx";
 
 
-const ParameterNodeColorAttribute = () => {
+const ParameterNodeColorAttribute = ({ nodesColorAttributes }) => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [nodeColorAttribute, setNodeColorAttribute] = useState(urlParameters.nodeColorAttribute);
 
