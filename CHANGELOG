@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add support for LZ4 and LZ4HC compression support for RocksDB.
+
 * Allow parallel access to the shards of smart edge collections in AQL via 
   parallel GatherNodes.
 
