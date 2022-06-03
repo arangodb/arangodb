@@ -25,7 +25,6 @@
 
 #include <chrono>
 #include <cstdlib>
-#include <filesystem>
 #include <memory>
 #include <iostream>
 #include <stdexcept>
@@ -188,9 +187,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
 }
 
 void Server::Impl::runServer(char const* exectuable) {
-  // TODO - make cleanup optional
-  std::filesystem::remove_all(_databaseDirectory);
-
   std::vector<std::string> args{exectuable, "--database.directory",
                                 _databaseDirectory, "--server.endpoint",
                                 "tcp://127.0.0.1:8530"};
