@@ -67,6 +67,7 @@
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -515,14 +516,20 @@ void ClusterInfo::triggerBackgroundGetIds() {
   }
 }
 
-auto ClusterInfo::createReplicatedStateSpec(
+auto ClusterInfo::createDocumentStateSpec(
     std::string const& shardId, std::vector<std::string> const& serverIds,
-    std::size_t writeConcern, std::size_t softWriteConcern)
+    ClusterCollectionCreationInfo const& info)
     -> replication2::replicated_state::agency::Target {
+  using namespace replication2::replicated_state;
+
   replication2::replicated_state::agency::Target spec;
 
   spec.id = LogicalCollection::shardIdToStateId(shardId);
-  spec.properties.implementation.type = "document";
+
+  spec.properties.implementation.type = document::DocumentState::NAME;
+  auto parameters = document::DocumentCoreParameters{info.collectionID};
+  spec.properties.implementation.parameters = parameters.toSharedSlice();
+
   TRI_ASSERT(!serverIds.empty());
   spec.leader = serverIds.front();
 
@@ -532,8 +539,8 @@ auto ClusterInfo::createReplicatedStateSpec(
         replication2::replicated_state::agency::Target::Participant{});
   }
 
-  spec.config.writeConcern = writeConcern;
-  spec.config.softWriteConcern = softWriteConcern;
+  spec.config.writeConcern = info.writeConcern;
+  spec.config.softWriteConcern = info.replicationFactor;
   spec.config.waitForSync = false;
   spec.version = 1;
 
@@ -3200,8 +3207,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       // Create a replicated state for each shard.
       replicatedStates.reserve(replicatedStates.size() + shardServers.size());
       for (auto const& [shardId, serverIds] : shardServers) {
-        auto spec = createReplicatedStateSpec(
-            shardId, serverIds, info.writeConcern, info.replicationFactor);
+        auto spec = createDocumentStateSpec(shardId, serverIds, info);
 
         auto builder = std::make_shared<VPackBuilder>();
         velocypack::serialize(*builder, spec);

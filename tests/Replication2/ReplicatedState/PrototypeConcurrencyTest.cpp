@@ -105,7 +105,8 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
     auto replicatedState =
         feature->createReplicatedState("prototype-state", leaderLog);
     replicatedState->start(
-        std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+        std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
+        std::nullopt);
     leaderState = std::dynamic_pointer_cast<PrototypeLeaderState>(
         replicatedState->getLeader());
     TRI_ASSERT(leaderState != nullptr);
@@ -114,7 +115,8 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
     replicatedState =
         feature->createReplicatedState("prototype-state", followerLog);
     replicatedState->start(
-        std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+        std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
+        std::nullopt);
     followerState = std::dynamic_pointer_cast<PrototypeFollowerState>(
         replicatedState->getFollower());
   }

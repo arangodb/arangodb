@@ -30,7 +30,7 @@ using namespace arangodb::replication2::replicated_state::document;
 
 void DocumentStateMachineFeature::start() {
   auto& feature = server().getFeature<ReplicatedStateAppFeature>();
-  feature.registerStateType<DocumentState>("document");
+  feature.registerStateType<DocumentState>(std::string{DocumentState::NAME});
 }
 
 DocumentStateMachineFeature::DocumentStateMachineFeature(Server& server)

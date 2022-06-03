@@ -39,18 +39,33 @@ struct DocumentLogEntry;
 struct DocumentLeaderState;
 struct DocumentFollowerState;
 struct DocumentCore;
+struct DocumentCoreParameters;
 
 struct DocumentState {
+  static constexpr std::string_view NAME = "document";
+
   using LeaderType = DocumentLeaderState;
   using FollowerType = DocumentFollowerState;
   using EntryType = DocumentLogEntry;
   using FactoryType = DocumentFactory;
   using CoreType = DocumentCore;
+  using CoreParameterType = DocumentCoreParameters;
 };
 
 /* Empty for now */
 struct DocumentLogEntry {};
 struct DocumentCore {};
+
+struct DocumentCoreParameters {
+  std::string collectionId;
+
+  template<class Inspector>
+  inline friend auto inspect(Inspector& f, DocumentCoreParameters& p) {
+    return f.object(p).fields(f.field("collectionId", p.collectionId));
+  }
+
+  auto toSharedSlice() -> velocypack::SharedSlice;
+};
 
 struct DocumentLeaderState
     : replicated_state::IReplicatedLeaderState<DocumentState> {
@@ -85,7 +100,7 @@ struct DocumentFactory {
       -> std::shared_ptr<DocumentFollowerState>;
   auto constructLeader(std::unique_ptr<DocumentCore> core)
       -> std::shared_ptr<DocumentLeaderState>;
-  auto constructCore(GlobalLogIdentifier const&)
+  auto constructCore(GlobalLogIdentifier const&, DocumentCoreParameters)
       -> std::unique_ptr<DocumentCore>;
 };
 }  // namespace document

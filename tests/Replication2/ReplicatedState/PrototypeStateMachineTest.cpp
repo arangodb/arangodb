@@ -140,7 +140,7 @@ TEST_F(PrototypeStateMachineTest, prototype_core_flush) {
           feature->createReplicatedState("prototype-state", leaderLog));
   ASSERT_NE(leaderReplicatedState, nullptr);
   leaderReplicatedState->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}), std::nullopt);
   follower->runAllAsyncAppendEntries();
 
   auto leaderState = leaderReplicatedState->getLeader();
@@ -152,7 +152,7 @@ TEST_F(PrototypeStateMachineTest, prototype_core_flush) {
           feature->createReplicatedState("prototype-state", followerLog));
   ASSERT_NE(followerReplicatedState, nullptr);
   followerReplicatedState->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}), std::nullopt);
 
   auto followerState = followerReplicatedState->getFollower();
   ASSERT_NE(followerState, nullptr);
@@ -198,7 +198,7 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
           feature->createReplicatedState("prototype-state", leaderLog));
   ASSERT_NE(leaderReplicatedState, nullptr);
   leaderReplicatedState->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}), std::nullopt);
   follower->runAllAsyncAppendEntries();
 
   auto leaderState = leaderReplicatedState->getLeader();
@@ -210,7 +210,7 @@ TEST_F(PrototypeStateMachineTest, simple_operations) {
           feature->createReplicatedState("prototype-state", followerLog));
   ASSERT_NE(followerReplicatedState, nullptr);
   followerReplicatedState->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}), std::nullopt);
 
   auto followerState = followerReplicatedState->getFollower();
   ASSERT_NE(followerState, nullptr);
@@ -353,7 +353,7 @@ TEST_F(PrototypeStateMachineTest, snapshot_transfer) {
           feature->createReplicatedState("prototype-state", leaderLog));
   ASSERT_NE(leaderReplicatedState, nullptr);
   leaderReplicatedState->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}), std::nullopt);
   follower->runAllAsyncAppendEntries();
 
   auto leaderState = leaderReplicatedState->getLeader();
@@ -365,7 +365,7 @@ TEST_F(PrototypeStateMachineTest, snapshot_transfer) {
           feature->createReplicatedState("prototype-state", followerLog));
   ASSERT_NE(followerReplicatedState, nullptr);
   followerReplicatedState->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}));
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}), std::nullopt);
 
   auto followerState = followerReplicatedState->getFollower();
   ASSERT_NE(followerState, nullptr);
