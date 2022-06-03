@@ -397,6 +397,17 @@ bool LogicalCollection::hasClusterWideUniqueRevs() const noexcept {
 
 bool LogicalCollection::mustCreateKeyOnCoordinator() const noexcept {
   TRI_ASSERT(ServerState::instance()->isRunningInCluster());
+
+  if (isSmart() && type() == TRI_COL_TYPE_DOCUMENT &&
+      !hasSmartGraphAttribute()) {
+    // TODO [EnterpriseGraphs]: To be discussed.
+    // if we've a SmartVertex collection sitting inside an EnterpriseGraph
+    // we need to have the key before we can call the "getResponsibleShards"
+    // method because without it, we cannot calculate which shard will be the
+    // responsible one.
+    return true;
+  }
+
   // when there is more than 1 shard, or if we do have a satellite
   // collection, we need to create the key on the coordinator.
   return numberOfShards() != 1;
