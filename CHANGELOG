@@ -4,6 +4,8 @@ devel
 * Allow parallel access to the shards of smart edge collections in AQL via 
   parallel GatherNodes.
 
+* Update RocksDB internal table checksum type to xxHash64.
+
 * Updated arangosync to v2.10.0.
 
 * Added several startup option to configure parallelism for individual Pregel 

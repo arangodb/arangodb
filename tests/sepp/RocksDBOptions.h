@@ -366,6 +366,10 @@ struct RocksDBOptions : arangodb::RocksDBOptionsProvider {
     bool cacheIndexAndFilterBlocksWithHighPriority;
     bool pinl0FilterAndIndexBlocksInCache;
     bool pinTopLevelIndexAndFilter;
+    bool enableIndexCompression;
+    bool prepopulateBlockCache;
+    bool reserveTableBuilderMemory;
+    bool reserveTableReaderMemory;
 
     uint64_t blockSize;
 
@@ -407,6 +411,14 @@ struct RocksDBOptions : arangodb::RocksDBOptionsProvider {
                   o.pinl0FilterAndIndexBlocksInCache)
               .fallback(f.keep()),
           f.field("pinTopLevelIndexAndFilter", o.pinTopLevelIndexAndFilter)
+              .fallback(f.keep()),
+          f.field("enableIndexCompression", o.enableIndexCompression)
+              .fallback(f.keep()),
+          f.field("prepopulateBlockCache", o.prepopulateBlockCache)
+              .fallback(f.keep()),
+          f.field("reserveTableBuilderMemory", o.reserveTableBuilderMemory)
+              .fallback(f.keep()),
+          f.field("reserveTableReaderMemory", o.reserveTableReaderMemory)
               .fallback(f.keep()),
           f.field("blockSize", o.blockSize).fallback(f.keep()),
           f.field("formatVersion", o.formatVersion).fallback(f.keep()),
