@@ -92,6 +92,13 @@ This contains the iresearch library and its sub-components, ICU is used from V8.
 
 This contains statically generated files for the IResearch folder, and replaces them.
 
+When you update snowball you should update modules.h in this directory
+Just run perl script in snowball source directory:
+```bash
+libstemmer/mkmodules.pl temp_modules.h . libstemmer/modules.txt libstemmer/mkinc.mak
+```
+Then copy temp_modules.h to modules.h, and fix paths
+
 ## jemalloc
 
 Only used on Linux/Mac, still uses autofoo.
@@ -447,6 +454,8 @@ index 672561e62fc..d6341fd1d7a 100644
  ```
 
 ## snowball
+
+Don't forget to update iresearch.build/modules.h: see iresearch.build
 
 http://snowball.tartarus.org/ stemming for IResearch. We use the latest provided cmake which we maintain.
 
