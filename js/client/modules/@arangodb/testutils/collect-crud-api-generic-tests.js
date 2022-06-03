@@ -113,32 +113,31 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
       updatedDoc = {...updatedDoc, ...replace};
 
       if (isEnterpriseGraphEdge) {
+        // As in EnterpriseGraphs, the _key cannot be given during creation,
+        // we have to insert it here into our original doc for the replace operation.
         updatedDoc._key = documentKey;
-        delete updatedDoc._from;
-        delete updatedDoc._to;
-        // TODO [EnterpriseGraph]: How to handle replace operations properly?
-        // Needs to be solved before we merge back (!)
-      } else {
-        result = arango.PUT_RAW(keyUrl, updatedDoc);
-        assertEqual(202, result.code, `Replacing document with key ${documentKey}`);
-        // Replace needs to update the revision
-        assertNotEqual(result.parsedBody._rev, rev);
-
-        {
-          // Local Document and DBState now need to be identical
-          // read document back
-          let result = arango.GET_RAW(keyUrl);
-          assertEqual(200, result.code, `Reading document with key ${documentKey}`);
-          for (const [key, value] of Object.entries(updatedDoc)) {
-            // All values in Patch need to be updated
-            assertEqual(result.parsedBody[key], value);
-          }
-          // Patch needs to update the revision
-          assertNotEqual(result.parsedBody._rev, rev);
-          // Retain the updated revision for later tests
-          rev = result.parsedBody._rev;
-        }
       }
+
+      result = arango.PUT_RAW(keyUrl, updatedDoc);
+      assertEqual(202, result.code, `Replacing document with key "${documentKey}"`);
+      // Replace needs to update the revision
+      assertNotEqual(result.parsedBody._rev, rev);
+
+      {
+        // Local Document and DBState now need to be identical
+        // read document back
+        let result = arango.GET_RAW(keyUrl);
+        assertEqual(200, result.code, `Reading document with key "${documentKey}"`);
+        for (const [key, value] of Object.entries(updatedDoc)) {
+          // All values in Patch need to be updated
+          assertEqual(result.parsedBody[key], value);
+        }
+        // Patch needs to update the revision
+        assertNotEqual(result.parsedBody._rev, rev);
+        // Retain the updated revision for later tests
+        rev = result.parsedBody._rev;
+      }
+
 
       // Check if count is now 1, we have only inserted Once, afterwards only read
       assertEqual(1, collection.count());
