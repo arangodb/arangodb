@@ -82,7 +82,7 @@ struct Plan {
   LogId id;
   StateGeneration generation;
   Properties properties;
-  std::optional<std::string> owner;
+  std::optional<std::string> owner{};
 
   struct Participant {
     StateGeneration generation;
