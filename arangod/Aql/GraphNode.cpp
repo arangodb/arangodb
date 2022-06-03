@@ -258,7 +258,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
         // here, instead of a Disjoint one.
         auto res = disjointTest.isCollectionAllowed(collection, dir);
         if (res.fail()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+          THROW_ARANGO_EXCEPTION(res);
         }
       }
 
@@ -323,8 +323,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
           // here, instead of a Disjoint one.
           auto res = disjointTest.isCollectionAllowed(c, _defaultDirection);
           if (res.fail()) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(),
-                                           res.errorMessage());
+            THROW_ARANGO_EXCEPTION(res);
           }
         }
         if (!c->isSmart()) {

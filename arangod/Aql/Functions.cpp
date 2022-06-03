@@ -9222,7 +9222,6 @@ AqlValue Functions::SelectSmartDistributeGraphInput(
   AqlValue const& from = extractFunctionParameterValue(parameters, 0);
   VPackSlice input = from.slice();  // will throw when wrong type
   if (ADB_UNLIKELY(!input.isObject() ||
-                   !input.hasKey(StaticStrings::IdString) ||
                    !input.get(StaticStrings::IdString).isString())) {
     // This is an internal use function, so the if condition should always be
     // true Just a protection against users typing this method by hand.
