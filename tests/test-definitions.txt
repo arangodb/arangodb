@@ -54,8 +54,8 @@ shell_server_aql weight=750 single buckets=5
 # execute without buckets in single server, but use 5 buckets in cluster
 shell_server weight=1000 single
 
-# Catch tests are executed in single env
-catch weight=1000 single
+# C++ unit tests are executed in single env
+gtest weight=1000 single
 # Fuerte tests are executed in single env
 fuerte weight=500 single
 
