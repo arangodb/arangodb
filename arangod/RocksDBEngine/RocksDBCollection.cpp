@@ -1091,19 +1091,12 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       options.isSynchronousReplicationFrom.empty()) {
     // only do schema validation when we are not restoring/replicating
     res = _logicalCollection.validate(
-        newSlice, trx->transactionContextPtr()->getVPackOptions());
+        options.schema, newSlice,
+        trx->transactionContextPtr()->getVPackOptions());
 
     if (res.fail()) {
       return res;
     }
-  }
-
-  auto r = transaction::Methods::validateSmartJoinAttribute(_logicalCollection,
-                                                            newSlice);
-
-  if (r != TRI_ERROR_NO_ERROR) {
-    res.reset(r);
-    return res;
   }
 
   LocalDocumentId const documentId =
@@ -1254,7 +1247,8 @@ Result RocksDBCollection::performUpdateOrReplace(
 
   if (options.validate && options.isSynchronousReplicationFrom.empty()) {
     res = _logicalCollection.validate(
-        newDoc, oldDoc, trx->transactionContextPtr()->getVPackOptions());
+        options.schema, newDoc, oldDoc,
+        trx->transactionContextPtr()->getVPackOptions());
     if (res.fail()) {
       return res;
     }

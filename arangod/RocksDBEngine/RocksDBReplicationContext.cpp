@@ -261,7 +261,7 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
   }
 
   uint64_t numberDocuments;
-  bool isNumberDocsExclusive = false;
+  uint64_t documentCountAdjustmentTicket = 0;
   auto* rcoll = static_cast<RocksDBMetaCollection*>(logical->getPhysical());
   if (_snapshot == nullptr) {
     // only DBServers require a corrected document count
@@ -271,7 +271,8 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
         rcoll->lockWrite(to) == TRI_ERROR_NO_ERROR) {
       // fetch number docs and snapshot under exclusive lock
       // this should enable us to correct the count later
-      isNumberDocsExclusive = true;
+      documentCountAdjustmentTicket =
+          rcoll->meta().documentCountAdjustmentTicket();
     } else {
       lockGuard.cancel();
     }
@@ -281,7 +282,7 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
     numberDocuments = rcoll->meta().numberDocuments();
   }
   TRI_ASSERT(_snapshot != nullptr);
-  TRI_ASSERT(!isNumberDocsExclusive ||
+  TRI_ASSERT(documentCountAdjustmentTicket == 0 ||
              (!_patchCount.empty() && _patchCount == cname));
 
   auto iter =
@@ -298,7 +299,7 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
   }
   cIter->numberDocuments = numberDocuments;
   cIter->numberDocumentsDumped = 0;
-  cIter->isNumberDocumentsExclusive = isNumberDocsExclusive;
+  cIter->documentCountAdjustmentTicket = documentCountAdjustmentTicket;
 
   // we should have a valid iterator if there are documents in here
   TRI_ASSERT(numberDocuments == 0 || cIter->hasMore());
@@ -541,25 +542,11 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
   bool hasMore = cIter->hasMore();
   if (hasMore) {
     cIter->currentTick++;
-  } else if (cIter->isNumberDocumentsExclusive) {
+  } else if (cIter->documentCountAdjustmentTicket > 0) {
     // reached the end
     int64_t adjustment = cIter->numberDocumentsDumped - cIter->numberDocuments;
-    if (adjustment != 0) {
-      LOG_TOPIC("5575c", WARN, Logger::REPLICATION)
-          << "inconsistent collection count detected for " << vocbase.name()
-          << "/" << cIter->logical->name() << ", an offset of " << adjustment
-          << " will be applied";
-      auto adjustSeq = _engine.db()->GetLatestSequenceNumber();
-      TRI_ASSERT(adjustSeq >= blockerSeq);
-      if (adjustSeq <= blockerSeq) {
-        adjustSeq = ::forceWrite(_engine);
-        TRI_ASSERT(adjustSeq > blockerSeq);
-      }
-      auto* rcoll =
-          static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
-      rcoll->meta().adjustNumberDocuments(adjustSeq, RevisionId::none(),
-                                          adjustment);
-    }
+    handleCollectionCountAdjustment(cIter->documentCountAdjustmentTicket,
+                                    adjustment, blockerSeq, cIter);
 
     cIter->numberDocumentsDumped = 0;
   }
@@ -633,25 +620,11 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
   bool hasMore = cIter->hasMore();
   if (hasMore) {
     cIter->currentTick++;
-  } else if (cIter->isNumberDocumentsExclusive) {
+  } else if (cIter->documentCountAdjustmentTicket > 0) {
     // reached the end
     int64_t adjustment = cIter->numberDocumentsDumped - cIter->numberDocuments;
-    if (adjustment != 0) {
-      LOG_TOPIC("5575d", WARN, Logger::REPLICATION)
-          << "inconsistent collection count detected for " << vocbase.name()
-          << "/" << cIter->logical->name() << ", an offset of " << adjustment
-          << " will be applied";
-      auto adjustSeq = _engine.db()->GetLatestSequenceNumber();
-      TRI_ASSERT(adjustSeq >= blockerSeq);
-      if (adjustSeq <= blockerSeq) {
-        adjustSeq = ::forceWrite(_engine);
-        TRI_ASSERT(adjustSeq > blockerSeq);
-      }
-      auto* rcoll =
-          static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
-      rcoll->meta().adjustNumberDocuments(adjustSeq, RevisionId::none(),
-                                          adjustment);
-    }
+    handleCollectionCountAdjustment(cIter->documentCountAdjustmentTicket,
+                                    adjustment, blockerSeq, cIter);
 
     cIter->numberDocumentsDumped = 0;
   }
@@ -777,22 +750,10 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(
   cIter->resetToStart();
   cIter->lastSortedIteratorOffset = 0;
 
-  if (cIter->isNumberDocumentsExclusive) {
+  if (cIter->documentCountAdjustmentTicket > 0) {
     int64_t adjustment = snapNumDocs - cIter->numberDocuments;
-    if (adjustment != 0) {
-      LOG_TOPIC("4986d", WARN, Logger::REPLICATION)
-          << "inconsistent collection count detected for " << vocbase.name()
-          << "/" << cIter->logical->name() << ", an offset of " << adjustment
-          << " will be applied";
-      auto adjustSeq = _engine.db()->GetLatestSequenceNumber();
-      TRI_ASSERT(adjustSeq >= blockerSeq);
-      if (adjustSeq <= blockerSeq) {
-        adjustSeq = ::forceWrite(_engine);
-        TRI_ASSERT(adjustSeq > blockerSeq);
-      }
-      rcoll->meta().adjustNumberDocuments(adjustSeq, RevisionId::none(),
-                                          adjustment);
-    }
+    handleCollectionCountAdjustment(cIter->documentCountAdjustmentTicket,
+                                    adjustment, blockerSeq, cIter);
   }
 
   return rv;
@@ -1086,6 +1047,33 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   return Result();
 }
 
+void RocksDBReplicationContext::handleCollectionCountAdjustment(
+    uint64_t documentCountAdjustmentTicket, int64_t adjustment,
+    rocksdb::SequenceNumber blockerSeq, CollectionIterator* cIter) {
+  TRI_ASSERT(cIter != nullptr);
+  TRI_ASSERT(documentCountAdjustmentTicket > 0);
+
+  if (adjustment != 0) {
+    auto& vocbase = cIter->logical->vocbase();
+    auto* rcoll =
+        static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
+
+    LOG_TOPIC("4986d", WARN, Logger::REPLICATION)
+        << "inconsistent collection count detected for " << vocbase.name()
+        << "/" << cIter->logical->name() << ", an offset of " << adjustment
+        << " will be applied";
+    auto adjustSeq = _engine.db()->GetLatestSequenceNumber();
+    TRI_ASSERT(adjustSeq >= blockerSeq);
+    if (adjustSeq <= blockerSeq) {
+      adjustSeq = ::forceWrite(_engine);
+      TRI_ASSERT(adjustSeq > blockerSeq);
+    }
+    rcoll->meta().adjustNumberDocumentsWithTicket(documentCountAdjustmentTicket,
+                                                  adjustSeq, RevisionId::none(),
+                                                  adjustment);
+  }
+}
+
 double RocksDBReplicationContext::expires() const {
   MUTEX_LOCKER(locker, _contextLock);
   return _expires;
@@ -1174,7 +1162,7 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
       vpackOptions{Options::Defaults},
       numberDocuments{0},
       numberDocumentsDumped{0},
-      isNumberDocumentsExclusive{false},
+      documentCountAdjustmentTicket{0},
       _resolver(vocbase),
       _cTypeHandler{},
       _readOptions{},
