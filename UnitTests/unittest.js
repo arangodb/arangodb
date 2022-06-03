@@ -117,8 +117,6 @@ function main (argv) {
 
 let result = main(ARGUMENTS);
 
-if (!result) {
   // force an error in the console
-  process.exit(1);
-}
+process.exit(1);
 
