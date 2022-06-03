@@ -254,8 +254,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
                                        msg);
       }
       if (_isDisjoint) {
-        // TODO: Alternative to "THROW" we could run a community based Query
-        // here, instead of a Disjoint one.
+        // Alternative to "THROW" we could run a community based Query
+        // here, instead of a Disjoint one. To allow this case.
         auto res = disjointTest.isCollectionAllowed(collection, dir);
         if (res.fail()) {
           THROW_ARANGO_EXCEPTION(res);
@@ -319,8 +319,8 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       if (ServerState::instance()->isRunningInCluster()) {
         auto c = ci.getCollection(_vocbase->name(), n);
         if (_isDisjoint) {
-          // TODO: Alternative to "THROW" we could run a community based Query
-          // here, instead of a Disjoint one.
+          // Alternative to "THROW" we could run a community based Query
+          // here, instead of a Disjoint one. To allow this case.
           auto res = disjointTest.isCollectionAllowed(c, _defaultDirection);
           if (res.fail()) {
             THROW_ARANGO_EXCEPTION(res);
