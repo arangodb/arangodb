@@ -47,6 +47,20 @@ Whether writes are enabled.
 @RESTSTRUCT{maintenance,get_admin_status_server_info,boolean,required,}
 Whether the maintenance mode is enabled.
 
+@RESTSTRUCT{phase,get_admin_status_server_info,string,required,}
+Name of the lifecycle phase the instance is currently in. Normally one of
+`"in prepare"`, `"in start"`, `"in wait"`, `"in shutdown"`, `"in stop"`,
+or `"in unprepare"`.
+
+@RESTSTRUCT{feature,get_admin_status_server_info,string,required,}
+Internal name of the feature that is currently being prepared, started,
+stopped or unprepared.
+
+@RESTSTRUCT{recoveryTick,get_admin_status_server_info,number,required,}
+Current recovery sequence number value, if the instance is currently recovering.
+If the instance is already past the recovery, this attribute will contain the
+last handled recovery sequence number.
+
 @RESTSTRUCT{persistedId,get_admin_status_server_info,string,required,}
 The persisted ID, e. g. `"CRDN-e427b441-5087-4a9a-9983-2fb1682f3e2a"`.
 *Cluster only* (Agents, Coordinators, and DB-Servers).
