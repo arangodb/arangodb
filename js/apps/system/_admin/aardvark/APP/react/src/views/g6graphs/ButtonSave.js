@@ -46,7 +46,7 @@ const ButtonSave = ({ graphName, onGraphDataLoaded, onIsLoadingData }) => {
           }}
           disabled={isLoadingData}
         >
-          Save
+          Run
         </Button>
       </Tooltip>
     </>
