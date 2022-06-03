@@ -397,6 +397,7 @@ struct RocksDBOptions : arangodb::RocksDBOptionsProvider {
     uint32_t formatVersion;
     bool blockAlignDataBlocks;
     std::string checksum;
+    std::string compressionType;
 
     template<class Inspector>
     inline friend auto inspect(Inspector& f, TableOptions& o) {
@@ -425,6 +426,7 @@ struct RocksDBOptions : arangodb::RocksDBOptionsProvider {
           f.field("blockAlignDataBlocks", o.blockAlignDataBlocks)
               .fallback(f.keep()),
           f.field("checksum", o.checksum).fallback(f.keep()),
+          f.field("compressionType", o.compressionType).fallback(f.keep()),
           f.field("filterPolicy", o.filterPolicy).fallback(f.keep()));
     }
   };
