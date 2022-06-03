@@ -135,7 +135,20 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
             if (obj.options.extremeVerbosity !== 'silent') {
               print(paramsSecondRun);
             }
-            obj.instanceManager.reStartInstance(paramsSecondRun);      // restart with restricted permissions
+            try {
+              obj.instanceManager.reStartInstance(paramsSecondRun);      // restart with restricted permissions
+            } catch (ex) {
+              results[testFile] = {
+                message: "Aborting testrun; failed to launch instance: " +
+                  ex.message + " - " +
+                  JSON.stringify(obj.instanceManager.getStructure()),
+                status: false,
+                shutdown: false
+              };
+              results.status = false;
+              obj.instanceManager.shutdownInstance(true);
+              return results;
+            }
           }
           else {
             results[testFile] = {
@@ -153,8 +166,28 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
           
           obj.instanceManager.prepareInstance();
           obj.instanceManager.launchTcpDump("");
-          if (!obj.instanceManager.launchInstance()) {
-            throw new Error("failed to launch instance");
+          try {
+            if (!obj.instanceManager.launchInstance()) {
+              results[testFile] = {
+                message: "Aborting testrun; failed to launch instance: " + JSON.stringify(obj.instanceManager.getStructure()),
+                status: false,
+                shutdown: false
+              };
+              results.status = false;
+              obj.instanceManager.shutdownInstance(true);
+              return results;
+            }
+          } catch (ex) {
+              results[testFile] = {
+                message: "Aborting testrun; failed to launch instance: " +
+                  ex.message + " - " +
+                  JSON.stringify(obj.instanceManager.getStructure()),
+                status: false,
+                shutdown: false
+              };
+            results.status = false;
+            obj.instanceManager.shutdownInstance(true);
+            return results;
           }
           obj.instanceManager.reconnect();
         }
