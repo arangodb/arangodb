@@ -1,6 +1,9 @@
 v3.9.7 (XXXX-XX-XX)
 -------------------
 
+* Allow parallel access to the shards of smart edge collections in AQL via 
+  parallel GatherNodes.
+
 * Added a configuration option (for the agency):
     --agency.supervision-failed-leader-adds-follower
   with a default of `true` (behavior as before). If set to `false`, a
