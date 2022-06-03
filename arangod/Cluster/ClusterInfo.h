@@ -31,6 +31,7 @@
 #include <velocypack/Slice.h>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <unordered_map>
 
 #include "Agency/AgencyComm.h"
@@ -49,6 +50,7 @@
 #include "Futures/Future.h"
 #include "Network/types.h"
 #include "Metrics/Fwd.h"
+#include "Metrics/ClusterMetricsFeature.h"
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -791,6 +793,43 @@ class ClusterInfo final {
                                             bool restore);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief init metrics state
+  /// try to propose self as leader or understand who is current leader
+  /// no return while no stopping and we don't know who is leader
+  //////////////////////////////////////////////////////////////////////////////
+  void initMetricsState();
+
+  struct [[nodiscard]] MetricsState {
+    std::optional<ServerID> leader;
+    uint64_t version;
+  };
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get current MetricsState from agencyCache
+  /// @param wantLeader if true we need to propose self to leader if current die
+  /// @note can throw exception if something not founded, or another error
+  /// @note if leader is nullopt that means our server is a leader
+  /// @return who is leader, and what it cache version
+  //////////////////////////////////////////////////////////////////////////////
+  MetricsState getMetricsState(bool wantLeader);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief try to increment current version in cache
+  /// @param version old version
+  /// Success only current server is a leader and
+  /// old version is equal current version in agency
+  /// @return success or not
+  //////////////////////////////////////////////////////////////////////////////
+  bool tryIncMetricsVersion(uint64_t version);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief try to propose self as new leader
+  /// @param oldRebootId last leader RebootId
+  /// @param oldServerId last leader ServerID
+  //////////////////////////////////////////////////////////////////////////////
+  void proposeMetricsLeader(uint64_t oldRebootId, std::string_view oldServerId);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Creates cleanup transaction for first found dangling operation
   /// @return created transaction or nullptr if no cleanup needed
   //////////////////////////////////////////////////////////////////////////////
@@ -1187,7 +1226,7 @@ class ClusterInfo final {
   };
 
   cluster::RebootTracker _rebootTracker;
-
+  cluster::CallbackGuard _metricsGuard;
   /// @brief error code sent to all remaining promises of the syncers at
   /// shutdown. normally this is TRI_ERROR_SHUTTING_DOWN, but it can be
   /// overridden during testing

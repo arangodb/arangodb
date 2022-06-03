@@ -22,15 +22,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <velocypack/Buffer.h>
-
-#include <memory>
-#include <vector>
-
 namespace arangodb::metrics {
 
-using Raw = std::shared_ptr<velocypack::Buffer<uint8_t>>;
-using RawDBServers = std::vector<Raw>;
-using LeaderResponse = std::shared_ptr<velocypack::Buffer<uint8_t>>;
+/**
+ *         Local -- collect only local metrics
+ * .......Global -- collect cached cluster-wide metrics
+ * TriggerGlobal -- and trigger async update cache
+ *    ReadGlobal -- and try to sync read metrics from cache
+ *   WriteGlobal -- and try to sync collect metrics for cache
+ */
+enum class CollectMode {
+  Local,
+  TriggerGlobal,
+  ReadGlobal,
+  WriteGlobal,
+};
 
 }  // namespace arangodb::metrics

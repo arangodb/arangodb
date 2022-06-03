@@ -127,8 +127,15 @@ futures::Future<OperationResult> countOnCoordinator(
 /// @brief gets the metrics from DBServers
 ////////////////////////////////////////////////////////////////////////////////
 
-futures::Future<metrics::RawDBServers> metricsOnCoordinator(
-    NetworkFeature& network, ClusterFeature& cluster);
+futures::Future<metrics::RawDBServers> metricsOnLeader(NetworkFeature& network,
+                                                       ClusterFeature& cluster);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief gets the metrics from leader Coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+futures::Future<metrics::LeaderResponse> metricsFromLeader(
+    NetworkFeature& network, ClusterFeature& cluster, std::string_view leader);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the selectivity estimates from DBservers

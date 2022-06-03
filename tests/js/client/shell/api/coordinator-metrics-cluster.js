@@ -26,7 +26,7 @@
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
-const {getEndpointsByType, getMetricRaw} = require("@arangodb/test-helper");
+const {getEndpointsByType, getRawMetric, getAllMetric} = require("@arangodb/test-helper");
 const parsePrometheusTextFormat = require("parse-prometheus-text-format");
 const _ = require("lodash");
 
@@ -52,6 +52,36 @@ function checkMetrics(metrics) {
   assertTrue(metrics["arangodb_search_index_size"]["foo1"] > 0);
   assertTrue(metrics["arangodb_search_index_size"]["foo2"] > 0);
   assertTrue(metrics["arangodb_search_index_size"]["foo3"] > 0);
+}
+
+function checkRawMetrics(txt, empty) {
+  let json = parsePrometheusTextFormat(txt);
+  let metrics = {};
+  json.forEach((entry) => {
+    entry.metrics.forEach((entry2) => {
+      if (!_.has(entry2, "labels") || !_.has(entry2.labels, "collection")) {
+        return;
+      }
+      if (!_.has(metrics, entry.name)) {
+        metrics[entry.name] = {};
+      }
+      metrics[entry.name][entry2.labels.collection] = entry2.value;
+    });
+  });
+  if (empty) {
+    assertEqual(metrics, {});
+  } else {
+    checkMetrics(metrics);
+  }
+}
+
+function checkCoordinators(coordinators, mode) {
+  assertTrue(coordinators.length > 1);
+  for (let i = 1; i < coordinators.length; i++) {
+    let c = coordinators[i];
+    let txt = getAllMetric(c, mode);
+    checkRawMetrics(txt, false);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,13 +126,64 @@ function CoordinatorMetricsTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief CoordinatorMetricsTestSuite tests
 ////////////////////////////////////////////////////////////////////////////////
+    testMetricsParameterValidation: function () {
+      let coordinators = getEndpointsByType("coordinator");
+      let dbservers = getEndpointsByType("dbserver");
+      let servers = [coordinators, dbservers];
+      for (let j = 0; j < servers.length; j++) {
+        for (let i = 0; i < servers[j].length; i++) {
+          let server = servers[j][i];
+          let res = getRawMetric(server, '?mode=invalid');
+          assertEqual(res.code, 400);
+        }
+        for (let i = 0; i < servers[j].length; i++) {
+          let server = servers[j][i];
+          let res = getRawMetric(server, '?type=invalid');
+          assertEqual(res.code, 400);
+        }
+        for (let i = 0; i < servers[j].length; i++) {
+          let server = servers[j][i];
+          let res = getRawMetric(server, '?type=invalid&mode=invalid');
+          assertEqual(res.code, 400);
+        }
+      }
+      for (let i = 0; i < coordinators.length; i++) {
+        let server = coordinators[i];
+        let res = getRawMetric(server, '?serverId=invalid');
+        assertEqual(res.code, 404);
+      }
+      for (let i = 0; i < coordinators.length; i++) {
+        let server = coordinators[i];
+        let res = getRawMetric(server, '?serverId=invalid&mode=invalid');
+        assertEqual(res.code, 400);
+      }
+      for (let i = 0; i < coordinators.length; i++) {
+        let server = coordinators[i];
+        let res = getRawMetric(server, '?serverId=invalid&type=invalid');
+        assertEqual(res.code, 400);
+      }
+      for (let i = 0; i < coordinators.length; i++) {
+        let server = coordinators[i];
+        let res = getRawMetric(server, '?serverId=invalid&type=invalid&mode=invalid');
+        assertEqual(res.code, 400);
+      }
+    },
+
+    testMetricsLocalMode: function () {
+      let coordinators = getEndpointsByType("coordinator");
+      for (let i = 0; i < coordinators.length; i++) {
+        let coordinator = coordinators[i];
+        let res = getRawMetric(coordinator, '?mode=local');
+        assertEqual(res.code, 200);
+      }
+    },
+
     testIResearchJsonMetrics: function () {
       let dbservers = getEndpointsByType("dbserver");
-      require('internal').sleep(2);
       let metrics = {};
       for (let i = 0; i < dbservers.length; i++) {
         let dbserver = dbservers[i];
-        let txt = getMetricRaw(dbserver, '?type=json');
+        let txt = getAllMetric(dbserver, '?type=db_json');
         let json = VPACK_TO_V8(txt);
         for (let j = 0; j < json.length; j += 3) {
           let name = json[j];
@@ -146,32 +227,44 @@ function CoordinatorMetricsTestSuite() {
       assertEqual(metrics["arangodb_search_num_failed_consolidations"]["foo3"], 0);
     },
 
+    testIResearchMetricStatsForce: function () {
+      let coordinators = getEndpointsByType("coordinator");
+      let c = coordinators[0];
+      this.tearDownAll();
+      getAllMetric(c, '?mode=write_global'); // write something not valid
+      this.setUpAll();
+      let txt = getAllMetric(c, '?mode=write_global');
+      checkRawMetrics(txt, false);
+      checkCoordinators(coordinators, '?mode=read_global');
+      require("internal").sleep(1);
+      checkCoordinators(coordinators, '?mode=trigger_global');
+    },
+
     testIResearchMetricStats: function () {
       let coordinators = getEndpointsByType("coordinator");
-      for (let i = 0; i < coordinators.length; i++) { // make metrics actual
-        let c = coordinators[i];
-        getMetricRaw(c, '');
-      }
-      require('internal').sleep(5);
-      for (let i = 0; i < coordinators.length; i++) {
-        let c = coordinators[i];
-        let txt = getMetricRaw(c, '');
-        let json = parsePrometheusTextFormat(txt);
-        let metrics = {};
-        json.forEach((entry) => {
-          entry.metrics.forEach((entry2) => {
-            if (!_.has(entry2, "labels") || !_.has(entry2.labels, "collection")) {
-              return;
-            }
-            if (!_.has(metrics, entry.name)) {
-              metrics[entry.name] = {};
-            }
-            metrics[entry.name][entry2.labels.collection] = entry2.value;
-          });
-        });
-        checkMetrics(metrics);
-      }
-    }
+      this.tearDownAll();
+      let c = coordinators[0];
+      getAllMetric(c, '?mode=write_global'); // write something not valid
+      this.setUpAll();
+      let txt = getAllMetric(c, '?mode=write_global');
+      checkRawMetrics(txt, false);
+      checkCoordinators(coordinators, '?mode=trigger_global');
+      require("internal").sleep(1);
+      checkCoordinators(coordinators, '?mode=read_global');
+    },
+
+    testIResearchMetricStatsSleep: function () {
+      let coordinators = getEndpointsByType("coordinator");
+      this.tearDownAll();
+      let c = coordinators[0];
+      getAllMetric(c, '?mode=write_global'); // write something not valid
+      this.setUpAll();
+      getAllMetric(c, '?mode=trigger_global');
+      require("internal").sleep(1);
+      checkCoordinators(coordinators, '?mode=trigger_global');
+      require("internal").sleep(1);
+      checkCoordinators(coordinators, '?mode=read_global');
+    },
   };
 }
 
