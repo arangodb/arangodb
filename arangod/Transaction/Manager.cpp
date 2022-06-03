@@ -76,8 +76,6 @@ std::string currentUser() { return arangodb::ExecContext::current().user(); }
 namespace arangodb {
 namespace transaction {
 
-size_t constexpr Manager::maxTransactionSize;
-
 namespace {
 struct MGMethods final : arangodb::transaction::Methods {
   MGMethods(std::shared_ptr<arangodb::transaction::Context> const& ctx,
@@ -279,12 +277,11 @@ arangodb::cluster::CallbackGuard Manager::buildCallbackGuard(
 
   if (ServerState::instance()->isDBServer()) {
     auto const& origin = state.options().origin;
-    if (!origin.serverId().empty()) {
+    if (!origin.serverId.empty()) {
       auto& clusterFeature = _feature.server().getFeature<ClusterFeature>();
       auto& clusterInfo = clusterFeature.clusterInfo();
       rGuard = clusterInfo.rebootTracker().callMeOnChange(
-          cluster::RebootTracker::PeerState(origin.serverId(),
-                                            origin.rebootId()),
+          origin.serverId, origin.rebootId,
           [this, tid = state.id()]() {
             // abort the transaction once the coordinator goes away
             abortManagedTrx(tid, std::string());
