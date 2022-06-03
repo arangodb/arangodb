@@ -88,10 +88,6 @@ Our C++ Client driver capable of velocystream.
 
 This contains the iresearch library and its sub-components, ICU is used from V8.
 
-## iresearch.build
-
-This contains statically generated files for the IResearch folder, and replaces them.
-
 ## jemalloc
 
 Only used on Linux/Mac, still uses autofoo.
