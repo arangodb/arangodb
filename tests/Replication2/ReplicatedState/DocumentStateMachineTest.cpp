@@ -63,7 +63,8 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
           feature->createReplicatedState(DocumentState::NAME, leaderLog));
   ASSERT_NE(leaderReplicatedState, nullptr);
   leaderReplicatedState->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}), parameters);
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
+      "collectionId");
   follower->runAllAsyncAppendEntries();
 
   auto leaderState = leaderReplicatedState->getLeader();
@@ -74,7 +75,8 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
           feature->createReplicatedState(DocumentState::NAME, followerLog));
   ASSERT_NE(followerReplicatedState, nullptr);
   followerReplicatedState->start(
-      std::make_unique<ReplicatedStateToken>(StateGeneration{1}), parameters);
+      std::make_unique<ReplicatedStateToken>(StateGeneration{1}),
+      "collectionId");
 
   auto followerState = followerReplicatedState->getFollower();
   ASSERT_NE(followerState, nullptr);
