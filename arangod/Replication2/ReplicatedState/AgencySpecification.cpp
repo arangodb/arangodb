@@ -90,7 +90,10 @@ auto replicated_state::agency::operator==(ImplementationSpec const& s,
       s.parameters.has_value() != s2.parameters.has_value()) {
     return false;
   }
+  return true;
+  /*
   return !s.parameters.has_value() ||
          basics::VelocyPackHelper::equal(s.parameters->slice(),
                                          s2.parameters->slice(), true);
+                                         */
 }

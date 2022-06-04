@@ -50,7 +50,8 @@ auto const String_Generation = velocypack::StringRef{"generation"};
 
 struct ImplementationSpec {
   std::string type;
-  std::optional<velocypack::SharedSlice> parameters;
+  std::optional<std::string> parameters;
+  // std::optional<velocypack::SharedSlice> parameters;
 
   friend auto operator==(ImplementationSpec const& s,
                          ImplementationSpec const& s2) noexcept -> bool;

@@ -155,7 +155,7 @@ void ReplicatedState<S>::forceRebuild() {
 template<typename S>
 void ReplicatedState<S>::start(
     std::unique_ptr<ReplicatedStateToken> token,
-    std::optional<velocypack::SharedSlice> const& coreParameter) {
+    std::optional<std::string> const& coreParameter) {
   auto core = std::invoke([&]() {
     if constexpr (std::is_void_v<typename S::CoreParameterType>) {
       return factory->constructCore(log->getGlobalLogId());
@@ -168,9 +168,9 @@ void ReplicatedState<S>::start(
                         "ID {}, created in database {}, for state {}",
                         gid.id, gid.database, S::NAME));
       }
-      auto params = velocypack::deserialize<typename S::CoreParameterType>(
-          coreParameter->slice());
-      return factory->constructCore(log->getGlobalLogId(), std::move(params));
+      // auto params = velocypack::deserialize<typename S::CoreParameterType>(
+      //  coreParameter->slice());
+      return factory->constructCore(log->getGlobalLogId(), *coreParameter);
     }
   });
 

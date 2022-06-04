@@ -76,8 +76,7 @@ auto DocumentFactory::constructLeader(std::unique_ptr<DocumentCore> core)
   return std::make_shared<DocumentLeaderState>(std::move(core));
 }
 
-auto DocumentFactory::constructCore(GlobalLogIdentifier const& gid,
-                                    DocumentCoreParameters)
+auto DocumentFactory::constructCore(GlobalLogIdentifier const& gid, std::string)
     -> std::unique_ptr<DocumentCore> {
   return std::make_unique<DocumentCore>();
 }
