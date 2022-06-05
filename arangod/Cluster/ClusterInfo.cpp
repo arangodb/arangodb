@@ -526,10 +526,11 @@ auto ClusterInfo::createDocumentStateSpec(
 
   spec.id = LogicalCollection::shardIdToStateId(shardId);
 
-  spec.properties.implementation.type = document::DocumentState::NAME;
-  auto parameters = document::DocumentCoreParameters{info.collectionID};
+  spec.properties.implementation.type =
+      "black-hole";  // document::DocumentState::NAME;
+  // auto parameters = document::DocumentCoreParameters{info.collectionID};
   spec.properties.implementation.parameters =
-      parameters.collectionId;  // parameters.toSharedSlice();
+      std::nullopt;  // parameters.toSharedSlice();
 
   TRI_ASSERT(!serverIds.empty());
   spec.leader = serverIds.front();

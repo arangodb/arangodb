@@ -100,7 +100,7 @@ struct DocumentFactory {
       -> std::shared_ptr<DocumentFollowerState>;
   auto constructLeader(std::unique_ptr<DocumentCore> core)
       -> std::shared_ptr<DocumentLeaderState>;
-  auto constructCore(GlobalLogIdentifier const&, std::string)
+  auto constructCore(GlobalLogIdentifier const&, DocumentCoreParameters)
       -> std::unique_ptr<DocumentCore>;
 };
 }  // namespace document
