@@ -1041,8 +1041,10 @@ const G6JsGraph = () => {
               edgeType={urlParameters.edgeType}
               nodesColorAttributes={nodesColorAttributes}
               nodeColorAttribute={urlParameters.nodeColorAttribute}
+              nodeColorByCollection={urlParameters.nodeColorByCollection}
               edgesColorAttributes={edgesColorAttributes}
               edgeColorAttribute={urlParameters.edgeColorAttribute}
+              edgeColorByCollection={urlParameters.edgeColorByCollection}
         />
         <AttributesInfo attributes={lookedUpData} />
         <ButtonScrollTo />

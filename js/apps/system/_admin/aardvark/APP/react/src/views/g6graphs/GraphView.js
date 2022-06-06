@@ -463,12 +463,16 @@ export class GraphView extends React.Component {
     this.graph.data(this.props.data);
     this.graph.render();
     if(this.props.nodeColorAttribute) {
-      console.log(">>>>>>>>>>>>>>>>this.props.nodeColorAttribute: ", this.props.nodeColorAttribute);
-      this.colorNodesByAttribute();
+      if(!this.props.nodeColorByCollection) {
+        console.log(">>>>>>>>>>>>>>>>this.props.nodeColorAttribute: ", this.props.nodeColorAttribute);
+        this.colorNodesByAttribute();
+      }
     }
     if(this.props.edgeColorAttribute) {
-      console.log(">>>>>>>>>>>>>>>>this.props.edgeColorAttribute: ", this.props.edgeColorAttribute);
-      this.colorEdgesByAttribute();
+      if(!this.props.edgeColorByCollection) {
+        console.log(">>>>>>>>>>>>>>>>this.props.edgeColorAttribute: ", this.props.edgeColorAttribute);
+        this.colorEdgesByAttribute();
+      }
     }
   }
 
