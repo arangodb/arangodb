@@ -30,7 +30,7 @@ import SearchNodes from "./SearchNodes";
 import SearchEdges from "./SearchEdges";
 import LoadingSpinner from './LoadingSpinner.js';
 
-export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorAttributes, onDownloadScreenshot, onDownloadFullScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onNodeSearched, onEdgeSearched, onEdgeStyleChanged, onGraphLayoutChange, onGraphDataLoaded, onIsLoadingData }) => {
+export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorAttributes, edgesColorAttributes, onDownloadScreenshot, onDownloadFullScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onNodeSearched, onEdgeSearched, onEdgeStyleChanged, onGraphLayoutChange, onGraphDataLoaded, onIsLoadingData }) => {
   
   const [layout, setLayout] = useState('gForce');
   const [isLoadingData, setIsLoadingData] = useState(false);
@@ -207,7 +207,7 @@ const screenshotMenu = (
               <br />
               <ParameterEdgeColor />
               <br />
-              <ParameterEdgeColorAttribute />
+              <ParameterEdgeColorAttribute edgesColorAttributes={edgesColorAttributes}/>
               <br />
               <EdgeStyleSelector
                 onEdgeStyleChange={(typeModel) => {

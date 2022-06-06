@@ -4,7 +4,7 @@ import { Tooltip } from 'antd';
 import { InfoCircleFilled } from '@ant-design/icons';
 import Textinput from "./components/pure-css/form/Textinput.tsx";
 
-const ParameterEdgeColorAttribute = () => {
+const ParameterEdgeColorAttribute = ({ edgesColorAttributes }) => {
   const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
   const [edgeColorAttribute, setEdgeColorAttribute] = useState(urlParameters.edgeColorAttribute);
 

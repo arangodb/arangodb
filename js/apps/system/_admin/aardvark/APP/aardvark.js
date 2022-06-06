@@ -1239,6 +1239,10 @@ authRouter.get('/g6graph/:name', function (req, res) {
 
     var nodesObj = {};
     var nodesArr = [];
+    var edgesColorAttributes = [];
+    if(config.edgesColorAttributes) {
+      edgesColorAttributes = JSON.parse(config.edgesColorAttributes);
+    }
     var nodesColorAttributes = [];
     if(config.nodesColorAttributes) {
       nodesColorAttributes = JSON.parse(config.nodesColorAttributes);
@@ -1340,6 +1344,37 @@ authRouter.get('/g6graph/:name', function (req, res) {
               edgeObj.color = tmpObjEdges[coll];
             }
           } else if (config.edgeColorAttribute !== '') {
+            if(edge[config.edgeColorAttribute]) {
+              edgeObj.colorCategory = edge[config.edgeColorAttribute] || '';
+              const tempEdgeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
+              
+              const edgeColorObj = {
+                'name': edge[config.edgeColorAttribute] || '',
+                'color': tempEdgeColor
+              };
+
+              const edgesColorAttributeIndex = edgesColorAttributes.findIndex(object => object.name === edgeColorObj.name);
+              if (edgesColorAttributeIndex === -1) {
+                edgesColorAttributes.push(edgeColorObj);
+              }
+            }
+
+            var attr = edge[config.edgeColorAttribute];
+            if (attr) {
+              if (tmpObjEdges.hasOwnProperty(attr)) {
+                edgeObj.color = '#' + edgesColorAttributes.find(obj => obj.name === attr).color;
+                edgeObj.style.fill = '#' + edgesColorAttributes.find(obj => obj.name === attr).color;
+                edgeObj[config.edgeColorAttribute] = attr;
+                edgeObj.attributeColor = tmpObjEdges[attr];
+                edgeObj['viking'] = '#' + edgesColorAttributes.find(obj => obj.name === attr).color;
+              } else {
+                tmpObjEdges[attr] = colors.jans[Object.keys(tmpObjEdges).length];
+                edgeObj.color = tmpObjEdges[attr];
+                edgeObj.style.fill = tmpObjEdges[attr] || '#ff0'; 
+              }
+            }
+            /*
+            // Original code
             var attr = edge[config.edgeColorAttribute];
             if (attr) {
               if (tmpObjEdges.hasOwnProperty(attr)) {
@@ -1350,6 +1385,7 @@ authRouter.get('/g6graph/:name', function (req, res) {
                 edgeObj.color = tmpObjEdges[attr];
               }
             }
+            */
           }
         }
         edgeObj.sortColor = edgeObj.color;
@@ -1511,7 +1547,8 @@ authRouter.get('/g6graph/:name', function (req, res) {
       settings: {
         vertexCollections: vertexCollections,
         startVertex: startVertex,
-        nodesColorAttributes: nodesColorAttributes
+        nodesColorAttributes: nodesColorAttributes,
+        edgesColorAttributes: edgesColorAttributes
       }
     };
     if (isEnterprise) {

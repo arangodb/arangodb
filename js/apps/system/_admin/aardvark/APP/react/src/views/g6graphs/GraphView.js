@@ -466,6 +466,10 @@ export class GraphView extends React.Component {
       console.log(">>>>>>>>>>>>>>>>this.props.nodeColorAttribute: ", this.props.nodeColorAttribute);
       this.colorNodesByAttribute();
     }
+    if(this.props.edgeColorAttribute) {
+      console.log(">>>>>>>>>>>>>>>>this.props.edgeColorAttribute: ", this.props.edgeColorAttribute);
+      this.colorEdgesByAttribute();
+    }
   }
 
   getNodes = () => {
@@ -708,6 +712,68 @@ export class GraphView extends React.Component {
       };
       this.graph.updateItem(node, model);
       
+    });
+    this.graph.render();
+  }
+
+  colorEdgesByAttribute = () => {
+    const edges = this.graph.getEdges();
+    edges.forEach((edge) => {
+      console.log("START (EDGE)");
+      console.log("edge: ", edge);
+      console.log("edge._cfg.model.colorCategory: ", edge._cfg.model.colorCategory);
+      console.log("this.props.edgesColorAttributes: ", this.props.edgesColorAttributes);
+      //console.log("this.props.edgesColorAttributes.name[edge._cfg.model.colorCategory]: ", this.props.edgesColorAttributes.name[edge._cfg.model.colorCategory]);
+
+      // When expanding
+      //console.log("this.props.edgesColorAttributes.find(object => object.name === edge.colorCategory).color: ", this.props.edgesColorAttributes.find(object => object.name === edge.colorCategory).color);
+
+      const tempEdgeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
+
+      const value2 = {
+        'name': edge._cfg.model.colorCategory || '',
+        'color': tempEdgeColor
+      };
+
+      const edgesColorAttributeIndex = this.props.nodesColorAttributes.findIndex(object => object.name === value2.name);
+      if (edgesColorAttributeIndex === -1) {
+        this.props.edgesColorAttributes.push(value2);
+      }
+
+      console.log("categoryObj: ", this.props.edgesColorAttributes.find(object => object.name === edge._cfg.model.colorCategory));
+      const categoryObj = this.props.edgesColorAttributes.find(object => object.name === edge._cfg.model.colorCategory);
+      const categoryColor = this.props.edgesColorAttributes.find(object => object.name === edge._cfg.model.colorCategory) ? '#' + this.props.edgesColorAttributes.find(object => object.name === edge._cfg.model.colorCategory).color : '#f00';
+      //const categoryColor = '#' + this.props.edgesColorAttributes.find(object => object.name === edge._cfg.model.colorCategory).color;
+      //console.log("this.props.edgesColorAttributes.find(object => object.name === edge._cfg.model.colorCategory).color: ", this.props.edgesColorAttributes.find(object => object.name === edge._cfg.model.colorCategory).color);
+      //const categoryColor = '#' + this.props.edgesColorAttributes.find(object => object.name === edge._cfg.model.colorCategory).color;
+      //categoryColor = '#' + categoryColor;
+      console.log("categoryColor: ", categoryColor);
+      console.log("END (EDGE)");
+
+      console.log("categoryColor: ", categoryColor);
+
+
+      /*
+      const model = {
+        stroke: categoryColor,
+        style: {
+          stroke: categoryColor
+        },
+      };
+      this.graph.updateItem(edge, model);
+      */
+      if (!edge.style) {
+        edge.style = {};
+      }
+      const edgeModel = {
+        style: {
+          lineWidth: 4,
+          opacity: 0.6,
+          stroke: categoryColor
+        }
+      };
+      this.graph.updateItem(edge, edgeModel);
+      console.log("edgeStyle: ", edge.style);
     });
     this.graph.render();
   }

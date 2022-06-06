@@ -68,6 +68,7 @@ const G6JsGraph = () => {
   const [urlParams, setUrlParams] = useState(urlParamsObject);
   const [lookedUpData, setLookedUpData] = useState([]);
   const [nodesColorAttributes, setNodesColorAttributes] = useState({});
+  const [edgesColorAttributes, setEdgesColorAttributes] = useState({});
 
   let apiParameters = Object.keys(urlParams)
   .map((key) => key + "=" + urlParams[key])
@@ -1029,6 +1030,10 @@ const G6JsGraph = () => {
                   setNodesColorAttributes(newGraphData.settings.nodesColorAttributes);
                   console.log("newGraphData.settings.nodesColorAttributes: ", newGraphData.settings.nodesColorAttributes);
                 }
+                if(newGraphData.settings.edgesColorAttributes) {
+                  setEdgesColorAttributes(newGraphData.settings.edgesColorAttributes);
+                  console.log("newGraphData.settings.edgesColorAttributes: ", newGraphData.settings.edgesColorAttributes);
+                }
                 setGraphData(newGraphData);
               }}
               vertexCollectionsColors={vertexCollectionsColors}
@@ -1036,6 +1041,8 @@ const G6JsGraph = () => {
               edgeType={urlParameters.edgeType}
               nodesColorAttributes={nodesColorAttributes}
               nodeColorAttribute={urlParameters.nodeColorAttribute}
+              edgesColorAttributes={edgesColorAttributes}
+              edgeColorAttribute={urlParameters.edgeColorAttribute}
         />
         <AttributesInfo attributes={lookedUpData} />
         <ButtonScrollTo />
