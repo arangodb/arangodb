@@ -713,10 +713,15 @@ export class GraphView extends React.Component {
       this.graph.updateItem(node, model);
       
     });
+    if(this.props.edgeColorAttribute) {
+      console.log(">>>>>>>>>>>>>>>>this.props.edgeColorAttribute: ", this.props.edgeColorAttribute);
+      this.colorEdgesByAttribute();
+    }
     this.graph.render();
   }
 
   colorEdgesByAttribute = () => {
+    console.log("############BEGIN this.props.edgesColorAttributes: ", this.props.edgesColorAttributes);
     const edges = this.graph.getEdges();
     edges.forEach((edge) => {
       console.log("START (EDGE)");
@@ -735,7 +740,8 @@ export class GraphView extends React.Component {
         'color': tempEdgeColor
       };
 
-      const edgesColorAttributeIndex = this.props.nodesColorAttributes.findIndex(object => object.name === value2.name);
+      //const edgesColorAttributeIndex = this.props.nodesColorAttributes.findIndex(object => object.name === value2.name);
+      const edgesColorAttributeIndex = this.props.edgesColorAttributes.findIndex(object => object.name === value2.name);
       if (edgesColorAttributeIndex === -1) {
         this.props.edgesColorAttributes.push(value2);
       }
@@ -775,6 +781,7 @@ export class GraphView extends React.Component {
       this.graph.updateItem(edge, edgeModel);
       console.log("edgeStyle: ", edge.style);
     });
+    console.log("############END this.props.edgesColorAttributes: ", this.props.edgesColorAttributes);
     this.graph.render();
   }
 
