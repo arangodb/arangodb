@@ -17,7 +17,7 @@ const ParameterNodeColor = () => {
   return (
     <div>
       <Textinput
-        label={'Color'}
+        label={'Default node color'}
         type={'color'}
         value={calculatedNodeColor}
         width={'60px'}

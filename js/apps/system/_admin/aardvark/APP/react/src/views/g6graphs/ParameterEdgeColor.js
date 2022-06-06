@@ -17,7 +17,7 @@ const ParameterEdgeColor = () => {
   return (
     <div>
       <Textinput
-        label={'Color'}
+        label={'Default edge color'}
         type={'color'}
         value={calculatedEdgeColor}
         width={'60px'}
