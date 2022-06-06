@@ -26,6 +26,10 @@
 
 #include "VocBase/voc-types.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/IResearchDocumentEE.h"
+#endif
+
 #include "IResearchAnalyzerFeature.h"
 #include "IResearchLinkMeta.h"
 #include "IResearchInvertedIndexMeta.h"
@@ -120,7 +124,9 @@ struct Field {
 
     return true;
   }
-
+#ifdef USE_ENTERPRISE
+  bool _root{false};
+#endif
   AnalyzerPool::CacheType::ptr _analyzer;
   irs::string_ref _name;
   irs::bytes_ref _value;
@@ -154,26 +160,17 @@ class FieldIterator {
   void reset(velocypack::Slice slice, FieldMeta const& linkMeta);
 
 #ifdef USE_ENTERPRISE
-  FieldIterator makeNestedIterator() const {
-    return FieldIterator(*_trx, _collection, _linkId);
-  }
-
-  Field const& parentField() const {
-    return _value;
-  }
-
-  VPackSlice getCurrentValue() const noexcept {
-    return _valueSlice;
+  bool onRootLevel() const noexcept {
+    return true;
   }
 
   bool hasNested() const noexcept {
     return false;
   }
 
-  void resetNested(VPackSlice slice) {
-    
+  bool needDoc() const noexcept {
+    return false;
   }
-
 #endif
 
  private:
@@ -258,25 +255,18 @@ class InvertedIndexFieldIterator {
                                       IndexId indexId);
 
 #ifdef USE_ENTERPRISE
-  explicit InvertedIndexFieldIterator(
-      InvertedIndexFieldIterator const& parent,
-      IResearchInvertedIndexMeta::Fields const& fields);
-
-  InvertedIndexFieldIterator makeNestedIterator() const;
-  
-  VPackSlice getCurrentValue() const noexcept {
-    return _valueSlice;
-  }
-
-  void resetNested(VPackSlice slice);
-
   bool hasNested() const noexcept {
-    return valid() && !_begin->nested().empty() &&
-           _valueSlice.isArray();
+    return valid() &&
+           std::any_of(_fieldsMeta->_fields.begin(), _fieldsMeta->_fields.end(),
+                       [](IResearchInvertedIndexMeta::FieldRecord const& f) {
+                         return !f.nested().empty();
+                       });
   }
 
-  Field const& parentField() const {
-    return _parentField;
+  bool onRootLevel() const noexcept;
+  
+  bool needDoc() const noexcept {
+    return false;
   }
 #endif
 
@@ -295,6 +285,11 @@ class InvertedIndexFieldIterator {
 
  private:
   void next();
+
+#ifdef USE_ENTERPRISE
+  bool nextNested();
+#endif
+
   bool setValue(VPackSlice const value,
                 FieldMeta::Analyzer const& valueAnalyzer);
   void setNullValue();
@@ -320,9 +315,10 @@ class InvertedIndexFieldIterator {
   std::string _nameBuffer;
   VPackBuffer<uint8_t> _buffer;  // buffer for stored values
 #ifdef USE_ENTERPRISE
-  Field _parentField;
-  std::string _parentNameBuffer;
-  InvertedIndexFieldIterator const* _parent{nullptr};
+  std::vector<
+      NestingContext<IResearchInvertedIndexMeta::FieldRecord const,
+                     IResearchInvertedIndexMeta::FieldRecord const*>>
+      _nestingCtx;
 #endif
 };
 

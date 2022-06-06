@@ -3756,3 +3756,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_empty) {
   it.reset(json->slice(), indexMeta);
   ASSERT_FALSE(it.valid());
 }
+
+#if USE_ENTERPRISE
+#include "tests/IResearch/IResearchDocumentTestEE.h"
+#endif

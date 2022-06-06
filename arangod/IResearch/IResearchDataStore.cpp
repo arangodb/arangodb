@@ -176,9 +176,32 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
   if (!body.valid()) {
     return {};  // no fields to index
   }
-
-  auto doc = ctx.insert();
   auto& field = *body;
+
+  bool wasNested{false};
+#ifdef USE_ENTERPRISE
+  if (body.hasNested()) {
+    wasNested = true;
+    auto nestedRes = handleNestedFields(ctx, body);
+    if (nestedRes.fail()) {
+      return {TRI_ERROR_INTERNAL,
+              "failed to insert document nested fields into arangosearch index '" +
+                  std::to_string(id.id()) + "', document '" +
+                  std::to_string(documentId.id()) + "'"};
+    }
+  }
+#endif
+  // flag if there was nested.
+  // first child should be without flag!
+  auto doc = ctx.insert(/*wasNested*/);
+
+  if (!doc) {
+    return {TRI_ERROR_INTERNAL,
+            "failed to insert document into arangosearch link '" +
+                std::to_string(id.id()) + "', revision '" +
+                std::to_string(documentId.id()) + "'"};
+  }
+
 
   // Sorted field
   {
@@ -205,7 +228,8 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
     }
   }
 
-    // Indexed and Stored: LocalDocumentId
+  // System fields
+  // Indexed and Stored: LocalDocumentId
   auto docPk = DocumentPrimaryKey::encode(documentId);
 
   // reuse the 'Field' instance stored inside the 'FieldIterator'
@@ -215,29 +239,16 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
   // User fields
   while (body.valid()) {
 #ifdef USE_ENTERPRISE
-    if (handleNestedFields(ctx, doc, body)) {
-      ++body;
-      continue;
-    }
+    if (field._root) {
+      handleNestedRoot(doc, field);
+    } else
 #endif
-
     if (ValueStorage::NONE == field._storeValues) {
       doc.insert<irs::Action::INDEX>(field);
     } else {
       doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
     }
     ++body;
-  }
-
-  // System fields
-
-
-
-  if (!doc) {
-    return {TRI_ERROR_INTERNAL,
-            "failed to insert document into arangosearch link '" +
-                std::to_string(id.id()) + "', revision '" +
-                std::to_string(documentId.id()) + "'"};
   }
 
   if (trx.state()->hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
