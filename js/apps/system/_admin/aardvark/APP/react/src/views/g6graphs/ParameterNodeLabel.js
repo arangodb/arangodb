@@ -23,7 +23,7 @@ const ParameterNodeLabel = () => {
             setUrlParameters(NEWURLPARAMETERS);
           }}>
         </Textinput>
-        <Tooltip placement="bottom" title={"Node label. Please choose a valid and available node attribute."}>
+        <Tooltip placement="bottom" title={"Enter a valid node attribute to be used as a node label."}>
           <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
         </Tooltip>
       </div>

@@ -48,7 +48,7 @@ const ParameterNodeStart = ({ nodes, onNodeSelect }) => {
               node={node} />
           ))}
         </datalist>
-        <Tooltip placement="bottom" title={"A valid node id or space seperated list of id's. If empty, a random node will be chosen."}>
+        <Tooltip placement="bottom" title={"A valid node ID or a space-separated list of IDs. If empty, a random node will be chosen."}>
           <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
         </Tooltip>
       </div>

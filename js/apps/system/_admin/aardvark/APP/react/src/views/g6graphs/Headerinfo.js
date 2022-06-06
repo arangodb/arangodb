@@ -110,7 +110,7 @@ const screenshotMenu = (
         subTitle=""
         extra={[
           <>
-            <Tooltip placement="bottom" title={"Fetch full graph - use with caution"}>
+            <Tooltip placement="bottom" title={"Display the full graph - use with caution"}>
               <Button key="1" onClick={onLoadFullGraph()}><DownloadOutlined /></Button>
             </Tooltip>
             
@@ -118,7 +118,7 @@ const screenshotMenu = (
               <Button key="2"><CameraOutlined /></Button>
             </Dropdown>
 
-            <Tooltip placement="bottom" title={"Switch to fullscreen mode"}>
+            <Tooltip placement="bottom" title={"Enter full screen"}>
               <Button key="3"
                 onClick={() => {
                   const elem = document.getElementById("graph-card");
@@ -128,7 +128,7 @@ const screenshotMenu = (
               </Button>
             </Tooltip>
 
-            <Tooltip placement="bottom" title={"Use old graph viewer"}>
+            <Tooltip placement="bottom" title={"Switch to the old graph viewer"}>
               <Button key="4"
                 onClick={() => {
                   window.location.href = `/_db/_system/_admin/aardvark/index.html#graph/${graphName}`;

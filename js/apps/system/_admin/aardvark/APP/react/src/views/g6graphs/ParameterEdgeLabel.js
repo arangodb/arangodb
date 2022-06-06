@@ -29,7 +29,7 @@ const ParameterEdgeLabel = () => {
   return (
     <div style={{'marginTop': '24px'}}>
         <Textinput
-          label={'Edge label'}
+          label={'Enter a valid edge attribute to be used as an edge label.'}
           value={edgeLabel}
           width={'300px'}
           onChange={(e) => {

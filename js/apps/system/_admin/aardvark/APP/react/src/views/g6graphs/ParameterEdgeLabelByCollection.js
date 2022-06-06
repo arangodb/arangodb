@@ -23,7 +23,7 @@ const ParameterEdgeLabelByCollection = () => {
       >
         Show collection name
       </Checkbox>
-      <Tooltip placement="bottom" title={"Append collection name to the label?"}>
+      <Tooltip placement="bottom" title={"Adds a collection name to the node label."}>
         <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
       </Tooltip>
     </div>
