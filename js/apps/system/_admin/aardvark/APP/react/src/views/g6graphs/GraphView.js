@@ -695,8 +695,9 @@ export class GraphView extends React.Component {
 
       console.log("categoryObj: ", this.props.nodesColorAttributes.find(object => object.name === node._cfg.model.colorCategory));
       const categoryObj = this.props.nodesColorAttributes.find(object => object.name === node._cfg.model.colorCategory);
-      console.log("this.props.nodesColorAttributes.find(object => object.name === node._cfg.model.colorCategory).color: ", this.props.nodesColorAttributes.find(object => object.name === node._cfg.model.colorCategory).color);
-      const categoryColor = '#' + this.props.nodesColorAttributes.find(object => object.name === node._cfg.model.colorCategory).color;
+      //console.log("this.props.nodesColorAttributes.find(object => object.name === node._cfg.model.colorCategory).color: ", this.props.nodesColorAttributes.find(object => object.name === node._cfg.model.colorCategory).color);
+      //const categoryColor = '#' + this.props.nodesColorAttributes.find(object => object.name === node._cfg.model.colorCategory).color;
+      const categoryColor = this.props.nodesColorAttributes.find(object => object.name === node._cfg.model.colorCategory) ? '#' + this.props.nodesColorAttributes.find(object => object.name === node._cfg.model.colorCategory).color : '#f00';
       console.log("categoryColor: ", categoryColor);
       console.log("END");
 
