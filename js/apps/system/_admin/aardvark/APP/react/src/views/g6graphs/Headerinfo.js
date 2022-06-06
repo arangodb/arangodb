@@ -174,6 +174,8 @@ const screenshotMenu = (
             >
               <ParameterNodeLabel />
               <br />
+              <ParameterNodeColor />
+              <br />
               <ParameterNodeLabelByCollection
                 graphData={graphData}
                 onAddCollectionNameChange={
@@ -181,8 +183,6 @@ const screenshotMenu = (
                 } />
               <br />
               <ParameterNodeColorByCollection />
-              <br />
-              <ParameterNodeColor />
               <br />
               <ParameterNodeColorAttribute nodesColorAttributes={nodesColorAttributes} />
               <br />
@@ -201,11 +201,11 @@ const screenshotMenu = (
             >
               <ParameterEdgeLabel />
               <br />
+              <ParameterEdgeColor />
+              <br />
               <ParameterEdgeLabelByCollection />
               <br />
               <ParameterEdgeColorByCollection />
-              <br />
-              <ParameterEdgeColor />
               <br />
               <ParameterEdgeColorAttribute edgesColorAttributes={edgesColorAttributes}/>
               <br />
