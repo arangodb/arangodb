@@ -723,7 +723,8 @@ std::unordered_map<
     {static_cast<GeneratorMapType>(GeneratorType::AUTOINCREMENT),
      [](LogicalCollection const& collection,
         VPackSlice options) -> std::unique_ptr<KeyGenerator> {
-       if (collection.numberOfShards() > 1) {
+       if (!ServerState::instance()->isSingleServer() &&
+           collection.numberOfShards() > 1) {
          THROW_ARANGO_EXCEPTION_MESSAGE(
              TRI_ERROR_CLUSTER_UNSUPPORTED,
              "the specified key generator is not "

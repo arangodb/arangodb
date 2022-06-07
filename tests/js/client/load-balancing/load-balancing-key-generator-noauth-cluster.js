@@ -32,6 +32,7 @@ const db = require("internal").db;
 const request = require("@arangodb/request");
 const _ = require("lodash");
 const isEnterprise = require("internal").isEnterprise();
+const ERRORS = require("@arangodb").errors;
 let isCluster = require("internal").isCluster();
 
 function getCoordinators() {
@@ -177,7 +178,7 @@ function KeyGeneratorSuite() {
       try {
         db._create(cn, {numberOfShards: 5, keyOptions: {type: "autoincrement"}});
       } catch (error) {
-        assertEqual(error.code, 501);
+        assertEqual(ERRORS.ERROR_CLUSTER_UNSUPPORTED.code, error.errorNum);
       }
     },
 

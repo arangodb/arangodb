@@ -56,12 +56,12 @@ jsunity.run(function dump_single_testsuite() {
       "testTransactionCommit",
       "testTransactionUpdate",
       "testTransactionAbort",
-      
+
       // cluster tests:
       "testDatabaseProperties",
       "testShards",
       "testReplicationFactor",
-      
+
       // enterprise graph tests: (TODO: should they be able to be run in single?)
       "testVertices",
       "testVerticesAqlRead",
