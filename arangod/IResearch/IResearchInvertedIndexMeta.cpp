@@ -65,7 +65,7 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
     bool extendedNames, IResearchAnalyzerFeature& analyzers,
     irs::string_ref const defaultVocbase, std::string& errorField) {
   std::optional<Features> features;
-  IResearchInvertedIndexMeta::Fields nestedFields;
+  std::vector<IResearchInvertedIndexMeta::FieldRecord> nestedFields;
   AnalyzerPool::ptr analyzer;
   std::string expression;
   std::vector<basics::AttributeName> fieldParts;
@@ -534,7 +534,7 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
                                 versionSpecificIdentity, LinkVersion{_version}, extendedNames,
                                 analyzers, defaultVocbase, localError);
     if (field) {
-      _fields.push_back(std::move(*field));
+      _fields._fields.push_back(std::move(*field));
     }
     else {
       errorField = std::string{kFieldsFieldName} + "[" +
@@ -549,7 +549,7 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
       errorField = kTrackListPositionsFieldName;
       return false;
     }
-    _trackListPositions = subSlice.getBool();
+    _fields._trackListPositions = subSlice.getBool();
   }
   if (slice.hasKey(kIncludeAllFieldsFieldName)) {
     auto subSlice = slice.get(kIncludeAllFieldsFieldName);
@@ -557,7 +557,7 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
       errorField = kIncludeAllFieldsFieldName;
       return false;
     }
-    _includeAllFields = subSlice.getBool();
+    _fields._includeAllFields = subSlice.getBool();
   }
 
   if (slice.hasKey(kFeaturesFieldName)) {
@@ -600,8 +600,8 @@ bool IResearchInvertedIndexMeta::json(
   velocypack::Builder fieldsBuilder;
   {
     VPackArrayBuilder fieldsArray(&fieldsBuilder);
-    TRI_ASSERT(!_fields.empty());
-    for (auto& entry : _fields) {
+    TRI_ASSERT(!_fields._fields.empty());
+    for (auto& entry : _fields._fields) {
        toVelocyPack(entry, fieldsBuilder);
     }
   }
@@ -613,8 +613,8 @@ bool IResearchInvertedIndexMeta::json(
     builder.add(kFeaturesFieldName, tmp.slice());
   }
 
-  builder.add(kTrackListPositionsFieldName, VPackValue(_trackListPositions));
-  builder.add(kIncludeAllFieldsFieldName, VPackValue(_includeAllFields));
+  builder.add(kTrackListPositionsFieldName, VPackValue(_fields._trackListPositions));
+  builder.add(kIncludeAllFieldsFieldName, VPackValue(_fields._includeAllFields));
 
   return true;
 }
@@ -638,20 +638,20 @@ bool IResearchInvertedIndexMeta::operator==(
     return false;
   }
 
-  if (_fields.size() != other._fields.size()) {
+  if (_fields._fields.size() != other._fields._fields.size()) {
     return false;
   }
 
   size_t matched{0};
-  for (auto const& thisField : _fields) {
-    for (auto const& otherField : _fields) {
+  for (auto const& thisField : _fields._fields) {
+    for (auto const& otherField : _fields._fields) {
       if (thisField.namesMatch(otherField)) {
         matched++;
         break;
       }
     }
   }
-  return matched == _fields.size();
+  return matched == _fields._fields.size();
 }
 
 bool IResearchInvertedIndexMeta::matchesFieldsDefinition(
@@ -663,7 +663,7 @@ bool IResearchInvertedIndexMeta::matchesFieldsDefinition(
   }
 
   size_t const n = static_cast<size_t>(value.length());
-  auto const count = meta._fields.size();
+  auto const count = meta._fields._fields.size();
   if (n != count) {
     return false;
   }
@@ -692,7 +692,7 @@ bool IResearchInvertedIndexMeta::matchesFieldsDefinition(
     auto in = name.stringView();
     irs::string_ref analyzerName = analyzer.stringView();
     TRI_ParseAttributeString(in, translate, true);
-    for (auto const& f : meta._fields) {
+    for (auto const& f : meta._fields._fields) {
       if (f.isIdentical(translate, analyzerName)) {
         matched++;
         break;
@@ -710,9 +710,9 @@ IResearchInvertedIndexMeta::FieldRecord::FieldRecord(
     std::vector<FieldRecord>&& nested, std::optional<Features>&& features,
     std::string&& expression, bool isArray, bool includeAllFields, bool trackListPositions,
     bool overrideValue)
-    : _nested(std::move(nested)),
+    : _fields(std::move(nested)),
       _expression(std::move(expression)),
-      _analyzer(std::move(a)),
+      _analyzers{std::move(a)},
       _features(std::move(features)),
       _isArray(isArray),
       _includeAllFields(includeAllFields),
@@ -770,7 +770,7 @@ bool IResearchInvertedIndexMeta::FieldRecord::namesMatch(
 bool IResearchInvertedIndexMeta::FieldRecord::isIdentical(
     std::vector<basics::AttributeName> const& path,
     irs::string_ref analyzerName) const noexcept {
-  if (_analyzer._shortName == analyzerName &&
+  if (_analyzers.front()._shortName == analyzerName &&
       path.size() == (_attribute.size() + _expansion.size())) {
     auto it = path.begin();
     auto atr = _attribute.begin();

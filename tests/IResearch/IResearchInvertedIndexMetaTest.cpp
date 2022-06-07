@@ -79,7 +79,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_defaults) {
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
 
   ASSERT_EQ(0, meta._analyzerDefinitions.size());
-  ASSERT_TRUE(true == meta._fields.empty());
+  ASSERT_TRUE(meta._fields._fields.empty());
   ASSERT_TRUE(meta._sort.empty());
   ASSERT_TRUE(meta._storedValues.empty());
   ASSERT_EQ(meta._sort.sortCompression(), irs::type<irs::compression::lz4>::id());
@@ -104,8 +104,8 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readDefaults) {
                           irs::string_ref::NIL));
     ASSERT_TRUE(errorString.empty());
     ASSERT_EQ(0, meta._analyzerDefinitions.size());
-    ASSERT_EQ(1, meta._fields.size());
-    ASSERT_EQ("dummy", meta._fields.front().toString());
+    ASSERT_EQ(1, meta._fields._fields.size());
+    ASSERT_EQ("dummy", meta._fields._fields.front().toString());
     ASSERT_TRUE(meta._sort.empty());
     ASSERT_TRUE(meta._storedValues.empty());
     ASSERT_EQ(meta._sort.sortCompression(), irs::type<irs::compression::lz4>::id());
@@ -127,8 +127,8 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readDefaults) {
                           irs::string_ref(vocbase.name())));
     ASSERT_TRUE(errorString.empty());
     ASSERT_EQ(0, meta._analyzerDefinitions.size());
-    ASSERT_EQ(1, meta._fields.size());
-    ASSERT_EQ("dummy", meta._fields.front().toString());
+    ASSERT_EQ(1, meta._fields._fields.size());
+    ASSERT_EQ("dummy", meta._fields._fields.front().toString());
     ASSERT_TRUE(meta._sort.empty());
     ASSERT_TRUE(meta._storedValues.empty());
     ASSERT_EQ(meta._sort.sortCompression(), irs::type<irs::compression::lz4>::id());
@@ -221,7 +221,7 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
             meta._analyzerDefinitions.end());
   ASSERT_NE(meta._analyzerDefinitions.find("identity"),
             meta._analyzerDefinitions.end());
-  ASSERT_EQ(6, meta._fields.size());
+  ASSERT_EQ(6, meta._fields._fields.size());
   ASSERT_FALSE(meta._sort.empty());
   ASSERT_FALSE(meta._storedValues.empty());
   ASSERT_EQ(meta._sort.sortCompression(), irs::type<irs::compression::lz4>::id());

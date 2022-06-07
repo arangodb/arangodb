@@ -135,10 +135,23 @@ struct Field {
   irs::IndexFeatures _indexFeatures;
 };  // Field
 
+struct InvertedIndexFieldMeta {
+  // Analyzers to apply to every field.
+  std::array<std::reference_wrapper<FieldMeta::Analyzer>, 1> _analyzers;
+  // Offset of the first non-primitive analyzer.
+  static size_t const _primitiveOffset{0};
+  // How values should be stored inside the view.
+  static ValueStorage const _storeValues{ValueStorage::ID};
+  // Include all fields or only fields listed in '_fields'.
+  bool _includeAllFields{false};
+  bool _trackListPositions{false};
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allows to iterate over the provided VPack accoring the specified
 ///        IResearchLinkMeta
 ////////////////////////////////////////////////////////////////////////////////
+template<typename IndexMetaStruct, typename LevelMeta>
 class FieldIterator {
  public:
   explicit FieldIterator(arangodb::transaction::Methods& trx,
@@ -157,11 +170,12 @@ class FieldIterator {
 
   bool valid() const noexcept { return !_stack.empty(); }
 
-  void reset(velocypack::Slice slice, FieldMeta const& linkMeta);
+  void reset(velocypack::Slice slice, IndexMetaStruct const& linkMeta);
 
 #ifdef USE_ENTERPRISE
+
   bool onRootLevel() const noexcept {
-    return true;
+    return _stack.size() <= 1;
   }
 
   bool hasNested() const noexcept {
@@ -169,27 +183,27 @@ class FieldIterator {
   }
 
   bool needDoc() const noexcept {
-    return false;
+    return _needDoc;
   }
 #endif
 
  private:
   using AnalyzerIterator = FieldMeta::Analyzer const*;
 
-  using Filter = bool (*)(std::string& buffer, FieldMeta const*& rootMeta,
+  using Filter = bool (*)(std::string& buffer, LevelMeta const*& rootMeta,
                           IteratorValue const& value);
 
   using PrimitiveTypeResetter = void (*)(irs::token_stream* stream,
                                          VPackSlice slice);
 
   struct Level {
-    Level(velocypack::Slice slice, size_t nameLength, FieldMeta const& meta,
+    Level(velocypack::Slice slice, size_t nameLength, LevelMeta const& meta,
           Filter filter)
         : it(slice), nameLength(nameLength), meta(&meta), filter(filter) {}
 
     Iterator it;
     size_t nameLength;      // length of the name at the current level
-    FieldMeta const* meta;  // metadata
+    LevelMeta const* meta;  // metadata
     Filter filter;
   };  // Level
 
@@ -197,6 +211,16 @@ class FieldIterator {
     TRI_ASSERT(!_stack.empty());
     return _stack.back();
   }
+
+#ifdef USE_ENTERPRISE
+  using MetaTraits = IndexMetaTraits<LevelMeta>;
+
+  void popLevel();
+  bool pushLevel(VPackSlice value, LevelMeta const& meta, Filter filter);
+
+  std::vector<std::string> _nestingBuffers;
+  bool _needDoc{false};
+#endif
 
   // disallow copy and assign
   FieldIterator(FieldIterator const&) = delete;
@@ -257,7 +281,7 @@ class InvertedIndexFieldIterator {
 #ifdef USE_ENTERPRISE
   bool hasNested() const noexcept {
     return valid() &&
-           std::any_of(_fieldsMeta->_fields.begin(), _fieldsMeta->_fields.end(),
+           std::any_of(_fieldsMeta->_fields._fields.begin(), _fieldsMeta->_fields._fields.end(),
                        [](IResearchInvertedIndexMeta::FieldRecord const& f) {
                          return !f.nested().empty();
                        });
@@ -277,9 +301,9 @@ class InvertedIndexFieldIterator {
              IResearchInvertedIndexMeta const& fieldsMeta) {
     _slice = slice;
     _fieldsMeta = &fieldsMeta;
-    TRI_ASSERT(!_fieldsMeta->_fields.empty());
-    _begin = _fieldsMeta->_fields.data() - 1;
-    _end = _fieldsMeta->_fields.data() + _fieldsMeta->_fields.size();
+    TRI_ASSERT(!_fieldsMeta->_fields._fields.empty());
+    _begin = _fieldsMeta->_fields._fields.data() - 1;
+    _end = _fieldsMeta->_fields._fields.data() + _fieldsMeta->_fields._fields.size();
     next();
   }
 
