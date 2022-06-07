@@ -260,31 +260,40 @@ class TestGraph {
     }
 
     const verticesByName = {};
-    for (const [vertexKey, smart] of vertices) {
-      const doc = {key: vertexKey};
-      if (ProtoGraph.smartAttr() && smart !== null) {
-        doc[ProtoGraph.smartAttr()] = smart;
-      } else if (ProtoGraph.smartAttr()) {
-        doc[ProtoGraph.smartAttr()] = defaultSmartGraphValue;
+    // Use scope here to free internal data-structures
+    {
+      const toSave = [];
+      const keys = [];
+      for (const [vertexKey, smart] of vertices) {
+        const doc = {key: vertexKey};
+        if (ProtoGraph.smartAttr() && smart !== null) {
+          doc[ProtoGraph.smartAttr()] = smart;
+        } else if (ProtoGraph.smartAttr()) {
+          doc[ProtoGraph.smartAttr()] = defaultSmartGraphValue;
+        }
+        toSave.push(doc);
+        keys.push(vertexKey);
       }
-      verticesByName[vertexKey] = vc.save(doc)._id;
+      // Save all vertices in one request, and map the result back to the input.
+      // This should speed up the tests.
+      vc.save(toSave).forEach((d, i) => verticesByName[keys[i]] = d._id);
     }
-    for (const edge of edges) {
-      let v = verticesByName[edge[0]];
-      let w = verticesByName[edge[1]];
 
+    // Save all edges in one request
+    ec.save(edges.map(([v, w, weight]) => {
+      const edge = {
+        _from: verticesByName[v],
+        _to: verticesByName[w]
+      };
       // check if our edge also has a weight defined and is a number
-      if (edge[2] && typeof edge[2] === 'number') {
+      if (weight && typeof weight === 'number') {
         // if found, add attribute "distance" as weightAttribute to the edge document
-        let document = {
-          [graphWeightAttribute]: edge[2],
-          [graphIndexedAttribute]: edge[2]
-        };
-        ec.save(v, w, document);
-      } else {
-        ec.save(v, w, {});
+        edge[graphWeightAttribute] = weight;
+        edge[graphIndexedAttribute] = weight;
       }
-    }
+
+      return edge;
+    }));
     return verticesByName;
   }
 
