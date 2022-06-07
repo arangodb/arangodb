@@ -118,6 +118,7 @@ const G6JsGraph = () => {
   const [editNode, setEditNode] = useState();
   const [vertexCollections, setVertexCollections] = useState([]);
   const [vertexCollectionsColors, setVertexCollectionsColors] = useState();
+  const [nodesSizeMinMax, setNodesSizeMinMax] = useState();
   const [edgeCollections, setEdgeCollections] = useState([]);
   const [edgeModelToAdd, setEdgeModelToAdd] = useState([]);
   const [nodeToEdit, setNodeToEdit] = useState({});
@@ -699,6 +700,9 @@ const G6JsGraph = () => {
             ...data.edges
           ]
         };
+        if(urlParameters.nodeSize) {
+          setNodesSizeMinMax(data.settings.nodesSizeMinMax);
+        }
         setGraphData(newGraphData);
       })
       .catch((err) => {
@@ -881,7 +885,7 @@ const G6JsGraph = () => {
   return (
     <div>
       <UrlParametersContext.Provider value={[urlParameters, setUrlParameters, vertexCollectionsColors]}>
-
+      
         <EditModal
           shouldShow={showEditModal}
           onRequestClose={() => {
@@ -1030,6 +1034,9 @@ const G6JsGraph = () => {
                   setNodesColorAttributes(newGraphData.settings.nodesColorAttributes);
                   console.log("newGraphData.settings.nodesColorAttributes: ", newGraphData.settings.nodesColorAttributes);
                 }
+                if(newGraphData.settings.nodesSizeMinMax) {
+                  setNodesSizeMinMax(newGraphData.settings.nodesSizeMinMax);
+                }
                 if(newGraphData.settings.edgesColorAttributes) {
                   setEdgesColorAttributes(newGraphData.settings.edgesColorAttributes);
                   console.log("newGraphData.settings.edgesColorAttributes: ", newGraphData.settings.edgesColorAttributes);
@@ -1045,6 +1052,7 @@ const G6JsGraph = () => {
               edgesColorAttributes={edgesColorAttributes}
               edgeColorAttribute={urlParameters.edgeColorAttribute}
               edgeColorByCollection={urlParameters.edgeColorByCollection}
+              nodesSizeMinMax={nodesSizeMinMax}
         />
         <AttributesInfo attributes={lookedUpData} />
         <ButtonScrollTo />

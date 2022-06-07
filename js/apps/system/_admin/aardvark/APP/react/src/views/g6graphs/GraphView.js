@@ -468,6 +468,9 @@ export class GraphView extends React.Component {
         this.colorNodesByAttribute();
       }
     }
+    if(this.props.nodesSizeMinMax) {
+        this.resizeNodesByAttribute();
+    }
     if(this.props.edgeColorAttribute) {
       if(!this.props.edgeColorByCollection) {
         console.log(">>>>>>>>>>>>>>>>this.props.edgeColorAttribute: ", this.props.edgeColorAttribute);
@@ -722,6 +725,40 @@ export class GraphView extends React.Component {
       console.log(">>>>>>>>>>>>>>>>this.props.edgeColorAttribute: ", this.props.edgeColorAttribute);
       this.colorEdgesByAttribute();
     }
+    this.graph.render();
+  }
+
+  resizeNodesByAttribute = () => {
+    const nodes = this.graph.getNodes();
+    nodes.forEach((node) => {
+
+      const minNodeSize = 20;
+      const maxNodeSize = 200;
+
+      const maxDiff = this.props.nodesSizeMinMax[1] - this.props.nodesSizeMinMax[0];
+      
+      console.log("this.props.nodesSizeMinMax: ", this.props.nodesSizeMinMax);
+      console.log("this.props.nodesSizeMinMax[0]: ", this.props.nodesSizeMinMax[0]);
+      console.log("this.props.nodesSizeMinMax[1]: ", this.props.nodesSizeMinMax[1]);
+      console.log("maxDiff: ", maxDiff);
+
+      const nodeSizeDiff = maxNodeSize - minNodeSize;
+      console.log("nodeSizeDiff: ", nodeSizeDiff);
+
+      console.log("node: ", node);
+      console.log("node._cfg.model.sizeCategory: ", node._cfg.model.sizeCategory);
+
+      const d = node._cfg.model.sizeCategory - this.props.nodesSizeMinMax[0];
+      console.log("d: ", d);
+
+      const tempNodeSize = Math.floor(minNodeSize + nodeSizeDiff * (d / maxDiff));
+      console.log("tempNodeSize: ", tempNodeSize);
+
+      const model = {
+        size: tempNodeSize
+      };
+      this.graph.updateItem(node, model);
+    });
     this.graph.render();
   }
 
@@ -1009,6 +1046,7 @@ export class GraphView extends React.Component {
       }}>Find node Paris</button>
       <LoadingSpinner />
       <button onClick={() => this.colorNodesByAttribute()}>Color nodes by attribute</button>
+      <button onClick={() => this.resizeNodesByAttribute()}>resizeNodesByAttribute</button>
   */
 
   render() {

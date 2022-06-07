@@ -1247,6 +1247,8 @@ authRouter.get('/g6graph/:name', function (req, res) {
     if(config.nodesColorAttributes) {
       nodesColorAttributes = JSON.parse(config.nodesColorAttributes);
     }
+    var nodesSizeValues = [];
+    var nodesSizeMinMax = [];
 
     var nodeNames = {};
     var edgesObj = {};
@@ -1394,6 +1396,7 @@ authRouter.get('/g6graph/:name', function (req, res) {
 
       var nodeLabel;
       var nodeSize;
+      var sizeCategory;
       var nodeObj;
       _.each(obj.vertices, function (node) {
         if (node !== null) {
@@ -1418,8 +1421,14 @@ authRouter.get('/g6graph/:name', function (req, res) {
           if (typeof nodeLabel === 'number') {
             nodeLabel = JSON.stringify(nodeLabel);
           }
+          
           if (config.nodeSize && config.nodeSizeByEdges === 'false') {
+            // original code
             nodeSize = node[config.nodeSize];
+
+            
+            sizeCategory = node[config.nodeSize] || '';
+            nodesSizeValues.push(node[config.nodeSize]);
           }
           
           /*
@@ -1427,6 +1436,7 @@ authRouter.get('/g6graph/:name', function (req, res) {
             id: node._id,
             label: nodeLabel,
             size: nodeSize || 3,
+            sizeCategory: sizeCategory || '',
             color: config.nodeColor || '#2ecc71',
             sortColor: undefined,
             x: Math.random(),
@@ -1441,17 +1451,19 @@ authRouter.get('/g6graph/:name', function (req, res) {
             calculatedNodeColor = config.nodeColor;
           }
         }
-         nodeObj = {
-            id: node._id,
-            label: nodeLabel,
-            size: nodeSize || 40,
-            style: {
-              fill: calculatedNodeColor,
-              label: {
-                value: nodeLabel
-              }
+         
+        nodeObj = {
+          id: node._id,
+          label: nodeLabel,
+          size: nodeSize || 40,
+          sizeCategory: sizeCategory || '',
+          style: {
+            fill: calculatedNodeColor,
+            label: {
+              value: nodeLabel
             }
-          };
+          }
+        };
 
           if (config.nodeColorByCollection === 'true') {
             var coll = node._id.split('/')[0];
@@ -1548,7 +1560,9 @@ authRouter.get('/g6graph/:name', function (req, res) {
         vertexCollections: vertexCollections,
         startVertex: startVertex,
         nodesColorAttributes: nodesColorAttributes,
-        edgesColorAttributes: edgesColorAttributes
+        edgesColorAttributes: edgesColorAttributes,
+        nodesSizeValues: nodesSizeValues,
+        nodesSizeMinMax: [Math.min(...nodesSizeValues), Math.max(...nodesSizeValues)]
       }
     };
     if (isEnterprise) {
