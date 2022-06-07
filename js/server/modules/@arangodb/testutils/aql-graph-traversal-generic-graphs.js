@@ -127,7 +127,7 @@ const verifySatelliteGraph = (graphName) => {
 };
 
 class TestGraph {
-  constructor(graphName, edges, eRel, vn, en, on, protoSmartSharding, testVariant, numberOfShards, unconnectedVertices = []) {
+  constructor(graphName, edges, eRel, vn, en, on, protoSmartSharding, testVariant, numberOfShards, unconnectedVertices = [], addProjectionPayload = false) {
     this.graphName = graphName;
     this.edges = edges || [];
     this.eRel = eRel || [];
@@ -138,6 +138,11 @@ class TestGraph {
     this.testVariant = testVariant;
     this.numberOfShards = numberOfShards;
     this.unconnectedVertices = unconnectedVertices;
+    this.addProjectionPayload = addProjectionPayload;
+  }
+  
+  hasProjectionPayload() {
+    return this.addProjectionPayload;
   }
 
   create() {
@@ -192,7 +197,7 @@ class TestGraph {
       vertexSharding = this.protoSmartSharding.map(([v, i]) => [v, shardAttrsByShardIndex[i]]);
     }
 
-    this.verticesByName = TestGraph._fillGraph(this.graphName, this.edges, db[this.vn], db[this.en], this.unconnectedVertices, vertexSharding);
+    this.verticesByName = TestGraph._fillGraph(this.graphName, this.edges, db[this.vn], db[this.en], this.unconnectedVertices, vertexSharding, this.addProjectionPayload);
     db[this.en].ensureIndex({type: "persistent", fields: ["_from", graphIndexedAttribute]});
   }
 
@@ -241,9 +246,11 @@ class TestGraph {
    * @param unconnectedVertices Array of Strings for vertices that exist but have no edge.
    * @param vertexSharding Array of pairs, where the first element is the vertex
    *                       key and the second the smart attribute.
+   * @param addProjectionPayload Boolean flag, to define if we should add heavy payload to vertices and edges
+   *                             in order to test projections
    * @private
    */
-  static _fillGraph(gn, edges, vc, ec, unconnectedVertices, vertexSharding = []) {
+  static _fillGraph(gn, edges, vc, ec, unconnectedVertices, vertexSharding = [], addProjectionPayload = false) {
     const vertices = new Map(vertexSharding);
     for (const edge of edges) {
       if (!vertices.has(edge[0])) {
@@ -259,6 +266,37 @@ class TestGraph {
       }
     }
 
+    function* payloadGenerator() {
+      // Just some hardcoded repeated payload.
+      // We will never check the content it should just produce
+      // some size on the documents
+      let payload = ['5a7380f6-340e-4bc0-ad76-7fdefcfffaab',
+        '65c9f1f0-42ee-4312-92ec-f6055ed30fa3',
+        '0b49975b-1f3b-45ba-9e20-1be397d862f5',
+        'dcb576a7-3f1d-45a8-bc03-d76c72325f6e',
+        'ded61d5c-e1c5-4840-9a3e-21b73b46b53b',
+        '71cd32f7-65a7-4141-a7cf-da8bf4503709',
+        '7871ce9c-6858-41c6-acff-2c0f8581b50f',
+        '7684cad0-12de-4b07-be18-db75d4e6015a',
+        'a6ca520b-b22d-4515-88ab-078ae9615fb1',
+        '2d40bdfe-8b63-4382-9444-ef695a20577f'
+      ];
+
+
+      // Bloat this up to ~ 38KB per Entry
+      for (let i = 0; i < 5; ++i) {
+        payload = payload.map(t => `${t}_${t}_${t}_${t}`);
+      }
+
+      while (true) {
+        for (const p of payload) {
+          yield p;
+        }
+      }
+    }
+
+    const payloadGen = payloadGenerator();
+
     const verticesByName = {};
     // Use scope here to free internal data-structures
     {
@@ -270,6 +308,11 @@ class TestGraph {
           doc[ProtoGraph.smartAttr()] = smart;
         } else if (ProtoGraph.smartAttr()) {
           doc[ProtoGraph.smartAttr()] = defaultSmartGraphValue;
+        }
+        if (addProjectionPayload) {
+          doc.payload1 = payloadGen.next().value;
+          doc.payload2 = payloadGen.next().value;
+          doc.payload3 = payloadGen.next().value;
         }
         toSave.push(doc);
         keys.push(vertexKey);
@@ -290,6 +333,12 @@ class TestGraph {
         // if found, add attribute "distance" as weightAttribute to the edge document
         edge[graphWeightAttribute] = weight;
         edge[graphIndexedAttribute] = weight;
+      }
+
+      if (addProjectionPayload) {
+        edge.payload1 = payloadGen.next().value;
+        edge.payload2 = payloadGen.next().value;
+        edge.payload3 = payloadGen.next().value;
       }
 
       return edge;
@@ -339,12 +388,13 @@ class ProtoGraph {
     return "smart";
   }
 
-  constructor(name, edges, generalShardings, smartShardings, unconnectedVertices) {
+  constructor(name, edges, generalShardings, smartShardings, unconnectedVertices, addProjectionPayload = false) {
     this.protoGraphName = name;
     this.edges = edges;
     this.generalShardings = generalShardings;
     this.smartShardings = smartShardings;
     this.unconnectedVertices = unconnectedVertices;
+    this.addProjectionPayload = addProjectionPayload;
   }
 
   name() {
@@ -358,7 +408,7 @@ class ProtoGraph {
     const gn = this.protoGraphName + '_Graph';
     const eRel = cgm._relation(en, vn, vn);
 
-    return [new TestGraph(gn, this.edges, eRel, vn, en, on, [], TestVariants.SingleServer, null, this.unconnectedVertices)];
+    return [new TestGraph(gn, this.edges, eRel, vn, en, on, [], TestVariants.SingleServer, null, this.unconnectedVertices, this.addProjectionPayload)];
   }
 
   prepareGeneralGraphs() {
@@ -370,7 +420,7 @@ class ProtoGraph {
       const gn = this.protoGraphName + '_Graph' + suffix;
       const eRel = cgm._relation(en, vn, vn);
 
-      return new TestGraph(gn, this.edges, eRel, vn, en, on, [], TestVariants.GeneralGraph, numberOfShards, this.unconnectedVertices);
+      return new TestGraph(gn, this.edges, eRel, vn, en, on, [], TestVariants.GeneralGraph, numberOfShards, this.unconnectedVertices, this.addProjectionPayload);
     });
   }
 
@@ -387,7 +437,7 @@ class ProtoGraph {
 
       const eRel = sgm._relation(en, vn, vn);
 
-      return new TestGraph(gn, this.edges, eRel, vn, en, on, vertexSharding, variant, numberOfShards, this.unconnectedVertices);
+      return new TestGraph(gn, this.edges, eRel, vn, en, on, vertexSharding, variant, numberOfShards, this.unconnectedVertices, this.addProjectionPayload);
     });
   }
 
@@ -410,7 +460,7 @@ class ProtoGraph {
 
       const eRel = sgm._relation(en, vn, vn);
 
-      return new TestGraph(gn, this.edges, eRel, vn, en, on, vertexSharding, variant, numberOfShards, this.unconnectedVertices);
+      return new TestGraph(gn, this.edges, eRel, vn, en, on, vertexSharding, variant, numberOfShards, this.unconnectedVertices, this.addProjectionPayload);
     });
   }
 
@@ -426,7 +476,7 @@ class ProtoGraph {
 
     const eRel = cgm._relation(en, vn, vn);
 
-    return [new TestGraph(gn, this.edges, eRel, vn, en, on, [], variant, numberOfShards, this.unconnectedVertices)];
+    return [new TestGraph(gn, this.edges, eRel, vn, en, on, [], variant, numberOfShards, this.unconnectedVertices, this.addProjectionPayload)];
   }
 
   static _buildSmartSuffix({numberOfShards, vertexSharding, name}, shardingIndex, variant) {
@@ -604,7 +654,9 @@ protoGraphs.smallCircle = new ProtoGraph("smallCircle", [
           ["D", 3]
         ]
     },
-  ]
+  ],
+  [],
+  true
 );
 
 /*
