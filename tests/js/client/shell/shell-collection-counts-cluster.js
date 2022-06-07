@@ -33,7 +33,7 @@ const jsunity = require('jsunity');
 const db = require("@arangodb").db;
 const request = require("@arangodb/request");
 const _ = require("lodash");
-const { deriveTestSuite, getEndpointById, getMetric } = require('@arangodb/test-helper');
+const { deriveTestSuite, getEndpointById, getMetric, waitForShardsInSync } = require('@arangodb/test-helper');
   
 const cn = "UnitTestsCollection";
 
@@ -103,6 +103,8 @@ function BaseTestConfig () {
       // which will eventually call the holdReadLockCollection API, which then
       // will call leaseManagedTrx and get the nullptr back
       c.properties({ replicationFactor: 2 });
+      
+      waitForShardsInSync(cn, 60); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -170,6 +172,8 @@ function BaseTestConfig () {
       clearFailurePoints([]);
 
       c.properties({ replicationFactor: 2 });
+      
+      waitForShardsInSync(cn, 60); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -226,6 +230,8 @@ function BaseTestConfig () {
       assertNotEqual(100, c.count());
 
       c.properties({ replicationFactor: 2 });
+      
+      waitForShardsInSync(cn, 60); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -289,6 +295,8 @@ function BaseTestConfig () {
       clearFailurePoints([]);
 
       c.properties({ replicationFactor: 2 });
+      
+      waitForShardsInSync(cn, 60); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -355,6 +363,8 @@ function BaseTestConfig () {
       clearFailurePoints([]);
 
       c.properties({ replicationFactor: 2 });
+      
+      waitForShardsInSync(cn, 60); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -421,6 +431,8 @@ function BaseTestConfig () {
       clearFailurePoints([]);
 
       c.properties({ replicationFactor: 3 });
+      
+      waitForShardsInSync(cn, 60); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -482,6 +494,8 @@ function BaseTestConfig () {
 
       c.properties({ replicationFactor: 3 });
 
+      waitForShardsInSync(cn, 60); 
+      
       // wait until we have an in-sync follower
       let tries = 0;
       while (tries++ < 120) {
@@ -506,7 +520,7 @@ function BaseTestConfig () {
             return;
           }
           let result = request({ method: "GET", url: server.url + "/_api/collection/" + shard + "/count" });
-          assertEqual(200, result.status);
+          assertEqual(200, result.status, result);
           total += result.json.count;
         });
         if (total === 3 * 100) {
@@ -552,6 +566,8 @@ function BaseTestConfig () {
       clearFailurePoints([]);
 
       c.properties({ replicationFactor: 3 });
+      
+      waitForShardsInSync(cn, 60); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -606,6 +622,8 @@ function BaseTestConfig () {
       });
 
       c.properties({ replicationFactor: 2 });
+      
+      waitForShardsInSync(cn, 60); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -660,6 +678,8 @@ function BaseTestConfig () {
       });
 
       c.properties({ replicationFactor: 2 });
+      
+      waitForShardsInSync(cn, 60); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -709,6 +729,8 @@ function BaseTestConfig () {
         c.insert({ _key: "test" + i }); 
       }
       
+      waitForShardsInSync(cn, 60); 
+      
       // wait until we have an in-sync follower
       let tries = 0;
       while (tries++ < 120) {
@@ -733,6 +755,8 @@ function BaseTestConfig () {
       assertEqual(101, c.toArray().length);
       
       clearFailurePoints([]);
+      
+      waitForShardsInSync(cn, 60); 
         
       // wait until we have an in-sync follower again
       tries = 0;
@@ -788,6 +812,8 @@ function BaseTestConfig () {
         c.insert({ _key: "test" + i }); 
       }
       
+      waitForShardsInSync(cn, 60); 
+      
       // wait until we have an in-sync follower
       let tries = 0;
       while (tries++ < 120) {
@@ -808,6 +834,8 @@ function BaseTestConfig () {
       assertEqual(101, c.toArray().length);
       
       clearFailurePoints([]);
+      
+      waitForShardsInSync(cn, 60); 
         
       // wait until we have an in-sync follower again
       tries = 0;
@@ -865,6 +893,8 @@ function BaseTestConfig () {
         c.insert({ _key: "test" + i }); 
       }
       
+      waitForShardsInSync(cn, 60); 
+      
       // wait until we have an in-sync follower
       let tries = 0;
       while (tries++ < 120) {
@@ -886,6 +916,8 @@ function BaseTestConfig () {
       assertEqual(101, c.count());
       
       clearFailurePoints([]);
+      
+      waitForShardsInSync(cn, 60); 
         
       // wait until we have an in-sync follower again
       tries = 0;
@@ -945,6 +977,8 @@ function BaseTestConfig () {
       for (let i = 0; i < 100; ++i) {
         c.insert({ _key: "test" + i }); 
       }
+      
+      waitForShardsInSync(cn, 60); 
       
       // wait until we have an in-sync follower
       let tries = 0;

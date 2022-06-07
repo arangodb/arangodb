@@ -57,7 +57,7 @@ struct PrototypeStateMethods {
   struct CreateOptions {
     bool waitForReady{false};
     std::optional<LogId> id;
-    std::optional<LogConfig> config;
+    std::optional<agency::LogTargetConfig> config;
     std::vector<ParticipantId> servers;
   };
 
@@ -119,6 +119,7 @@ struct PrototypeStateMethods {
 
   virtual auto waitForApplied(LogId id, LogIndex waitForIndex) const
       -> futures::Future<Result> = 0;
+  virtual auto drop(LogId id) const -> futures::Future<Result> = 0;
 
   struct PrototypeStatus {
     // TODO

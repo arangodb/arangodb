@@ -57,10 +57,12 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
                         VPackSlice initConfig, PregelFeature& feature)
     : _feature(feature),
       _state(WorkerState::IDLE),
-      _config(&vocbase, initConfig),
+      _config(&vocbase),
       _algorithm(algo),
       _nextGSSSendMessageCount(0),
       _requestedNextGSS(false) {
+  _config.updateConfig(_feature, initConfig);
+
   MUTEX_LOCKER(guard, _commandMutex);
 
   VPackSlice userParams = initConfig.get(Utils::userParametersKey);
@@ -71,7 +73,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
   _conductorAggregators = std::make_unique<AggregatorHandler>(algo);
   _workerAggregators = std::make_unique<AggregatorHandler>(algo);
   _graphStore = std::make_unique<GraphStore<V, E>>(
-      vocbase, _config.executionNumber(), _algorithm->inputFormat());
+      _feature, vocbase, _config.executionNumber(), _algorithm->inputFormat());
 
   if (_config.asynchronousMode()) {
     _messageBatchSize = _algorithm->messageBatchSize(_config, _messageStats);
@@ -693,7 +695,7 @@ void Worker<V, E, M>::startRecovery(VPackSlice const& data) {
   // hack to determine newly added vertices
   _preRecoveryTotal = _graphStore->localVertexCount();
   WorkerConfig nextState(_config);
-  nextState.updateConfig(data);
+  nextState.updateConfig(_feature, data);
   _graphStore->loadShards(&nextState, [this, nextState, copy] {
     _config = nextState;
     compensateStep(copy.slice());

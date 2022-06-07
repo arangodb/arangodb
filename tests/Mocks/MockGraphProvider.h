@@ -193,8 +193,6 @@ class MockGraphProvider {
     static bool vertexFetched() { return true; }
     static bool edgeFetched() { return true; }
 
-    bool isResponsible(transaction::Methods* trx) const { return true; }
-
     Vertex getVertex() const {
       /*if (!isProcessable()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -300,6 +298,7 @@ class MockGraphProvider {
   void prepareIndexExpressions(aql::Ast* ast);
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();
+  bool isResponsible(Step const& step) const;
 
   [[nodiscard]] bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 

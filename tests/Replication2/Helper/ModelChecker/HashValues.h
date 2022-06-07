@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include <boost/container_hash/hash.hpp>
+
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
@@ -90,15 +92,21 @@ static inline std::size_t hash_value(ParticipantFlags const& s) {
   boost::hash_combine(seed, s.forced);
   return seed;
 }
+}  // namespace arangodb::replication2
+namespace arangodb::replication2::agency {
+static inline std::size_t hash_value(LogPlanConfig const& s) {
+  std::size_t seed = 0;
+  boost::hash_combine(seed, s.effectiveWriteConcern);
+  boost::hash_combine(seed, s.waitForSync);
+  return seed;
+}
 static inline std::size_t hash_value(ParticipantsConfig const& s) {
   std::size_t seed = 0;
   boost::hash_combine(seed, s.generation);
   boost::hash_combine(seed, s.participants);
+  boost::hash_combine(seed, s.config);
   return seed;
 }
-}  // namespace arangodb::replication2
-namespace arangodb::replication2::agency {
-
 static inline std::size_t hash_value(LogTarget const& s) {
   std::size_t seed = 0;
   boost::hash_combine(seed, s.id.id());
