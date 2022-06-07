@@ -52,7 +52,6 @@ jsunity.run(function dump_single_testsuite() {
       // no auth support here
       "testUsers",
       // single server tests that weren't supported in cluster:
-      "testKeygenAutoInc",
       "testTransactionCommit",
       "testTransactionUpdate",
       "testTransactionAbort",

@@ -79,7 +79,6 @@ jsunity.run(function dump_single_testsuite() {
       "testDatabaseProperties",
       "testShards",
       "testReplicationFactor",
-      "testKeygenAutoInc",
 
       // TODO: should we also have these tests in this scenario?
       "testKeygenPadded",

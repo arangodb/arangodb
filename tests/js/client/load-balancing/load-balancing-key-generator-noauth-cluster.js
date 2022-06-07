@@ -89,7 +89,7 @@ function KeyGeneratorSuite() {
     return res;
   }
 
-  function generateCollectionDocs(name) {
+  function generateCollectionAndTest(name) {
     let lastKey = null;
     let url = "/_db/" + cn + "/_api/document/" + name;
     let keyOptions = {};
@@ -106,7 +106,7 @@ function KeyGeneratorSuite() {
     db._create(name, keyOptions);
     assertNotEqual("", db[name].properties().distributeShardsLike);
 
-    for (let i = 0; i < 100000; ++i) {
+    for (let i = 0; i < 10000; ++i) {
       let result = sendRequest('POST', url, /*payload*/ {}, {}, i % 2 === 0);
       assertEqual(result.status, 202);
       let key = result.body._key;
@@ -190,7 +190,7 @@ function KeyGeneratorSuite() {
       try {
         db._useDatabase(cn);
         for (let i = 1; i < 4; ++i) {
-          generateCollectionDocs(cn + i);
+          generateCollectionAndTest(cn + i);
         }
       } finally {
         db._useDatabase("_system");
