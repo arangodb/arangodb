@@ -46,6 +46,7 @@ struct Execution {
   Execution(Options const& options, std::shared_ptr<Workload> workload);
   ~Execution();
   void createThreads(Server& server);
+  void joinThreads();
   Report run();
   [[nodiscard]] ExecutionState state(
       std::memory_order order = std::memory_order_relaxed) const noexcept;
@@ -53,9 +54,13 @@ struct Execution {
     return static_cast<std::uint32_t>(_threads.size());
   }
 
+  void signalStartingThread() noexcept;
   void signalFinishedThread() noexcept;
+  // stop execution (for example, because an error occurred somewhere)
+  void stop() noexcept;
 
  private:
+  void advanceStatusIfNotStopped(ExecutionState state) noexcept;
   void waitUntilAllThreadsAre(ThreadState state) const;
 
   void waitUntilRunning(ExecutionThread const& thread) const;

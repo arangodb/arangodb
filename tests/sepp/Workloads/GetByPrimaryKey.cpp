@@ -21,7 +21,7 @@
 /// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IterateDocuments.h"
+#include "GetByPrimaryKey.h"
 
 #include <fstream>
 #include <memory>
@@ -29,37 +29,44 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
+#include "Indexes/Index.h"
 #include "RestServer/arangod.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
-#include "Transaction/Manager.h"
-#include "Transaction/ManagerFeature.h"
-#include "Transaction/Methods.h"
-#include "Transaction/StandaloneContext.h"
-#include "Utils/SingleCollectionTransaction.h"
+#include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBEngine/RocksDBValue.h"
 #include "VocBase/Methods/Collections.h"
 
 #include "Server.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/options.h>
+#include <rocksdb/status.h>
 
 namespace arangodb::sepp::workloads {
 
-auto IterateDocuments::stoppingCriterion() const noexcept
+auto GetByPrimaryKey::stoppingCriterion() const noexcept
     -> StoppingCriterion::type {
   return _options.stop;
 }
 
-auto IterateDocuments::createThreads(Execution& exec, Server& server)
+auto GetByPrimaryKey::createThreads(Execution& exec, Server& server)
     -> WorkerThreadList {
   ThreadOptions defaultThread;
   defaultThread.stop = _options.stop;
 
   if (_options.defaultThreadOptions) {
+    defaultThread.keyPrefix = _options.defaultThreadOptions->keyPrefix;
+    defaultThread.minNumericKeyValue =
+        _options.defaultThreadOptions->minNumericKeyValue;
+    defaultThread.maxNumericKeyValue =
+        _options.defaultThreadOptions->maxNumericKeyValue;
     defaultThread.fillBlockCache =
         _options.defaultThreadOptions->fillBlockCache;
+    defaultThread.fetchFullDocument =
+        _options.defaultThreadOptions->fetchFullDocument;
     defaultThread.collection = _options.defaultThreadOptions->collection;
   }
 
@@ -70,13 +77,13 @@ auto IterateDocuments::createThreads(Execution& exec, Server& server)
   return result;
 }
 
-IterateDocuments::Thread::Thread(ThreadOptions options, Execution& exec,
-                                 Server& server)
+GetByPrimaryKey::Thread::Thread(ThreadOptions options, Execution& exec,
+                                Server& server)
     : ExecutionThread(exec, server), _options(options) {}
 
-IterateDocuments::Thread::~Thread() = default;
+GetByPrimaryKey::Thread::~Thread() = default;
 
-void IterateDocuments::Thread::run() {
+void GetByPrimaryKey::Thread::run() {
   // TODO - make more configurable
 
   auto collection = _server.vocbase()->lookupCollection(_options.collection);
@@ -85,15 +92,40 @@ void IterateDocuments::Thread::run() {
                              _options.collection);
   }
 
+  RocksDBPrimaryIndex* primaryIndex = nullptr;
+  for (auto const& idx : collection->getIndexes()) {
+    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+      primaryIndex = static_cast<RocksDBPrimaryIndex*>(idx.get());
+      break;
+    }
+  }
+
+  if (!primaryIndex) {
+    throw std::runtime_error("Could not find primary index for collection " +
+                             _options.collection);
+  }
+
   RocksDBCollection* rcoll =
       static_cast<RocksDBCollection*>(collection->getPhysical());
-  auto bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
-  rocksdb::Slice upper(bounds.end());
+  std::uint64_t objectId = rcoll->objectId();
+  std::uint64_t indexId = primaryIndex->objectId();
+
+  rocksdb::ColumnFamilyHandle* docCF =
+      arangodb::RocksDBColumnFamilyManager::get(
+          arangodb::RocksDBColumnFamilyManager::Family::Documents);
+  rocksdb::ColumnFamilyHandle* indexCF =
+      arangodb::RocksDBColumnFamilyManager::get(
+          arangodb::RocksDBColumnFamilyManager::Family::PrimaryIndex);
 
   auto& engine =
       _server.vocbase()->server().getFeature<arangodb::RocksDBEngine>();
   rocksdb::DB* rootDB = engine.db()->GetRootDB();
 
+  std::string temp;
+  RocksDBKey keyBuilder;
+  rocksdb::PinnableSlice val;
+
+  rocksdb::Status s;
   rocksdb::ReadOptions ro(/*cksum*/ false, /*cache*/ _options.fillBlockCache);
   ro.snapshot = rootDB->GetSnapshot();
   auto guard = scopeGuard([&]() noexcept {
@@ -102,22 +134,38 @@ void IterateDocuments::Thread::run() {
     }
   });
   ro.prefix_same_as_start = true;
-  ro.iterate_upper_bound = &upper;
 
-  rocksdb::ColumnFamilyHandle* docCF =
-      arangodb::RocksDBColumnFamilyManager::get(
-          arangodb::RocksDBColumnFamilyManager::Family::Documents);
-  std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
+  for (std::uint64_t i = _options.minNumericKeyValue;
+       i < _options.maxNumericKeyValue; ++i) {
+    temp.clear();
+    if (!_options.keyPrefix.empty()) {
+      temp.append(_options.keyPrefix);
+    }
+    temp.append(std::to_string(i));
 
-  OperationOptions options;
-  std::uint64_t numIts = 0;
-  for (it->Seek(bounds.start()); it->Valid(); it->Next(), ++numIts) {
-    // TODO
+    keyBuilder.constructPrimaryIndexValue(indexId, std::string_view(temp));
+
+    s = rootDB->Get(ro, indexCF, keyBuilder.string(), &val);
+    if (!s.ok()) {
+      throw std::runtime_error("Failed to fetch primary key value: " +
+                               s.ToString());
+    }
+
+    if (_options.fetchFullDocument) {
+      keyBuilder.constructDocument(objectId, RocksDBValue::documentId(val));
+
+      s = rootDB->Get(ro, docCF, keyBuilder.string(), &val);
+
+      if (!s.ok()) {
+        throw std::runtime_error("Failed to fetch document value: " +
+                                 s.ToString());
+      }
+    }
+    ++_operations;
   }
-  _operations += numIts;
 }
 
-auto IterateDocuments::Thread::shouldStop() const noexcept -> bool {
+auto GetByPrimaryKey::Thread::shouldStop() const noexcept -> bool {
   using StopAfterOps = StoppingCriterion::NumberOfOperations;
   if (std::holds_alternative<StopAfterOps>(_options.stop)) {
     return _operations >= std::get<StopAfterOps>(_options.stop).count;

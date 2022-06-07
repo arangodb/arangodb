@@ -1417,6 +1417,7 @@ if (BUILD_SEPP)
     tests/sepp/RocksDBOptions.cpp
     tests/sepp/Server.cpp
     tests/sepp/ValueGenerators/RandomStringGenerator.cpp
+    tests/sepp/Workloads/GetByPrimaryKey.cpp
     tests/sepp/Workloads/InsertDocuments.cpp
     tests/sepp/Workloads/IterateDocuments.cpp
   )
