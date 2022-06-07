@@ -39,10 +39,10 @@ namespace {
 
 void safeInvoke(RebootTracker::DescriptedCallback& callback) noexcept {
   try {
-    LOG_TOPIC("afdfd", TRACE, Logger::CLUSTER)
+    LOG_TOPIC("afdfd", DEBUG, Logger::CLUSTER)
         << "Executing callback " << callback.description;
     callback.callback();
-  } catch (arangodb::basics::Exception const& ex) {
+  } catch (basics::Exception const& ex) {
     LOG_TOPIC("88a63", INFO, Logger::CLUSTER)
         << "Failed to execute reboot callback: " << callback.description << ": "
         << "[" << ex.code() << "] " << ex.what();
@@ -54,6 +54,18 @@ void safeInvoke(RebootTracker::DescriptedCallback& callback) noexcept {
     LOG_TOPIC("f7427", INFO, Logger::CLUSTER)
         << "Failed to execute reboot callback: " << callback.description << ": "
         << "Unknown error.";
+  }
+}
+
+void safeInvokes(RebootTracker::RebootIds::node_type& callbacks) noexcept {
+  for (auto& callback : callbacks.mapped()) {
+    safeInvoke(callback.second);
+  }
+}
+
+void safeInvokes(RebootTracker::RebootIds::value_type& callbacks) noexcept {
+  for (auto& callback : callbacks.second) {
+    safeInvoke(callback.second);
   }
 }
 
@@ -73,7 +85,7 @@ static_assert(
     "SchedulerPointer is expected to point to an instance of Scheduler");
 
 RebootTracker::RebootTracker(RebootTracker::SchedulerPointer scheduler)
-    : _callbackId{0}, _scheduler{scheduler} {
+    : _scheduler{scheduler} {
   // All the mocked application servers in the catch tests that use the
   // ClusterFeature, which at some point instantiates this, do not start the
   // SchedulerFeature. Thus this dies. However, we will be able to fix that at
@@ -86,19 +98,20 @@ RebootTracker::RebootTracker(RebootTracker::SchedulerPointer scheduler)
 
 void RebootTracker::updateServerState(State state) {
   std::lock_guard guard{_mutex};
-  LOG_TOPIC("77a6e", DEBUG, Logger::CLUSTER)
+  LOG_TOPIC("77a6e", TRACE, Logger::CLUSTER)
       << "updating reboot server state from " << _state << " to " << state;
-  for (auto it = _callbacks.begin(); it != _callbacks.end();) {
-    auto next = std::next(it);
-    auto newIt = state.find(it->first);
-    TRI_ASSERT(!it->second.empty());  // we should remove it, when it was empty
-    if (newIt == state.end()) {
-      queueCallbacks(it);
-    } else {
-      auto const toRebootId = newIt->second;
-      queueCallbacks(it, toRebootId);
+  // We iterate for _state, not for _callbacks,
+  // because we want to log all gone or rebooted server
+  for (auto const& [serverId, oldRebootId] : _state) {
+    auto it = state.find(serverId);
+    auto const newRebootId = it != state.end() ? it->second : RebootId::max();
+    if (oldRebootId != newRebootId) {
+      TRI_ASSERT(oldRebootId < newRebootId);
+      LOG_TOPIC("88857", INFO, Logger::CLUSTER)
+          << "Server " << serverId
+          << " gone or rebooted, aborting its old jobs now.";
+      queueCallbacks(serverId, newRebootId);
     }
-    it = next;
   }
   _state = std::move(state);
 }
@@ -143,34 +156,24 @@ CallbackGuard RebootTracker::callMeOnChange(std::string_view serverId,
   }};
 }
 
-void RebootTracker::queueCallbacks(CallbacksIt it) noexcept {
-  TRI_ASSERT(it != _callbacks.end());
-  TRI_ASSERT(_state.contains(it->first));
-  _scheduler->queue(RequestLane::CLUSTER_INTERNAL,
-                    [reboots = std::move(it->second)]() mutable noexcept {
-                      for (auto& callbacksIds : reboots) {
-                        for (auto& calls : callbacksIds.second) {
-                          safeInvoke(calls.second);
-                        }
-                      }
-                    });
-  _callbacks.erase(it);
-}
-
-void RebootTracker::queueCallbacks(CallbacksIt it, RebootId to) {
-  TRI_ASSERT(it != _callbacks.end());
-  TRI_ASSERT(_state.contains(it->first));
-  auto from = _state.at(it->first);
-  TRI_ASSERT(from <= to);
-  if (from == to) {
-    return;  // state doesn't change
+void RebootTracker::queueCallbacks(std::string_view serverId, RebootId to) {
+  auto it = _callbacks.find(serverId);
+  if (it == _callbacks.end()) {
+    return;
   }
+  auto schedule = [&](auto&& batch) noexcept {
+    _scheduler->queue(RequestLane::CLUSTER_INTERNAL,
+                      [batch = std::move(batch)]() mutable noexcept {
+                        for (auto& callbacks : batch) {
+                          safeInvokes(callbacks);
+                        }
+                      });
+  };
   auto& reboots = it->second;
-  // we expect if current reboot id smaller than requested
-  // we execute callback immediately
-  TRI_ASSERT(from <= reboots.cbegin()->first);
+  TRI_ASSERT(!reboots.empty());
   if (to > reboots.crbegin()->first) {
-    queueCallbacks(it);
+    schedule(std::move(it->second));
+    _callbacks.erase(it);
     return;
   }
   std::vector<RebootIds::node_type> callbacks;
@@ -179,14 +182,7 @@ void RebootTracker::queueCallbacks(CallbacksIt it, RebootId to) {
     callbacks.push_back(reboots.extract(rbIt++));
   }
   TRI_ASSERT(!reboots.empty());
-  _scheduler->queue(RequestLane::CLUSTER_INTERNAL,
-                    [callbacks = std::move(callbacks)]() mutable noexcept {
-                      for (auto& calls : callbacks) {
-                        for (auto& e : calls.mapped()) {
-                          safeInvoke(e.second);
-                        }
-                      }
-                    });
+  schedule(std::move(callbacks));
 }
 
 void RebootTracker::queueCallback(DescriptedCallback&& callback) noexcept {

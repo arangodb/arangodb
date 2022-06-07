@@ -57,6 +57,11 @@ class RebootTracker {
     std::string description;
   };
   using State = containers::FlatHashMap<ServerID, RebootId>;
+  using CallbackId = uint64_t;
+  using RebootIds =
+      std::map<RebootId,
+               containers::FlatHashMap<CallbackId, DescriptedCallback>>;
+  using Callbacks = containers::FlatHashMap<ServerID, RebootIds>;
 
   explicit RebootTracker(SchedulerPointer scheduler);
 
@@ -66,22 +71,15 @@ class RebootTracker {
   void updateServerState(State state);
 
  private:
-  using CallbackId = uint64_t;
-  using CallbackIds = containers::FlatHashMap<CallbackId, DescriptedCallback>;
-  using RebootIds = std::map<RebootId, CallbackIds>;
-  using Callbacks = containers::FlatHashMap<ServerID, RebootIds>;
-  using CallbacksIt = Callbacks::iterator;
-
   void unregisterCallback(std::string_view serverId, RebootId rebootId,
                           CallbackId callbackId) noexcept;
 
   void queueCallback(DescriptedCallback&& callback) noexcept;
-  void queueCallbacks(CallbacksIt it) noexcept;
-  void queueCallbacks(CallbacksIt it, RebootId to);
+  void queueCallbacks(std::string_view serverId, RebootId to);
 
   mutable std::mutex _mutex;
 
-  CallbackId _callbackId;
+  CallbackId _callbackId{0};
 
   /// @brief Save a pointer to the scheduler for easier testing
   SchedulerPointer _scheduler;
