@@ -77,15 +77,16 @@ const getParticipantsObjectForServers = function (servers) {
   }, {});
 };
 
-const createParticipantsConfig = function (generation, servers) {
+const createParticipantsConfig = function (generation, config, servers) {
   return {
     generation,
+    config,
     participants: getParticipantsObjectForServers(servers),
   };
 };
 
-const createTermSpecification = function (term, servers, config, leader) {
-  let spec = {term, config};
+const createTermSpecification = function (term, servers, leader) {
+  let spec = {term};
   if (leader !== undefined) {
     if (!_.includes(servers, leader)) {
       throw Error("leader is not part of the participants");
@@ -329,13 +330,22 @@ const getLocalStatus = function (database, logId, serverId) {
   return res.json.result;
 };
 
-const getReplicatedLogLeaderPlan = function (database, logId) {
+const getReplicatedLogLeaderPlan = function (database, logId, nothrow = false) {
   let {plan} = readReplicatedLogAgency(database, logId);
   if (!plan.currentTerm) {
     throw Error("no current term in plan");
+        let error = Error("no current term in plan");
+    if (nothrow) {
+      return error;
+    }
+    throw error;
   }
   if (!plan.currentTerm.leader) {
-    throw Error("current term has no leader");
+    let error = Error("current term has no leader");
+    if (nothrow) {
+      return error;
+    }
+    throw error;
   }
   const leader = plan.currentTerm.leader.serverId;
   const term = plan.currentTerm.term;
@@ -347,16 +357,16 @@ const getReplicatedLogLeaderTarget = function (database, logId) {
   return target.leader;
 };
 
-const createReplicatedLogPlanOnly = function (database, targetConfig) {
+const createReplicatedLogPlanOnly = function (database, targetConfig, replicationFactor) {
   const logId = nextUniqueLogId();
-  const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
+  const servers = _.sampleSize(dbservers, replicationFactor);
   const leader = servers[0];
   const term = 1;
   const generation = 1;
   replicatedLogSetPlan(database, logId, {
     id: logId,
-    currentTerm: createTermSpecification(term, servers, targetConfig, leader),
-    participantsConfig: createParticipantsConfig(generation, servers),
+    currentTerm: createTermSpecification(term, servers, leader),
+    participantsConfig: createParticipantsConfig(generation, targetConfig, servers),
   });
 
   // wait for all servers to have reported in current
@@ -366,9 +376,12 @@ const createReplicatedLogPlanOnly = function (database, targetConfig) {
   return {logId, servers, leader, term, followers, remaining};
 };
 
-const createReplicatedLog = function (database, targetConfig) {
+const createReplicatedLog = function (database, targetConfig, replicationFactor) {
   const logId = nextUniqueLogId();
-  const servers = _.sampleSize(dbservers, targetConfig.replicationFactor);
+  if (replicationFactor === undefined) {
+    replicationFactor = 3;
+  }
+  const servers = _.sampleSize(dbservers, replicationFactor);
   replicatedLogSetTarget(database, logId, {
     id: logId,
     config: targetConfig,
@@ -478,15 +491,45 @@ const testHelperFunctions = function (database) {
   };
 };
 
+const getSupervisionActionTypes = function (database, logId) {
+  const {current} = readReplicatedLogAgency(database, logId);
+  // filter out all empty actions
+  const actions = _.filter(current.actions, (a) => a.desc.type !== "EmptyAction");
+  return _.map(actions, (a) => a.desc.type);
+};
+
+const getLastNSupervisionActionsType = function (database, logId, n) {
+  const actions = getSupervisionActionTypes(database, logId);
+  return _.takeRight(actions, n);
+};
+
+const countActionsByType = function (actions) {
+  return _.reduce(actions, function (acc, type) {
+    acc[type] = 1 + (acc[type] || 0);
+    return acc;
+  }, {});
+};
+
+const updateReplicatedLogTarget = function(database, id, callback) {
+  const {target: oldTarget} = readReplicatedLogAgency(database, id);
+  let result = callback(oldTarget);
+  if (result === undefined) {
+    result = oldTarget;
+  }
+  replicatedLogSetTarget(database, id, result);
+};
+
 exports.checkRequestResult = checkRequestResult;
 exports.continueServer = continueServerImpl;
 exports.continueServerWaitOk = continueServerWaitOk;
 exports.coordinators = coordinators;
+exports.countActionsByType = countActionsByType;
 exports.createParticipantsConfig = createParticipantsConfig;
 exports.createReplicatedLog = createReplicatedLog;
 exports.createReplicatedLogPlanOnly = createReplicatedLogPlanOnly;
 exports.createTermSpecification = createTermSpecification;
 exports.dbservers = dbservers;
+exports.getLastNSupervisionActionsType = getLastNSupervisionActionsType;
 exports.getLocalStatus = getLocalStatus;
 exports.getParticipantsObjectForServers = getParticipantsObjectForServers;
 exports.getReplicatedLogLeaderPlan = getReplicatedLogLeaderPlan;
@@ -494,6 +537,7 @@ exports.getReplicatedLogLeaderTarget = getReplicatedLogLeaderTarget;
 exports.getServerHealth = getServerHealth;
 exports.getServerRebootId = getServerRebootId;
 exports.getServerUrl = getServerUrl;
+exports.getSupervisionActionTypes = getSupervisionActionTypes;
 exports.nextUniqueLogId = nextUniqueLogId;
 exports.readAgencyValueAt = readAgencyValueAt;
 exports.readReplicatedLogAgency = readReplicatedLogAgency;
@@ -510,5 +554,6 @@ exports.replicatedLogUpdateTargetParticipants = replicatedLogUpdateTargetPartici
 exports.stopServer = stopServerImpl;
 exports.stopServerWaitFailed = stopServerWaitFailed;
 exports.testHelperFunctions = testHelperFunctions;
+exports.updateReplicatedLogTarget = updateReplicatedLogTarget;
 exports.waitFor = waitFor;
 exports.waitForReplicatedLogAvailable = waitForReplicatedLogAvailable;

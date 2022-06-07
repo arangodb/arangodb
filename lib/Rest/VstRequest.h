@@ -49,7 +49,6 @@ class VstRequest final : public GeneralRequest {
 
   ~VstRequest() = default;
 
- public:
   size_t contentLength() const override;
   std::string_view rawPayload() const override;
   velocypack::Slice payload(bool strictValidation = true) override;
@@ -68,7 +67,6 @@ class VstRequest final : public GeneralRequest {
 
   void parseHeaderInformation();
 
- private:
   /// message header and request body are in the same body
   size_t _payloadOffset;
   /// @brief was VPack payload validated

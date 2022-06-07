@@ -155,7 +155,7 @@ ERROR_REPLICATION_NO_START_TICK,1413,"no start tick","Will be raised when the re
 ERROR_REPLICATION_START_TICK_NOT_PRESENT,1414,"start tick not present","Will be raised when the replication applier fetches data using a start tick, but that start tick is not present on the logger server anymore."
 ERROR_REPLICATION_WRONG_CHECKSUM,1416,"wrong checksum","Will be raised when a new born follower submits a wrong checksum"
 ERROR_REPLICATION_SHARD_NONEMPTY,1417,"shard not empty","Will be raised when a shard is not empty and the follower tries a shortcut"
-ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,1418,"replicated log %" PRIu64 " not found","Will be raised when a specific replicated log is not found"
+ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,1418,"replicated log {} not found","Will be raised when a specific replicated log is not found"
 ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER,1419,"not the log leader","Will be raised when a participant of a replicated log is ordered to do something only the leader can do"
 ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER,1420,"not a log follower","Will be raised when a participant of a replicated log is ordered to do something only a follower can do"
 ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,1421,"follower rejected append entries request","Will be raised when a follower of a replicated log rejects an append entries request"
@@ -164,6 +164,7 @@ ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,1423,"a resigned follower ins
 ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE,1424,"the replicated log of the participant is gone","Will be raised when a participant instance of a replicated log is no longer available."
 ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM,1425,"an invalid term was given","Will be raised when a participant tries to change its term but found a invalid new term."
 ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED,1426,"log participant unconfigured","Will be raised when a participant is currently unconfigured, i.e. neither a leader nor a follower."
+ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND,1427,"replicated state {id:} of type {type:} not found","Will be raised when a specific replicated state was not found."
 
 ################################################################################
 ## ArangoDB cluster errors
@@ -445,6 +446,7 @@ ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE,4007,"shard key value must 
 ERROR_NO_SMART_JOIN_ATTRIBUTE,4008,"smart join attribute not given or invalid","The given document does not have the required SmartJoin attribute set or it has an invalid value."
 ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE,4009,"must not change the value of the smartJoinAttribute","Will be raised if there is an attempt to update the value of the smartJoinAttribute."
 ERROR_INVALID_DISJOINT_SMART_EDGE,4010,"non disjoint edge found","Will be raised if there is an attempt to create an edge between separated graph components."
+ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION,4011,"Unsupported alternating Smart and Satellite in Disjoint SmartGraph.","Switching back and forth between Satellite and Smart in Disjoint SmartGraph is not supported within a single AQL statement. Split into multiple statements."
 
 ################################################################################
 ## Agency errors

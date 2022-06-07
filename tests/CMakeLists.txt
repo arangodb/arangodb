@@ -339,6 +339,7 @@ set(ARANGODB_REPLICATION2_TEST_SOURCES
   Replication2/ReplicatedLog/RocksDBLogTest.cpp
   Replication2/ReplicatedLog/SimpleInsertTests.cpp
   Replication2/ReplicatedLog/SupervisionTest.cpp
+  Replication2/ReplicatedLog/SupervisionSimulationTest.cpp
   Replication2/ReplicatedLog/TestHelper.cpp
   Replication2/ReplicatedLog/UpdateParticipantsFlags.cpp
   Replication2/ReplicatedLog/UpdateReplicatedLogTests.cpp
@@ -449,6 +450,7 @@ target_link_libraries(arangodbtests
   boost_boost
   fmt
 )
+
 
 if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
   target_link_libraries(arangodbtests_replication2

@@ -36,6 +36,19 @@ class Slice;
 
 namespace arangodb::replication2::replicated_state {
 
+namespace static_strings {
+inline constexpr auto StringDetail = std::string_view{"detail"};
+inline constexpr auto StringManager = std::string_view{"manager"};
+inline constexpr auto StringLastChange = std::string_view{"lastChange"};
+inline constexpr auto StringManagerState = std::string_view{"managerState"};
+inline constexpr auto StringSnapshot = std::string_view{"snapshot"};
+inline constexpr auto StringGeneration = std::string_view{"generation"};
+inline constexpr auto StringRole = std::string_view{"role"};
+inline constexpr auto StringUnconfigured = std::string_view{"unconfigured"};
+inline constexpr auto StringLeader = std::string_view{"leader"};
+inline constexpr auto StringFollower = std::string_view{"follower"};
+}  // namespace static_strings
+
 enum class LeaderInternalState {
   kUninitializedState,
   kWaitingForLeadershipEstablished,
@@ -45,6 +58,13 @@ enum class LeaderInternalState {
 };
 
 auto to_string(LeaderInternalState) noexcept -> std::string_view;
+struct LeaderInternalStateStringTransformer {
+  using SerializedType = std::string;
+  auto toSerialized(LeaderInternalState source, std::string& target) const
+      -> inspection::Status;
+  auto fromSerialized(std::string const& source,
+                      LeaderInternalState& target) const -> inspection::Status;
+};
 
 struct LeaderStatus {
   using clock = std::chrono::system_clock;
@@ -53,18 +73,32 @@ struct LeaderStatus {
     LeaderInternalState state{};
     clock::time_point lastChange{};
     std::optional<std::string> detail;
-
-    void toVelocyPack(velocypack::Builder&) const;
-    static auto fromVelocyPack(velocypack::Slice) -> ManagerState;
   };
 
   ManagerState managerState;
   StateGeneration generation;
   SnapshotInfo snapshot;
-
-  void toVelocyPack(velocypack::Builder&) const;
-  static auto fromVelocyPack(velocypack::Slice) -> LeaderStatus;
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, LeaderStatus& x) {
+  auto role = std::string{static_strings::StringLeader};
+  return f.object(x).fields(
+      f.field(static_strings::StringGeneration, x.generation),
+      f.field(static_strings::StringSnapshot, x.snapshot),
+      f.field(static_strings::StringManager, x.managerState),
+      f.field(static_strings::StringRole, role));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, LeaderStatus::ManagerState& x) {
+  return f.object(x).fields(
+      f.field(static_strings::StringManagerState, x.state)
+          .transformWith(LeaderInternalStateStringTransformer{}),
+      f.field(static_strings::StringLastChange, x.lastChange)
+          .transformWith(inspection::TimeStampTransformer{}),
+      f.field(static_strings::StringDetail, x.detail));
+}
 
 enum class FollowerInternalState {
   kUninitializedState,
@@ -76,6 +110,14 @@ enum class FollowerInternalState {
 };
 
 auto to_string(FollowerInternalState) noexcept -> std::string_view;
+struct FollowerInternalStateStringTransformer {
+  using SerializedType = std::string;
+  auto toSerialized(FollowerInternalState source, std::string& target) const
+      -> inspection::Status;
+  auto fromSerialized(std::string const& source,
+                      FollowerInternalState& target) const
+      -> inspection::Status;
+};
 
 struct FollowerStatus {
   using clock = std::chrono::system_clock;
@@ -84,28 +126,47 @@ struct FollowerStatus {
     FollowerInternalState state{};
     clock::time_point lastChange{};
     std::optional<std::string> detail;
-
-    void toVelocyPack(velocypack::Builder&) const;
-    static auto fromVelocyPack(velocypack::Slice) -> ManagerState;
   };
 
   ManagerState managerState;
   StateGeneration generation;
   SnapshotInfo snapshot;
-
-  void toVelocyPack(velocypack::Builder&) const;
-  static auto fromVelocyPack(velocypack::Slice) -> FollowerStatus;
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, FollowerStatus& x) {
+  auto role = std::string{static_strings::StringFollower};
+  return f.object(x).fields(
+      f.field(static_strings::StringGeneration, x.generation),
+      f.field(static_strings::StringSnapshot, x.snapshot),
+      f.field(static_strings::StringManager, x.managerState),
+      f.field(static_strings::StringRole, role));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, FollowerStatus::ManagerState& x) {
+  return f.object(x).fields(
+      f.field(static_strings::StringManagerState, x.state)
+          .transformWith(FollowerInternalStateStringTransformer{}),
+      f.field(static_strings::StringLastChange, x.lastChange)
+          .transformWith(inspection::TimeStampTransformer{}),
+      f.field(static_strings::StringDetail, x.detail));
+}
 
 struct UnconfiguredStatus {
   StateGeneration generation;
   SnapshotInfo snapshot;
-
-  void toVelocyPack(velocypack::Builder&) const;
-  static auto fromVelocyPack(velocypack::Slice) -> UnconfiguredStatus;
-
   auto operator==(UnconfiguredStatus const&) const noexcept -> bool = default;
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, UnconfiguredStatus& x) {
+  auto role = std::string{static_strings::StringUnconfigured};
+  return f.object(x).fields(
+      f.field(static_strings::StringGeneration, x.generation),
+      f.field(static_strings::StringSnapshot, x.snapshot),
+      f.field(static_strings::StringRole, role));
+}
 
 struct StateStatus {
   std::variant<LeaderStatus, FollowerStatus, UnconfiguredStatus> variant;

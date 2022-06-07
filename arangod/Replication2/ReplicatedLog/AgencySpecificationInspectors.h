@@ -24,6 +24,7 @@
 
 #include "AgencyLogSpecification.h"
 
+#include "Inspection/VPack.h"
 #include "Inspection/Transformers.h"
 
 namespace arangodb::replication2::agency {
@@ -41,6 +42,7 @@ auto constexpr ElectibleLeaderSet = std::string_view{"electibleLeaderSet"};
 auto constexpr Election = std::string_view{"election"};
 auto constexpr Error = std::string_view{"error"};
 auto constexpr StatusMessage = std::string_view{"StatusMessage"};
+auto constexpr StatusReport = std::string_view{"StatusReport"};
 auto constexpr LeadershipEstablished =
     std::string_view{"leadershipEstablished"};
 auto constexpr CommitStatus = std::string_view{"commitStatus"};
@@ -53,6 +55,8 @@ auto constexpr MaxActionsTraceLength =
     std::string_view{"maxActionsTraceLength"};
 auto constexpr Code = std::string_view{"code"};
 auto constexpr Message = std::string_view{"message"};
+auto constexpr LastTimeModified = std::string_view{"lastTimeModified"};
+auto constexpr Participant = std::string_view{"participant"};
 auto constexpr Owner = std::string_view{"owner"};
 }  // namespace static_strings
 
@@ -65,7 +69,6 @@ auto inspect(Inspector& f, LogPlanTermSpecification::Leader& x) {
 template<class Inspector>
 auto inspect(Inspector& f, LogPlanTermSpecification& x) {
   return f.object(x).fields(f.field(StaticStrings::Term, x.term),
-                            f.field(StaticStrings::Config, x.config),
                             f.field(StaticStrings::Leader, x.leader));
 }
 
@@ -106,21 +109,6 @@ auto inspect(Inspector& f, EnumStruct<Enum>& x) {
 };
 
 template<class Inspector>
-auto inspect(Inspector& f, LogCurrentSupervisionError& x) {
-  if constexpr (Inspector::isLoading) {
-    auto v = EnumStruct<LogCurrentSupervisionError>();
-    auto res = f.apply(v);
-    if (res.ok()) {
-      x = v.get();
-    }
-    return res;
-  } else {
-    auto v = EnumStruct<LogCurrentSupervisionError>(x);
-    return f.apply(v);
-  }
-}
-
-template<class Inspector>
 auto inspect(Inspector& f, LogCurrentSupervisionElection::ErrorCode& x) {
   if constexpr (Inspector::isLoading) {
     auto v = EnumStruct<LogCurrentSupervisionElection::ErrorCode>();
@@ -147,12 +135,116 @@ auto inspect(Inspector& f, LogCurrentSupervisionElection& x) {
 }
 
 template<class Inspector>
+auto inspect(Inspector& f, LogCurrentSupervision::TargetLeaderInvalid& x) {
+  return f.object(x).fields();
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, LogCurrentSupervision::TargetLeaderExcluded& x) {
+  return f.object(x).fields();
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, LogCurrentSupervision::TargetLeaderFailed& x) {
+  return f.object(x).fields();
+}
+
+template<class Inspector>
+auto inspect(Inspector& f,
+             LogCurrentSupervision::TargetNotEnoughParticipants& x) {
+  return f.object(x).fields();
+}
+
+template<class Inspector>
+auto inspect(Inspector& f,
+             LogCurrentSupervision::WaitingForConfigCommitted& x) {
+  return f.object(x).fields();
+}
+
+template<class Inspector>
+auto inspect(Inspector& f,
+             LogCurrentSupervision::ConfigChangeNotImplemented& x) {
+  return f.object(x).fields();
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, LogCurrentSupervision::LeaderElectionImpossible& x) {
+  return f.object(x).fields();
+}
+
+template<class Inspector>
+auto inspect(Inspector& f,
+             LogCurrentSupervision::LeaderElectionOutOfBounds& x) {
+  return f.object(x).fields();
+}
+
+template<class Inspector>
+auto inspect(Inspector& f,
+             LogCurrentSupervision::LeaderElectionQuorumNotReached& x) {
+  return f.object(x).fields(f.field("election", x.election));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, LogCurrentSupervision::LeaderElectionSuccess& x) {
+  return f.object(x).fields(f.field("election", x.election));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, LogCurrentSupervision::SwitchLeaderFailed& x) {
+  return f.object(x).fields();
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, LogCurrentSupervision::PlanNotAvailable& x) {
+  return f.object(x).fields();
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, LogCurrentSupervision::CurrentNotAvailable& x) {
+  return f.object(x).fields();
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, LogCurrentSupervision::StatusMessage& x) {
+  namespace insp = arangodb::inspection;
+  return f.variant(x)
+      .qualified("type", "detail")
+      .alternatives(
+          insp::type<LogCurrentSupervision::TargetLeaderInvalid>(
+              LogCurrentSupervision::TargetLeaderInvalid::code),
+          insp::type<LogCurrentSupervision::TargetLeaderExcluded>(
+              LogCurrentSupervision::TargetLeaderExcluded::code),
+          insp::type<LogCurrentSupervision::TargetLeaderFailed>(
+              LogCurrentSupervision::TargetLeaderFailed::code),
+          insp::type<LogCurrentSupervision::TargetNotEnoughParticipants>(
+              LogCurrentSupervision::TargetNotEnoughParticipants::code),
+          insp::type<LogCurrentSupervision::WaitingForConfigCommitted>(
+              LogCurrentSupervision::WaitingForConfigCommitted::code),
+          insp::type<LogCurrentSupervision::ConfigChangeNotImplemented>(
+              LogCurrentSupervision::ConfigChangeNotImplemented::code),
+          insp::type<LogCurrentSupervision::LeaderElectionImpossible>(
+              LogCurrentSupervision::LeaderElectionImpossible::code),
+          insp::type<LogCurrentSupervision::LeaderElectionOutOfBounds>(
+              LogCurrentSupervision::LeaderElectionOutOfBounds::code),
+          insp::type<LogCurrentSupervision::LeaderElectionQuorumNotReached>(
+              LogCurrentSupervision::LeaderElectionQuorumNotReached::code),
+          insp::type<LogCurrentSupervision::LeaderElectionSuccess>(
+              LogCurrentSupervision::LeaderElectionSuccess::code),
+          insp::type<LogCurrentSupervision::SwitchLeaderFailed>(
+              LogCurrentSupervision::SwitchLeaderFailed::code),
+          insp::type<LogCurrentSupervision::PlanNotAvailable>(
+              LogCurrentSupervision::PlanNotAvailable::code),
+          insp::type<LogCurrentSupervision::CurrentNotAvailable>(
+              LogCurrentSupervision::CurrentNotAvailable::code));
+}
+
+template<class Inspector>
 auto inspect(Inspector& f, LogCurrentSupervision& x) {
   return f.object(x).fields(
-      f.field(static_strings::Election, x.election),
-      f.field(static_strings::Error, x.error),
       f.field(static_strings::TargetVersion, x.targetVersion),
-      f.field(static_strings::StatusMessage, x.statusMessage));
+      f.field(static_strings::StatusReport, x.statusReport),
+      f.field(static_strings::LastTimeModified, x.lastTimeModified)
+          .transformWith(inspection::TimeStampTransformer{}));
 }
 
 template<class Inspector>
@@ -202,6 +294,7 @@ auto inspect(Inspector& f, LogTarget& x) {
       f.field(StaticStrings::Config, x.config),
       f.field(StaticStrings::Leader, x.leader),
       f.field(static_strings::Version, x.version),
+      f.field(static_strings::Owner, x.owner),
       f.field(static_strings::Supervision, x.supervision));
 }
 

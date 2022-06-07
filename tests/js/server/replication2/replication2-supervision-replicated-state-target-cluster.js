@@ -33,10 +33,10 @@ const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 const database = "replication2_supervision_test_db";
 
 const replicatedStateSuite = function (stateType) {
+  const replicationFactor = 3;
   const targetConfig = {
     writeConcern: 2,
     softWriteConcern: 2,
-    replicationFactor: 3,
     waitForSync: false,
   };
 
@@ -74,7 +74,6 @@ const replicatedStateSuite = function (stateType) {
                 waitForSync: true,
                 writeConcern: 2,
                 softWriteConcern: 3,
-                replicationFactor: 3
               },
               properties: {
                 implementation: {
@@ -177,7 +176,7 @@ const replicatedStateSuite = function (stateType) {
 
     ["testReplaceAllServers_" + stateType]: function () {
       const {stateId, others} = createReplicatedState();
-      const otherServers = _.sampleSize(others, targetConfig.replicationFactor);
+      const otherServers = _.sampleSize(others, replicationFactor);
 
       sh.updateReplicatedStateTarget(database, stateId, function (target) {
         target.participants = Object.assign({}, ...otherServers.map((x) => ({[x]: {}})));
@@ -224,6 +223,13 @@ const replicatedStateSuite = function (stateType) {
       lh.waitFor(spreds.replicatedStateVersionConverged(database, stateId, 4));
     },
 
+    ["testDropFromTarget_" + stateType]: function () {
+      const {stateId} = createReplicatedState();
+      sh.replicatedStateDeleteTarget(database, stateId);
+
+      lh.waitFor(lpreds.replicatedLogIsGone(database, stateId));
+      lh.waitFor(spreds.replicatedStateIsGone(database, stateId));
+    },
   };
 };
 

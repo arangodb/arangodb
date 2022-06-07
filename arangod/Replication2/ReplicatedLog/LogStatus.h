@@ -28,6 +28,7 @@
 #include <variant>
 
 #include <Inspection/VPack.h>
+#include <Inspection/Transformers.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -50,21 +51,15 @@ struct QuickLogStatus {
   std::optional<CommitFailReason> commitFailReason{};
 
   // The following make sense only for a leader.
-  std::shared_ptr<ParticipantsConfig const> activeParticipantsConfig{};
+  std::shared_ptr<agency::ParticipantsConfig const> activeParticipantsConfig{};
   // Note that committedParticipantsConfig will be nullptr until leadership has
   // been established!
-  std::shared_ptr<ParticipantsConfig const> committedParticipantsConfig{};
+  std::shared_ptr<agency::ParticipantsConfig const>
+      committedParticipantsConfig{};
 
   [[nodiscard]] auto getCurrentTerm() const noexcept -> std::optional<LogTerm>;
   [[nodiscard]] auto getLocalStatistics() const noexcept
       -> std::optional<LogStatistics>;
-
-  void toVelocyPack(arangodb::velocypack::Builder& builder) {
-    serialize(builder, *this);
-  }
-  auto fromVelocyPack(arangodb::velocypack::Slice slice) {
-    return deserialize<QuickLogStatus>(slice);
-  }
 };
 
 auto to_string(ParticipantRole) noexcept -> std::string_view;
@@ -79,11 +74,13 @@ struct ParticipantRoleStringTransformer {
 
 template<typename Inspector>
 auto inspect(Inspector& f, QuickLogStatus& x) {
-  auto activeParticipantsConfig = std::shared_ptr<ParticipantsConfig>();
-  auto committedParticipantsConfig = std::shared_ptr<ParticipantsConfig>();
+  auto activeParticipantsConfig = std::shared_ptr<agency::ParticipantsConfig>();
+  auto committedParticipantsConfig =
+      std::shared_ptr<agency::ParticipantsConfig>();
   if constexpr (!Inspector::isLoading) {
-    activeParticipantsConfig = std::make_shared<ParticipantsConfig>();
-    committedParticipantsConfig = std::make_shared<ParticipantsConfig>();
+    activeParticipantsConfig = std::make_shared<agency::ParticipantsConfig>();
+    committedParticipantsConfig =
+        std::make_shared<agency::ParticipantsConfig>();
   }
   auto res = f.object(x).fields(
       f.field("role", x.role).transformWith(ParticipantRoleStringTransformer{}),
@@ -103,14 +100,27 @@ struct FollowerStatistics : LogStatistics {
   AppendEntriesErrorReason lastErrorReason;
   std::chrono::duration<double, std::milli> lastRequestLatencyMS;
   FollowerState internalState;
-  void toVelocyPack(velocypack::Builder& builder) const;
-  static auto fromVelocyPack(velocypack::Slice slice) -> FollowerStatistics;
 
   friend auto operator==(FollowerStatistics const& left,
                          FollowerStatistics const& right) noexcept -> bool;
   friend auto operator!=(FollowerStatistics const& left,
                          FollowerStatistics const& right) noexcept -> bool;
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, FollowerStatistics& x) {
+  using namespace arangodb;
+  return f.object(x).fields(
+      f.field(StaticStrings::Spearhead, x.spearHead),
+      f.field(StaticStrings::CommitIndex, x.commitIndex),
+      f.field(StaticStrings::FirstIndex, x.firstIndex),
+      f.field(StaticStrings::ReleaseIndex, x.releaseIndex),
+      f.field("lastErrorReason", x.lastErrorReason),
+      f.field("lastRequestLatencyMS", x.lastRequestLatencyMS)
+          .transformWith(inspection::DurationTransformer<
+                         std::chrono::duration<double, std::milli>>{}),
+      f.field("state", x.internalState));
+}
 
 [[nodiscard]] auto operator==(FollowerStatistics const& left,
                               FollowerStatistics const& right) noexcept -> bool;
@@ -126,30 +136,52 @@ struct LeaderStatus {
   // now() - insertTP of last uncommitted entry
   std::chrono::duration<double, std::milli> commitLagMS;
   CommitFailReason lastCommitStatus;
-  ParticipantsConfig activeParticipantsConfig;
-  std::optional<ParticipantsConfig> committedParticipantsConfig;
-
-  void toVelocyPack(velocypack::Builder& builder) const;
-  static auto fromVelocyPack(velocypack::Slice slice) -> LeaderStatus;
+  agency::ParticipantsConfig activeParticipantsConfig;
+  std::optional<agency::ParticipantsConfig> committedParticipantsConfig;
 
   friend auto operator==(LeaderStatus const& left,
                          LeaderStatus const& right) noexcept -> bool = default;
 };
+
+template<class Inspector>
+auto inspect(Inspector& f, LeaderStatus& x) {
+  auto role = StaticStrings::Leader;
+  return f.object(x).fields(
+      f.field("role", role), f.field("local", x.local), f.field("term", x.term),
+      f.field("lowestIndexToKeep", x.lowestIndexToKeep),
+      f.field("leadershipEstablished", x.leadershipEstablished),
+      f.field("follower", x.follower),
+      f.field("commitLagMS", x.commitLagMS)
+          .transformWith(inspection::DurationTransformer<
+                         std::chrono::duration<double, std::milli>>{}),
+      f.field("lastCommitStatus", x.lastCommitStatus),
+      f.field("activeParticipantsConfig", x.activeParticipantsConfig),
+      f.field("committedParticipantsConfig", x.committedParticipantsConfig));
+}
 
 struct FollowerStatus {
   LogStatistics local;
   std::optional<ParticipantId> leader;
   LogTerm term;
   LogIndex lowestIndexToKeep;
-
-  void toVelocyPack(velocypack::Builder& builder) const;
-  static auto fromVelocyPack(velocypack::Slice slice) -> FollowerStatus;
 };
 
-struct UnconfiguredStatus {
-  void toVelocyPack(velocypack::Builder& builder) const;
-  static auto fromVelocyPack(velocypack::Slice slice) -> UnconfiguredStatus;
-};
+template<class Inspector>
+auto inspect(Inspector& f, FollowerStatus& x) {
+  auto role = StaticStrings::Follower;
+  return f.object(x).fields(f.field("role", role), f.field("local", x.local),
+                            f.field("term", x.term),
+                            f.field("lowestIndexToKeep", x.lowestIndexToKeep),
+                            f.field("leader", x.leader));
+}
+
+struct UnconfiguredStatus {};
+
+template<class Inspector>
+auto inspect(Inspector& f, UnconfiguredStatus& x) {
+  auto role = std::string{"Unconfigured"};
+  return f.object(x).fields(f.field("role", role));
+}
 
 struct LogStatus {
   using VariantType =
@@ -181,18 +213,18 @@ struct LogStatus {
  * @brief Provides a more general view of what's currently going on, without
  * completely relying on the leader.
  */
+struct GlobalStatusConnection {
+  ErrorCode error{0};
+  std::string errorMessage;
+
+  void toVelocyPack(velocypack::Builder&) const;
+  static auto fromVelocyPack(velocypack::Slice) -> GlobalStatusConnection;
+};
+
 struct GlobalStatus {
   enum class SpecificationSource {
     kLocalCache,
     kRemoteAgency,
-  };
-
-  struct Connection {
-    ErrorCode error{0};
-    std::string errorMessage;
-
-    void toVelocyPack(velocypack::Builder&) const;
-    static auto fromVelocyPack(velocypack::Slice) -> Connection;
   };
 
   struct ParticipantStatus {
@@ -204,7 +236,7 @@ struct GlobalStatus {
       static auto fromVelocyPack(velocypack::Slice) -> Response;
     };
 
-    Connection connection;
+    GlobalStatusConnection connection;
     std::optional<Response> response;
 
     void toVelocyPack(velocypack::Builder&) const;
@@ -212,7 +244,7 @@ struct GlobalStatus {
   };
 
   struct SupervisionStatus {
-    Connection connection;
+    GlobalStatusConnection connection;
     std::optional<agency::LogCurrentSupervision> response;
 
     void toVelocyPack(velocypack::Builder&) const;

@@ -31,6 +31,8 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::agency;
@@ -42,26 +44,21 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
   auto spec = LogPlanSpecification{
       id,
       LogPlanTermSpecification{
-          LogTerm{1}, LogConfig{1, 1, 1, false},
+          LogTerm{1},
           LogPlanTermSpecification::Leader{"leaderId", RebootId{100}}},
-      ParticipantsConfig{15, {{"p1", {true, false}}, {"p2", {}}}}};
+      ParticipantsConfig{
+          15, {{"p1", {true, false}}, {"p2", {}}}, LogPlanConfig{1, 1, false}}};
 
   VPackBuilder builder;
-  spec.toVelocyPack(builder);
+  velocypack::serialize(builder, spec);
   auto slice = builder.slice();
-  auto const fromVPack = LogPlanSpecification::fromVelocyPack(slice);
+  auto const fromVPack = velocypack::deserialize<LogPlanSpecification>(slice);
   EXPECT_EQ(spec, fromVPack);
 
   auto jsonBuffer = R"({
     "id": 1234,
     "currentTerm": {
       "term": 1,
-      "config": {
-        "writeConcern": 1,
-        "softWriteConcern": 1,
-        "replicationFactor": 1,
-        "waitForSync": false
-      },
       "leader": {
         "serverId": "leaderId",
         "rebootId": 100
@@ -69,6 +66,10 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
     },
     "participantsConfig": {
       "generation": 15,
+      "config": {
+        "effectiveWriteConcern": 1,
+        "waitForSync": false
+      },
       "participants": {
         "p1": {
           "forced": true,
@@ -91,34 +92,37 @@ TEST(AgencyLogSpecificationTest, log_plan_term_specification) {
   jsonBuffer = R"({
     "id": 1234,
     "currentTerm": {
-      "term": 1,
-      "config": {
-        "writeConcern": 1,
-        "softWriteConcern": 1,
-        "replicationFactor": 1,
-        "waitForSync": false
-      }
+      "term": 1
     },
     "participantsConfig": {
       "generation": 15,
+      "config": {
+        "effectiveWriteConcern": 1,
+        "waitForSync": false
+      },
       "participants": {}
     }
   })"_vpack;
 
   jsonSlice = velocypack::Slice(jsonBuffer->data());
-  spec = LogPlanSpecification::fromVelocyPack(jsonSlice);
+  spec = velocypack::deserialize<LogPlanSpecification>(jsonSlice);
   EXPECT_EQ(spec.currentTerm->leader, std::nullopt);
 
   jsonBuffer = R"({
     "id": 1234,
     "participantsConfig": {
       "generation": 15,
-      "participants": {}
+      "participants": {
+      },
+      "config": {
+        "effectiveWriteConcern": 1,
+        "waitForSync": false
+      }
     }
   })"_vpack;
 
   jsonSlice = velocypack::Slice(jsonBuffer->data());
-  spec = LogPlanSpecification::fromVelocyPack(jsonSlice);
+  spec = velocypack::deserialize<LogPlanSpecification>(jsonSlice);
   EXPECT_EQ(spec.currentTerm, std::nullopt);
 }
 
@@ -147,8 +151,7 @@ TEST(AgencyLogSpecificationTest, log_target_supervision_test) {
 
 TEST(AgencyLogSpecificationTest, log_target_test) {
   {
-    auto config = LogConfig();
-    config.replicationFactor = 3;
+    auto config = LogTargetConfig();
     config.writeConcern = 2;
     config.softWriteConcern = 2;
     config.waitForSync = false;
@@ -165,8 +168,7 @@ TEST(AgencyLogSpecificationTest, log_target_test) {
   }
 
   {
-    auto config = LogConfig();
-    config.replicationFactor = 3;
+    auto config = LogTargetConfig();
     config.writeConcern = 2;
     config.softWriteConcern = 2;
     config.waitForSync = true;
@@ -183,7 +185,6 @@ TEST(AgencyLogSpecificationTest, log_target_test) {
       "participants": { "A": { "allowedInQuorum": false } },
       "config": {
         "writeConcern": 2,
-        "replicationFactor": 3,
         "waitForSync": true },
       "leader": "A"
     })"_vpack;

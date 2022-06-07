@@ -63,6 +63,7 @@ extern std::string const planColPrefix;
 extern std::string const planRepLogPrefix;
 extern std::string const targetRepLogPrefix;
 extern std::string const targetRepStatePrefix;
+extern std::string const planRepStatePrefix;
 extern std::string const curColPrefix;
 extern std::string const planDBPrefix;
 extern std::string const curServersKnown;

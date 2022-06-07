@@ -1867,7 +1867,17 @@ optional_array_filter:
       $$ = nullptr;
     }
   | T_FILTER expression {
-      $$ = $2;
+      // FILTER filter-condition
+      $$ = parser->ast()->createNodeArrayFilter(nullptr, $2);
+    }
+  | quantifier T_FILTER expression {
+      // ALL|ANY|NONE FILTER filter-condition
+      $$ = parser->ast()->createNodeArrayFilter($1, $3);
+    }
+  | expression T_FILTER expression {
+      // 1    FILTER filter-condition
+      // 2..5 FILTER filter-condition
+      $$ = parser->ast()->createNodeArrayFilter($1, $3);
     }
   ;
 
@@ -2148,6 +2158,16 @@ reference:
       auto variableNode = iterator->getMember(0);
       TRI_ASSERT(variableNode->type == NODE_TYPE_VARIABLE);
       auto variable = static_cast<Variable const*>(variableNode->getData());
+
+      if ($5 != nullptr) {
+        // array filter members are [quantifier, filter]
+        // quantifier is optional.
+        TRI_ASSERT($5->type == NODE_TYPE_ARRAY_FILTER);
+        TRI_ASSERT($5->numMembers() == 2);
+        if ($5->getMember(0) != nullptr && $5->getMember(0)->type != NODE_TYPE_NOP) {
+          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected quantifier value found for array expansion operation.", yylloc.first_line, yylloc.first_column);
+        }
+      }
 
       if ($1->type == NODE_TYPE_EXPANSION) {
         auto expand = parser->ast()->createNodeExpansion($3, iterator, parser->ast()->createNodeReference(variable->name), $5, $6, $7);

@@ -164,7 +164,7 @@ endif()
 set(USE_IPO ${IPO_ENABLED})
 set(ICU_STATIC_LIBS ${ICU_LIBS})
 set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
-set(LZ4_INCLUDE_DIR "${LZ4_ROOT}/lib" PARENT_SCOPE)
+set(LZ4_INCLUDE_DIR "${LZ4_ROOT}/lib")
 set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
 set(UNWIND_ROOT "invalid")
 set(BFD_ROOT "invalid")
@@ -209,7 +209,7 @@ unset(BUILD_SHARED_LIBS CACHE) # otherwise ZLib (below) does not build on win32
 
 UpdateModule(${GIT_EXECUTABLE} "rocksdb" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb EXCLUDE_FROM_ALL)
 set(ARANGO_ROCKSDB_VERSION "${rocksdb_VERSION}" PARENT_SCOPE)
 add_library(rocksdb_interface INTERFACE)
 target_include_directories(rocksdb_interface SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/include)

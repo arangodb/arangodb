@@ -99,6 +99,7 @@ class IndexCreatorThread final : public Thread {
   rocksdb::Options _dbOptions;
 
   // ptrs because of abstract class, have to know which type to craete
+  std::unique_ptr<rocksdb::WriteBatchBase> _batch;
   std::unique_ptr<RocksDBMethods> _methods;
   rocksdb::ReadOptions _readOptions;
   arangodb::AccessMode::Type _mode;

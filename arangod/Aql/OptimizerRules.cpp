@@ -4023,7 +4023,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
   auto collection = static_cast<Collection const*>(nullptr);
   auto inputVariable = static_cast<Variable const*>(nullptr);
 
-  bool isGraphNode = false;
+  bool isTraversalNode = false;
   // TODO: this seems a bit verbose, but is at least local & simple
   //       the modification nodes are all collectionaccessing, the graph nodes
   //       are currently assumed to be disjoint, and hence smart, so all
@@ -4060,7 +4060,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
       TRI_ASSERT(traversalNode->isDisjoint());
       collection = traversalNode->collection();
       inputVariable = traversalNode->inVariable();
-      isGraphNode = true;
+      isTraversalNode = true;
     } break;
     case ExecutionNode::K_SHORTEST_PATHS: {
       auto kShortestPathsNode =
@@ -4070,7 +4070,6 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
       // Subtle: KShortestPathsNode uses a reference when returning
       // startInVariable
       inputVariable = &kShortestPathsNode->startInVariable();
-      isGraphNode = true;
     } break;
     case ExecutionNode::SHORTEST_PATH: {
       auto shortestPathNode =
@@ -4078,7 +4077,6 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
       TRI_ASSERT(shortestPathNode->isDisjoint());
       collection = shortestPathNode->collection();
       inputVariable = shortestPathNode->startInVariable();
-      isGraphNode = true;
     } break;
     default: {
       TRI_ASSERT(false);
@@ -4101,10 +4099,11 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
       &plan, plan.nextId(), ScatterNode::ScatterType::SHARD, collection,
       inputVariable, node->id());
 
-  if (isGraphNode) {
+  if (isTraversalNode) {
 #ifdef USE_ENTERPRISE
     // Only relevant for Disjoint Smart Graphs that can only be part of the
     // Enterprise version
+    // ShortestPath, and K_SHORTEST_PATH will handle satellites differently.
     auto graphNode = ExecutionNode::castTo<GraphNode const*>(node);
     auto vertices = graphNode->vertexColls();
     for (auto const& it : vertices) {
@@ -8510,6 +8509,8 @@ void arangodb::aql::decayUnnecessarySortedGather(
   opt->addPlan(std::move(plan), rule, modified);
 }
 
+enum class DistributeType { DOCUMENT, TRAVERSAL, PATH };
+
 void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan.findNodesOfType(nodes, ExecutionNode::DISTRIBUTE, true);
@@ -8528,9 +8529,11 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
     auto allowKeyConversionToObject = bool{false};
     auto allowSpecifiedKeys = bool{false};
 
-    auto fixupGraphInput = bool{false};
+    DistributeType fixupGraphInput = DistributeType::DOCUMENT;
 
     std::function<void(Variable * variable)> setInVariable;
+    std::function<void(Variable * variable)> setTargetVariable;
+    std::function<void(Variable * variable)> setDistributeVariable;
     bool ignoreErrors = false;
 
     // TODO: this seems a bit verbose, but is at least local & simple
@@ -8603,7 +8606,7 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
         inputVariable = traversalNode->inVariable();
         allowKeyConversionToObject = true;
         createKeys = false;
-        fixupGraphInput = true;
+        fixupGraphInput = DistributeType::TRAVERSAL;
         setInVariable = [traversalNode](Variable* var) {
           traversalNode->setInVariable(var);
         };
@@ -8615,12 +8618,21 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
         collection = kShortestPathsNode->collection();
         // Subtle: KShortestPathsNode uses a reference when returning
         // startInVariable
+        TRI_ASSERT(kShortestPathsNode->usesStartInVariable());
         inputVariable = &kShortestPathsNode->startInVariable();
+        TRI_ASSERT(kShortestPathsNode->usesTargetInVariable());
+        alternativeVariable = &kShortestPathsNode->targetInVariable();
         allowKeyConversionToObject = true;
         createKeys = false;
-        fixupGraphInput = true;
+        fixupGraphInput = DistributeType::PATH;
         setInVariable = [kShortestPathsNode](Variable* var) {
           kShortestPathsNode->setStartInVariable(var);
+        };
+        setTargetVariable = [kShortestPathsNode](Variable* var) {
+          kShortestPathsNode->setTargetInVariable(var);
+        };
+        setDistributeVariable = [kShortestPathsNode](Variable* var) {
+          kShortestPathsNode->setDistributeVariable(var);
         };
       } break;
       case ExecutionNode::SHORTEST_PATH: {
@@ -8628,12 +8640,21 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
             ExecutionNode::castTo<ShortestPathNode*>(targetNode);
         TRI_ASSERT(shortestPathNode->isDisjoint());
         collection = shortestPathNode->collection();
+        TRI_ASSERT(shortestPathNode->usesStartInVariable());
         inputVariable = shortestPathNode->startInVariable();
+        TRI_ASSERT(shortestPathNode->usesTargetInVariable());
+        alternativeVariable = shortestPathNode->targetInVariable();
         allowKeyConversionToObject = true;
         createKeys = false;
-        fixupGraphInput = true;
+        fixupGraphInput = DistributeType::PATH;
         setInVariable = [shortestPathNode](Variable* var) {
           shortestPathNode->setStartInVariable(var);
+        };
+        setTargetVariable = [shortestPathNode](Variable* var) {
+          shortestPathNode->setTargetInVariable(var);
+        };
+        setDistributeVariable = [shortestPathNode](Variable* var) {
+          shortestPathNode->setDistributeVariable(var);
         };
       } break;
       default: {
@@ -8664,63 +8685,118 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
       return;
     }
 
-    // We insert an additional calculation node to create the input for our
-    // distribute node.
-    Variable* variable = plan.getAst()->variables()->createTemporaryVariable();
-
-    // update the targetNode so that it uses the same input variable as our
-    // distribute node
-    setInVariable(variable);
-
     auto* ast = plan.getAst();
     auto args = ast->createNodeArray();
     char const* function;
     args->addMember(ast->createNodeReference(inputVariable));
-    if (fixupGraphInput) {
-      function = "MAKE_DISTRIBUTE_GRAPH_INPUT";
-    } else {
-      if (createKeys) {
-        function = "MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION";
-        if (alternativeVariable) {
-          args->addMember(ast->createNodeReference(alternativeVariable));
+    switch (fixupGraphInput) {
+      case DistributeType::TRAVERSAL:
+      case DistributeType::PATH: {
+        function = "MAKE_DISTRIBUTE_GRAPH_INPUT";
+        break;
+      }
+      case DistributeType::DOCUMENT: {
+        if (createKeys) {
+          function = "MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION";
+          if (alternativeVariable) {
+            args->addMember(ast->createNodeReference(alternativeVariable));
+          } else {
+            args->addMember(ast->createNodeValueNull());
+          }
+          auto flags = ast->createNodeObject();
+          flags->addMember(ast->createNodeObjectElement(
+              "allowSpecifiedKeys",
+              ast->createNodeValueBool(allowSpecifiedKeys)));
+          flags->addMember(ast->createNodeObjectElement(
+              "ignoreErrors", ast->createNodeValueBool(ignoreErrors)));
+          auto const& collectionName = collection->name();
+          flags->addMember(ast->createNodeObjectElement(
+              "collection",
+              ast->createNodeValueString(collectionName.c_str(),
+                                         collectionName.length())));
+
+          args->addMember(flags);
         } else {
-          args->addMember(ast->createNodeValueNull());
+          function = "MAKE_DISTRIBUTE_INPUT";
+          auto flags = ast->createNodeObject();
+          flags->addMember(ast->createNodeObjectElement(
+              "allowKeyConversionToObject",
+              ast->createNodeValueBool(allowKeyConversionToObject)));
+          flags->addMember(ast->createNodeObjectElement(
+              "ignoreErrors", ast->createNodeValueBool(ignoreErrors)));
+          bool canUseCustomKey =
+              collection->getCollection()->usesDefaultShardKeys() ||
+              allowSpecifiedKeys;
+          flags->addMember(ast->createNodeObjectElement(
+              "canUseCustomKey", ast->createNodeValueBool(canUseCustomKey)));
+
+          args->addMember(flags);
         }
-        auto flags = ast->createNodeObject();
-        flags->addMember(ast->createNodeObjectElement(
-            "allowSpecifiedKeys",
-            ast->createNodeValueBool(allowSpecifiedKeys)));
-        flags->addMember(ast->createNodeObjectElement(
-            "ignoreErrors", ast->createNodeValueBool(ignoreErrors)));
-        auto const& collectionName = collection->name();
-        flags->addMember(ast->createNodeObjectElement(
-            "collection", ast->createNodeValueString(collectionName.c_str(),
-                                                     collectionName.length())));
-
-        args->addMember(flags);
-      } else {
-        function = "MAKE_DISTRIBUTE_INPUT";
-        auto flags = ast->createNodeObject();
-        flags->addMember(ast->createNodeObjectElement(
-            "allowKeyConversionToObject",
-            ast->createNodeValueBool(allowKeyConversionToObject)));
-        flags->addMember(ast->createNodeObjectElement(
-            "ignoreErrors", ast->createNodeValueBool(ignoreErrors)));
-        bool canUseCustomKey =
-            collection->getCollection()->usesDefaultShardKeys() ||
-            allowSpecifiedKeys;
-        flags->addMember(ast->createNodeObjectElement(
-            "canUseCustomKey", ast->createNodeValueBool(canUseCustomKey)));
-
-        args->addMember(flags);
       }
     }
 
-    auto expr = std::make_unique<Expression>(
-        ast, ast->createNodeFunctionCall(function, args, true));
-    calcNode = plan.createNode<CalculationNode>(&plan, plan.nextId(),
-                                                std::move(expr), variable);
-    distributeNode->setVariable(variable);
+    if (fixupGraphInput == DistributeType::PATH) {
+      // We need to insert two additional calculation nodes
+      // on for source, one for target.
+      // Both nodes are then piped into the SelectSmartDistributeGraphInput
+      // which selects the smart input side.
+
+      Variable* sourceVariable =
+          plan.getAst()->variables()->createTemporaryVariable();
+      auto sourceExpr = std::make_unique<Expression>(
+          ast, ast->createNodeFunctionCall(function, args, true));
+      auto sourceCalcNode = plan.createNode<CalculationNode>(
+          &plan, plan.nextId(), std::move(sourceExpr), sourceVariable);
+
+      Variable* targetVariable =
+          plan.getAst()->variables()->createTemporaryVariable();
+      auto targetArgs = ast->createNodeArray();
+      TRI_ASSERT(alternativeVariable != nullptr);
+      targetArgs->addMember(ast->createNodeReference(alternativeVariable));
+      TRI_ASSERT(args->numMembers() == targetArgs->numMembers());
+      auto targetExpr = std::make_unique<Expression>(
+          ast, ast->createNodeFunctionCall(function, targetArgs, true));
+      auto targetCalcNode = plan.createNode<CalculationNode>(
+          &plan, plan.nextId(), std::move(targetExpr), targetVariable);
+
+      // update the target node with in and out variables
+      setInVariable(sourceVariable);
+      setTargetVariable(targetVariable);
+
+      auto selectInputArgs = ast->createNodeArray();
+      selectInputArgs->addMember(ast->createNodeReference(sourceVariable));
+      selectInputArgs->addMember(ast->createNodeReference(targetVariable));
+
+      Variable* variable =
+          plan.getAst()->variables()->createTemporaryVariable();
+      auto expr = std::make_unique<Expression>(
+          ast,
+          ast->createNodeFunctionCall("SELECT_SMART_DISTRIBUTE_GRAPH_INPUT",
+                                      selectInputArgs, true));
+      calcNode = plan.createNode<CalculationNode>(&plan, plan.nextId(),
+                                                  std::move(expr), variable);
+      distributeNode->setVariable(variable);
+      setDistributeVariable(variable);
+      // Inject the calculations before the distributeNode
+      plan.insertBefore(distributeNode, sourceCalcNode);
+      plan.insertBefore(distributeNode, targetCalcNode);
+    } else {
+      // We insert an additional calculation node to create the input for our
+      // distribute node.
+      Variable* variable =
+          plan.getAst()->variables()->createTemporaryVariable();
+
+      // update the targetNode so that it uses the same input variable as our
+      // distribute node
+      setInVariable(variable);
+
+      auto expr = std::make_unique<Expression>(
+          ast, ast->createNodeFunctionCall(function, args, true));
+      calcNode = plan.createNode<CalculationNode>(&plan, plan.nextId(),
+                                                  std::move(expr), variable);
+      distributeNode->setVariable(variable);
+    }
+
     plan.insertBefore(distributeNode, calcNode);
     plan.clearVarUsageComputed();
     plan.findVarUsage();

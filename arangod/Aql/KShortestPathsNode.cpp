@@ -123,7 +123,8 @@ KShortestPathsNode::KShortestPathsNode(
       _inStartVariable(nullptr),
       _inTargetVariable(nullptr),
       _fromCondition(nullptr),
-      _toCondition(nullptr) {
+      _toCondition(nullptr),
+      _distributeVariable(nullptr) {
   TRI_ASSERT(start != nullptr);
   TRI_ASSERT(target != nullptr);
   TRI_ASSERT(graph != nullptr);
@@ -164,7 +165,8 @@ KShortestPathsNode::KShortestPathsNode(
     std::vector<TRI_edge_direction_e> const& directions,
     Variable const* inStartVariable, std::string const& startVertexId,
     Variable const* inTargetVariable, std::string const& targetVertexId,
-    std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph)
+    std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph,
+    Variable const* distributeVariable)
     : GraphNode(plan, id, vocbase, edgeColls, vertexColls, defaultDirection,
                 directions, std::move(options), graph),
       _shortestPathType(shortestPathType),
@@ -174,7 +176,8 @@ KShortestPathsNode::KShortestPathsNode(
       _inTargetVariable(inTargetVariable),
       _targetVertexId(targetVertexId),
       _fromCondition(nullptr),
-      _toCondition(nullptr) {}
+      _toCondition(nullptr),
+      _distributeVariable(distributeVariable) {}
 
 KShortestPathsNode::~KShortestPathsNode() = default;
 
@@ -187,7 +190,8 @@ KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan,
       _inStartVariable(nullptr),
       _inTargetVariable(nullptr),
       _fromCondition(nullptr),
-      _toCondition(nullptr) {
+      _toCondition(nullptr),
+      _distributeVariable(nullptr) {
   if (base.hasKey(StaticStrings::GraphQueryShortestPathType)) {
     _shortestPathType = arangodb::graph::ShortestPathType::fromString(
         base.get(StaticStrings::GraphQueryShortestPathType)
@@ -246,6 +250,11 @@ KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan,
   // the plan's AST takes ownership of the newly created AstNode, so this is
   // safe cppcheck-suppress *
   _toCondition = plan->getAst()->createNode(base.get("toCondition"));
+
+  if (base.hasKey("distributeVariable")) {
+    _distributeVariable =
+        Variable::varFromVPack(plan->getAst(), base, "distributeVariable");
+  }
 }
 
 // This constructor is only used from LocalTraversalNode, and GraphNode
@@ -260,13 +269,25 @@ KShortestPathsNode::KShortestPathsNode(ExecutionPlan& plan,
       _inTargetVariable(other._inTargetVariable),
       _targetVertexId(other._targetVertexId),
       _fromCondition(nullptr),
-      _toCondition(nullptr) {
+      _toCondition(nullptr),
+      _distributeVariable(nullptr) {
   other.kShortestPathsCloneHelper(plan, *this, false);
 }
 
 void KShortestPathsNode::setStartInVariable(Variable const* inVariable) {
   _inStartVariable = inVariable;
   _startVertexId = "";
+}
+
+void KShortestPathsNode::setTargetInVariable(Variable const* inVariable) {
+  _inTargetVariable = inVariable;
+  _targetVertexId = "";
+}
+
+void KShortestPathsNode::setDistributeVariable(Variable const* distVariable) {
+  // Can only be set once.
+  TRI_ASSERT(_distributeVariable == nullptr);
+  _distributeVariable = distVariable;
 }
 
 void KShortestPathsNode::doToVelocyPack(VPackBuilder& nodes,
@@ -305,6 +326,11 @@ void KShortestPathsNode::doToVelocyPack(VPackBuilder& nodes,
   TRI_ASSERT(_toCondition != nullptr);
   nodes.add(VPackValue("toCondition"));
   _toCondition->toVelocyPack(nodes, flags);
+
+  if (_distributeVariable != nullptr) {
+    nodes.add(VPackValue("distributeVariable"));
+    _distributeVariable->toVelocyPack(nodes);
+  }
 }
 
 // Provider is expected to be:
@@ -455,7 +481,8 @@ ExecutionNode* KShortestPathsNode::clone(ExecutionPlan* plan,
   auto c = std::make_unique<KShortestPathsNode>(
       plan, _id, _vocbase, _shortestPathType, _edgeColls, _vertexColls,
       _defaultDirection, _directions, _inStartVariable, _startVertexId,
-      _inTargetVariable, _targetVertexId, std::move(tmp), _graphObj);
+      _inTargetVariable, _targetVertexId, std::move(tmp), _graphObj,
+      _distributeVariable);
 
   kShortestPathsCloneHelper(*plan, *c, withProperties);
 
@@ -494,6 +521,9 @@ void KShortestPathsNode::replaceVariables(
   if (_inTargetVariable != nullptr) {
     _inTargetVariable = Variable::replace(_inTargetVariable, replacements);
   }
+  if (_distributeVariable != nullptr) {
+    _distributeVariable = Variable::replace(_distributeVariable, replacements);
+  }
 }
 
 /// @brief getVariablesSetHere
@@ -511,6 +541,14 @@ void KShortestPathsNode::getVariablesUsedHere(VarSet& vars) const {
   }
   if (_inTargetVariable != nullptr) {
     vars.emplace(_inTargetVariable);
+  }
+  if (_distributeVariable != nullptr) {
+    // NOTE: This is not actually used, but is required to be kept
+    // as the shard based distribute node is eventually inserted, after
+    // the register plan is completed, and requires this variable.
+    // if we do not retain it here, the shard based distribution would
+    // not be able to distribute request to shard.
+    vars.emplace(_distributeVariable);
   }
 }
 

@@ -22,6 +22,7 @@
 
 #pragma once
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/ReplicatedState/Supervision.h"
 
@@ -54,7 +55,7 @@ struct AgencyStateBuilder {
     return *this;
   };
 
-  auto setTargetConfig(LogConfig config) -> AgencyStateBuilder& {
+  auto setTargetConfig(RLA::LogTargetConfig config) -> AgencyStateBuilder& {
     _state.target.config = config;
     return *this;
   }

@@ -48,7 +48,7 @@ namespace RSA = arangodb::replication2::replicated_state::agency;
 struct ReplicatedStateModelCheckerTest
     : ::testing::Test,
       model_checker::testing::TracedSeedGenerator {
-  LogConfig const defaultConfig = {2, 2, 3, false};
+  LogTargetConfig const defaultConfig = {2, 2, false};
   LogId const logId{12};
 
   ParticipantFlags const flagsSnapshotComplete{};
@@ -136,7 +136,7 @@ TEST_F(ReplicatedStateModelCheckerTest, check_state_and_log_with_leader) {
   EXPECT_FALSE(result.failed) << *result.failed;
 }
 
-TEST_F(ReplicatedStateModelCheckerTest, DISABLED_check_state_and_log_kill_any) {
+TEST_F(ReplicatedStateModelCheckerTest, check_state_and_log_kill_any) {
   AgencyStateBuilder state;
   state.setId(logId)
       .setTargetParticipants("A", "B", "C")
@@ -172,8 +172,7 @@ TEST_F(ReplicatedStateModelCheckerTest, DISABLED_check_state_and_log_kill_any) {
   EXPECT_FALSE(result.failed) << *result.failed;
 }
 
-TEST_F(ReplicatedStateModelCheckerTest,
-       DISABLED_check_state_and_log_kill_server) {
+TEST_F(ReplicatedStateModelCheckerTest, check_state_and_log_kill_server) {
   AgencyStateBuilder state;
   state.setId(logId)
       .setTargetParticipants("A", "B", "C")
@@ -210,7 +209,7 @@ TEST_F(ReplicatedStateModelCheckerTest,
   EXPECT_FALSE(result.failed) << *result.failed;
 }
 
-TEST_F(ReplicatedStateModelCheckerTest, DISABLED_everything_ok_kill_server) {
+TEST_F(ReplicatedStateModelCheckerTest, everything_ok_kill_server) {
   AgencyStateBuilder state;
   state.setId(logId)
       .setTargetParticipants("A", "B", "C")
@@ -224,11 +223,13 @@ TEST_F(ReplicatedStateModelCheckerTest, DISABLED_everything_ok_kill_server) {
   log.setId(logId)
       .setTargetParticipant("A", flagsSnapshotComplete)
       .setTargetParticipant("B", flagsSnapshotComplete)
-      .setTargetParticipant("C", flagsSnapshotComplete);
+      .setTargetParticipant("C", flagsSnapshotComplete)
+      .setTargetConfig(defaultConfig);
 
   log.setPlanParticipant("A", flagsSnapshotComplete)
       .setPlanParticipant("B", flagsSnapshotComplete)
       .setPlanParticipant("C", flagsSnapshotComplete);
+  log.setTargetLeader("A");
   log.setPlanLeader("A");
   log.establishLeadership();
   log.acknowledgeTerm("A").acknowledgeTerm("B").acknowledgeTerm("C");
@@ -263,7 +264,7 @@ TEST_F(ReplicatedStateModelCheckerTest, DISABLED_everything_ok_kill_server) {
   EXPECT_FALSE(result.failed) << *result.failed;
 }
 
-TEST_F(ReplicatedStateModelCheckerTest, DISABLED_change_leader) {
+TEST_F(ReplicatedStateModelCheckerTest, change_leader) {
   AgencyStateBuilder state;
   state.setId(logId)
       .setTargetParticipants("A", "B", "C")
@@ -277,7 +278,8 @@ TEST_F(ReplicatedStateModelCheckerTest, DISABLED_change_leader) {
   log.setId(logId)
       .setTargetParticipant("A", flagsSnapshotComplete)
       .setTargetParticipant("B", flagsSnapshotComplete)
-      .setTargetParticipant("C", flagsSnapshotComplete);
+      .setTargetParticipant("C", flagsSnapshotComplete)
+      .setTargetConfig(defaultConfig);
 
   log.setPlanParticipant("A", flagsSnapshotComplete)
       .setPlanParticipant("B", flagsSnapshotComplete)
@@ -395,7 +397,7 @@ TEST_F(ReplicatedStateModelCheckerTest, everything_ok_replace_server) {
   EXPECT_FALSE(result.failed) << *result.failed;
 }
 
-TEST_F(ReplicatedStateModelCheckerTest, DISABLED_everything_ok_replace_leader) {
+TEST_F(ReplicatedStateModelCheckerTest, everything_ok_replace_leader) {
   AgencyStateBuilder state;
   state.setId(logId)
       .setTargetParticipants("A", "B")
@@ -476,8 +478,7 @@ TEST_F(ReplicatedStateModelCheckerTest, DISABLED_everything_ok_replace_leader) {
   EXPECT_FALSE(result.failed) << *result.failed;
 }
 
-TEST_F(ReplicatedStateModelCheckerTest,
-       DISABLED_start_with_nothing_replace_server) {
+TEST_F(ReplicatedStateModelCheckerTest, start_with_nothing_replace_server) {
   AgencyStateBuilder state;
   state.setId(logId)
       .setTargetParticipants("A", "B")
@@ -544,8 +545,7 @@ TEST_F(ReplicatedStateModelCheckerTest,
   EXPECT_FALSE(result.failed) << *result.failed;
 }
 
-TEST_F(ReplicatedStateModelCheckerTest,
-       DISABLED_start_with_nothing_replace_leader) {
+TEST_F(ReplicatedStateModelCheckerTest, start_with_nothing_replace_leader) {
   AgencyStateBuilder state;
   state.setId(logId)
       .setTargetParticipants("A", "B")

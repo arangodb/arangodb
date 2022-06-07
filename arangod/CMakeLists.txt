@@ -591,6 +591,7 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/Exceptions/ParticipantResignedException.h
   Replication2/Methods.cpp
   Replication2/ReplicatedLog/AgencyLogSpecification.cpp
+  Replication2/ReplicatedLog/AgencySpecificationInspectors.cpp
   Replication2/ReplicatedLog/Algorithms.cpp
   Replication2/ReplicatedLog/ILogInterfaces.cpp
   Replication2/ReplicatedLog/InMemoryLog.cpp
@@ -624,6 +625,8 @@ set(LIB_ARANGO_REPLICATION2_SOURCES
   Replication2/ReplicatedState/UpdateReplicatedState.h
   Replication2/StateMachines/BlackHole/BlackHoleStateMachine.cpp
   Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.cpp
+  Replication2/StateMachines/Document/DocumentStateMachine.cpp
+  Replication2/StateMachines/Document/DocumentStateMachineFeature.cpp
   Replication2/StateMachines/Prototype/PrototypeLogEntry.cpp
   Replication2/StateMachines/Prototype/PrototypeLeaderState.cpp
   Replication2/StateMachines/Prototype/PrototypeCore.cpp
@@ -1126,6 +1129,7 @@ target_link_libraries(arango_replication arango_vocbase)
 
 target_link_libraries(arango_replication2 arango)
 target_link_libraries(arango_replication2 immer)
+target_link_libraries(arango_replication2 fmt)
 target_link_libraries(arango_replication2 arango_network)
 
 target_link_libraries(arango_rocksdb rocksdb)

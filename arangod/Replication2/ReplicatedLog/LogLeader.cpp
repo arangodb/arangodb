@@ -95,8 +95,8 @@ using namespace arangodb::replication2;
 replicated_log::LogLeader::LogLeader(
     LoggerContext logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-    LogConfig config, ParticipantId id, LogTerm term, LogIndex firstIndex,
-    InMemoryLog inMemoryLog,
+    agency::LogPlanConfig config, ParticipantId id, LogTerm term,
+    LogIndex firstIndex, InMemoryLog inMemoryLog,
     std::shared_ptr<cluster::IFailureOracle const> failureOracle)
     : _logContext(std::move(logContext)),
       _logMetrics(std::move(logMetrics)),
@@ -291,9 +291,9 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 }
 
 auto replicated_log::LogLeader::construct(
-    LogConfig config, std::unique_ptr<LogCore> logCore,
+    agency::LogPlanConfig config, std::unique_ptr<LogCore> logCore,
     std::vector<std::shared_ptr<AbstractFollower>> const& followers,
-    std::shared_ptr<ParticipantsConfig const> participantsConfig,
+    std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
     ParticipantId id, LogTerm term, LoggerContext const& logContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
@@ -308,7 +308,7 @@ auto replicated_log::LogLeader::construct(
                    });
     auto message = basics::StringUtils::concatT(
         "LogCore missing when constructing LogLeader, leader id: ", id,
-        "term: ", term, "writeConcern: ", config.writeConcern,
+        "term: ", term, "effectiveWriteConcern: ", config.effectiveWriteConcern,
         "followers: ", basics::StringUtils::join(followerIds, ", "));
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(message));
   }
@@ -321,7 +321,7 @@ auto replicated_log::LogLeader::construct(
         LoggerContext logContext,
         std::shared_ptr<ReplicatedLogMetrics> logMetrics,
         std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-        LogConfig config, ParticipantId id, LogTerm term,
+        agency::LogPlanConfig config, ParticipantId id, LogTerm term,
         LogIndex firstIndexOfCurrentTerm, InMemoryLog inMemoryLog,
         std::shared_ptr<cluster::IFailureOracle const> failureOracle)
         : LogLeader(std::move(logContext), std::move(logMetrics),
@@ -369,9 +369,10 @@ auto replicated_log::LogLeader::construct(
         commonLogContext, followers, localFollower, lastIndex);
     leaderDataGuard->activeParticipantsConfig = participantsConfig;
     leader->_localFollower = std::move(localFollower);
-    TRI_ASSERT(leaderDataGuard->_follower.size() >= config.writeConcern)
+    TRI_ASSERT(leaderDataGuard->_follower.size() >=
+               config.effectiveWriteConcern)
         << "actual followers: " << leaderDataGuard->_follower.size()
-        << " writeConcern: " << config.writeConcern;
+        << " effectiveWriteConcern: " << config.effectiveWriteConcern;
     TRI_ASSERT(leaderDataGuard->_follower.size() ==
                leaderDataGuard->activeParticipantsConfig->participants.size());
     TRI_ASSERT(std::all_of(leaderDataGuard->_follower.begin(),
@@ -939,10 +940,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
 
   auto [newCommitIndex, commitFailReason, quorum] =
       algorithms::calculateCommitIndex(
-          indexes,
-          algorithms::CalculateCommitIndexOptions{
-              _self._config.writeConcern, _self._config.softWriteConcern},
-          _commitIndex, _inMemoryLog.getLastTermIndexPair());
+          indexes, _self._config.effectiveWriteConcern, _commitIndex,
+          _inMemoryLog.getLastTermIndexPair());
   _lastCommitFailReason = commitFailReason;
 
   LOG_CTX("6a6c0", TRACE, _self._logContext)
@@ -972,6 +971,9 @@ replicated_log::LogLeader::GuardedLeaderData::GuardedLeaderData(
 
 auto replicated_log::LogLeader::release(LogIndex doneWithIdx) -> Result {
   return _guardedLeaderData.doUnderLock([&](GuardedLeaderData& self) -> Result {
+    if (self._didResign) {
+      return {TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
+    }
     TRI_ASSERT(doneWithIdx <= self._inMemoryLog.getLastIndex());
     if (doneWithIdx <= self._releaseIndex) {
       return {};
@@ -1207,7 +1209,7 @@ auto replicated_log::LogLeader::isLeadershipEstablished() const noexcept
 }
 
 void replicated_log::LogLeader::establishLeadership(
-    std::shared_ptr<ParticipantsConfig const> config) {
+    std::shared_ptr<agency::ParticipantsConfig const> config) {
   LOG_CTX("f3aa8", TRACE, _logContext) << "trying to establish leadership";
   auto waitForIndex =
       _guardedLeaderData.doUnderLock([&](GuardedLeaderData& data) {
@@ -1284,7 +1286,7 @@ auto const keySetDifference = [](auto const& left, auto const& right) {
 }  // namespace
 
 auto replicated_log::LogLeader::updateParticipantsConfig(
-    std::shared_ptr<ParticipantsConfig const> const& config,
+    std::shared_ptr<agency::ParticipantsConfig const> const& config,
     std::function<std::shared_ptr<replicated_log::AbstractFollower>(
         ParticipantId const&)> const& buildFollower) -> LogIndex {
   LOG_CTX("ac277", TRACE, _logContext)

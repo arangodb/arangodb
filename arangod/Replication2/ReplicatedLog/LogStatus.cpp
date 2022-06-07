@@ -21,11 +21,14 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Basics/debugging.h>
+#include "Inspection/VPack.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include <Basics/Exceptions.h>
 #include <Basics/StaticStrings.h>
-#include <Basics/overload.h>
 #include <Basics/application-exit.h>
+#include <Basics/debugging.h>
+#include <Basics/overload.h>
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -34,19 +37,6 @@
 
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
-
-constexpr static std::string_view kUnconfiguredString = "unconfigured";
-
-void UnconfiguredStatus::toVelocyPack(velocypack::Builder& builder) const {
-  VPackObjectBuilder ob(&builder);
-  builder.add("role", VPackValue(kUnconfiguredString));
-}
-
-auto UnconfiguredStatus::fromVelocyPack(velocypack::Slice slice)
-    -> UnconfiguredStatus {
-  TRI_ASSERT(slice.get("role").isEqualString(kUnconfiguredString));
-  return {};
-}
 
 auto QuickLogStatus::getCurrentTerm() const noexcept -> std::optional<LogTerm> {
   if (role == ParticipantRole::kUnconfigured) {
@@ -61,112 +51,6 @@ auto QuickLogStatus::getLocalStatistics() const noexcept
     return std::nullopt;
   }
   return local;
-}
-
-void FollowerStatus::toVelocyPack(velocypack::Builder& builder) const {
-  VPackObjectBuilder ob(&builder);
-  builder.add("role", VPackValue(StaticStrings::Follower));
-  if (leader.has_value()) {
-    builder.add(StaticStrings::Leader, VPackValue(*leader));
-  }
-  builder.add(StaticStrings::Term, VPackValue(term.value));
-  builder.add("lowestIndexToKeep", VPackValue(lowestIndexToKeep.value));
-  builder.add(VPackValue("local"));
-  local.toVelocyPack(builder);
-}
-
-auto FollowerStatus::fromVelocyPack(velocypack::Slice slice) -> FollowerStatus {
-  TRI_ASSERT(slice.get("role").isEqualString(StaticStrings::Follower));
-  FollowerStatus status;
-  status.term = slice.get(StaticStrings::Term).extract<LogTerm>();
-  status.lowestIndexToKeep = slice.get("lowestIndexToKeep").extract<LogIndex>();
-  status.local = LogStatistics::fromVelocyPack(slice.get("local"));
-  if (auto leader = slice.get(StaticStrings::Leader); !leader.isNone()) {
-    status.leader = leader.copyString();
-  }
-  return status;
-}
-
-void LeaderStatus::toVelocyPack(velocypack::Builder& builder) const {
-  VPackObjectBuilder ob(&builder);
-  builder.add("role", VPackValue(StaticStrings::Leader));
-  builder.add(StaticStrings::Term, VPackValue(term.value));
-  builder.add("lowestIndexToKeep", VPackValue(lowestIndexToKeep.value));
-  builder.add("commitLagMS", VPackValue(commitLagMS.count()));
-  builder.add("leadershipEstablished", VPackValue(leadershipEstablished));
-  builder.add(VPackValue("local"));
-  local.toVelocyPack(builder);
-  builder.add(VPackValue("lastCommitStatus"));
-  lastCommitStatus.toVelocyPack(builder);
-  builder.add(VPackValue("activeParticipantsConfig"));
-  activeParticipantsConfig.toVelocyPack(builder);
-  builder.add(VPackValue("committedParticipantsConfig"));
-  if (committedParticipantsConfig.has_value()) {
-    committedParticipantsConfig->toVelocyPack(builder);
-  } else {
-    builder.add(VPackSlice::nullSlice());
-  }
-  {
-    VPackObjectBuilder ob2(&builder, StaticStrings::Follower);
-    for (auto const& [id, stat] : follower) {
-      builder.add(VPackValue(id));
-      stat.toVelocyPack(builder);
-    }
-  }
-}
-
-auto LeaderStatus::fromVelocyPack(velocypack::Slice slice) -> LeaderStatus {
-  TRI_ASSERT(slice.get("role").isEqualString(StaticStrings::Leader));
-  LeaderStatus status;
-  status.term = slice.get(StaticStrings::Term).extract<LogTerm>();
-  status.local = LogStatistics::fromVelocyPack(slice.get("local"));
-  status.lowestIndexToKeep = slice.get("lowestIndexToKeep").extract<LogIndex>();
-  status.leadershipEstablished = slice.get("leadershipEstablished").isTrue();
-  status.commitLagMS = std::chrono::duration<double, std::milli>{
-      slice.get("commitLagMS").extract<double>()};
-  status.lastCommitStatus =
-      CommitFailReason::fromVelocyPack(slice.get("lastCommitStatus"));
-  status.activeParticipantsConfig =
-      ParticipantsConfig::fromVelocyPack(slice.get("activeParticipantsConfig"));
-  if (auto const committedParticipantsConfigSlice =
-          slice.get("committedParticipantsConfig");
-      !committedParticipantsConfigSlice.isNull()) {
-    status.committedParticipantsConfig =
-        ParticipantsConfig::fromVelocyPack(committedParticipantsConfigSlice);
-  }
-  for (auto [key, value] :
-       VPackObjectIterator(slice.get(StaticStrings::Follower))) {
-    auto id = ParticipantId{key.copyString()};
-    auto stat = FollowerStatistics::fromVelocyPack(value);
-    status.follower.emplace(std::move(id), stat);
-  }
-  return status;
-}
-
-void FollowerStatistics::toVelocyPack(velocypack::Builder& builder) const {
-  VPackObjectBuilder ob(&builder);
-  builder.add(StaticStrings::CommitIndex, VPackValue(commitIndex.value));
-  builder.add(VPackValue(StaticStrings::Spearhead));
-  spearHead.toVelocyPack(builder);
-  builder.add(VPackValue("lastErrorReason"));
-  lastErrorReason.toVelocyPack(builder);
-  builder.add("lastRequestLatencyMS", VPackValue(lastRequestLatencyMS.count()));
-  builder.add(VPackValue("state"));
-  internalState.toVelocyPack(builder);
-}
-
-auto FollowerStatistics::fromVelocyPack(velocypack::Slice slice)
-    -> FollowerStatistics {
-  FollowerStatistics stats;
-  stats.commitIndex = slice.get(StaticStrings::CommitIndex).extract<LogIndex>();
-  stats.spearHead =
-      TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
-  stats.lastErrorReason =
-      AppendEntriesErrorReason::fromVelocyPack(slice.get("lastErrorReason"));
-  stats.lastRequestLatencyMS = std::chrono::duration<double, std::milli>{
-      slice.get("lastRequestLatencyMS").getDouble()};
-  stats.internalState = FollowerState::fromVelocyPack(slice.get("state"));
-  return stats;
 }
 
 auto replicated_log::operator==(FollowerStatistics const& left,
@@ -215,11 +99,11 @@ auto LogStatus::getLocalStatistics() const noexcept
 auto LogStatus::fromVelocyPack(VPackSlice slice) -> LogStatus {
   auto role = slice.get("role");
   if (role.isEqualString(StaticStrings::Leader)) {
-    return LogStatus{LeaderStatus::fromVelocyPack(slice)};
+    return LogStatus{velocypack::deserialize<LeaderStatus>(slice)};
   } else if (role.isEqualString(StaticStrings::Follower)) {
-    return LogStatus{FollowerStatus::fromVelocyPack(slice)};
+    return LogStatus{velocypack::deserialize<FollowerStatus>(slice)};
   } else {
-    return LogStatus{UnconfiguredStatus::fromVelocyPack(slice)};
+    return LogStatus{velocypack::deserialize<UnconfiguredStatus>(slice)};
   }
 }
 
@@ -234,7 +118,8 @@ auto LogStatus::getVariant() const noexcept -> VariantType const& {
 }
 
 auto LogStatus::toVelocyPack(velocypack::Builder& builder) const -> void {
-  std::visit([&](auto const& s) { s.toVelocyPack(builder); }, _variant);
+  std::visit([&](auto const& s) { velocypack::serialize(builder, s); },
+             _variant);
 }
 
 auto LogStatus::asLeaderStatus() const noexcept -> LeaderStatus const* {
@@ -287,7 +172,7 @@ auto GlobalStatus::fromVelocyPack(VPackSlice slice) -> GlobalStatus {
   return status;
 }
 
-void GlobalStatus::Connection::toVelocyPack(
+void GlobalStatusConnection::toVelocyPack(
     arangodb::velocypack::Builder& b) const {
   velocypack::ObjectBuilder ob(&b);
   b.add(StaticStrings::ErrorCode, VPackValue(error));
@@ -296,14 +181,14 @@ void GlobalStatus::Connection::toVelocyPack(
   }
 }
 
-auto GlobalStatus::Connection::fromVelocyPack(arangodb::velocypack::Slice slice)
-    -> GlobalStatus::Connection {
+auto GlobalStatusConnection::fromVelocyPack(arangodb::velocypack::Slice slice)
+    -> GlobalStatusConnection {
   auto code = ErrorCode(slice.get(StaticStrings::ErrorCode).extract<int>());
   auto message = std::string{};
   if (auto ms = slice.get(StaticStrings::ErrorMessage); !ms.isNone()) {
     message = ms.copyString();
   }
-  return Connection{.error = code, .errorMessage = message};
+  return GlobalStatusConnection{.error = code, .errorMessage = message};
 }
 
 void GlobalStatus::ParticipantStatus::Response::toVelocyPack(
@@ -342,7 +227,7 @@ void GlobalStatus::ParticipantStatus::toVelocyPack(
 
 auto GlobalStatus::ParticipantStatus::fromVelocyPack(
     arangodb::velocypack::Slice s) -> GlobalStatus::ParticipantStatus {
-  auto connection = Connection::fromVelocyPack(s.get("connection"));
+  auto connection = GlobalStatusConnection::fromVelocyPack(s.get("connection"));
   auto response = std::optional<Response>{};
   if (auto rs = s.get("response"); !rs.isNone()) {
     response = Response::fromVelocyPack(rs);
@@ -358,17 +243,20 @@ void GlobalStatus::SupervisionStatus::toVelocyPack(
   connection.toVelocyPack(b);
   if (response.has_value()) {
     b.add(VPackValue("response"));
-    response->toVelocyPack(b);
+    velocypack::serialize(b, response);
   }
 }
 
 auto GlobalStatus::SupervisionStatus::fromVelocyPack(
     arangodb::velocypack::Slice s) -> GlobalStatus::SupervisionStatus {
-  auto connection = Connection::fromVelocyPack(s.get("connection"));
-  auto response = std::optional<agency::LogCurrentSupervision>{};
-  if (auto rs = s.get("response"); !rs.isNone()) {
-    response = agency::LogCurrentSupervision::fromVelocyPack(rs);
-  }
+  auto connection = GlobalStatusConnection::fromVelocyPack(s.get("connection"));
+  auto const response =
+      std::invoke([&s]() -> std::optional<agency::LogCurrentSupervision> {
+        if (auto rs = s.get("response"); !rs.isNone()) {
+          return velocypack::deserialize<agency::LogCurrentSupervision>(rs);
+        }
+        return std::nullopt;
+      });
   return SupervisionStatus{.connection = std::move(connection),
                            .response = std::move(response)};
 }
@@ -406,13 +294,14 @@ void GlobalStatus::Specification::toVelocyPack(
     arangodb::velocypack::Builder& b) const {
   velocypack::ObjectBuilder ob(&b);
   b.add(VPackValue("plan"));
-  plan.toVelocyPack(b);
+  velocypack::serialize(b, plan);
   b.add("source", VPackValue(to_string(source)));
 }
 
 auto GlobalStatus::Specification::fromVelocyPack(arangodb::velocypack::Slice s)
     -> Specification {
-  auto plan = agency::LogPlanSpecification::fromVelocyPack(s.get("plan"));
+  auto plan =
+      velocypack::deserialize<agency::LogPlanSpecification>(s.get("plan"));
   auto source = GlobalStatus::SpecificationSource::kLocalCache;
   if (s.get("source").isEqualString("RemoteAgency")) {
     source = GlobalStatus::SpecificationSource::kRemoteAgency;

@@ -159,8 +159,8 @@ struct DFSEnumerator {
   friend auto operator<<(std::ostream& os, PathVectorType const& path)
       -> std::ostream& {
     for (auto const& [v, t] : path) {
-      os << "{" << v->state << "}"
-         << " -[" << t << "]-> ";
+      os << "{" << v->state << "}" << std::endl
+         << " -[" << t << "]-> " << std::endl;
     }
     return os;
   }
@@ -262,7 +262,11 @@ struct DFSEnumerator {
     auto const buildPathVector = [&] {
       PathVectorType result;
       for (auto const& p : path) {
-        result.emplace_back(p, p->outgoing[p->searchIndex - 1].first);
+        if (p->searchIndex == 0) {
+          TRI_ASSERT(p == path.back());
+          break;  // end of path reached
+        }
+        result.emplace_back(p, p->outgoing.at(p->searchIndex - 1).first);
       }
       return result;
     };
@@ -291,6 +295,10 @@ struct DFSEnumerator {
             continue;
           } else if (isError(checkResult)) {
             result.failed.emplace(checkResult.asError(), step,
+                                  buildPathVector());
+            return result;
+          } else if (v->depth > 40) {
+            result.failed.emplace(CheckError("path to long"), step,
                                   buildPathVector());
             return result;
           }
@@ -480,8 +488,12 @@ struct RandomEnumerator {
     auto const buildPathVector = [&] {
       PathVectorType result;
       for (auto const& p : path) {
+        if (!p->searchIndex.has_value()) {
+          TRI_ASSERT(p == path.back());
+          break;  // end of path reached
+        }
         auto idx = p->searchIndex.value();
-        result.emplace_back(p, p->outgoing[idx].first);
+        result.emplace_back(p, p->outgoing.at(idx).first);
       }
       return result;
     };
@@ -510,7 +522,6 @@ struct RandomEnumerator {
             return result;
           }
           if (step->isActive()) {
-            v->searchIndex = v->outgoing.size() - 1;
             auto cycle = decltype(path)();
             {
               // move cycle from `path` to `cycle`

@@ -23,6 +23,8 @@
 
 #include "RocksDBBuilderIndex.h"
 
+#define USE_SST_INGESTION false
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "Basics/FileUtils.h"
@@ -31,7 +33,9 @@
 #include "Basics/files.h"
 #include "Containers/HashSet.h"
 #include "RocksDBEngine/Methods/RocksDBBatchedMethods.h"
+#if USE_SST_INGESTION
 #include "RocksDBEngine/Methods/RocksDBSstFileMethods.h"
+#endif
 #include "RocksDBEngine/Methods/RocksDBBatchedWithIndexMethods.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -99,7 +103,9 @@ Result partiallyCommitInsertions(rocksdb::WriteBatchBase& batch,
       }
     }
   }
-  // docsProcessed.fetch_add(docsInBatch, std::memory_order_relaxed);
+#if !USE_SST_INGESTION
+  docsProcessed.fetch_add(docsInBatch, std::memory_order_relaxed);
+#endif
   return {};
 }
 }  // namespace
@@ -135,8 +141,14 @@ IndexCreatorThread::IndexCreatorThread(
   if (_isUniqueIndex) {
     // for later
   } else {
+#if USE_SST_INGESTION
     _methods = std::make_unique<RocksDBSstFileMethods>(
         _isForeground, _rootDB, _trxColl, _ridx, _dbOptions, idxPath);
+#else
+    _batch = std::make_unique<rocksdb::WriteBatch>(32 * 1024 * 1024);
+    _methods = std::make_unique<RocksDBBatchedMethods>(
+        reinterpret_cast<rocksdb::WriteBatch*>(_batch.get()));
+#endif
   }
 }
 
@@ -236,6 +248,14 @@ void IndexCreatorThread::run() {
                                           rocksutils::StatusHint::index);
         }
 
+#if !USE_SST_INGESTION
+        if (res.ok() && numDocsWritten > 0) {  // commit buffered writes
+          res =
+              ::partiallyCommitInsertions(*(_batch.get()), _rootDB, _trxColl,
+                                          _docsProcessed, _ridx, _isForeground);
+        }
+#endif
+
         if (res.ok() && _ridx.collection().vocbase().server().isStopping()) {
           res.reset(TRI_ERROR_SHUTTING_DOWN);
         }
@@ -288,6 +308,7 @@ void IndexCreatorThread::run() {
       }
     }
 
+#if USE_SST_INGESTION
     if (res.ok()) {
       std::vector<std::string> fileNames;
       rocksdb::Status s = static_cast<RocksDBSstFileMethods*>(_methods.get())
@@ -296,7 +317,7 @@ void IndexCreatorThread::run() {
         rocksdb::IngestExternalFileOptions ingestOptions;
         ingestOptions.move_files = true;
         ingestOptions.failed_move_fall_back_to_copy = true;
-        // ingestOptions.snapshot_consistency = false;
+        ingestOptions.snapshot_consistency = false;
         ingestOptions.write_global_seqno = false;
         ingestOptions.verify_checksums_before_ingest = false;
 
@@ -311,6 +332,7 @@ void IndexCreatorThread::run() {
         _sharedWorkEnv->registerError(std::move(res));
       }
     }
+#endif
   } catch (std::exception const& ex) {
     _sharedWorkEnv->registerError(Result(TRI_ERROR_INTERNAL, ex.what()));
   }
@@ -504,7 +526,11 @@ static arangodb::Result fillIndex(
   std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
 
   TRI_IF_FAILURE("RocksDBBuilderIndex::fillIndex") { FATAL_ERROR_EXIT(); }
+#if USE_SST_INGESTION
   if (isUnique || !foreground) {
+#else
+  if (isUnique) {
+#endif
     uint64_t numDocsWritten = 0;
     RocksDBTransactionCollection* trxColl = trx.resolveTrxCollection();
 
@@ -569,6 +595,7 @@ static arangodb::Result fillIndex(
       res = processPartitions(foreground, std::move(partitions), trx, snap,
                               rcoll, rootDB, ridx, docsProcessed, numThreads,
                               threadBatchSize, dbOptions, idxPath);
+#if USE_SST_INGESTION
       if (res.ok()) {
         for (auto const& fileName : TRI_FullTreeDirectory(idxPath.data())) {
           TRI_UnlinkFile(
@@ -576,6 +603,7 @@ static arangodb::Result fillIndex(
                   .data());
         }
       }
+#endif
     }
   }
   return res;
@@ -946,7 +974,9 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
                               .engine<RocksDBEngine>();
   rocksdb::DB* rootDB = engine.db()->GetRootDB();
 
+#if USE_SST_INGESTION
   RocksDBFilePurgePreventer nonPurger(&engine);
+#endif
 
   rocksdb::Snapshot const* snap = rootDB->GetSnapshot();
   auto scope = scopeGuard([&]() noexcept {
