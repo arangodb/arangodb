@@ -112,9 +112,6 @@ const generateTestSuite = (collectionWrapper, testNamePostfix = "") => {
         // As in EnterpriseGraphs, the _key cannot be given during creation,
         // we have to insert it here into our original doc for the replace operation.
         updatedDoc._key = key;
-      } else {
-        // TODO: Remove me after BTS-750 is resolved
-        delete updatedDoc._key;
       }
 
       const replace = {test2: "testmann2"};
