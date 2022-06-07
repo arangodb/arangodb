@@ -23,7 +23,7 @@ import { AddEdgeModal } from './AddEdgeModal';
 import { FetchFullGraphModal } from './FetchFullGraphModal';
 import AqlEditor from './AqlEditor';
 import { SlideInMenu } from './SlideInMenu';
-import { omit, pick } from "lodash";
+import { omit, pick, uniqBy } from "lodash";
 import { JsonEditor as Editor } from 'jsoneditor-react';
 import { UrlParametersContext } from "./url-parameters-context";
 import URLPARAMETERS from "./UrlParameters";
@@ -690,16 +690,22 @@ const G6JsGraph = () => {
         console.log("Received nodes: ", data.nodes);
         console.log("Current edges: ", graphData.edges);
         console.log("Received edges: ", data.edges);
+        
+        const mergedNodes = graphData.nodes.concat(data.nodes);
+        const mergedEdges = graphData.edges.concat(data.edges);
+
+        const uniqueMergedNodes = uniqBy(mergedNodes, 'id');
+        const uniqueMergedEdges = uniqBy(mergedEdges, 'id');
+
         const newGraphData = {
           nodes: [
-            ...graphData.nodes,
-            ...data.nodes
+            ...uniqueMergedNodes
           ],
           edges: [
-            ...graphData.edges,
-            ...data.edges
+            ...uniqueMergedEdges
           ]
         };
+        
         if(urlParameters.nodeSize) {
           setNodesSizeMinMax(data.settings.nodesSizeMinMax);
         }
