@@ -1798,6 +1798,15 @@ constexpr auto TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE =
 /// graph components.
 constexpr auto TRI_ERROR_INVALID_DISJOINT_SMART_EDGE = ErrorCode{4010};
 
+/// 4011: ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION
+/// "Unsupported alternating Smart and Satellite in Disjoint SmartGraph."
+/// Switching back and forth between Satellite and Smart in Disjoint SmartGraph
+/// is not supported within a single AQL statement. Split into multiple
+/// statements.
+constexpr auto
+    TRI_ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION =
+        ErrorCode{4011};
+
 /// 20001: ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE
 /// "malformed gossip message"
 /// Malformed gossip message.
