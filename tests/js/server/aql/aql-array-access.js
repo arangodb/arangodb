@@ -258,6 +258,32 @@ function arrayAccessTestSuite () {
       
       result = AQL_EXECUTE("LET values = @values RETURN values[? 10..11 FILTER CURRENT >= 3]", { values }).json;
       assertEqual([ false ], result);
+      
+      // range quantifiers with bind parameters
+      result = AQL_EXECUTE("LET values = @values RETURN values[? @lower..@upper FILTER CURRENT >= 3]", { values, lower: 9, upper: 11 }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? @lower..@upper FILTER CURRENT >= 3]", { values, lower: 1, upper: 15 }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? @lower..@upper FILTER CURRENT <= 3]", { values, lower: -1, upper: 4 }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? @lower..@upper FILTER CURRENT >= 3]", { values, lower: 9, upper: 10 }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? @lower..@upper FILTER CURRENT >= 3]", { values, lower: -3, upper: 10 }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? @lower..@upper FILTER CURRENT >= 3]", { values, lower: "piff", upper: 10 }).json;
+      assertEqual([ true ], result);
+      
+      // range quantifiers with expressions
+      result = AQL_EXECUTE("LET values = @values RETURN values[? NOOPT(4)..NOOPT(9) FILTER CURRENT >= 3]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("FOR i IN 1..5 LET values = @values RETURN values[? i..(i + 2) FILTER CURRENT >= 6]", { values }).json;
+      assertEqual([ false, false, false, true, true ], result);
 
       // numeric quantifiers
       result = AQL_EXECUTE("LET values = @values RETURN values[? 1 FILTER CURRENT == 3]", { values }).json;
@@ -280,6 +306,29 @@ function arrayAccessTestSuite () {
       
       result = AQL_EXECUTE("LET values = @values RETURN values[? 0 FILTER CURRENT == 1]", { values }).json;
       assertEqual([ false ], result);
+
+      // numeric quantifiers with bind parameters
+      result = AQL_EXECUTE("LET values = @values RETURN values[? @value FILTER CURRENT >= 3]", { values, value: 8 }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? @value FILTER CURRENT >= 3]", { values, value: 9 }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? @value FILTER CURRENT <= 3]", { values, value: 3 }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? @value FILTER CURRENT <= 3]", { values, value: 4 }).json;
+      assertEqual([ false ], result);
+      
+      // numeric quantifiers with expressions
+      result = AQL_EXECUTE("LET values = @values RETURN values[? NOOPT(4) FILTER CURRENT >= 3]", { values }).json;
+      assertEqual([ false ], result);
+      
+      result = AQL_EXECUTE("LET values = @values RETURN values[? NOOPT(4) FILTER CURRENT >= 8]", { values }).json;
+      assertEqual([ true ], result);
+      
+      result = AQL_EXECUTE("FOR i IN 1..7 LET values = @values RETURN values[? i FILTER CURRENT >= 6]", { values }).json;
+      assertEqual([ false, false, false, false, false, true, false ], result);
      
       // ALL|ANY|NONE
       result = AQL_EXECUTE("LET values = @values RETURN values[? ALL FILTER CURRENT == 1]", { values }).json;
