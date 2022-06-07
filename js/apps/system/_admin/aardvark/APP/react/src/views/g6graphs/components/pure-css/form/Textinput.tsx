@@ -19,7 +19,7 @@ const StyledTextinput = styled.input.attrs(({ type, ...rest }: StyledTextinputPr
   }
 `;
 */
-const StyledTextinput = styled.input.attrs(({ type, width, height, ...rest }: StyledTextinputProps) => ({
+const StyledTextinput = styled.input.attrs(({ type, width, height, disabled, ...rest }: StyledTextinputProps) => ({
   type,
   ...rest
 }))`
@@ -30,11 +30,14 @@ const StyledTextinput = styled.input.attrs(({ type, width, height, ...rest }: St
     color: #555555;
     border: 2px solid rgba(140, 138, 137, 0.25);
     border-radius: 4px;
-    background-color: #fff !important;
+    background-color: #fff;
     box-shadow: none;
     outline: none;
     outline-color: transparent;
     outline-style: none;
+  }
+  &:disabled {
+    background-color: #eeeeee !important;
   }
 `;
 
