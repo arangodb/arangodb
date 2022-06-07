@@ -22,11 +22,12 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <time.h>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
-#include <type_traits>
+#include <ctime>
+#include <memory>
+#include <string_view>
 
 #include "Nonce.h"
 
@@ -43,61 +44,16 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace {
-Mutex MutexNonce;
+// protects access to nonces
+Mutex mutex;
 
-static size_t SizeNonces = 16777216;
-
-static uint32_t* TimestampNonces = nullptr;
-
-static uint32_t StatisticsNonces[32][5] = {
-    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0},
-    {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}, {0, 0, 0, 0, 0}};
+std::unique_ptr<uint32_t[]> nonces;
 }  // namespace
 
-namespace arangodb {
-namespace basics {
-namespace Nonce {
-
-void setInitialSize(size_t size) { SizeNonces = size; }
-
-void create(size_t size) {
-  if (SizeNonces < 64) {
-    SizeNonces = 64;
-  } else {
-    SizeNonces = size;
-  }
-
-  destroy();
-
-  LOG_TOPIC("5a658", TRACE, arangodb::Logger::FIXME)
-      << "creating nonces with size: " << size;
-  TimestampNonces = new uint32_t[size];
-
-  memset(TimestampNonces, 0, sizeof(uint32_t) * size);
-
-  for (size_t i = 0; i < 32; ++i) {
-    for (size_t j = 0; j < 5; ++j) {
-      StatisticsNonces[i][j] = 0;
-    }
-  }
-}
-
-void destroy() {
-  if (TimestampNonces != nullptr) {
-    LOG_TOPIC("f1ac6", TRACE, arangodb::Logger::FIXME) << "destroying nonces";
-    delete[] TimestampNonces;
-    TimestampNonces = nullptr;
-  }
-}
+namespace arangodb::basics::Nonce {
 
 std::string createNonce() {
-  uint32_t timestamp = (uint32_t)time(nullptr);
+  uint32_t timestamp = static_cast<uint32_t>(time(nullptr));
   uint32_t rand1 = RandomGenerator::interval(UINT32_MAX);
   uint32_t rand2 = RandomGenerator::interval(UINT32_MAX);
 
@@ -111,15 +67,16 @@ std::string createNonce() {
   memcpy(buffer + 4, &rand1, 4);
   memcpy(buffer + 8, &rand2, 4);
 
-  return StringUtils::encodeBase64U(std::string((char*)buffer, 12));
+  return StringUtils::encodeBase64U(
+      std::string_view(reinterpret_cast<char const*>(&buffer[0]), 12));
 }
 
 bool checkAndMark(std::string const& nonce) {
-  if (nonce.length() != 12) {
+  if (nonce.size() != 12) {
     return false;
   }
 
-  uint8_t const* buffer = (uint8_t const*)nonce.c_str();
+  uint8_t const* buffer = (uint8_t const*)nonce.data();
 
   uint32_t timestamp = (uint32_t(buffer[0]) << 24) |
                        (uint32_t(buffer[1]) << 16) |
@@ -134,35 +91,41 @@ bool checkAndMark(std::string const& nonce) {
 }
 
 bool checkAndMark(uint32_t timestamp, uint64_t random) {
-  MUTEX_LOCKER(mutexLocker, MutexNonce);
+  MUTEX_LOCKER(mutexLocker, ::mutex);
 
-  if (TimestampNonces == nullptr) {
-    create(SizeNonces);
+  // allocate nonces buffer lazily upon first access
+  if (::nonces == nullptr) {
+    LOG_TOPIC("5a658", TRACE, arangodb::Logger::FIXME)
+        << "creating nonces with size: " << numNonces;
+    ::nonces = std::make_unique<uint32_t[]>(numNonces);
+
+    memset(::nonces.get(), 0, sizeof(uint32_t) * numNonces);
   }
 
-  TRI_ASSERT(TimestampNonces != nullptr);
+  TRI_ASSERT(::nonces != nullptr);
+  uint32_t* allNonces = ::nonces.get();
 
   int proofs = 0;
 
   // first count to avoid miscounts if two hashes are equal
-  if (timestamp > TimestampNonces[random % (SizeNonces - 3)]) {
+  if (timestamp > allNonces[random % (numNonces - 3)]) {
     proofs++;
   }
 
-  if (timestamp > TimestampNonces[random % (SizeNonces - 17)]) {
+  if (timestamp > allNonces[random % (numNonces - 17)]) {
     proofs++;
   }
 
-  if (timestamp > TimestampNonces[random % (SizeNonces - 33)]) {
+  if (timestamp > allNonces[random % (numNonces - 33)]) {
     proofs++;
   }
 
-  if (timestamp > TimestampNonces[random % (SizeNonces - 63)]) {
+  if (timestamp > allNonces[random % (numNonces - 63)]) {
     proofs++;
   }
 
   // statistics, compute the log2 of the age and increment the proofs count
-  uint32_t now = (uint32_t)time(nullptr);
+  uint32_t now = static_cast<uint32_t>(time(nullptr));
   uint32_t age = 1;
 
   if (timestamp < now) {
@@ -180,66 +143,24 @@ bool checkAndMark(uint32_t timestamp, uint64_t random) {
       << "age of timestamp " << timestamp << " is " << age << " (log " << l2age
       << ")";
 
-  StatisticsNonces[l2age][proofs]++;
-
   // mark the nonce as used
-  if (timestamp > TimestampNonces[random % (SizeNonces - 3)]) {
-    TimestampNonces[random % (SizeNonces - 3)] = timestamp;
+  if (timestamp > allNonces[random % (numNonces - 3)]) {
+    allNonces[random % (numNonces - 3)] = timestamp;
   }
 
-  if (timestamp > TimestampNonces[random % (SizeNonces - 17)]) {
-    TimestampNonces[random % (SizeNonces - 17)] = timestamp;
+  if (timestamp > allNonces[random % (numNonces - 17)]) {
+    allNonces[random % (numNonces - 17)] = timestamp;
   }
 
-  if (timestamp > TimestampNonces[random % (SizeNonces - 33)]) {
-    TimestampNonces[random % (SizeNonces - 33)] = timestamp;
+  if (timestamp > allNonces[random % (numNonces - 33)]) {
+    allNonces[random % (numNonces - 33)] = timestamp;
   }
 
-  if (timestamp > TimestampNonces[random % (SizeNonces - 63)]) {
-    TimestampNonces[random % (SizeNonces - 63)] = timestamp;
+  if (timestamp > allNonces[random % (numNonces - 63)]) {
+    allNonces[random % (numNonces - 63)] = timestamp;
   }
 
   return 0 < proofs;
 }
 
-std::vector<Statistics> statistics() {
-  MUTEX_LOCKER(mutexLocker, MutexNonce);
-
-  int const N = 4;
-  std::vector<Statistics> result;
-
-  for (uint32_t l2age = 0, age = 1; l2age < 32; ++l2age) {
-    uint32_t T = 0;
-    uint32_t coeff = 1;
-    double S0 = 1.0;
-    double x = 1.0;
-
-    for (int i = 1; i < N + 1; ++i) {
-      T = T + StatisticsNonces[l2age][i];
-      coeff = coeff * (N - i + 1) / i;
-      S0 = S0 * pow((double)(StatisticsNonces[l2age][i] / coeff),
-                    (double)((4 * N + 2 - 6 * i) / (N * N - N)));
-      x = x * pow((double)(StatisticsNonces[l2age][i] / coeff),
-                  (double)((12 * i - 6 * N - 6) / (N * N * N - N)));
-    }
-
-    Statistics current;
-
-    current.age = age;
-    current.checks = T + StatisticsNonces[l2age][0];
-    current.isUnused = T;
-    current.isUsed = StatisticsNonces[l2age][0];
-    current.marked = (uint32_t)(StatisticsNonces[l2age][0] - S0);
-    current.falselyUsed = (uint32_t)S0;
-    current.fillingDegree = 1 / (1 + x);
-
-    result.push_back(current);
-
-    age *= 2U;
-  }
-
-  return result;
-}
-}  // namespace Nonce
-}  // namespace basics
-}  // namespace arangodb
+}  // namespace arangodb::basics::Nonce

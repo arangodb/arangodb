@@ -36,7 +36,6 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
 namespace arangodb::metrics {
@@ -192,8 +191,8 @@ void ClusterMetricsFeature::toPrometheus(std::string& result,
   std::string_view metricName;
   auto it = _toPrometheus.end();
   for (auto const& [key, value] : data->metrics) {
-    if (metricName != key.first) {
-      metricName = key.first;
+    if (metricName != key.name) {
+      metricName = key.name;
       it = _toPrometheus.find(metricName);
       if (it != _toPrometheus.end()) {
         // TODO(MBkkt) read help and type from global constexpr map
@@ -201,9 +200,14 @@ void ClusterMetricsFeature::toPrometheus(std::string& result,
       }
     }
     if (it != _toPrometheus.end()) {
-      it->second(result, globals, key, value);
+      it->second(result, globals, metricName, key.labels, value);
     }
   }
+}
+
+std::shared_ptr<ClusterMetricsFeature::Data> ClusterMetricsFeature::getData()
+    const {
+  return std::atomic_load_explicit(&_data, std::memory_order_acquire);
 }
 
 }  // namespace arangodb::metrics

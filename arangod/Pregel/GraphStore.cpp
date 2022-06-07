@@ -93,9 +93,11 @@ size_t stringChunkSize(size_t /*numberOfChunks*/, uint64_t numVerticesLeft,
 }  // namespace
 
 template<typename V, typename E>
-GraphStore<V, E>::GraphStore(TRI_vocbase_t& vb, uint64_t executionNumber,
+GraphStore<V, E>::GraphStore(PregelFeature& feature, TRI_vocbase_t& vocbase,
+                             uint64_t executionNumber,
                              GraphFormat<V, E>* graphFormat)
-    : _vocbaseGuard(vb),
+    : _feature(feature),
+      _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
       _graphFormat(graphFormat),
       _config(nullptr),
@@ -304,14 +306,16 @@ void moveAppend(std::vector<X>& src, std::vector<X>& dst) {
 }
 
 template<typename M>
-std::unique_ptr<TypedBuffer<M>> createBuffer(WorkerConfig const& config,
+std::unique_ptr<TypedBuffer<M>> createBuffer(PregelFeature& feature,
+                                             WorkerConfig const& config,
                                              size_t cap) {
   if (config.useMemoryMaps()) {
     // prefix used for logging in TypedBuffer.h
     std::string logPrefix =
         "[job " + std::to_string(config.executionNumber()) + "] ";
 
-    auto ptr = std::make_unique<MappedFileBuffer<M>>(cap, logPrefix);
+    auto ptr = std::make_unique<MappedFileBuffer<M>>(feature.tempPath(), cap,
+                                                     logPrefix);
     ptr->sequentialAccess();
     return ptr;
   }
@@ -379,7 +383,8 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
   std::string documentId;  // temp buffer for _id of vertex
   auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
     if (vertexBuff == nullptr || vertexBuff->remainingCapacity() == 0) {
-      vertices.push_back(createBuffer<Vertex<V, E>>(*_config, segmentSize));
+      vertices.push_back(
+          createBuffer<Vertex<V, E>>(_feature, *_config, segmentSize));
       vertexBuff = vertices.back().get();
     }
 
@@ -390,7 +395,8 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
     if (keyBuff == nullptr || keyLen > keyBuff->remainingCapacity()) {
       TRI_ASSERT(keyLen < ::maxStringChunkSize);
       vKeys.push_back(createBuffer<char>(
-          *_config, ::stringChunkSize(vKeys.size(), numVertices, true)));
+          _feature, *_config,
+          ::stringChunkSize(vKeys.size(), numVertices, true)));
       keyBuff = vKeys.back().get();
     }
 
@@ -476,13 +482,15 @@ void GraphStore<V, E>::loadEdges(
 
   auto allocateSpace = [&](size_t keyLen) {
     if (edgeBuff == nullptr || edgeBuff->remainingCapacity() == 0) {
-      edges.push_back(createBuffer<Edge<E>>(*_config, edgeSegmentSize()));
+      edges.push_back(
+          createBuffer<Edge<E>>(_feature, *_config, edgeSegmentSize()));
       edgeBuff = edges.back().get();
     }
     if (keyBuff == nullptr || keyLen > keyBuff->remainingCapacity()) {
       TRI_ASSERT(keyLen < ::maxStringChunkSize);
       edgeKeys.push_back(createBuffer<char>(
-          *_config, ::stringChunkSize(edgeKeys.size(), numVertices, false)));
+          _feature, *_config,
+          ::stringChunkSize(edgeKeys.size(), numVertices, false)));
       keyBuff = edgeKeys.back().get();
     }
   };

@@ -21,7 +21,7 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-const LH = require("@arangodb/testutils/replicated-logs-helper");
+
 const SH = require("@arangodb/testutils/replicated-state-helper");
 const _ = require("lodash");
 
@@ -88,5 +88,114 @@ const replicatedStateIsReady = function (database, logId, servers) {
   };
 };
 
+const replicatedStateVersionConverged = function (database, logId, expectedVersion) {
+  return function () {
+    const {current} = SH.readReplicatedStateAgency(database, logId);
+
+    if (current === undefined || current.supervision === undefined) {
+      return Error(`Current/supervision is not yet defined for ${logId}`);
+    }
+
+    const supervision = current.supervision;
+    if (supervision.version === undefined || supervision.version < expectedVersion) {
+      return Error(`Expected version ${expectedVersion}, found version ${supervision.version}`);
+    }
+
+    if (supervision.statusReport !== undefined && supervision.statusReport.length !== 0) {
+      return Error(`Still errors left in status report`);
+    }
+
+    return true;
+  };
+};
+
+const replicatedStateTargetLeaderIs = function (database, stateId, expectedLeader) {
+  return function () {
+    const currentLeader = SH.getReplicatedStateLeaderTarget(database, stateId);
+    if (currentLeader === expectedLeader) {
+      return true;
+    } else {
+      return new Error(`Expected state leader to switch to ${expectedLeader}, but is still ${currentLeader}`);
+    }
+  };
+};
+
+const replicatedStateSupervisionStatus = function (database, stateId, errors, exactList = false) {
+  return function () {
+    const {current} = SH.readReplicatedStateAgency(database, stateId);
+    if (current === undefined || current.supervision === undefined) {
+      return Error(`Current/supervision is not yet defined for ${stateId}`);
+    }
+
+    const supervision = current.supervision;
+    if (supervision.statusReport === undefined) {
+      return Error(`Missing status report.`);
+    }
+
+    const findError = function (err) {
+      for (const e of supervision.statusReport) {
+        if (_.isEqual(e, err)) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    for (const err of errors) {
+      if (!findError(err)) {
+        return Error(`Error ${JSON.stringify(err)} missing from status report`);
+      }
+    }
+
+    if (exactList && supervision.statusReport.length !== errors.length) {
+      return Error(`Extraneous errors in supervision report`);
+    }
+    return true;
+  };
+};
+
+const replicatedStateServerIsGone = function (database, stateId, serverId) {
+  return function () {
+    const {plan} = SH.readReplicatedStateAgency(database, stateId);
+    if (plan.participants[serverId] !== undefined) {
+      return Error(`Server ${serverId} still present in State/Plan`);
+    }
+    return true;
+  };
+};
+
+const replicatedStateStatusAvailable = function (database, stateId) {
+  return function () {
+    const report = SH.getReplicatedStateStatus(database, stateId);
+    if (report === undefined) {
+      return Error(`Status report for replicated state ${database}/${stateId} not yet available`);
+    }
+    return true;
+  };
+};
+
+
+const replicatedStateIsGone = function (database, logId) {
+  return function () {
+    let {target, plan, current} = SH.readReplicatedStateAgency(database, logId);
+    if (target !== undefined) {
+      return Error("target still set");
+    }
+    if (plan !== undefined) {
+      return Error("plan still set");
+    }
+    if (current !== undefined) {
+      return Error("current still set");
+    }
+    return true;
+  };
+};
+
+exports.replicatedStateIsGone = replicatedStateIsGone;
 exports.replicatedStateIsReady = replicatedStateIsReady;
+exports.replicatedStateServerIsGone = replicatedStateServerIsGone;
+exports.replicatedStateStatusAvailable = replicatedStateStatusAvailable;
+exports.replicatedStateSupervisionStatus = replicatedStateSupervisionStatus;
+exports.replicatedStateTargetLeaderIs = replicatedStateTargetLeaderIs;
+exports.replicatedStateVersionConverged = replicatedStateVersionConverged;
 exports.serverReceivedSnapshotGeneration = serverReceivedSnapshotGeneration;

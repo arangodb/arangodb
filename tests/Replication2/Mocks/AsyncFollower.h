@@ -52,6 +52,8 @@ struct AsyncFollower : replicated_log::ILogFollower {
       -> std::optional<ParticipantId> const& override;
   void stop() noexcept;
 
+  [[nodiscard]] auto copyInMemoryLog() const
+      -> replicated_log::InMemoryLog override;
   auto waitForLeaderAcked() -> WaitForFuture override;
 
  private:

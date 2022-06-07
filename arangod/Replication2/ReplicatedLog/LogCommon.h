@@ -48,6 +48,9 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/SharedSlice.h>
 #include <velocypack/Slice.h>
+#include <velocypack/Value.h>
+
+#include "Inspection/Status.h"
 
 #include <Basics/Identifier.h>
 #include <Containers/FlatHashMap.h>
@@ -79,6 +82,20 @@ struct LogIndex {
 
 auto operator<<(std::ostream&, LogIndex) -> std::ostream&;
 
+template<class Inspector>
+auto inspect(Inspector& f, LogIndex& x) {
+  if constexpr (Inspector::isLoading) {
+    auto v = uint64_t{0};
+    auto res = f.apply(v);
+    if (res.ok()) {
+      x = LogIndex(v);
+    }
+    return res;
+  } else {
+    return f.apply(x.value);
+  }
+}
+
 struct LogTerm {
   constexpr LogTerm() noexcept : value{0} {}
   constexpr explicit LogTerm(std::uint64_t value) noexcept : value{value} {}
@@ -90,6 +107,20 @@ struct LogTerm {
 };
 
 auto operator<<(std::ostream&, LogTerm) -> std::ostream&;
+
+template<class Inspector>
+auto inspect(Inspector& f, LogTerm& x) {
+  if constexpr (Inspector::isLoading) {
+    auto v = uint64_t{0};
+    auto res = f.apply(v);
+    if (res.ok()) {
+      x = LogTerm(v);
+    }
+    return res;
+  } else {
+    return f.apply(x.value);
+  }
+}
 
 [[nodiscard]] auto to_string(LogTerm term) -> std::string;
 [[nodiscard]] auto to_string(LogIndex index) -> std::string;
@@ -109,6 +140,11 @@ struct TermIndexPair {
 };
 
 auto operator<<(std::ostream&, TermIndexPair) -> std::ostream&;
+
+template<class Inspector>
+auto inspect(Inspector& f, TermIndexPair& x) {
+  return f.object(x).fields(f.field("term", x.term), f.field("index", x.index));
+}
 
 struct LogRange {
   LogIndex from;
@@ -144,6 +180,12 @@ struct LogRange {
 };
 
 auto operator<<(std::ostream& os, LogRange const& r) -> std::ostream&;
+
+template<class Inspector>
+auto inspect(Inspector& f, LogRange& x) {
+  return f.object(x).fields(f.field("from", x.from), f.field("to", x.to));
+}
+
 auto intersect(LogRange a, LogRange b) noexcept -> LogRange;
 auto to_string(LogRange const&) -> std::string;
 
@@ -158,6 +200,24 @@ class LogId : public arangodb::basics::Identifier {
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
 };
 
+template<class Inspector>
+auto inspect(Inspector& f, LogId& x) {
+  if constexpr (Inspector::isLoading) {
+    auto v = uint64_t{0};
+    auto res = f.apply(v);
+    if (res.ok()) {
+      x = LogId(v);
+    }
+    return res;
+  } else {
+    // TODO this is a hack to make the compiler happy who does not want
+    //      to assign x.id() (unsigned long int) to what it expects (unsigned
+    //      long int&)
+    auto id = x.id();
+    return f.apply(id);
+  }
+}
+
 auto to_string(LogId logId) -> std::string;
 
 struct GlobalLogIdentifier {
@@ -167,22 +227,6 @@ struct GlobalLogIdentifier {
 };
 
 auto to_string(GlobalLogIdentifier const&) -> std::string;
-
-struct LogConfig {
-  std::size_t writeConcern = 1;
-  std::size_t softWriteConcern = 1;
-  std::size_t replicationFactor = 1;
-  bool waitForSync = false;
-
-  auto toVelocyPack(velocypack::Builder&) const -> void;
-  explicit LogConfig(velocypack::Slice);
-  LogConfig() noexcept = default;
-  LogConfig(std::size_t writeConcern, std::size_t softWriteConcern,
-            std::size_t replicationFactor, bool waitForSync) noexcept;
-
-  friend auto operator==(LogConfig const& left, LogConfig const& right) noexcept
-      -> bool = default;
-};
 
 struct ParticipantFlags {
   bool forced = false;
@@ -200,23 +244,15 @@ struct ParticipantFlags {
   static auto fromVelocyPack(velocypack::Slice) -> ParticipantFlags;
 };
 
+template<class Inspector>
+auto inspect(Inspector& f, ParticipantFlags& x) {
+  return f.object(x).fields(
+      f.field("forced", x.forced).fallback(false),
+      f.field("allowedInQuorum", x.allowedInQuorum).fallback(true),
+      f.field("allowedAsLeader", x.allowedAsLeader).fallback(true));
+}
+
 auto operator<<(std::ostream&, ParticipantFlags const&) -> std::ostream&;
-
-using ParticipantsFlagsMap =
-    std::unordered_map<ParticipantId, ParticipantFlags>;
-
-struct ParticipantsConfig {
-  std::size_t generation = 0;
-  ParticipantsFlagsMap participants;
-
-  void toVelocyPack(velocypack::Builder&) const;
-  static auto fromVelocyPack(velocypack::Slice) -> ParticipantsConfig;
-
-  // to be defaulted soon
-  friend auto operator==(ParticipantsConfig const& left,
-                         ParticipantsConfig const& right) noexcept
-      -> bool = default;
-};
 
 // These settings are initialised by the ReplicatedLogFeature based on command
 // line arguments
@@ -304,8 +340,6 @@ struct CommitFailReason {
         -> bool = default;
   };
   struct FewerParticipantsThanWriteConcern {
-    std::size_t writeConcern{};
-    std::size_t softWriteConcern{};
     std::size_t effectiveWriteConcern{};
     std::size_t numParticipants{};
     static auto fromVelocyPack(velocypack::Slice)
@@ -346,6 +380,17 @@ struct CommitFailReason {
   explicit CommitFailReason(std::in_place_t, Args&&... args) noexcept;
 };
 
+template<class Inspector>
+auto inspect(Inspector& f,
+             arangodb::replication2::replicated_log::CommitFailReason& x) {
+  if constexpr (Inspector::isLoading) {
+    x = CommitFailReason::fromVelocyPack(f.slice());
+  } else {
+    x.toVelocyPack(f.builder());
+  }
+  return arangodb::inspection::Status::Success{};
+}
+
 auto operator<<(std::ostream&,
                 CommitFailReason::QuorumSizeNotReached::ParticipantInfo)
     -> std::ostream&;
@@ -378,6 +423,10 @@ struct velocypack::Extractor<replication2::LogId> {
 };
 
 }  // namespace arangodb
+
+template<>
+struct fmt::formatter<arangodb::replication2::LogId>
+    : fmt::formatter<arangodb::basics::Identifier> {};
 
 template<>
 struct std::hash<arangodb::replication2::LogIndex> {

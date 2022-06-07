@@ -34,9 +34,11 @@
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/QueueTracer.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
+#include "Graph/Steps/VertexDescription.h"
 #include "Graph/Types/ValidationResult.h"
 #include "Graph/algorithm-aliases.h"
 #ifdef USE_ENTERPRISE
+#include "Enterprise/Graph/Providers/SmartGraphProvider.h"
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
 #endif
 
@@ -55,7 +57,17 @@ OneSidedEnumerator<Configuration>::OneSidedEnumerator(
       _queue(resourceMonitor),
       _provider(std::move(forwardProvider)),
       _interior(resourceMonitor),
-      _validator(_provider, _interior, std::move(validatorOptions)) {}
+      _validator(_provider, _interior, std::move(validatorOptions)),
+      _results{initResultList()} {}
+
+template<class Configuration>
+auto OneSidedEnumerator<Configuration>::initResultList() -> ResultList {
+  if constexpr (std::is_same_v<Step, enterprise::SmartGraphStep>) {
+    return ResultList{_provider};
+  } else {
+    return ResultList{};
+  }
+}
 
 template<class Configuration>
 OneSidedEnumerator<Configuration>::~OneSidedEnumerator() = default;
@@ -102,28 +114,33 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
   // Pull next element from Queue
   // Do 1 step search
   TRI_ASSERT(!_queue.isEmpty());
-  if (!_queue.hasProcessableElement()) {
-    std::vector<Step*> looseEnds = _queue.getLooseEnds();
-    futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
+  if (!_queue.firstIsVertexFetched()) {
+    std::vector<Step*> looseEnds = _queue.getStepsWithoutFetchedVertex();
+    futures::Future<std::vector<Step*>> futureEnds =
+        _provider.fetchVertices(looseEnds);
 
     // Will throw all network errors here
-    auto&& preparedEnds = futureEnds.get();
+    std::vector<Step*> preparedEnds = std::move(futureEnds.get());
 
     TRI_ASSERT(preparedEnds.size() != 0);
-    TRI_ASSERT(_queue.hasProcessableElement());
+    TRI_ASSERT(_queue.firstIsVertexFetched());
   }
 
   auto tmp = _queue.pop();
   auto posPrevious = _interior.append(std::move(tmp));
   auto& step = _interior.getStepReference(posPrevious);
 
-  // only explore here if we're responsible
-  if (!step.isResponsible(_provider.trx())) {
-    // This server cannot decide on this specific vertex.
-    // Include it in results, to report back that we
-    // found this undecided path
-    _results.emplace_back(step);
-    return;
+  if constexpr (std::is_same_v<ResultList, std::vector<Step>>) {
+    // TODO check if any Step besides SmartGraphStep actually has the
+    // isResponsible Implemented.
+    // only explore here if we're responsible
+    if (!_provider.isResponsible(step)) {
+      // This server cannot decide on this specific vertex.
+      // Include it in results, to report back that we
+      // found this undecided path
+      _results.emplace_back(step);
+      return;
+    }
   }
   ValidationResult res = _validator.validatePath(step);
   LOG_TOPIC("78155", TRACE, Logger::GRAPHS)
@@ -133,18 +150,36 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
       << " depth " << _options.getMinDepth() << " <= " << step.getDepth()
       << "<= " << _options.getMaxDepth();
 
-  if (res.isFiltered() || res.isPruned()) {
-    _stats.incrFiltered();
+  if constexpr (std::is_same_v<ResultList, std::vector<Step>>) {
+    if (res.isFiltered() || res.isPruned()) {
+      _stats.incrFiltered();
+    }
+    if (step.getDepth() >= _options.getMinDepth() && !res.isFiltered()) {
+      // Include it in results.
+      _results.emplace_back(step);
+    }
   }
 
-  if (step.getDepth() >= _options.getMinDepth() && !res.isFiltered()) {
-    // Include it in results.
-    _results.emplace_back(step);
-  }
-
-  if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
-    _provider.expand(step, posPrevious,
-                     [&](Step n) -> void { _queue.append(n); });
+  if constexpr (std::is_same_v<ResultList,
+                               enterprise::SmartGraphResponse<Provider>>) {
+    TRI_ASSERT(ServerState::instance()->isDBServer());
+    smartExpand(step, posPrevious, res);
+  } else {
+    if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
+      if (!step.edgeFetched()) {
+        // NOTE: The step we have should be the first, s.t. we are guaranteed
+        // to work on it, as the ordering here gives the priority to the
+        // Provider in how important it is to get responses for a particular
+        // step.
+        std::vector<Step*> stepsToFetch{&step};
+        _queue.getStepsWithoutFetchedEdges(stepsToFetch);
+        TRI_ASSERT(!stepsToFetch.empty());
+        _provider.fetchEdges(stepsToFetch);
+        TRI_ASSERT(step.edgeFetched());
+      }
+      _provider.expand(step, posPrevious,
+                       [&](Step n) -> void { _queue.append(n); });
+    }
   }
 }
 
@@ -156,7 +191,10 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
  */
 template<class Configuration>
 bool OneSidedEnumerator<Configuration>::isDone() const {
-  return _results.empty() && searchDone();
+  if constexpr (std::is_same_v<ResultList, std::vector<Step>>) {
+    return _results.empty() && searchDone();
+  }
+  return searchDone();
 }
 
 /**
@@ -177,6 +215,20 @@ void OneSidedEnumerator<Configuration>::reset(VertexRef source, size_t depth,
   _queue.append(std::move(firstStep));
 }
 
+template<class Configuration>
+void OneSidedEnumerator<Configuration>::resetManyStartVertices(
+    std::vector<VertexDescription> const& vertices) {
+  clear(false);
+  std::vector<Step> startSteps{};
+  startSteps.reserve(vertices.size());
+  for (auto const& v : vertices) {
+    VPackHashedStringRef source{v.id.data(),
+                                static_cast<uint32_t>(v.id.size())};
+    startSteps.emplace_back(_provider.startVertex(source, v.depth, v.weight));
+  }
+  _queue.setStartContent(std::move(startSteps));
+}
+
 /**
  * @brief Get the next path, if available written into the result build.
  * The given builder will be not be cleared, this function requires a
@@ -193,13 +245,19 @@ void OneSidedEnumerator<Configuration>::reset(VertexRef source, size_t depth,
 template<class Configuration>
 auto OneSidedEnumerator<Configuration>::getNextPath()
     -> std::unique_ptr<PathResultInterface> {
-  while (!isDone()) {
-    searchMoreResults();
+  if constexpr (std::is_same_v<ResultList,
+                               enterprise::SmartGraphResponse<Provider>>) {
+    // Not implemented and used
+    TRI_ASSERT(false);
+  } else {
+    while (!isDone()) {
+      searchMoreResults();
 
-    if (!_results.empty()) {
-      auto step = std::move(_results.back());
-      _results.pop_back();
-      return std::make_unique<ResultPathType>(step, _provider, _interior);
+      if (!_results.empty()) {
+        auto step = std::move(_results.back());
+        _results.pop_back();
+        return std::make_unique<ResultPathType>(step, _provider, _interior);
+      }
     }
   }
   return nullptr;
@@ -207,14 +265,19 @@ auto OneSidedEnumerator<Configuration>::getNextPath()
 
 template<class Configuration>
 void OneSidedEnumerator<Configuration>::searchMoreResults() {
-  while (_results.empty() &&
-         !searchDone()) {  // TODO: check && !_queue.isEmpty()
-    _resultsFetched = false;
+  if constexpr (std::is_same_v<ResultList,
+                               enterprise::SmartGraphResponse<Provider>>) {
+    // Not implemented and used
+    TRI_ASSERT(false);
+  } else {
+    while (_results.empty() && !searchDone()) {
+      _resultsFetched = false;
 
-    computeNeighbourhoodOfNextVertex();
+      computeNeighbourhoodOfNextVertex();
+    }
+
+    fetchResults();
   }
-
-  fetchResults();
 }
 
 /**
@@ -226,13 +289,19 @@ void OneSidedEnumerator<Configuration>::searchMoreResults() {
 
 template<class Configuration>
 bool OneSidedEnumerator<Configuration>::skipPath() {
-  while (!isDone()) {
-    searchMoreResults();
+  if constexpr (std::is_same_v<ResultList,
+                               enterprise::SmartGraphResponse<Provider>>) {
+    // Not implemented and used
+    TRI_ASSERT(false);
+  } else {
+    while (!isDone()) {
+      searchMoreResults();
 
-    if (!_results.empty()) {
-      // just drop one result for skipping
-      _results.pop_back();
-      return true;
+      if (!_results.empty()) {
+        // just drop one result for skipping
+        _results.pop_back();
+        return true;
+      }
     }
   }
   return false;
@@ -245,30 +314,36 @@ auto OneSidedEnumerator<Configuration>::searchDone() const -> bool {
 
 template<class Configuration>
 auto OneSidedEnumerator<Configuration>::fetchResults() -> void {
-  if (!_resultsFetched && !_results.empty()) {
-    std::vector<Step*> looseEnds{};
+  if constexpr (std::is_same_v<ResultList, arangodb::graph::enterprise::
+                                               SmartGraphResponse<Provider>>) {
+    // Not implemented and used
+    TRI_ASSERT(false);
+  } else {
+    if (!_resultsFetched && !_results.empty()) {
+      std::vector<Step*> looseEnds{};
 
-    for (auto& vertex : _results) {
-      if (!vertex.isProcessable()) {
-        looseEnds.emplace_back(&vertex);
+      for (auto& step : _results) {
+        if (!step.vertexFetched()) {
+          looseEnds.emplace_back(&step);
+        }
+      }
+
+      if (!looseEnds.empty()) {
+        // Will throw all network errors here
+        futures::Future<std::vector<Step*>> futureEnds =
+            _provider.fetchVertices(looseEnds);
+        futureEnds.get();
+        // Notes for the future:
+        // Vertices are now fetched. Think about other less-blocking and
+        // batch-wise fetching (e.g. re-fetch at some later point).
+        // TODO: Discuss how to optimize here. Currently we'll mark looseEnds in
+        // fetch as fetched. This works, but we might create a batch limit here
+        // in the future. Also discuss: Do we want (re-)fetch logic here?
+        // TODO: maybe we can combine this with prefetching of paths
+        // Ticket ID: [GORDO-1394]
       }
     }
-
-    if (!looseEnds.empty()) {
-      // Will throw all network errors here
-      futures::Future<std::vector<Step*>> futureEnds =
-          _provider.fetch(looseEnds);
-      futureEnds.get();
-      // Notes for the future:
-      // Vertices are now fetched. Think about other less-blocking and
-      // batch-wise fetching (e.g. re-fetch at some later point).
-      // TODO: Discuss how to optimize here. Currently we'll mark looseEnds in
-      // fetch as fetched. This works, but we might create a batch limit here in
-      // the future. Also discuss: Do we want (re-)fetch logic here?
-      // TODO: maybe we can combine this with prefetching of paths
-    }
   }
-
   _resultsFetched = true;
 }
 
@@ -325,6 +400,11 @@ auto OneSidedEnumerator<Configuration>::unprepareValidatorContext() -> void {
   }
 }
 
+#ifdef USE_ENTERPRISE
+// Include Enterprise part of the template implementation
+#include "Enterprise/Graph/Enumerators/OneSidedEnumeratorEE.tpp"
+#endif
+
 /* SingleServerProvider Section */
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
@@ -360,4 +440,7 @@ MAKE_ONE_SIDED_ENUMERATORS_CONFIGURATION(ClusterProvider<ClusterProviderStep>)
 #ifdef USE_ENTERPRISE
 MAKE_ONE_SIDED_ENUMERATORS_CONFIGURATION(
     SingleServerProvider<arangodb::graph::enterprise::SmartGraphStep>)
+MAKE_ONE_SIDED_ENUMERATORS_CONFIGURATION(
+    arangodb::graph::enterprise::SmartGraphProvider<
+        arangodb::graph::ClusterProviderStep>)
 #endif

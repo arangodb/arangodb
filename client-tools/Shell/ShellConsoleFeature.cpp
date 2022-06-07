@@ -92,7 +92,6 @@ ShellConsoleFeature::ShellConsoleFeature(Server& server)
       _lastDuration(0.0),
       _startTime(TRI_microtime()) {
   setOptional(false);
-  requiresElevatedPrivileges(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
   if (!_supportsColors) {
     _colors = false;

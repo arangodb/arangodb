@@ -96,7 +96,7 @@ class Conductor : public std::enable_shared_from_this<Conductor> {
   uint64_t _maxSuperstep = 500;
   /// determines whether we support async execution
   bool _asyncMode = false;
-  bool _useMemoryMaps = false;
+  bool _useMemoryMaps = true;
   bool _storeResults = false;
   bool _inErrorAbort = false;
 

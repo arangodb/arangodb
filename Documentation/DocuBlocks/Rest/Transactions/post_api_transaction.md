@@ -33,8 +33,9 @@ Allow reading from undeclared collections.
 
 @RESTBODYPARAM{lockTimeout,integer,optional,int64}
 an optional numeric value that can be used to set a
-timeout for waiting on collection locks. If not specified, a default
-value will be used. Setting *lockTimeout* to *0* will make ArangoDB
+timeout in seconds for waiting on collection locks. This option is only
+meaningful when using exclusive locks. If not specified, a default value of
+900 seconds will be used. Setting *lockTimeout* to *0* will make ArangoDB
 not time out waiting for a lock.
 
 @RESTBODYPARAM{params,string,optional,string}

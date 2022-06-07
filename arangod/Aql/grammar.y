@@ -34,6 +34,8 @@
 #include "VocBase/AccessMode.h"
 
 #include <algorithm>
+#include <cstdint>
+#include <string>
 #include <string_view>
 
 %}
@@ -121,9 +123,10 @@ void validateOptions(Parser* parser, AstNode const* node,
 
 /// @brief check if any of the variables used in the INTO expression were
 /// introduced by the COLLECT itself, in which case it would fail
-void checkIntoVariables(Parser* parser, AstNode const* expression,
-                        int line, int column,
-                        VarSet const& variablesIntroduced) {
+void checkCollectVariables(Parser* parser, char const* context, 
+                           AstNode const* expression,
+                           int line, int column,
+                           VarSet const& variablesIntroduced) {
   if (expression == nullptr) {
     return;
   }
@@ -133,7 +136,7 @@ void checkIntoVariables(Parser* parser, AstNode const* expression,
 
   for (auto const& it : varsInAssignment) {
     if (variablesIntroduced.find(it) != variablesIntroduced.end()) {
-      std::string msg("use of COLLECT variable '" + it->name + "' inside same COLLECT's INTO expression");
+      std::string msg("use of COLLECT variable '" + it->name + "' inside same COLLECT's " + context + " expression");
       parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, msg.c_str(), it->name, line, column);
       return;
     }
@@ -183,8 +186,7 @@ bool validateAggregates(Parser* parser, AstNode const* aggregates,
         char const* error = "aggregate expression must be a function call";
         parser->registerParseError(TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION, error, line, column);
         return false;
-      }
-      else {
+      } else {
         auto f = static_cast<arangodb::aql::Function*>(func->getData());
         if (!Aggregator::isValid(f->name)) {
           // aggregate expression must be a call to MIN|MAX|LENGTH...
@@ -476,6 +478,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <node> object_element;
 %type <strval> object_element_name;
 %type <intval> array_filter_operator;
+%type <intval> array_map_operator;
 %type <node> optional_array_filter;
 %type <node> optional_array_limit;
 %type <node> optional_array_return;
@@ -936,7 +939,7 @@ collect_statement:
       }
 
       if ($3 != nullptr && $3->type == NODE_TYPE_ARRAY) {
-        ::checkIntoVariables(parser, $3->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
+        ::checkCollectVariables(parser, "INTO", $3->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
       AstNode const* into = ::getIntoVariable(parser, $3);
@@ -960,7 +963,7 @@ collect_statement:
       }
 
       if ($3 != nullptr && $3->type == NODE_TYPE_ARRAY) {
-        ::checkIntoVariables(parser, $3->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
+        ::checkCollectVariables(parser, "INTO", $3->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
       // note all group variables
@@ -1011,7 +1014,7 @@ collect_statement:
       }
 
       if ($2 != nullptr && $2->type == NODE_TYPE_ARRAY) {
-        ::checkIntoVariables(parser, $2->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
+        ::checkCollectVariables(parser, "INTO", $2->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
       AstNode const* into = ::getIntoVariable(parser, $2);
@@ -1035,7 +1038,11 @@ collect_statement:
       }
 
       if ($2 != nullptr && $2->type == NODE_TYPE_ARRAY) {
-        ::checkIntoVariables(parser, $2->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
+        ::checkCollectVariables(parser, "INTO", $2->getMember(1), yylloc.first_line, yylloc.first_column, variablesIntroduced);
+      }
+        
+      if ($3 != nullptr && $3->type == NODE_TYPE_ARRAY) {
+        ::checkCollectVariables(parser, "KEEP", $3, yylloc.first_line, yylloc.first_column, variablesIntroduced);
       }
 
       AstNode const* into = ::getIntoVariable(parser, $2);
@@ -1838,10 +1845,19 @@ object_element:
   ;
 
 array_filter_operator:
+    T_QUESTION {
+      $$ = 1;
+    }
+  | array_filter_operator T_QUESTION {
+      $$ = $1 + 1;
+    }
+  ;
+
+array_map_operator:
     T_TIMES {
       $$ = 1;
     }
-  | array_filter_operator T_TIMES {
+  | array_map_operator T_TIMES {
       $$ = $1 + 1;
     }
   ;
@@ -1851,7 +1867,17 @@ optional_array_filter:
       $$ = nullptr;
     }
   | T_FILTER expression {
-      $$ = $2;
+      // FILTER filter-condition
+      $$ = parser->ast()->createNodeArrayFilter(nullptr, $2);
+    }
+  | quantifier T_FILTER expression {
+      // ALL|ANY|NONE FILTER filter-condition
+      $$ = parser->ast()->createNodeArrayFilter($1, $3);
+    }
+  | expression T_FILTER expression {
+      // 1    FILTER filter-condition
+      // 2..5 FILTER filter-condition
+      $$ = parser->ast()->createNodeArrayFilter($1, $3);
     }
   ;
 
@@ -2064,6 +2090,46 @@ reference:
       }
     }
   | reference T_ARRAY_OPEN array_filter_operator {
+      // variable expansion, e.g. variable[?], with optional FILTER clause
+      if ($3 > 1 && $1->type == NODE_TYPE_EXPANSION) {
+        // create a dummy passthru node that reduces and evaluates the expansion first
+        // and the expansion on top of the stack won't be chained with any other expansions
+        $1 = parser->ast()->createNodePassthru($1);
+      }
+
+      // create a temporary iterator variable
+      std::string const nextName = parser->ast()->variables()->nextName() + "_";
+
+      if ($1->type == NODE_TYPE_EXPANSION) {
+        auto iterator = parser->ast()->createNodeIterator(nextName.c_str(), nextName.size(), $1->getMember(1));
+        parser->pushStack(iterator);
+      }
+      else {
+        auto iterator = parser->ast()->createNodeIterator(nextName.c_str(), nextName.size(), $1);
+        parser->pushStack(iterator);
+      }
+
+      auto scopes = parser->ast()->scopes();
+      scopes->stackCurrentVariable(scopes->getVariable(nextName));
+    } optional_array_filter T_ARRAY_CLOSE %prec EXPANSION {
+      auto scopes = parser->ast()->scopes();
+      scopes->unstackCurrentVariable();
+
+      auto iterator = static_cast<AstNode const*>(parser->popStack());
+      auto variableNode = iterator->getMember(0);
+      TRI_ASSERT(variableNode->type == NODE_TYPE_VARIABLE);
+      auto variable = static_cast<Variable const*>(variableNode->getData());
+
+      if ($1->type == NODE_TYPE_EXPANSION) {
+        auto expand = parser->ast()->createNodeBooleanExpansion($3, iterator, parser->ast()->createNodeReference(variable->name), $5);
+        $1->changeMember(1, expand);
+        $$ = $1;
+      }
+      else {
+        $$ = parser->ast()->createNodeBooleanExpansion($3, iterator, parser->ast()->createNodeReference(variable->name), $5);
+      }
+    }
+  | reference T_ARRAY_OPEN array_map_operator {
       // variable expansion, e.g. variable[*], with optional FILTER, LIMIT and RETURN clauses
       if ($3 > 1 && $1->type == NODE_TYPE_EXPANSION) {
         // create a dummy passthru node that reduces and evaluates the expansion first
@@ -2092,6 +2158,16 @@ reference:
       auto variableNode = iterator->getMember(0);
       TRI_ASSERT(variableNode->type == NODE_TYPE_VARIABLE);
       auto variable = static_cast<Variable const*>(variableNode->getData());
+
+      if ($5 != nullptr) {
+        // array filter members are [quantifier, filter]
+        // quantifier is optional.
+        TRI_ASSERT($5->type == NODE_TYPE_ARRAY_FILTER);
+        TRI_ASSERT($5->numMembers() == 2);
+        if ($5->getMember(0) != nullptr && $5->getMember(0)->type != NODE_TYPE_NOP) {
+          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected quantifier value found for array expansion operation.", yylloc.first_line, yylloc.first_column);
+        }
+      }
 
       if ($1->type == NODE_TYPE_EXPANSION) {
         auto expand = parser->ast()->createNodeExpansion($3, iterator, parser->ast()->createNodeReference(variable->name), $5, $6, $7);

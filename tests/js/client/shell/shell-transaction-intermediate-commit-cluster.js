@@ -35,7 +35,6 @@ let { getEndpointById,
       getEndpointsByType,
       debugCanUseFailAt,
       debugSetFailAt,
-      debugResetRaceControl,
       debugRemoveFailAt,
       debugClearFailAt,
       getChecksum,
@@ -233,6 +232,7 @@ function transactionIntermediateCommitsSingleSuite() {
       debugSetFailAt(leader, "noIntermediateCommits");
       // turn on intermediate commits on follower
       debugClearFailAt(follower, "noIntermediateCommits");
+      debugSetFailAt(follower, "logAfterIntermediateCommit");
       
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
       let intermediateCommitsBefore = getMetric(follower, "arangodb_intermediate_commits_total");
@@ -267,7 +267,9 @@ function transactionIntermediateCommitsSingleSuite() {
     
       let intermediateCommitsAfter = getMetric(follower, "arangodb_intermediate_commits_total");
       assertEqual(intermediateCommitsBefore + 10, intermediateCommitsAfter);
-      
+
+
+      debugClearFailAt(follower, "logAfterIntermediateCommit");
       assertInSync(leader, follower, shardId);
     },
     

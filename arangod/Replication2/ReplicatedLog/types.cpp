@@ -24,9 +24,9 @@
 #include "types.h"
 
 #include <Basics/Exceptions.h>
-#include <Basics/StaticStrings.h>
 #include <Basics/application-exit.h>
 #include <Basics/voc-errors.h>
+#include <Inspection/VPack.h>
 #include <Logger/LogMacros.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -69,33 +69,12 @@ void replicated_log::QuorumData::toVelocyPack(
 
 void replicated_log::LogStatistics::toVelocyPack(
     velocypack::Builder& builder) const {
-  VPackObjectBuilder ob(&builder);
-  builder.add(StaticStrings::CommitIndex, VPackValue(commitIndex.value));
-  builder.add("firstIndex", VPackValue(firstIndex.value));
-  builder.add(VPackValue(StaticStrings::Spearhead));
-  spearHead.toVelocyPack(builder);
+  serialize(builder, *this);
 }
 
 auto replicated_log::LogStatistics::fromVelocyPack(velocypack::Slice slice)
     -> LogStatistics {
-  LogStatistics stats;
-  stats.commitIndex = slice.get(StaticStrings::CommitIndex).extract<LogIndex>();
-  stats.firstIndex = slice.get("firstIndex").extract<LogIndex>();
-  stats.spearHead =
-      TermIndexPair::fromVelocyPack(slice.get(StaticStrings::Spearhead));
-  return stats;
-}
-
-auto replicated_log::operator==(LogStatistics const& left,
-                                LogStatistics const& right) noexcept -> bool {
-  return left.spearHead == right.spearHead &&
-         left.commitIndex == right.commitIndex &&
-         left.firstIndex == right.firstIndex;
-}
-
-auto replicated_log::operator!=(LogStatistics const& left,
-                                LogStatistics const& right) noexcept -> bool {
-  return !(left == right);
+  return deserialize<LogStatistics>(slice);
 }
 
 auto replicated_log::AppendEntriesErrorReason::getErrorMessage() const noexcept
@@ -117,6 +96,8 @@ auto replicated_log::AppendEntriesErrorReason::getErrorMessage() const noexcept
       return "Persisting the log entries failed";
     case ErrorType::kCommunicationError:
       return "Communicating with participant failed - network error";
+    case ErrorType::kPrevAppendEntriesInFlight:
+      return "A previous appendEntries request is still in flight";
   }
   LOG_TOPIC("ff21c", FATAL, Logger::REPLICATION2)
       << "Invalid AppendEntriesErrorReason "
@@ -134,6 +115,8 @@ constexpr static std::string_view kPersistenceFailureString =
     "PersistenceFailure";
 constexpr static std::string_view kCommunicationErrorString =
     "CommunicationError";
+constexpr static std::string_view kPrevAppendEntriesInFlightString =
+    "PrevAppendEntriesInFlight";
 
 auto replicated_log::AppendEntriesErrorReason::errorTypeFromString(
     std::string_view str) -> ErrorType {
@@ -153,6 +136,8 @@ auto replicated_log::AppendEntriesErrorReason::errorTypeFromString(
     return ErrorType::kPersistenceFailure;
   } else if (str == kCommunicationErrorString) {
     return ErrorType::kCommunicationError;
+  } else if (str == kPrevAppendEntriesInFlightString) {
+    return ErrorType::kPrevAppendEntriesInFlight;
   }
   THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
                                 "unknown error type %*s", str.size(),
@@ -178,6 +163,8 @@ auto replicated_log::to_string(
       return kPersistenceFailureString;
     case AppendEntriesErrorReason::ErrorType::kCommunicationError:
       return kCommunicationErrorString;
+    case AppendEntriesErrorReason::ErrorType::kPrevAppendEntriesInFlight:
+      return kPrevAppendEntriesInFlightString;
   }
   LOG_TOPIC("c2058", FATAL, Logger::REPLICATION2)
       << "Invalid AppendEntriesErrorReason "
@@ -227,60 +214,70 @@ auto FollowerState::withRequestInFlight(
   return FollowerState(std::in_place, RequestInFlight{duration});
 }
 
-constexpr static std::string_view upToDateString = "up-to-date";
-constexpr static std::string_view errorBackoffString = "error-backoff";
-constexpr static std::string_view requestInFlightString = "request-in-flight";
-
 auto FollowerState::fromVelocyPack(velocypack::Slice slice) -> FollowerState {
   auto state = slice.get("state").extract<std::string_view>();
-  if (state == errorBackoffString) {
-    return FollowerState::withErrorBackoff(
-        std::chrono::duration<double, std::milli>{
-            slice.get("durationMS").extract<double>()},
-        slice.get("retryCount").extract<std::size_t>());
-  } else if (state == requestInFlightString) {
-    return FollowerState::withRequestInFlight(
-        std::chrono::duration<double, std::milli>{
-            slice.get("durationMS").extract<double>()});
+  if (state == static_strings::errorBackoffString) {
+    return FollowerState{std::in_place,
+                         velocypack::deserialize<ErrorBackoff>(slice)};
+  } else if (state == static_strings::requestInFlightString) {
+    return FollowerState{std::in_place,
+                         velocypack::deserialize<RequestInFlight>(slice)};
   } else {
-    return FollowerState::withUpToDate();
+    return FollowerState{std::in_place,
+                         velocypack::deserialize<UpToDate>(slice)};
   }
 }
 
 void FollowerState::toVelocyPack(velocypack::Builder& builder) const {
-  struct ToVelocyPackVisitor {
-    auto operator()(FollowerState::UpToDate const&) {
-      builder.add("state", VPackValue(upToDateString));
-    }
-
-    auto operator()(FollowerState::ErrorBackoff const& err) {
-      builder.add("state", VPackValue(errorBackoffString));
-      builder.add("durationMS", VPackValue(err.durationMS.count()));
-      builder.add("retryCount", VPackValue(err.retryCount));
-    }
-
-    auto operator()(FollowerState::RequestInFlight const& rif) {
-      builder.add("state", VPackValue(requestInFlightString));
-      builder.add("durationMS", VPackValue(rif.durationMS.count()));
-    }
-
-    velocypack::Builder& builder;
-  };
-
-  VPackObjectBuilder ob(&builder);
-  std::visit(ToVelocyPackVisitor{builder}, value);
+  std::visit([&](auto const& v) { velocypack::serialize(builder, v); }, value);
 }
 
 auto to_string(FollowerState const& state) -> std::string_view {
   struct ToStringVisitor {
-    auto operator()(FollowerState::UpToDate const&) { return upToDateString; }
+    auto operator()(FollowerState::UpToDate const&) {
+      return static_strings::upToDateString;
+    }
     auto operator()(FollowerState::ErrorBackoff const& err) {
-      return errorBackoffString;
+      return static_strings::errorBackoffString;
     }
     auto operator()(FollowerState::RequestInFlight const& rif) {
-      return requestInFlightString;
+      return static_strings::requestInFlightString;
     }
   };
 
   return std::visit(ToStringVisitor{}, state.value);
+}
+
+auto AppendEntriesErrorReasonTypeStringTransformer::toSerialized(
+    AppendEntriesErrorReason::ErrorType source, std::string& target) const
+    -> inspection::Status {
+  target = to_string(source);
+  return {};
+}
+
+auto AppendEntriesErrorReasonTypeStringTransformer::fromSerialized(
+    std::string const& source,
+    AppendEntriesErrorReason::ErrorType& target) const -> inspection::Status {
+  if (source == kNoneString) {
+    target = AppendEntriesErrorReason::ErrorType::kNone;
+  } else if (source == kInvalidLeaderIdString) {
+    target = AppendEntriesErrorReason::ErrorType::kInvalidLeaderId;
+  } else if (source == kLostLogCoreString) {
+    target = AppendEntriesErrorReason::ErrorType::kLostLogCore;
+  } else if (source == kMessageOutdatedString) {
+    target = AppendEntriesErrorReason::ErrorType::kMessageOutdated;
+  } else if (source == kWrongTermString) {
+    target = AppendEntriesErrorReason::ErrorType::kWrongTerm;
+  } else if (source == kNoPrevLogMatchString) {
+    target = AppendEntriesErrorReason::ErrorType::kNoPrevLogMatch;
+  } else if (source == kPersistenceFailureString) {
+    target = AppendEntriesErrorReason::ErrorType::kPersistenceFailure;
+  } else if (source == kCommunicationErrorString) {
+    target = AppendEntriesErrorReason::ErrorType::kCommunicationError;
+  } else if (source == kPrevAppendEntriesInFlightString) {
+    target = AppendEntriesErrorReason::ErrorType::kPrevAppendEntriesInFlight;
+  } else {
+    return inspection::Status{"unknown error type " + source};
+  }
+  return {};
 }

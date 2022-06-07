@@ -3,6 +3,7 @@
   "version": "3.0.0",
   "private": true,
   "dependencies": {
+    "@tippy.js/react": "^3.1.1",
     "@types/lodash": "^4.14.172",
     "ajv": "^8.6.2",
     "ajv-errors": "^3.0.0",
@@ -58,6 +59,7 @@
     "styled-components": "^4.4.1",
     "styled-css-grid": "^1.1.1",
     "styled-icons": "^6.3.0",
+    "sweetalert2": "^11.4.5",
     "swr": "^0.5.6",
     "tippy.js": "^2.6.0",
     "typeahead.js": "^0.11.1",

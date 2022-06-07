@@ -72,7 +72,7 @@ bool arangodb::maintenance::UpdateReplicatedStateAction::first() {
     auto buffer = StringUtils::decodeBase64(_description.get(std::string{key}));
     auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(buffer.c_str()));
     if (!slice.isNone()) {
-      return T::fromVelocyPack(slice);
+      return velocypack::deserialize<T>(slice);
     }
 
     return std::nullopt;

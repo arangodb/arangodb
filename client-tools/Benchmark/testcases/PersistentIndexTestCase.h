@@ -38,11 +38,14 @@ struct PersistentIndexTest : public Benchmark<PersistentIndexTest> {
       : Benchmark<PersistentIndexTest>(arangobench) {}
 
   bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-    return DeleteCollection(client, _arangobench.collection()) &&
-           CreateCollection(client, _arangobench.collection(), 2,
-                            _arangobench) &&
-           CreateIndex(client, _arangobench.collection(), "hash",
-                       "[\"value\"]");
+    bool result = true;
+    if (_arangobench.createCollection()) {
+      result =
+          DeleteCollection(client, _arangobench.collection()) &&
+          CreateCollection(client, _arangobench.collection(), 2, _arangobench);
+    }
+    return result && CreateIndex(client, _arangobench.collection(),
+                                 "persistent", "[\"value\"]");
   }
 
   void tearDown() override {}

@@ -115,6 +115,7 @@ ErrorCode writeLanguage(arangodb::ArangodServer& server, std::string_view lang,
         break;
 
       case LanguageType::INVALID:
+      default:
         TRI_ASSERT(false);
         break;
     }
@@ -158,7 +159,6 @@ std::tuple<std::string, LanguageType> getOrSetPreviousLanguage(
   arangodb::Result res = ::readLanguage(server, prevLanguage, prevType);
 
   if (res.ok()) {
-    TRI_ASSERT(!prevLanguage.empty());
     return {prevLanguage, prevType};
   }
 

@@ -36,6 +36,7 @@
 #include <Basics/Guarded.h>
 #include <Futures/Future.h>
 
+#include <condition_variable>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -78,6 +79,7 @@ class LogFollower : public ILogFollower,
       -> std::unique_ptr<LogIterator>;
   [[nodiscard]] auto getCommitIndex() const noexcept -> LogIndex override;
 
+  [[nodiscard]] auto copyInMemoryLog() const -> InMemoryLog override;
   [[nodiscard]] auto release(LogIndex doneWithIdx) -> Result override;
 
   /// @brief Resolved when the leader has committed at least one entry.
@@ -102,6 +104,10 @@ class LogFollower : public ILogFollower,
     auto checkCommitIndex(LogIndex newCommitIndex, LogIndex newLITK,
                           std::unique_ptr<WaitForQueue> outQueue) noexcept
         -> DeferredAction;
+    [[nodiscard]] auto didResign() const noexcept -> bool;
+
+    [[nodiscard]] auto waitForResign()
+        -> std::pair<futures::Future<futures::Unit>, DeferredAction>;
 
     LogFollower const& _follower;
     InMemoryLog _inMemoryLog;
@@ -124,6 +130,8 @@ class LogFollower : public ILogFollower,
   // thread. Using the UnshackledMutex this is no longer required.
   Guarded<GuardedFollowerData, arangodb::basics::UnshackledMutex>
       _guardedFollowerData;
+  std::atomic<bool> _appendEntriesInFlight{false};
+  std::condition_variable_any _appendEntriesInFlightCondVar{};
 
   [[nodiscard]] auto appendEntriesPreFlightChecks(
       GuardedFollowerData const&, AppendEntriesRequest const&) const noexcept

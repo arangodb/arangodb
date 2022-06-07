@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2021-2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,18 +21,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-#include <memory>
 
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
 #include "Replication2/Streams/Streams.h"
 #include "Replication2/Streams/LogMultiplexer.h"
 
+#include <Basics/Guarded.h>
+
+#include <memory>
+
 namespace arangodb::replication2::replicated_state {
 
 template<typename S>
 struct LeaderStateManager
-    : ReplicatedState<S>::StateManagerBase,
+    : ReplicatedState<S>::IStateManager,
       std::enable_shared_from_this<LeaderStateManager<S>> {
   using Factory = typename ReplicatedStateTraits<S>::FactoryType;
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
@@ -41,9 +44,9 @@ struct LeaderStateManager
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
 
   using WaitForAppliedQueue =
-      typename ReplicatedState<S>::StateManagerBase::WaitForAppliedQueue;
+      typename ReplicatedState<S>::IStateManager::WaitForAppliedQueue;
   using WaitForAppliedPromise =
-      typename ReplicatedState<S>::StateManagerBase::WaitForAppliedQueue;
+      typename ReplicatedState<S>::IStateManager::WaitForAppliedQueue;
 
   explicit LeaderStateManager(
       LoggerContext loggerContext,
@@ -58,7 +61,7 @@ struct LeaderStateManager
 
   [[nodiscard]] auto getStatus() const -> StateStatus final;
 
-  void run() override;
+  void run() noexcept override;
 
   [[nodiscard]] auto resign() && noexcept
       -> std::tuple<std::unique_ptr<CoreType>,
@@ -66,32 +69,53 @@ struct LeaderStateManager
                     DeferredAction> override;
 
   using Multiplexer = streams::LogMultiplexer<ReplicatedStateStreamSpec<S>>;
-  std::shared_ptr<IReplicatedLeaderState<S>> state;
-  std::shared_ptr<Stream> stream;
-  std::weak_ptr<ReplicatedState<S>> parent;
-  std::shared_ptr<replicated_log::ILogLeader> logLeader;
 
-  LeaderInternalState internalState{LeaderInternalState::kUninitializedState};
-  std::chrono::system_clock::time_point lastInternalStateChange;
-  std::optional<LogRange> recoveryRange;
+  auto getImplementationState() -> std::shared_ptr<IReplicatedLeaderState<S>>;
 
-  std::unique_ptr<CoreType> core;
-  std::unique_ptr<ReplicatedStateToken> token;
+  struct GuardedData {
+    explicit GuardedData(LeaderStateManager& self,
+                         LeaderInternalState internalState,
+                         std::unique_ptr<CoreType> core,
+                         std::unique_ptr<ReplicatedStateToken> token);
+    LeaderStateManager& self;
+    std::shared_ptr<IReplicatedLeaderState<S>> state;
+    std::shared_ptr<Stream> stream;
 
+    LeaderInternalState internalState{LeaderInternalState::kUninitializedState};
+    std::chrono::system_clock::time_point lastInternalStateChange;
+    std::optional<LogRange> recoveryRange;
+
+    std::unique_ptr<CoreType> core;
+    std::unique_ptr<ReplicatedStateToken> token;
+    bool _didResign = false;
+
+    void updateInternalState(LeaderInternalState newState,
+                             std::optional<LogRange> range = std::nullopt) {
+      internalState = newState;
+      lastInternalStateChange = std::chrono::system_clock::now();
+      recoveryRange = range;
+    }
+  };
+
+  Guarded<GuardedData> guardedData;
+  std::weak_ptr<ReplicatedState<S>> const parent;
+  std::shared_ptr<replicated_log::ILogLeader> const logLeader;
   LoggerContext const loggerContext;
   std::shared_ptr<Factory> const factory;
-  bool _didResign = false;
 
  private:
-  void updateInternalState(LeaderInternalState newState,
-                           std::optional<LogRange> range = std::nullopt) {
-    internalState = newState;
-    lastInternalStateChange = std::chrono::system_clock::now();
-    recoveryRange = range;
-  }
-
   void beginWaitingForParticipantResigned();
-
-  // TODO locking
 };
+
+template<typename S>
+LeaderStateManager<S>::GuardedData::GuardedData(
+    LeaderStateManager& self, LeaderInternalState internalState,
+    std::unique_ptr<CoreType> core, std::unique_ptr<ReplicatedStateToken> token)
+    : self(self),
+      internalState(internalState),
+      core(std::move(core)),
+      token(std::move(token)) {
+  TRI_ASSERT(this->core != nullptr);
+  TRI_ASSERT(this->token != nullptr);
+}
 }  // namespace arangodb::replication2::replicated_state

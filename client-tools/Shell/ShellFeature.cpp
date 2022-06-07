@@ -43,7 +43,6 @@ ShellFeature::ShellFeature(Server& server, int* result)
       _jslint(),
       _result(result),
       _runMode(RunMode::INTERACTIVE) {
-  requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::V8ShellFeaturePhase>();
 }

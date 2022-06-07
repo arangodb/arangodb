@@ -78,9 +78,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
     OptimizerRule const& rule) {
   // These are all the nodes where we start traversing (including all
   // subqueries)
-  ::arangodb::containers::SmallVector<
-      ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  containers::SmallVector<ExecutionNode*, 8> nodes;
 
   plan->findNodesOfType(nodes, ::reduceExtractionToProjectionTypes, true);
 
@@ -440,9 +438,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
 void RocksDBOptimizerRules::removeSortRandRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     OptimizerRule const& rule) {
-  ::arangodb::containers::SmallVector<
-      ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, EN::SORT, true);
 
   bool modified = false;

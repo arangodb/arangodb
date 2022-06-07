@@ -121,7 +121,6 @@ VPackFeature::VPackFeature(Server& server, int* result)
       _inputType("vpack"),
       _outputType("json-pretty"),
       _failOnNonJson(true) {
-  requiresElevatedPrivileges(false);
   setOptional(false);
 }
 

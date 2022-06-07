@@ -154,7 +154,7 @@ if (DEFINED ARANGODB_VERSION_RELEASE_TYPE)
     set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.0~~${ARANGODB_VERSION_PATCH}")
     set(ARANGODB_DEBIAN_REVISION "1")
 
-    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.0")
+    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
     set(ARANGODB_RPM_REVISION "0.1.devel")
 
     set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
@@ -165,7 +165,7 @@ if (DEFINED ARANGODB_VERSION_RELEASE_TYPE)
     set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
     set(ARANGODB_DEBIAN_REVISION "1")
 
-    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.0")
+    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
     set(ARANGODB_RPM_REVISION "0.2.nightly")
 
     set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
@@ -1193,7 +1193,7 @@ else ()
   find_package(OpenSSL REQUIRED)
 endif ()
 
-if (OPENSSL_FOUND)
+if (OPENSSL_FOUND AND USE_STRICT_OPENSSL_VERSION)
   if (NOT "${OPENSSL_VERSION}" MATCHES "${ARANGODB_REQUIRED_OPENSSL_VERSION}")
     message (FATAL_ERROR "Wrong OpenSSL version was found: ${OPENSSL_VERSION}! Required version: ${MSG_ARANGODB_REQUIRED_OPENSSL_VERSION}!")
   endif ()
@@ -1253,6 +1253,7 @@ link_libraries(
   absl::flat_hash_map
   absl::node_hash_set
   absl::node_hash_map
+  absl::synchronization
 )
 
 
@@ -1314,65 +1315,72 @@ if (NOT(SKIP_PACKAGING))
 endif()
 
 ################################################################################
-## ERRORS FILE
+## ERRORS FILES
 ################################################################################
 
-if (USE_MAINTAINER_MODE)
-  # If "make clean" removes these files, afterwards neither "make" nor "cmake" work any more.
-  set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM "On")
+# If "make clean" removes these files, afterwards neither "make" nor "cmake" work any more.
+set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM "On")
 
-  set(ERROR_FILES
-    lib/Basics/voc-errors.h
-    lib/Basics/error-registry.h
-    js/common/bootstrap/errors.js
+set(ERROR_FILES
+  lib/Basics/voc-errors.h
+  lib/Basics/error-registry.h
+  js/common/bootstrap/errors.js
+)
+
+set(ERROR_FILES_GEN)
+set(ERRORS_DAT lib/Basics/errors.dat)
+
+foreach (m IN LISTS ERROR_FILES)
+  get_filename_component(GEN_BASENAME "${m}" NAME)
+  if (GEN_BASENAME STREQUAL "errors.js")
+    # generated errors.js is copied into the source dir
+    set(TARGET_FILENAME ${CMAKE_SOURCE_DIR}/${m})
+  else ()
+    # generated C++ header files are copied into the build dir
+    set(TARGET_FILENAME ${CMAKE_BINARY_DIR}/${m})
+  endif ()
+  add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/${m}
+    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/utils/generateErrorfile.py ${CMAKE_SOURCE_DIR}/${ERRORS_DAT} ${CMAKE_BINARY_DIR}/${GEN_BASENAME}.tmp
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/${GEN_BASENAME}.tmp ${TARGET_FILENAME}
+    COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/${GEN_BASENAME}.tmp
+    DEPENDS ${CMAKE_SOURCE_DIR}/${ERRORS_DAT} ${CMAKE_SOURCE_DIR}/utils/generateErrorfile.py
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT  "Building errors file ${m}"
+    VERBATIM
   )
 
-  set(ERROR_FILES_GEN)
-  set(ERRORS_DAT lib/Basics/errors.dat)
+  list(APPEND ERROR_FILES_GEN ${CMAKE_BINARY_DIR}/${m})
+endforeach ()
 
-  foreach (m IN LISTS ERROR_FILES)
-    add_custom_command(
-      OUTPUT ${CMAKE_SOURCE_DIR}/${m}
-      COMMAND ${PYTHON_EXECUTABLE} ./utils/generateErrorfile.py ./${ERRORS_DAT} ./${m}.tmp
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
-      COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
-      DEPENDS ${CMAKE_SOURCE_DIR}/${ERRORS_DAT} ./utils/generateErrorfile.py
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      COMMENT  "Building errors files ${m}"
-      VERBATIM
-    )
+add_custom_target(errorfiles ALL DEPENDS ${ERROR_FILES_GEN})
+  
+set(EXIT_CODE_FILES
+  lib/Basics/exitcodes.h
+  js/common/bootstrap/exitcodes.js
+  Installation/Windows/Plugins/exitcodes.nsh
+)
 
-    list(APPEND ERROR_FILES_GEN ${CMAKE_SOURCE_DIR}/${m})
-  endforeach ()
+set(EXIT_CODE_FILES_GEN)
+set(EXIT_CODES_DAT lib/Basics/exitcodes.dat)
 
-  add_custom_target(errorfiles ALL DEPENDS ${ERROR_FILES_GEN})
-
-  set(EXIT_CODE_FILES
-    lib/Basics/exitcodes.h
-    js/common/bootstrap/exitcodes.js
-    Installation/Windows/Plugins/exitcodes.nsh
+foreach (m IN LISTS EXIT_CODE_FILES)
+  get_filename_component(GEN_BASENAME "${m}" NAME)
+  add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/${m}
+    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/utils/generateExitCodesFiles.py ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT} ${CMAKE_BINARY_DIR}/${GEN_BASENAME}.tmp
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/${GEN_BASENAME}.tmp ${CMAKE_BINARY_DIR}/${m}
+    COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/${GEN_BASENAME}.tmp
+    DEPENDS ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT} ${CMAKE_SOURCE_DIR}/utils/generateExitCodesFiles.py
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    COMMENT  "Building exitcode file ${m}"
+    VERBATIM
   )
 
-  set(EXIT_CODE_FILES_GEN)
-  set(EXIT_CODES_DAT lib/Basics/exitcodes.dat)
+  list(APPEND EXIT_CODE_FILES_GEN ${CMAKE_BINARY_DIR}/${m})
+endforeach ()
 
-  foreach (m IN LISTS EXIT_CODE_FILES)
-    add_custom_command(
-      OUTPUT ${CMAKE_SOURCE_DIR}/${m}
-      COMMAND ${PYTHON_EXECUTABLE} ./utils/generateExitCodesFiles.py ./${EXIT_CODES_DAT} ./${m}.tmp
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
-      COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
-      DEPENDS ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT} ./utils/generateExitCodesFiles.py
-      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-      COMMENT  "Building exitcode files ${m}"
-      VERBATIM
-    )
-
-    list(APPEND EXIT_CODE_FILES_GEN ${CMAKE_SOURCE_DIR}/${m})
-  endforeach ()
-
-  add_custom_target(exitcodefiles ALL DEPENDS ${EXIT_CODE_FILES_GEN})
-endif ()
+add_custom_target(exitcodefiles ALL DEPENDS ${EXIT_CODE_FILES_GEN})
 
 ################################################################################
 ## SUB-PROJECTS
@@ -1397,6 +1405,40 @@ add_subdirectory(arangod)
 if (USE_GOOGLE_TESTS)
   add_subdirectory(tests)
 endif ()
+
+option(BUILD_SEPP "Build SEPP (Storage Engine Performance Prediction)" OFF)
+
+if (BUILD_SEPP)
+  set(ARANGODB_SEPP_SOURCES
+    tests/sepp/main.cpp
+    tests/sepp/Execution.cpp
+    tests/sepp/ExecutionThread.cpp
+    tests/sepp/Runner.cpp
+    tests/sepp/RocksDBOptions.cpp
+    tests/sepp/Server.cpp
+    tests/sepp/ValueGenerators/RandomStringGenerator.cpp
+    tests/sepp/Workloads/InsertDocuments.cpp
+    tests/sepp/Workloads/IterateDocuments.cpp
+  )
+
+  add_executable(
+    sepp
+    ${ARANGODB_SEPP_SOURCES}
+  )
+
+  target_include_directories(sepp PRIVATE
+    ${PROJECT_SOURCE_DIR}/arangod
+    ${PROJECT_SOURCE_DIR}/tests/sepp
+  )
+
+  target_link_libraries(sepp
+    arango_rocksdb
+    arangoserver
+    rocksdb
+    snappy
+    boost_boost
+  )
+endif()
 
 add_dependencies(arangobench   zlibstatic)
 if (USE_ENTERPRISE)

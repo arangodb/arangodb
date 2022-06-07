@@ -27,7 +27,6 @@
 
 #include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
-#include "Agency/TimeString.h"
 #include "Agency/TransactionBuilder.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
@@ -35,8 +34,11 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/RecursiveLocker.h"
+#include "Basics/Result.h"
+#include "Basics/Result.tpp"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/TimeString.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
@@ -52,17 +54,21 @@
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+#include "Inspection/VPack.h"
 #include "Logger/Logger.h"
-#include "Random/RandomGenerator.h"
-#include "Replication2/AgencyCollectionSpecification.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Rest/CommonDefines.h"
-#include "RestServer/DatabaseFeature.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/MetricsFeature.h"
+#include "Random/RandomGenerator.h"
+#include "Replication2/Methods.h"
+#include "Replication2/AgencyCollectionSpecification.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "Rest/CommonDefines.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingInfo.h"
@@ -72,11 +78,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
-
-#ifdef USE_ENTERPRISE
-#include "Enterprise/VocBase/SmartVertexCollection.h"
-#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
-#endif
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -514,6 +515,123 @@ void ClusterInfo::triggerBackgroundGetIds() {
   }
 }
 
+auto ClusterInfo::createReplicatedStateSpec(
+    std::string const& shardId, std::vector<std::string> const& serverIds,
+    std::size_t writeConcern, std::size_t softWriteConcern)
+    -> replication2::replicated_state::agency::Target {
+  replication2::replicated_state::agency::Target spec;
+
+  spec.id = LogicalCollection::shardIdToStateId(shardId);
+  spec.properties.implementation.type = "document";
+  TRI_ASSERT(!serverIds.empty());
+  spec.leader = serverIds.front();
+
+  for (auto const& serverId : serverIds) {
+    spec.participants.emplace(
+        serverId,
+        replication2::replicated_state::agency::Target::Participant{});
+  }
+
+  spec.config.writeConcern = writeConcern;
+  spec.config.softWriteConcern = softWriteConcern;
+  spec.config.waitForSync = false;
+  spec.version = 1;
+
+  return spec;
+}
+
+auto ClusterInfo::waitForReplicatedStatesCreation(
+    std::string const& databaseName,
+    std::vector<replication2::replicated_state::agency::Target> const&
+        replicatedStates) -> futures::Future<Result> {
+  auto replicatedStateMethods =
+      arangodb::replication2::ReplicatedStateMethods::createInstanceCoordinator(
+          _server, databaseName);
+
+  std::vector<futures::Future<ResultT<consensus::index_t>>> futureStates;
+  futureStates.reserve(replicatedStates.size());
+  for (auto const& spec : replicatedStates) {
+    futureStates.emplace_back(
+        replicatedStateMethods->waitForStateReady(spec.id, *spec.version));
+  }
+
+  // we need to define this here instead of using an inline lambda expression
+  // because MSVC is too stupid to compile it otherwise
+  auto appendErrorMessage = [](result::Error error) {
+    error.appendErrorMessage(
+        "Failed to create a corresponding replicated state "
+        "for each shard!");
+    return error;
+  };
+
+  return futures::collectAll(std::move(futureStates))
+      .thenValue(
+          [&clusterInfo = _server.getFeature<ClusterFeature>().clusterInfo()](
+              auto&& raftIndices) {
+            consensus::index_t maxIndex = 0;
+            for (auto& v : raftIndices) {
+              maxIndex = std::max(maxIndex, v.get().get());
+            }
+            return clusterInfo.waitForPlan(maxIndex);
+          })
+      .then([&appendErrorMessage](auto&& tryResult) {
+        Result result =
+            basics::catchToResult([&] { return std::move(tryResult.get()); });
+        if (result.fail()) {
+          if (result.is(TRI_ERROR_NO_ERROR)) {
+            result = Result(TRI_ERROR_INTERNAL, result.errorMessage());
+          }
+          result = result.mapError(appendErrorMessage);
+        }
+        return result;
+      });
+}
+
+auto ClusterInfo::deleteReplicatedStates(
+    std::string const& databaseName,
+    std::vector<replication2::LogId> const& replicatedStatesIds)
+    -> futures::Future<Result> {
+  auto replicatedStateMethods =
+      arangodb::replication2::ReplicatedStateMethods::createInstanceCoordinator(
+          _server, databaseName);
+
+  std::vector<futures::Future<Result>> deletedStates;
+  deletedStates.reserve(replicatedStatesIds.size());
+  for (auto const& id : replicatedStatesIds) {
+    deletedStates.emplace_back(
+        replicatedStateMethods->deleteReplicatedState(id));
+  }
+
+  return futures::collectAll(std::move(deletedStates))
+      .then([](futures::Try<std::vector<futures::Try<Result>>>&& tryResult) {
+        auto deletionResults =
+            basics::catchToResultT([&] { return std::move(tryResult.get()); });
+
+        auto makeResult = [](auto&& result) {
+          Result r = result.mapError([](result::Error error) {
+            error.appendErrorMessage(
+                "Failed to delete replicated states corresponding to shards!");
+            return error;
+          });
+          return r;
+        };
+
+        auto result = deletionResults.result();
+        if (result.fail()) {
+          return makeResult(std::move(result));
+        }
+        for (auto shardResult : deletionResults.get()) {
+          auto r = basics::catchToResult(
+              [&] { return std::move(shardResult.get()); });
+          if (r.fail()) {
+            return makeResult(std::move(r));
+          }
+        }
+
+        return result;
+      });
+}
+
 /// @brief produces an agency dump and logs it
 void ClusterInfo::logAgencyDump() const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -762,7 +880,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
   if (collection == nullptr) {
     // no previous version of the collection exists, or its hash value has
     // changed
-    collection = createCollectionObject(data, vocbase);
+    collection = vocbase.createCollectionObject(data, /*isAStub*/ true);
     TRI_ASSERT(collection != nullptr);
 
     if (!isBuilding) {
@@ -789,26 +907,6 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
   TRI_ASSERT(!isBuilding || hash == 0);
 
   return {hash, collection};
-}
-
-/// @brief helper function to build a new LogicalCollection object from the
-/// velocypack input
-/*static*/ std::shared_ptr<LogicalCollection>
-ClusterInfo::createCollectionObject(arangodb::velocypack::Slice data,
-                                    TRI_vocbase_t& vocbase) {
-#ifdef USE_ENTERPRISE
-  auto isSmart = data.get(StaticStrings::IsSmart);
-
-  if (isSmart.isTrue()) {
-    auto type = data.get(StaticStrings::DataSourceType);
-
-    if (type.isInteger() && type.getUInt() == TRI_COL_TYPE_EDGE) {
-      return std::make_shared<VirtualClusterSmartEdgeCollection>(vocbase, data);
-    }
-    return std::make_shared<SmartVertexCollection>(vocbase, data);
-  }
-#endif
-  return std::make_shared<LogicalCollection>(vocbase, data, true);
 }
 
 struct ClusterInfo::NewStuffByDatabase {
@@ -1474,7 +1572,8 @@ void ClusterInfo::loadPlan() {
              VPackObjectIterator(logsSlice)) {
           auto spec =
               std::make_shared<replication2::agency::LogPlanSpecification>(
-                  replication2::agency::from_velocypack, logSlice);
+                  velocypack::deserialize<
+                      replication2::agency::LogPlanSpecification>(logSlice));
           newLogs.emplace(spec->id, spec);
         }
         stuff->replicatedLogs = std::move(newLogs);
@@ -2653,6 +2752,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
+  auto collections = getCollections(name);
 
   auto dbServerResult =
       std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
@@ -2719,10 +2819,28 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
     }
   }
 
+  auto replicatedStatesCleanup = futures::Future<Result>{std::in_place};
+  if (!collections.empty() &&
+      collections.front()->replicationVersion() == replication::Version::TWO) {
+    std::vector<replication2::LogId> replicatedStates;
+    for (auto const& collection : collections) {
+      auto shardIds = collection->shardIds();
+      replicatedStates.reserve(replicatedStates.size() + shardIds->size());
+      std::transform(
+          shardIds->begin(), shardIds->end(),
+          std::back_inserter(replicatedStates), [](auto const& shardPair) {
+            return LogicalCollection::shardIdToStateId(shardPair.first);
+          });
+    }
+    collections.clear();
+    replicatedStatesCleanup = deleteReplicatedStates(name, replicatedStates);
+  }
+
   // Now wait stuff in Current to disappear and thus be complete:
   {
     while (true) {
-      if (dbServerResult->load(std::memory_order_acquire).has_value()) {
+      if (dbServerResult->load(std::memory_order_acquire).has_value() &&
+          replicatedStatesCleanup.isReady()) {
         cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
         AgencyOperation delCurrentCollection(
             where, AgencySimpleOperationType::DELETE_OP);
@@ -2731,7 +2849,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
         AgencyWriteTransaction cx(
             {delCurrentCollection, incrementCurrentVersion});
         res = ac.sendTransactionWithFailover(cx);
-        if (res.successful()) {
+        if (res.successful() && replicatedStatesCleanup.get().ok()) {
           return Result(TRI_ERROR_NO_ERROR);
         }
         return Result(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT);
@@ -2766,7 +2884,8 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
     velocypack::Slice json,  // collection definition
     double timeout,          // request timeout,
     bool isNewDatabase,
-    std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike) {
+    std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
+    replication::Version replicationVersion) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   auto serverState = ServerState::instance();
   std::vector<ClusterCollectionCreationInfo> infos{
@@ -2777,7 +2896,8 @@ Result ClusterInfo::createCollectionCoordinator(  // create collection
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   return createCollectionsCoordinator(databaseName, infos, endTime,
-                                      isNewDatabase, colToDistributeShardsLike);
+                                      isNewDatabase, colToDistributeShardsLike,
+                                      replicationVersion);
 }
 
 /// @brief this method does an atomic check of the preconditions for the
@@ -2847,7 +2967,8 @@ Result ClusterInfo::createCollectionsCoordinator(
     std::string const& databaseName,
     std::vector<ClusterCollectionCreationInfo>& infos, double endTime,
     bool isNewDatabase,
-    std::shared_ptr<const LogicalCollection> const& colToDistributeShardsLike) {
+    std::shared_ptr<const LogicalCollection> const& colToDistributeShardsLike,
+    replication::Version replicationVersion) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   using arangodb::velocypack::Slice;
 
@@ -2899,6 +3020,7 @@ Result ClusterInfo::createCollectionsCoordinator(
   std::vector<AgencyPrecondition> precs;
   containers::FlatHashSet<std::string> conditions;
   containers::FlatHashSet<ServerID> allServers;
+  std::vector<replication2::replicated_state::agency::Target> replicatedStates;
 
   // current thread owning 'cacheMutex' write lock (workaround for non-recursive
   // Mutex)
@@ -3074,6 +3196,24 @@ Result ClusterInfo::createCollectionsCoordinator(
     opers.emplace_back(CreateCollectionOrder(databaseName, info.collectionID,
                                              info.isBuildingSlice()));
 
+    if (replicationVersion == replication::Version::TWO) {
+      // Create a replicated state for each shard.
+      replicatedStates.reserve(replicatedStates.size() + shardServers.size());
+      for (auto const& [shardId, serverIds] : shardServers) {
+        auto spec = createReplicatedStateSpec(
+            shardId, serverIds, info.writeConcern, info.replicationFactor);
+
+        auto builder = std::make_shared<VPackBuilder>();
+        velocypack::serialize(*builder, spec);
+        auto path = basics::StringUtils::joinT("/", "Target/ReplicatedStates",
+                                               databaseName, spec.id);
+
+        opers.emplace_back(AgencyOperation(path, AgencyValueOperationType::SET,
+                                           std::move(builder)));
+        replicatedStates.emplace_back(std::move(spec));
+      }
+    }
+
     // Ensure preconditions on the agency
     std::shared_ptr<ShardMap> otherCidShardMap = nullptr;
     auto const otherCidString = basics::VelocyPackHelper::getStringValue(
@@ -3147,8 +3287,9 @@ Result ClusterInfo::createCollectionsCoordinator(
     }
   }
 
-  auto deleteCollectionGuard = scopeGuard([&infos, &databaseName, this,
-                                           &ac]() noexcept {
+  auto deleteCollectionGuard = scopeGuard([&infos, &databaseName, this, &ac,
+                                           replicationVersion,
+                                           &replicatedStates]() noexcept {
     try {
       using namespace arangodb::cluster::paths;
       using namespace arangodb::cluster::paths::aliases;
@@ -3177,6 +3318,20 @@ Result ClusterInfo::createCollectionsCoordinator(
                          AgencySimpleOperationType::INCREMENT_OP);
       auto trx = AgencyWriteTransaction{opers, precs};
 
+      auto replicatedStatesCleanup = futures::Future<Result>{std::in_place};
+      if (replicationVersion == replication::Version::TWO) {
+        std::vector<replication2::LogId> stateIds;
+        std::transform(
+            replicatedStates.begin(), replicatedStates.end(),
+            std::back_inserter(stateIds),
+            [](replication2::replicated_state::agency::Target const& spec) {
+              return spec.id;
+            });
+
+        replicatedStatesCleanup =
+            this->deleteReplicatedStates(databaseName, stateIds);
+      }
+
       using namespace std::chrono;
       using namespace std::chrono_literals;
       auto const begin = steady_clock::now();
@@ -3189,7 +3344,9 @@ Result ClusterInfo::createCollectionsCoordinator(
         // If the collections were removed (res.ok()), we may abort. If we run
         // into precondition failed, the collections were successfully created,
         // so we're fine too.
-        if (res.successful()) {
+        if (res.successful() &&
+            (replicationVersion == replication::Version::ONE ||
+             replicatedStatesCleanup.isReady())) {
           if (VPackSlice resultsSlice = res.slice().get("results");
               resultsSlice.length() > 0) {
             [[maybe_unused]] Result r =
@@ -3302,6 +3459,14 @@ Result ClusterInfo::createCollectionsCoordinator(
   LOG_TOPIC("98bca", DEBUG, Logger::CLUSTER)
       << "createCollectionCoordinator, Plan changed, waiting for success...";
 
+  auto replicatedStatesWait = std::invoke([&]() -> futures::Future<Result> {
+    if (replicationVersion == replication::Version::TWO) {
+      // TODO could the version of a replicated state change in the meantime?
+      return waitForReplicatedStatesCreation(databaseName, replicatedStates);
+    }
+    return Result{};
+  });
+
   do {
     auto tmpRes = dbServerResult->load(std::memory_order_acquire);
     if (TRI_microtime() > endTime) {
@@ -3313,6 +3478,12 @@ Result ClusterInfo::createCollectionsCoordinator(
             << "\njson: " << info.json.toString();
       }
 
+      if (replicationVersion == replication::Version::TWO) {
+        LOG_TOPIC("6d279", ERR, Logger::REPLICATION2)
+            << "Replicated states readiness: " << std::boolalpha
+            << replicatedStatesWait.isReady();
+      }
+
       // Get a full agency dump for debugging
       logAgencyDump();
 
@@ -3321,7 +3492,22 @@ Result ClusterInfo::createCollectionsCoordinator(
       }
     }
 
-    if (nrDone->load(std::memory_order_acquire) == infos.size()) {
+    if (nrDone->load(std::memory_order_acquire) == infos.size() &&
+        (replicationVersion == replication::Version::ONE ||
+         replicatedStatesWait.isReady())) {
+      if (replicationVersion == replication::Version::TWO) {
+        auto result = replicatedStatesWait.get();
+        if (result.fail()) {
+          LOG_TOPIC("ce2be", WARN, Logger::CLUSTER)
+              << "Failed createCollectionsCoordinator for " << infos.size()
+              << " collections in database " << databaseName
+              << " isNewDatabase: " << isNewDatabase
+              << " first collection name: " << infos[0].name
+              << " result: " << result;
+          return result;
+        }
+      }
+
       // We do not need to lock all condition variables
       // we are save by cacheMutex
       cbGuard.fire();
@@ -3648,42 +3834,58 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
     return Result(TRI_ERROR_NO_ERROR);
   }
 
-  {
-    while (true) {
-      auto tmpRes = dbServerResult->load();
-      if (tmpRes.has_value()) {
-        cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
-        // ...remove the entire directory for the collection
-        AgencyOperation delCurrentCollection(
-            "Current/Collections/" + dbName + "/" + collectionID,
-            AgencySimpleOperationType::DELETE_OP);
-        AgencyWriteTransaction cx({delCurrentCollection});
-        res = ac.sendTransactionWithFailover(cx);
-        events::DropCollection(dbName, collectionID, *tmpRes);
-        return Result(*tmpRes);
+  // Delete replicated states in case we are using Replication2
+  auto replicatedStatesCleanup = futures::Future<Result>{std::in_place};
+  if (coll->replicationVersion() == replication::Version::TWO) {
+    std::vector<replication2::LogId> stateIds;
+    for (auto pair : VPackObjectIterator(shardsSlice)) {
+      auto shardId = pair.key.copyString();
+      stateIds.emplace_back(LogicalCollection::shardIdToStateId(shardId));
+    }
+    replicatedStatesCleanup = deleteReplicatedStates(dbName, stateIds);
+  }
+
+  while (true) {
+    auto tmpRes = dbServerResult->load();
+    if (tmpRes.has_value() && replicatedStatesCleanup.isReady()) {
+      if (replicatedStatesCleanup.get().fail()) {
+        LOG_TOPIC("f5063", ERR, Logger::CLUSTER)
+            << "Failed to successfully remove replicated states"
+            << " database: " << dbName << " collection ID: " << collectionID
+            << " collection name: " << coll->name();
       }
 
-      if (TRI_microtime() > endTime) {
-        LOG_TOPIC("76ea6", ERR, Logger::CLUSTER)
-            << "Timeout in _drop collection (" << realTimeout << ")"
-            << ": database: " << dbName << ", collId:" << collectionID
-            << "\ntransaction sent to agency: " << trans.toJson();
+      cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
+      // ...remove the entire directory for the collection
+      AgencyOperation delCurrentCollection(
+          "Current/Collections/" + dbName + "/" + collectionID,
+          AgencySimpleOperationType::DELETE_OP);
+      AgencyWriteTransaction cx({delCurrentCollection});
+      res = ac.sendTransactionWithFailover(cx);
+      events::DropCollection(dbName, collectionID, *tmpRes);
+      return Result(*tmpRes);
+    }
 
-        logAgencyDump();
+    if (TRI_microtime() > endTime) {
+      LOG_TOPIC("76ea6", ERR, Logger::CLUSTER)
+          << "Timeout in _drop collection (" << realTimeout << ")"
+          << ": database: " << dbName << ", collId:" << collectionID
+          << "\ntransaction sent to agency: " << trans.toJson();
 
-        events::DropCollection(dbName, collectionID, TRI_ERROR_CLUSTER_TIMEOUT);
-        return Result(TRI_ERROR_CLUSTER_TIMEOUT);
-      }
+      logAgencyDump();
 
-      {
-        CONDITION_LOCKER(locker, agencyCallback->_cv);
-        agencyCallback->executeByCallbackOrTimeout(interval);
-      }
+      events::DropCollection(dbName, collectionID, TRI_ERROR_CLUSTER_TIMEOUT);
+      return Result(TRI_ERROR_CLUSTER_TIMEOUT);
+    }
 
-      if (_server.isStopping()) {
-        events::DropCollection(dbName, collectionID, TRI_ERROR_SHUTTING_DOWN);
-        return Result(TRI_ERROR_SHUTTING_DOWN);
-      }
+    {
+      CONDITION_LOCKER(locker, agencyCallback->_cv);
+      agencyCallback->executeByCallbackOrTimeout(interval);
+    }
+
+    if (_server.isStopping()) {
+      events::DropCollection(dbName, collectionID, TRI_ERROR_SHUTTING_DOWN);
+      return Result(TRI_ERROR_SHUTTING_DOWN);
     }
   }
 }
@@ -5872,6 +6074,44 @@ CollectionID ClusterInfo::getCollectionNameForShard(std::string_view shardId) {
   return StaticStrings::Empty;
 }
 
+auto ClusterInfo::getReplicatedLogsParticipants(std::string_view database) const
+    -> ResultT<
+        std::unordered_map<replication2::LogId, std::vector<std::string>>> {
+  READ_LOCKER(readLocker, _planProt.lock);
+
+  auto it = _newStuffByDatabase.find(database);
+  if (it == std::end(_newStuffByDatabase)) {
+    return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
+  }
+
+  auto replicatedLogs =
+      std::unordered_map<replication2::LogId, std::vector<std::string>>{};
+  for (auto const& [logId, logPlanSpecification] : it->second->replicatedLogs) {
+    std::vector<std::string> participants;
+    auto const& planParticipants =
+        logPlanSpecification->participantsConfig.participants;
+    participants.reserve(planParticipants.size());
+    for (auto const& pInfo : planParticipants) {
+      participants.push_back(pInfo.first);
+    }
+
+    // Move the leader at the top of the list.
+    if (logPlanSpecification->currentTerm.has_value() &&
+        logPlanSpecification->currentTerm->leader.has_value()) {
+      for (auto& p : participants) {
+        if (p == logPlanSpecification->currentTerm->leader->serverId) {
+          std::swap(p, participants[0]);
+          break;
+        }
+      }
+    }
+
+    replicatedLogs.emplace(logId, std::move(participants));
+  }
+
+  return replicatedLogs;
+}
+
 auto ClusterInfo::getReplicatedLogLeader(std::string_view database,
                                          replication2::LogId id) const
     -> ResultT<ServerID> {
@@ -5884,7 +6124,7 @@ auto ClusterInfo::getReplicatedLogLeader(std::string_view database,
 
   auto it2 = it->second->replicatedLogs.find(id);
   if (it2 == std::end(it->second->replicatedLogs)) {
-    return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
+    return Result::fmt(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
   }
 
   if (auto const& term = it2->second->currentTerm) {
@@ -6741,7 +6981,7 @@ auto arangodb::ClusterInfo::getReplicatedLogPlanSpecification(
 
   auto it2 = it->second->replicatedLogs.find(id);
   if (it2 == std::end(it->second->replicatedLogs)) {
-    return {TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND};
+    return Result::fmt(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
   }
 
   TRI_ASSERT(it2->second != nullptr);

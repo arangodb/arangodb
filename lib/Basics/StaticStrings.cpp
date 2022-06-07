@@ -249,12 +249,14 @@ std::string const StaticStrings::Body("body");
 std::string const StaticStrings::ParsedBody("parsedBody");
 
 // collection attributes
+std::string const StaticStrings::AllowUserKeys("allowUserKeys");
 std::string const StaticStrings::CacheEnabled("cacheEnabled");
 std::string const StaticStrings::ComputedValues("computedValues");
 std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
 std::string const StaticStrings::Indexes("indexes");
 std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::IsSmartChild("isSmartChild");
+std::string const StaticStrings::KeyOptions("keyOptions");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
 std::string const StaticStrings::MinReplicationFactor("minReplicationFactor");
 std::string const StaticStrings::ObjectId("objectId");
@@ -384,6 +386,9 @@ std::string const StaticStrings::Spearhead("spearhead");
 std::string const StaticStrings::TargetConfig("targetConfig");
 std::string const StaticStrings::Term("term");
 std::string const StaticStrings::CommitIndex("commitIndex");
+std::string const StaticStrings::FirstIndex("firstIndex");
+std::string const StaticStrings::ReleaseIndex("releaseIndex");
+std::string const StaticStrings::LowestIndexToKeep("lowestIndexToKeep");
 std::string const StaticStrings::Outcome("outcome");
 
 // Generic attribute names

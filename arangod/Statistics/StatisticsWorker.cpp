@@ -22,10 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StatisticsWorker.h"
-#include "ConnectionStatistics.h"
-#include "RequestStatistics.h"
-#include "ServerStatistics.h"
-#include "StatisticsFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
@@ -48,6 +44,9 @@
 #include "RestServer/TtlFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Statistics/ConnectionStatistics.h"
+#include "Statistics/RequestStatistics.h"
+#include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -1106,7 +1105,7 @@ void StatisticsWorker::run() {
   // run the StatisticsWorker on DB servers!
   TRI_ASSERT(!ServerState::instance()->isDBServer());
 
-  while (ServerState::isMaintenance()) {
+  while (ServerState::isStartupOrMaintenance()) {
     if (isStopping()) {
       // startup aborted
       return;
@@ -1132,6 +1131,12 @@ void StatisticsWorker::run() {
 
   uint64_t seconds = 0;
   while (!isStopping()) {
+    TRI_IF_FAILURE("StatisticsWorker::bypass") {
+      CONDITION_LOCKER(guard, _cv);
+      guard.wait(1000 * 1000);
+      continue;
+    }
+
     seconds++;
     try {
       if (seconds % STATISTICS_INTERVAL == ourTerm) {

@@ -38,8 +38,12 @@ struct DocumentImportTest : public Benchmark<DocumentImportTest> {
       : Benchmark<DocumentImportTest>(arangobench) {}
 
   bool setUp(arangodb::httpclient::SimpleHttpClient* client) override {
-    return DeleteCollection(client, _arangobench.collection()) &&
-           CreateCollection(client, _arangobench.collection(), 2, _arangobench);
+    if (_arangobench.createCollection()) {
+      return DeleteCollection(client, _arangobench.collection()) &&
+             CreateCollection(client, _arangobench.collection(), 2,
+                              _arangobench);
+    }
+    return true;
   }
 
   void tearDown() override {}

@@ -37,16 +37,22 @@ class RestReplicatedStateHandler : public RestVocbaseBaseHandler {
   RestReplicatedStateHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
-  RestStatus execute() final;
-  char const* name() const final { return "RestReplicatedStateHandler"; }
-  RequestLane lane() const final { return RequestLane::CLIENT_SLOW; }
+  [[nodiscard]] auto execute() -> RestStatus final;
+  [[nodiscard]] auto name() const -> char const* final {
+    return "RestReplicatedStateHandler";
+  }
+  [[nodiscard]] auto lane() const -> RequestLane final {
+    return RequestLane::CLIENT_SLOW;
+  }
 
  private:
-  RestStatus executeByMethod(
-      replication2::ReplicatedStateMethods const& methods);
-  RestStatus handleGetRequest(
-      replication2::ReplicatedStateMethods const& methods);
-  RestStatus handlePostRequest(
-      replication2::ReplicatedStateMethods const& methods);
+  [[nodiscard]] auto executeByMethod(
+      replication2::ReplicatedStateMethods const& methods) -> RestStatus;
+  [[nodiscard]] auto handleGetRequest(
+      replication2::ReplicatedStateMethods const& methods) -> RestStatus;
+  [[nodiscard]] auto handlePostRequest(
+      replication2::ReplicatedStateMethods const& methods) -> RestStatus;
+  [[nodiscard]] auto handleDeleteRequest(
+      replication2::ReplicatedStateMethods const& methods) -> RestStatus;
 };
 }  // namespace arangodb

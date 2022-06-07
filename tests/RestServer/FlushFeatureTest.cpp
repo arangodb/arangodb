@@ -42,7 +42,6 @@
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "Utils/FlushThread.h"
 #include "V8Server/V8DealerFeature.h"
 
 #if USE_ENTERPRISE
@@ -151,9 +150,8 @@ TEST_F(FlushFeatureTest, test_subscription_retention) {
     subscription->_tick = subscriptionTick;
 
     {
-      size_t removed = 42;
-      TRI_voc_tick_t releasedTick = 42;
-      feature.releaseUnusedTicks(removed, releasedTick);
+      auto [active, removed, releasedTick] = feature.releaseUnusedTicks();
+      ASSERT_EQ(1, active);
       ASSERT_EQ(0, removed);                         // reference is being held
       ASSERT_EQ(subscription->_tick, releasedTick);  // min tick released
     }
@@ -165,17 +163,15 @@ TEST_F(FlushFeatureTest, test_subscription_retention) {
     subscription->_tick = newSubscriptionTick;
 
     {
-      size_t removed = 42;
-      TRI_voc_tick_t releasedTick = 42;
-      feature.releaseUnusedTicks(removed, releasedTick);
+      auto [active, removed, releasedTick] = feature.releaseUnusedTicks();
+      ASSERT_EQ(1, active);
       ASSERT_EQ(0, removed);                         // reference is being held
       ASSERT_EQ(subscription->_tick, releasedTick);  // min tick released
     }
   }
 
-  size_t removed = 42;
-  TRI_voc_tick_t releasedTick = 42;
-  feature.releaseUnusedTicks(removed, releasedTick);
+  auto [active, removed, releasedTick] = feature.releaseUnusedTicks();
+  ASSERT_EQ(0, active);
   ASSERT_EQ(1, removed);  // stale subscription was removed
   ASSERT_EQ(engine.currentTick(), releasedTick);  // min tick released
 }

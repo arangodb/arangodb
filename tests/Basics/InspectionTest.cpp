@@ -29,15 +29,20 @@
 #include <optional>
 #include <ostream>
 #include <string>
+#include <variant>
 #include <vector>
 
 #include <velocypack/Value.h>
 #include <velocypack/ValueType.h>
 #include <velocypack/velocypack-memory.h>
 
+#include "Inspection/Access.h"
 #include "Inspection/VPackLoadInspector.h"
 #include "Inspection/VPackSaveInspector.h"
 #include "Inspection/VPack.h"
+#include "velocypack/Builder.h"
+
+#include "Logger/LogMacros.h"
 
 namespace {
 
@@ -198,7 +203,7 @@ struct InvariantWithResult {
 template<class Inspector>
 auto inspect(Inspector& f, InvariantWithResult& x) {
   return f.object(x).fields(
-      f.field("i", x.i).invariant([](int v) -> arangodb::inspection::Result {
+      f.field("i", x.i).invariant([](int v) -> arangodb::inspection::Status {
         if (v == 0) {
           return {"Must not be zero"};
         }
@@ -247,12 +252,12 @@ struct MyTransformer {
   using MemoryType = int;
   using SerializedType = std::string;
 
-  arangodb::inspection::Result toSerialized(MemoryType v,
+  arangodb::inspection::Status toSerialized(MemoryType v,
                                             SerializedType& result) const {
     result = std::to_string(v);
     return {};
   }
-  arangodb::inspection::Result fromSerialized(SerializedType const& v,
+  arangodb::inspection::Status fromSerialized(SerializedType const& v,
                                               MemoryType& result) const {
     result = std::stoi(v);
     return {};
@@ -298,17 +303,167 @@ struct Specialization {
   int i;
   std::string s;
 };
+
+enum class AnEnumClass { Option1, Option2, Option3 };
+
+auto to_string(AnEnumClass e) -> std::string_view {
+  switch (e) {
+    case AnEnumClass::Option1:
+      return "Option1";
+    case AnEnumClass::Option2:
+      return "Option2";
+    case AnEnumClass::Option3:
+      return "Option3";
+  }
+  return "invalid.";
+}
+
+template<typename Enum>
+struct EnumStorage {
+  using MemoryType = Enum;
+
+  std::underlying_type_t<Enum> code;
+  std::string message;
+
+  explicit EnumStorage(Enum e)
+      : code(static_cast<std::underlying_type_t<Enum>>(e)),
+        message(to_string(e)){};
+  explicit EnumStorage() {}
+
+  operator Enum() const { return Enum(code); }
+};
+
+template<class Inspector, class Enum>
+auto inspect(Inspector& f, EnumStorage<Enum>& e) {
+  if constexpr (Inspector::isLoading) {
+    return f.object(e).fields(f.field("code", e.code),
+                              f.ignoreField("message"));
+  } else {
+    return f.object(e).fields(f.field("code", e.code),
+                              f.field("message", e.message));
+  }
+}
+
+struct AnEmptyObject {};
+template<class Inspector>
+auto inspect(Inspector& f, AnEmptyObject& x) {
+  return f.object(x).fields();
+}
+
 }  // namespace
 
 namespace arangodb::inspection {
 template<>
 struct Access<Specialization> : AccessBase<Specialization> {
   template<class Inspector>
-  [[nodiscard]] static Result apply(Inspector& f, Specialization& x) {
+  [[nodiscard]] static Status apply(Inspector& f, Specialization& x) {
     return f.object(x).fields(f.field("i", x.i), f.field("s", x.s));
   }
 };
+template<>
+struct Access<AnEnumClass>
+    : StorageTransformerAccess<AnEnumClass, EnumStorage<AnEnumClass>> {};
+
 }  // namespace arangodb::inspection
+
+namespace {
+
+struct ExplicitIgnore {
+  std::string s;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, ExplicitIgnore& x) {
+  return f.object(x).fields(f.field("s", x.s), f.ignoreField("ignore"));
+}
+
+struct Unsafe {
+  std::string_view view;
+  arangodb::velocypack::Slice slice;
+  arangodb::velocypack::HashedStringRef hashed;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, Unsafe& x) {
+  return f.object(x).fields(f.field("view", x.view), f.field("slice", x.slice),
+                            f.field("hashed", x.hashed));
+}
+
+struct Struct1 {
+  int v;
+};
+struct Struct2 {
+  int v;
+};
+
+struct MyQualifiedVariant
+    : std::variant<std::string, int, Struct1, Struct2, std::monostate> {};
+
+struct QualifiedVariant {
+  MyQualifiedVariant a;
+  MyQualifiedVariant b;
+  MyQualifiedVariant c;
+  MyQualifiedVariant d;
+  MyQualifiedVariant e;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, MyQualifiedVariant& x) {
+  namespace insp = arangodb::inspection;
+  return f.variant(x).qualified("t", "v").alternatives(
+      insp::type<std::string>("string"),   //
+      insp::type<int>("int"),              //
+      insp::type<Struct1>("Struct1"),      //
+      insp::type<Struct2>("Struct2"),      //
+      insp::type<std::monostate>("nil"));  //
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, QualifiedVariant& x) {
+  return f.object(x).fields(f.field("a", x.a), f.field("b", x.b),
+                            f.field("c", x.c), f.field("d", x.d),
+                            f.field("e", x.e));
+}
+
+struct MyUnqualifiedVariant
+    : std::variant<std::string, int, Struct1, Struct2, std::monostate> {};
+
+struct UnqualifiedVariant {
+  MyUnqualifiedVariant a;
+  MyUnqualifiedVariant b;
+  MyUnqualifiedVariant c;
+  MyUnqualifiedVariant d;
+  MyUnqualifiedVariant e;
+};
+
+template<class Inspector>
+auto inspect(Inspector& f, MyUnqualifiedVariant& x) {
+  namespace insp = arangodb::inspection;
+  return f.variant(x).unqualified().alternatives(
+      insp::type<std::string>("string"),   //
+      insp::type<int>("int"),              //
+      insp::type<Struct1>("Struct1"),      //
+      insp::type<Struct2>("Struct2"),      //
+      insp::type<std::monostate>("nil"));  //
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, UnqualifiedVariant& x) {
+  return f.object(x).fields(f.field("a", x.a), f.field("b", x.b),
+                            f.field("c", x.c), f.field("d", x.d),
+                            f.field("e", x.e));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, Struct1& x) {
+  return f.object(x).fields(f.field("v", x.v));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, Struct2& x) {
+  return f.object(x).fields(f.field("v", x.v));
+}
+}  // namespace
 
 namespace {
 using namespace arangodb;
@@ -319,6 +474,14 @@ struct VPackSaveInspectorTest : public ::testing::Test {
   velocypack::Builder builder;
   VPackSaveInspector inspector{builder};
 };
+
+TEST_F(VPackSaveInspectorTest, store_empty_object) {
+  auto empty = AnEmptyObject{};
+  auto result = inspector.apply(empty);
+  EXPECT_TRUE(result.ok());
+  EXPECT_TRUE(builder.slice().isObject());
+  EXPECT_EQ(0, builder.slice().length());
+}
 
 TEST_F(VPackSaveInspectorTest, store_int) {
   int x = 42;
@@ -499,7 +662,10 @@ TEST_F(VPackSaveInspectorTest, store_optional) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(3, slice.length());
+  EXPECT_EQ(5, slice.length());
+  // a and b have fallbacks, so we need to serialize them explicitly as null
+  EXPECT_TRUE(slice["a"].isNull());
+  EXPECT_TRUE(slice["b"].isNull());
   EXPECT_EQ("blubb", slice["y"].copyString());
 
   auto vec = slice["vec"];
@@ -537,7 +703,7 @@ TEST_F(VPackSaveInspectorTest, store_optional_pointer) {
 
   velocypack::Slice slice = builder.slice();
   ASSERT_TRUE(slice.isObject());
-  EXPECT_EQ(3, slice.length());
+  EXPECT_EQ(5, slice.length());
   EXPECT_EQ(42, slice["b"].getInt());
   EXPECT_EQ(43, slice["d"]["i"].getInt());
   auto vec = slice["vec"];
@@ -546,6 +712,9 @@ TEST_F(VPackSaveInspectorTest, store_optional_pointer) {
   EXPECT_EQ(1, vec[0].getInt());
   EXPECT_TRUE(vec[1].isNull());
   EXPECT_EQ(2, vec[2].getInt());
+  // x and y have fallbacks, so we need to serialize them explicitly as null
+  EXPECT_TRUE(slice["x"].isNull());
+  EXPECT_TRUE(slice["y"].isNull());
 }
 
 TEST_F(VPackSaveInspectorTest, store_object_with_fallbacks) {
@@ -613,9 +782,101 @@ TEST_F(VPackSaveInspectorTest, store_type_with_custom_specialization) {
   EXPECT_EQ(s.s, slice["s"].copyString());
 }
 
+TEST_F(VPackSaveInspectorTest, store_type_with_explicitly_ignored_fields) {
+  ExplicitIgnore e{.s = "foobar"};
+  auto result = inspector.apply(e);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+  EXPECT_EQ(1, slice.length());
+}
+
+TEST_F(VPackSaveInspectorTest, store_type_with_unsafe_fields) {
+  velocypack::Builder localBuilder;
+  localBuilder.add(VPackValue("blubb"));
+  std::string_view hashedString = "hashedString";
+  Unsafe u{.view = "foobar",
+           .slice = localBuilder.slice(),
+           .hashed = {hashedString.data(),
+                      static_cast<uint32_t>(hashedString.size())}};
+  auto result = inspector.apply(u);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+  EXPECT_EQ("foobar", slice["view"].copyString());
+  EXPECT_EQ("blubb", slice["slice"].copyString());
+  EXPECT_EQ(hashedString, slice["hashed"].copyString());
+}
+
+TEST_F(VPackSaveInspectorTest, store_qualified_variant) {
+  QualifiedVariant d{.a = {"foobar"},
+                     .b = {42},
+                     .c = {Struct1{1}},
+                     .d = {Struct2{2}},
+                     .e = {std::monostate{}}};
+  auto result = inspector.apply(d);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+  EXPECT_EQ("string", slice["a"]["t"].stringView());
+  EXPECT_EQ("foobar", slice["a"]["v"].stringView());
+
+  EXPECT_EQ("int", slice["b"]["t"].stringView());
+  EXPECT_EQ(42, slice["b"]["v"].getInt());
+
+  EXPECT_EQ("Struct1", slice["c"]["t"].stringView());
+  EXPECT_EQ(1, slice["c"]["v"]["v"].getInt());
+
+  EXPECT_EQ("Struct2", slice["d"]["t"].stringView());
+  EXPECT_EQ(2, slice["d"]["v"]["v"].getInt());
+
+  EXPECT_EQ("nil", slice["e"]["t"].stringView());
+  EXPECT_TRUE(slice["e"]["v"].isEmptyObject());
+}
+
+TEST_F(VPackSaveInspectorTest, store_unqualified_variant) {
+  UnqualifiedVariant d{.a = {"foobar"},
+                       .b = {42},
+                       .c = {Struct1{1}},
+                       .d = {Struct2{2}},
+                       .e = {std::monostate{}}};
+  auto result = inspector.apply(d);
+  ASSERT_TRUE(result.ok());
+
+  velocypack::Slice slice = builder.slice();
+  ASSERT_TRUE(slice.isObject());
+  EXPECT_EQ(1, slice["a"].length());
+  EXPECT_EQ("foobar", slice["a"]["string"].stringView());
+
+  EXPECT_EQ(1, slice["b"].length());
+  EXPECT_EQ(42, slice["b"]["int"].getInt());
+
+  EXPECT_EQ(1, slice["c"].length());
+  EXPECT_EQ(1, slice["c"]["Struct1"]["v"].getInt());
+
+  EXPECT_EQ(1, slice["d"].length());
+  EXPECT_EQ(2, slice["d"]["Struct2"]["v"].getInt());
+
+  EXPECT_EQ(1, slice["e"].length());
+  EXPECT_TRUE(slice["e"]["nil"].isEmptyObject());
+}
+
 struct VPackLoadInspectorTest : public ::testing::Test {
   velocypack::Builder builder;
 };
+
+TEST_F(VPackLoadInspectorTest, load_empty_object) {
+  builder.openObject();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  auto d = AnEmptyObject{};
+  auto result = inspector.apply(d);
+  ASSERT_TRUE(result.ok());
+}
 
 TEST_F(VPackLoadInspectorTest, load_int) {
   builder.add(VPackValue(42));
@@ -856,7 +1117,7 @@ TEST_F(VPackLoadInspectorTest, load_optional) {
                     .y = "blubb",
                     .vec = {1, std::nullopt, 3},
                     .map = {{"1", 1}, {"2", std::nullopt}, {"3", 3}}};
-  EXPECT_EQ(expected.a, o.a) << o.a.has_value() << " " << o.a.value();
+  EXPECT_EQ(expected.a, o.a);
   EXPECT_EQ(expected.b, o.b);
   EXPECT_EQ(expected.x, o.x);
   EXPECT_EQ(expected.y, o.y);
@@ -1268,6 +1529,18 @@ TEST_F(VPackLoadInspectorTest, load_object_with_fallback_reference) {
   EXPECT_EQ(42, f.y);
 }
 
+TEST_F(VPackLoadInspectorTest, load_object_ignoring_missing_fields) {
+  builder.openObject();
+  builder.close();
+  VPackLoadInspector inspector{builder, {.ignoreMissingFields = true}};
+
+  FallbackReference f{.x = 1, .y = 2};
+  auto result = inspector.apply(f);
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ(1, f.x);
+  EXPECT_EQ(1, f.y);
+}
+
 TEST_F(VPackLoadInspectorTest, load_object_with_invariant_fulfilled) {
   builder.openObject();
   builder.add("i", VPackValue(42));
@@ -1422,6 +1695,282 @@ TEST_F(VPackLoadInspectorTest, load_type_with_custom_specialization) {
   EXPECT_EQ("foobar", s.s);
 }
 
+TEST_F(VPackLoadInspectorTest, load_type_with_explicitly_ignored_fields) {
+  builder.openObject();
+  builder.add("s", VPackValue("foobar"));
+  builder.add("ignore", VPackValue("something"));
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  ExplicitIgnore e;
+  auto result = inspector.apply(e);
+  ASSERT_TRUE(result.ok());
+}
+
+TEST_F(VPackLoadInspectorTest, load_qualified_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("t", "string");
+  builder.add("v", "foobar");
+  builder.close();
+
+  builder.add(VPackValue("b"));
+  builder.openObject();
+  builder.add("t", "int");
+  builder.add("v", 42);
+  builder.close();
+
+  builder.add(VPackValue("c"));
+  builder.openObject();
+  builder.add("t", "Struct1");
+  builder.add(VPackValue("v"));
+  builder.openObject();
+  builder.add("v", 1);
+  builder.close();
+  builder.close();
+
+  builder.add(VPackValue("d"));
+  builder.openObject();
+  builder.add("t", "Struct2");
+  builder.add(VPackValue("v"));
+  builder.openObject();
+  builder.add("v", 2);
+  builder.close();
+  builder.close();
+
+  builder.add(VPackValue("e"));
+  builder.openObject();
+  builder.add("t", "nil");
+  builder.add(VPackValue("v"));
+  builder.openObject();
+  builder.close();
+  builder.close();
+
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  QualifiedVariant v{.a = {std::monostate{}},
+                     .b = {std::monostate{}},
+                     .c = {std::monostate{}},
+                     .d = {std::monostate{}},
+                     .e = {0}};
+  auto result = inspector.apply(v);
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ("foobar", std::get<std::string>(v.a));
+  EXPECT_EQ(42, std::get<int>(v.b));
+  EXPECT_EQ(1, std::get<Struct1>(v.c).v);
+  EXPECT_EQ(2, std::get<Struct2>(v.d).v);
+  EXPECT_TRUE(std::holds_alternative<std::monostate>(v.e));
+}
+
+TEST_F(VPackLoadInspectorTest,
+       error_unknown_type_tag_when_loading_qualified_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("t", "blubb");
+  builder.add("v", "");
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  QualifiedVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Found invalid type: blubb", result.error());
+  EXPECT_EQ("a", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       error_expecting_string_when_parsing_qualified_variant_value) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("t", "string");
+  builder.add("v", 42);
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  QualifiedVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Expecting type String", result.error());
+  EXPECT_EQ("a.value", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       error_missing_tag_when_parsing_qualified_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("v", 42);
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  QualifiedVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Variant type field \"t\" is missing", result.error());
+  EXPECT_EQ("a", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       error_invalid_tag_type_when_parsing_qualified_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("t", 42);
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  QualifiedVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Variant type field \"t\" must be a string", result.error());
+  EXPECT_EQ("a", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       error_missing_value_when_parsing_qualified_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("t", "int");
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  QualifiedVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Variant value field \"v\" is missing", result.error());
+  EXPECT_EQ("a", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest, load_unqualified_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("string", "foobar");
+  builder.close();
+
+  builder.add(VPackValue("b"));
+  builder.openObject();
+  builder.add("int", 42);
+  builder.close();
+
+  builder.add(VPackValue("c"));
+  builder.openObject();
+  builder.add(VPackValue("Struct1"));
+  builder.openObject();
+  builder.add("v", 1);
+  builder.close();
+  builder.close();
+
+  builder.add(VPackValue("d"));
+  builder.openObject();
+  builder.add(VPackValue("Struct2"));
+  builder.openObject();
+  builder.add("v", 2);
+  builder.close();
+  builder.close();
+
+  builder.add(VPackValue("e"));
+  builder.openObject();
+  builder.add(VPackValue("nil"));
+  builder.openObject();
+  builder.close();
+  builder.close();
+
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  UnqualifiedVariant v{.a = {std::monostate{}},
+                       .b = {std::monostate{}},
+                       .c = {std::monostate{}},
+                       .d = {std::monostate{}},
+                       .e = {0}};
+  auto result = inspector.apply(v);
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ("foobar", std::get<std::string>(v.a));
+  EXPECT_EQ(42, std::get<int>(v.b));
+  EXPECT_EQ(1, std::get<Struct1>(v.c).v);
+  EXPECT_EQ(2, std::get<Struct2>(v.d).v);
+  EXPECT_TRUE(std::holds_alternative<std::monostate>(v.e));
+}
+
+TEST_F(VPackLoadInspectorTest,
+       error_unknown_type_tag_when_loading_unqualified_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("blubb", "");
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  UnqualifiedVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Found invalid type: blubb", result.error());
+  EXPECT_EQ("a", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       error_expecting_string_when_parsing_unqualified_variant_value) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.add("string", 42);
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  UnqualifiedVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Expecting type String", result.error());
+  EXPECT_EQ("a.value", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest,
+       error_missing_data_when_parsing_qualified_variant) {
+  builder.openObject();
+  builder.add(VPackValue("a"));
+  builder.openObject();
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  UnqualifiedVariant v;
+  auto result = inspector.apply(v);
+  ASSERT_FALSE(result.ok());
+  EXPECT_EQ("Missing unqualified variant data", result.error());
+  EXPECT_EQ("a", result.path());
+}
+
+TEST_F(VPackLoadInspectorTest, load_type_with_unsafe_fields) {
+  builder.openObject();
+  builder.add("view", VPackValue("foobar"));
+  builder.add("slice", VPackValue("blubb"));
+  builder.add("hashed", VPackValue("hashedString"));
+  builder.close();
+  arangodb::inspection::VPackUnsafeLoadInspector inspector{builder};
+
+  Unsafe u;
+  auto result = inspector.apply(u);
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ(builder.slice()["view"].stringView(), u.view);
+  EXPECT_EQ(builder.slice()["view"].stringView().data(), u.view.data());
+  EXPECT_EQ(builder.slice()["slice"].start(), u.slice.start());
+  EXPECT_EQ(builder.slice()["hashed"].stringView(), u.hashed.stringView());
+  EXPECT_EQ(builder.slice()["hashed"].stringView().data(), u.hashed.data());
+}
+
 struct VPackInspectionTest : public ::testing::Test {};
 
 TEST_F(VPackInspectionTest, serialize) {
@@ -1470,6 +2019,37 @@ TEST_F(VPackInspectionTest, deserialize_throws) {
         }
       },
       arangodb::basics::Exception);
+}
+
+TEST_F(VPackInspectionTest, GenericEnumClass) {
+  {
+    velocypack::Builder builder;
+
+    AnEnumClass const d = AnEnumClass::Option1;
+    arangodb::velocypack::serialize(builder, d);
+
+    velocypack::Slice slice = builder.slice();
+    ASSERT_TRUE(slice.isObject());
+    EXPECT_EQ(static_cast<std::underlying_type_t<AnEnumClass>>(d),
+              slice["code"].getInt());
+    EXPECT_EQ(to_string(d), slice["message"].copyString());
+  }
+
+  {
+    auto const expected = AnEnumClass::Option3;
+    velocypack::Builder builder;
+
+    builder.openObject();
+    builder.add(
+        "code",
+        VPackValue(static_cast<std::underlying_type_t<AnEnumClass>>(expected)));
+    builder.add("message", VPackValue(to_string(expected)));
+    builder.close();
+
+    auto d = arangodb::velocypack::deserialize<AnEnumClass>(builder.slice());
+
+    EXPECT_EQ(d, expected);
+  }
 }
 
 }  // namespace

@@ -28,11 +28,11 @@ const jsunity = require('jsunity');
 const request = require('@arangodb/request');
 const {sleep} = require('internal');
 const helper = require("@arangodb/testutils/replicated-logs-helper");
+const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 
 const {
   waitFor,
   dbservers,
-  allServersHealthy,
   registerAgencyTestBegin,
   registerAgencyTestEnd,
   checkRequestResult,
@@ -41,6 +41,9 @@ const {
   continueServerWaitOk,
   stopServerWaitFailed,
 } = helper;
+const {
+  allServersHealthy,
+} = lpreds;
 
 function getFailureOracleStatus(url) {
   const status = request.get(`${url}/_admin/cluster/failureOracle/status`);

@@ -95,8 +95,8 @@ using namespace arangodb::replication2;
 replicated_log::LogLeader::LogLeader(
     LoggerContext logContext, std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-    LogConfig config, ParticipantId id, LogTerm term, LogIndex firstIndex,
-    InMemoryLog inMemoryLog,
+    agency::LogPlanConfig config, ParticipantId id, LogTerm term,
+    LogIndex firstIndex, InMemoryLog inMemoryLog,
     std::shared_ptr<cluster::IFailureOracle const> failureOracle)
     : _logContext(std::move(logContext)),
       _logMetrics(std::move(logMetrics)),
@@ -291,9 +291,9 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 }
 
 auto replicated_log::LogLeader::construct(
-    LogConfig config, std::unique_ptr<LogCore> logCore,
+    agency::LogPlanConfig config, std::unique_ptr<LogCore> logCore,
     std::vector<std::shared_ptr<AbstractFollower>> const& followers,
-    std::shared_ptr<ParticipantsConfig const> participantsConfig,
+    std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
     ParticipantId id, LogTerm term, LoggerContext const& logContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
@@ -308,7 +308,7 @@ auto replicated_log::LogLeader::construct(
                    });
     auto message = basics::StringUtils::concatT(
         "LogCore missing when constructing LogLeader, leader id: ", id,
-        "term: ", term, "writeConcern: ", config.writeConcern,
+        "term: ", term, "effectiveWriteConcern: ", config.effectiveWriteConcern,
         "followers: ", basics::StringUtils::join(followerIds, ", "));
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(message));
   }
@@ -321,7 +321,7 @@ auto replicated_log::LogLeader::construct(
         LoggerContext logContext,
         std::shared_ptr<ReplicatedLogMetrics> logMetrics,
         std::shared_ptr<ReplicatedLogGlobalSettings const> options,
-        LogConfig config, ParticipantId id, LogTerm term,
+        agency::LogPlanConfig config, ParticipantId id, LogTerm term,
         LogIndex firstIndexOfCurrentTerm, InMemoryLog inMemoryLog,
         std::shared_ptr<cluster::IFailureOracle const> failureOracle)
         : LogLeader(std::move(logContext), std::move(logMetrics),
@@ -369,9 +369,10 @@ auto replicated_log::LogLeader::construct(
         commonLogContext, followers, localFollower, lastIndex);
     leaderDataGuard->activeParticipantsConfig = participantsConfig;
     leader->_localFollower = std::move(localFollower);
-    TRI_ASSERT(leaderDataGuard->_follower.size() >= config.writeConcern)
+    TRI_ASSERT(leaderDataGuard->_follower.size() >=
+               config.effectiveWriteConcern)
         << "actual followers: " << leaderDataGuard->_follower.size()
-        << " writeConcern: " << config.writeConcern;
+        << " effectiveWriteConcern: " << config.effectiveWriteConcern;
     TRI_ASSERT(leaderDataGuard->_follower.size() ==
                leaderDataGuard->activeParticipantsConfig->participants.size());
     TRI_ASSERT(std::all_of(leaderDataGuard->_follower.begin(),
@@ -939,10 +940,8 @@ auto replicated_log::LogLeader::GuardedLeaderData::checkCommitIndex()
 
   auto [newCommitIndex, commitFailReason, quorum] =
       algorithms::calculateCommitIndex(
-          indexes,
-          algorithms::CalculateCommitIndexOptions{
-              _self._config.writeConcern, _self._config.softWriteConcern},
-          _commitIndex, _inMemoryLog.getLastTermIndexPair());
+          indexes, _self._config.effectiveWriteConcern, _commitIndex,
+          _inMemoryLog.getLastTermIndexPair());
   _lastCommitFailReason = commitFailReason;
 
   LOG_CTX("6a6c0", TRACE, _self._logContext)
@@ -962,6 +961,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::getLocalStatistics() const
   result.commitIndex = _commitIndex;
   result.firstIndex = _inMemoryLog.getFirstIndex();
   result.spearHead = _inMemoryLog.getLastTermIndexPair();
+  result.releaseIndex = _releaseIndex;
   return result;
 }
 
@@ -971,6 +971,9 @@ replicated_log::LogLeader::GuardedLeaderData::GuardedLeaderData(
 
 auto replicated_log::LogLeader::release(LogIndex doneWithIdx) -> Result {
   return _guardedLeaderData.doUnderLock([&](GuardedLeaderData& self) -> Result {
+    if (self._didResign) {
+      return {TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
+    }
     TRI_ASSERT(doneWithIdx <= self._inMemoryLog.getLastIndex());
     if (doneWithIdx <= self._releaseIndex) {
       return {};
@@ -1012,11 +1015,32 @@ auto replicated_log::LogLeader::GuardedLeaderData::calculateCommitLag()
         std::chrono::duration<double, std::milli>>(
         std::chrono::steady_clock::now() - memtry->insertTp());
   } else {
-    TRI_ASSERT(_commitIndex == _inMemoryLog.getLastIndex())
+    TRI_ASSERT(_commitIndex == LogIndex{0} ||
+               _commitIndex == _inMemoryLog.getLastIndex())
         << "If there is no entry following the commitIndex the last index "
            "should be the commitIndex. _commitIndex = "
         << _commitIndex << ", lastIndex = " << _inMemoryLog.getLastIndex();
     return {};
+  }
+}
+
+auto replicated_log::LogLeader::GuardedLeaderData::waitForResign()
+    -> std::pair<futures::Future<futures::Unit>, DeferredAction> {
+  if (!_didResign) {
+    auto future = _waitForResignQueue.addWaitFor();
+    return {std::move(future), DeferredAction{}};
+  } else {
+    TRI_ASSERT(_waitForResignQueue.empty());
+    auto promise = futures::Promise<futures::Unit>{};
+    auto future = promise.getFuture();
+
+    auto action =
+        DeferredAction([promise = std::move(promise)]() mutable noexcept {
+          TRI_ASSERT(promise.valid());
+          promise.setValue();
+        });
+
+    return {std::move(future), std::move(action)};
   }
 }
 
@@ -1185,7 +1209,7 @@ auto replicated_log::LogLeader::isLeadershipEstablished() const noexcept
 }
 
 void replicated_log::LogLeader::establishLeadership(
-    std::shared_ptr<ParticipantsConfig const> config) {
+    std::shared_ptr<agency::ParticipantsConfig const> config) {
   LOG_CTX("f3aa8", TRACE, _logContext) << "trying to establish leadership";
   auto waitForIndex =
       _guardedLeaderData.doUnderLock([&](GuardedLeaderData& data) {
@@ -1241,17 +1265,57 @@ auto replicated_log::LogLeader::waitForLeadership()
   return waitFor(_firstIndexOfCurrentTerm);
 }
 
+namespace {
+// For (unordered) maps `left` and `right`, return `keys(left) \ keys(right)`
+auto const keySetDifference = [](auto const& left, auto const& right) {
+  using left_t = std::decay_t<decltype(left)>;
+  using right_t = std::decay_t<decltype(right)>;
+  static_assert(
+      std::is_same_v<typename left_t::key_type, typename right_t::key_type>);
+  using key_t = typename left_t::key_type;
+
+  auto result = std::vector<key_t>{};
+  for (auto const& [key, val] : left) {
+    if (!right.contains(key)) {
+      result.emplace_back(key);
+    }
+  }
+
+  return result;
+};
+}  // namespace
+
 auto replicated_log::LogLeader::updateParticipantsConfig(
-    std::shared_ptr<ParticipantsConfig const> config,
-    std::size_t previousGeneration,
-    std::unordered_map<ParticipantId, std::shared_ptr<AbstractFollower>>
-        additionalFollowers,
-    std::vector<ParticipantId> const& followersToRemove) -> LogIndex {
+    std::shared_ptr<agency::ParticipantsConfig const> const& config,
+    std::function<std::shared_ptr<replicated_log::AbstractFollower>(
+        ParticipantId const&)> const& buildFollower) -> LogIndex {
   LOG_CTX("ac277", TRACE, _logContext)
       << "trying to update configuration to generation " << config->generation;
-  TRI_ASSERT(previousGeneration < config->generation);
   auto waitForIndex = _guardedLeaderData.doUnderLock([&](GuardedLeaderData&
                                                              data) {
+    auto const [followersToRemove, additionalFollowers] = std::invoke([&] {
+      auto const& oldFollowers = data._follower;
+      // Note that newParticipants contains the leader, while oldFollowers does
+      // not.
+      auto const& newParticipants = config->participants;
+      auto const additionalParticipantIds =
+          keySetDifference(newParticipants, oldFollowers);
+      auto followersToRemove_ = keySetDifference(oldFollowers, newParticipants);
+
+      auto additionalFollowers_ =
+          std::unordered_map<ParticipantId,
+                             std::shared_ptr<AbstractFollower>>{};
+      for (auto const& participantId : additionalParticipantIds) {
+        // exclude the leader
+        if (participantId != _id) {
+          additionalFollowers_.try_emplace(participantId,
+                                           buildFollower(participantId));
+        }
+      }
+      return std::pair(std::move(followersToRemove_),
+                       std::move(additionalFollowers_));
+    });
+
     if (data.activeParticipantsConfig->generation >= config->generation) {
       auto const message = basics::StringUtils::concatT(
           "updated participant config generation is smaller or equal to "
@@ -1261,29 +1325,19 @@ auto replicated_log::LogLeader::updateParticipantsConfig(
       LOG_CTX("bab5b", TRACE, _logContext) << message;
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
     }
-    if (data.activeParticipantsConfig->generation != previousGeneration) {
-      // This is to make sure the `additionalFollowers` list is really the
-      // (asymmetric) difference between the current and new configuration.
-      auto const message = basics::StringUtils::concatT(
-          "assumed participant config generation does not match the current "
-          "generation - refusing to update; ",
-          "previous = ", previousGeneration,
-          ", current = ", data.activeParticipantsConfig->generation);
-      LOG_CTX("8dc8b", TRACE, _logContext) << message;
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
-    }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // all participants in the new configuration must either exist already, or
     // be added via additionalFollowers.
     {
       auto const& newConfigParticipants = config->participants;
-      TRI_ASSERT(std::all_of(newConfigParticipants.begin(),
-                             newConfigParticipants.end(), [&](auto const& it) {
-                               return data._follower.contains(it.first) ||
-                                      additionalFollowers.contains(it.first) ||
-                                      it.first == data._self.getParticipantId();
-                             }));
+      TRI_ASSERT(std::all_of(
+          newConfigParticipants.begin(), newConfigParticipants.end(),
+          [&, &additionalFollowers = additionalFollowers](auto const& it) {
+            return data._follower.contains(it.first) ||
+                   additionalFollowers.contains(it.first) ||
+                   it.first == data._self.getParticipantId();
+          }));
     }
 #endif
 
@@ -1396,7 +1450,13 @@ auto replicated_log::LogLeader::getParticipantConfigGenerations() const noexcept
 
 auto replicated_log::LogLeader::waitForResign()
     -> futures::Future<futures::Unit> {
-  return _guardedLeaderData.getLockedGuard()->_waitForResignQueue.addWaitFor();
+  using namespace arangodb::futures;
+  auto&& [future, action] =
+      _guardedLeaderData.getLockedGuard()->waitForResign();
+
+  action.fire();
+
+  return std::move(future);
 }
 
 auto replicated_log::LogLeader::LocalFollower::release(LogIndex stop) const

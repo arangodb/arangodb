@@ -30,6 +30,7 @@ var internal = require('internal');
 var print = internal.print;
 var fs = require('fs');
 var console = require('console');
+var minimatch = require('minimatch');
 
 var TOTAL = 0;
 var PASSED = 0;
@@ -50,6 +51,7 @@ var ENDTEST = 0.0;
 var STARTSUITE = 0.0;
 var ENDTEARDOWN = 0.0;
 var testFilter = "undefined";
+var suiteName = "undefined";
 var currentSuiteName = "undefined";
 var testCount = 0;
 var startMessage = "";
@@ -93,10 +95,8 @@ jsUnity.results.fail = function (index, testName, message) {
 
   ++testCount;
 
-  if (RESULTS[testName] === undefined)
-  {
-    if (testCount === 1)
-    {
+  if (RESULTS[testName] === undefined) {
+    if (testCount === 1) {
       print(newtime.toISOString() + internal.COLORS.COLOR_RED + " [   FAILED   ] " + currentSuiteName +
            internal.COLORS.COLOR_RESET + " (setUpAll: " + (jsUnity.env.getDate() - STARTTEST) + "ms)");
 
@@ -113,19 +113,28 @@ jsUnity.results.fail = function (index, testName, message) {
 
   RESULTS[testName].status = false;
   RESULTS[testName].message = message;
-  RESULTS[testName].duration = (ENDTEST - STARTTEST);
 
-  if (RESULTS[testName].setUpDuration === undefined)
-  {
+  RESULTS[testName].duration = (ENDTEST - STARTTEST);
+  if (RESULTS[testName].duration < 0) {
+    // if ENDTEST not set...
+    RESULTS[testName].duration = 0;
+  }
+
+  if (RESULTS[testName].setUpDuration === undefined) {
     RESULTS[testName].setUpDuration = newtime - SETUPS;
     RESULTS[testName].duration = 0;
+    RESULTS[testName].tearDownDuration = 0;
+  }
+  
+  if (RESULTS[testName].tearDownDuration === undefined) {
+    RESULTS[testName].tearDownDuration = 0;
   }
 
   print(newtime.toISOString() + internal.COLORS.COLOR_RED + " [   FAILED   ] " +
        testName + internal.COLORS.COLOR_RESET +
        ' (setUp: ' + RESULTS[testName].setUpDuration + 'ms,' +
        ' test: ' + RESULTS[testName].duration + 'ms,' +
-       ' tearDown: ' +  (newtime - ENDTEST) + 'ms)\n' +
+       ' tearDown: ' +  RESULTS[testName].tearDownDuration + 'ms)\n' +
        internal.COLORS.COLOR_RED + message + internal.COLORS.COLOR_RESET);
 
   STARTTEST = newtime;
@@ -193,15 +202,22 @@ jsUnity.results.endTeardownAll = function(index) {
   TOTALTEARDOWNS += RESULTS.teardownAllDuration;
 };
 
-function MatchesTestFilter(key) {
+function matchesTestFilter(suiteName, key) {
   if (testFilter === "undefined" || testFilter === undefined || testFilter === null) {
     return true;
   }
   if (typeof testFilter === 'string') {
-    return key === testFilter;
+    var suiteMatched = true;
+    if (testFilter.includes('::')) {
+      var [suiteFilter, testCaseFilter] = testFilter.split('::');
+      suiteMatched = minimatch(suiteName, suiteFilter);
+      testFilter = testCaseFilter;
+    }
+
+    return suiteMatched && minimatch(key, testFilter);
   }
   if (Array.isArray(testFilter)) {
-    return testFilter.includes(key);
+    return testFilter.some(key => matchesTestFilter(suiteName, key));
   }
   return false;
 }
@@ -244,7 +260,7 @@ function Run (testsuite) {
 
   for (var key in definition) {
     if (key.indexOf('test') === 0) {
-      if (!MatchesTestFilter(key)) {
+      if (!matchesTestFilter(suite.suiteName, key)) {
         // print(`test "${key}" doesn't match "${testFilter}", skipping`);
         nonMatchedTests.push(key);
         continue;
@@ -258,21 +274,16 @@ function Run (testsuite) {
     }
   }
   if (tests.length === 0) {
-    let err  = `There is no test in testsuite "${suite.suiteName}" or your filter "${testFilter}" didn't match on anything. We have: [${nonMatchedTests}]`;
-    print(`${internal.COLORS.COLOR_RED}${err}${internal.COLORS.COLOR_RESET}`);
     let res = {
       suiteName: suite.suiteName,
-      message: err,
       duration: 0,
       setUpDuration: 0,
       tearDownDuration: 0,
       passed: 0,
-      status: false,
-      failed: 1,
-      total: 1
+      status: true,
+      failed: 0,
+      total: 0
     };
-    TOTAL += 1;
-    FAILED += 2;
     COMPLETE[suite.suiteName] = res;
     return res;
   }

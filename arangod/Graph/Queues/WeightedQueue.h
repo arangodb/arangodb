@@ -68,6 +68,26 @@ class WeightedQueue {
     std::push_heap(_queue.begin(), _queue.end(), _cmpHeap);
   }
 
+  void setStartContent(std::vector<Step> startSteps) {
+    // NOTE: This is not optimal.
+    // We can assume startSteps to be in order.
+    // We do not make any use of this yet.
+    TRI_ASSERT(_queue.empty());
+    for (auto& s : startSteps) {
+      // Just resort on insert.
+      // This is proven to be correct, but may not be the fastest possible way.
+      append(std::move(s));
+    }
+  }
+
+  bool firstIsVertexFetched() const {
+    if (not isEmpty()) {
+      auto const& first = _queue.front();
+      return first.vertexFetched();
+    }
+    return false;
+  }
+
   bool hasProcessableElement() const {
     if (!isEmpty()) {
       // The heap structure guarantees that the first element in the queue
@@ -109,6 +129,24 @@ class WeightedQueue {
     _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
     _queue.pop_back();
     return first;
+  }
+
+  std::vector<Step*> getStepsWithoutFetchedVertex() {
+    std::vector<Step*> steps;
+    for (auto& step : _queue) {
+      if (not step.vertexFetched()) {
+        steps.emplace_back(&step);
+      }
+    }
+    return steps;
+  }
+
+  void getStepsWithoutFetchedEdges(std::vector<Step*>& steps) {
+    for (auto& step : _queue) {
+      if (!step.edgeFetched()) {
+        steps.emplace_back(&step);
+      }
+    }
   }
 
  private:

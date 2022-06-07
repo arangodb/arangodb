@@ -190,7 +190,8 @@ class MockGraphProvider {
       }
     }
 
-    bool isResponsible(transaction::Methods* trx) const { return true; }
+    static bool vertexFetched() { return true; }
+    static bool edgeFetched() { return true; }
 
     Vertex getVertex() const {
       /*if (!isProcessable()) {
@@ -270,6 +271,11 @@ class MockGraphProvider {
   void destroyEngines(){};
   auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0)
       -> Step;
+  auto fetchVertices(std::vector<Step*> const& looseEnds)
+      -> futures::Future<std::vector<Step*>>;
+  // dummy function, needed for OneSidedEnumerator::Provider
+  static auto fetchEdges(const std::vector<Step*>& fetchedVertices) -> Result;
+
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;
   auto expand(Step const& from, size_t previous) -> std::vector<Step>;
@@ -281,10 +287,20 @@ class MockGraphProvider {
                           arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
+  void addEdgeIDToBuilder(Step::Edge const& edge,
+                          arangodb::velocypack::Builder& builder);
+  void addEdgeToLookupMap(typename Step::Edge const& edge,
+                          arangodb::velocypack::Builder& builder);
+
+  std::string getEdgeId(Step::Edge const& edge);
+  velocypack::HashedStringRef getEdgeIdRef(Step::Edge const& edge);
 
   void prepareIndexExpressions(aql::Ast* ast);
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();
+  bool isResponsible(Step const& step) const;
+
+  [[nodiscard]] bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 
   [[nodiscard]] transaction::Methods* trx();
 

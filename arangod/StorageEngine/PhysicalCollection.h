@@ -72,9 +72,6 @@ class PhysicalCollection {
   // @brief Return the number of documents in this collection
   virtual uint64_t numberDocuments(transaction::Methods* trx) const = 0;
 
-  /// @brief report extra memory used by indexes etc.
-  virtual size_t memory() const = 0;
-
   void drop();
 
   /// recalculate counts for collection in case of failure, blocking

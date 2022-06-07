@@ -584,8 +584,10 @@ void H2CommTask<T>::processRequest(Stream& stream,
     return;
   }
 
+  ServerState::Mode mode = ServerState::mode();
+
   // scrape the auth headers to determine and authenticate the user
-  auto authToken = this->checkAuthHeader(*req);
+  auto authToken = this->checkAuthHeader(*req, mode);
 
   // We want to separate superuser token traffic:
   if (req->authenticated() && req->user().empty()) {
@@ -593,7 +595,7 @@ void H2CommTask<T>::processRequest(Stream& stream,
   }
 
   // first check whether we allow the request to continue
-  CommTask::Flow cont = this->prepareExecution(authToken, *req);
+  CommTask::Flow cont = this->prepareExecution(authToken, *req, mode);
   if (cont != CommTask::Flow::Continue) {
     return;  // prepareExecution sends the error message
   }
@@ -609,7 +611,7 @@ void H2CommTask<T>::processRequest(Stream& stream,
   auto resp =
       std::make_unique<H2Response>(rest::ResponseCode::SERVER_ERROR, messageId);
   resp->setContentType(req->contentTypeResponse());
-  this->executeRequest(std::move(req), std::move(resp));
+  this->executeRequest(std::move(req), std::move(resp), mode);
 }
 
 namespace {

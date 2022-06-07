@@ -397,7 +397,7 @@ void RestCollectionHandler::handleCommandPost() {
       parameters,                // collection properties
       waitForSyncReplication,    // replication wait flag
       enforceReplicationFactor,  // replication factor flag
-      false,                     // new Database?, here always false
+      /*isNewDatabase*/ false,   // here always false
       coll, allowSystem);
 
   if (res.ok()) {
@@ -449,19 +449,13 @@ RestStatus RestCollectionHandler::handleCommandPut() {
   TRI_ASSERT(coll);
 
   if (sub == "load") {
-    res = methods::Collections::load(_vocbase, coll.get());
-
-    if (res.ok()) {
-      bool cc = VelocyPackHelper::getBooleanValue(body, "count", true);
-      collectionRepresentation(
-          name, /*showProperties*/ false,
-          /*showFigures*/ FiguresType::None,
-          /*showCount*/ cc ? CountType::Standard : CountType::None);
-      return standardResponse();
-    } else {
-      generateError(res);
-      return RestStatus::DONE;
-    }
+    // "load" is a no-op starting with 3.9
+    bool cc = VelocyPackHelper::getBooleanValue(body, "count", true);
+    collectionRepresentation(
+        name, /*showProperties*/ false,
+        /*showFigures*/ FiguresType::None,
+        /*showCount*/ cc ? CountType::Standard : CountType::None);
+    return standardResponse();
   } else if (sub == "unload") {
     bool flush = _request->parsedValue("flush", false);
 
@@ -471,18 +465,11 @@ RestStatus RestCollectionHandler::handleCommandPut() {
                                                                      false);
     }
 
-    res = methods::Collections::unload(&_vocbase, coll.get());
-
-    if (res.ok()) {
-      collectionRepresentation(name, /*showProperties*/ false,
-                               /*showFigures*/ FiguresType::None,
-                               /*showCount*/ CountType::None);
-      return standardResponse();
-    } else {
-      generateError(res);
-      return RestStatus::DONE;
-    }
-
+    // apart from WAL flushing, unload is a no-op starting with 3.9
+    collectionRepresentation(name, /*showProperties*/ false,
+                             /*showFigures*/ FiguresType::None,
+                             /*showCount*/ CountType::None);
+    return standardResponse();
   } else if (sub == "compact") {
     coll->compact();
 

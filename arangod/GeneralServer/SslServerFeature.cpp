@@ -74,7 +74,6 @@ SslServerFeature::SslServerFeature(Server& server)
       _sessionCache(false),
       _preferHttp11InAlpn(false) {
   setOptional(true);
-  startsAfter<application_features::AqlFeaturePhase>();
 }
 
 void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

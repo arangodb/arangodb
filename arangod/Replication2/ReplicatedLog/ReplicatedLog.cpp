@@ -24,6 +24,7 @@
 #include "ReplicatedLog.h"
 
 #include "Logger/LogContextKeys.h"
+#include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogFollower.h"
@@ -70,9 +71,9 @@ replicated_log::ReplicatedLog::~ReplicatedLog() {
 }
 
 auto replicated_log::ReplicatedLog::becomeLeader(
-    LogConfig config, ParticipantId id, LogTerm newTerm,
+    agency::LogPlanConfig config, ParticipantId id, LogTerm newTerm,
     std::vector<std::shared_ptr<AbstractFollower>> const& follower,
-    std::shared_ptr<ParticipantsConfig const> participantsConfig,
+    std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
     std::shared_ptr<cluster::IFailureOracle const> failureOracle)
     -> std::shared_ptr<LogLeader> {
   auto [leader, deferred] = std::invoke([&] {
@@ -130,8 +131,8 @@ auto replicated_log::ReplicatedLog::getParticipant() const
     -> std::shared_ptr<ILogParticipant> {
   std::unique_lock guard(_mutex);
   if (_participant == nullptr) {
-    THROW_ARANGO_EXCEPTION(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE);
+    throw replicated_log::ParticipantResignedException(
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE, ADB_HERE);
   }
 
   return _participant;

@@ -81,6 +81,7 @@ void RocksDBMetadata::DocCount::toVelocyPack(velocypack::Builder& b) const {
 
 RocksDBMetadata::RocksDBMetadata()
     : _maxBlockersSequenceNumber(0),
+      _documentCountAdjustmentTicket(1),
       _numberDocuments(0),
       _revisionId(RevisionId::none()) {}
 
@@ -276,6 +277,34 @@ bool RocksDBMetadata::applyAdjustments(rocksdb::SequenceNumber commitSeq) {
   return didWork;
 }
 
+/// @brief returns the collection's current document-count adjustment ticket.
+uint64_t RocksDBMetadata::documentCountAdjustmentTicket() noexcept {
+  return _documentCountAdjustmentTicket.load(std::memory_order_relaxed);
+}
+
+/// @brief buffer a counter adjustment, using a ticket
+void RocksDBMetadata::adjustNumberDocumentsWithTicket(
+    uint64_t documentCountAdjustmentTicket, rocksdb::SequenceNumber seq,
+    RevisionId revId, int64_t adj) {
+  TRI_ASSERT(documentCountAdjustmentTicket > 0);
+
+  uint64_t expected = documentCountAdjustmentTicket;
+  uint64_t desired = documentCountAdjustmentTicket + 1;
+  if (desired == 0) {
+    // handle unlikely case of overflow from UINT64_MAX to 0...
+    desired = 1;
+  }
+  TRI_ASSERT(expected != desired);
+
+  if (_documentCountAdjustmentTicket.compare_exchange_strong(expected,
+                                                             desired)) {
+    // only forward the call if the ticket number is still the same.
+    // if the ticket number has already changed, someone else updated the
+    // counts, and it is not safe for us to update them as well.
+    adjustNumberDocuments(seq, revId, adj);
+  }
+}
+
 /// @brief buffer a counter adjustment
 void RocksDBMetadata::adjustNumberDocuments(rocksdb::SequenceNumber seq,
                                             RevisionId revId, int64_t adj) {
@@ -427,14 +456,14 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   }
 
   // Step 2. store the key generator
-  KeyGenerator* keyGen = coll.keyGenerator();
-  if ((didWork || force) && keyGen->hasDynamicState()) {
+  KeyGenerator& keyGen = coll.keyGenerator();
+  if ((didWork || force) && keyGen.hasDynamicState()) {
     // only a key generator with dynamic data needs to be recovered
     key.constructKeyGeneratorValue(rcoll->objectId());
 
     tmp.clear();
     tmp.openObject();
-    keyGen->toVelocyPack(tmp);
+    keyGen.toVelocyPack(tmp);
     tmp.close();
 
     RocksDBValue value = RocksDBValue::KeyGeneratorValue(tmp.slice());
@@ -563,8 +592,8 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db,
   loadInitialNumberDocuments();
 
   // Step 2. load the key generator
-  KeyGenerator* keyGen = coll.keyGenerator();
-  if (keyGen->hasDynamicState()) {
+  KeyGenerator& keyGen = coll.keyGenerator();
+  if (keyGen.hasDynamicState()) {
     // only a key generator with dynamic data needs to be recovered
     key.constructKeyGeneratorValue(rcoll->objectId());
     s = db->Get(ro, cf, key.string(), &value);
@@ -574,13 +603,11 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db,
       // simon: wtf who decided this is a good deserialization routine ?!
       VPackSlice val = keyGenProps.get(StaticStrings::LastValue);
       if (val.isString()) {
-        VPackValueLength size;
-        const char* data = val.getString(size);
-        keyGen->track(data, size);
+        keyGen.track(val.stringView());
       } else if (val.isInteger()) {
         uint64_t lastValue = val.getUInt();
         std::string str = std::to_string(lastValue);
-        keyGen->track(str.data(), str.size());
+        keyGen.track(str);
       }
 
     } else if (!s.IsNotFound()) {

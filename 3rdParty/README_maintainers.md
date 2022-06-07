@@ -92,6 +92,15 @@ This contains the iresearch library and its sub-components, ICU is used from V8.
 
 This contains statically generated files for the IResearch folder, and replaces them.
 
+When you update Snowball, you should update `modules.h` in this directory.
+Simply run the Perl script in the `snowball` source directory:
+
+```bash
+libstemmer/mkmodules.pl temp_modules.h . libstemmer/modules.txt libstemmer/mkinc.mak
+```
+
+Then copy `temp_modules.h` to `modules.h`, and fix the paths.
+
 ## jemalloc
 
 Only used on Linux/Mac, still uses autofoo.
@@ -126,72 +135,15 @@ https://github.com/lz4/lz4
 
 ## rocksdb
 
-(6.29.0, upstream commit e8f116deabc601a5eae011f2fd8a38d02d87be8d)
+v7.2.0
+RocksDB is pulled in as a submodule - the exact commit can be found there.
 
-Our branch is maintained at:
-https://github.com/arangodb-helper/rocksdb
+The submodule repository is located at https://github.com/arangodb/rocksdb
 
-Most changes can be ported upstream:
-https://github.com/facebook/rocksdb
-
-On Upgrade:
-- `./thirdparty.inc` needs to be adjusted to use the snappy we specify. This can be
-   adjusted by commenting out the section that sets Snappy-related CMake variables:
-
-    -set(SNAPPY_HOME $ENV{THIRDPARTY_HOME}/Snappy.Library)
-    -set(SNAPPY_INCLUDE ${SNAPPY_HOME}/build/native/inc/inc)
-    -set(SNAPPY_LIB_DEBUG ${SNAPPY_HOME}/lib/native/debug/amd64/snappy.lib)
-    -set(SNAPPY_LIB_RELEASE ${SNAPPY_HOME}/lib/native/retail/amd64/snappy.lib)
-    +#set(SNAPPY_HOME $ENV{THIRDPARTY_HOME}/Snappy.Library)
-    +#set(SNAPPY_INCLUDE ${SNAPPY_HOME}/build/native/inc/inc)
-    +#set(SNAPPY_LIB_DEBUG ${SNAPPY_HOME}/lib/native/debug/amd64/snappy.lib)
-    +#set(SNAPPY_LIB_RELEASE ${SNAPPY_HOME}/lib/native/retail/amd64/snappy.lib)
-
-The following other change has been made to CMakeLists.txt to allow compiling on ARM:
-```
-diff --git a/arangod/RocksDBEngine/CMakeLists.txt b/arangod/RocksDBEngine/CMakeLists.txt
-index 58205d5ca90..cb3f2c276d9 100644
---- a/arangod/RocksDBEngine/CMakeLists.txt
-+++ b/arangod/RocksDBEngine/CMakeLists.txt
-@@ -9,11 +9,6 @@ if(CMAKE_SYSTEM_NAME MATCHES "Cygwin")
-   add_definitions(-fno-builtin-memcmp -DCYGWIN)
- elseif(CMAKE_SYSTEM_NAME MATCHES "Darwin")
-   add_definitions(-DOS_MACOSX)
--  if(CMAKE_SYSTEM_PROCESSOR MATCHES arm)
--    add_definitions(-DIOS_CROSS_COMPILE -DROCKSDB_LITE)
--    # no debug info for IOS, that will make our library big
--    add_definitions(-DNDEBUG)
--  endif()
- elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
-   add_definitions(-DOS_LINUX)
- elseif(CMAKE_SYSTEM_NAME MATCHES "SunOS")
-```
-
-We also applied a small patch on top of `db/wal_manager.cc` which makes it handle
-expected errors (errors that occur when moving WAL files around while they are
-tailed) gracefully:
-```
-diff --git a/3rdParty/rocksdb/6.18/db/wal_manager.cc b/3rdParty/rocksdb/6.18/db/wal_manager.cc
-index 7e77e03618..c5bf3ee1b1 100644
---- a/3rdParty/rocksdb/6.18/db/wal_manager.cc
-+++ b/3rdParty/rocksdb/6.18/db/wal_manager.cc
-@@ -328,6 +339,15 @@ Status WalManager::GetSortedWalsOfType(const std::string& path,
-         }
-       }
-       if (!s.ok()) {
-+        if (log_type == kArchivedLogFile &&
-+            (s.IsNotFound() ||
-+             (s.IsIOError() && env_->FileExists(ArchivedLogFileName(path, number)).IsNotFound()))) {
-+          // It may happen that the iteration performed by GetChildren() found
-+          // a logfile in the archive, but that this file has been deleted by
-+          // another thread in the meantime. In this case just ignore it.
-+          s = Status::OK();
-+          continue;
-+        }
-         return s;
-       }
-
-```
+We have some changes for usage in arangodb, so we maintain our own branch with
+these changes called "arango-dev".
+To update to a new version pull from upstream (https://github.com/facebook/rocksdb)
+and merge the new version into the "arango-dev" branch.
 
 ## s2geometry
 
@@ -477,7 +429,35 @@ index d9b7043a39c..2718c16e5a4 100644
 Compression library
 https://github.com/google/snappy
 
+We need the following modification to snappy's cmake config to ensure that on
+Windows the compiler does not use instructions which are not supported by our
+target architecture:
+```
+diff --git a/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt b/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt
+index 672561e62fc..d6341fd1d7a 100644
+--- a/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt
++++ b/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt
+@@ -160,6 +160,7 @@ int main() {
+   return zero();
+ }" HAVE_ATTRIBUTE_ALWAYS_INLINE)
+
++if (NOT WINDOWS)
+ check_cxx_source_compiles("
+ #include <tmmintrin.h>
+
+@@ -177,6 +178,7 @@ check_cxx_source_compiles("
+ int main() {
+   return _bzhi_u32(0, 1);
+ }" SNAPPY_HAVE_BMI2)
++endif()
+
+ include(CheckSymbolExists)
+ check_symbol_exists("mmap" "sys/mman.h" HAVE_FUNC_MMAP)
+ ```
+
 ## snowball
+
+Don't forget to update `iresearch.build/modules.h`, see [iresearch.build](#iresearchbuild)!
 
 http://snowball.tartarus.org/ stemming for IResearch. We use the latest provided cmake which we maintain.
 
@@ -647,3 +627,8 @@ https://github.com/arangodb/velocypack/
 ## zlib
 
 ZLib compression library https://zlib.net/
+
+Compared to the original zlib 1.2.12, we have made changes to the CMakeLists.txt
+as can be found in the patch file
+
+    3rdParty/zlib/zlib-1.2.12.patch

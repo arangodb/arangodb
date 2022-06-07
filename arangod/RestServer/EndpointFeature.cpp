@@ -43,7 +43,6 @@ EndpointFeature::EndpointFeature(ArangodServer& server)
       _reuseAddress(true),
       _backlogSize(64) {
   setOptional(true);
-  requiresElevatedPrivileges(true);
   startsAfter<application_features::AqlFeaturePhase, ArangodServer>();
 
   startsAfter<ServerFeature, ArangodServer>();
@@ -98,8 +97,6 @@ void EndpointFeature::prepare() {
   }
 }
 
-void EndpointFeature::start() { _endpointList.dump(); }
-
 std::vector<std::string> EndpointFeature::httpEndpoints() {
   auto httpEntries = _endpointList.all(Endpoint::TransportType::HTTP);
   std::vector<std::string> result;
@@ -116,14 +113,13 @@ std::vector<std::string> EndpointFeature::httpEndpoints() {
 }
 
 void EndpointFeature::buildEndpointLists() {
-  for (std::vector<std::string>::const_iterator i = _endpoints.begin();
-       i != _endpoints.end(); ++i) {
+  for (auto const& it : _endpoints) {
     bool ok =
-        _endpointList.add((*i), static_cast<int>(_backlogSize), _reuseAddress);
+        _endpointList.add(it, static_cast<int>(_backlogSize), _reuseAddress);
 
     if (!ok) {
       LOG_TOPIC("1ddc1", FATAL, arangodb::Logger::FIXME)
-          << "invalid endpoint '" << (*i) << "'";
+          << "invalid endpoint '" << it << "'";
       FATAL_ERROR_EXIT();
     }
   }

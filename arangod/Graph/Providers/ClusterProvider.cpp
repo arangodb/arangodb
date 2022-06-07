@@ -70,6 +70,24 @@ VertexType getEdgeDestination(arangodb::velocypack::Slice edge,
   }
   return VertexType{from};
 }
+
+ClusterProviderStep::FetchedType getFetchedType(bool vertexFetched,
+                                                bool edgesFetched) {
+  if (vertexFetched) {
+    if (edgesFetched) {
+      return ClusterProviderStep::FetchedType::VERTEX_AND_EDGES_FETCHED;
+    } else {
+      return ClusterProviderStep::FetchedType::VERTEX_FETCHED;
+    }
+  } else {
+    if (edgesFetched) {
+      return ClusterProviderStep::FetchedType::EDGES_FETCHED;
+    } else {
+      return ClusterProviderStep::FetchedType::UNFETCHED;
+    }
+  }
+}
+
 }  // namespace
 
 template<class StepImpl>
@@ -118,7 +136,6 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
   leased->openObject();
   leased->add("keys", VPackValue(VPackValueType::Array));
   for (auto const& looseEnd : looseEnds) {
-    TRI_ASSERT(looseEnd->isLooseEnd());
     auto const& vertexId = looseEnd->getVertex().getID();
     if (!_opts.getCache()->isVertexCached(vertexId)) {
       leased->add(VPackValuePair(vertexId.data(), vertexId.length(),
@@ -221,6 +238,7 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
                                     VPackSlice::nullSlice());
     }
     result.emplace_back(lE);
+    lE->setVertexFetched();
   }
 }
 
@@ -396,9 +414,8 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
 }
 
 template<class StepImpl>
-auto ClusterProvider<StepImpl>::fetch(std::vector<Step*> const& looseEnds)
-    -> futures::Future<std::vector<Step*>> {
-  LOG_TOPIC("03c1b", TRACE, Logger::GRAPHS) << "<ClusterProvider> Fetching...";
+auto ClusterProvider<StepImpl>::fetchVertices(
+    std::vector<Step*> const& looseEnds) -> std::vector<Step*> {
   std::vector<Step*> result{};
 
   if (!looseEnds.empty()) {
@@ -413,29 +430,42 @@ auto ClusterProvider<StepImpl>::fetch(std::vector<Step*> const& looseEnds)
                                         VPackSlice::nullSlice());
         }
         result.emplace_back(lE);
+        lE->setVertexFetched();
       }
     } else {
       fetchVerticesFromEngines(looseEnds, result);
       _stats.incrHttpRequests(_opts.engines()->size() * looseEnds.size());
     }
-
-    for (auto const& step : result) {
-      if (!_vertexConnectedEdges.contains(step->getVertex().getID())) {
-        auto res = fetchEdgesFromEngines(step);
-        _stats.incrHttpRequests(_opts.engines()->size());
-
-        if (res.fail()) {
-          THROW_ARANGO_EXCEPTION(res);
-        }
-      }
-      // else: We already fetched this vertex.
-
-      // mark a looseEnd as fetched as vertex fetch + edges fetch was a success
-      step->setFetched();
-    }
   }
+  return result;
+}
 
-  // Note: Discuss if we want to keep it that way in the future.
+template<class StepImpl>
+auto ClusterProvider<StepImpl>::fetchEdges(
+    std::vector<Step*> const& fetchedVertices) -> Result {
+  for (auto const& step : fetchedVertices) {
+    if (!_vertexConnectedEdges.contains(step->getVertex().getID())) {
+      auto res = fetchEdgesFromEngines(step);
+      _stats.incrHttpRequests(_opts.engines()->size());
+
+      if (res.fail()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+    }
+    // else: We already fetched this vertex.
+
+    // mark a looseEnd as fetched as vertex fetch + edges fetch was a success
+    step->setEdgesFetched();
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
+template<class StepImpl>
+auto ClusterProvider<StepImpl>::fetch(std::vector<Step*> const& looseEnds)
+    -> futures::Future<std::vector<Step*>> {
+  LOG_TOPIC("03c1b", TRACE, Logger::GRAPHS) << "<ClusterProvider> Fetching...";
+  std::vector<Step*> result = fetchVertices(looseEnds);
+  fetchEdges(result);
   return futures::makeFuture(std::move(result));
 }
 
@@ -452,13 +482,15 @@ auto ClusterProvider<StepImpl>::expand(
 
   if (ADB_LIKELY(relations != _vertexConnectedEdges.end())) {
     for (auto const& relation : relations->second) {
-      bool const fetchedTargetVertex =
-          _vertexConnectedEdges.contains(relation.second);
+      bool vertexCached = _opts.getCache()->isVertexCached(relation.second);
+      bool edgesCached = _vertexConnectedEdges.contains(relation.second);
+      typename Step::FetchedType fetchedType =
+          ::getFetchedType(vertexCached, edgesCached);
       // [GraphRefactor] TODO: KShortestPaths does not require Depth/Weight. We
       // need a mechanism here as well to distinguish between (non)required
       // parameters.
       callback(
-          Step{relation.second, relation.first, previous, fetchedTargetVertex,
+          Step{relation.second, relation.first, previous, fetchedType,
                step.getDepth() + 1,
                _opts.weightEdge(step.getWeight(), readEdge(relation.first))});
     }
@@ -480,6 +512,33 @@ auto ClusterProvider<StepImpl>::addEdgeToBuilder(
     typename Step::Edge const& edge, arangodb::velocypack::Builder& builder)
     -> void {
   builder.add(_opts.getCache()->getCachedEdge(edge.getID()));
+}
+
+template<class StepImpl>
+auto ClusterProvider<StepImpl>::addEdgeIDToBuilder(
+    typename Step::Edge const& edge, arangodb::velocypack::Builder& builder)
+    -> void {
+  builder.add(VPackValue(edge.getID().begin()));
+}
+
+template<class StepImpl>
+void ClusterProvider<StepImpl>::addEdgeToLookupMap(
+    typename Step::Edge const& edge, arangodb::velocypack::Builder& builder) {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add(VPackValue(edge.getID().begin()));
+  builder.add(_opts.getCache()->getCachedEdge(edge.getID()));
+}
+
+template<class StepImpl>
+auto ClusterProvider<StepImpl>::getEdgeId(typename Step::Edge const& edge)
+    -> std::string {
+  return edge.getID().toString();
+}
+
+template<class StepImpl>
+auto ClusterProvider<StepImpl>::getEdgeIdRef(typename Step::Edge const& edge)
+    -> EdgeType {
+  return edge.getID();
 }
 
 template<class StepImpl>
@@ -515,4 +574,14 @@ void ClusterProvider<StepImpl>::unPrepareContext() {
   _opts.unPrepareContext();
 }
 
+template<class StepImpl>
+bool ClusterProvider<StepImpl>::isResponsible(StepImpl const& step) const {
+  return true;
+}
+
+template<class StepImpl>
+bool ClusterProvider<StepImpl>::hasDepthSpecificLookup(
+    uint64_t depth) const noexcept {
+  return _opts.hasDepthSpecificLookup(depth);
+}
 template class graph::ClusterProvider<ClusterProviderStep>;

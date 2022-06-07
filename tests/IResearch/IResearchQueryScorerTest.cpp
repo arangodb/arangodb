@@ -132,7 +132,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     EXPECT_TRUE(slice.isObject());
     EXPECT_EQ(slice.get("name").copyString(), "testView");
     EXPECT_TRUE(slice.get("type").copyString() ==
-                arangodb::iresearch::StaticStrings::DataSourceType);
+                arangodb::iresearch::StaticStrings::ViewType);
     EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
     auto tmpSlice = slice.get("links");
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
@@ -576,9 +576,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -684,9 +682,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -797,9 +793,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -909,9 +903,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -1022,9 +1014,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -1135,9 +1125,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -1257,9 +1245,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -1370,9 +1356,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -1459,9 +1443,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -1549,9 +1531,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -1670,9 +1650,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -1759,9 +1737,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // only one scorer
     plan->findNodesOfType(
@@ -1843,9 +1819,7 @@ TEST_P(IResearchQueryScorerTest, test) {
     auto* plan = query->plan();
     ASSERT_TRUE(plan);
 
-    arangodb::containers::SmallVector<
-        arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
     // 2 scorers scorer
     plan->findNodesOfType(

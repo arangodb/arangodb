@@ -22,6 +22,10 @@
 //
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
 //
+// assumes that
+//    docker run -d --name ldap -p 389:389 arangodb/ldap-test | arangodb/ldap-test-x86_64:1
+// is running.
+//
 // @author Heiko Kernbach
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -63,10 +67,8 @@ const testPaths = {
 // / @brief Shared conf
 // //////////////////////////////////////////////////////////////////////////////
 
-const sharedConf = {
-  'server.authentication': true,
+const sharedConf = Object.assign({}, {
   'server.authentication-system-only': true,
-  'server.jwt-secret': 'haxxmann', // hardcoded in auth.js
   'server.local-authentication': 'true',
   'javascript.allow-admin-execute': 'true',
 
@@ -85,7 +87,7 @@ const sharedConf = {
   'ldap2.bindpasswd': 'password',
   'ldap2.basedn': 'dc=arangodb,dc=com',
   'ldap2.superuser-role': 'adminrole'
-};
+}, tu.testServerAuthInfo);
 
 const prefixSuffix = {
   'ldap.prefix': 'uid=',
@@ -134,10 +136,8 @@ const ldapModeSearchPlaceholderConf = Object.assign({}, sharedConf, {
 const ldapModeRolesSimpleConf = Object.assign({}, ldapModeRolesConf, prefixSuffix);
 const ldapModeSearchSimpleConf = Object.assign({}, ldapModeSearchConf, prefixSuffix);
 
-const dualLdapConf = {
-  'server.authentication': true,
+const dualLdapConf = Object.assign({}, {
   'server.authentication-system-only': true,
-  'server.jwt-secret': 'haxxmann', // hardcoded in auth.js
   'server.local-authentication': 'true',
 
   'ldap.enabled': true,
@@ -161,7 +161,7 @@ const dualLdapConf = {
   'ldap2.suffix': ',dc=com',
   'ldap2.roles-attribute-name': 'sn',
   'ldap2.responsible-for': tu.pathForTesting('client/ldap/responsible2')
-};
+}, tu.testServerAuthInfo);
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: ldap
@@ -195,9 +195,15 @@ const tests = {
 };
 
 function parseOptions(options, ldap2) {
+  let verbose = {};
+  if (options.extremeVerbosity) {
+    verbose['log.level'] = 'ldap=trace';
+  }
+
   let toReturn = tests;
 
   _.each(toReturn, function(opt) {
+    Object.assign(opt.conf, verbose);
     if (options.ldapHost) {
       opt.conf['ldap.server'] = options.ldapHost;
     }
@@ -219,33 +225,35 @@ function parseOptions(options, ldap2) {
   return toReturn;
 }
 
-const activateFailurePoint = function(options, server, instance, custom) {
-  let baseUrl = function(e) {
-    return e.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-  };
+class ldapTestRunner extends tu.runInArangoshRunner {
+  postStart() {
+    let baseUrl = function(e) {
+      return e.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
+    };
 
-  const jwt = crypto.jwtEncode(server['server.jwt-secret'], {
-    "preferred_username": "root",
-    "iss": "arangodb",
-    "exp": Math.floor(Date.now() / 1000) + 3600
-  }, 'HS256');
+    const jwt = crypto.jwtEncode(this.serverOptions['server.jwt-secret'], {
+      "preferred_username": "root",
+      "iss": "arangodb",
+      "exp": Math.floor(Date.now() / 1000) + 3600
+    }, 'HS256');
 
-  const endpoints = instance.endpoints;
-  for (const endpoint of endpoints) {
-    let result = request({
-      method: "PUT",
-      url: baseUrl(endpoint) + "/_admin/debug/failat/LdapFlakyLdap",
-      auth: {
-        bearer: jwt,
-      },
-      body: {}
-    });
+    const endpoints = this.instanceInfo.endpoints;
+    for (const endpoint of endpoints) {
+      let result = request({
+        method: "PUT",
+        url: baseUrl(endpoint) + "/_admin/debug/failat/LdapFlakyLdap",
+        auth: {
+          bearer: jwt,
+        },
+        body: {}
+      });
+    }
+
+    return {
+      state: true
+    };
   }
-
-  return {
-    state: true
-  };
-};
+}
 
 function authenticationLdapSearchModePrefixSuffix(options) {
   if (options.skipLdap === true) {
@@ -268,10 +276,10 @@ function authenticationLdapSearchModePrefixSuffix(options) {
 
   print('Performing #1 Test: Search Mode - Simple Login Mode');
   print(opts.ldapModeSearchPrefixSuffix.conf);
-  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh,
-    opts.ldapModeSearchPrefixSuffix.conf, {
-      postStart: activateFailurePoint
-    });
+  return new ldapTestRunner(options, 'ldap',
+                            opts.ldapModeSearchPrefixSuffix.conf,
+                            false
+                           ).run(testCases);
 }
 
 function authenticationLdapSearchMode(options) {
@@ -295,10 +303,10 @@ function authenticationLdapSearchMode(options) {
 
   print('Performing #2 Test: Search Mode');
   print(opts.ldapModeSearch.conf);
-  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh,
-    opts.ldapModeSearch.conf, {
-      postStart: activateFailurePoint
-    });
+  return new ldapTestRunner(options, 'ldap',
+                            opts.ldapModeSearch.conf,
+                            false
+                           ).run(testCases);
 }
 
 function authenticationLdapSearchModePlaceholder(options) {
@@ -322,10 +330,10 @@ function authenticationLdapSearchModePlaceholder(options) {
 
   print('Performing #3 Test: Search Mode');
   print(opts.ldapModeSearch.conf);
-  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh,
-    opts.ldapModeSearchPlaceholder.conf, {
-      postStart: activateFailurePoint
-    });
+  return new ldapTestRunner(options, 'ldap',
+                            opts.ldapModeSearchPlaceholder.conf,
+                            false
+                           ).run(testCases);
 }
 
 function authenticationLdapRolesModePrefixSuffix(options) {
@@ -349,10 +357,10 @@ function authenticationLdapRolesModePrefixSuffix(options) {
 
   print('Performing #4 Test: Role Mode - Simple Login Mode');
   print(opts.ldapModeRolesPrefixSuffix.conf);
-  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh,
-    opts.ldapModeRolesPrefixSuffix.conf, {
-      postStart: activateFailurePoint
-    });
+  return new ldapTestRunner(options, 'ldap',
+                            opts.ldapModeRolesPrefixSuffix.conf,
+                            false
+                           ).run(testCases);
 }
 
 function authenticationLdapRolesMode(options) {
@@ -376,10 +384,10 @@ function authenticationLdapRolesMode(options) {
 
   print('Performing #5 Test: Role Mode');
   print(opts.ldapModeRoles.conf);
-  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh,
-    opts.ldapModeRoles.conf, {
-      postStart: activateFailurePoint
-    });
+  return new ldapTestRunner(options, 'ldap',
+                            opts.ldapModeRoles.conf,
+                            false
+                           ).run(testCases);
 }
 
 function authenticationLdapTwoLdap(options) {
@@ -405,7 +413,10 @@ function authenticationLdapTwoLdap(options) {
 
   print('Performing #6 Test: Failover - Scenario 1: two active LDAP servers');
   print(opts.dualldap.conf);
-  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.dualldap.conf);
+  return new ldapTestRunner(options, 'ldap',
+                            opts.dualldap.conf,
+                            false
+                           ).run(testCases);
 }
 
 function authenticationLdapFirstLdap(options) {
@@ -435,7 +446,7 @@ function authenticationLdapFirstLdap(options) {
 
   print('Performing #7 Test: Failover - Scenario 2: first LDAP server active, second LDAP inactive');
   print(conf);
-  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, conf);
+  return new ldapTestRunner(options, 'ldap', conf).run(testCases);
 }
 
 function authenticationLdapSecondLdap(options) {
@@ -465,7 +476,7 @@ function authenticationLdapSecondLdap(options) {
 
   print('Performing #8 Test: Failover - Scenario 3: first LDAP server inactive, second LDAP server active');
   print(conf);
-  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, conf);
+  return new ldapTestRunner(options, 'ldap', conf).run(testCases);
 }
 
 exports.setup = function(testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {

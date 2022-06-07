@@ -26,14 +26,14 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
+#include "Cluster/FailureOracle.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
-#include "Cluster/FailureOracle.h"
 
 #include <algorithm>
-#include <type_traits>
 #include <random>
 #include <tuple>
+#include <type_traits>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -105,26 +105,6 @@ auto algorithms::detectConflict(replicated_log::InMemoryLog const& log,
   }
 }
 
-namespace {
-// For (unordered) maps left and right, return keys(left) \ keys(right)
-auto keySetDifference = [](auto const& left, auto const& right) {
-  using left_t = std::decay_t<decltype(left)>;
-  using right_t = std::decay_t<decltype(right)>;
-  static_assert(
-      std::is_same_v<typename left_t::key_type, typename right_t::key_type>);
-  using key_t = typename left_t::key_type;
-
-  auto result = std::vector<key_t>{};
-  for (auto const& [key, val] : left) {
-    if (!right.contains(key)) {
-      result.emplace_back(key);
-    }
-  }
-
-  return result;
-};
-}  // namespace
-
 auto algorithms::updateReplicatedLog(
     LogActionContext& ctx, ServerID const& myServerId, RebootId myRebootId,
     LogId logId, agency::LogPlanSpecification const* spec,
@@ -145,34 +125,14 @@ auto algorithms::updateReplicatedLog(
       // something has changed in the term volatile configuration
       auto leader = log->getLeader();
       TRI_ASSERT(leader != nullptr);
-      auto const status = log->getParticipant()->getStatus();
-      auto* const leaderStatus = status.asLeaderStatus();
-      // Note that newParticipants contains the leader, while oldFollowers does
-      // not.
-      auto const& oldFollowers = leaderStatus->follower;
-      auto const& newParticipants = spec->participantsConfig.participants;
-      // TODO move this calculation into updateParticipantsConfig()
-      auto const additionalParticipantIds =
-          keySetDifference(newParticipants, oldFollowers);
-      auto const obsoleteParticipantIds =
-          keySetDifference(oldFollowers, newParticipants);
-
-      auto additionalParticipants =
-          std::unordered_map<ParticipantId,
-                             std::shared_ptr<AbstractFollower>>{};
-      for (auto const& participantId : additionalParticipantIds) {
-        if (participantId != myServerId) {
-          additionalParticipants.try_emplace(
-              participantId,
-              ctx.buildAbstractFollowerImpl(logId, participantId));
-        }
-      }
-
-      auto const& previousConfig = leaderStatus->activeParticipantsConfig;
+      // Provide the leader with a way to build a follower
+      auto const buildFollower = [&ctx,
+                                  &logId](ParticipantId const& participantId) {
+        return ctx.buildAbstractFollowerImpl(logId, participantId);
+      };
       auto index = leader->updateParticipantsConfig(
           std::make_shared<ParticipantsConfig const>(spec->participantsConfig),
-          previousConfig.generation, std::move(additionalParticipants),
-          obsoleteParticipantIds);
+          buildFollower);
       return leader->waitFor(index).thenValue(
           [](auto&& quorum) -> Result { return Result{TRI_ERROR_NO_ERROR}; });
     } else if (plannedLeader.has_value() &&
@@ -190,7 +150,7 @@ auto algorithms::updateReplicatedLog(
 
       TRI_ASSERT(spec->participantsConfig.generation > 0);
       auto newLeader = log->becomeLeader(
-          spec->currentTerm->config, myServerId, spec->currentTerm->term,
+          spec->participantsConfig.config, myServerId, spec->currentTerm->term,
           followers,
           std::make_shared<ParticipantsConfig>(spec->participantsConfig),
           std::move(failureOracle));
@@ -256,13 +216,9 @@ auto operator<=>(ParticipantState const& left,
   return left.id.compare(right.id) <=> 0;
 }
 
-algorithms::CalculateCommitIndexOptions::CalculateCommitIndexOptions(
-    std::size_t writeConcern, std::size_t softWriteConcern)
-    : _writeConcern(writeConcern), _softWriteConcern(softWriteConcern) {}
-
 auto algorithms::calculateCommitIndex(
     std::vector<ParticipantState> const& participants,
-    CalculateCommitIndexOptions const opt, LogIndex const currentCommitIndex,
+    size_t const effectiveWriteConcern, LogIndex const currentCommitIndex,
     TermIndexPair const lastTermIndex)
     -> std::tuple<LogIndex, CommitFailReason, std::vector<ParticipantId>> {
   // We keep a vector of eligible participants.
@@ -279,27 +235,13 @@ auto algorithms::calculateCommitIndex(
                         p.lastTerm() == lastTermIndex.term;
                });
 
-  // If servers are unavailable because they are either failed or excluded,
-  // the actualWriteConcern may be lowered from softWriteConcern down to at
-  // least writeConcern.
-  auto const numAvailableParticipants = std::size_t(std::count_if(
-      std::begin(participants), std::end(participants),
-      [](auto const& p) { return !p.isFailed() && p.isAllowedInQuorum(); }));
-  // We write to at least writeConcern servers, ideally more if available.
-  auto const effectiveWriteConcern =
-      std::max(opt._writeConcern,
-               std::min(numAvailableParticipants, opt._softWriteConcern));
-
   if (effectiveWriteConcern > participants.size() &&
       participants.size() == eligible.size()) {
     // With WC greater than the number of participants, we cannot commit
     // anything, even if all participants are eligible.
     TRI_ASSERT(!participants.empty());
-    TRI_ASSERT(opt._writeConcern == effectiveWriteConcern);
     return {currentCommitIndex,
             CommitFailReason::withFewerParticipantsThanWriteConcern({
-                .writeConcern = opt._writeConcern,
-                .softWriteConcern = opt._softWriteConcern,
                 .effectiveWriteConcern = effectiveWriteConcern,
                 .numParticipants = participants.size(),
             }),

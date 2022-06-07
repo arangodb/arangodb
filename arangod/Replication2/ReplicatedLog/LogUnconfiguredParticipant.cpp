@@ -23,7 +23,9 @@
 #include "LogUnconfiguredParticipant.h"
 
 #include <Basics/Exceptions.h>
+#include <Basics/voc-errors.h>
 
+#include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCore.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLogMetricsDeclarations.h"
@@ -55,7 +57,7 @@ auto LogUnconfiguredParticipant::resign() && -> std::tuple<
 
 auto LogUnconfiguredParticipant::waitFor(LogIndex)
     -> ILogParticipant::WaitForFuture {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED);
 }
 
 LogUnconfiguredParticipant::~LogUnconfiguredParticipant() {
@@ -65,11 +67,11 @@ LogUnconfiguredParticipant::~LogUnconfiguredParticipant() {
 auto LogUnconfiguredParticipant::waitForIterator(LogIndex index)
     -> ILogParticipant::WaitForIteratorFuture {
   TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED);
 }
 
 auto LogUnconfiguredParticipant::release(LogIndex doneWithIdx) -> Result {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED);
 }
 
 auto LogUnconfiguredParticipant::getCommitIndex() const noexcept -> LogIndex {
@@ -82,8 +84,15 @@ LogUnconfiguredParticipant::GuardedData::GuardedData(
 
 auto LogUnconfiguredParticipant::waitForResign()
     -> futures::Future<futures::Unit> {
-  return _guardedData.doUnderLock(
-      [](auto& self) { return self.waitForResign(); });
+  auto&& [future, action] = _guardedData.getLockedGuard()->waitForResign();
+
+  action.fire();
+
+  return std::move(future);
+}
+
+auto LogUnconfiguredParticipant::copyInMemoryLog() const -> InMemoryLog {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED);
 }
 
 auto LogUnconfiguredParticipant::GuardedData::resign() && -> std::tuple<
@@ -95,7 +104,27 @@ auto LogUnconfiguredParticipant::GuardedData::resign() && -> std::tuple<
   return std::make_tuple(std::move(_logCore), std::move(defer));
 }
 
+auto LogUnconfiguredParticipant::GuardedData::didResign() const noexcept
+    -> bool {
+  return _logCore == nullptr;
+}
+
 auto LogUnconfiguredParticipant::GuardedData::waitForResign()
-    -> futures::Future<futures::Unit> {
-  return _waitForResignQueue.addWaitFor();
+    -> std::pair<futures::Future<futures::Unit>, DeferredAction> {
+  if (!didResign()) {
+    auto future = _waitForResignQueue.addWaitFor();
+    return {std::move(future), DeferredAction{}};
+  } else {
+    TRI_ASSERT(_waitForResignQueue.empty());
+    auto promise = futures::Promise<futures::Unit>{};
+    auto future = promise.getFuture();
+
+    auto action =
+        DeferredAction([promise = std::move(promise)]() mutable noexcept {
+          TRI_ASSERT(promise.valid());
+          promise.setValue();
+        });
+
+    return {std::move(future), std::move(action)};
+  }
 }

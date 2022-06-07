@@ -31,6 +31,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
 #include "Basics/system-compiler.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -44,6 +45,8 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include <array>
+#include <limits>
+#include <string>
 #include <string_view>
 
 using namespace arangodb;
@@ -221,13 +224,14 @@ uint64_t readLastValue(VPackSlice options) {
 class TraditionalKeyGenerator : public KeyGenerator {
  public:
   /// @brief create the generator
-  explicit TraditionalKeyGenerator(bool allowUserKeys)
-      : KeyGenerator(allowUserKeys) {}
+  explicit TraditionalKeyGenerator(LogicalCollection const& collection,
+                                   bool allowUserKeys)
+      : KeyGenerator(collection, allowUserKeys) {}
 
-  bool hasDynamicState() const override final { return true; }
+  bool hasDynamicState() const noexcept override final { return true; }
 
   /// @brief generate a key
-  std::string generate() override final {
+  std::string generate(velocypack::Slice /*input*/) override final {
     uint64_t tick = generateValue();
 
     if (ADB_UNLIKELY(tick == 0)) {
@@ -240,25 +244,28 @@ class TraditionalKeyGenerator : public KeyGenerator {
   }
 
   /// @brief validate a key
-  ErrorCode validate(char const* p, size_t length, bool isRestore) override {
-    auto res = KeyGenerator::validate(p, length, isRestore);
+  ErrorCode validate(std::string_view key, velocypack::Slice input,
+                     bool isRestore) noexcept override {
+    auto res = KeyGenerator::validate(key, input, isRestore);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      track(p, length);
+      track(key);
     }
 
     return res;
   }
 
   /// @brief track usage of a key
-  void track(char const* p, size_t length) override {
+  void track(std::string_view key) noexcept override {
+    char const* p = key.data();
+    size_t length = key.size();
     // check the numeric key part
     if (length > 0 && p[0] >= '0' && p[0] <= '9') {
       // potentially numeric key
       uint64_t value = NumberUtils::atoi_zero<uint64_t>(p, p + length);
 
       if (value > 0) {
-        track(value);
+        trackValue(value);
       }
     }
   }
@@ -274,15 +281,17 @@ class TraditionalKeyGenerator : public KeyGenerator {
   virtual uint64_t generateValue() = 0;
 
   /// @brief track a value (internal)
-  virtual void track(uint64_t value) = 0;
+  virtual void trackValue(uint64_t value) noexcept = 0;
 };
 
 /// @brief traditional key generator for a single server
 class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
  public:
   /// @brief create the generator
-  explicit TraditionalKeyGeneratorSingle(bool allowUserKeys, uint64_t lastValue)
-      : TraditionalKeyGenerator(allowUserKeys), _lastValue(lastValue) {
+  explicit TraditionalKeyGeneratorSingle(LogicalCollection const& collection,
+                                         bool allowUserKeys, uint64_t lastValue)
+      : TraditionalKeyGenerator(collection, allowUserKeys),
+        _lastValue(lastValue) {
     TRI_ASSERT(!ServerState::instance()->isCoordinator());
   }
 
@@ -298,6 +307,13 @@ class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
  private:
   /// @brief generate a key value (internal)
   uint64_t generateValue() override {
+    TRI_ASSERT(ServerState::instance()->isSingleServer() ||
+               _collection.numberOfShards() == 1);
+    TRI_IF_FAILURE("KeyGenerator::generateOnSingleServer") {
+      // for testing purposes only
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
     uint64_t tick = TRI_NewTickServer();
 
     if (ADB_UNLIKELY(tick == UINT64_MAX)) {
@@ -325,7 +341,7 @@ class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
   }
 
   /// @brief track a key value (internal)
-  void track(uint64_t value) override {
+  void trackValue(uint64_t value) noexcept override {
     auto lastValue = _lastValue.load(std::memory_order_relaxed);
     while (value > lastValue) {
       // and update our last value
@@ -347,20 +363,29 @@ class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
 /// same logical collection the ClusterInfo may create many different
 /// temporary LogicalCollection objects one after the other, which
 /// will also discard the collection's particular KeyGenerator object!
-class TraditionalKeyGeneratorCluster final : public TraditionalKeyGenerator {
+class TraditionalKeyGeneratorCoordinator final
+    : public TraditionalKeyGenerator {
  public:
-  /// @brief create the generator
-  explicit TraditionalKeyGeneratorCluster(ClusterInfo& ci, bool allowUserKeys)
-      : TraditionalKeyGenerator(allowUserKeys), _ci(ci) {
+  explicit TraditionalKeyGeneratorCoordinator(
+      ClusterInfo& ci, LogicalCollection const& collection, bool allowUserKeys)
+      : TraditionalKeyGenerator(collection, allowUserKeys), _ci(ci) {
     TRI_ASSERT(ServerState::instance()->isCoordinator());
   }
 
  private:
   /// @brief generate a key value (internal)
-  uint64_t generateValue() override { return _ci.uniqid(); }
+  uint64_t generateValue() override {
+    TRI_ASSERT(ServerState::instance()->isCoordinator());
+    TRI_ASSERT(_collection.numberOfShards() != 1 || _collection.isSmart());
+    TRI_IF_FAILURE("KeyGenerator::generateOnCoordinator") {
+      // for testing purposes only
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    return _ci.uniqid();
+  }
 
   /// @brief track a key value (internal)
-  void track(uint64_t /* value */) override {}
+  void trackValue(uint64_t /* value */) noexcept override {}
 
  private:
   ClusterInfo& _ci;
@@ -370,13 +395,14 @@ class TraditionalKeyGeneratorCluster final : public TraditionalKeyGenerator {
 class PaddedKeyGenerator : public KeyGenerator {
  public:
   /// @brief create the generator
-  explicit PaddedKeyGenerator(bool allowUserKeys, uint64_t lastValue)
-      : KeyGenerator(allowUserKeys), _lastValue(lastValue) {}
+  explicit PaddedKeyGenerator(LogicalCollection const& collection,
+                              bool allowUserKeys, uint64_t lastValue)
+      : KeyGenerator(collection, allowUserKeys), _lastValue(lastValue) {}
 
-  bool hasDynamicState() const override final { return true; }
+  bool hasDynamicState() const noexcept override final { return true; }
 
   /// @brief generate a key
-  std::string generate() override {
+  std::string generate(velocypack::Slice /*input*/) override final {
     uint64_t tick = generateValue();
 
     if (ADB_UNLIKELY(tick == 0 || tick == UINT64_MAX)) {
@@ -403,20 +429,21 @@ class PaddedKeyGenerator : public KeyGenerator {
   }
 
   /// @brief validate a key
-  ErrorCode validate(char const* p, size_t length, bool isRestore) override {
-    auto res = KeyGenerator::validate(p, length, isRestore);
+  ErrorCode validate(std::string_view key, velocypack::Slice input,
+                     bool isRestore) noexcept override {
+    auto res = KeyGenerator::validate(key, input, isRestore);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      track(p, length);
+      track(key);
     }
 
     return res;
   }
 
   /// @brief track usage of a key
-  void track(char const* p, size_t length) override final {
+  void track(std::string_view key) noexcept override final {
     // check the numeric key part
-    uint64_t value = KeyGeneratorHelper::decodePadded(p, length);
+    uint64_t value = KeyGeneratorHelper::decodePadded(key.data(), key.size());
     if (value > 0) {
       auto lastValue = _lastValue.load(std::memory_order_relaxed);
       while (value > lastValue) {
@@ -452,14 +479,23 @@ class PaddedKeyGenerator : public KeyGenerator {
 class PaddedKeyGeneratorSingle final : public PaddedKeyGenerator {
  public:
   /// @brief create the generator
-  explicit PaddedKeyGeneratorSingle(bool allowUserKeys, uint64_t lastValue)
-      : PaddedKeyGenerator(allowUserKeys, lastValue) {
+  explicit PaddedKeyGeneratorSingle(LogicalCollection const& collection,
+                                    bool allowUserKeys, uint64_t lastValue)
+      : PaddedKeyGenerator(collection, allowUserKeys, lastValue) {
     TRI_ASSERT(!ServerState::instance()->isCoordinator());
   }
 
  private:
   /// @brief generate a key
-  uint64_t generateValue() override { return TRI_NewTickServer(); }
+  uint64_t generateValue() override {
+    TRI_ASSERT(ServerState::instance()->isSingleServer() ||
+               _collection.numberOfShards() == 1);
+    TRI_IF_FAILURE("KeyGenerator::generateOnSingleServer") {
+      // for testing purposes only
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    return TRI_NewTickServer();
+  }
 };
 
 /// @brief padded key generator for a coordinator
@@ -469,18 +505,26 @@ class PaddedKeyGeneratorSingle final : public PaddedKeyGenerator {
 /// same logical collection the ClusterInfo may create many different
 /// temporary LogicalCollection objects one after the other, which
 /// will also discard the collection's particular KeyGenerator object!
-class PaddedKeyGeneratorCluster final : public PaddedKeyGenerator {
+class PaddedKeyGeneratorCoordinator final : public PaddedKeyGenerator {
  public:
-  /// @brief create the generator
-  explicit PaddedKeyGeneratorCluster(ClusterInfo& ci, bool allowUserKeys,
-                                     uint64_t lastValue)
-      : PaddedKeyGenerator(allowUserKeys, lastValue), _ci(ci) {
+  explicit PaddedKeyGeneratorCoordinator(ClusterInfo& ci,
+                                         LogicalCollection const& collection,
+                                         bool allowUserKeys, uint64_t lastValue)
+      : PaddedKeyGenerator(collection, allowUserKeys, lastValue), _ci(ci) {
     TRI_ASSERT(ServerState::instance()->isCoordinator());
   }
 
  private:
   /// @brief generate a key value (internal)
-  uint64_t generateValue() override { return _ci.uniqid(); }
+  uint64_t generateValue() override {
+    TRI_ASSERT(ServerState::instance()->isCoordinator());
+    TRI_ASSERT(_collection.numberOfShards() != 1 || _collection.isSmart());
+    TRI_IF_FAILURE("KeyGenerator::generateOnCoordinator") {
+      // for testing purposes only
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    return _ci.uniqid();
+  }
 
  private:
   ClusterInfo& _ci;
@@ -490,17 +534,20 @@ class PaddedKeyGeneratorCluster final : public PaddedKeyGenerator {
 class AutoIncrementKeyGenerator final : public KeyGenerator {
  public:
   /// @brief create the generator
-  AutoIncrementKeyGenerator(bool allowUserKeys, uint64_t lastValue,
+  AutoIncrementKeyGenerator(LogicalCollection const& collection,
+                            bool allowUserKeys, uint64_t lastValue,
                             uint64_t offset, uint64_t increment)
-      : KeyGenerator(allowUserKeys),
+      : KeyGenerator(collection, allowUserKeys),
         _lastValue(lastValue),
         _offset(offset),
         _increment(increment) {}
 
-  bool hasDynamicState() const override { return true; }
+  bool hasDynamicState() const noexcept override { return true; }
 
   /// @brief generate a key
-  std::string generate() override {
+  std::string generate(velocypack::Slice /*input*/) override {
+    TRI_ASSERT(ServerState::instance()->isSingleServer() ||
+               _collection.numberOfShards() == 1);
     uint64_t keyValue;
 
     auto lastValue = _lastValue.load(std::memory_order_relaxed);
@@ -527,12 +574,13 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
   }
 
   /// @brief validate a key
-  ErrorCode validate(char const* p, size_t length, bool isRestore) override {
-    auto res = KeyGenerator::validate(p, length, isRestore);
+  ErrorCode validate(std::string_view key, velocypack::Slice input,
+                     bool isRestore) noexcept override {
+    auto res = KeyGenerator::validate(key, input, isRestore);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      char const* s = p;
-      char const* e = s + length;
+      char const* s = key.data();
+      char const* e = s + key.size();
       TRI_ASSERT(s != e);
       do {
         if (*s < '0' || *s > '9') {
@@ -540,14 +588,16 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
         }
       } while (++s < e);
 
-      track(p, length);
+      track(key);
     }
 
     return res;
   }
 
   /// @brief track usage of a key
-  void track(char const* p, size_t length) override {
+  void track(std::string_view key) noexcept override {
+    char const* p = key.data();
+    size_t length = key.size();
     // check the numeric key part
     if (length > 0 && p[0] >= '0' && p[0] <= '9') {
       uint64_t value = NumberUtils::atoi_zero<uint64_t>(p, p + length);
@@ -586,18 +636,20 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
 class UuidKeyGenerator final : public KeyGenerator {
  public:
   /// @brief create the generator
-  explicit UuidKeyGenerator(bool allowUserKeys) : KeyGenerator(allowUserKeys) {}
+  explicit UuidKeyGenerator(LogicalCollection const& collection,
+                            bool allowUserKeys)
+      : KeyGenerator(collection, allowUserKeys) {}
 
-  bool hasDynamicState() const override { return false; }
+  bool hasDynamicState() const noexcept override { return false; }
 
   /// @brief generate a key
-  std::string generate() override {
+  std::string generate(velocypack::Slice /*input*/) override {
     MUTEX_LOCKER(locker, _lock);
-    return boost::uuids::to_string(uuid());
+    return boost::uuids::to_string(_uuid());
   }
 
   /// @brief track usage of a key
-  void track(char const* p, size_t length) override {}
+  void track(std::string_view /*key*/) noexcept override {}
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const override {
     KeyGenerator::toVelocyPack(builder);
@@ -607,7 +659,7 @@ class UuidKeyGenerator final : public KeyGenerator {
  private:
   arangodb::Mutex _lock;
 
-  boost::uuids::random_generator uuid;
+  boost::uuids::random_generator _uuid;
 };
 
 /// @brief all generators, by name
@@ -618,7 +670,7 @@ std::unordered_map<std::string, GeneratorType> const generatorNames = {
     {"padded", GeneratorType::PADDED}};
 
 /// @brief get the generator type from VelocyPack
-GeneratorType generatorType(VPackSlice const& parameters) {
+GeneratorType generatorType(VPackSlice parameters) {
   if (!parameters.isObject()) {
     // the default
     return GeneratorType::TRADITIONAL;
@@ -641,28 +693,36 @@ GeneratorType generatorType(VPackSlice const& parameters) {
   return GeneratorType::UNKNOWN;
 }
 
-std::unordered_map<GeneratorMapType,
-                   std::function<KeyGenerator*(ArangodServer&, bool,
-                                               VPackSlice)>> const factories = {
+std::unordered_map<
+    GeneratorMapType,
+    std::function<std::unique_ptr<KeyGenerator>(
+        LogicalCollection const&, VPackSlice)>> const factories = {
     {static_cast<GeneratorMapType>(GeneratorType::UNKNOWN),
-     [](ArangodServer&, bool, VPackSlice) -> KeyGenerator* {
+     [](LogicalCollection const&, VPackSlice) -> std::unique_ptr<KeyGenerator> {
        // unknown key generator type
        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR,
                                       "invalid key generator type");
      }},
     {static_cast<GeneratorMapType>(GeneratorType::TRADITIONAL),
-     [](ArangodServer& server, bool allowUserKeys,
-        VPackSlice options) -> KeyGenerator* {
+     [](LogicalCollection const& collection,
+        VPackSlice options) -> std::unique_ptr<KeyGenerator> {
+       bool allowUserKeys = arangodb::basics::VelocyPackHelper::getBooleanValue(
+           options, StaticStrings::AllowUserKeys, true);
+
        if (ServerState::instance()->isCoordinator()) {
-         auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
-         return new TraditionalKeyGeneratorCluster(ci, allowUserKeys);
+         auto& ci = collection.vocbase()
+                        .server()
+                        .getFeature<ClusterFeature>()
+                        .clusterInfo();
+         return std::make_unique<TraditionalKeyGeneratorCoordinator>(
+             ci, collection, allowUserKeys);
        }
-       return new TraditionalKeyGeneratorSingle(allowUserKeys,
-                                                ::readLastValue(options));
+       return std::make_unique<TraditionalKeyGeneratorSingle>(
+           collection, allowUserKeys, ::readLastValue(options));
      }},
     {static_cast<GeneratorMapType>(GeneratorType::AUTOINCREMENT),
-     [](ArangodServer&, bool allowUserKeys,
-        VPackSlice options) -> KeyGenerator* {
+     [](LogicalCollection const& collection,
+        VPackSlice options) -> std::unique_ptr<KeyGenerator> {
        if (ServerState::instance()->isCoordinator()) {
          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNSUPPORTED,
                                         "the specified key generator is not "
@@ -711,28 +771,50 @@ std::unordered_map<GeneratorMapType,
          }
        }
 
-       return new AutoIncrementKeyGenerator(
-           allowUserKeys, ::readLastValue(options), offset, increment);
+       bool allowUserKeys = arangodb::basics::VelocyPackHelper::getBooleanValue(
+           options, StaticStrings::AllowUserKeys, true);
+
+       return std::make_unique<AutoIncrementKeyGenerator>(
+           collection, allowUserKeys, ::readLastValue(options), offset,
+           increment);
      }},
     {static_cast<GeneratorMapType>(GeneratorType::UUID),
-     [](ArangodServer&, bool allowUserKeys, VPackSlice) -> KeyGenerator* {
-       return new UuidKeyGenerator(allowUserKeys);
+     [](LogicalCollection const& collection,
+        VPackSlice options) -> std::unique_ptr<KeyGenerator> {
+       bool allowUserKeys = arangodb::basics::VelocyPackHelper::getBooleanValue(
+           options, StaticStrings::AllowUserKeys, true);
+
+       return std::make_unique<UuidKeyGenerator>(collection, allowUserKeys);
      }},
     {static_cast<GeneratorMapType>(GeneratorType::PADDED),
-     [](ArangodServer& server, bool allowUserKeys,
-        VPackSlice options) -> KeyGenerator* {
+     [](LogicalCollection const& collection,
+        VPackSlice options) -> std::unique_ptr<KeyGenerator> {
+       bool allowUserKeys = arangodb::basics::VelocyPackHelper::getBooleanValue(
+           options, StaticStrings::AllowUserKeys, true);
+
        if (ServerState::instance()->isCoordinator()) {
-         auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
-         return new PaddedKeyGeneratorCluster(ci, allowUserKeys,
-                                              ::readLastValue(options));
+         auto& ci = collection.vocbase()
+                        .server()
+                        .getFeature<ClusterFeature>()
+                        .clusterInfo();
+         return std::make_unique<PaddedKeyGeneratorCoordinator>(
+             ci, collection, allowUserKeys, ::readLastValue(options));
        }
-       return new PaddedKeyGeneratorSingle(allowUserKeys,
-                                           ::readLastValue(options));
+       return std::make_unique<PaddedKeyGeneratorSingle>(
+           collection, allowUserKeys, ::readLastValue(options));
      }}};
 
 }  // namespace
 
-uint64_t KeyGeneratorHelper::decodePadded(char const* data, size_t length) {
+// smallest possible key
+std::string const KeyGeneratorHelper::lowestKey;
+// greatest possible key
+std::string const KeyGeneratorHelper::highestKey(
+    KeyGeneratorHelper::maxKeyLength,
+    std::numeric_limits<std::string::value_type>::max());
+
+uint64_t KeyGeneratorHelper::decodePadded(char const* data,
+                                          size_t length) noexcept {
   uint64_t result = 0;
 
   if (length != sizeof(uint64_t) * 2) {
@@ -785,70 +867,8 @@ std::string KeyGeneratorHelper::encodePadded(uint64_t value) {
   return std::string(&buffer[0], sizeof(uint64_t) * 2);
 }
 
-/// @brief create the key generator
-KeyGenerator::KeyGenerator(bool allowUserKeys)
-    : _allowUserKeys(allowUserKeys),
-      _isDBServer(ServerState::instance()->isDBServer()) {}
-
-/// @brief build a VelocyPack representation of the generator in the builder
-void KeyGenerator::toVelocyPack(arangodb::velocypack::Builder& builder) const {
-  TRI_ASSERT(!builder.isClosed());
-  builder.add("allowUserKeys", VPackValue(_allowUserKeys));
-}
-
-/// @brief create a key generator based on the options specified
-KeyGenerator* KeyGenerator::factory(ArangodServer& server, VPackSlice options) {
-  if (!options.isObject()) {
-    options = VPackSlice::emptyObjectSlice();
-  }
-
-  ::GeneratorType type = ::generatorType(options);
-
-  bool allowUserKeys = arangodb::basics::VelocyPackHelper::getBooleanValue(
-      options, "allowUserKeys", true);
-
-  auto it = ::factories.find(static_cast<::GeneratorMapType>(type));
-
-  if (it == ::factories.end()) {
-    it = ::factories.find(
-        static_cast<::GeneratorMapType>(::GeneratorType::UNKNOWN));
-  }
-
-  TRI_ASSERT(it != ::factories.end());
-
-  return (*it).second(server, allowUserKeys, options);
-}
-
 /// @brief validate a key
-ErrorCode KeyGenerator::validate(char const* p, size_t length, bool isRestore) {
-  return globalCheck(p, length, isRestore);
-}
-
-/// @brief check global key attributes
-ErrorCode KeyGenerator::globalCheck(char const* p, size_t length,
-                                    bool isRestore) {
-  // user has specified a key
-  if (length > 0 && !_allowUserKeys && !isRestore && !_isDBServer) {
-    // we do not allow user-generated keys
-    // note: on a DB server the coordinator will already have generated the key
-    return TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED;
-  }
-
-  if (length == 0 || length > maxKeyLength) {
-    // user key is empty or user key is too long
-    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-  }
-
-  // validate user-supplied key
-  if (!validateKey(p, length)) {
-    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief validate a key
-bool KeyGenerator::validateKey(char const* key, size_t len) {
+bool KeyGeneratorHelper::validateKey(char const* key, size_t len) noexcept {
   if (len == 0 || len > maxKeyLength) {
     return false;
   }
@@ -861,12 +881,16 @@ bool KeyGenerator::validateKey(char const* key, size_t len) {
       return false;
     }
   } while (++p < e);
+
+  TRI_ASSERT(std::string_view(key, len) > lowestKey);
+  TRI_ASSERT(std::string_view(key, len) <= highestKey);
   return true;
 }
 
 /// @brief validate a document id (collection name + / + document key)
-bool KeyGenerator::validateId(char const* key, size_t len, bool extendedNames,
-                              size_t& split) {
+bool KeyGeneratorHelper::validateId(char const* key, size_t len,
+                                    bool extendedNames,
+                                    size_t& split) noexcept {
   // look for split character
   char const* found = static_cast<char const*>(memchr(key, '/', len));
   if (found == nullptr) {
@@ -902,5 +926,81 @@ bool KeyGenerator::validateId(char const* key, size_t len, bool extendedNames,
   }
 
   // validate document key
-  return KeyGenerator::validateKey(key + split + 1, len - split - 1);
+  return KeyGeneratorHelper::validateKey(key + split + 1, len - split - 1);
+}
+
+/// @brief create a key generator based on the options specified
+std::unique_ptr<KeyGenerator> KeyGeneratorHelper::createKeyGenerator(
+    LogicalCollection const& collection, VPackSlice options) {
+  if (!options.isObject()) {
+    options = VPackSlice::emptyObjectSlice();
+  }
+
+  auto type = ::generatorType(options);
+
+  auto it = ::factories.find(static_cast<::GeneratorMapType>(type));
+
+  if (it == ::factories.end()) {
+    it = ::factories.find(
+        static_cast<::GeneratorMapType>(::GeneratorType::UNKNOWN));
+  }
+
+  TRI_ASSERT(it != ::factories.end());
+
+  // create key generator based on what the user requested
+  std::unique_ptr<KeyGenerator> generator = (*it).second(collection, options);
+
+  // optionally wrap it into a KeyGenerator for a smart graph collection,
+  // if necessary
+  return createEnterpriseKeyGenerator(std::move(generator));
+}
+
+#ifndef USE_ENTERPRISE
+std::unique_ptr<KeyGenerator> KeyGeneratorHelper::createEnterpriseKeyGenerator(
+    std::unique_ptr<KeyGenerator> generator) {
+  // nothing to be done here
+  return generator;
+}
+#endif
+
+/// @brief create the key generator
+KeyGenerator::KeyGenerator(LogicalCollection const& collection,
+                           bool allowUserKeys)
+    : _collection(collection), _allowUserKeys(allowUserKeys) {}
+
+/// @brief build a VelocyPack representation of the generator in the builder
+void KeyGenerator::toVelocyPack(arangodb::velocypack::Builder& builder) const {
+  TRI_ASSERT(!builder.isClosed());
+  builder.add(StaticStrings::AllowUserKeys, VPackValue(_allowUserKeys));
+}
+
+/// @brief validate a key
+ErrorCode KeyGenerator::validate(std::string_view key,
+                                 velocypack::Slice /*input*/,
+                                 bool isRestore) noexcept {
+  return globalCheck(key.data(), key.size(), isRestore);
+}
+
+/// @brief check global key attributes
+ErrorCode KeyGenerator::globalCheck(char const* p, size_t length,
+                                    bool isRestore) const noexcept {
+  // user has specified a key
+  if (length > 0 && !_allowUserKeys && !isRestore &&
+      !ServerState::instance()->isDBServer()) {
+    // we do not allow user-generated keys
+    // note: on a DB server the coordinator will already have generated the key
+    return TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED;
+  }
+
+  if (length == 0 || length > KeyGeneratorHelper::maxKeyLength) {
+    // user key is empty or user key is too long
+    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+  }
+
+  // validate user-supplied key
+  if (!KeyGeneratorHelper::validateKey(p, length)) {
+    return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }

@@ -31,6 +31,7 @@
 #include <velocypack/Slice.h>
 #include <memory>
 #include <mutex>
+#include <unordered_map>
 
 #include "Agency/AgencyComm.h"
 #include "Basics/Mutex.h"
@@ -60,11 +61,19 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 
+namespace replication2 {
+class LogId;
+}  // namespace replication2
+
 namespace replication2::agency {
 struct LogPlanSpecification;
 struct CollectionGroupId;
 struct CollectionGroup;
 }  // namespace replication2::agency
+
+namespace replication2::replicated_state::agency {
+struct Target;
+}  // namespace replication2::replicated_state::agency
 
 class ClusterInfo;
 class LogicalCollection;
@@ -696,7 +705,8 @@ class ClusterInfo final {
       bool waitForReplication, arangodb::velocypack::Slice json,
       double timeout,  // request timeout
       bool isNewDatabase,
-      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike);
+      std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
+      replication::Version replicationVersion = replication::Version::ONE);
 
   /// @brief this method does an atomic check of the preconditions for the
   /// collections to be created, using the currently loaded plan.
@@ -713,8 +723,8 @@ class ClusterInfo final {
       std::string const& databaseName,
       std::vector<ClusterCollectionCreationInfo>&, double endTime,
       bool isNewDatabase,
-      std::shared_ptr<const LogicalCollection> const&
-          colToDistributeShardsLike);
+      std::shared_ptr<const LogicalCollection> const& colToDistributeShardsLike,
+      replication::Version replicationVersion);
 
   /// @brief drop collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
@@ -980,6 +990,10 @@ class ClusterInfo final {
       -> ResultT<
           std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
 
+  auto getReplicatedLogsParticipants(std::string_view database) const
+      -> ResultT<
+          std::unordered_map<replication2::LogId, std::vector<std::string>>>;
+
   /**
    * @brief Lock agency's hot backup with TTL 60 seconds
    *
@@ -1016,11 +1030,6 @@ class ClusterInfo final {
   Result dropIndexCoordinatorInner(std::string const& databaseName,
                                    std::string const& collectionID, IndexId iid,
                                    double endTime);
-
-  /// @brief helper function to build a new LogicalCollection object from the
-  /// velocypack input
-  static std::shared_ptr<LogicalCollection> createCollectionObject(
-      arangodb::velocypack::Slice data, TRI_vocbase_t& vocbase);
 
   /// @brief create a new collecion object from the data, using the cache if
   /// possible
@@ -1083,6 +1092,32 @@ class ClusterInfo final {
   /// @brief triggers a new background thread to obtain the next batch of ids
   //////////////////////////////////////////////////////////////////////////////
   void triggerBackgroundGetIds();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief a replicated state is created for each shard, only when using
+  /// Replication2
+  //////////////////////////////////////////////////////////////////////////////
+  static auto createReplicatedStateSpec(
+      std::string const& shardId, std::vector<std::string> const& serverIds,
+      std::size_t writeConcern, std::size_t softWriteConcern)
+      -> replication2::replicated_state::agency::Target;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns a future which can be used to wait for the successful
+  /// creation of replicated states
+  //////////////////////////////////////////////////////////////////////////////
+  auto waitForReplicatedStatesCreation(
+      std::string const& databaseName,
+      std::vector<replication2::replicated_state::agency::Target> const&
+          replicatedStates) -> futures::Future<Result>;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief deletes replicated states corresponding to shards
+  //////////////////////////////////////////////////////////////////////////////
+  auto deleteReplicatedStates(
+      std::string const& databaseName,
+      std::vector<replication2::LogId> const& replicatedStatesIds)
+      -> futures::Future<Result>;
 
   /// underlying application server
   ArangodServer& _server;

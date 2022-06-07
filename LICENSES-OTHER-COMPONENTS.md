@@ -368,8 +368,8 @@ _Enterprise Edition only_
 ### jemalloc
 
 * Name: jemalloc
-* Version: 5.2.1-dev, commit a4e81221cceeb887708d53015d3d1f1f9642980a
-* Date: 2022-12-31 12:28:15 -0800
+* Version: 5.3.0, commit 54eaed1d8b56b1aa528be3bdd1877e59c56fa90c
+* Date: 2022-05-06 11:28:25 -0700
 * Project Home: https://github.com/jemalloc/jemalloc
 * License: https://raw.githubusercontent.com/jemalloc/jemalloc/dev/COPYING
 * License Comment: free as-is license
@@ -454,10 +454,10 @@ _Enterprise Edition only_
 ### RocksDB
 
 * Name: RocksDB
-* Version: 6.29.0 (e8f116deabc601a5eae011f2fd8a38d02d87be8d)
-* Date: 2022-01-21 17:23:03 -0800
-* GitHub: https://github.com/facebook/rocksdb
-* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/rocksdb/6.29/README.md
+* Version: 7.2.0
+* Date: 2022-05-05
+* GitHub: https://github.com/arangodb/rocksdb
+* License: https://github.com/arangodb/rocksdb/blob/main/README.md
 * License Name: Apache License 2.0
 * License Id: Apache-2.0
 
@@ -524,8 +524,8 @@ _Enterprise Edition only_
 ### zlib
 
 * Name: zlib
-* Version: 1.2.11
-* Date: 2017-01-15 17:57:23Z
+* Version: 1.2.12
+* Date: 2022-03-27 15:47:03 -0700
 * Project Home: https://github.com/madler/zlib/
 * License: https://raw.githubusercontent.com/madler/zlib/master/README
 * License Comment: free as-is license

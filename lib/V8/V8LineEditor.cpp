@@ -380,16 +380,20 @@ class V8Completer : public Completer {
           char const* s = *str;
 
           if (s != nullptr && *s) {
-            std::string suffix = (current->Get(context, v)
-                                      .FromMaybe(v8::Local<v8::Value>())
-                                      ->IsFunction())
-                                     ? "()"
-                                     : "";
-            std::string name = path + s + suffix;
-
+            std::string_view property(s, str.length());
             if (prefix.empty() || prefix[0] == '\0' ||
-                TRI_IsPrefixString(s, prefix.c_str())) {
-              result.emplace_back(name);
+                property.starts_with(prefix)) {
+              std::string_view suffix;
+              if (current->Get(context, v)
+                      .FromMaybe(v8::Local<v8::Value>())
+                      ->IsFunction()) {
+                suffix = "()";
+              }
+
+              result.emplace_back();
+              result.back().reserve(path.size() + property.size() +
+                                    suffix.size());
+              result.back().append(path).append(property).append(suffix);
             }
           }
         }

@@ -217,7 +217,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(link->sparse());
     EXPECT_TRUE(arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
                 link->type());
-    EXPECT_TRUE(arangodb::iresearch::StaticStrings::DataSourceType ==
+    EXPECT_TRUE(arangodb::iresearch::StaticStrings::ViewType ==
                 link->typeName());
     EXPECT_FALSE(link->unique());
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -291,7 +291,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(link->sparse());
     EXPECT_TRUE(arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
                 link->type());
-    EXPECT_TRUE(arangodb::iresearch::StaticStrings::DataSourceType ==
+    EXPECT_TRUE(arangodb::iresearch::StaticStrings::ViewType ==
                 link->typeName());
     EXPECT_FALSE(link->unique());
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
@@ -365,8 +365,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(link->sparse());
     EXPECT_EQ(arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK,
               link->type());
-    EXPECT_EQ(arangodb::iresearch::StaticStrings::DataSourceType,
-              link->typeName());
+    EXPECT_EQ(arangodb::iresearch::StaticStrings::ViewType, link->typeName());
     EXPECT_FALSE(link->unique());
 
     {
@@ -2234,7 +2233,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
   ~IResearchLinkMetricsTest() override { resetLink(); }
 
   bool checkMetricExist(std::string_view name, std::string_view label) const {
-    arangodb::metrics::MetricKey key(name, label);
+    arangodb::metrics::MetricKeyView key{name, label};
     auto& f = _vocbase.server().getFeature<arangodb::metrics::MetricsFeature>();
     auto* metric = f.get(key);
     return metric != nullptr;
@@ -2715,7 +2714,8 @@ class IResearchLinkInRecoveryDBServerOnUpgradeTest
   arangodb::tests::mocks::MockDBServer server;
   std::string testFilesystemPath;
 
-  IResearchLinkInRecoveryDBServerOnUpgradeTest() : server(false, true) {
+  IResearchLinkInRecoveryDBServerOnUpgradeTest()
+      : server("PRMR_0001", false, true) {
     arangodb::tests::init();
 
     // ensure ArangoSearch start 1 maintenance for each group

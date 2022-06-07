@@ -111,9 +111,9 @@ static bool ignoreHiddenEnterpriseCollection(std::string const& name,
                                              bool force) {
 #ifdef USE_ENTERPRISE
   if (!force && name[0] == '_') {
-    if (strncmp(name.c_str(), "_local_", 7) == 0 ||
-        strncmp(name.c_str(), "_from_", 6) == 0 ||
-        strncmp(name.c_str(), "_to_", 4) == 0) {
+    if (name.starts_with(StaticStrings::FullLocalPrefix) ||
+        name.starts_with(StaticStrings::FullFromPrefix) ||
+        name.starts_with(StaticStrings::FullToPrefix)) {
       LOG_TOPIC("944c4", WARN, arangodb::Logger::REPLICATION)
           << "Restore ignoring collection " << name
           << ". Will be created via SmartGraphs of a full dump. If you want to "
@@ -280,7 +280,6 @@ std::string const RestReplicationHandler::LoggerTickRanges =
 std::string const RestReplicationHandler::LoggerFirstTick = "logger-first-tick";
 std::string const RestReplicationHandler::LoggerFollow = "logger-follow";
 std::string const RestReplicationHandler::Batch = "batch";
-std::string const RestReplicationHandler::Barrier = "barrier";
 std::string const RestReplicationHandler::Inventory = "inventory";
 std::string const RestReplicationHandler::Keys = "keys";
 std::string const RestReplicationHandler::Revisions = "revisions";
@@ -375,11 +374,6 @@ RestStatus RestReplicationHandler::execute() {
       } else {
         handleCommandBatch();
       }
-    } else if (command == Barrier) {
-      if (isCoordinatorError()) {
-        return RestStatus::DONE;
-      }
-      handleCommandBarrier();
     } else if (command == Inventory) {
       // get overview of collections and indexes followed by some extra data
       // example call: curl --dump -
@@ -1334,6 +1328,15 @@ Result RestReplicationHandler::processRestoreCollection(
           << basics::StringUtils::join(changes, ". ");
     }
 #endif
+
+    if (parameters.get(StaticStrings::UsesRevisionsAsDocumentIds).isNone() &&
+        (parameters.get(StaticStrings::SyncByRevision).isNone() ||
+         parameters.get(StaticStrings::SyncByRevision).isTrue())) {
+      // for restored collections that do not have "syncByRevision" nor
+      // "usesRevisionsAsDocumentIds" set, set "usesRevisionsAsDocumentIds"
+      // to true. This allows the usage of revision trees for the collection.
+      toMerge.add(StaticStrings::UsesRevisionsAsDocumentIds, VPackValue(true));
+    }
 
     // Always ignore `shadowCollections` they were accidentially dumped in
     // arangodb versions earlier than 3.3.6
@@ -2734,7 +2737,7 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
 void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   TRI_ASSERT(ServerState::instance()->isDBServer());
   bool success = false;
-  VPackSlice const body = this->parseVPackBody(success);
+  VPackSlice body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
@@ -3026,14 +3029,6 @@ void RestReplicationHandler::handleCommandLoggerTickRanges() {
 
 bool RestReplicationHandler::prepareRevisionOperation(
     RevisionOperationContext& ctx) {
-  auto& selector = server().getFeature<EngineSelectorFeature>();
-  if (!selector.isRocksDB()) {
-    generateError(
-        rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
-        "this storage engine does not support revision-based replication");
-    return false;
-  }
-
   LOG_TOPIC("253e2", TRACE, arangodb::Logger::REPLICATION)
       << "enter prepareRevisionOperation";
 
@@ -3414,6 +3409,14 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
     // needed in case we restore cluster related data into single server
     // instance
     patch.add(StaticStrings::DataSourcePlanId, VPackSlice::nullSlice());
+    if (slice.get(StaticStrings::UsesRevisionsAsDocumentIds).isNone() &&
+        (slice.get(StaticStrings::SyncByRevision).isNone() ||
+         slice.get(StaticStrings::SyncByRevision).isTrue())) {
+      // for restored collections that do not have the attribute
+      // "usesRevisionsAsDocumentIds" set, set "usesRevisionsAsDocumentIds"
+      // to true. This allows the usage of revision trees for the collection.
+      patch.add(StaticStrings::UsesRevisionsAsDocumentIds, VPackValue(true));
+    }
   }
   patch.close();
 
@@ -3424,7 +3427,7 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
 
   // Initializing creation options
   TRI_col_type_e collectionType = Helper::getNumericValue<TRI_col_type_e, int>(
-      slice, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN);
+      slice, StaticStrings::DataSourceType, TRI_COL_TYPE_DOCUMENT);
   std::vector<CollectionCreationInfo> infos{{name, collectionType, slice}};
   bool isNewDatabase = false;
   bool allowSystem = true;
@@ -3442,9 +3445,10 @@ ErrorCode RestReplicationHandler::createCollection(VPackSlice slice) {
   OperationOptions options(_context);
   std::vector<std::shared_ptr<LogicalCollection>> collections;
   Result res = methods::Collections::create(
-      _vocbase, options, infos, true, enforceReplicationFactor, isNewDatabase,
-      nullptr, collections, allowSystem,
-      allowEnterpriseCollectionsOnSingleServer, true);
+      _vocbase, options, infos, /*createWaitsForSyncReplication*/ true,
+      enforceReplicationFactor, isNewDatabase, nullptr, collections,
+      allowSystem, allowEnterpriseCollectionsOnSingleServer,
+      /*isRestore*/ true);
   if (res.fail()) {
     return res.errorNumber();
   }
@@ -3533,6 +3537,14 @@ Result RestReplicationHandler::createBlockingTransaction(
     TransactionId id, LogicalCollection& col, double ttl,
     AccessMode::Type access, RebootId const& rebootId,
     std::string const& serverId) {
+  // it is ok to acquire the scope here in all cases. otherwise we
+  // may block replication. note: we need this here in case the
+  // leader is read-only (e.g. because the license has expired).
+  // if we are not using superuser scope here and the leader is
+  // read-only, trying to grab the lock in exclusive mode will
+  // return a "read-only" error.
+  ExecContextScope scope(&ExecContext::superuser());
+
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
@@ -3782,7 +3794,9 @@ RequestLane RestReplicationHandler::lane() const {
         return RequestLane::SERVER_REPLICATION_CATCHUP;
       }
     }
-    if (command == RemoveFollower || command == LoggerFollow) {
+    if (command == RemoveFollower || command == LoggerFollow ||
+        command == Batch || command == Inventory || command == Revisions ||
+        command == Dump) {
       return RequestLane::SERVER_REPLICATION_CATCHUP;
     }
   }

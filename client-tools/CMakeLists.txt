@@ -168,7 +168,6 @@ target_link_libraries(${BIN_ARANGODUMP}
   boost_system
   boost_boost
   arango_shell
-  fuerte
 )
 
 install(
@@ -278,8 +277,6 @@ install(
 
 install_config(arangoimport)
 
-add_dependencies(arangoimport fuerte)
-
 if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangoimport zlibstatic v8_build) # v8_build includes ICU
                                                      # build
@@ -335,7 +332,6 @@ target_link_libraries(${BIN_ARANGORESTORE}
   boost_system
   boost_boost
   arango_shell
-  fuerte
 )
 
 install(

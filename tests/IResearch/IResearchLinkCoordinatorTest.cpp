@@ -57,7 +57,6 @@
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchViewCoordinator.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -79,7 +78,7 @@ class IResearchLinkCoordinatorTest : public ::testing::Test {
  protected:
   arangodb::tests::mocks::MockCoordinator server;
 
-  IResearchLinkCoordinatorTest() : server() {
+  IResearchLinkCoordinatorTest() : server("CRDN_0001") {
     arangodb::tests::init();
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
@@ -212,8 +211,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     EXPECT_TRUE(true == index->sparse());
     EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
                  index->type()));
-    EXPECT_TRUE((arangodb::iresearch::StaticStrings::DataSourceType ==
-                 index->typeName()));
+    EXPECT_TRUE(
+        (arangodb::iresearch::StaticStrings::ViewType == index->typeName()));
     EXPECT_TRUE((false == index->unique()));
 
     arangodb::iresearch::IResearchLinkMeta actualMeta;
@@ -363,8 +362,8 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     EXPECT_TRUE(true == index->sparse());
     EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
                  index->type()));
-    EXPECT_TRUE((arangodb::iresearch::StaticStrings::DataSourceType ==
-                 index->typeName()));
+    EXPECT_TRUE(
+        (arangodb::iresearch::StaticStrings::ViewType == index->typeName()));
     EXPECT_TRUE((false == index->unique()));
 
     {

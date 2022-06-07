@@ -26,6 +26,7 @@
 
 #include <optional>
 #include <string_view>
+#include <tuple>
 #include <type_traits>
 #include <variant>
 
@@ -33,6 +34,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 
+#include "Basics/overload.h"
 #include "Inspection/InspectorBase.h"
 
 namespace arangodb::inspection {
@@ -44,33 +46,43 @@ struct VPackSaveInspector : InspectorBase<VPackSaveInspector> {
       : _builder(builder) {}
 
   template<class T>
-  [[nodiscard]] Result apply(T const& x) {
+  [[nodiscard]] Status apply(T const& x) {
     return process(*this, x);
   }
 
-  [[nodiscard]] Result::Success beginObject() {
+  [[nodiscard]] Status::Success beginObject() {
     _builder.openObject();
     return {};
   }
 
-  [[nodiscard]] Result::Success endObject() {
+  [[nodiscard]] Status::Success endObject() {
     _builder.close();
     return {};
   }
 
+  [[nodiscard]] Status::Success value(velocypack::Slice s) {
+    _builder.add(s);
+    return {};
+  }
+
+  [[nodiscard]] Status::Success value(velocypack::HashedStringRef const& s) {
+    _builder.add(VPackValue(s.stringView()));
+    return {};
+  }
+
   template<class T, class = std::enable_if_t<detail::IsBuiltinType<T>()>>
-  [[nodiscard]] Result::Success value(T const& v) {
+  [[nodiscard]] Status::Success value(T const& v) {
     static_assert(detail::IsBuiltinType<T>());
     _builder.add(VPackValue(v));
     return {};
   }
 
-  [[nodiscard]] Result::Success beginArray() {
+  [[nodiscard]] Status::Success beginArray() {
     _builder.openArray();
     return {};
   }
 
-  [[nodiscard]] Result::Success endArray() {
+  [[nodiscard]] Status::Success endArray() {
     _builder.close();
     return {};
   }
@@ -103,6 +115,8 @@ struct VPackSaveInspector : InspectorBase<VPackSaveInspector> {
            | [&]() { return endObject(); };     //
   }
 
+  auto applyFields() { return Status::Success{}; }
+
   template<class Arg, class... Args>
   auto applyFields(Arg&& arg, Args&&... args) {
     auto res = self().applyField(std::forward<Arg>(arg));
@@ -112,6 +126,34 @@ struct VPackSaveInspector : InspectorBase<VPackSaveInspector> {
       return std::move(res)                                                 //
              | [&]() { return applyFields(std::forward<Args>(args)...); };  //
     }
+  }
+
+  template<class... Ts, class... Args>
+  auto processVariant(UnqualifiedVariant<Ts...>& variant, Args&&... args) {
+    return beginObject()  //
+           |
+           [&]() {
+             return std::visit(overload{[this, &args](typename Args::Type& v) {
+                                 return applyFields(field(args.tag, v));
+                               }...},
+                               variant.value);
+           }  //
+           | [&]() { return endObject(); };
+  }
+
+  template<class... Ts, class... Args>
+  auto processVariant(QualifiedVariant<Ts...>& variant, Args&&... args) {
+    return beginObject()  //
+           |
+           [&]() {
+             return std::visit(
+                 overload{[this, &variant, &args](typename Args::Type& v) {
+                   return applyFields(field(variant.typeField, args.tag),
+                                      field(variant.valueField, v));
+                 }...},
+                 variant.value);
+           }  //
+           | [&]() { return endObject(); };
   }
 
   velocypack::Builder& builder() noexcept { return _builder; }
@@ -128,21 +170,28 @@ struct VPackSaveInspector : InspectorBase<VPackSaveInspector> {
  private:
   template<class T>
   [[nodiscard]] auto applyField(T const& field) {
-    auto name = getFieldName(field);
-    auto& value = getFieldValue(field);
-    auto res = [&]() {
-      if constexpr (!std::is_void_v<decltype(getTransformer(field))>) {
-        return saveTransformedField(*this, name, value, getTransformer(field));
-      } else {
-        return saveField(*this, name, value);
+    if constexpr (std::is_same_v<IgnoreField, T>) {
+      return Status::Success{};
+    } else {
+      auto name = getFieldName(field);
+      auto& value = getFieldValue(field);
+      constexpr bool hasFallback =
+          !std::is_void_v<decltype(getFallbackField(field))>;
+      auto res = [&]() {
+        if constexpr (!std::is_void_v<decltype(getTransformer(field))>) {
+          return saveTransformedField(*this, name, hasFallback, value,
+                                      getTransformer(field));
+        } else {
+          return saveField(*this, name, hasFallback, value);
+        }
+      }();
+      if constexpr (!isSuccess(res)) {
+        if (!res.ok()) {
+          return Status{std::move(res), name, Status::AttributeTag{}};
+        }
       }
-    }();
-    if constexpr (res.canFail()) {
-      if (!res.ok()) {
-        return Result{std::move(res), name, Result::AttributeTag{}};
-      }
+      return res;
     }
-    return res;
   }
 
   template<std::size_t Idx, std::size_t End, class T>
@@ -151,7 +200,7 @@ struct VPackSaveInspector : InspectorBase<VPackSaveInspector> {
       return process(*this, std::get<Idx>(data))                    //
              | [&]() { return processTuple<Idx + 1, End>(data); };  //
     } else {
-      return Result::Success{};
+      return Status::Success{};
     }
   }
 

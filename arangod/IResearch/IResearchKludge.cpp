@@ -23,6 +23,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchKludge.h"
+#include "IResearchRocksDBLink.h"
+#include "IResearchRocksDBInvertedIndex.h"
+#include "Basics/DownCast.h"
 
 #include <string>
 #include <string_view>
@@ -38,6 +41,26 @@ inline void normalizeExpansion(std::string& name) {
 }
 
 }  // namespace
+
+namespace arangodb {
+void syncIndexOnCreate(Index& index) {
+  iresearch::IResearchDataStore* store{nullptr};
+  switch (index.type()) {
+    case Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK:
+      store = &basics::downCast<iresearch::IResearchRocksDBLink>(index);
+      break;
+    case Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX:
+      store =
+          &basics::downCast<iresearch::IResearchRocksDBInvertedIndex>(index);
+      break;
+    default:
+      break;
+  }
+  if (store) {
+    store->commit();
+  }
+}
+}  // namespace arangodb
 
 namespace arangodb::iresearch::kludge {
 

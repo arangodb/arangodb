@@ -21,11 +21,11 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ClusterIndex.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "ClusterIndex.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "RocksDBEngine/RocksDBZkdIndex.h"
@@ -37,23 +37,6 @@
 #include <velocypack/Iterator.h>
 
 using namespace arangodb;
-using Helper = arangodb::basics::VelocyPackHelper;
-
-namespace {
-/// @brief hard-coded vector of the index attributes
-/// note that the attribute names must be hard-coded here to avoid an init-order
-/// fiasco with StaticStrings::IdString etc.
-/// TODO FIXME
-constexpr std::string_view idAttribute("_id");
-constexpr std::string_view keyAttribute("_key");
-
-// The primary indexes do not have `_id` in the _fields instance variable
-std::vector<std::vector<arangodb::basics::AttributeName>> const
-    primaryIndexAttributes{
-        {arangodb::basics::AttributeName(idAttribute, false)},
-        {arangodb::basics::AttributeName(keyAttribute, false)}};
-
-};  // namespace
 
 ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
                            ClusterEngineType engineType, Index::IndexType itype,
@@ -85,7 +68,9 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
       }
     } else if (_indexType == TRI_IDX_TYPE_PRIMARY_INDEX) {
       // The Primary Index on RocksDB can serve _key and _id when being asked.
-      _coveredFields = ::primaryIndexAttributes;
+      _coveredFields = {
+          {arangodb::basics::AttributeName(StaticStrings::IdString, false)},
+          {arangodb::basics::AttributeName(StaticStrings::KeyString, false)}};
     } else if (_indexType == TRI_IDX_TYPE_PERSISTENT_INDEX) {
       _coveredFields = Index::mergeFields(
           _fields, Index::parseFields(
@@ -103,6 +88,8 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
           s.isBoolean()) {
         _estimates = s.getBoolean();
       }
+    } else if (_indexType == TRI_IDX_TYPE_TTL_INDEX) {
+      _estimates = false;
     }
   }
 }
@@ -113,8 +100,6 @@ void ClusterIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   Index::toVelocyPackFigures(builder);
 }
-
-// ========== below is cluster schmutz ============
 
 /// @brief return a VelocyPack representation of the index
 void ClusterIndex::toVelocyPack(
@@ -129,6 +114,9 @@ void ClusterIndex::toVelocyPack(
       _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
       _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX) {
     builder.add(StaticStrings::IndexEstimates, VPackValue(_estimates));
+  } else if (_indexType == Index::TRI_IDX_TYPE_TTL_INDEX) {
+    // no estimates for the ttl index
+    builder.add(StaticStrings::IndexEstimates, VPackValue(false));
   }
 
   for (auto pair : VPackObjectIterator(_info.slice())) {
@@ -208,7 +196,7 @@ void ClusterIndex::updateProperties(velocypack::Slice const& slice) {
 
   if (_engineType == ClusterEngineType::RocksDBEngine) {
     merge.add(StaticStrings::CacheEnabled,
-              VPackValue(Helper::getBooleanValue(
+              VPackValue(arangodb::basics::VelocyPackHelper::getBooleanValue(
                   slice, StaticStrings::CacheEnabled, false)));
 
   } else {
@@ -247,7 +235,10 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
             allIndexes, this, node, reference, itemsInIndex);
       }
       // other...
-      SimpleAttributeEqualityMatcher matcher(::primaryIndexAttributes);
+      std::vector<std::vector<arangodb::basics::AttributeName>> fields{
+          {arangodb::basics::AttributeName(StaticStrings::IdString, false)},
+          {arangodb::basics::AttributeName(StaticStrings::KeyString, false)}};
+      SimpleAttributeEqualityMatcher matcher(fields);
       return matcher.matchOne(this, node, reference, itemsInIndex);
     }
     case TRI_IDX_TYPE_EDGE_INDEX: {

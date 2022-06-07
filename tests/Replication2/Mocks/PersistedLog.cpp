@@ -135,3 +135,25 @@ void AsyncMockLog::runWorker() {
     }
   }
 }
+
+auto DelayedMockLog::insertAsync(
+    std::unique_ptr<replication2::PersistedLogIterator> iter,
+    PersistedLog::WriteOptions const& opts) -> futures::Future<Result> {
+  TRI_ASSERT(!_pending.has_value());
+  return _pending.emplace(std::move(iter), opts).promise.getFuture();
+}
+
+void DelayedMockLog::runAsyncInsert() {
+  TRI_ASSERT(_pending.has_value());
+  MockLog::insertAsync(std::move(_pending->iter), _pending->options)
+      .thenFinal([this](futures::Try<Result>&& res) {
+        auto promise = std::move(_pending->promise);
+        _pending.reset();
+        promise.setTry(std::move(res));
+      });
+}
+
+DelayedMockLog::PendingRequest::PendingRequest(
+    std::unique_ptr<replication2::PersistedLogIterator> iter,
+    WriteOptions options)
+    : iter(std::move(iter)), options(options) {}

@@ -49,9 +49,10 @@ using namespace arangodb::rest;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
 GeneralServer::GeneralServer(GeneralServerFeature& feature,
                              uint64_t numIoThreads)
-    : _feature(feature), _endpointList(nullptr), _contexts() {
+    : _feature(feature) {
   auto& server = feature.server();
   for (size_t i = 0; i < numIoThreads; ++i) {
     _contexts.emplace_back(server);
@@ -89,33 +90,32 @@ void GeneralServer::unregisterTask(CommTask* task) {
   old.reset();
 }
 
-void GeneralServer::setEndpointList(EndpointList const* list) {
-  _endpointList = list;
-}
-
-void GeneralServer::startListening() {
+void GeneralServer::startListening(EndpointList& list) {
   unsigned int i = 0;
 
-  for (auto& it : _endpointList->allEndpoints()) {
+  list.apply([&i, this](std::string const& specification, Endpoint& ep) {
     LOG_TOPIC("e62e0", TRACE, arangodb::Logger::FIXME)
-        << "trying to bind to endpoint '" << it.first << "' for requests";
+        << "trying to bind to endpoint '" << specification << "' for requests";
 
     // distribute endpoints across all io contexts
     IoContext& ioContext = _contexts[i++ % _contexts.size()];
-    bool ok = openEndpoint(ioContext, it.second);
+    bool ok = openEndpoint(ioContext, &ep);
 
     if (ok) {
       LOG_TOPIC("dc45a", DEBUG, arangodb::Logger::FIXME)
-          << "bound to endpoint '" << it.first << "'";
+          << "bound to endpoint '" << specification << "'";
     } else {
       LOG_TOPIC("c81f6", FATAL, arangodb::Logger::FIXME)
-          << "failed to bind to endpoint '" << it.first
+          << "failed to bind to endpoint '" << specification
           << "'. Please check whether another instance is already "
              "running using this endpoint and review your endpoints "
              "configuration.";
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_COULD_NOT_BIND_PORT);
     }
-  }
+  });
+
+  // print out messages to which endpoints the server is bound to
+  list.dump();
 }
 
 /// stop accepting new connections

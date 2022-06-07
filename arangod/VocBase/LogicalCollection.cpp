@@ -36,6 +36,7 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Replication/ReplicationFeature.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -135,7 +136,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
           static_cast<uint32_t>(currentVersion())))),
       _v8CacheVersion(0),
       _type(Helper::getNumericValue<TRI_col_type_e, int>(
-          info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN)),
+          info, StaticStrings::DataSourceType, TRI_COL_TYPE_DOCUMENT)),
       _status(Helper::getNumericValue<TRI_vocbase_col_status_e, int>(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isAStub(isAStub),
@@ -146,16 +147,13 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
       _isSmartChild(
           Helper::getBooleanValue(info, StaticStrings::IsSmartChild, false)),
 #endif
-      _allowUserKeys(Helper::getBooleanValue(info, "allowUserKeys", true)),
+      _allowUserKeys(
+          Helper::getBooleanValue(info, StaticStrings::AllowUserKeys, true)),
       _waitForSync(Helper::getBooleanValue(
           info, StaticStrings::WaitForSyncString, false)),
       _usesRevisionsAsDocumentIds(Helper::getBooleanValue(
           info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
       _syncByRevision(determineSyncByRevision()),
-#ifdef USE_ENTERPRISE
-      _smartJoinAttribute(
-          Helper::getStringValue(info, StaticStrings::SmartJoinAttribute, "")),
-#endif
       _countCache(/*ttl*/ system() ? 900.0 : 180.0),
       _physical(vocbase.server()
                     .getFeature<EngineSelectorFeature>()
@@ -198,70 +196,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   // update server's tick value
   TRI_UpdateTickServer(id().id());
 
-  // add keyOptions from slice
-  _keyGenerator.reset(
-      KeyGenerator::factory(vocbase.server(), info.get("keyOptions")));
-
-  // computed values
-  if (auto res = updateComputedValues(info.get(StaticStrings::ComputedValues));
-      res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
   _sharding = std::make_unique<ShardingInfo>(info, this);
 
-#ifdef USE_ENTERPRISE
-  if (ServerState::instance()->isCoordinator() ||
-      ServerState::instance()->isDBServer()) {
-    if (!info.get(StaticStrings::SmartJoinAttribute).isNone() &&
-        !hasSmartJoinAttribute()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE,
-          "smartJoinAttribute must contain a string attribute name");
-    }
-
-    if (hasSmartJoinAttribute()) {
-      auto const& sk = _sharding->shardKeys();
-      TRI_ASSERT(!sk.empty());
-
-      if (sk.size() != 1) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE,
-            "smartJoinAttribute can only be used for collections with a single "
-            "shardKey value");
-      }
-      TRI_ASSERT(!sk.front().empty());
-      if (sk.front().back() != ':') {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE,
-            std::string("smartJoinAttribute can only be used for shardKeys "
-                        "ending on ':', got '") +
-                sk.front() + "'");
-      }
-
-      if (isSmart()) {
-        if (_type == TRI_COL_TYPE_EDGE) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE,
-              "cannot use smartJoinAttribute on a smart edge collection");
-        } else if (_type == TRI_COL_TYPE_DOCUMENT) {
-          VPackSlice sga = info.get(StaticStrings::GraphSmartGraphAttribute);
-          if (sga.isString() &&
-              sga.copyString() !=
-                  info.get(StaticStrings::SmartJoinAttribute).copyString()) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE,
-                "smartJoinAttribute must be equal to smartGraphAttribute");
-          }
-        }
-      }
-    }
-  }
-#else
-  // whatever we got passed in, in a non-Enterprise Edition build, we just
-  // ignore any specification for the smartJoinAttribute
-  _smartJoinAttribute.clear();
-#endif
+  initializeSmartAttributes(info);
 
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
@@ -272,11 +209,27 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
   // This has to be called AFTER _physical and _logical are properly linked
   // together.
 
-  prepareIndexes(info.get("indexes"));
+  prepareIndexes(info.get(StaticStrings::Indexes));
   decorateWithInternalValidators();
+
+  // create key generator based on keyOptions from slice
+  _keyGenerator = KeyGeneratorHelper::createKeyGenerator(
+      *this, info.get(StaticStrings::KeyOptions));
+
+  // computed values
+  if (auto res = updateComputedValues(info.get(StaticStrings::ComputedValues));
+      res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 }
 
 LogicalCollection::~LogicalCollection() = default;
+
+#ifndef USE_ENTERPRISE
+void LogicalCollection::initializeSmartAttributes(velocypack::Slice info) {
+  // nothing to do in community edition
+}
+#endif
 
 Result LogicalCollection::updateSchema(VPackSlice schema) {
   if (!schema.isNone()) {
@@ -352,22 +305,26 @@ ShardingInfo* LogicalCollection::shardingInfo() const {
   return _sharding.get();
 }
 
-size_t LogicalCollection::numberOfShards() const {
+size_t LogicalCollection::numberOfShards() const noexcept {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->numberOfShards();
 }
 
-size_t LogicalCollection::replicationFactor() const {
+size_t LogicalCollection::replicationFactor() const noexcept {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->replicationFactor();
 }
 
-size_t LogicalCollection::writeConcern() const {
+size_t LogicalCollection::writeConcern() const noexcept {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->writeConcern();
 }
 
-std::string const& LogicalCollection::distributeShardsLike() const {
+replication::Version LogicalCollection::replicationVersion() const noexcept {
+  return vocbase().replicationVersion();
+}
+
+std::string const& LogicalCollection::distributeShardsLike() const noexcept {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->distributeShardsLike();
 }
@@ -378,22 +335,23 @@ void LogicalCollection::distributeShardsLike(std::string const& cid,
   _sharding->distributeShardsLike(cid, other);
 }
 
-std::vector<std::string> const& LogicalCollection::avoidServers() const {
+std::vector<std::string> const& LogicalCollection::avoidServers()
+    const noexcept {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->avoidServers();
 }
 
-bool LogicalCollection::isSatellite() const {
+bool LogicalCollection::isSatellite() const noexcept {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->isSatellite();
 }
 
-bool LogicalCollection::usesDefaultShardKeys() const {
+bool LogicalCollection::usesDefaultShardKeys() const noexcept {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->usesDefaultShardKeys();
 }
 
-std::vector<std::string> const& LogicalCollection::shardKeys() const {
+std::vector<std::string> const& LogicalCollection::shardKeys() const noexcept {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->shardKeys();
 }
@@ -432,20 +390,6 @@ ErrorCode LogicalCollection::getResponsibleShard(velocypack::Slice slice,
   return _sharding->getResponsibleShard(slice, docComplete, shardID,
                                         usesDefaultShardKeys, key);
 }
-
-/// @briefs creates a new document key, the input slice is ignored here
-std::string LogicalCollection::createKey(VPackSlice input) {
-  if (isSatToSmartEdgeCollection() || isSmartToSatEdgeCollection()) {
-    return createSmartToSatKey(input);
-  }
-  return keyGenerator()->generate();
-}
-
-#ifndef USE_ENTERPRISE
-std::string LogicalCollection::createSmartToSatKey(VPackSlice) {
-  return keyGenerator()->generate();
-}
-#endif
 
 void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
   TRI_ASSERT(_physical != nullptr);
@@ -490,8 +434,15 @@ uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx,
   return documents;
 }
 
-bool LogicalCollection::hasClusterWideUniqueRevs() const {
+bool LogicalCollection::hasClusterWideUniqueRevs() const noexcept {
   return usesRevisionsAsDocumentIds() && isSmartChild();
+}
+
+bool LogicalCollection::mustCreateKeyOnCoordinator() const noexcept {
+  TRI_ASSERT(ServerState::instance()->isRunningInCluster());
+  // when there is more than 1 shard, or if we do have a satellite
+  // collection, we need to create the key on the coordinator.
+  return numberOfShards() != 1;
 }
 
 uint32_t LogicalCollection::v8CacheVersion() const { return _v8CacheVersion; }
@@ -528,31 +479,44 @@ RevisionId LogicalCollection::revision(transaction::Methods* trx) const {
   return _physical->revision(trx);
 }
 
-bool LogicalCollection::usesRevisionsAsDocumentIds() const {
-  return _usesRevisionsAsDocumentIds.load();
+#ifndef USE_ENTERPRISE
+std::string const& LogicalCollection::smartJoinAttribute() const noexcept {
+  return StaticStrings::Empty;
+}
+#endif
+
+#ifndef USE_ENTERPRISE
+std::string LogicalCollection::smartGraphAttribute() const {
+  return StaticStrings::Empty;
+}
+
+void LogicalCollection::setSmartGraphAttribute(std::string const& /*value*/) {
+  TRI_ASSERT(false);
+}
+#endif
+
+bool LogicalCollection::usesRevisionsAsDocumentIds() const noexcept {
+  return _usesRevisionsAsDocumentIds.load(std::memory_order_relaxed);
 }
 
 std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
 }
 
-bool LogicalCollection::syncByRevision() const {
+bool LogicalCollection::syncByRevision() const noexcept {
   return _syncByRevision.load();
 }
 
-bool LogicalCollection::useSyncByRevision() const {
+bool LogicalCollection::useSyncByRevision() const noexcept {
   return !_isAStub && _syncByRevision.load();
 }
 
 bool LogicalCollection::determineSyncByRevision() const {
   if (version() >= LogicalCollection::Version::v37) {
     auto& server = vocbase().server();
-    if (server.hasFeature<EngineSelectorFeature>() &&
-        server.hasFeature<ReplicationFeature>()) {
-      auto& engine = server.getFeature<EngineSelectorFeature>();
+    if (server.hasFeature<ReplicationFeature>()) {
       auto& replication = server.getFeature<ReplicationFeature>();
-      return engine.isRocksDB() && replication.syncByRevision() &&
-             usesRevisionsAsDocumentIds();
+      return replication.syncByRevision() && usesRevisionsAsDocumentIds();
     }
   }
   return false;
@@ -579,7 +543,9 @@ void LogicalCollection::getIndexesVPack(
   getPhysical()->getIndexesVPack(result, filter);
 }
 
-bool LogicalCollection::allowUserKeys() const { return _allowUserKeys; }
+bool LogicalCollection::allowUserKeys() const noexcept {
+  return _allowUserKeys;
+}
 
 // SECTION: Modification Functions
 
@@ -635,13 +601,13 @@ Result LogicalCollection::rename(std::string&& newName) {
     // Engine Rename somehow failed. Reset to old name
     name(std::move(oldName));
 
-    return TRI_ERROR_INTERNAL;
+    return {TRI_ERROR_INTERNAL};
   }
 
   // CHECK if this ordering is okay. Before change the version was increased
   // after swapping in vocbase mapping.
   increaseV8Version();
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 ErrorCode LogicalCollection::close() { return getPhysical()->close(); }
@@ -654,7 +620,7 @@ Result LogicalCollection::drop() {
   deleted(true);
   _physical->drop();
 
-  return Result();
+  return {};
 }
 
 void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
@@ -667,7 +633,7 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
 
 void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
   result.openObject();
-  result.add(VPackValue("indexes"));
+  result.add(VPackValue(StaticStrings::Indexes));
   getIndexesVPack(result, [](arangodb::Index const* idx,
                              decltype(Index::makeFlags())& flags) {
     // we have to exclude the primary and edge index for dump / restore
@@ -681,8 +647,10 @@ void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
     }
   });
   result.add("parameters", VPackValue(VPackValueType::Object));
-  toVelocyPackIgnore(result, {"objectId", "path", "statusString", "indexes"},
-                     LogicalDataSource::Serialization::Inventory);
+  toVelocyPackIgnore(
+      result,
+      {StaticStrings::ObjectId, "path", "statusString", StaticStrings::Indexes},
+      LogicalDataSource::Serialization::Inventory);
   result.close();  // parameters
   result.close();  // collection
 }
@@ -691,6 +659,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
                                                         bool useSystem,
                                                         bool isReady,
                                                         bool allInSync) const {
+  TRI_ASSERT(_sharding != nullptr);
   if (system() && !useSystem) {
     return;
   }
@@ -698,14 +667,15 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   result.openObject();
   result.add(VPackValue("parameters"));
 
-  std::unordered_set<std::string> ignoreKeys{"allowUserKeys",
-                                             "cid",
-                                             "count",
-                                             "statusString",
-                                             StaticStrings::Version,
-                                             "distributeShardsLike",
-                                             StaticStrings::ObjectId,
-                                             StaticStrings::Indexes};
+  std::unordered_set<std::string> ignoreKeys{
+      StaticStrings::AllowUserKeys,
+      StaticStrings::DataSourceCid,
+      "count",
+      "statusString",
+      StaticStrings::Version,
+      StaticStrings::DistributeShardsLike,
+      StaticStrings::ObjectId,
+      StaticStrings::Indexes};
   VPackBuilder params = toVelocyPackIgnore(ignoreKeys, Serialization::List);
   {
     VPackObjectBuilder guard(&result);
@@ -724,7 +694,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
     }
   }
 
-  result.add(VPackValue("indexes"));
+  result.add(VPackValue(StaticStrings::Indexes));
   getIndexesVPack(result, [](Index const* idx, uint8_t& flags) {
     // we have to exclude the primary and the edge index here, because otherwise
     // at least the MMFiles engine will try to create it
@@ -747,13 +717,15 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 
 Result LogicalCollection::appendVPack(velocypack::Builder& build,
                                       Serialization ctx, bool) const {
+  TRI_ASSERT(_sharding != nullptr);
   bool const forPersistence = (ctx == Serialization::Persistence ||
                                ctx == Serialization::PersistenceWithInProgress);
   bool const showInProgress = (ctx == Serialization::PersistenceWithInProgress);
   // We write into an open object
   TRI_ASSERT(build.isOpenObject());
   // Collection Meta Information
-  build.add("cid", VPackValue(std::to_string(id().id())));
+  build.add(StaticStrings::DataSourceCid,
+            VPackValue(std::to_string(id().id())));
   build.add(StaticStrings::DataSourceType, VPackValue(static_cast<int>(_type)));
   build.add("status", VPackValue(_status));
   build.add("statusString", VPackValue(::translateStatus(_status)));
@@ -768,17 +740,17 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     build.add(StaticStrings::DataSourceSystem, VPackValue(system()));
   }
   // TODO is this still releveant or redundant in keyGenerator?
-  build.add("allowUserKeys", VPackValue(_allowUserKeys));
+  build.add(StaticStrings::AllowUserKeys, VPackValue(_allowUserKeys));
+
   // keyoptions
-  build.add("keyOptions", VPackValue(VPackValueType::Object));
-  if (_keyGenerator != nullptr) {
-    _keyGenerator->toVelocyPack(build);
-  }
+  build.add(StaticStrings::KeyOptions, VPackValue(VPackValueType::Object));
+  keyGenerator().toVelocyPack(build);
   build.close();
+
   // Physical Information
   getPhysical()->getPropertiesVPack(build);
   // Indexes
-  build.add(VPackValue("indexes"));
+  build.add(VPackValue(StaticStrings::Indexes));
   auto indexFlags = Index::makeFlags();
   // hide hidden indexes. In effect hides unfinished indexes,
   // and iResearch links (only on a single-server and coordinator)
@@ -814,10 +786,6 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
   build.add(StaticStrings::UsesRevisionsAsDocumentIds,
             VPackValue(usesRevisionsAsDocumentIds()));
   build.add(StaticStrings::SyncByRevision, VPackValue(syncByRevision()));
-  if (hasSmartJoinAttribute()) {
-    build.add(StaticStrings::SmartJoinAttribute,
-              VPackValue(_smartJoinAttribute));
-  }
   if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // TODO is this needed in !forPersistence???
@@ -852,13 +820,17 @@ VPackBuilder LogicalCollection::toVelocyPackIgnore(
   return VPackCollection::remove(full.slice(), ignoreKeys);
 }
 
-void LogicalCollection::includeVelocyPackEnterprise(VPackBuilder&) const {
+#ifndef USE_ENTERPRISE
+void LogicalCollection::includeVelocyPackEnterprise(
+    VPackBuilder& result) const {
   // We ain't no Enterprise Edition
 }
+#endif
 
 void LogicalCollection::increaseV8Version() { ++_v8CacheVersion; }
 
 Result LogicalCollection::properties(velocypack::Slice slice, bool) {
+  TRI_ASSERT(_sharding != nullptr);
   // the following collection properties are intentionally not updated,
   // as updating them would be very complicated:
   // - _cid
@@ -1024,7 +996,7 @@ Result LogicalCollection::properties(velocypack::Slice slice, bool) {
         slice, StaticStrings::InternalValidatorTypes, _internalValidatorTypes);
     if (nextType != _internalValidatorTypes) {
       // This is a bit dangerous operation, if the internalValidators are NOT
-      // empty a concurrent writer could have one in it's hand while this thread
+      // empty a concurrent writer could have one in its hand while this thread
       // deletes it. For now the situation cannot happen, but may happen in the
       // future. As soon as it happens we need to make sure that we hold a write
       // lock on this collection while we swap the validators. (Or apply some
@@ -1034,6 +1006,18 @@ Result LogicalCollection::properties(velocypack::Slice slice, bool) {
       _internalValidatorTypes = nextType;
       _internalValidators.clear();
       decorateWithInternalValidators();
+    }
+
+    // Inject SmartGraphAttribute into Shards
+    if (slice.hasKey(StaticStrings::GraphSmartGraphAttribute) &&
+        smartGraphAttribute().empty()) {
+      // This is a bit dangerous operation and should only be run in MAINTENANCE
+      // task we upgrade the SmartGraphAttribute within the Shard, this is
+      // required to allow the DBServer to generate new ID values
+      auto sga = slice.get(StaticStrings::GraphSmartGraphAttribute);
+      if (sga.isString()) {
+        setSmartGraphAttribute(sga.copyString());
+      }
     }
   }
 
@@ -1240,9 +1224,13 @@ void LogicalCollection::schemaToVelocyPack(VPackBuilder& b) const {
   }
 }
 
-Result LogicalCollection::validate(VPackSlice s,
+std::shared_ptr<ValidatorBase> LogicalCollection::schema() const {
+  return std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
+}
+
+Result LogicalCollection::validate(std::shared_ptr<ValidatorBase> const& schema,
+                                   VPackSlice s,
                                    VPackOptions const* options) const {
-  auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
   if (schema != nullptr) {
     auto res = schema->validate(s, VPackSlice::noneSlice(), true, options);
     if (res.fail()) {
@@ -1258,9 +1246,11 @@ Result LogicalCollection::validate(VPackSlice s,
   return {};
 }
 
-Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc,
+Result LogicalCollection::validate(std::shared_ptr<ValidatorBase> const& schema,
+                                   VPackSlice modifiedDoc, VPackSlice oldDoc,
                                    VPackOptions const* options) const {
-  auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
+  //  auto schema = std::atomic_load_explicit(&_schema,
+  //  std::memory_order_relaxed);
   if (schema != nullptr) {
     auto res = schema->validate(modifiedDoc, oldDoc, false, options);
     if (res.fail()) {
@@ -1280,7 +1270,7 @@ void LogicalCollection::setInternalValidatorTypes(uint64_t type) {
   _internalValidatorTypes = type;
 }
 
-uint64_t LogicalCollection::getInternalValidatorTypes() const {
+uint64_t LogicalCollection::getInternalValidatorTypes() const noexcept {
   return _internalValidatorTypes;
 }
 
@@ -1300,26 +1290,13 @@ void LogicalCollection::decorateWithInternalValidators() {
   decorateWithInternalEEValidators();
 }
 
-bool LogicalCollection::isLocalSmartEdgeCollection() const noexcept {
-  return (_internalValidatorTypes & InternalValidatorType::LocalSmartEdge) != 0;
-}
-
-bool LogicalCollection::isRemoteSmartEdgeCollection() const noexcept {
-  return (_internalValidatorTypes & InternalValidatorType::RemoteSmartEdge) !=
-         0;
-}
-
-bool LogicalCollection::isSmartEdgeCollection() const noexcept {
-  return (_internalValidatorTypes & InternalValidatorType::LogicalSmartEdge) !=
-         0;
-}
-
-bool LogicalCollection::isSatToSmartEdgeCollection() const noexcept {
-  return (_internalValidatorTypes & InternalValidatorType::SatToSmartEdge) != 0;
-}
-
-bool LogicalCollection::isSmartToSatEdgeCollection() const noexcept {
-  return (_internalValidatorTypes & InternalValidatorType::SmartToSatEdge) != 0;
+replication2::LogId LogicalCollection::shardIdToStateId(
+    ShardID const& shardId) {
+  auto stateId = std::string_view(shardId).substr(1, shardId.size() - 1);
+  auto logId = replication2::LogId::fromString(stateId);
+  ADB_PROD_ASSERT(logId.has_value())
+      << " converting " << shardId << " to LogId failed";
+  return logId.value();
 }
 
 #ifndef USE_ENTERPRISE

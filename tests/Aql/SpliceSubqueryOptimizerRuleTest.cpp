@@ -151,11 +151,10 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
         const_cast<arangodb::aql::ExecutionPlan*>(splicedQuery->plan());
     ASSERT_NE(splicedPlan, nullptr) << "query string: " << querystring;
 
-    SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-    SmallVector<ExecutionNode*> splicedSubqueryNodes{a};
-    SmallVector<ExecutionNode*> splicedSubqueryStartNodes{a};
-    SmallVector<ExecutionNode*> splicedSubqueryEndNodes{a};
-    SmallVector<ExecutionNode*> splicedSubquerySingletonNodes{a};
+    containers::SmallVector<ExecutionNode*, 8> splicedSubqueryNodes;
+    containers::SmallVector<ExecutionNode*, 8> splicedSubqueryStartNodes;
+    containers::SmallVector<ExecutionNode*, 8> splicedSubqueryEndNodes;
+    containers::SmallVector<ExecutionNode*, 8> splicedSubquerySingletonNodes;
     splicedPlan->findNodesOfType(splicedSubqueryNodes, ExecutionNode::SUBQUERY,
                                  true);
     splicedPlan->findNodesOfType(splicedSubqueryStartNodes,

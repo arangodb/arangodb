@@ -22,8 +22,6 @@
 
 #include "MockGraphProvider.h"
 
-#include "./MockGraph.h"
-
 #include "Basics/StaticStrings.h"
 
 #include "Aql/QueryContext.h"
@@ -112,6 +110,17 @@ auto MockGraphProvider::startVertex(VertexType v, size_t depth, double weight)
   return Step(v, decideProcessable());
 }
 
+auto MockGraphProvider::fetchVertices(const std::vector<Step*>& looseEnds)
+    -> futures::Future<std::vector<Step*>> {
+  return fetch(looseEnds);
+}
+
+auto MockGraphProvider::fetchEdges(const std::vector<Step*>& fetchedVertices)
+    -> Result {
+  TRI_ASSERT(false);
+  return TRI_ERROR_NO_ERROR;
+}
+
 auto MockGraphProvider::fetch(std::vector<Step*> const& looseEnds)
     -> futures::Future<std::vector<Step*>> {
   LOG_TOPIC("78156", TRACE, Logger::GRAPHS)
@@ -162,6 +171,43 @@ auto MockGraphProvider::addEdgeToBuilder(const Step::Edge& edge,
   builder.add(StaticStrings::ToString, VPackValue(toId));
   builder.add("weight", VPackValue(edge.getEdge()._weight));
   builder.close();
+}
+
+auto MockGraphProvider::addEdgeIDToBuilder(
+    const Step::Edge& edge, arangodb::velocypack::Builder& builder) -> void {
+  std::string fromId = edge.getEdge()._from;
+  std::string toId = edge.getEdge()._to;
+  std::string keyId = fromId.substr(2) + "-" + toId.substr(2);
+  builder.add(VPackValue("e/" + keyId));
+}
+
+void MockGraphProvider::addEdgeToLookupMap(
+    typename Step::Edge const& edge, arangodb::velocypack::Builder& builder) {
+  TRI_ASSERT(builder.isOpenObject());
+  std::string fromId = edge.getEdge()._from;
+  std::string toId = edge.getEdge()._to;
+  std::string keyId = fromId.substr(2) + "-" + toId.substr(2);
+  builder.add(VPackValue("e/" + keyId));
+  builder.openObject();
+  builder.add(StaticStrings::IdString, VPackValue("e/" + keyId));
+  builder.add(StaticStrings::KeyString, VPackValue(keyId));
+  builder.add(StaticStrings::FromString, VPackValue(fromId));
+  builder.add(StaticStrings::ToString, VPackValue(toId));
+  builder.add("weight", VPackValue(edge.getEdge()._weight));
+  builder.close();
+}
+
+auto MockGraphProvider::getEdgeId(const Step::Edge& edge) -> std::string {
+  std::string fromId = edge.getEdge()._from;
+  std::string toId = edge.getEdge()._to;
+  std::string keyId = fromId.substr(2) + "-" + toId.substr(2);
+  return "e/" + keyId;
+}
+
+auto MockGraphProvider::getEdgeIdRef(const Step::Edge& edge)
+    -> VPackHashedStringRef {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 auto MockGraphProvider::expand(Step const& source, size_t previousIndex)
@@ -227,6 +273,13 @@ void MockGraphProvider::unPrepareContext() {
   // Nothing to do here. We do not have any special index conditions
 }
 
+bool MockGraphProvider::isResponsible(Step const& step) const { return true; }
+
+bool MockGraphProvider::hasDepthSpecificLookup(uint64_t depth) const noexcept {
+  // TODO: This needs to be implemented / checked.
+  LOG_DEVEL << "----- Adjustments needed here -----";
+  return false;
+}
 [[nodiscard]] transaction::Methods* MockGraphProvider::trx() { return &_trx; }
 
 aql::TraversalStats MockGraphProvider::stealStats() {

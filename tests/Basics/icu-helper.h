@@ -30,6 +30,7 @@
 
 struct IcuInitializer {
   static void setup(char const* path);
+  static void reinit();
 
   static std::string icuData;
 };

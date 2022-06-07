@@ -71,13 +71,8 @@ ERROR_HTTP_SUPERFLUOUS_SUFFICES,601,"superfluous URL suffices","Will be raised w
 ################################################################################
 
 ERROR_ARANGO_ILLEGAL_STATE,1000,"illegal state","Internal error that will be raised when the datafile is not in the required state."
-ERROR_ARANGO_DATAFILE_SEALED,1002,"datafile sealed","Internal error that will be raised when trying to write to a datafile."
 ERROR_ARANGO_READ_ONLY,1004,"read only","Internal error that will be raised when trying to write to a read-only datafile or collection."
 ERROR_ARANGO_DUPLICATE_IDENTIFIER,1005,"duplicate identifier","Internal error that will be raised when a identifier duplicate is detected."
-ERROR_ARANGO_DATAFILE_UNREADABLE,1006,"datafile unreadable","Internal error that will be raised when a datafile is unreadable."
-ERROR_ARANGO_DATAFILE_EMPTY,1007,"datafile empty","Internal error that will be raised when a datafile is empty."
-ERROR_ARANGO_RECOVERY,1008,"logfile recovery error","Will be raised when an error occurred during WAL log file recovery."
-ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,1009,"datafile statistics not found","Will be raised when a required datafile statistics object was not found."
 
 ################################################################################
 ## External ArangoDB storage errors
@@ -87,15 +82,8 @@ ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,1009,"datafile statistics not found",
 ERROR_ARANGO_CORRUPTED_DATAFILE,1100,"corrupted datafile","Will be raised when a corruption is detected in a datafile."
 ERROR_ARANGO_ILLEGAL_PARAMETER_FILE,1101,"illegal or unreadable parameter file","Will be raised if a parameter file is corrupted or cannot be read."
 ERROR_ARANGO_CORRUPTED_COLLECTION,1102,"corrupted collection","Will be raised when a collection contains one or more corrupted data files."
-ERROR_ARANGO_MMAP_FAILED,1103,"mmap failed","Will be raised when the system call mmap failed."
 ERROR_ARANGO_FILESYSTEM_FULL,1104,"filesystem full","Will be raised when the filesystem is full."
-ERROR_ARANGO_NO_JOURNAL,1105,"no journal","Will be raised when a journal cannot be created."
-ERROR_ARANGO_DATAFILE_ALREADY_EXISTS,1106,"cannot create/rename datafile because it already exists","Will be raised when the datafile cannot be created or renamed because a file of the same name already exists."
 ERROR_ARANGO_DATADIR_LOCKED,1107,"database directory is locked","Will be raised when the database directory is locked by a different process."
-ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS,1108,"cannot create/rename collection because directory already exists","Will be raised when the collection cannot be created because a directory of the same name already exists."
-ERROR_ARANGO_MSYNC_FAILED,1109,"msync failed","Will be raised when the system call msync failed."
-ERROR_ARANGO_DATADIR_UNLOCKABLE,1110,"cannot lock database directory","Will be raised when the server cannot lock the database directory on startup."
-ERROR_ARANGO_SYNC_TIMEOUT,1111,"sync timeout","Will be raised when the server waited too long for a datafile to be synced to disk."
 
 ################################################################################
 ## General ArangoDB storage errors
@@ -103,12 +91,10 @@ ERROR_ARANGO_SYNC_TIMEOUT,1111,"sync timeout","Will be raised when the server wa
 ################################################################################
 
 ERROR_ARANGO_CONFLICT,1200,"conflict","Will be raised when updating or deleting a document and a conflict has been detected."
-ERROR_ARANGO_DATADIR_INVALID,1201,"invalid database directory","Will be raised when a non-existing database directory was specified when starting the database."
 ERROR_ARANGO_DOCUMENT_NOT_FOUND,1202,"document not found","Will be raised when a document with a given identifier is unknown."
 ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,1203,"collection or view not found","Will be raised when a collection or View with the given identifier or name is unknown."
 ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,1204,"parameter 'collection' not found","Will be raised when the collection parameter is missing."
 ERROR_ARANGO_DOCUMENT_HANDLE_BAD,1205,"illegal document identifier","Will be raised when a document identifier is corrupt."
-ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL,1206,"maximal size of journal too small","Will be raised when the maximal size of the journal is too small."
 ERROR_ARANGO_DUPLICATE_NAME,1207,"duplicate name","Will be raised when a name duplicate is detected."
 ERROR_ARANGO_ILLEGAL_NAME,1208,"illegal name","Will be raised when an illegal name is detected."
 ERROR_ARANGO_NO_INDEX,1209,"no suitable index known","Will be raised when no suitable index for the query is known."
@@ -132,7 +118,6 @@ ERROR_ARANGO_USE_SYSTEM_DATABASE,1230,"operation only allowed in system database
 ERROR_ARANGO_INVALID_KEY_GENERATOR,1232,"invalid key generator","Will be raised when an invalid key generator description is used."
 ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE,1233,"edge attribute missing or invalid","will be raised when the _from or _to values of an edge are undefined or contain an invalid value."
 ERROR_ARANGO_INDEX_CREATION_FAILED,1235,"index creation failed","Will be raised when an attempt to create an index has failed."
-ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT,1236,"write-throttling timeout","Will be raised when the server is write-throttled and a write operation has waited too long for the server to process queued operations."
 ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,1237,"collection type mismatch","Will be raised when a collection has a different type from what has been expected."
 ERROR_ARANGO_COLLECTION_NOT_LOADED,1238,"collection not loaded","Will be raised when a collection is accessed that is not yet loaded."
 ERROR_ARANGO_DOCUMENT_REV_BAD,1239,"illegal document revision","Will be raised when a document revision is corrupt or is missing where needed."
@@ -143,7 +128,6 @@ ERROR_ARANGO_INCOMPLETE_READ,1240,"incomplete read","Will be raised by the stora
 ## For errors that occur but are anticipated.
 ################################################################################
 
-ERROR_ARANGO_DATAFILE_FULL,1300,"datafile full","Will be raised when the datafile reaches its limit."
 ERROR_ARANGO_EMPTY_DATADIR,1301,"server database directory is empty","Will be raised when encountering an empty server database directory."
 ERROR_ARANGO_TRY_AGAIN,1302,"operation should be tried again","Will be raised when an operation should be retried."
 ERROR_ARANGO_BUSY,1303,"engine is busy","Will be raised when storage engine is busy."
@@ -163,6 +147,7 @@ ERROR_REPLICATION_LOOP,1405,"loop detected","Will be raised when the replication
 ERROR_REPLICATION_UNEXPECTED_MARKER,1406,"unexpected marker","Will be raised when an unexpected marker is found in the replication log stream."
 ERROR_REPLICATION_INVALID_APPLIER_STATE,1407,"invalid applier state","Will be raised when an invalid replication applier state file is found."
 ERROR_REPLICATION_UNEXPECTED_TRANSACTION,1408,"invalid transaction","Will be raised when an unexpected transaction id is found."
+ERROR_REPLICATION_SHARD_SYNC_ATTEMPT_TIMEOUT_EXCEEDED,1409,"shard synchronization attempt timeout exceeded","Will be raised when the synchronization of a shard takes longer than the configured timeout."
 ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION,1410,"invalid replication applier configuration","Will be raised when the configuration for the replication applier is invalid."
 ERROR_REPLICATION_RUNNING,1411,"cannot perform operation while applier is running","Will be raised when there is an attempt to perform an operation while the replication applier is running."
 ERROR_REPLICATION_APPLIER_STOPPED,1412,"replication stopped","Special error code used to indicate the replication applier was stopped by a user."
@@ -170,7 +155,7 @@ ERROR_REPLICATION_NO_START_TICK,1413,"no start tick","Will be raised when the re
 ERROR_REPLICATION_START_TICK_NOT_PRESENT,1414,"start tick not present","Will be raised when the replication applier fetches data using a start tick, but that start tick is not present on the logger server anymore."
 ERROR_REPLICATION_WRONG_CHECKSUM,1416,"wrong checksum","Will be raised when a new born follower submits a wrong checksum"
 ERROR_REPLICATION_SHARD_NONEMPTY,1417,"shard not empty","Will be raised when a shard is not empty and the follower tries a shortcut"
-ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,1418,"replicated log %" PRIu64 " not found","Will be raised when a specific replicated log is not found"
+ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,1418,"replicated log {} not found","Will be raised when a specific replicated log is not found"
 ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER,1419,"not the log leader","Will be raised when a participant of a replicated log is ordered to do something only the leader can do"
 ERROR_REPLICATION_REPLICATED_LOG_NOT_A_FOLLOWER,1420,"not a log follower","Will be raised when a participant of a replicated log is ordered to do something only a follower can do"
 ERROR_REPLICATION_REPLICATED_LOG_APPEND_ENTRIES_REJECTED,1421,"follower rejected append entries request","Will be raised when a follower of a replicated log rejects an append entries request"
@@ -178,6 +163,8 @@ ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,1422,"a resigned leader instanc
 ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED,1423,"a resigned follower instance rejected a request","Will be raised when a follower instance of a replicated log rejects a request because it just resigned. This can also happen if the term changes (due to a configuration change), even if the server stays a follower."
 ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE,1424,"the replicated log of the participant is gone","Will be raised when a participant instance of a replicated log is no longer available."
 ERROR_REPLICATION_REPLICATED_LOG_INVALID_TERM,1425,"an invalid term was given","Will be raised when a participant tries to change its term but found a invalid new term."
+ERROR_REPLICATION_REPLICATED_LOG_UNCONFIGURED,1426,"log participant unconfigured","Will be raised when a participant is currently unconfigured, i.e. neither a leader nor a follower."
+ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND,1427,"replicated state {id:} of type {type:} not found","Will be raised when a specific replicated state was not found."
 
 ################################################################################
 ## ArangoDB cluster errors
@@ -448,7 +435,7 @@ ERROR_MODULE_FAILURE,3103,"failed to invoke module","Failed to invoke the module
 ## Enterprise Edition errors
 ################################################################################
 
-ERROR_NO_SMART_COLLECTION,4000,"collection is not smart","The requested collection needs to be smart, but it ain't"
+ERROR_NO_SMART_COLLECTION,4000,"collection is not smart","The requested collection needs to be smart, but it isn't."
 ERROR_NO_SMART_GRAPH_ATTRIBUTE,4001,"smart graph attribute not given","The given document does not have the SmartGraph attribute set."
 ERROR_CANNOT_DROP_SMART_COLLECTION,4002,"cannot drop this smart collection","This smart collection cannot be dropped, it dictates sharding in the graph."
 ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE,4003,"in smart vertex collections _key must be a string and prefixed with the value of the smart graph attribute","In a smart vertex collection _key must be prefixed with the value of the SmartGraph attribute."
@@ -459,6 +446,7 @@ ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE,4007,"shard key value must 
 ERROR_NO_SMART_JOIN_ATTRIBUTE,4008,"smart join attribute not given or invalid","The given document does not have the required SmartJoin attribute set or it has an invalid value."
 ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE,4009,"must not change the value of the smartJoinAttribute","Will be raised if there is an attempt to update the value of the smartJoinAttribute."
 ERROR_INVALID_DISJOINT_SMART_EDGE,4010,"non disjoint edge found","Will be raised if there is an attempt to create an edge between separated graph components."
+ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION,4011,"Unsupported alternating Smart and Satellite in Disjoint SmartGraph.","Switching back and forth between Satellite and Smart in Disjoint SmartGraph is not supported within a single AQL statement. Split into multiple statements."
 
 ################################################################################
 ## Agency errors

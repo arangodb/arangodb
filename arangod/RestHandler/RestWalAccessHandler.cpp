@@ -95,6 +95,8 @@ RequestLane RestWalAccessHandler::lane() const {
         // evaluates to true. We need to push this onto HIGH priority lanes in
         // order to unlock the hardlock we have accuired
         return RequestLane::CLUSTER_INTERNAL;
+      } else {
+        return RequestLane::SERVER_REPLICATION_CATCHUP;
       }
     }
   }

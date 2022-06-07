@@ -33,10 +33,10 @@
 
 #include "Agency/Node.h"
 #include "Agency/Supervision.h"
-#include "Agency/TimeString.h"
 #include "AgencyStrings.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
+#include "Basics/TimeString.h"
 #include "Basics/voc-errors.h"
 #include "Random/RandomGenerator.h"
 
@@ -57,6 +57,7 @@ std::string const planColPrefix = "/Plan/Collections/";
 std::string const planRepLogPrefix = "/Plan/ReplicatedLogs/";
 std::string const targetRepLogPrefix = "/Target/ReplicatedLogs/";
 std::string const targetRepStatePrefix = "/Target/ReplicatedStates/";
+std::string const planRepStatePrefix = "/Plan/ReplicatedStates/";
 std::string const planDBPrefix = "/Plan/Databases/";
 std::string const curServersKnown = "/Current/ServersKnown/";
 std::string const curColPrefix = "/Current/Collections/";

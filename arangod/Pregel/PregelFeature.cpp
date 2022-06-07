@@ -24,11 +24,16 @@
 #include "PregelFeature.h"
 
 #include <atomic>
+#include <unordered_set>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
+#include "Basics/debugging.h"
+#include "Basics/files.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -40,6 +45,7 @@
 #include "Pregel/Recovery.h"
 #include "Pregel/Utils.h"
 #include "Pregel/Worker.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Utils/ExecContext.h"
@@ -47,9 +53,24 @@
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
+using namespace arangodb::options;
 using namespace arangodb::pregel;
 
 namespace {
+
+// locations for Pregel's temporary files
+std::unordered_set<std::string> const tempLocationTypes{
+    {"temp-directory", "database-directory", "custom"}};
+
+size_t availableCores() {
+  return std::max<size_t>(1, NumberOfCores::getValue());
+}
+
+size_t defaultParallelism() {
+  size_t procNum = std::min<size_t>(availableCores() / 4, 16);
+  return procNum < 1 ? 1 : procNum;
+}
+
 bool authorized(std::string const& user) {
   auto const& exec = arangodb::ExecContext::current();
   if (exec.isSuperuser()) {
@@ -68,15 +89,6 @@ network::Headers buildHeaders() {
   }
   return headers;
 }
-
-/// @brief custom deleter for the PregelFeature.
-/// it does nothing, i.e. doesn't delete it. This is because the
-/// ApplicationServer is managing the PregelFeature, but we need a shared_ptr to
-/// it here as well. The shared_ptr we are using here just tracks the refcount,
-/// but doesn't manage the memory
-struct NonDeleter {
-  void operator()(arangodb::pregel::PregelFeature*) {}
-};
 
 }  // namespace
 
@@ -231,19 +243,21 @@ uint64_t PregelFeature::createExecutionNumber() {
 }
 
 PregelFeature::PregelFeature(Server& server)
-    : ArangodFeature{server, *this}, _softShutdownOngoing(false) {
+    : ArangodFeature{server, *this},
+      _defaultParallelism(::defaultParallelism()),
+      _minParallelism(1),
+      _maxParallelism(::availableCores()),
+      _tempLocationType("temp-directory"),
+      _useMemoryMaps(true),
+      _softShutdownOngoing(false) {
   setOptional(true);
+  startsAfter<DatabaseFeature>();
   startsAfter<application_features::V8FeaturePhase>();
 }
 
 PregelFeature::~PregelFeature() {
   TRI_ASSERT(_conductors.empty());
   TRI_ASSERT(_workers.empty());
-}
-
-size_t PregelFeature::availableParallelism() {
-  const size_t procNum = NumberOfCores::getValue();
-  return procNum < 1 ? 1 : procNum;
 }
 
 void PregelFeature::scheduleGarbageCollection() {
@@ -268,7 +282,181 @@ void PregelFeature::scheduleGarbageCollection() {
   _gcHandle = std::move(handle);
 }
 
+void PregelFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  options->addSection("pregel", "Pregel jobs");
+
+  options
+      ->addOption(
+          "--pregel.parallelism",
+          "default parallelism to use in a Pregel job if none is specified",
+          new SizeTParameter(&_defaultParallelism),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::Dynamic,
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31000);
+
+  options
+      ->addOption("--pregel.min-parallelism",
+                  "minimum parallelism usable in a Pregel job",
+                  new SizeTParameter(&_minParallelism),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31000);
+
+  options
+      ->addOption("--pregel.max-parallelism",
+                  "maximum parallelism usable in a Pregel job",
+                  new SizeTParameter(&_maxParallelism),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Dynamic,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31000);
+
+  options
+      ->addOption("--pregel.memory-mapped-files",
+                  "use memory mapped files for storing Pregel temporary data "
+                  "(as opposed "
+                  "to storing in RAM) if nothing is specifed in a Pregel job",
+                  new BooleanParameter(&_useMemoryMaps),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31000);
+
+  options
+      ->addOption("--pregel.memory-mapped-files-location-type",
+                  "location for Pregel's temporary files",
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_tempLocationType, ::tempLocationTypes),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31000);
+
+  options
+      ->addOption("--pregel.memory-mapped-files-custom-path",
+                  "custom path for Pregel's temporary files (only used if "
+                  "`--pregel.memory-mapped-files-location` is 'custom')",
+                  new StringParameter(&_tempLocationCustomPath),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31000);
+}
+
+void PregelFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  if (!_tempLocationCustomPath.empty() && _tempLocationType != "custom") {
+    LOG_TOPIC("0dd1d", FATAL, Logger::PREGEL)
+        << "invalid settings for Pregel's temporary files: if a custom path is "
+           "provided, "
+        << "`--pregel.memory-mapped-files-location-type` must have a value of "
+           "'custom'";
+    FATAL_ERROR_EXIT();
+  } else if (_tempLocationCustomPath.empty() && _tempLocationType == "custom") {
+    LOG_TOPIC("9b378", FATAL, Logger::PREGEL)
+        << "invalid settings for Pregel's temporary files: if "
+           "`--pregel.memory-mapped-files-location-type` is 'custom', a custom "
+           "directory must be provided via "
+           "`--pregel.memory-mapped-files-custom-path`";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_minParallelism > _maxParallelism ||
+      _defaultParallelism < _minParallelism ||
+      _defaultParallelism > _maxParallelism || _minParallelism == 0 ||
+      _maxParallelism == 0) {
+    // parallelism values look somewhat odd in relation to each other. fix
+    // them and issue a warning about it.
+    _minParallelism = std::max<size_t>(1, _minParallelism);
+    _maxParallelism = std::max<size_t>(_minParallelism, _maxParallelism);
+    _defaultParallelism = std::clamp<size_t>(_defaultParallelism,
+                                             _minParallelism, _maxParallelism);
+
+    LOG_TOPIC("5a607", WARN, Logger::PREGEL)
+        << "invalid values for Pregel paralellism values. adjusting them to: "
+           "min: "
+        << _minParallelism << ", max: " << _maxParallelism
+        << ", default: " << _defaultParallelism;
+  }
+
+  TRI_ASSERT(::tempLocationTypes.contains(_tempLocationType));
+
+  // these assertions should always hold
+  TRI_ASSERT(_minParallelism > 0 && _minParallelism <= _maxParallelism);
+  TRI_ASSERT(_defaultParallelism > 0 &&
+             _defaultParallelism >= _minParallelism &&
+             _defaultParallelism <= _maxParallelism);
+}
+
 void PregelFeature::start() {
+  std::string tempDirectory = tempPath();
+
+  if (!tempDirectory.empty()) {
+    TRI_ASSERT(_tempLocationType == "custom" ||
+               _tempLocationType == "database-directory");
+
+    // if the target directory for temporary files does not yet exist, create it
+    // on the fly! in case we want the temporary files to be created underneath
+    // the database's data directory, create the directory once. if a custom
+    // temporary directory was given, we can assume it to be reasonably stable
+    // across restarts, so it is fine to create it. if we want to store
+    // temporary files in the temporary directory, we should not create it upon
+    // startup, simply because the temporary directory can change with every
+    // instance start.
+    if (!basics::FileUtils::isDirectory(tempDirectory)) {
+      std::string systemErrorStr;
+      long errorNo;
+
+      auto res = TRI_CreateRecursiveDirectory(tempDirectory.c_str(), errorNo,
+                                              systemErrorStr);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        LOG_TOPIC("eb2da", FATAL, arangodb::Logger::PREGEL)
+            << "unable to create directory for Pregel temporary files '"
+            << tempDirectory << "': " << systemErrorStr;
+        FATAL_ERROR_EXIT();
+      }
+    } else {
+      // temp directory already existed at startup.
+      // now, if it is underneath the database path, we own it and can
+      // wipe its contents. if it is not underneath the database path,
+      // we cannot assume ownership for the files in it and better leave
+      // the files alone.
+      if (_tempLocationType == "database-directory") {
+        auto files = basics::FileUtils::listFiles(tempDirectory);
+        for (auto const& f : files) {
+          std::string fqn = basics::FileUtils::buildFilename(tempDirectory, f);
+
+          LOG_TOPIC("876fd", INFO, Logger::PREGEL)
+              << "removing Pregel temporary file '" << fqn << "' at startup";
+
+          ErrorCode res = basics::FileUtils::remove(fqn);
+
+          if (res != TRI_ERROR_NO_ERROR) {
+            LOG_TOPIC("cae59", INFO, Logger::PREGEL)
+                << "unable to remove Pregel temporary file '" << fqn
+                << "': " << TRI_last_error();
+          }
+        }
+      }
+    }
+  }
+
+  LOG_TOPIC("a0eb6", DEBUG, Logger::PREGEL)
+      << "using Pregel default parallelism " << _defaultParallelism
+      << " (min: " << _minParallelism << ", max: " << _maxParallelism << ")"
+      << ", memory mapping: " << (_useMemoryMaps ? "on" : "off")
+      << ", temp path: " << tempDirectory;
+
   if (ServerState::instance()->isCoordinator()) {
     auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
     _recoveryManager = std::make_unique<RecoveryManager>(ci);
@@ -320,6 +508,34 @@ void PregelFeature::unprepare() {
 bool PregelFeature::isStopping() const noexcept {
   return server().isStopping();
 }
+
+std::string PregelFeature::tempPath() const {
+  if (_tempLocationType == "database-directory") {
+    auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
+    return databasePathFeature.subdirectoryName("pregel");
+  }
+  if (_tempLocationType == "custom") {
+    TRI_ASSERT(!_tempLocationCustomPath.empty());
+    return _tempLocationCustomPath;
+  }
+
+  TRI_ASSERT(_tempLocationType == "temp-directory");
+  return "";
+}
+
+size_t PregelFeature::defaultParallelism() const noexcept {
+  return _defaultParallelism;
+}
+
+size_t PregelFeature::minParallelism() const noexcept {
+  return _minParallelism;
+}
+
+size_t PregelFeature::maxParallelism() const noexcept {
+  return _maxParallelism;
+}
+
+bool PregelFeature::useMemoryMaps() const noexcept { return _useMemoryMaps; }
 
 void PregelFeature::addConductor(std::shared_ptr<Conductor>&& c,
                                  uint64_t executionNumber) {

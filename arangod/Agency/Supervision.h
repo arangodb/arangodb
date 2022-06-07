@@ -26,7 +26,7 @@
 #include "Agency/AgencyCommon.h"
 #include "Agency/AgentInterface.h"
 #include "Agency/Store.h"
-#include "Agency/TimeString.h"
+#include "Basics/TimeString.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
@@ -194,6 +194,12 @@ class Supervision : public arangodb::Thread {
 
   /// @brief Check replicated logs
   void checkReplicatedStates();
+
+  /// @brief Clean up replicated logs
+  void cleanupReplicatedLogs();
+
+  /// @brief Clean up replicated states
+  void cleanupReplicatedStates();
 
   struct ResourceCreatorLostEvent {
     std::shared_ptr<Node> const& resource;

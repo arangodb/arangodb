@@ -127,8 +127,10 @@ void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   if (cacheInUse) {
     TRI_ASSERT(_cache != nullptr);
     TRI_ASSERT(_cacheManager != nullptr);
-    builder.add("cacheSize", VPackValue(_cache->size()));
-    builder.add("cacheUsage", VPackValue(_cache->usage()));
+
+    auto [size, usage] = _cache->sizeAndUsage();
+    builder.add("cacheSize", VPackValue(size));
+    builder.add("cacheUsage", VPackValue(usage));
     auto hitRates = _cache->hitRates();
     double rate = hitRates.first;
     rate = std::isnan(rate) ? 0.0 : rate;
@@ -304,11 +306,10 @@ size_t RocksDBIndex::memory() const {
   TRI_ASSERT(_cf == bounds.columnFamily());
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out;
-  db->GetApproximateSizes(
-      _cf, &r, 1, &out,
-      static_cast<uint8_t>(
-          rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
-          rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+
+  rocksdb::SizeApproximationOptions options{.include_memtables = true,
+                                            .include_files = true};
+  db->GetApproximateSizes(options, _cf, &r, 1, &out);
   return static_cast<size_t>(out);
 }
 

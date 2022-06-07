@@ -21,6 +21,7 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 const _ = require("lodash");
 const LH = require("@arangodb/testutils/replicated-logs-helper");
 const request = require('@arangodb/request');
@@ -33,6 +34,7 @@ const spreds = require("@arangodb/testutils/replicated-state-predicates");
  *       target: {
  *         properties: { implementation: { type: string } },
  *         participants: {},
+ *         leader?: string,
  *         id: number,
  *         config: {
  *           writeConcern: number,
@@ -58,26 +60,41 @@ const spreds = require("@arangodb/testutils/replicated-state-predicates");
  *   }}
  */
 const readReplicatedStateAgency = function (database, logId) {
-  let target =  LH.readAgencyValueAt(`Target/ReplicatedStates/${database}/${logId}`);
-  let plan =  LH.readAgencyValueAt(`Plan/ReplicatedStates/${database}/${logId}`);
-  let current =  LH.readAgencyValueAt(`Current/ReplicatedStates/${database}/${logId}`);
+  let target = LH.readAgencyValueAt(`Target/ReplicatedStates/${database}/${logId}`);
+  let plan = LH.readAgencyValueAt(`Plan/ReplicatedStates/${database}/${logId}`);
+  let current = LH.readAgencyValueAt(`Current/ReplicatedStates/${database}/${logId}`);
   return {target, plan, current};
 };
 
 const updateReplicatedStatePlan = function (database, logId, callback) {
   let {plan: planState} = readReplicatedStateAgency(database, logId);
   let {plan: planLog} = LH.readReplicatedLogAgency(database, logId);
-  if (planState === undefined ) {
+  if (planState === undefined) {
     planState = {id: logId, generation: 1};
   }
   if (planLog === undefined) {
     planLog = {id: logId};
   }
-  const {state, log} = callback(planState, planLog);
-  global.ArangoAgency.set(`Plan/ReplicatedStates/${database}/${logId}`, state);
-  global.ArangoAgency.set(`Plan/ReplicatedLogs/${database}/${logId}`, log);
+  const {state, log} = callback(_.cloneDeep(planState), _.cloneDeep(planLog));
+  if (!_.isEqual(planState, state)) {
+    global.ArangoAgency.set(`Plan/ReplicatedStates/${database}/${logId}`, state);
+  }
+  if (!_.isEqual(planLog, log)) {
+    global.ArangoAgency.set(`Plan/ReplicatedLogs/${database}/${logId}`, log);
+  }
   global.ArangoAgency.increaseVersion(`Plan/Version`);
 };
+
+const replicatedStateDeletePlan = function (database, logId) {
+  global.ArangoAgency.remove(`Plan/ReplicatedStates/${database}/${logId}`);
+  global.ArangoAgency.increaseVersion(`Plan/Version`);
+};
+
+const replicatedStateDeleteTarget = function (database, logId) {
+  global.ArangoAgency.remove(`Target/ReplicatedStates/${database}/${logId}`);
+  global.ArangoAgency.increaseVersion(`Target/Version`);
+};
+
 
 const getLocalStatus = function (serverId, database, logId) {
   let url = LH.getServerUrl(serverId);
@@ -95,10 +112,9 @@ const updateReplicatedStateTarget = function (database, stateId, callback) {
   global.ArangoAgency.increaseVersion(`Target/Version`);
 };
 
-const createReplicatedStateTarget = function (database, targetConfig, type) {
+const createReplicatedStateTargetWithServers = function (database, targetConfig, type, servers) {
   const stateId = LH.nextUniqueLogId();
 
-  const servers = _.sampleSize(LH.dbservers, targetConfig.replicationFactor);
   let participants = {};
   for (const server of servers) {
     participants[server] = {};
@@ -121,11 +137,38 @@ const createReplicatedStateTarget = function (database, targetConfig, type) {
   LH.waitFor(spreds.replicatedStateIsReady(database, stateId, servers));
   const leader = LH.getReplicatedLogLeaderPlan(database, stateId).leader;
   const followers = _.difference(servers, [leader]);
-  return {stateId, servers, leader, followers};
+  const others = _.difference(LH.dbservers, servers);
+  return {stateId, servers, leader, followers, others};
 };
 
-exports.readReplicatedStateAgency = readReplicatedStateAgency;
-exports.updateReplicatedStatePlan = updateReplicatedStatePlan;
-exports.getLocalStatus = getLocalStatus;
+const getReplicatedStateStatus = function (database, stateId) {
+  const {current} = readReplicatedStateAgency(database, stateId);
+  if (current === undefined || current.supervision === undefined || current.supervision.statusReport === undefined) {
+    return undefined;
+  }
+  return current.supervision.statusReport;
+};
+
+const createReplicatedStateTarget = function (database, targetConfig, type, replicationFactor) {
+  if (replicationFactor === undefined) {
+    replicationFactor = 3;
+  }
+  const servers = _.sampleSize(LH.dbservers, replicationFactor);
+  return createReplicatedStateTargetWithServers(database, targetConfig, type, servers);
+};
+
+const getReplicatedStateLeaderTarget = function (database, logId) {
+  let {target} = readReplicatedStateAgency(database, logId);
+  return target.leader;
+};
+
 exports.createReplicatedStateTarget = createReplicatedStateTarget;
+exports.createReplicatedStateTargetWithServers = createReplicatedStateTargetWithServers;
+exports.getLocalStatus = getLocalStatus;
+exports.getReplicatedStateLeaderTarget = getReplicatedStateLeaderTarget;
+exports.getReplicatedStateStatus = getReplicatedStateStatus;
+exports.readReplicatedStateAgency = readReplicatedStateAgency;
+exports.replicatedStateDeletePlan = replicatedStateDeletePlan;
+exports.replicatedStateDeleteTarget = replicatedStateDeleteTarget;
+exports.updateReplicatedStatePlan = updateReplicatedStatePlan;
 exports.updateReplicatedStateTarget = updateReplicatedStateTarget;

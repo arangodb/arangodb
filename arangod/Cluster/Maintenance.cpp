@@ -35,18 +35,20 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ResignShardLeadership.h"
 #include "Indexes/Index.h"
+#include "Inspection/VPack.h"
 #include "Logger/LogContextKeys.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Replication2/LoggerContext.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedLog/LogStatus.h"
-#include "Replication2/ReplicatedState/StateStatus.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
+#include "Replication2/LoggerContext.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Replication2/ReplicatedState/StateStatus.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
@@ -98,7 +100,8 @@ static std::shared_ptr<VPackBuilder> compareRelevantProps(
     VPackSlice const& first, VPackSlice const& second) {
   static std::vector<std::string> const compareProperties{
       WAIT_FOR_SYNC, SCHEMA, CACHE_ENABLED,
-      StaticStrings::InternalValidatorTypes};
+      StaticStrings::InternalValidatorTypes,
+      StaticStrings::GraphSmartGraphAttribute};
   auto result = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder b(result.get());
@@ -545,7 +548,7 @@ void arangodb::maintenance::diffReplicatedLogs(
           VPackBuilder builder;
           auto slice = VPackSlice::noneSlice();
           if (spec != nullptr) {
-            spec->toVelocyPack(builder);
+            velocypack::serialize(builder, *spec);
             slice = builder.slice();
           }
           return StringUtils::encodeBase64(slice.startAs<char>(),
@@ -641,13 +644,13 @@ void arangodb::maintenance::diffReplicatedStates(
     VPackBuilder builder;
     auto slice = VPackSlice::noneSlice();
     if (obj != nullptr) {
-      obj->toVelocyPack(builder);
+      velocypack::serialize(builder, *obj);
       slice = builder.slice();
     }
     return StringUtils::encodeBase64(slice.startAs<char>(), slice.byteSize());
   };
 
-  auto const createReplicatedStateAction =
+  auto const updateReplicatedStateAction =
       [&](LogId id, replicated_state::agency::Plan const* spec,
           replicated_state::agency::Current const* current) {
         auto specStr = objectToVelocyPackString(spec);
@@ -672,15 +675,18 @@ void arangodb::maintenance::diffReplicatedStates(
       [&](LogId id, replicated_state::agency::Plan const& spec,
           replicated_state::agency::Current const* current) {
         if (spec.participants.contains(serverId)) {
+          if (!localLogs.contains(id)) {
+            return;  // wait for replicated log first
+          }
           if (!localStates.contains(id)) {
             // we have to create this replicated state
-            createReplicatedStateAction(id, &spec, nullptr);
+            updateReplicatedStateAction(id, &spec, current);
           }
         }
       };
 
   auto const forEachReplicatedStateInLocal =
-      [&](LogId id, replicated_state::StateStatus const& status,
+      [&](LogId id, std::optional<replicated_state::StateStatus> const& status,
           replicated_state::agency::Plan const* plan,
           replicated_state::agency::Current const* current) {
         bool const shouldDeleted = std::invoke([&] {
@@ -688,12 +694,12 @@ void arangodb::maintenance::diffReplicatedStates(
         });
 
         if (shouldDeleted) {
-          createReplicatedStateAction(id, nullptr, nullptr);
-        } else {
+          updateReplicatedStateAction(id, nullptr, nullptr);
+        } else if (status.has_value()) {
           TRI_ASSERT(plan != nullptr);
           auto const& participant = plan->participants.at(serverId);
-          if (participant.generation != status.getGeneration()) {
-            createReplicatedStateAction(id, plan, nullptr);
+          if (participant.generation != status->getGeneration()) {
+            updateReplicatedStateAction(id, plan, nullptr);
           }
         }
       };
@@ -918,7 +924,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       if (planLogInDatabaseSlice.isObject()) {
         for (auto [key, value] : VPackObjectIterator(planLogInDatabaseSlice)) {
           auto spec =
-              agency::LogPlanSpecification(agency::from_velocypack, value);
+              velocypack::deserialize<agency::LogPlanSpecification>(value);
           planLogsInDatabase.emplace(spec.id, std::move(spec));
         }
       }
@@ -947,7 +953,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       if (planStatesInDatabaseSlice.isObject()) {
         for (auto [key, value] :
              VPackObjectIterator(planStatesInDatabaseSlice)) {
-          auto spec = replicated_state::agency::Plan::fromVelocyPack(value);
+          auto spec =
+              velocypack::deserialize<replicated_state::agency::Plan>(value);
 
           auto id = spec.id;
           planStatesInDatabase.emplace(id, std::move(spec));
@@ -956,7 +963,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
                     currentStatesInDatabaseSlice.get(key.stringView());
                 !currentSlice.isNone()) {
               auto currentObj =
-                  replicated_state::agency::Current::fromVelocyPack(
+                  velocypack::deserialize<replicated_state::agency::Current>(
                       currentSlice);
               currentStatesInDatabase.emplace(id, std::move(currentObj));
             }
@@ -1155,20 +1162,29 @@ arangodb::Result arangodb::maintenance::executePlan(
       feature.addAction(std::move(action), false);
     } else {
       TRI_ASSERT(action->has(SHARD));
+      TRI_ASSERT(action->has(DATABASE));
 
       std::string shardName = action->get(SHARD);
       bool ok = feature.lockShard(shardName, action);
-      TRI_ASSERT(ok);
-      try {
-        Result res = feature.addAction(std::move(action), false);
-        if (res.fail()) {
+      if (ok) {
+        try {
+          Result res = feature.addAction(std::move(action), false);
+          if (res.fail()) {
+            feature.unlockShard(shardName);
+          }
+        } catch (std::exception const& exc) {
           feature.unlockShard(shardName);
+          LOG_TOPIC("86762", INFO, Logger::MAINTENANCE)
+              << "Exception caught when adding action, unlocking shard "
+              << shardName << " again: " << exc.what();
         }
-      } catch (std::exception const& exc) {
-        feature.unlockShard(shardName);
-        LOG_TOPIC("86762", INFO, Logger::MAINTENANCE)
-            << "Exception caught when adding action, unlocking shard "
-            << shardName << " again: " << exc.what();
+      } else {
+        TRI_ASSERT(action->has(DATABASE));
+        std::string dbName = action->get(DATABASE);
+        // For security measure let us flag this database as dirty.
+        // This ensures we are going to recheck it next turn when the shard
+        // is hopefully unlocked
+        feature.addDirty(dbName);
       }
     }
   }
@@ -1487,7 +1503,7 @@ static auto reportCurrentReplicatedLogLeader(
   });
 
   if (requiresUpdate) {
-    std::optional<arangodb::replication2::ParticipantsConfig>
+    std::optional<arangodb::replication2::agency::ParticipantsConfig>
         committedParticipantsConfig;
     if (status.committedParticipantsConfig != nullptr) {
       committedParticipantsConfig = *status.committedParticipantsConfig;
@@ -1533,7 +1549,7 @@ static void writeUpdateReplicatedLogLeader(
     VPackObjectBuilder o(&report);
     report.add(OP, VP_SET);
     report.add(VPackValue("payload"));
-    leader.toVelocyPack(report);
+    velocypack::serialize(report, leader);
     {
       VPackObjectBuilder preconditionBuilder(&report, "precondition");
       report.add(preconditionPath, VPackValue(localTerm));
@@ -1577,7 +1593,7 @@ static void writeUpdateReplicatedLogLocal(
     VPackObjectBuilder o(&report);
     report.add(OP, VP_SET);
     report.add(VPackValue("payload"));
-    local.toVelocyPack(report);
+    velocypack::serialize(report, local);
     {
       VPackObjectBuilder preconditionBuilder(&report, "precondition");
       report.add(preconditionPath, VPackValue(localTerm));
@@ -1612,7 +1628,7 @@ static void reportCurrentReplicatedLog(
     if (currentSlice.isNone()) {
       return std::nullopt;
     }
-    return LogCurrent::fromVelocyPack(currentSlice);
+    return velocypack::deserialize<LogCurrent>(currentSlice);
   });
 
   {
@@ -1658,9 +1674,6 @@ static void reportCurrentReplicatedState(
     replication2::replicated_state::StateStatus const& status, VPackSlice cur,
     replication2::LogId id, std::string const& dbName,
     std::string const& serverId) {
-  // update the local snapshot information
-  auto const& snapshot = status.getSnapshotInfo();
-
   // load current into memory
   auto current = std::invoke(
       [&]() -> std::optional<replication2::replicated_state::agency::Current> {
@@ -1672,8 +1685,8 @@ static void reportCurrentReplicatedState(
         if (currentSlice.isNone()) {
           return std::nullopt;
         }
-        return replication2::replicated_state::agency::Current::fromVelocyPack(
-            currentSlice);
+        return velocypack::deserialize<
+            replication2::replicated_state::agency::Current>(currentSlice);
       });
 
   bool const updateCurrent = std::invoke([&] {
@@ -1687,7 +1700,7 @@ static void reportCurrentReplicatedState(
       if (cs.generation != status.getGeneration()) {
         return true;
       }
-      if (cs.snapshot.status != snapshot.status) {
+      if (cs.snapshot.status != status.getSnapshotInfo().status) {
         return true;
       }
     } else {
@@ -1714,12 +1727,26 @@ static void reportCurrentReplicatedState(
   update.generation = status.getGeneration();
   update.snapshot = status.getSnapshotInfo();
 
+  auto preconditionPath =
+      cluster::paths::aliases::plan()
+          ->replicatedStates()
+          ->database(dbName)
+          ->state(id)
+          ->id()
+          ->str(cluster::paths::SkipComponents(
+              1) /* skip first path component, i.e. 'arango' */);
   report.add(VPackValue(updatePath->str(cluster::paths::SkipComponents(1))));
   {
     VPackObjectBuilder o(&report);
     report.add(OP, VP_SET);
     report.add(VPackValue("payload"));
-    update.toVelocyPack(report);
+    velocypack::serialize(report, update);
+    {
+      // Assert that State/Plan/<db>/<id>/id is still there and equal to <id>.
+      // This is true if and only if the state was not yet dropped from Plan.
+      VPackObjectBuilder preconditionBuilder(&report, "precondition");
+      report.add(preconditionPath, VPackValue(id));
+    }
   }
 }
 
@@ -2101,8 +2128,10 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       if (auto stateIter = localStates.find(dbName);
           stateIter != std::end(localStates)) {
         for (auto const& [id, status] : stateIter->second) {
-          reportCurrentReplicatedState(report, status, cur, id, dbName,
-                                       serverId);
+          if (status.has_value()) {
+            reportCurrentReplicatedState(report, *status, cur, id, dbName,
+                                         serverId);
+          }
         }
       }
     } catch (std::exception const& ex) {
@@ -2331,12 +2360,33 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         // Current's servers
         VPackSlice const cservers = cshrd.get(SERVERS);
 
+        // From above, we know that the shard exists locally. For the case
+        // that we have been restarted but the leader did not notice that
+        // we were gone, we must check if the leader is set correctly here
+        // locally for our shard:
+        VPackSlice lshard = localdb.get(shname);
+        TRI_ASSERT(lshard.isObject());
+        bool needsResyncBecauseOfRestart = false;
+        if (lshard.isObject()) {  // just in case
+          VPackSlice theLeader = lshard.get("theLeader");
+          if (theLeader.isString() &&
+              theLeader.stringView() ==
+                  maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
+            needsResyncBecauseOfRestart = true;
+          }
+        }
+
         // if we are considered to be in sync there is nothing to do
-        if (indexOf(cservers, serverId) > 0) {
+        if (!needsResyncBecauseOfRestart && indexOf(cservers, serverId) > 0) {
           continue;
         }
 
         std::string leader = pservers[0].copyString();
+        std::string forcedResync =
+            needsResyncBecauseOfRestart ? "true" : "false";
+        std::string syncByRevision =
+            pcol.value.get(StaticStrings::SyncByRevision).isTrue() ? "true"
+                                                                   : "false";
         std::shared_ptr<ActionDescription> description =
             std::make_shared<ActionDescription>(
                 std::map<std::string, std::string>{
@@ -2345,6 +2395,8 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
                     {COLLECTION, std::string(colname)},
                     {SHARD, std::string(shname)},
                     {THE_LEADER, std::move(leader)},
+                    {FORCED_RESYNC, std::move(forcedResync)},
+                    {SYNC_BY_REVISION, syncByRevision},
                     {SHARD_VERSION, std::to_string(feature.shardVersion(
                                         std::string(shname)))}},
                 SYNCHRONIZE_PRIORITY, true);

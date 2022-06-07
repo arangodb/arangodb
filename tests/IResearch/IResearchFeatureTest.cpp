@@ -58,7 +58,6 @@
 #include "IResearch/IResearchLinkCoordinator.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchView.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -113,7 +112,7 @@ class IResearchFeatureTest
     dataPath /= "databases";
     dataPath /= "database-";
     dataPath += std::to_string(view.vocbase().id());
-    dataPath /= arangodb::iresearch::StaticStrings::DataSourceType;
+    dataPath /= arangodb::iresearch::StaticStrings::ViewType;
     dataPath += "-";
     dataPath += std::to_string(view.id().id());
     return dataPath;
@@ -127,7 +126,7 @@ class IResearchFeatureTest
     dataPath /= "databases";
     dataPath /= "database-";
     dataPath += std::to_string(link.collection().vocbase().id());
-    dataPath /= arangodb::iresearch::StaticStrings::DataSourceType;
+    dataPath /= arangodb::iresearch::StaticStrings::ViewType;
     dataPath += "-";
     dataPath += std::to_string(link.collection().id().id());
     dataPath += "_";
@@ -2409,7 +2408,7 @@ class IResearchFeatureTestCoordinator
 
  private:
  protected:
-  IResearchFeatureTestCoordinator() : server(false) {
+  IResearchFeatureTestCoordinator() : server("CRDN_0001", false) {
     arangodb::tests::init();
 
     arangodb::ServerState::instance()->setRebootId(
@@ -2538,7 +2537,7 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   auto& factory = server.getFeature<arangodb::iresearch::IResearchFeature>()
                       .factory<arangodb::ClusterEngine>();
   const_cast<arangodb::IndexFactory&>(engine.indexFactory())
-      .emplace(std::string{arangodb::iresearch::StaticStrings::DataSourceType},
+      .emplace(std::string{arangodb::iresearch::StaticStrings::ViewType},
                factory);
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
@@ -2672,7 +2671,7 @@ class IResearchFeatureTestDBServer
 
  private:
  protected:
-  IResearchFeatureTestDBServer() : server(false) {
+  IResearchFeatureTestDBServer() : server("PRMR_0001", false) {
     arangodb::tests::init();
 
     arangodb::ServerState::instance()->setRebootId(
@@ -2691,7 +2690,7 @@ class IResearchFeatureTestDBServer
     dataPath /= "databases";
     dataPath /= "database-";
     dataPath += std::to_string(view.vocbase().id());
-    dataPath /= arangodb::iresearch::StaticStrings::DataSourceType;
+    dataPath /= arangodb::iresearch::StaticStrings::ViewType;
     dataPath += "-";
     dataPath += std::to_string(view.id().id());
     return dataPath;
@@ -2705,7 +2704,7 @@ class IResearchFeatureTestDBServer
     dataPath /= "databases";
     dataPath /= "database-";
     dataPath += std::to_string(link.collection().vocbase().id());
-    dataPath /= arangodb::iresearch::StaticStrings::DataSourceType;
+    dataPath /= arangodb::iresearch::StaticStrings::ViewType;
     dataPath += "-";
     dataPath += std::to_string(link.collection().id().id());
     dataPath += "_";

@@ -88,12 +88,12 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_forced) {
   {
     auto oldConfig =
         leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
-    auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
+    auto newConfig = std::make_shared<agency::ParticipantsConfig>(oldConfig);
     newConfig->generation = 2;
     // make follower2 forced
     newConfig->participants["follower2"] =
         replication2::ParticipantFlags{true, false};
-    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {}, {});
+    leader->updateParticipantsConfig(newConfig, nullptr);
   }
 
   {
@@ -146,12 +146,12 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_but_server_excluded) {
   {
     auto oldConfig =
         leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
-    auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
+    auto newConfig = std::make_shared<agency::ParticipantsConfig>(oldConfig);
     newConfig->generation = 2;
     // make follower1 excluded
     newConfig->participants["follower1"] = replication2::ParticipantFlags{
         .forced = false, .allowedInQuorum = false};
-    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {}, {});
+    leader->updateParticipantsConfig(newConfig, nullptr);
   }
 
   {
@@ -190,12 +190,12 @@ TEST_F(UpdateParticipantsFlagsTest,
   {
     auto oldConfig =
         leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
-    auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
+    auto newConfig = std::make_shared<agency::ParticipantsConfig>(oldConfig);
     newConfig->generation = 2;
     // make follower1 excluded
     newConfig->participants["follower1"] =
         replication2::ParticipantFlags{.allowedInQuorum = false};
-    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {}, {});
+    leader->updateParticipantsConfig(newConfig, nullptr);
   }
 
   {
@@ -242,12 +242,12 @@ TEST_F(UpdateParticipantsFlagsTest, multiple_updates_check) {
   {
     auto oldConfig =
         leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
-    auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
+    auto newConfig = std::make_shared<agency::ParticipantsConfig>(oldConfig);
     newConfig->generation = 2;
     // make follower2 forced
     newConfig->participants["follower2"] =
         replication2::ParticipantFlags{true, false};
-    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {}, {});
+    leader->updateParticipantsConfig(newConfig, nullptr);
   }
 
   auto idx = leader->insert(LogPayload::createFromString("entry #1"));
@@ -267,10 +267,10 @@ TEST_F(UpdateParticipantsFlagsTest, multiple_updates_check) {
   {
     auto oldConfig =
         leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
-    auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
+    auto newConfig = std::make_shared<agency::ParticipantsConfig>(oldConfig);
     newConfig->participants["follower2"] = {};
     newConfig->generation = 3;
-    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {}, {});
+    leader->updateParticipantsConfig(newConfig, nullptr);
   }
 
   {
@@ -303,12 +303,12 @@ TEST_F(UpdateParticipantsFlagsTest, update_without_additional_entry) {
   {
     auto oldConfig =
         leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
-    auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
+    auto newConfig = std::make_shared<agency::ParticipantsConfig>(oldConfig);
     newConfig->generation = 2;
     // make follower2 excluded
     newConfig->participants["follower2"] =
         replication2::ParticipantFlags{true, false};
-    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {}, {});
+    leader->updateParticipantsConfig(newConfig, nullptr);
   }
 
   EXPECT_EQ(leader->getCommitIndex(), LogIndex{1});
@@ -338,17 +338,20 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_add_new_follower) {
   auto follower3 = std::shared_ptr<DelayedFollowerLog>{};
   follower3 = followerLog3->becomeFollower("follower3", startTerm, "leader");
   followers.emplace_back(follower3);
+  auto const buildFollower = [&](ParticipantId const& participantId) {
+    EXPECT_EQ("follower3", participantId);
+    return follower3;
+  };
 
   {  // First add the new follower3
     auto oldConfig =
         leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
-    auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
+    auto newConfig = std::make_shared<agency::ParticipantsConfig>(oldConfig);
     newConfig->participants["follower3"] = {};
     newConfig->generation = 2;
 
     // note that this adds a new log entry
-    leader->updateParticipantsConfig(newConfig, oldConfig.generation,
-                                     {{"follower3", follower3}}, {});
+    leader->updateParticipantsConfig(newConfig, buildFollower);
   }
 
   {  // checks
@@ -384,17 +387,20 @@ TEST_F(UpdateParticipantsFlagsTest,
   auto follower3 = std::shared_ptr<DelayedFollowerLog>{};
   follower3 = followerLog3->becomeFollower("follower3", startTerm, "leader");
   followers.emplace_back(follower3);
+  auto const buildFollower = [&](ParticipantId const& participantId) {
+    EXPECT_EQ("follower3", participantId);
+    return follower3;
+  };
 
   {  // First add the new follower3
     auto oldConfig =
         leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
-    auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
+    auto newConfig = std::make_shared<agency::ParticipantsConfig>(oldConfig);
     newConfig->generation = 2;
     newConfig->participants["follower3"] = replication2::ParticipantFlags{};
 
     // note that this adds a new log entry
-    leader->updateParticipantsConfig(newConfig, oldConfig.generation,
-                                     {{"follower3", follower3}}, {});
+    leader->updateParticipantsConfig(newConfig, buildFollower);
   }
 
   {  // checks
@@ -434,19 +440,22 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_remove_exclude_flag) {
   auto follower3 = std::shared_ptr<DelayedFollowerLog>{};
   follower3 = followerLog3->becomeFollower("follower3", startTerm, "leader");
   followers.emplace_back(follower3);
+  auto const buildFollower = [&](ParticipantId const& participantId) {
+    EXPECT_EQ("follower3", participantId);
+    return follower3;
+  };
 
   {  // First add the new follower3, but excluded
     auto oldConfig =
         leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
-    auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
+    auto newConfig = std::make_shared<agency::ParticipantsConfig>(oldConfig);
     newConfig->generation = 2;
     // exclude follower3
     newConfig->participants["follower3"] =
         replication2::ParticipantFlags{.allowedInQuorum = false};
 
     // note that this adds a new log entry
-    leader->updateParticipantsConfig(newConfig, oldConfig.generation,
-                                     {{"follower3", follower3}}, {});
+    leader->updateParticipantsConfig(newConfig, buildFollower);
   }
 
   {  // checks
@@ -481,14 +490,14 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_remove_exclude_flag) {
   {  // set follower3.excluded = false; this is the central point of this test!
     auto oldConfig =
         leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
-    auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
+    auto newConfig = std::make_shared<agency::ParticipantsConfig>(oldConfig);
     newConfig->generation = 3;
     // exclude follower3
     auto& flags = (newConfig->participants["follower3"] =
                        oldConfig.participants.at("follower3"));
     flags.allowedInQuorum = true;
 
-    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {}, {});
+    leader->updateParticipantsConfig(newConfig, nullptr);
   }
 
   {  // checks
@@ -525,13 +534,12 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_remove_follower) {
   {  // remove follower1
     auto oldConfig =
         leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
-    auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
+    auto newConfig = std::make_shared<agency::ParticipantsConfig>(oldConfig);
     newConfig->participants.erase("follower1");
     newConfig->generation = 2;
 
     // remove follower1
-    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {},
-                                     {"follower1"});
+    leader->updateParticipantsConfig(newConfig, nullptr);
   }
 
   {  // checks
@@ -580,13 +588,12 @@ TEST_F(UpdateParticipantsFlagsTest,
   {  // remove follower1
     auto oldConfig =
         leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
-    auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
+    auto newConfig = std::make_shared<agency::ParticipantsConfig>(oldConfig);
     newConfig->participants.erase("follower1");
     newConfig->generation = 2;
 
     // remove follower1
-    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {},
-                                     {"follower1"});
+    leader->updateParticipantsConfig(newConfig, nullptr);
   }
 
   {  // checks
@@ -641,17 +648,6 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_add_mismatching_config_should_fail) {
   EXPECT_EQ(leader->getParticipantConfigGenerations(),
             (std::pair<std::size_t, std::optional<std::size_t>>(1, 1)));
 
-  {  // (unsuccessfully) try to set a new config with the wrong generation
-    auto oldConfig =
-        leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
-    EXPECT_EQ(oldConfig.generation, 1);
-    auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
-    newConfig->generation = 4;
-
-    EXPECT_ANY_THROW(leader->updateParticipantsConfig(newConfig, 2, {}, {}));
-    EXPECT_ANY_THROW(leader->updateParticipantsConfig(newConfig, 3, {}, {}));
-  }
-
   runAllAsyncAppendEntries();
 
   // should be unchanged
@@ -663,11 +659,10 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_add_mismatching_config_should_fail) {
     auto oldConfig =
         leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
     EXPECT_EQ(oldConfig.generation, 1);
-    auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
+    auto newConfig = std::make_shared<agency::ParticipantsConfig>(oldConfig);
     newConfig->generation = 2;
 
-    auto logIndex = leader->updateParticipantsConfig(
-        newConfig, oldConfig.generation, {}, {});
+    auto logIndex = leader->updateParticipantsConfig(newConfig, nullptr);
     EXPECT_EQ(logIndex, LogIndex{2});
   }
 
@@ -678,16 +673,6 @@ TEST_F(UpdateParticipantsFlagsTest, wc2_add_mismatching_config_should_fail) {
   EXPECT_EQ(leader->getCommitIndex(), LogIndex{2});
   EXPECT_EQ(leader->getParticipantConfigGenerations(),
             (std::pair<std::size_t, std::optional<std::size_t>>(2, 2)));
-
-  {  // (unsuccessfully) try to set a new config with the wrong generation
-    auto oldConfig =
-        leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
-    EXPECT_EQ(oldConfig.generation, 2);
-    auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
-    newConfig->generation = 3;
-
-    EXPECT_ANY_THROW(leader->updateParticipantsConfig(newConfig, 0, {}, {}));
-  }
 
   // should be unchanged
   runAllAsyncAppendEntries();
@@ -719,13 +704,13 @@ TEST_F(UpdateParticipantsFlagsTest, check_update_participants_meta_entry) {
 
   auto oldConfig =
       leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
-  auto newConfig = std::make_shared<ParticipantsConfig>(oldConfig);
+  auto newConfig = std::make_shared<agency::ParticipantsConfig>(oldConfig);
   {
     newConfig->generation = 2;
     // make follower2 forced
     newConfig->participants["follower2"] =
         replication2::ParticipantFlags{true, false};
-    leader->updateParticipantsConfig(newConfig, oldConfig.generation, {}, {});
+    leader->updateParticipantsConfig(newConfig, nullptr);
   }
 
   // commit this configuration
@@ -753,5 +738,72 @@ TEST_F(UpdateParticipantsFlagsTest, check_update_participants_meta_entry) {
     auto const& info =
         std::get<LogMetaPayload::UpdateParticipantsConfig>(meta.info);
     EXPECT_EQ(info.participants, *newConfig);
+  }
+}
+
+TEST_F(UpdateParticipantsFlagsTest, refuse_old_generation) {
+  leader->triggerAsyncReplication();
+  runAllAsyncAppendEntries();
+  ASSERT_TRUE(leader->isLeadershipEstablished());
+
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 1);
+    EXPECT_EQ(committed, 1);
+  }
+
+  {
+    auto oldConfig =
+        leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
+    auto newConfig = std::make_shared<agency::ParticipantsConfig>(oldConfig);
+    // just update the generation
+    newConfig->generation = 3;
+    leader->updateParticipantsConfig(newConfig, nullptr);
+  }
+
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 3);
+    EXPECT_EQ(committed, 1);
+  }
+
+  {
+    auto oldConfig =
+        leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
+    auto newConfig = std::make_shared<agency::ParticipantsConfig>(oldConfig);
+    // purposefully try to update to an old generation
+    newConfig->generation = 2;
+    EXPECT_ANY_THROW(leader->updateParticipantsConfig(newConfig, nullptr));
+  }
+
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 3);
+    EXPECT_EQ(committed, 1);
+  }
+
+  runAllAsyncAppendEntries();
+
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 3);
+    EXPECT_EQ(committed, 3);
+  }
+
+  {
+    auto oldConfig =
+        leader->getStatus().asLeaderStatus()->activeParticipantsConfig;
+    auto newConfig = std::make_shared<agency::ParticipantsConfig>(oldConfig);
+    // purposefully try to update to an old generation
+    newConfig->generation = 2;
+    EXPECT_ANY_THROW(leader->updateParticipantsConfig(newConfig, nullptr));
+  }
+
+  runAllAsyncAppendEntries();
+
+  {
+    auto [accepted, committed] = leader->getParticipantConfigGenerations();
+    EXPECT_EQ(accepted, 3);
+    EXPECT_EQ(committed, 3);
   }
 }

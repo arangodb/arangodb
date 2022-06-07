@@ -100,16 +100,6 @@ class ApplicationFeature {
   // names of features required to be enabled for this feature to be enabled
   std::vector<size_t> const& dependsOn() const { return _requires; }
 
-  // register whether the feature requires elevated privileges
-  void requiresElevatedPrivileges(bool value) {
-    _requiresElevatedPrivileges = value;
-  }
-
-  // test whether the feature requires elevated privileges
-  bool requiresElevatedPrivileges() const {
-    return _requiresElevatedPrivileges;
-  }
-
   // whether the feature starts before another
   template<typename T, typename Server>
   bool doesStartBefore() const {
@@ -268,9 +258,6 @@ class ApplicationFeature {
 
   // whether or not the feature is optional
   bool _optional;
-
-  // whether or not the feature requires elevated privileges
-  bool _requiresElevatedPrivileges;
 
   bool _ancestorsDetermined;
 };

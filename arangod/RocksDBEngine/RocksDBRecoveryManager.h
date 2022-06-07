@@ -24,10 +24,14 @@
 
 #pragma once
 
-#include <rocksdb/types.h>
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 #include "RestServer/arangod.h"
 #include "StorageEngine/StorageEngine.h"
+
+#include <rocksdb/types.h>
+
+#include <atomic>
 
 namespace rocksdb {
 
@@ -46,21 +50,15 @@ class RocksDBRecoveryManager final : public ArangodFeature {
 
   void runRecovery();
 
-  RecoveryState recoveryState() const noexcept {
-    return _recoveryState.load(std::memory_order_acquire);
-  }
+  RecoveryState recoveryState() const noexcept;
 
-  /// @brief current recovery tick
-  rocksdb::SequenceNumber recoveryTick() const noexcept { return _tick; }
+  // current recovery sequence number
+  rocksdb::SequenceNumber recoverySequenceNumber() const noexcept;
 
  private:
   Result parseRocksWAL();
 
- protected:
-  /// @brief rocksdb instance
-  rocksdb::TransactionDB* _db;
-
-  rocksdb::SequenceNumber _tick;
+  std::atomic<rocksdb::SequenceNumber> _currentSequenceNumber;
   std::atomic<RecoveryState> _recoveryState;
 };
 

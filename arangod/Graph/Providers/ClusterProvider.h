@@ -83,6 +83,8 @@ class ClusterProvider {
                    double weight = 0.0) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
       -> futures::Future<std::vector<Step*>>;
+  auto fetchVertices(std::vector<Step*> const& looseEnds) -> std::vector<Step*>;
+  auto fetchEdges(const std::vector<Step*>& fetchedVertices) -> Result;
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;
 
@@ -91,6 +93,16 @@ class ClusterProvider {
   void addEdgeToBuilder(typename Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
   VPackSlice readEdge(EdgeType const& edgeID);
+
+  void addEdgeIDToBuilder(typename Step::Edge const& edge,
+                          arangodb::velocypack::Builder& builder);
+
+  void addEdgeToLookupMap(typename Step::Edge const& edge,
+                          arangodb::velocypack::Builder& builder);
+
+  auto getEdgeId(typename Step::Edge const& edge) -> std::string;
+
+  auto getEdgeIdRef(typename Step::Edge const& edge) -> EdgeType;
 
   // fetch vertices and store in cache
   auto fetchVerticesFromEngines(std::vector<Step*> const& looseEnds,
@@ -109,6 +121,9 @@ class ClusterProvider {
 
   void prepareContext(aql::InputAqlItemRow input);
   void unPrepareContext();
+  bool isResponsible(Step const& step) const;
+
+  [[nodiscard]] bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 
  private:
   // Unique_ptr to have this class movable, and to keep reference of trx()

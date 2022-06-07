@@ -31,9 +31,11 @@
 #include <Basics/StringUtils.h>
 #include <Basics/VelocyPackHelper.h>
 #include <Basics/debugging.h>
+#include <Inspection/VPack.h>
 
 #include <chrono>
 #include <utility>
+#include <fmt/core.h>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -93,17 +95,12 @@ auto replication2::to_string(LogIndex index) -> std::string {
 
 void replication2::TermIndexPair::toVelocyPack(
     velocypack::Builder& builder) const {
-  VPackObjectBuilder ob(&builder);
-  builder.add(StaticStrings::Term, VPackValue(term.value));
-  builder.add(StaticStrings::Index, VPackValue(index.value));
+  serialize(builder, *this);
 }
 
 auto replication2::TermIndexPair::fromVelocyPack(velocypack::Slice slice)
     -> TermIndexPair {
-  TermIndexPair pair;
-  pair.term = slice.get(StaticStrings::Term).extract<LogTerm>();
-  pair.index = slice.get(StaticStrings::Index).extract<LogIndex>();
-  return pair;
+  return deserialize<TermIndexPair>(slice);
 }
 
 replication2::TermIndexPair::TermIndexPair(LogTerm term,
@@ -117,33 +114,6 @@ replication2::TermIndexPair::TermIndexPair(LogTerm term,
 auto replication2::operator<<(std::ostream& os, TermIndexPair pair)
     -> std::ostream& {
   return os << '(' << pair.term << ':' << pair.index << ')';
-}
-
-LogConfig::LogConfig(VPackSlice slice) {
-  waitForSync = slice.get(StaticStrings::WaitForSyncString).extract<bool>();
-  writeConcern = slice.get(StaticStrings::WriteConcern).extract<std::size_t>();
-  if (auto sw = slice.get(StaticStrings::SoftWriteConcern); !sw.isNone()) {
-    softWriteConcern = sw.extract<std::size_t>();
-  } else {
-    softWriteConcern = writeConcern;
-  }
-  replicationFactor =
-      slice.get(StaticStrings::ReplicationFactor).extract<std::size_t>();
-}
-
-LogConfig::LogConfig(std::size_t writeConcern, std::size_t softWriteConcern,
-                     std::size_t replicationFactor, bool waitForSync) noexcept
-    : writeConcern(writeConcern),
-      softWriteConcern(softWriteConcern),
-      replicationFactor(replicationFactor),
-      waitForSync(waitForSync) {}
-
-auto LogConfig::toVelocyPack(VPackBuilder& builder) const -> void {
-  VPackObjectBuilder ob(&builder);
-  builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
-  builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
-  builder.add(StaticStrings::SoftWriteConcern, VPackValue(softWriteConcern));
-  builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
 }
 
 LogRange::LogRange(LogIndex from, LogIndex to) noexcept : from(from), to(to) {
@@ -289,7 +259,7 @@ auto replicated_log::CommitFailReason::QuorumSizeNotReached::fromVelocyPack(
     result.who.try_emplace(
         participantId, ParticipantInfo::fromVelocyPack(participantInfoSlice));
   }
-  result.spearhead = TermIndexPair::fromVelocyPack(s.get(SpearheadFieldName));
+  result.spearhead = deserialize<TermIndexPair>(s.get(SpearheadFieldName));
   return result;
 }
 
@@ -308,7 +278,7 @@ void replicated_log::CommitFailReason::QuorumSizeNotReached::toVelocyPack(
   }
   {
     builder.add(VPackValue(SpearheadFieldName));
-    spearhead.toVelocyPack(builder);
+    serialize(builder, spearhead);
   }
 }
 
@@ -321,7 +291,7 @@ auto replicated_log::CommitFailReason::QuorumSizeNotReached::ParticipantInfo::
       .isFailed = s.get(IsFailedFieldName).getBool(),
       .isAllowedInQuorum = s.get(IsAllowedInQuorumFieldName).getBool(),
       .lastAcknowledged =
-          TermIndexPair::fromVelocyPack(s.get(LastAcknowledgedFieldName)),
+          deserialize<TermIndexPair>(s.get(LastAcknowledgedFieldName)),
   };
 }
 
@@ -332,7 +302,7 @@ void replicated_log::CommitFailReason::QuorumSizeNotReached::ParticipantInfo::
   builder.add(IsAllowedInQuorumFieldName, isAllowedInQuorum);
   {
     builder.add(VPackValue(LastAcknowledgedFieldName));
-    lastAcknowledged.toVelocyPack(builder);
+    serialize(builder, lastAcknowledged);
   }
 }
 
@@ -488,13 +458,10 @@ auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
     }
     auto operator()(
         CommitFailReason::FewerParticipantsThanWriteConcern const& reason) {
-      using namespace basics::StringUtils;
-      return concatT("Fewer participants than write concern. Have ",
-                     reason.numParticipants,
-                     " participants and effectiveWriteConcern=",
-                     reason.effectiveWriteConcern,
-                     ". With writeConcern=", reason.writeConcern,
-                     " and softWriteConcern=", reason.softWriteConcern, ".");
+      return fmt::format(
+          "Fewer participants than effectove write concern. Have {} ",
+          "participants and effectiveWriteConcern={}.", reason.numParticipants,
+          reason.effectiveWriteConcern);
     }
   };
 
@@ -503,21 +470,12 @@ auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
 
 void replication2::ParticipantFlags::toVelocyPack(
     velocypack::Builder& builder) const {
-  VPackObjectBuilder ob(&builder);
-  builder.add("forced", forced);
-  builder.add("allowedInQuorum", allowedInQuorum);
-  builder.add("allowedAsLeader", allowedAsLeader);
+  serialize(builder, *this);
 }
 
 auto replication2::ParticipantFlags::fromVelocyPack(velocypack::Slice s)
     -> ParticipantFlags {
-  auto const forced = s.get("forced").isTrue();
-  // none or true => true
-  auto allowedInQuorum = !s.get("allowedInQuorum").isFalse();
-  auto allowedAsLeader = !s.get("allowedAsLeader").isFalse();
-  return ParticipantFlags{.forced = forced,
-                          .allowedInQuorum = allowedInQuorum,
-                          .allowedAsLeader = allowedAsLeader};
+  return deserialize<ParticipantFlags>(s);
 }
 
 auto replication2::operator<<(std::ostream& os, ParticipantFlags const& f)
@@ -535,29 +493,6 @@ auto replication2::operator<<(std::ostream& os, ParticipantFlags const& f)
   return os << "}";
 }
 
-void replication2::ParticipantsConfig::toVelocyPack(
-    velocypack::Builder& builder) const {
-  VPackObjectBuilder ob(&builder);
-  builder.add("generation", VPackValue(generation));
-  VPackObjectBuilder pob(&builder, "participants");
-  for (auto const& [id, flags] : participants) {
-    builder.add(VPackValue(id));
-    flags.toVelocyPack(builder);
-  }
-}
-
-auto replication2::ParticipantsConfig::fromVelocyPack(velocypack::Slice s)
-    -> ParticipantsConfig {
-  ParticipantsConfig config;
-  config.generation = s.get("generation").extract<std::size_t>();
-  for (auto [key, value] : VPackObjectIterator(s.get("participants"))) {
-    auto id = key.copyString();
-    auto flags = ParticipantFlags::fromVelocyPack(value);
-    config.participants.emplace(std::move(id), flags);
-  }
-  return config;
-}
-
 auto replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern::
     fromVelocyPack(velocypack::Slice)
         -> replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern {
@@ -570,8 +505,6 @@ auto replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern::
 void replicated_log::CommitFailReason::FewerParticipantsThanWriteConcern::
     toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder obj(&builder);
-  builder.add(StaticStrings::WriteConcern, writeConcern);
-  builder.add(StaticStrings::SoftWriteConcern, softWriteConcern);
   builder.add(StaticStrings::EffectiveWriteConcern, effectiveWriteConcern);
 }
 

@@ -21,16 +21,21 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "PrototypeStateMachineFeature.h"
+#include "PrototypeCore.h"
+#include "PrototypeFollowerState.h"
+#include "PrototypeLeaderState.h"
 #include "PrototypeStateMachine.h"
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "PrototypeStateMachineFeature.h"
+
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ServerState.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "velocypack/Iterator.h"
-#include "Cluster/ServerState.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "velocypack/Iterator.h"
 
 #include <rocksdb/utilities/transaction_db.h>
 
@@ -44,7 +49,7 @@ class PrototypeLeaderInterface : public IPrototypeLeaderInterface {
  public:
   PrototypeLeaderInterface(ParticipantId participantId,
                            network::ConnectionPool* pool)
-      : participantId(std::move(participantId)), pool(pool){};
+      : _participantId(std::move(participantId)), _pool(pool){};
 
   auto getSnapshot(GlobalLogIdentifier const& logId, LogIndex waitForIndex)
       -> futures::Future<
@@ -55,7 +60,7 @@ class PrototypeLeaderInterface : public IPrototypeLeaderInterface {
     opts.database = logId.database;
     opts.param("waitForIndex", std::to_string(waitForIndex.value));
 
-    return network::sendRequest(pool, "server:" + participantId,
+    return network::sendRequest(_pool, "server:" + _participantId,
                                 fuerte::RestVerb::Get, path, {}, opts)
         .thenValue(
             [](network::Response&& resp)
@@ -81,29 +86,30 @@ class PrototypeLeaderInterface : public IPrototypeLeaderInterface {
   }
 
  private:
-  ParticipantId participantId;
-  network::ConnectionPool* pool;
+  ParticipantId _participantId;
+  network::ConnectionPool* _pool;
 };
 
 class PrototypeNetworkInterface : public IPrototypeNetworkInterface {
  public:
   explicit PrototypeNetworkInterface(network::ConnectionPool* pool)
-      : pool(pool){};
+      : _pool(pool){};
 
   auto getLeaderInterface(ParticipantId id)
       -> ResultT<std::shared_ptr<IPrototypeLeaderInterface>> override {
     return ResultT<std::shared_ptr<IPrototypeLeaderInterface>>::success(
-        std::make_shared<PrototypeLeaderInterface>(id, pool));
+        std::make_shared<PrototypeLeaderInterface>(id, _pool));
   }
 
-  network::ConnectionPool* pool{nullptr};
+ private:
+  network::ConnectionPool* _pool{nullptr};
 };
 
 class PrototypeRocksDBInterface : public IPrototypeStorageInterface {
  public:
   explicit PrototypeRocksDBInterface(rocksdb::TransactionDB* db) : _db(db) {}
 
-  auto put(const GlobalLogIdentifier& logId, PrototypeCoreDump dump)
+  auto put(const GlobalLogIdentifier& logId, PrototypeDump dump)
       -> Result override {
     auto key = getDBKey(logId);
     VPackBuilder builder;
@@ -116,38 +122,56 @@ class PrototypeRocksDBInterface : public IPrototypeStorageInterface {
     if (status.ok()) {
       return TRI_ERROR_NO_ERROR;
     } else {
-      return TRI_ERROR_WAS_ERLAUBE;
+      return {TRI_ERROR_WAS_ERLAUBE, status.ToString()};
     }
   }
 
   auto get(const GlobalLogIdentifier& logId)
-      -> ResultT<PrototypeCoreDump> override {
+      -> ResultT<PrototypeDump> override {
     auto key = getDBKey(logId);
     auto opt = rocksdb::ReadOptions{};
     std::string buffer;
     auto status = _db->Get(opt, rocksdb::Slice(key), &buffer);
-    PrototypeCoreDump dump;
     if (status.ok()) {
       VPackSlice slice{reinterpret_cast<uint8_t const*>(buffer.data())};
-      return dump.fromVelocyPack(slice);
+      return PrototypeDump::fromVelocyPack(slice);
     } else if (status.code() == rocksdb::Status::kNotFound) {
+      PrototypeDump dump;
       dump.lastPersistedIndex = LogIndex{0};
       return dump;
     } else {
-      // TODO
-      // LOG_CTX("98432", ERR, loggerContext);
-      return ResultT<PrototypeCoreDump>::error(TRI_ERROR_WAS_ERLAUBE,
-                                               status.ToString());
+      LOG_TOPIC("db12d", ERR, arangodb::Logger::REPLICATED_STATE)
+          << "Error occurred while reading Prototype From RocksDB: "
+          << status.ToString();
+      return ResultT<PrototypeDump>::error(TRI_ERROR_WAS_ERLAUBE,
+                                           status.ToString());
     }
   }
 
-  std::string getDBKey(const GlobalLogIdentifier& logId) {
+  static std::string getDBKey(const GlobalLogIdentifier& logId) {
     return "prototype-core-" + std::to_string(logId.id.id());
   }
 
+ private:
   rocksdb::TransactionDB* _db;
 };
 }  // namespace
+
+PrototypeStateMachineFeature::PrototypeStateMachineFeature(Server& server)
+    : ArangodFeature{server, *this} {
+  setOptional(true);
+  startsAfter<EngineSelectorFeature>();
+  startsAfter<NetworkFeature>();
+  startsAfter<RocksDBEngine>();
+  startsAfter<ReplicatedStateAppFeature>();
+  onlyEnabledWith<EngineSelectorFeature>();
+  onlyEnabledWith<ReplicatedStateAppFeature>();
+}
+
+void PrototypeStateMachineFeature::prepare() {
+  bool const enabled = ServerState::instance()->isDBServer();
+  setEnabled(enabled);
+}
 
 void PrototypeStateMachineFeature::start() {
   auto& replicatedStateFeature =
@@ -163,20 +187,4 @@ void PrototypeStateMachineFeature::start() {
       "prototype",
       std::make_shared<PrototypeNetworkInterface>(networkFeature.pool()),
       std::make_shared<PrototypeRocksDBInterface>(db));
-}
-
-void PrototypeStateMachineFeature::prepare() {
-  bool const enabled = ServerState::instance()->isDBServer();
-  setEnabled(enabled);
-}
-
-PrototypeStateMachineFeature::PrototypeStateMachineFeature(Server& server)
-    : ArangodFeature{server, *this} {
-  setOptional(true);
-  startsAfter<EngineSelectorFeature>();
-  startsAfter<NetworkFeature>();
-  startsAfter<RocksDBEngine>();
-  startsAfter<ReplicatedStateAppFeature>();
-  onlyEnabledWith<EngineSelectorFeature>();
-  onlyEnabledWith<ReplicatedStateAppFeature>();
 }

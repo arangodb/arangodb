@@ -123,7 +123,7 @@ ArangoDatabase.prototype._explain = function (query, bindVars, options) {
   }
 
   if (arguments.length > 1) {
-    query = { query: query, bindVars: bindVars, options: options };
+    query = { query, bindVars, options };
   }
 
   require('@arangodb/aql/explainer').explain(query);

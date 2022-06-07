@@ -122,22 +122,22 @@ struct AqlCall {
   }
 
   // TODO Remove me, this will not be necessary later
-  static bool IsSkipSomeCall(AqlCall const& call) {
+  static bool IsSkipSomeCall(AqlCall const& call) noexcept {
     return call.getOffset() > 0;
   }
 
   // TODO Remove me, this will not be necessary later
-  static bool IsGetSomeCall(AqlCall const& call) {
+  static bool IsGetSomeCall(AqlCall const& call) noexcept {
     return call.getLimit() > 0 && call.getOffset() == 0;
   }
 
   // TODO Remove me, this will not be necessary later
-  static bool IsFullCountCall(AqlCall const& call) {
+  static bool IsFullCountCall(AqlCall const& call) noexcept {
     return call.hasHardLimit() && call.getLimit() == 0 &&
            call.getOffset() == 0 && call.needsFullCount();
   }
 
-  static bool IsFastForwardCall(AqlCall const& call) {
+  static bool IsFastForwardCall(AqlCall const& call) noexcept {
     return call.hasHardLimit() && call.getLimit() == 0 &&
            call.getOffset() == 0 && !call.needsFullCount();
   }
@@ -154,17 +154,18 @@ struct AqlCall {
   bool fullCount{false};
   std::size_t skippedRows{0};
 
-  std::size_t getOffset() const { return offset; }
+  std::size_t getOffset() const noexcept { return offset; }
 
   // TODO I think this should return the actual limit without regards to the
   // batch size,
   //      so we can use it to calculate upstream calls. The batch size should be
   //      applied when allocating blocks only!
-  std::size_t getLimit() const {
+  std::size_t getLimit() const noexcept {
     return clampToLimit(ExecutionBlock::DefaultBatchSize);
   }
 
-  std::size_t clampToLimit(size_t limit) const {  // By default we use batchsize
+  std::size_t clampToLimit(
+      size_t limit) const noexcept {  // By default we use batchsize
     // We are not allowed to go above softLimit
     if (std::holds_alternative<std::size_t>(softLimit)) {
       limit = (std::min)(std::get<std::size_t>(softLimit), limit);
@@ -211,27 +212,28 @@ struct AqlCall {
 
   void resetSkipCount() noexcept;
 
-  bool hasLimit() const { return hasHardLimit() || hasSoftLimit(); }
+  bool hasLimit() const noexcept { return hasHardLimit() || hasSoftLimit(); }
 
-  bool hasHardLimit() const {
+  bool hasHardLimit() const noexcept {
     return !std::holds_alternative<AqlCall::Infinity>(hardLimit);
   }
 
-  bool hasSoftLimit() const {
+  bool hasSoftLimit() const noexcept {
     return !std::holds_alternative<AqlCall::Infinity>(softLimit);
   }
 
-  bool needsFullCount() const { return fullCount; }
+  bool needsFullCount() const noexcept { return fullCount; }
 
   // TODO this is the same as needSkipMore(), remove one of them.
-  bool shouldSkip() const {
+  bool shouldSkip() const noexcept {
     return getOffset() > 0 || (getLimit() == 0 && needsFullCount());
   }
 
   auto requestLessDataThan(AqlCall const& other) const noexcept -> bool;
 };
 
-constexpr bool operator<(AqlCall::Limit const& a, AqlCall::Limit const& b) {
+constexpr bool operator<(AqlCall::Limit const& a,
+                         AqlCall::Limit const& b) noexcept {
   if (std::holds_alternative<AqlCall::Infinity>(a)) {
     return false;
   }
@@ -241,23 +243,27 @@ constexpr bool operator<(AqlCall::Limit const& a, AqlCall::Limit const& b) {
   return std::get<size_t>(a) < std::get<size_t>(b);
 }
 
-constexpr bool operator<(AqlCall::Limit const& a, size_t b) {
+constexpr bool operator<(AqlCall::Limit const& a, size_t b) noexcept {
   if (std::holds_alternative<AqlCall::Infinity>(a)) {
     return false;
   }
   return std::get<size_t>(a) < b;
 }
 
-constexpr bool operator<(size_t a, AqlCall::Limit const& b) {
+constexpr bool operator<(size_t a, AqlCall::Limit const& b) noexcept {
   if (std::holds_alternative<AqlCall::Infinity>(b)) {
     return true;
   }
   return a < std::get<size_t>(b);
 }
 
-constexpr bool operator>(size_t a, AqlCall::Limit const& b) { return b < a; }
+constexpr bool operator>(size_t a, AqlCall::Limit const& b) noexcept {
+  return b < a;
+}
 
-constexpr bool operator>(AqlCall::Limit const& a, size_t b) { return b < a; }
+constexpr bool operator>(AqlCall::Limit const& a, size_t b) noexcept {
+  return b < a;
+}
 
 constexpr AqlCall::Limit operator+(AqlCall::Limit const& a, size_t n) {
   return std::visit(

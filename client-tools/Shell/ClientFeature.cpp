@@ -84,7 +84,6 @@ ClientFeature::ClientFeature(ApplicationServer& server,
       _haveServerPassword(false),
       _forceJson(false) {
   setOptional(true);
-  requiresElevatedPrivileges(false);
 }
 
 void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

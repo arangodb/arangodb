@@ -709,13 +709,6 @@ and use the commands above to obtain stacktraces.
 
 ### Dependencies
 
-- _Ruby_, _rspec_, _httparty_; to install the required dependencies run the
-  following commands in the source root:
-  ```
-  gem install bundler
-  cd tests/rb/HttpInterface
-  bundler
-  ```
 - _Google Test_ (compile time, shipped in the 3rdParty directory)
 
 ### Folder Locations
@@ -728,8 +721,6 @@ There are several major places where unittests live:
 | `tests/js/common/`                                           | JavaScript tests, runnable on the server & via arangosh                                                                            |
 | `tests/js/common/test-data/`                                 | Mock data used for the JavaScript tests                                                                                            |
 | `tests/js/client/`                                           | JavaScript tests, runnable via arangosh                                                                                            |
-| `tests/rb/`                                                  | rspec tests (Ruby)                                                                                                                 |
-| `tests/rb/HttpInterface/`                                    | rspec tests using the plain RESTful interface of ArangoDB. Include invalid HTTP requests and error handling checks for the server. |
 | `tests/` (remaining)                                         | Google Test unittests                                                                                                              |
 | implementation specific files                                |
 | `scripts/unittest`                                           | Entry wrapper script for `UnitTests/unittest.js`                                                                                   |
@@ -868,21 +859,9 @@ Testing a single test with the framework via arangosh:
 
     scripts/unittest single_client --test tests/js/client/shell/shell-transaction.js
 
-Testing a single rspec test:
-
-    scripts/unittest http_server --test api-users-spec.rb
-
-Testing a single rspec test, using SSL:
-
-    scripts/unittest ssl_server --test api-users-spec.rb
-
-Testing a single rspec test, with and without SSL (`http_server` and `ssl_server`):
-
-    scripts/unittest auto --test api-users-spec.rb
-
 Running a test against a server you started (instead of letting the script start its own server):
 
-    scripts/unittest http_server --test api-batch-spec.rb --server tcp://127.0.0.1:8529 --serverRoot /tmp/123
+    scripts/unittest shell_client --test api-batch.js --server tcp://127.0.0.1:8529 --serverRoot /tmp/123
 
 Re-running previously failed tests:
 
@@ -890,7 +869,7 @@ Re-running previously failed tests:
 
 The `<args>` should be the same as in the previous run, only `--test`/`--testCase` can be omitted.
 The information which tests failed is taken from the `UNITTEST_RESULT.json` in your test output folder.
-This failed filter should work for all jsunity, mocha and rspec tests.
+This failed filter should work for all jsunity and mocha tests.
 
 #### Running Foxx Tests with a Fake Foxx Repo
 
@@ -1108,17 +1087,13 @@ Statically provided options (with sample values):
 
 This is quick introduction only.
 
-Running a single rspec test:
+Running a single arangosh client test:
 
-    ./scripts/unittest http_server --test api-import-spec.rb
+    ./scripts/unittest shell_client --test api-import.js
 
-Debugging rspec with gdb:
+Debugging arangosh with gdb:
 
-    server> ./scripts/unittest http_server --test api-import-spec.rb --server tcp://127.0.0.1:7777
-    - or -
-    server> ARANGO_SERVER="127.0.0.1:6666" \
-        rspec -Itests/rb/HttpInterface --format d \
-              --color tests/rb/HttpInterface/api-import-spec.rb
+    server> ./scripts/unittest shell_client --test api-import.js --server tcp://127.0.0.1:7777
 
     client> gdb --args ./build/bin/arangod --server.endpoint http+tcp://127.0.0.1:6666 \
                                            --server.authentication false \

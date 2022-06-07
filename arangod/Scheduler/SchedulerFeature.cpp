@@ -138,11 +138,13 @@ void SchedulerFeature::collectOptions(
                      new UInt64Parameter(&_fifo3Size));
 
   options
-      ->addOption("--server.unavailability-queue-fill-grade",
-                  "queue fill grade from which onwards the server is "
-                  "considered unavailable because of overload (ratio, use a "
-                  "value of 0 to disable it)",
-                  new DoubleParameter(&_unavailabilityQueueFillGrade))
+      ->addOption(
+          "--server.unavailability-queue-fill-grade",
+          "queue fill grade from which onwards the server is "
+          "considered unavailable because of overload (ratio, use a "
+          "value of 0 to disable it)",
+          new DoubleParameter(&_unavailabilityQueueFillGrade, /*base*/ 1.0,
+                              /*minValue*/ 0.0, /*maxValue*/ 1.0))
       .setIntroducedIn(30610)
       .setIntroducedIn(30706);
 
@@ -209,13 +211,6 @@ void SchedulerFeature::validateOptions(
         << "--server.maximal-threads (" << _nrMaximalThreads
         << ") should be at least " << (_nrMinimalThreads + 1) << ", raising it";
     _nrMaximalThreads = _nrMinimalThreads;
-  }
-
-  if (_unavailabilityQueueFillGrade < 0.0 ||
-      _unavailabilityQueueFillGrade > 1.0) {
-    LOG_TOPIC("055a1", FATAL, arangodb::Logger::THREADS)
-        << "invalid value for --server.unavailability-queue-fill-grade";
-    FATAL_ERROR_EXIT();
   }
 
   if (_queueSize == 0) {
@@ -322,21 +317,19 @@ void SchedulerFeature::signalStuffInit() {
 }
 
 void SchedulerFeature::signalStuffDeinit() {
-  {
-    // cancel signals
-    if (_exitSignals != nullptr) {
-      auto exitSignals = _exitSignals;
-      _exitSignals.reset();
-      exitSignals->cancel();
-    }
+  // cancel signals
+  if (_exitSignals != nullptr) {
+    auto exitSignals = _exitSignals;
+    _exitSignals.reset();
+    exitSignals->cancel();
+  }
 
 #ifndef _WIN32
-    if (_hangupSignals != nullptr) {
-      _hangupSignals->cancel();
-      _hangupSignals.reset();
-    }
-#endif
+  if (_hangupSignals != nullptr) {
+    _hangupSignals->cancel();
+    _hangupSignals.reset();
   }
+#endif
 }
 
 #ifdef _WIN32
