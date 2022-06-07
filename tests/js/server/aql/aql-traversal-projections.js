@@ -117,6 +117,23 @@ function projectionsTestSuite () {
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN [v.one, p.vertices[0].two, e.three, p.edges[1].four]`, ["one", "two"], ["_from", "_to", "three", "four"], true, true, true],
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN [v.one, p.vertices[-1].one.two, e.three, p.edges[-11].three.four]`, ["one"], ["_from", "_to", "three"], true, true, true],
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN [p.vertices[-1].one.two, p.edges[-11].three.four]`, [["one", "two"]], ["_from", "_to", ["three", "four"]], true, true, true],
+
+        /* Test for PRUNE */
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} PRUNE v.c == "foo" RETURN e`, ["c"], [], true, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} PRUNE e.c == "foo" RETURN v`, [], ["_from", "_to", "c"], true, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} PRUNE v.c == "foo" && v.a == 1 RETURN e`, ["a", "c"], [], true, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} PRUNE e.c == "foo" && e.a == 1 RETURN v`, [], ["_from", "_to", "a", "c"], true, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} PRUNE e.c == "foo" AND v.bar == "foo" RETURN [v.testi, e.a]`, ["bar", "testi"], ["_from", "_to", "a", "c"], true, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} PRUNE v.c == "foo" AND e.d == "foo" RETURN [v.a, e.b]`, ["a", "c"], ["_from", "_to", "b", "d"], true, false, false],
+
+        /* Test for ALL Filter */
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} FILTER p.vertices[*].c ALL == "foo" RETURN e`, ["c"], [], true, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} FILTER p.edges[*].c ALL == "foo" RETURN v`, [], ["_from", "_to", "c"], true, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} FILTER p.vertices[*].c ALL == "foo" && p.vertices[*].a ALL == 1 RETURN e`, ["a", "c"], [], true, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} FILTER p.edges[*].c ALL == "foo" && p.edges[*].a ALL == 1 RETURN v`, [], ["_from", "_to", "a", "c"], true, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} FILTER p.edges[*].c ALL == "foo" AND p.vertices[*].bar ALL == "foo" RETURN [v.testi, e.a]`, ["bar", "testi"], ["_from", "_to", "a", "c"], true, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} FILTER p.vertices[*].c ALL == "foo" AND p.edges[*].d ALL == "foo" RETURN [v.a, e.b]`, ["a", "c"], ["_from", "_to", "b", "d"], true, false, false],
+
       ];
 
       // normalize projections
