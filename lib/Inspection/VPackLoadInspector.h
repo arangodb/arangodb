@@ -114,9 +114,7 @@ struct VPackLoadInspectorImpl
 
   [[nodiscard]] Status::Success value(velocypack::SharedSlice& v) {
     // TODO - fix SharedSlice to use uint8_t[]
-    auto p = new uint8_t[_slice.byteSize()];
-    std::memcpy(p, _slice.start(), _slice.byteSize());
-    v = velocypack::SharedSlice{std::shared_ptr<uint8_t const>(p)};
+    v = VPackBuilder{_slice}.sharedSlice();
     return {};
   }
 
