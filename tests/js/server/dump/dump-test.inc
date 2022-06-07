@@ -462,7 +462,9 @@
         assertEqual(2, c.type()); // document
         assertFalse(p.waitForSync);
         assertEqual("autoincrement", p.keyOptions.type);
-        assertEqual(args.keygenAutoInc, p.keyOptions.lastValue);
+        if (!isCluster) {
+          assertEqual(args.keygenAutoInc, p.keyOptions.lastValue);
+        }
         assertFalse(p.keyOptions.allowUserKeys);
         assertEqual(7, p.keyOptions.offset);
         assertEqual(42, p.keyOptions.increment);
