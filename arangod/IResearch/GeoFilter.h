@@ -99,8 +99,6 @@ class GeoFilter final : public irs::filter_base<GeoFilterOptions> {
     return "arangodb::iresearch::GeoFilter";
   }
 
-  static ptr make();
-
   using filter::prepare;
 
   virtual prepared::ptr prepare(
@@ -140,8 +138,6 @@ class GeoDistanceFilter final
   static constexpr irs::string_ref type_name() noexcept {
     return "arangodb::iresearch::GeoFilter";
   }
-
-  static ptr make();
 
   using filter::prepare;
 

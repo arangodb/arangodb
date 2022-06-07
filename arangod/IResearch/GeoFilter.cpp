@@ -640,8 +640,6 @@ irs::filter::prepared::ptr GeoFilter::prepare(
   }
 }
 
-DEFINE_FACTORY_DEFAULT(GeoFilter)
-
 irs::filter::prepared::ptr GeoDistanceFilter::prepare(
     irs::index_reader const& index, irs::Order const& order, irs::score_t boost,
     irs::attribute_provider const* /*ctx*/) const {
@@ -661,8 +659,6 @@ irs::filter::prepared::ptr GeoDistanceFilter::prepare(
                                  lowerBound);
   }
 }
-
-DEFINE_FACTORY_DEFAULT(GeoDistanceFilter)
 
 }  // namespace iresearch
 }  // namespace arangodb

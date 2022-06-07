@@ -47,7 +47,6 @@
 
 // FIXME: this part should be moved to the upstream library
 namespace iresearch {
-DEFINE_FACTORY_DEFAULT(proxy_filter);
 
 bool lazy_filter_bitset_iterator::next() {
   while (!word_) {

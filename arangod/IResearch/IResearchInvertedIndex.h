@@ -129,8 +129,6 @@ class proxy_query final : public irs::filter::prepared {
 
 class proxy_filter final : public irs::filter {
  public:
-  static ptr make();
-
   proxy_filter() noexcept : filter(irs::type<proxy_filter>::get()) {}
 
   irs::filter::prepared::ptr prepare(
