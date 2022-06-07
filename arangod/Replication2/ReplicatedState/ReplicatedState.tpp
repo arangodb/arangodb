@@ -165,7 +165,7 @@ void ReplicatedState<S>::start(
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
             fmt::format("Cannot find core parameter for replicated state with "
-                        "ID {}, created in database {}, for state {}",
+                        "ID {}, created in database {}, for {} state",
                         gid.id, gid.database, S::NAME));
       }
       auto params = velocypack::deserialize<typename S::CoreParameterType>(
