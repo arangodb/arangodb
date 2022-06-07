@@ -319,7 +319,10 @@ class TestGraph {
       }
       // Save all vertices in one request, and map the result back to the input.
       // This should speed up the tests.
-      vc.save(toSave).forEach((d, i) => verticesByName[keys[i]] = d._id);
+      vc.save(toSave).forEach((d, i) => {
+        verticesByName[keys[i]] = d._id;
+        return null;
+      });
     }
 
     // Save all edges in one request
