@@ -292,12 +292,6 @@ function dumpIntegrationSuite() {
     },
 
     testDumpAutoIncrementKeyGenerator: function() {
-      /*
-      if (isCluster) {
-        // autoincrement key generator is not supported in cluster
-        return;
-      }
-      */
 
       let path = fs.getTempFile();
       try {
