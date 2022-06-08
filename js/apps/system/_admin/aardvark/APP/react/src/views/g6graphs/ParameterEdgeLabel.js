@@ -29,7 +29,7 @@ const ParameterEdgeLabel = () => {
   return (
     <div style={{'marginTop': '24px'}}>
         <Textinput
-          label={'Enter a valid edge attribute to be used as an edge label.'}
+          label={'Edge label'}
           value={edgeLabel}
           width={'300px'}
           onChange={(e) => {
@@ -38,7 +38,7 @@ const ParameterEdgeLabel = () => {
             setUrlParameters(NEWURLPARAMETERS);
           }}>
         </Textinput>
-        <Tooltip placement="bottom" title={"Node label. Please choose a valid and available node attribute."}>
+        <Tooltip placement="bottom" title={"Enter a valid edge attribute to be used as an edge label."}>
           <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
         </Tooltip>
       </div>
