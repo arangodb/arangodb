@@ -259,6 +259,18 @@ function arrayAccessTestSuite () {
       result = AQL_EXECUTE("LET values = @values RETURN values[? 10..11 FILTER CURRENT >= 3]", { values }).json;
       assertEqual([ false ], result);
 
+      result = AQL_EXECUTE("LET values = @values, x = NOOPT(1), y = NOOPT(5) RETURN values[? x..y FILTER CURRENT >= 3]", { values }).json;
+      assertEqual([ true ], result);
+
+      result = AQL_EXECUTE("LET values = @values, x = 1, y = NOOPT(5) RETURN values[? x..y FILTER CURRENT >= 3]", { values }).json;
+      assertEqual([ true ], result);
+
+      result = AQL_EXECUTE("LET values = @values, x = NOOPT(1), y = 5 RETURN values[? x..y FILTER CURRENT >= 3]", { values }).json;
+      assertEqual([ true ], result);
+
+      result = AQL_EXECUTE("LET values = @values, let bound = ROUND(RAND() * 1000) % 10 RETURN values[? 1..bound FILTER CURRENT <= 0]", { values }).json;
+      assertEqual([ false ], result);
+
       // numeric quantifiers
       result = AQL_EXECUTE("LET values = @values RETURN values[? 1 FILTER CURRENT == 3]", { values }).json;
       assertEqual([ true ], result);
