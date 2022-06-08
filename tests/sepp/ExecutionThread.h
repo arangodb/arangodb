@@ -50,6 +50,7 @@ struct ExecutionThread {
   // not supposed to be accessed while the test is running, but only
   // at the end
   virtual bool failed() const noexcept { return _failed; }
+  Execution const& execution() const { return _execution; }
 
  protected:
   Server& _server;

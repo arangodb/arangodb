@@ -39,6 +39,7 @@
 #include "RocksDBEngine/RocksDBValue.h"
 #include "VocBase/Methods/Collections.h"
 
+#include "Execution.h"
 #include "Server.h"
 
 #include <rocksdb/db.h>
@@ -162,6 +163,10 @@ void GetByPrimaryKey::Thread::run() {
       }
     }
     ++_operations;
+
+    if (_operations % 512 == 0 && execution().stopped()) {
+      break;
+    }
   }
 }
 

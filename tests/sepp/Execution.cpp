@@ -84,6 +84,10 @@ void Execution::stop() noexcept {
   }
 }
 
+bool Execution::stopped() const noexcept {
+  return _state.load(std::memory_order_relaxed) == ExecutionState::kStopped;
+}
+
 Report Execution::run() {
   advanceStatusIfNotStopped(ExecutionState::kPreparing);
 

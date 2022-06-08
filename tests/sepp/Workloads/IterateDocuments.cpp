@@ -40,6 +40,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/Methods/Collections.h"
 
+#include "Execution.h"
 #include "Server.h"
 
 #include <rocksdb/db.h>
@@ -110,11 +111,12 @@ void IterateDocuments::Thread::run() {
   std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
 
   OperationOptions options;
-  std::uint64_t numIts = 0;
-  for (it->Seek(bounds.start()); it->Valid(); it->Next(), ++numIts) {
-    // TODO
+  for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
+    ++_operations;
+    if (_operations % 512 == 0 && execution().stopped()) {
+      break;
+    }
   }
-  _operations += numIts;
 }
 
 auto IterateDocuments::Thread::shouldStop() const noexcept -> bool {

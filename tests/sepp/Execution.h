@@ -58,6 +58,8 @@ struct Execution {
   void signalFinishedThread() noexcept;
   // stop execution (for example, because an error occurred somewhere)
   void stop() noexcept;
+  // whether or not the execution was stopped
+  bool stopped() const noexcept;
 
  private:
   void advanceStatusIfNotStopped(ExecutionState state) noexcept;
