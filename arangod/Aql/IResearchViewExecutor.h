@@ -83,9 +83,9 @@ class IResearchViewExecutorInfos {
                    NoMaterializeRegisters>;
 
   IResearchViewExecutorInfos(
-      std::shared_ptr<iresearch::IResearchView::Snapshot const> reader,
-      OutRegisters outRegister, std::vector<RegisterId> scoreRegisters,
-      aql::QueryContext& query, std::vector<iresearch::Scorer> const& scorers,
+      iresearch::ViewSnapshotPtr reader, OutRegisters outRegister,
+      std::vector<RegisterId> scoreRegisters, aql::QueryContext& query,
+      std::vector<iresearch::Scorer> const& scorers,
       std::pair<iresearch::IResearchViewSort const*, size_t> sort,
       iresearch::IResearchViewStoredValues const& storedValues,
       ExecutionPlan const& plan, Variable const& outVariable,
@@ -104,8 +104,7 @@ class IResearchViewExecutorInfos {
 
   iresearch::IResearchViewNode::ViewValuesRegisters const&
   getOutNonMaterializedViewRegs() const noexcept;
-  std::shared_ptr<iresearch::IResearchView::Snapshot const> getReader()
-      const noexcept;
+  iresearch::ViewSnapshotPtr getReader() const noexcept;
   aql::QueryContext& getQuery() noexcept;
   std::vector<iresearch::Scorer> const& scorers() const noexcept;
   ExecutionPlan const& plan() const noexcept;
@@ -140,7 +139,7 @@ class IResearchViewExecutorInfos {
   aql::RegisterId _documentOutReg;
   aql::RegisterId _collectionPointerReg;
   std::vector<RegisterId> _scoreRegisters;
-  std::shared_ptr<iresearch::IResearchView::Snapshot const> const _reader;
+  iresearch::ViewSnapshotPtr const _reader;
   aql::QueryContext& _query;
   std::vector<iresearch::Scorer> const& _scorers;
   std::pair<iresearch::IResearchViewSort const*, size_t> _sort;
@@ -515,7 +514,7 @@ class IResearchViewExecutorBase {
   IndexReadBufferType _indexReadBuffer;
   iresearch::ViewExpressionContext _ctx;
   FilterCtx _filterCtx;  // filter context
-  std::shared_ptr<iresearch::IResearchView::Snapshot const> _reader;
+  iresearch::ViewSnapshotPtr _reader;
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
   std::vector<ColumnIterator>

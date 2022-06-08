@@ -185,9 +185,9 @@ class BufferHeapSortContext {
 ///////////////////////////////////////////////////////////////////////////////
 
 IResearchViewExecutorInfos::IResearchViewExecutorInfos(
-    std::shared_ptr<const IResearchView::Snapshot> reader,
-    OutRegisters outRegisters, std::vector<RegisterId> scoreRegisters,
-    arangodb::aql::QueryContext& query, std::vector<Scorer> const& scorers,
+    ViewSnapshotPtr reader, OutRegisters outRegisters,
+    std::vector<RegisterId> scoreRegisters, arangodb::aql::QueryContext& query,
+    std::vector<Scorer> const& scorers,
     std::pair<arangodb::iresearch::IResearchViewSort const*, size_t> sort,
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
@@ -239,8 +239,7 @@ IResearchViewExecutorInfos::getOutNonMaterializedViewRegs() const noexcept {
   return _outNonMaterializedViewRegs;
 }
 
-std::shared_ptr<const arangodb::iresearch::IResearchView::Snapshot>
-IResearchViewExecutorInfos::getReader() const noexcept {
+ViewSnapshotPtr IResearchViewExecutorInfos::getReader() const noexcept {
   return _reader;
 }
 

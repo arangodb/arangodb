@@ -718,11 +718,7 @@ bool ExecutionNode::doWalk(WalkerWorkerBase<ExecutionNode>& worker,
   // we can be quite generous with the buffer size since the implementation is
   // not recursive.
   constexpr std::size_t NumBufferedEntries = 1000;
-  constexpr std::size_t BufferSize = sizeof(Entry) * NumBufferedEntries;
-  containers::SmallVectorWithArena<Entry, BufferSize> nodes;
-  // Our stackbased arena can hold NumBufferedEntries, so we reserve everythhing
-  // at once.
-  nodes.reserve(NumBufferedEntries);
+  containers::SmallVector<Entry, NumBufferedEntries> nodes;
   nodes.emplace_back(const_cast<ExecutionNode*>(this), State::Pending);
 
   auto enqueDependencies = [&nodes](std::vector<ExecutionNode*>& deps) {
@@ -2205,11 +2201,11 @@ bool SubqueryNode::mayAccessCollections() {
       ExecutionNode::SHORTEST_PATH,
       ExecutionNode::K_SHORTEST_PATHS};
 
-  ::arangodb::containers::SmallVectorWithArena<ExecutionNode*> nodes;
+  containers::SmallVector<ExecutionNode*, 8> nodes;
 
   NodeFinder<std::initializer_list<ExecutionNode::NodeType>,
              WalkerUniqueness::Unique>
-      finder(types, nodes.vector(), true);
+      finder(types, nodes, true);
   _subquery->walk(finder);
 
   if (!nodes.empty()) {

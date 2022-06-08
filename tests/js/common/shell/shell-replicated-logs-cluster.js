@@ -54,7 +54,6 @@ const {setUpAll, tearDownAll} = (function () {
 function ReplicatedLogsCreateSuite() {
   'use strict';
   const config = {
-    replicationFactor: 3,
     writeConcern: 2,
     softWriteConcern: 2,
     waitForSync: true
@@ -89,7 +88,6 @@ function ReplicatedLogsWriteSuite() {
   'use strict';
 
   const config = {
-    replicationFactor: 3,
     writeConcern: 2,
     softWriteConcern: 2,
     waitForSync: true

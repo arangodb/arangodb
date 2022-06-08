@@ -35,18 +35,20 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ResignShardLeadership.h"
 #include "Indexes/Index.h"
+#include "Inspection/VPack.h"
 #include "Logger/LogContextKeys.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Replication2/LoggerContext.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/ReplicatedLog/LogStatus.h"
-#include "Replication2/ReplicatedState/StateStatus.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
 #include "Metrics/Histogram.h"
 #include "Metrics/LogScale.h"
+#include "Replication2/LoggerContext.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+#include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Replication2/ReplicatedState/StateStatus.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
@@ -546,7 +548,7 @@ void arangodb::maintenance::diffReplicatedLogs(
           VPackBuilder builder;
           auto slice = VPackSlice::noneSlice();
           if (spec != nullptr) {
-            spec->toVelocyPack(builder);
+            velocypack::serialize(builder, *spec);
             slice = builder.slice();
           }
           return StringUtils::encodeBase64(slice.startAs<char>(),
@@ -642,7 +644,7 @@ void arangodb::maintenance::diffReplicatedStates(
     VPackBuilder builder;
     auto slice = VPackSlice::noneSlice();
     if (obj != nullptr) {
-      obj->toVelocyPack(builder);
+      velocypack::serialize(builder, *obj);
       slice = builder.slice();
     }
     return StringUtils::encodeBase64(slice.startAs<char>(), slice.byteSize());
@@ -921,7 +923,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
                                               ->vec());
       if (planLogInDatabaseSlice.isObject()) {
         for (auto [key, value] : VPackObjectIterator(planLogInDatabaseSlice)) {
-          auto spec = agency::LogPlanSpecification::fromVelocyPack(value);
+          auto spec =
+              velocypack::deserialize<agency::LogPlanSpecification>(value);
           planLogsInDatabase.emplace(spec.id, std::move(spec));
         }
       }
@@ -950,7 +953,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       if (planStatesInDatabaseSlice.isObject()) {
         for (auto [key, value] :
              VPackObjectIterator(planStatesInDatabaseSlice)) {
-          auto spec = replicated_state::agency::Plan::fromVelocyPack(value);
+          auto spec =
+              velocypack::deserialize<replicated_state::agency::Plan>(value);
 
           auto id = spec.id;
           planStatesInDatabase.emplace(id, std::move(spec));
@@ -959,7 +963,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
                     currentStatesInDatabaseSlice.get(key.stringView());
                 !currentSlice.isNone()) {
               auto currentObj =
-                  replicated_state::agency::Current::fromVelocyPack(
+                  velocypack::deserialize<replicated_state::agency::Current>(
                       currentSlice);
               currentStatesInDatabase.emplace(id, std::move(currentObj));
             }
@@ -1499,7 +1503,7 @@ static auto reportCurrentReplicatedLogLeader(
   });
 
   if (requiresUpdate) {
-    std::optional<arangodb::replication2::ParticipantsConfig>
+    std::optional<arangodb::replication2::agency::ParticipantsConfig>
         committedParticipantsConfig;
     if (status.committedParticipantsConfig != nullptr) {
       committedParticipantsConfig = *status.committedParticipantsConfig;
@@ -1545,7 +1549,7 @@ static void writeUpdateReplicatedLogLeader(
     VPackObjectBuilder o(&report);
     report.add(OP, VP_SET);
     report.add(VPackValue("payload"));
-    leader.toVelocyPack(report);
+    velocypack::serialize(report, leader);
     {
       VPackObjectBuilder preconditionBuilder(&report, "precondition");
       report.add(preconditionPath, VPackValue(localTerm));
@@ -1589,7 +1593,7 @@ static void writeUpdateReplicatedLogLocal(
     VPackObjectBuilder o(&report);
     report.add(OP, VP_SET);
     report.add(VPackValue("payload"));
-    local.toVelocyPack(report);
+    velocypack::serialize(report, local);
     {
       VPackObjectBuilder preconditionBuilder(&report, "precondition");
       report.add(preconditionPath, VPackValue(localTerm));
@@ -1624,7 +1628,7 @@ static void reportCurrentReplicatedLog(
     if (currentSlice.isNone()) {
       return std::nullopt;
     }
-    return LogCurrent::fromVelocyPack(currentSlice);
+    return velocypack::deserialize<LogCurrent>(currentSlice);
   });
 
   {
@@ -1681,8 +1685,8 @@ static void reportCurrentReplicatedState(
         if (currentSlice.isNone()) {
           return std::nullopt;
         }
-        return replication2::replicated_state::agency::Current::fromVelocyPack(
-            currentSlice);
+        return velocypack::deserialize<
+            replication2::replicated_state::agency::Current>(currentSlice);
       });
 
   bool const updateCurrent = std::invoke([&] {
@@ -1723,12 +1727,26 @@ static void reportCurrentReplicatedState(
   update.generation = status.getGeneration();
   update.snapshot = status.getSnapshotInfo();
 
+  auto preconditionPath =
+      cluster::paths::aliases::plan()
+          ->replicatedStates()
+          ->database(dbName)
+          ->state(id)
+          ->id()
+          ->str(cluster::paths::SkipComponents(
+              1) /* skip first path component, i.e. 'arango' */);
   report.add(VPackValue(updatePath->str(cluster::paths::SkipComponents(1))));
   {
     VPackObjectBuilder o(&report);
     report.add(OP, VP_SET);
     report.add(VPackValue("payload"));
-    update.toVelocyPack(report);
+    velocypack::serialize(report, update);
+    {
+      // Assert that State/Plan/<db>/<id>/id is still there and equal to <id>.
+      // This is true if and only if the state was not yet dropped from Plan.
+      VPackObjectBuilder preconditionBuilder(&report, "precondition");
+      report.add(preconditionPath, VPackValue(id));
+    }
   }
 }
 

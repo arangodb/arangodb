@@ -573,6 +573,13 @@ void AqlFunctionFeature::addMiscFunctions() {
                            FF::CanRunOnDBServerCluster,
                            FF::CanRunOnDBServerOneShard),
        &Functions::MakeDistributeGraphInput});
+#ifdef USE_ENTERPRISE
+  add({"SELECT_SMART_DISTRIBUTE_GRAPH_INPUT", ".,.",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::Internal,
+                           FF::CanRunOnDBServerCluster,
+                           FF::CanRunOnDBServerOneShard),
+       &Functions::SelectSmartDistributeGraphInput});
+#endif
 
   // this is an internal function that is only here for testing. it cannot
   // be invoked by end users, because refering to internal functions from user

@@ -1448,7 +1448,6 @@ bool AgencyComm::shouldInitializeStructure() {
     auto result = getValues("Plan", 10.0);
 
     if (!result.successful()) {  // Not 200 - 299
-
       if (result.httpCode() == ResponseCode::UNAUTHORIZED) {
         // unauthorized
         LOG_TOPIC("32781", FATAL, Logger::STARTUP)

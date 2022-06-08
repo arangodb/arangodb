@@ -1105,7 +1105,7 @@ void StatisticsWorker::run() {
   // run the StatisticsWorker on DB servers!
   TRI_ASSERT(!ServerState::instance()->isDBServer());
 
-  while (ServerState::isMaintenance()) {
+  while (ServerState::isStartupOrMaintenance()) {
     if (isStopping()) {
       // startup aborted
       return;
@@ -1131,6 +1131,12 @@ void StatisticsWorker::run() {
 
   uint64_t seconds = 0;
   while (!isStopping()) {
+    TRI_IF_FAILURE("StatisticsWorker::bypass") {
+      CONDITION_LOCKER(guard, _cv);
+      guard.wait(1000 * 1000);
+      continue;
+    }
+
     seconds++;
     try {
       if (seconds % STATISTICS_INTERVAL == ourTerm) {

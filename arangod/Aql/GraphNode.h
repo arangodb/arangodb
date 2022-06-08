@@ -228,6 +228,8 @@ class GraphNode : public ExecutionNode {
 
   Collection const* getShardingPrototype() const;
 
+  void determineEnterpriseFlags(AstNode const* edgeCollectionList);
+
  protected:
   /// @brief the database
   TRI_vocbase_t* _vocbase;

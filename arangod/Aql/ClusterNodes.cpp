@@ -574,10 +574,9 @@ GatherNode::Parallelism GatherNode::evaluateParallelism(
   // single-sharded collections don't require any parallelism. collections with
   // more than one shard are eligible for later parallelization (the Undefined
   // allows this)
-  return (((collection.isSmart() && collection.type() == TRI_COL_TYPE_EDGE) ||
-           (collection.numberOfShards() <= 1 && !collection.isSatellite()))
-              ? Parallelism::Serial
-              : Parallelism::Undefined);
+  return (collection.numberOfShards() == 1 || collection.isSatellite())
+             ? Parallelism::Serial
+             : Parallelism::Undefined;
 }
 
 void GatherNode::replaceVariables(

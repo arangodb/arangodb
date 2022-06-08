@@ -43,7 +43,7 @@ struct gtest_predicate : private F {
   auto check(S const& state) const {
     static_assert(std::is_invocable_r_v<void, F const&, S const&>);
     F::operator()(state);
-    if (testing::Test::HasFailure()) {
+    if (::testing::Test::HasFailure()) {
       return CheckResult::withError(Location::annotate("GTest failed"));
     }
     return CheckResult::withOk();
@@ -106,7 +106,6 @@ struct eventually : private F {
 
   template<typename S>
   auto finalStep(S const& state) {
-    std::cout << "wasTrueOnce: " << wasTrueOnce << std::endl;
     if (wasTrueOnce) {
       return CheckResult::withOk();
     } else {
@@ -174,6 +173,7 @@ struct always : F {
 
 template<std::size_t Idx, typename O>
 struct Tagged : O {
+  explicit Tagged(O o) : O(std::move(o)) {}
   friend auto hash_value(Tagged const& c) noexcept -> std::size_t {
     return hash_value(static_cast<O const&>(c));
   }
@@ -188,6 +188,7 @@ template<typename, typename...>
 struct combined_base;
 template<std::size_t... Idx, typename... Os>
 struct combined_base<std::index_sequence<Idx...>, Os...> : Tagged<Idx, Os>... {
+  explicit combined_base(Os... os) : Tagged<Idx, Os>(std::move(os))... {}
   template<typename S>
   auto finalStep(S const& step) {
     return invokeAll<0>([&](auto& x) { return x.finalStep(step); });
@@ -232,27 +233,53 @@ struct combined_base<std::index_sequence<Idx...>, Os...> : Tagged<Idx, Os>... {
 };
 
 template<typename... Os>
-struct combined : combined_base<std::index_sequence_for<Os...>, Os...> {};
+struct combined : combined_base<std::index_sequence_for<Os...>, Os...> {
+  using combined_base<std::index_sequence_for<Os...>, Os...>::combined_base;
+};
 template<typename... Os>
 combined(Os...) -> combined<Os...>;
 
 }  // namespace arangodb::test::model_checker
 
-template<const char File[], std::size_t Line>
-struct FileLineType {
-  static inline constexpr auto filename = File;
-  static inline constexpr std::size_t line = Line;
+#if defined(__APPLE__) && defined(__clang__)
+// We had issues with AppleClang when we tried to use the
+// filename as a template parameter, so it is going to be just the line number
+// for now.
 
+template<std::size_t Line>
+struct FileLineType {
+  static inline constexpr std::size_t line = Line;
   static auto annotate(std::string_view message) -> std::string {
-    return fmt::format("{}:{}: {}", filename, line, message);
+    return std::to_string(line) + std::string{message};
   }
 };
 
-#define MC_HERE                              \
-  ([] {                                      \
-    static constexpr char data[] = __FILE__; \
-    return ::FileLineType<data, __LINE__>{}; \
+#define MC_HERE ([] { return ::FileLineType<__LINE__>{}; }())
+#else
+template<const char File[], std::size_t FileLen, typename>
+struct StringBuffer;
+template<const char File[], std::size_t FileLen, std::size_t... Idxs>
+struct StringBuffer<File, FileLen, std::index_sequence<Idxs...>> {
+  static inline constexpr char buffer[FileLen] = {File[Idxs]...};
+};
+
+template<const char File[], std::size_t FileLen, std::size_t Line>
+struct FileLineType {
+  static inline constexpr auto filename =
+      StringBuffer<File, FileLen, std::make_index_sequence<FileLen>>::buffer;
+  static inline constexpr std::size_t line = Line;
+
+  static auto annotate(std::string_view message) -> std::string {
+    return fmt::format("{}:{}:{}", filename, line, message);
+  }
+};
+
+#define MC_HERE                                                \
+  ([] {                                                        \
+    static constexpr char data[sizeof(__FILE__)] = __FILE__;   \
+    return ::FileLineType<data, sizeof(__FILE__), __LINE__>{}; \
   }())
+#endif
 
 #define MC_GTEST_PRED(name, pred)           \
   model_checker::gtest_predicate {          \

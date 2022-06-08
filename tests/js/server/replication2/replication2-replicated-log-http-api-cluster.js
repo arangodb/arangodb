@@ -31,66 +31,17 @@ const ERRORS = arangodb.errors;
 const _ = require('lodash');
 const db = arangodb.db;
 const lh = require("@arangodb/testutils/replicated-logs-helper");
-const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
-const request = require('@arangodb/request');
-const {waitFor} = require("@arangodb/testutils/replicated-logs-helper");
 
 const database = "replication2_replicated_log_http_api_db";
 
-const logFunctions = {
-  head: function (server, database, logId, limit) {
-    let url = `${lh.getServerUrl(server)}/_db/${database}/_api/log/${logId}/head`;
-    if (limit !== undefined) {
-      url += `?limit=${limit}`;
-    }
-    return request.get(url).json;
-  },
+const logFunctions = require("@arangodb/testutils/replicated-logs-http-helper");
 
-  tail: function (server, database, logId, limit) {
-    let url = `${lh.getServerUrl(server)}/_db/${database}/_api/log/${logId}/tail`;
-    if (limit !== undefined) {
-      url += `?limit=${limit}`;
-    }
-    return request.get(url).json;
-  },
-
-  slice: function (server, database, logId, start, stop) {
-    let url = `${lh.getServerUrl(server)}/_db/${database}/_api/log/${logId}/slice?start=${start}&stop=${stop}`;
-    return request.get(url).json;
-  },
-
-  at: function (server, database, logId, index) {
-    let url = `${lh.getServerUrl(server)}/_db/${database}/_api/log/${logId}/entry/${index}`;
-    return request.get(url).json;
-  },
-};
-
-const {setUpAll, tearDownAll} = (function () {
-  let previousDatabase, databaseExisted = true;
-  return {
-    setUpAll: function () {
-      previousDatabase = db._name();
-      if (!_.includes(db._databases(), database)) {
-        db._createDatabase(database);
-        databaseExisted = false;
-      }
-      db._useDatabase(database);
-    },
-
-    tearDownAll: function () {
-      db._useDatabase(previousDatabase);
-      if (!databaseExisted) {
-        db._dropDatabase(database);
-      }
-    },
-  };
-}());
+const {setUpAll, tearDownAll, setUp, tearDown} = lh.testHelperFunctions(database);
 
 const readFollowerLogs = function () {
   const targetConfig = {
     writeConcern: 3,
     softWriteConcern: 3,
-    replicationFactor: 3,
     waitForSync: false,
   };
 
@@ -112,9 +63,7 @@ const readFollowerLogs = function () {
   };
 
   return {
-    setUpAll, tearDownAll,
-    setUp: lh.registerAgencyTestBegin,
-    tearDown: lh.registerAgencyTestEnd,
+    setUpAll, tearDownAll, setUp, tearDown,
 
     testFollowerHead: function () {
       const {log, followers} = setupReplicatedLog();
@@ -172,5 +121,38 @@ const readFollowerLogs = function () {
   };
 };
 
+const getLogInfo = function () {
+  const targetConfig = {
+    writeConcern: 3,
+    softWriteConcern: 3,
+    waitForSync: false,
+  };
+
+  return {
+    setUpAll, tearDownAll, setUp, tearDown,
+
+    testApiLog: function () {
+      const log1 = lh.createReplicatedLog(database, targetConfig);
+      const log2 = lh.createReplicatedLog(database, targetConfig);
+
+      const leaderRes = logFunctions.listLogs(log1.leader, database);
+      assertTrue(log1.logId in leaderRes.result);
+      assertEqual(leaderRes.result[log1.logId].role, "leader");
+
+      const follower = log1.followers[0];
+      const followerRes = logFunctions.listLogs(follower, database);
+      assertEqual(followerRes.result[log1.logId].role, "follower");
+
+      const coord = lh.coordinators[0];
+      const coordRes = logFunctions.listLogs(coord, database);
+      assertTrue(_.isEqual(_.sortBy(coordRes.result[log1.logId]), _.sortBy(log1.servers)));
+      assertTrue(_.isEqual(_.sortBy(coordRes.result[log2.logId]), _.sortBy(log2.servers)));
+      assertEqual(log1.leader, coordRes.result[log1.logId][0]);
+      assertEqual(log2.leader, coordRes.result[log2.logId][0]);
+    },
+  };
+};
+
 jsunity.run(readFollowerLogs);
+jsunity.run(getLogInfo);
 return jsunity.done();

@@ -27,7 +27,7 @@
 namespace arangodb {
 namespace iresearch {
 
-LogTopic TOPIC{std::string{StaticStrings::DataSourceType}, LogLevel::INFO};
+LogTopic TOPIC{std::string{StaticStrings::ViewType}, LogLevel::INFO};
 
 }  // namespace iresearch
 }  // namespace arangodb
