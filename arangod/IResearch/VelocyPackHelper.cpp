@@ -23,8 +23,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VelocyPackHelper.h"
+#include "Misc.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include "Basics/StringUtils.h"
+#include "Basics/StaticStrings.h"
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 
@@ -64,10 +67,67 @@ arangodb::velocypack::Builder& addRef(arangodb::velocypack::Builder& builder,
 
   return builder;
 }
+
+
+enum AttributeType : uint8_t {
+  AT_REG =
+      arangodb::basics::VelocyPackHelper::AttributeBase,  // regular attribute
+  AT_KEY = arangodb::basics::VelocyPackHelper::KeyAttribute,    // _key
+  AT_REV = arangodb::basics::VelocyPackHelper::RevAttribute,    // _rev
+  AT_ID = arangodb::basics::VelocyPackHelper::IdAttribute,      // _id
+  AT_FROM = arangodb::basics::VelocyPackHelper::FromAttribute,  // _from
+  AT_TO = arangodb::basics::VelocyPackHelper::ToAttribute       // _to
+};                                                              // AttributeType
+
+static_assert(
+    arangodb::iresearch::adjacencyChecker<AttributeType>::checkAdjacency<
+        AT_TO, AT_FROM, AT_ID, AT_REV, AT_KEY, AT_REG>(),
+    "Values are not adjacent");
+
 }  // namespace
 
 namespace arangodb {
 namespace iresearch {
+
+bool keyFromSlice(VPackSlice keySlice, irs::string_ref& key) {
+  // according to Helpers.cpp, see
+  // `transaction::helpers::extractKeyFromDocument`
+  // `transaction::helpers::extractRevFromDocument`
+  // `transaction::helpers::extractIdFromDocument`
+  // `transaction::helpers::extractFromFromDocument`
+  // `transaction::helpers::extractToFromDocument`
+
+  switch (keySlice.type()) {
+    case VPackValueType::SmallInt:               // system attribute
+      switch (AttributeType(keySlice.head())) {  // system attribute type
+        case AT_REG:
+          return false;
+        case AT_KEY:
+          key = arangodb::StaticStrings::KeyString;
+          break;
+        case AT_REV:
+          key = arangodb::StaticStrings::RevString;
+          break;
+        case AT_ID:
+          key = arangodb::StaticStrings::IdString;
+          break;
+        case AT_FROM:
+          key = arangodb::StaticStrings::FromString;
+          break;
+        case AT_TO:
+          key = arangodb::StaticStrings::ToString;
+          break;
+        default:
+          return false;
+      }
+      return true;
+    case VPackValueType::String:  // regular attribute
+      key = arangodb::iresearch::getStringRef(keySlice);
+      return true;
+    default:  // unsupported
+      return false;
+  }
+}
 
 velocypack::Builder& addBytesRef(velocypack::Builder& builder,
                                  irs::bytes_ref value) {

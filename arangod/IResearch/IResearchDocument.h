@@ -26,6 +26,8 @@
 
 #include "VocBase/voc-types.h"
 
+#include "IResearchCommon.h"
+
 #ifdef USE_ENTERPRISE
 #include "Enterprise/IResearch/IResearchDocumentEE.h"
 #endif
@@ -76,25 +78,6 @@ class Methods;  // forward declaration
 namespace arangodb {
 namespace iresearch {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the delimiter used to separate jSON nesting levels when
-/// generating
-///        flat iResearch field names
-////////////////////////////////////////////////////////////////////////////////
-constexpr char const NESTING_LEVEL_DELIMITER = '.';
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the prefix used to denote start of jSON list offset when generating
-///        flat iResearch field names
-////////////////////////////////////////////////////////////////////////////////
-constexpr char const NESTING_LIST_OFFSET_PREFIX = '[';
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the suffix used to denote end of jSON list offset when generating
-///        flat iResearch field names
-////////////////////////////////////////////////////////////////////////////////
-constexpr char const NESTING_LIST_OFFSET_SUFFIX = ']';
-
 struct IResearchViewMeta;  // forward declaration
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,19 +118,7 @@ struct Field {
   irs::IndexFeatures _indexFeatures;
 };  // Field
 
-struct InvertedIndexFieldMeta {
-  // Analyzers to apply to every field.
-  std::array<std::reference_wrapper<FieldMeta::Analyzer>, 1> _analyzers;
-  // Offset of the first non-primitive analyzer.
-  static size_t const _primitiveOffset{0};
-  // How values should be stored inside the view.
-  static ValueStorage const _storeValues{ValueStorage::ID};
-  // Include all fields or only fields listed in '_fields'.
-  bool _includeAllFields{false};
-  bool _trackListPositions{false};
-};
-
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
 /// @brief allows to iterate over the provided VPack accoring the specified
 ///        IResearchLinkMeta
 ////////////////////////////////////////////////////////////////////////////////
@@ -178,9 +149,7 @@ class FieldIterator {
     return _stack.size() <= 1;
   }
 
-  bool hasNested() const noexcept {
-    return false;
-  }
+  bool hasNested() const noexcept;
 
   bool needDoc() const noexcept {
     return _needDoc;
@@ -213,6 +182,7 @@ class FieldIterator {
   }
 
 #ifdef USE_ENTERPRISE
+
   using MetaTraits = IndexMetaTraits<LevelMeta>;
 
   void popLevel();
@@ -220,6 +190,7 @@ class FieldIterator {
 
   std::vector<std::string> _nestingBuffers;
   bool _needDoc{false};
+  bool _hasNested{false};
 #endif
 
   // disallow copy and assign
@@ -338,12 +309,6 @@ class InvertedIndexFieldIterator {
   std::vector<VPackArrayIterator> _arrayStack;
   std::string _nameBuffer;
   VPackBuffer<uint8_t> _buffer;  // buffer for stored values
-#ifdef USE_ENTERPRISE
-  std::vector<
-      NestingContext<IResearchInvertedIndexMeta::FieldRecord const,
-                     IResearchInvertedIndexMeta::FieldRecord const*>>
-      _nestingCtx;
-#endif
 };
 
 ////////////////////////////////////////////////////////////////////////////////

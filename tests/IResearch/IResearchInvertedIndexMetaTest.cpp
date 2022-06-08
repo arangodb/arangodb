@@ -237,6 +237,4 @@ TEST_F(IResearchInvertedIndexMetaTest, test_readCustomizedValues) {
     VPackObjectBuilder obj(&serialized);
     ASSERT_TRUE(meta.json(server.server(), serialized, true, &vocbase));
   }
-
-
 }

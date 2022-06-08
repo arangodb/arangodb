@@ -26,7 +26,7 @@
 
 #include "Basics/Endian.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
+#include "VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "IResearchAnalyzerFeature.h"
 #include "IResearch/GeoAnalyzer.h"
@@ -80,21 +80,6 @@ constexpr bool const Endianness = BigEndian;  // current PK endianness
 // --SECTION--                                       FieldIterator dependencies
 // ----------------------------------------------------------------------------
 
-enum AttributeType : uint8_t {
-  AT_REG =
-      arangodb::basics::VelocyPackHelper::AttributeBase,  // regular attribute
-  AT_KEY = arangodb::basics::VelocyPackHelper::KeyAttribute,    // _key
-  AT_REV = arangodb::basics::VelocyPackHelper::RevAttribute,    // _rev
-  AT_ID = arangodb::basics::VelocyPackHelper::IdAttribute,      // _id
-  AT_FROM = arangodb::basics::VelocyPackHelper::FromAttribute,  // _from
-  AT_TO = arangodb::basics::VelocyPackHelper::ToAttribute       // _to
-};                                                              // AttributeType
-
-static_assert(
-    arangodb::iresearch::adjacencyChecker<AttributeType>::checkAdjacency<
-        AT_TO, AT_FROM, AT_ID, AT_REV, AT_KEY, AT_REG>(),
-    "Values are not adjacent");
-
 irs::string_ref const PK_COLUMN("@_PK");
 size_t constexpr DEFAULT_POOL_SIZE = 8;  // arbitrary value
 irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder>
@@ -114,46 +99,6 @@ inline void append(std::string& out, size_t value) {
   out.resize(size + 21);         // enough to hold all numbers up to 64-bits
   auto const written = sprintf(&out[size], IR_SIZE_T_SPECIFIER, value);
   out.resize(size + written);
-}
-
-inline bool keyFromSlice(VPackSlice keySlice, irs::string_ref& key) {
-  // according to Helpers.cpp, see
-  // `transaction::helpers::extractKeyFromDocument`
-  // `transaction::helpers::extractRevFromDocument`
-  // `transaction::helpers::extractIdFromDocument`
-  // `transaction::helpers::extractFromFromDocument`
-  // `transaction::helpers::extractToFromDocument`
-
-  switch (keySlice.type()) {
-    case VPackValueType::SmallInt:               // system attribute
-      switch (AttributeType(keySlice.head())) {  // system attribute type
-        case AT_REG:
-          return false;
-        case AT_KEY:
-          key = arangodb::StaticStrings::KeyString;
-          break;
-        case AT_REV:
-          key = arangodb::StaticStrings::RevString;
-          break;
-        case AT_ID:
-          key = arangodb::StaticStrings::IdString;
-          break;
-        case AT_FROM:
-          key = arangodb::StaticStrings::FromString;
-          break;
-        case AT_TO:
-          key = arangodb::StaticStrings::ToString;
-          break;
-        default:
-          return false;
-      }
-      return true;
-    case VPackValueType::String:  // regular attribute
-      key = arangodb::iresearch::getStringRef(keySlice);
-      return true;
-    default:  // unsupported
-      return false;
-  }
 }
 
 inline bool canHandleValue(
@@ -202,7 +147,7 @@ inline bool inObjectFiltered(std::string& buffer,
                              arangodb::iresearch::IteratorValue const& value) {
   irs::string_ref key;
 
-  if (!keyFromSlice(value.key, key)) {
+  if (!arangodb::iresearch::keyFromSlice(value.key, key)) {
     return false;
   }
 
@@ -223,7 +168,7 @@ inline bool inObject(std::string& buffer,
                      arangodb::iresearch::IteratorValue const& value) {
   irs::string_ref key;
 
-  if (!keyFromSlice(value.key, key)) {
+  if (!arangodb::iresearch::keyFromSlice(value.key, key)) {
     return false;
   }
 
@@ -279,27 +224,29 @@ inline Filter getFilter(VPackSlice value,
                         meta._includeAllFields];
 }
 
-typedef bool (*InvertedIndexRootFilter)(std::string& buffer,
+typedef bool (*InvertedIndexFilter)(std::string& buffer,
                        arangodb::iresearch::IResearchInvertedIndexMeta::FieldRecord const*& context,
                        arangodb::iresearch::IteratorValue const& value);
 
 
 // FIXME: make true accept all version
-inline bool acceptAll(std::string& buffer,
+inline bool acceptAllFiltered(std::string& buffer,
                            arangodb::iresearch::IResearchInvertedIndexMeta::FieldRecord const*& context,
                            arangodb::iresearch::IteratorValue const& value) {
   irs::string_ref key;
 
-  if (!keyFromSlice(value.key, key)) {
+  if (!arangodb::iresearch::keyFromSlice(value.key, key)) {
     return false;
   }
 
   buffer.append(key.c_str(), key.size());
   for (auto& nested : context->_fields) {
     if (nested.toString() == key) {
+#ifdef USE_ENTERPRISE
       if (!nested.nested().empty()) {
         arangodb::iresearch::kludge::mangleNested(buffer);
       }
+#endif
       context = &nested;
       return true;
     }
@@ -307,42 +254,53 @@ inline bool acceptAll(std::string& buffer,
   return false;
 }
 
-#ifdef USE_ENTERPRISE
-inline bool acceptOnlyNesting(std::string& buffer,
+// FIXME: make true accept all version
+inline bool acceptAll(std::string& buffer,
                            arangodb::iresearch::IResearchInvertedIndexMeta::FieldRecord const*& context,
                            arangodb::iresearch::IteratorValue const& value) {
- 
   irs::string_ref key;
 
-  if (!keyFromSlice(value.key, key)) {
+  if (!arangodb::iresearch::keyFromSlice(value.key, key)) {
     return false;
   }
 
   buffer.append(key.c_str(), key.size());
   for (auto& nested : context->_fields) {
-    if (nested.toString() == buffer) {
+    if (nested.toString() == key) {
+#ifdef USE_ENTERPRISE
       if (!nested.nested().empty()) {
         arangodb::iresearch::kludge::mangleNested(buffer);
-        context = &nested;
-        return true;
       }
+#endif
+      context = &nested;
       break;
     }
   }
-  return false;
+  return true;
 }
 
-inline bool acceptOnlyObjects(std::string&,
-                           arangodb::iresearch::IResearchInvertedIndexMeta::FieldRecord const*&,
-                           arangodb::iresearch::IteratorValue const& value) {
+#ifdef USE_ENTERPRISE
 
-  return value.key.isObject();
-}
 #endif
 
-inline InvertedIndexRootFilter getFilter(VPackSlice value,
+inline bool inArrayInverted(std::string& buffer,
+                           arangodb::iresearch::IResearchInvertedIndexMeta::FieldRecord const*&,
+                           arangodb::iresearch::IteratorValue const&) {
+  buffer += "[*]";
+  return true;
+}
+
+InvertedIndexFilter const valueAcceptorsInverted[] = {
+  &acceptAll,
+  &acceptAllFiltered,
+  &inArrayInverted,
+  &inArrayInverted
+};
+
+inline InvertedIndexFilter getFilter(VPackSlice value,
                         arangodb::iresearch::IResearchInvertedIndexMeta::FieldRecord const& meta) noexcept {
-  return &acceptAll;
+  TRI_ASSERT(arangodb::iresearch::isArrayOrObject(value));
+  return valueAcceptorsInverted[value.isArray() * 2  + meta._includeAllFields];
 }
 
 std::string getDocumentId(irs::string_ref collection, VPackSlice document) {
@@ -385,45 +343,6 @@ namespace iresearch {
 // ----------------------------------------------------------------------------
 // --SECTION--                                     FieldIterator implementation
 // ----------------------------------------------------------------------------
-
-#ifdef USE_ENTERPRISE
-template<typename IndexMetaStruct, typename LevelMeta>
-void FieldIterator<IndexMetaStruct, LevelMeta>::popLevel() {
-  if constexpr (std::is_same_v<IndexMetaStruct, IResearchInvertedIndexMeta>) {
-    if (_stack.back().filter == &acceptOnlyNesting) {
-      _nameBuffer = _nestingBuffers.back();
-      _nestingBuffers.pop_back();
-      // transfer to nesting root level. Requesting root document
-      _needDoc = true;
-    }
-  }
-  _stack.pop_back();
-}
-
-template<typename IndexMetaStruct, typename LevelMeta>
-bool FieldIterator<IndexMetaStruct, LevelMeta>::pushLevel(
-    VPackSlice value, LevelMeta const& meta,
-    FieldIterator<IndexMetaStruct, LevelMeta>::Filter filter) {
-  // FIXME: remove constexpr and handle for Views
-  if constexpr (std::is_same_v<IndexMetaStruct, IResearchInvertedIndexMeta>) {
-    if (!_stack.empty() && _stack.back().filter == &acceptOnlyNesting) {
-      _stack.emplace_back(value, _nameBuffer.size(), meta, &acceptOnlyObjects);
-      return false;
-    }
-  }
-  _stack.emplace_back(value, _nameBuffer.size(), meta, filter);
-  if (!MetaTraits::hasNested(meta)) {
-    return true;
-  }
-  if constexpr (std::is_same_v<IndexMetaStruct, IResearchInvertedIndexMeta>) {
-    _nestingBuffers.push_back(_nameBuffer);
-    _stack.emplace_back(value, _nameBuffer.size(), meta, &acceptOnlyNesting);
-  }
-  return false;
-}
-#endif
-
-
 template<typename IndexMetaStruct, typename LevelMeta>
 FieldIterator<IndexMetaStruct, LevelMeta>::FieldIterator(arangodb::transaction::Methods& trx,
                              irs::string_ref collection, IndexId linkId)
@@ -445,9 +364,13 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::reset(VPackSlice doc, IndexMetaS
   _stack.clear();
   _nameBuffer.clear();
 
+
+
   // push the provided 'doc' on stack and initialize current value
   auto const filter = getFilter(doc, static_cast<LevelMeta const&>(linkMeta));
 #ifdef USE_ENTERPRISE
+  // this is set for root level as general mark.
+  _hasNested = MetaTraits::hasNested(linkMeta);
   pushLevel(doc, static_cast<LevelMeta const&>(linkMeta), filter);
 #else
   _stack.emplace_back(doc, 0, static_cast<LevelMeta const&>(linkMeta), filter);
@@ -747,7 +670,8 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
               return;
             }
           }
-          bool setAnalyzers = pushLevel(valueSlice, *context, getFilter(valueSlice, *context));
+          auto filter = getFilter(valueSlice, *context);
+          bool setAnalyzers = pushLevel(valueSlice, *context, filter);
 #else
           bool setAnalyzers = true;
           _stack.emplace_back(valueSlice, _nameBuffer.size(), *context,
@@ -1165,6 +1089,10 @@ bool InvertedIndexFieldIterator::setValue(
 
 }  // namespace iresearch
 }  // namespace arangodb
+
+#if USE_ENTERPRISE
+#include "enterprise/IResearch/IResearchDocumentEE.hpp"
+#endif
 
 template arangodb::iresearch::FieldIterator<arangodb::iresearch::FieldMeta,
                                             arangodb::iresearch::FieldMeta>;
