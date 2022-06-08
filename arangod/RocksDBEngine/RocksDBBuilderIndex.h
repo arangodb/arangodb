@@ -102,7 +102,6 @@ class IndexCreatorThread final : public Thread {
   std::unique_ptr<rocksdb::WriteBatchBase> _batch;
   std::unique_ptr<RocksDBMethods> _methods;
   rocksdb::ReadOptions _readOptions;
-  arangodb::AccessMode::Type _mode;
   ThreadStatistics _statistics;
 };
 
