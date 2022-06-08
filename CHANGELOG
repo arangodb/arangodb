@@ -2,10 +2,13 @@ devel
 -----
 
 * APM-135: Added multithreading to assigning non-unique indexes to documents,
-  in foreground or background mode. The number of threads and the batch size
-  for the thread to process before splitting its partitions is given by the 
-  parameters `numThreads` and `threadBatchSize` on index creation. Default:
-  2 threads, 5000 batch size. 
+  in foreground or background mode. The batch size for the thread to process 
+  before splitting its partitions is given by the  parameter `threadBatchSize` 
+  on index creation. Default: 2 threads, 5000 batch size. The number of threads
+  is hardcoded to 2 for now.  
+
+* Added support for creating autoincrement keys on cluster mode, but only for 
+  single sharded collections.
 
 * Add support for LZ4 and LZ4HC compression support for RocksDB.
 
