@@ -35,13 +35,13 @@ const base = require("fs").join(
 
 const setup = require(base);
 
-(function () {
+(function() {
   setup.cleanup();
   setup.createEmpty();
   setup.createMany();
   setup.createOrder();
   setup.createModifyCollection();
-  // will not be supported in cluster: setup.createAutoIncKeyGen();
+  setup.createAutoIncKeyGen();
   setup.createPaddedKeyGen();
   setup.createUUIDKeyGen();
   setup.createStrings();
