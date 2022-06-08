@@ -195,6 +195,7 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   Result fillIndexBackground(Locker& locker);
 
  private:
+  static constexpr size_t kNumThreads = 2;
   std::shared_ptr<arangodb::RocksDBIndex> _wrapped;
   std::uint64_t _numDocsHint;
   std::atomic<uint64_t> _docsProcessed;
@@ -203,10 +204,8 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 using WorkItem = std::pair<uint64_t, uint64_t>;
 class SharedWorkEnv {
  public:
-  SharedWorkEnv(size_t numThreads, std::deque<WorkItem> workItems,
-                uint64_t objectId)
-      : _numThreads(numThreads),
-        _ranges(std::move(workItems)),
+  SharedWorkEnv(std::deque<WorkItem> workItems, uint64_t objectId)
+      : _ranges(std::move(workItems)),
         _bounds(RocksDBKeyBounds::CollectionDocuments(
             objectId, _ranges.front().first,
             _ranges.front().second == UINT64_MAX
@@ -240,7 +239,7 @@ class SharedWorkEnv {
         return true;
       }
       _numWaitingThreads++;
-      if (_numWaitingThreads == _numThreads) {
+      if (_numWaitingThreads == kNumThreads) {
         _done = true;
         _numWaitingThreads--;
         _condition.notify_all();
@@ -264,7 +263,7 @@ class SharedWorkEnv {
   void incTerminatedThreads() {
     std::unique_lock<std::mutex> extLock(_mtx);
     ++_numTerminatedThreads;
-    if (_numTerminatedThreads == _numThreads) {
+    if (_numTerminatedThreads == kNumThreads) {
       _condition.notify_all();
     }
   }
@@ -277,7 +276,7 @@ class SharedWorkEnv {
   void waitUntilAllThreadsTerminate() {
     std::unique_lock<std::mutex> extLock(_mtx);
     _condition.wait(extLock,
-                    [&]() { return _numTerminatedThreads == _numThreads; });
+                    [&]() { return _numTerminatedThreads == kNumThreads; });
   }
 
   void postStatistics(ThreadStatistics stats) {
@@ -296,9 +295,9 @@ class SharedWorkEnv {
   }
 
  private:
+  static constexpr size_t kNumThreads = 2;
   bool _done = false;
   size_t _numWaitingThreads = 0;
-  size_t _numThreads = 1;
   size_t _numTerminatedThreads = 0;
   std::condition_variable _condition;
   std::deque<WorkItem> _ranges;

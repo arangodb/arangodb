@@ -366,7 +366,7 @@ RocksDBBuilderIndex::RocksDBBuilderIndex(
                        .server()
                        .getFeature<EngineSelectorFeature>()
                        .engine<RocksDBEngine>(),
-                   wp->numThreads(), wp->threadBatchSize()),
+                   wp->threadBatchSize()),
       _wrapped(std::move(wp)),
       _numDocsHint(numDocsHint),
       _docsProcessed(0) {
@@ -450,8 +450,8 @@ static Result processPartitions(
     std::atomic<uint64_t>& docsProcessed, size_t numThreads,
     uint64_t threadBatchSize, rocksdb::Options const& dbOptions,
     std::string const& idxPath) {
-  auto sharedWorkEnv = std::make_shared<SharedWorkEnv>(
-      numThreads, std::move(partitions), rcoll->objectId());
+  auto sharedWorkEnv =
+      std::make_shared<SharedWorkEnv>(std::move(partitions), rcoll->objectId());
   std::vector<std::unique_ptr<IndexCreatorThread>> idxCreatorThreads;
   for (size_t i = 0; i < numThreads; ++i) {
     auto newThread = std::make_unique<IndexCreatorThread>(
@@ -641,7 +641,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexForeground() {
     rocksdb::WriteBatchWithIndex batch(cmp, batchSize);
     RocksDBBatchedWithIndexMethods methods(engine.db(), &batch);
     res = ::fillIndex<true>(db, *internal, methods, batch, snap, reportProgress,
-                            std::ref(_docsProcessed), true, this->numThreads(),
+                            std::ref(_docsProcessed), true, this->kNumThreads,
                             this->threadBatchSize(),
                             rocksdb::Options(_engine.rocksDBOptions(), {}),
                             _engine.idxPath());
@@ -652,7 +652,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexForeground() {
     rocksdb::WriteBatch batch(batchSize);
     RocksDBBatchedMethods methods(&batch);
     res = ::fillIndex<true>(db, *internal, methods, batch, snap, reportProgress,
-                            std::ref(_docsProcessed), false, this->numThreads(),
+                            std::ref(_docsProcessed), false, this->kNumThreads,
                             this->threadBatchSize(),
                             rocksdb::Options(_engine.rocksDBOptions(), {}),
                             _engine.idxPath());
@@ -1003,7 +1003,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     RocksDBBatchedWithIndexMethods methods(engine.db(), &batch);
     res = ::fillIndex<false>(db, *internal, methods, batch, snap,
                              reportProgress, std::ref(_docsProcessed), true,
-                             this->numThreads(), this->threadBatchSize(),
+                             this->kNumThreads, this->threadBatchSize(),
                              rocksdb::Options(_engine.rocksDBOptions(), {}),
                              _engine.idxPath());
   } else {
@@ -1014,7 +1014,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     RocksDBBatchedMethods methods(&batch);
     res = ::fillIndex<false>(db, *internal, methods, batch, snap,
                              reportProgress, std::ref(_docsProcessed), false,
-                             this->numThreads(), this->threadBatchSize(),
+                             this->kNumThreads, this->threadBatchSize(),
                              rocksdb::Options(_engine.rocksDBOptions(), {}),
                              _engine.idxPath());
   }

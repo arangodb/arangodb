@@ -535,18 +535,6 @@ void IndexFactory::processIndexInBackground(VPackSlice definition,
   builder.add(StaticStrings::IndexInBackground, VPackValue(bck));
 }
 
-Result IndexFactory::processIndexNumThreads(VPackSlice definition,
-                                            VPackBuilder& builder) {
-  size_t numThreads = basics::VelocyPackHelper::getNumericValue<size_t>(
-      definition, StaticStrings::IndexNumThreads, 2);
-  if (numThreads == 0 || numThreads > 16) {
-    return Result(TRI_ERROR_BAD_PARAMETER,
-                  "numThreads attribute must be a number (0 < n < 16)");
-  }
-  builder.add(StaticStrings::IndexNumThreads, VPackValue(numThreads));
-  return Result();
-}
-
 Result IndexFactory::processIndexThreadBatchSize(VPackSlice definition,
                                                  VPackBuilder& builder) {
   uint64_t batchSize = basics::VelocyPackHelper::getNumericValue<uint64_t>(
@@ -643,10 +631,6 @@ Result IndexFactory::enhanceJsonIndexGeneric(VPackSlice definition,
     processIndexCacheEnabled(definition, builder);
   }
   if (res.ok()) {
-    // "numThreads"
-    res = processIndexNumThreads(definition, builder);
-  }
-  if (res.ok()) {
     // "threadBatchSize"
     res = processIndexThreadBatchSize(definition, builder);
   }
@@ -685,10 +669,6 @@ Result IndexFactory::enhanceJsonIndexTtl(VPackSlice definition,
     processIndexInBackground(definition, builder);
   }
   if (res.ok()) {
-    // "numThreads"
-    res = processIndexNumThreads(definition, builder);
-  }
-  if (res.ok()) {
     // "threadBatchSize"
     res = processIndexThreadBatchSize(definition, builder);
   }
@@ -711,10 +691,6 @@ Result IndexFactory::enhanceJsonIndexGeo(VPackSlice definition,
     IndexFactory::processIndexLegacyPolygonsFlag(definition, builder);
 
     processIndexInBackground(definition, builder);
-  }
-  if (res.ok()) {
-    // "numThreads"
-    res = processIndexNumThreads(definition, builder);
   }
   if (res.ok()) {
     // "threadBatchSize"
@@ -755,10 +731,6 @@ Result IndexFactory::enhanceJsonIndexFulltext(VPackSlice definition,
     processIndexInBackground(definition, builder);
   }
   if (res.ok()) {
-    // "numThreads"
-    res = processIndexNumThreads(definition, builder);
-  }
-  if (res.ok()) {
     // "threadBatchSize"
     res = processIndexThreadBatchSize(definition, builder);
   }
@@ -791,10 +763,6 @@ Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
 
     processIndexUniqueFlag(definition, builder);
     processIndexInBackground(definition, builder);
-  }
-  if (res.ok()) {
-    // "numThreads"
-    res = processIndexNumThreads(definition, builder);
   }
   if (res.ok()) {
     // "threadBatchSize"

@@ -159,8 +159,7 @@ class RocksDBIndex : public Index {
                    attributes,
                bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
                uint64_t objectId, bool useCache, cache::Manager* cacheManager,
-               RocksDBEngine& engine, size_t numThreads = 2,
-               uint64_t threadBatchSize = 500);
+               RocksDBEngine& engine, uint64_t threadBatchSize = 500);
 
   RocksDBIndex(IndexId id, LogicalCollection& collection,
                arangodb::velocypack::Slice info,
