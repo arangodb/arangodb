@@ -286,6 +286,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
   bool isArray() const noexcept { return _type == SCOPED_VALUE_TYPE_ARRAY; }
   bool isDouble() const noexcept { return _type == SCOPED_VALUE_TYPE_DOUBLE; }
   bool isString() const noexcept { return _type == SCOPED_VALUE_TYPE_STRING; }
+  bool isRange() const noexcept { return _type == SCOPED_VALUE_TYPE_RANGE; }
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief executes expression specified in the given `node`
   /// @returns true if expression has been executed, false otherwise
