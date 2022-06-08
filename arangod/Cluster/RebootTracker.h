@@ -80,7 +80,7 @@ class RebootTracker {
 
   mutable std::mutex _mutex;
 
-  CallbackId _callbackId{0};
+  CallbackId _nextCallbackId{1};
 
   /// @brief Save a pointer to the scheduler for easier testing
   SchedulerPointer _scheduler;

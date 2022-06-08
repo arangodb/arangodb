@@ -144,7 +144,7 @@ CallbackGuard RebootTracker::callMeOnChange(std::string_view serverId,
   auto& rebootsMap = _callbacks[serverId];
   // For the given rebootId, get the existing callbacks map, or create a new one
   auto& callbacksMap = rebootsMap[rebootId];
-  auto const callbackId = ++_callbackId;
+  auto const callbackId = _nextCallbackId++;
   auto [_, inserted] = callbacksMap.try_emplace(
       callbackId,
       DescriptedCallback{std::move(callback), std::string{description}});
