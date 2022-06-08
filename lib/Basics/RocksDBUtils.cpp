@@ -24,46 +24,47 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBUtils.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/voc-errors.h"
 
 #include <rocksdb/convenience.h>
 #include <velocypack/Iterator.h>
 
-#include "Basics/voc-errors.h"
-
+#include <string>
 #include <string_view>
 
-namespace arangodb {
-namespace rocksutils {
+using namespace arangodb;
 
-static bool hasObjectIds(VPackSlice const& inputSlice) {
+namespace {
+
+bool hasObjectIds(VPackSlice inputSlice) {
   bool rv = false;
   if (inputSlice.isObject()) {
-    for (auto objectPair : arangodb::velocypack::ObjectIterator(inputSlice)) {
-      if (objectPair.key.stringView() == "objectId") {
+    for (auto objectPair : velocypack::ObjectIterator(inputSlice)) {
+      if (objectPair.key.stringView() == StaticStrings::ObjectId) {
         return true;
       }
       rv = hasObjectIds(objectPair.value);
       if (rv) {
-        return rv;
+        break;
       }
     }
   } else if (inputSlice.isArray()) {
-    for (auto slice : arangodb::velocypack::ArrayIterator(inputSlice)) {
-      if (rv) {
-        return rv;
-      }
+    for (auto slice : velocypack::ArrayIterator(inputSlice)) {
       rv = hasObjectIds(slice);
+      if (rv) {
+        break;
+      }
     }
   }
   return rv;
 }
 
-static VPackBuilder& stripObjectIdsImpl(VPackBuilder& builder,
-                                        VPackSlice const& inputSlice) {
+VPackBuilder& stripObjectIdsImpl(VPackBuilder& builder, VPackSlice inputSlice) {
   if (inputSlice.isObject()) {
     builder.openObject();
-    for (auto objectPair : arangodb::velocypack::ObjectIterator(inputSlice)) {
-      if (objectPair.key.stringView() == "objectId") {
+    for (auto objectPair : velocypack::ObjectIterator(inputSlice)) {
+      if (objectPair.key.stringView() == StaticStrings::ObjectId) {
         continue;
       }
       builder.add(objectPair.key);
@@ -72,7 +73,7 @@ static VPackBuilder& stripObjectIdsImpl(VPackBuilder& builder,
     builder.close();
   } else if (inputSlice.isArray()) {
     builder.openArray();
-    for (auto slice : arangodb::velocypack::ArrayIterator(inputSlice)) {
+    for (auto slice : velocypack::ArrayIterator(inputSlice)) {
       stripObjectIdsImpl(builder, slice);
     }
     builder.close();
@@ -81,6 +82,10 @@ static VPackBuilder& stripObjectIdsImpl(VPackBuilder& builder,
   }
   return builder;
 }
+
+}  // namespace
+
+namespace arangodb::rocksutils {
 
 arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint) {
   switch (status.code()) {
@@ -157,18 +162,17 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint) {
 }
 
 std::pair<VPackSlice, std::unique_ptr<VPackBuffer<uint8_t>>> stripObjectIds(
-    VPackSlice const& inputSlice, bool checkBeforeCopy) {
+    VPackSlice inputSlice, bool checkBeforeCopy) {
   std::unique_ptr<VPackBuffer<uint8_t>> buffer;
   if (checkBeforeCopy) {
     if (!hasObjectIds(inputSlice)) {
       return {inputSlice, std::move(buffer)};
     }
   }
-  buffer.reset(new VPackBuffer<uint8_t>);
+  buffer = std::make_unique<VPackBuffer<uint8_t>>();
   VPackBuilder builder(*buffer);
   stripObjectIdsImpl(builder, inputSlice);
   return {VPackSlice(buffer->data()), std::move(buffer)};
 }
 
-}  // namespace rocksutils
-}  // namespace arangodb
+}  // namespace arangodb::rocksutils
