@@ -153,6 +153,8 @@ class ShardingStrategyHash final : public ShardingStrategyHashBase {
   std::string const& name() const override { return NAME; }
 
   static std::string const NAME;
+
+  bool isCompatible(ShardingStrategy const* other) const override;
 };
 
 }  // namespace arangodb
