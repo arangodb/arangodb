@@ -142,10 +142,15 @@ bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
                     TRI_ASSERT(result.isOpenObject());
                     TRI_ASSERT(edge.isObject());
                     // Extract and Translate the _key value
-                    result.add(
-                        transaction::helpers::extractIdString(
-                            _trx->resolver(), edge, VPackSlice::noneSlice()),
-                        edge);
+                    result.add(VPackValue(transaction::helpers::extractIdString(
+                        _trx->resolver(), edge, VPackSlice::noneSlice())));
+                    if (!_edgeProjections.empty()) {
+                      VPackObjectBuilder guard(&result);
+                      _edgeProjections.toVelocyPackFromDocument(result, edge,
+                                                                _trx);
+                    } else {
+                      result.add(edge);
+                    }
                     return true;
                   } else {
                     // We can only inject key_value pairs into velocypack
