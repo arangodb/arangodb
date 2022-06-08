@@ -249,8 +249,10 @@ class instanceManager {
                        '_system',
                        this.options.username,
                        this.options.password,
-                       false
+                       false,
+                       this.JWT
                       );
+      print('moep')
     }
     this.launchFinalize(startTime);
   }
@@ -1073,8 +1075,8 @@ class instanceManager {
                                '_system',
                                this.options.username,
                                this.options.password,
-                               count > 50
-                              );
+                               count > 50,
+                               this.JWT);
               break;
             } catch (e) {
               this.arangods.forEach( arangod => {
@@ -1193,10 +1195,10 @@ class instanceManager {
       this.checkClusterAlive({}); // todo addArgs
       print("reconnecting " + this.endpoint);
       let JWT;
-      if (this.addArgs.hasOwnProperty('server.jwt-secret')) {
+      if (this.addArgs && this.addArgs.hasOwnProperty('server.jwt-secret')) {
         JWT = this.addArgs['server.jwt-secret'];
       }
-      if (moreArgs.hasOwnProperty('server.jwt-secret')) {
+      if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
         JWT = moreArgs['server.jwt-secret'];
       }
       arango.reconnect(this.endpoint,
