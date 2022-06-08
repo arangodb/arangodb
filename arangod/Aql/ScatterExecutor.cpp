@@ -73,7 +73,7 @@ auto ScatterExecutor::ClientBlockData::addBlock(SharedAqlItemBlockPtr block,
   // this assertion does not hold true anymore.
   // Hence we are required to do an indepth cloning here.
   if (block == nullptr) {
-    _queue.emplace_back(block, skipped);
+    _queue.emplace_back(nullptr, skipped);
   } else {
     _queue.emplace_back(block->cloneDataAndMoveShadow(), skipped);
   }
