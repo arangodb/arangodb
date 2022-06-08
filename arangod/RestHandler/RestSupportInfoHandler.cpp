@@ -164,11 +164,11 @@ RestStatus RestSupportInfoHandler::execute() {
 
       ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
       for (auto const& server : ci.getServers()) {
-        if (server.first.compare(0, 4, "CRDN", 4) == 0) {
+        if (server.first.starts_with("CRDN")) {
           ++coordinators;
-        } else if (server.first.compare(0, 4, "PRMR", 4) == 0) {
+        } else if (server.first.starts_with("PRMR")) {
           ++dbServers;
-        } else if (server.first.compare(0, 4, "SNGL", 4) == 0) {
+        } else if (server.first.starts_with("SNGL")) {
           // SNGL counts as DB server here
           TRI_ASSERT(isActiveFailover);
           ++dbServers;

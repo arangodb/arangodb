@@ -22,10 +22,11 @@
 
 #pragma once
 
-#include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
 #include "Replication2/Mocks/FakeFailureOracle.h"
+#include "Replication2/Mocks/ReplicatedLogMetricsMock.h"
 
 #include "Cluster/FailureOracle.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/ILogInterfaces.h"
 #include "Replication2/ReplicatedLog/InMemoryLog.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -43,8 +44,8 @@
 #include <memory>
 #include <utility>
 
-#include "Replication2/Mocks/PersistedLog.h"
 #include "Replication2/Mocks/FakeReplicatedLog.h"
+#include "Replication2/Mocks/PersistedLog.h"
 
 namespace arangodb::replication2::test {
 
@@ -100,17 +101,16 @@ struct ReplicatedLogTest : ::testing::Test {
       std::shared_ptr<cluster::IFailureOracle> failureOracle = nullptr)
       -> std::shared_ptr<LogLeader> {
     auto config =
-        LogConfig{writeConcern, writeConcern, follower.size() + 1, waitForSync};
+        agency::LogPlanConfig{writeConcern, writeConcern, waitForSync};
     auto participants =
         std::unordered_map<ParticipantId, ParticipantFlags>{{id, {}}};
     for (auto const& participant : follower) {
       participants.emplace(participant->getParticipantId(), ParticipantFlags{});
     }
-    auto participantsConfig =
-        std::make_shared<ParticipantsConfig>(ParticipantsConfig{
-            .generation = 1,
-            .participants = std::move(participants),
-        });
+    auto participantsConfig = std::make_shared<agency::ParticipantsConfig>(
+        agency::ParticipantsConfig{.generation = 1,
+                                   .participants = std::move(participants),
+                                   .config = config});
 
     if (!failureOracle) {
       failureOracle = std::make_shared<FakeFailureOracle>();

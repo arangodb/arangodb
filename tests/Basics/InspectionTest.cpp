@@ -1529,6 +1529,18 @@ TEST_F(VPackLoadInspectorTest, load_object_with_fallback_reference) {
   EXPECT_EQ(42, f.y);
 }
 
+TEST_F(VPackLoadInspectorTest, load_object_ignoring_missing_fields) {
+  builder.openObject();
+  builder.close();
+  VPackLoadInspector inspector{builder, {.ignoreMissingFields = true}};
+
+  FallbackReference f{.x = 1, .y = 2};
+  auto result = inspector.apply(f);
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ(1, f.x);
+  EXPECT_EQ(1, f.y);
+}
+
 TEST_F(VPackLoadInspectorTest, load_object_with_invariant_fulfilled) {
   builder.openObject();
   builder.add("i", VPackValue(42));

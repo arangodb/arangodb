@@ -1,0 +1,56 @@
+{
+  "rocksdb": {
+    "general": {
+      "writeBufferSize": 67108864,
+      "numUncompressedLevels": 7
+    },
+    "db": {
+      "numStripes": 16
+    },
+    "table": {}
+  },
+  "setup": {
+    "collections": [
+      {
+        "name": "testcol",
+        "type": "document",
+        "indexes": [
+          {
+            "type": "persistent",
+            "fields": [
+              "value"
+            ]
+          }
+        ]
+      }
+    ],
+    "prefill": [
+      {
+        "default": {
+          "collection": "testcol",
+          "object": {
+            "source": "inline",
+            "value": {
+              "foo": "bar"
+            }
+          }
+        },
+        "stopAfter": {
+          "operations": 10000
+        },
+        "threads": 4
+      }
+    ]
+  },
+  "workload": {
+    "iterate": {
+      "default": {
+        "collection": "testcol"
+      },
+      "stopAfter": {
+        "runtime": 2000
+      },
+      "threads": 1
+    }
+  }
+}

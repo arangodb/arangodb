@@ -110,8 +110,7 @@ TEST_F(CalcCommitIndexTest, write_concern_1_single_participant) {
   auto expectedLogIndex = LogIndex{50};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{1, 1}, LogIndex{1},
-      createDefaultTermIndexPair(50));
+      participants, 1, LogIndex{1}, createDefaultTermIndexPair(50));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
@@ -137,8 +136,7 @@ TEST_F(CalcCommitIndexTest, write_concern_2_3_participants) {
   auto expectedLogIndex = LogIndex{35};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1},
-      createDefaultTermIndexPair(50));
+      participants, 2, LogIndex{1}, createDefaultTermIndexPair(50));
 
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
@@ -165,8 +163,7 @@ TEST_F(CalcCommitIndexTest, write_concern_0_3_participants) {
   auto expectedLogIndex = LogIndex{50};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{0, 0}, LogIndex{1},
-      createDefaultTermIndexPair(50));
+      participants, 0, LogIndex{1}, createDefaultTermIndexPair(50));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
@@ -192,8 +189,7 @@ TEST_F(CalcCommitIndexTest, write_concern_3_3_participants) {
   auto expectedLogIndex = LogIndex{25};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{3, 3}, LogIndex{1},
-      createDefaultTermIndexPair(50));
+      participants, 3, LogIndex{1}, createDefaultTermIndexPair(50));
 
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
@@ -217,8 +213,7 @@ TEST_F(CalcCommitIndexTest, includes_less_quorum_size) {
   auto expectedLogIndex = LogIndex{1};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{3, 3}, LogIndex{1},
-      createDefaultTermIndexPair(50));
+      participants, 3, LogIndex{1}, createDefaultTermIndexPair(50));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
       std::holds_alternative<
@@ -252,8 +247,7 @@ TEST_F(CalcCommitIndexTest, excluded_and_forced) {
   auto expectedLogIndex = LogIndex{25};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1},
-      createDefaultTermIndexPair(50));
+      participants, 2, LogIndex{1}, createDefaultTermIndexPair(50));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::ForcedParticipantNotInQuorum>(
@@ -279,8 +273,7 @@ TEST_F(CalcCommitIndexTest, all_excluded) {
   auto expectedLogIndex = LogIndex{1};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{3, 3}, LogIndex{1},
-      createDefaultTermIndexPair(50));
+      participants, 3, LogIndex{1}, createDefaultTermIndexPair(50));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
       std::holds_alternative<
@@ -310,8 +303,7 @@ TEST_F(CalcCommitIndexTest, all_forced) {
   auto expectedLogIndex = LogIndex{25};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{3, 3}, LogIndex{1},
-      createDefaultTermIndexPair(50));
+      participants, 3, LogIndex{1}, createDefaultTermIndexPair(50));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
       reason.value));
@@ -339,13 +331,12 @@ TEST_F(CalcCommitIndexTest, not_enough_eligible) {
   auto expectedLogIndex = LogIndex{35};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{2, 3}, LogIndex{1},
-      createDefaultTermIndexPair(50));
+      participants, 2, LogIndex{1}, createDefaultTermIndexPair(50));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
       reason.value));
 
-  EXPECT_EQ(quorum.size(), 3);
+  EXPECT_EQ(quorum.size(), 2);
   verifyQuorum(participants, quorum, expectedLogIndex);
 }
 
@@ -367,13 +358,12 @@ TEST_F(CalcCommitIndexTest, nothing_to_commit) {
   auto expectedLogIndex = LogIndex{15};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{2, 3}, LogIndex{15},
-      createDefaultTermIndexPair(15));
+      participants, 2, LogIndex{15}, createDefaultTermIndexPair(15));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
 
-  EXPECT_EQ(quorum.size(), 3);
+  EXPECT_EQ(quorum.size(), 2);
   verifyQuorum(participants, quorum, expectedLogIndex);
 }
 
@@ -393,8 +383,7 @@ TEST_F(CalcCommitIndexTest, failed_participant) {
   auto expectedLogIndex = LogIndex{35};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1},
-      createDefaultTermIndexPair(50));
+      participants, 2, LogIndex{1}, createDefaultTermIndexPair(50));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
       reason.value));
@@ -420,71 +409,13 @@ TEST_F(CalcCommitIndexTest, failed_and_forced) {
   auto expectedLogIndex = LogIndex{25};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1},
-      createDefaultTermIndexPair(50));
+      participants, 2, LogIndex{1}, createDefaultTermIndexPair(50));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::ForcedParticipantNotInQuorum>(
           reason.value));
 
   EXPECT_EQ(quorum.size(), 0);
-  verifyQuorum(participants, quorum, expectedLogIndex);
-}
-
-TEST_F(CalcCommitIndexTest, failed_with_soft_write_concern) {
-  auto participants = std::vector{
-      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(55),
-                       .id = "A",
-                       .failed = true},
-      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
-                       .id = "B"},
-      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
-                       .id = "C",
-                       .failed = true},
-      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(5),
-                       .id = "D"},
-      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(17),
-                       .id = "E"},
-  };
-  auto expectedLogIndex = LogIndex{17};
-
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{2, 3}, LogIndex{1},
-      createDefaultTermIndexPair(60));
-  EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
-      reason.value));
-  EXPECT_EQ(quorum.size(), 3);
-  verifyQuorum(participants, quorum, expectedLogIndex);
-}
-
-TEST_F(CalcCommitIndexTest, failed_with_reduced_soft_write_concern) {
-  auto participants = std::vector{
-      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(55),
-                       .id = "A",
-                       .failed = true},
-      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(15),
-                       .id = "B"},
-      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(25),
-                       .id = "C",
-                       .failed = true},
-      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(5),
-                       .id = "D",
-                       .failed = true},
-      ParticipantState{.lastAckedEntry = createDefaultTermIndexPair(17),
-                       .id = "E"},
-  };
-  auto expectedLogIndex = LogIndex{25};
-
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{2, 3}, LogIndex{1},
-      createDefaultTermIndexPair(60));
-  EXPECT_EQ(index, expectedLogIndex);
-  EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
-      reason.value));
-  // softWriteConcern is 3, but should have been reduced to 2 due to 3 failed
-  // servers.
-  EXPECT_EQ(quorum.size(), 2);
   verifyQuorum(participants, quorum, expectedLogIndex);
 }
 
@@ -507,8 +438,7 @@ TEST_F(CalcCommitIndexTest, smallest_failed) {
   auto expectedLogIndex = LogIndex{17};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{2, 4}, LogIndex{15},
-      createDefaultTermIndexPair(55));
+      participants, 3, LogIndex{15}, createDefaultTermIndexPair(55));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(std::holds_alternative<CommitFailReason::QuorumSizeNotReached>(
       reason.value));
@@ -535,8 +465,7 @@ TEST_F(CalcCommitIndexTest, nothing_to_commit_failed) {
   auto expectedLogIndex = LogIndex{17};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{2, 4}, LogIndex{15},
-      createDefaultTermIndexPair(17));
+      participants, 3, LogIndex{15}, createDefaultTermIndexPair(17));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
@@ -559,8 +488,7 @@ TEST_F(CalcCommitIndexTest, write_concern_0_forced_flag) {
   auto expectedLogIndex = LogIndex{25};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{0, 0}, LogIndex{15},
-      createDefaultTermIndexPair(55));
+      participants, 0, LogIndex{15}, createDefaultTermIndexPair(55));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
@@ -594,8 +522,7 @@ TEST_F(CalcCommitIndexTest, DISABLED_more_forced_than_quorum_size) {
   auto expectedLogIndex = LogIndex{25};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{2, 4}, LogIndex{15},
-      createDefaultTermIndexPair(25));
+      participants, 2, LogIndex{15}, createDefaultTermIndexPair(25));
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_TRUE(
       std::holds_alternative<CommitFailReason::NothingToCommit>(reason.value));
@@ -614,8 +541,8 @@ TEST_F(CalcCommitIndexTest, who_quorum_size_not_reached) {
                        .id = "C"}};
 
   auto const spearhead = createDefaultTermIndexPair(50);
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1}, spearhead);
+  auto [index, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 2, LogIndex{1}, spearhead);
 
   auto who = CommitFailReason::QuorumSizeNotReached::who_type();
   who["B"] = {.isFailed = false,
@@ -641,8 +568,8 @@ TEST_F(CalcCommitIndexTest, who_quorum_size_not_reached_multiple) {
                        .id = "C"}};
 
   auto const spearhead = createDefaultTermIndexPair(50);
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1}, spearhead);
+  auto [index, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 2, LogIndex{1}, spearhead);
 
   auto who = CommitFailReason::QuorumSizeNotReached::who_type();
   who["A"] = {.isFailed = false,
@@ -674,8 +601,7 @@ TEST_F(CalcCommitIndexTest, who_forced_participant_not_in_quorum) {
   auto expectedLogIndex = LogIndex{25};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1},
-      createDefaultTermIndexPair(50));
+      participants, 2, LogIndex{1}, createDefaultTermIndexPair(50));
 
   EXPECT_EQ(reason, CommitFailReason::withForcedParticipantNotInQuorum("B"));
   EXPECT_EQ(index, expectedLogIndex);
@@ -692,8 +618,8 @@ TEST_F(CalcCommitIndexTest, who_failed_excluded) {
 
   auto expectedLogIndex = LogIndex{25};
   auto const spearhead = createDefaultTermIndexPair(50);
-  auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{1, 1}, LogIndex{1}, spearhead);
+  auto [index, reason, quorum] =
+      algorithms::calculateCommitIndex(participants, 1, LogIndex{1}, spearhead);
 
   auto who = CommitFailReason::QuorumSizeNotReached::who_type();
   who["A"] = {.isFailed = true,
@@ -722,8 +648,7 @@ TEST_F(CalcCommitIndexTest, who_all_excluded) {
 
   auto expectedLogIndex = LogIndex{1};
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{1, 1}, LogIndex{1},
-      createDefaultTermIndexPair(50));
+      participants, 1, LogIndex{1}, createDefaultTermIndexPair(50));
 
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_EQ(reason,
@@ -747,8 +672,7 @@ TEST_F(CalcCommitIndexTest, who_all_excluded_wrong_term) {
 
   auto expectedLogIndex = LogIndex{1};
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{1, 1}, LogIndex{1},
-      TermIndexPair{LogTerm{2}, LogIndex{50}});
+      participants, 1, LogIndex{1}, TermIndexPair{LogTerm{2}, LogIndex{50}});
 
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_EQ(
@@ -775,14 +699,10 @@ TEST_F(CalcCommitIndexTest, write_concern_too_big) {
 
   auto expectedLogIndex = LogIndex{1};
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{4, 6}, LogIndex{1},
-      createDefaultTermIndexPair(50));
+      participants, 4, LogIndex{1}, createDefaultTermIndexPair(50));
 
   EXPECT_EQ(reason, CommitFailReason::withFewerParticipantsThanWriteConcern(
-                        {.writeConcern = 4,
-                         .softWriteConcern = 6,
-                         .effectiveWriteConcern = 4,
-                         .numParticipants = 3}))
+                        {.effectiveWriteConcern = 4, .numParticipants = 3}))
       << "Actual: " << basics::velocypackhelper::toJson(reason);
   EXPECT_EQ(index, expectedLogIndex);
 }
@@ -801,8 +721,7 @@ TEST_F(CalcCommitIndexTest, who_forced_participant_in_wrong_term) {
   auto expectedLogIndex = LogIndex{1};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1},
-      TermIndexPair(LogTerm{2}, LogIndex{50}));
+      participants, 2, LogIndex{1}, TermIndexPair(LogTerm{2}, LogIndex{50}));
 
   EXPECT_EQ(reason, CommitFailReason::withForcedParticipantNotInQuorum("B"));
   EXPECT_EQ(index, expectedLogIndex);
@@ -820,8 +739,7 @@ TEST_F(CalcCommitIndexTest, non_eligible_participant_in_wrong_term) {
   auto expectedLogIndex = LogIndex{50};
 
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{2, 2}, LogIndex{1},
-      TermIndexPair(LogTerm{2}, LogIndex{50}));
+      participants, 2, LogIndex{1}, TermIndexPair(LogTerm{2}, LogIndex{50}));
 
   EXPECT_EQ(reason, CommitFailReason::withNothingToCommit());
   verifyQuorum(participants, quorum, expectedLogIndex, LogTerm{2});
@@ -845,8 +763,7 @@ TEST_F(CalcCommitIndexTest, who_non_eligible_required) {
 
   auto expectedLogIndex = LogIndex{1};
   auto [index, reason, quorum] = algorithms::calculateCommitIndex(
-      participants, CalculateCommitIndexOptions{2, 1}, LogIndex{1},
-      TermIndexPair{LogTerm{2}, LogIndex{50}});
+      participants, 2, LogIndex{1}, TermIndexPair{LogTerm{2}, LogIndex{50}});
 
   EXPECT_EQ(index, expectedLogIndex);
   EXPECT_EQ(reason,

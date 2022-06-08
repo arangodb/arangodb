@@ -26,14 +26,14 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
+#include "Cluster/FailureOracle.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
-#include "Cluster/FailureOracle.h"
 
 #include <algorithm>
-#include <type_traits>
 #include <random>
 #include <tuple>
+#include <type_traits>
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -150,7 +150,7 @@ auto algorithms::updateReplicatedLog(
 
       TRI_ASSERT(spec->participantsConfig.generation > 0);
       auto newLeader = log->becomeLeader(
-          spec->currentTerm->config, myServerId, spec->currentTerm->term,
+          spec->participantsConfig.config, myServerId, spec->currentTerm->term,
           followers,
           std::make_shared<ParticipantsConfig>(spec->participantsConfig),
           std::move(failureOracle));
@@ -216,13 +216,9 @@ auto operator<=>(ParticipantState const& left,
   return left.id.compare(right.id) <=> 0;
 }
 
-algorithms::CalculateCommitIndexOptions::CalculateCommitIndexOptions(
-    std::size_t writeConcern, std::size_t softWriteConcern)
-    : _writeConcern(writeConcern), _softWriteConcern(softWriteConcern) {}
-
 auto algorithms::calculateCommitIndex(
     std::vector<ParticipantState> const& participants,
-    CalculateCommitIndexOptions const opt, LogIndex const currentCommitIndex,
+    size_t const effectiveWriteConcern, LogIndex const currentCommitIndex,
     TermIndexPair const lastTermIndex)
     -> std::tuple<LogIndex, CommitFailReason, std::vector<ParticipantId>> {
   // We keep a vector of eligible participants.
@@ -239,27 +235,13 @@ auto algorithms::calculateCommitIndex(
                         p.lastTerm() == lastTermIndex.term;
                });
 
-  // If servers are unavailable because they are either failed or excluded,
-  // the actualWriteConcern may be lowered from softWriteConcern down to at
-  // least writeConcern.
-  auto const numAvailableParticipants = std::size_t(std::count_if(
-      std::begin(participants), std::end(participants),
-      [](auto const& p) { return !p.isFailed() && p.isAllowedInQuorum(); }));
-  // We write to at least writeConcern servers, ideally more if available.
-  auto const effectiveWriteConcern =
-      std::max(opt._writeConcern,
-               std::min(numAvailableParticipants, opt._softWriteConcern));
-
   if (effectiveWriteConcern > participants.size() &&
       participants.size() == eligible.size()) {
     // With WC greater than the number of participants, we cannot commit
     // anything, even if all participants are eligible.
     TRI_ASSERT(!participants.empty());
-    TRI_ASSERT(opt._writeConcern == effectiveWriteConcern);
     return {currentCommitIndex,
             CommitFailReason::withFewerParticipantsThanWriteConcern({
-                .writeConcern = opt._writeConcern,
-                .softWriteConcern = opt._softWriteConcern,
                 .effectiveWriteConcern = effectiveWriteConcern,
                 .numParticipants = participants.size(),
             }),

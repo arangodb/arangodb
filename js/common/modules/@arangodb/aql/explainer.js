@@ -929,7 +929,6 @@ function processQuery(query, explain, planIndex) {
           if (ref.length > 5 && ref[5]) {
             c = '?';
           }
-          print(node, ref);
           delete references[node.name];
           if (Array.isArray(ref)) {
             var out = buildExpression(ref[1]) + '[' + (new Array(ref[0] + 1).join(c));

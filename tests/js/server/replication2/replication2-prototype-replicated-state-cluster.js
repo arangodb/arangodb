@@ -32,6 +32,7 @@ const db = arangodb.db;
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const sh = require("@arangodb/testutils/replicated-state-helper");
 const spreds = require("@arangodb/testutils/replicated-state-predicates");
+const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 
 const database = "replication2_prototype_state_test_db";
 
@@ -69,6 +70,10 @@ const getEntries = function (url, stateId, entries, waitForApplied) {
 
 const removeEntry = function (url, stateId, entry) {
   return request.delete({url: `${url}/_db/${database}/_api/prototype-state/${stateId}/entry/${entry}`});
+};
+
+const dropState = function (url, stateId) {
+  return request.delete({url: `${url}/_db/${database}/_api/replicated-state/${stateId}`});
 };
 
 const removeEntries = function (url, stateId, entries) {
@@ -128,7 +133,6 @@ const replicatedStateSuite = function () {
                                         waitForSync: true,
                                         writeConcern: 2,
                                         softWriteConcern: 3,
-                                        replicationFactor: 3
                                       },
                                       properties: {
                                         implementation: {
@@ -258,6 +262,10 @@ const replicatedStateSuite = function () {
 
       result = compareExchange(coordUrl, stateId, {"foo400": {"oldValue": "foobar", "newValue": "bar400"}});
       assertEqual(result.json.code, 409);
+
+      dropState(coordUrl, stateId);
+      lh.waitFor(spreds.replicatedStateIsGone(database, stateId));
+      lh.waitFor(lpreds.replicatedLogIsGone(database, stateId));
     },
   };
 };

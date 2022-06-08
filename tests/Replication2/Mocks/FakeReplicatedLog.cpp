@@ -39,25 +39,22 @@ auto TestReplicatedLog::becomeLeader(
     ParticipantId const& id, LogTerm term,
     std::vector<std::shared_ptr<replicated_log::AbstractFollower>> const&
         follower,
-    std::size_t writeConcern, bool waitForSync,
+    std::size_t effectiveWriteConcern, bool waitForSync,
     std::shared_ptr<cluster::IFailureOracle> failureOracle)
     -> std::shared_ptr<replicated_log::LogLeader> {
-  LogConfig config;
-  config.writeConcern = writeConcern;
+  agency::LogPlanConfig config;
+  config.effectiveWriteConcern = effectiveWriteConcern;
   config.waitForSync = waitForSync;
-  config.softWriteConcern = writeConcern;
-  config.replicationFactor = follower.size() + 1;
 
   auto participants =
       std::unordered_map<ParticipantId, ParticipantFlags>{{id, {}}};
   for (auto const& participant : follower) {
     participants.emplace(participant->getParticipantId(), ParticipantFlags{});
   }
-  auto participantsConfig =
-      std::make_shared<ParticipantsConfig>(ParticipantsConfig{
-          .generation = 1,
-          .participants = std::move(participants),
-      });
+  auto participantsConfig = std::make_shared<agency::ParticipantsConfig>(
+      agency::ParticipantsConfig{.generation = 1,
+                                 .participants = std::move(participants),
+                                 .config = config});
 
   if (!failureOracle) {
     failureOracle = std::make_shared<FakeFailureOracle>();

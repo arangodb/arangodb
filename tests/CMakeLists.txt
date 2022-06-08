@@ -451,6 +451,7 @@ target_link_libraries(arangodbtests
   fmt
 )
 
+
 if (USE_SEPARATE_REPLICATION2_TESTS_BINARY)
   target_link_libraries(arangodbtests_replication2
     gtest

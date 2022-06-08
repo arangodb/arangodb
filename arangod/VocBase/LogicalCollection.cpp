@@ -36,6 +36,7 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Replication/ReplicationFeature.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -274,6 +275,10 @@ size_t LogicalCollection::replicationFactor() const noexcept {
 size_t LogicalCollection::writeConcern() const noexcept {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->writeConcern();
+}
+
+replication::Version LogicalCollection::replicationVersion() const noexcept {
+  return vocbase().replicationVersion();
 }
 
 std::string const& LogicalCollection::distributeShardsLike() const noexcept {
@@ -611,6 +616,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
                                                         bool useSystem,
                                                         bool isReady,
                                                         bool allInSync) const {
+  TRI_ASSERT(_sharding != nullptr);
   if (system() && !useSystem) {
     return;
   }
@@ -668,6 +674,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 
 Result LogicalCollection::appendVPack(velocypack::Builder& build,
                                       Serialization ctx, bool) const {
+  TRI_ASSERT(_sharding != nullptr);
   bool const forPersistence = (ctx == Serialization::Persistence ||
                                ctx == Serialization::PersistenceWithInProgress);
   bool const showInProgress = (ctx == Serialization::PersistenceWithInProgress);
@@ -774,6 +781,7 @@ void LogicalCollection::includeVelocyPackEnterprise(
 void LogicalCollection::increaseV8Version() { ++_v8CacheVersion; }
 
 Result LogicalCollection::properties(velocypack::Slice slice, bool) {
+  TRI_ASSERT(_sharding != nullptr);
   // the following collection properties are intentionally not updated,
   // as updating them would be very complicated:
   // - _cid
@@ -1152,9 +1160,13 @@ void LogicalCollection::schemaToVelocyPack(VPackBuilder& b) const {
   }
 }
 
-Result LogicalCollection::validate(VPackSlice s,
+std::shared_ptr<ValidatorBase> LogicalCollection::schema() const {
+  return std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
+}
+
+Result LogicalCollection::validate(std::shared_ptr<ValidatorBase> const& schema,
+                                   VPackSlice s,
                                    VPackOptions const* options) const {
-  auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
   if (schema != nullptr) {
     auto res = schema->validate(s, VPackSlice::noneSlice(), true, options);
     if (res.fail()) {
@@ -1170,9 +1182,11 @@ Result LogicalCollection::validate(VPackSlice s,
   return {};
 }
 
-Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc,
+Result LogicalCollection::validate(std::shared_ptr<ValidatorBase> const& schema,
+                                   VPackSlice modifiedDoc, VPackSlice oldDoc,
                                    VPackOptions const* options) const {
-  auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
+  //  auto schema = std::atomic_load_explicit(&_schema,
+  //  std::memory_order_relaxed);
   if (schema != nullptr) {
     auto res = schema->validate(modifiedDoc, oldDoc, false, options);
     if (res.fail()) {
@@ -1210,6 +1224,15 @@ void LogicalCollection::addInternalValidator(
 void LogicalCollection::decorateWithInternalValidators() {
   // Community validators go in here.
   decorateWithInternalEEValidators();
+}
+
+replication2::LogId LogicalCollection::shardIdToStateId(
+    ShardID const& shardId) {
+  auto stateId = std::string_view(shardId).substr(1, shardId.size() - 1);
+  auto logId = replication2::LogId::fromString(stateId);
+  ADB_PROD_ASSERT(logId.has_value())
+      << " converting " << shardId << " to LogId failed";
+  return logId.value();
 }
 
 #ifndef USE_ENTERPRISE
