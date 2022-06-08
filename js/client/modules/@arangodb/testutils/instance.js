@@ -96,6 +96,12 @@ class portManager {
       throw new Error('minPort ' + this.minPort + ' is smaller than maxPort ' + this.maxPort);
     }
   }
+  deregister(port) {
+    let deletePortIndex = this.usedPorts.indexOf(port);
+    if (deletePortIndex > -1) {
+      this.usedPorts.splice(deletePortIndex, 1);
+    }
+  }
   findFreePort() {
     let tries = 0;
     while (true) {

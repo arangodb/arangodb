@@ -89,6 +89,11 @@ class instanceManager {
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, addArgs);
   }
 
+  destructor() {
+    this.arangods.forEach(arangod => {
+      arangod.pm.deregister(arangod.port);
+    });
+  }
   getStructure() {
     let d = [];
     let ln = "";

@@ -130,6 +130,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
             }
           } catch (ex) {
             shutdownStatus = this.instanceManager.shutdownInstance(false);                                     // stop
+            this.instanceManager.destructor();
             this.results[te] = {
               status: false,
               messages: 'Warmup of system failed: ' + ex,
@@ -191,6 +192,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
               };
               this.results.status = false;
               this.instanceManager.shutdownInstance(true);
+              this.instanceManager.destructor();
               return this.results;
             }
           } catch (ex) {
@@ -204,6 +206,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
             this.results.shutdown = false;
             this.results.status = false;
             this.instanceManager.shutdownInstance(true);
+            this.instanceManager.destructor();
             return this.results;
           }
           this.instanceManager.reconnect();
@@ -218,7 +221,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
         }
         shutdownStatus = this.instanceManager.shutdownInstance(false);
         this.results['shutdown'] = this.results['shutdown'] && shutdownStatus;
-        
+        this.instanceManager.destructor();
         if (!this.results[te].status || !shutdownStatus) {
           print("Not cleaning up " + this.instanceManager.rootDir);
           this.results.status = false;
