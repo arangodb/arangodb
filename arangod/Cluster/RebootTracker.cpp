@@ -148,9 +148,8 @@ CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState peer,
       callbackId,
       DescriptedCallback{std::move(callback), std::string{description}});
   TRI_ASSERT(inserted);
-  return CallbackGuard{[this, serverId = std::string{peer.serverId},
-                        rebootId = peer.rebootId, callbackId]() noexcept {
-    unregisterCallback({serverId, rebootId}, callbackId);
+  return CallbackGuard{[this, peer = std::move(peer), callbackId]() noexcept {
+    unregisterCallback(peer, callbackId);
   }};
 }
 
@@ -190,7 +189,7 @@ void RebootTracker::queueCallback(DescriptedCallback&& callback) noexcept {
                     });
 }
 
-void RebootTracker::unregisterCallback(RebootTracker::PeerState peer,
+void RebootTracker::unregisterCallback(RebootTracker::PeerState const& peer,
                                        CallbackId callbackId) noexcept {
   std::lock_guard guard{_mutex};
   if (auto const it = _callbacks.find(peer.serverId); it != _callbacks.end()) {

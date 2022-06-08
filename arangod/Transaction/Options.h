@@ -90,11 +90,7 @@ struct Options {
   /// abort the transaction should the coordinator die or be rebooted.
   /// the server id and reboot id are intentionally empty in single server
   /// case.
-  struct PeerState {
-    ServerID serverId;
-    RebootId rebootId{0};
-  };
-  PeerState origin;
+  cluster::RebootTracker::PeerState origin;
 };
 
 struct AllowImplicitCollectionsSwitcher {

@@ -27,7 +27,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Containers/FlatHashMap.h"
 
-#include <string_view>
+#include <string>
 #include <function2.hpp>
 #include <map>
 #include <memory>
@@ -64,7 +64,7 @@ class RebootTracker {
                containers::FlatHashMap<CallbackId, DescriptedCallback>>;
   using Callbacks = containers::FlatHashMap<ServerID, RebootIds>;
   struct PeerState {
-    std::string_view serverId;
+    std::string serverId;
     RebootId rebootId;
   };
 
@@ -76,7 +76,8 @@ class RebootTracker {
   void updateServerState(State state);
 
  private:
-  void unregisterCallback(PeerState peer, CallbackId callbackId) noexcept;
+  void unregisterCallback(PeerState const& peer,
+                          CallbackId callbackId) noexcept;
 
   void queueCallback(DescriptedCallback&& callback) noexcept;
   void queueCallbacks(std::string_view serverId, RebootId to);
