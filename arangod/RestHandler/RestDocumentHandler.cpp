@@ -541,7 +541,7 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     RevisionId revInBody = RevisionId::fromSlice(body);
     if ((headerRev.isSet() && revInBody != headerRev) || keyInBody.isNone() ||
         keyInBody.isNull() ||
-        (keyInBody.isString() && keyInBody.copyString() != key)) {
+        (keyInBody.isString() && keyInBody.stringView() != key)) {
       // We need to rewrite the document with the given revision and key:
       buffer = std::make_shared<VPackBuffer<uint8_t>>();
       VPackBuilder builder(buffer);
