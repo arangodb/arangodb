@@ -52,6 +52,7 @@
 #include "VocBase/ticks.h"
 
 #include <rocksdb/comparator.h>
+#include <rocksdb/options.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
@@ -641,7 +642,8 @@ arangodb::Result RocksDBBuilderIndex::fillIndexForeground() {
     RocksDBBatchedWithIndexMethods methods(engine.db(), &batch);
     res = ::fillIndex<true>(db, *internal, methods, batch, snap, reportProgress,
                             std::ref(_docsProcessed), true, this->numThreads(),
-                            this->threadBatchSize(), _engine.rocksDBOptions(),
+                            this->threadBatchSize(),
+                            rocksdb::Options(_engine.rocksDBOptions(), {}),
                             _engine.idxPath());
   } else {
     // non-unique index. all index keys will be unique anyway because they
@@ -651,7 +653,8 @@ arangodb::Result RocksDBBuilderIndex::fillIndexForeground() {
     RocksDBBatchedMethods methods(&batch);
     res = ::fillIndex<true>(db, *internal, methods, batch, snap, reportProgress,
                             std::ref(_docsProcessed), false, this->numThreads(),
-                            this->threadBatchSize(), _engine.rocksDBOptions(),
+                            this->threadBatchSize(),
+                            rocksdb::Options(_engine.rocksDBOptions(), {}),
                             _engine.idxPath());
   }
 
@@ -1001,7 +1004,8 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     res = ::fillIndex<false>(db, *internal, methods, batch, snap,
                              reportProgress, std::ref(_docsProcessed), true,
                              this->numThreads(), this->threadBatchSize(),
-                             _engine.rocksDBOptions(), _engine.idxPath());
+                             rocksdb::Options(_engine.rocksDBOptions(), {}),
+                             _engine.idxPath());
   } else {
     // non-unique index. all index keys will be unique anyway because they
     // contain the document id we can therefore get away with a cheap
@@ -1011,7 +1015,8 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     res = ::fillIndex<false>(db, *internal, methods, batch, snap,
                              reportProgress, std::ref(_docsProcessed), false,
                              this->numThreads(), this->threadBatchSize(),
-                             _engine.rocksDBOptions(), _engine.idxPath());
+                             rocksdb::Options(_engine.rocksDBOptions(), {}),
+                             _engine.idxPath());
   }
 
   if (res.fail()) {

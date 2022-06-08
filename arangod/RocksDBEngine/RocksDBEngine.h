@@ -411,7 +411,7 @@ class RocksDBEngine final : public StorageEngine {
 #endif
   }
 
-  rocksdb::DBOptions const rocksDBOptions() const { return _dbOptions; }
+  rocksdb::DBOptions const& rocksDBOptions() const { return _dbOptions; }
 
   /// @brief recovery manager
   RocksDBSettingsManager* settingsManager() const {
