@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Exceptions.h"
-#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
 #include "Logger/LogMacros.h"
@@ -30,9 +29,9 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
-#include <velocypack/Slice.h>
 #include <absl/strings/str_cat.h>
 #include <algorithm>
+#include <vector>
 
 namespace arangodb::cluster {
 namespace {

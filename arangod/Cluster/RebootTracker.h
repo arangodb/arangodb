@@ -27,10 +27,11 @@
 #include "Cluster/ClusterTypes.h"
 #include "Containers/FlatHashMap.h"
 
+#include <string_view>
+#include <function2.hpp>
 #include <map>
 #include <memory>
 #include <type_traits>
-#include <vector>
 #include <mutex>
 
 namespace arangodb {
