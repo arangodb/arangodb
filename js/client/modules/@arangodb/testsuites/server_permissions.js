@@ -63,24 +63,34 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
     this.options.extremeVerbosity = true;
     this.info = "runInDriverTest";
   }
-  run(testlist) {
+  run(testList) {
+    let beforeStart = time();
+    this.continueTesting = true;
+    this.testList = testList;
+    let testrunStart = time();
+    this.results = {
+      shutdown: true,
+      startupTime: testrunStart - beforeStart
+    };
+    let serverDead = false;
     let count = 0;
-    let results = { shutdown: true };
-    let filtered = {};
-    let obj = this;
-    testlist.forEach(function (testFile, i) {
-      count += 1;
-      if (tu.filterTestcaseByOptions(testFile, obj.options, filtered)) {
+    let forceTerminate = false;
+    for (let i = 0; i < this.testList.length; i++) {
+      let te = this.testList[i];
+      let filtered = {};
+      if (tu.filterTestcaseByOptions(te, this.options, filtered)) {
+        let loopCount = 0;
+        count += 1;
         // pass on JWT secret
         let shutdownStatus;
-        let clonedOpts = _.clone(obj.options);
+        let clonedOpts = _.clone(this.options);
         let paramsFirstRun = {};
 
-        let fileContent = fs.read(testFile);
+        let fileContent = fs.read(te);
         let content = `(function(){ const runSetup = false; const getOptions = true; ${fileContent} 
 }())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
 
-        let paramsSecondRun = executeScript(content, true, testFile);
+        let paramsSecondRun = executeScript(content, true, te);
         let rootDir = fs.join(fs.getTempPath(), count.toString());
         let runSetup = paramsSecondRun.hasOwnProperty('runSetup');
         if (paramsSecondRun.hasOwnProperty('server.jwt-secret')) {
@@ -94,134 +104,137 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
 
         if (runSetup) {
           delete paramsSecondRun.runSetup;
-          if (obj.options.extremeVerbosity !== 'silent') {
+          if (this.options.extremeVerbosity !== 'silent') {
             print(paramsFirstRun);
           }
-          obj.instanceManager = new im.instanceManager(clonedOpts.protocol,
+          this.instanceManager = new im.instanceManager(clonedOpts.protocol,
                                                        clonedOpts,
                                                        paramsFirstRun,
-                                                       obj.friendlyName,
+                                                       this.friendlyName,
                                                        rootDir);
           
-          obj.instanceManager.prepareInstance();
-          obj.instanceManager.launchTcpDump("");
-          if (!obj.instanceManager.launchInstance()) {
+          this.instanceManager.prepareInstance();
+          this.instanceManager.launchTcpDump("");
+          if (!this.instanceManager.launchInstance()) {
             throw new Error("failed to launch instance");
           }
-          obj.instanceManager.reconnect();
+          this.instanceManager.reconnect();
           try {
             print(BLUE + '================================================================================' + RESET);
-            print(CYAN + 'Running Setup of: ' + testFile + RESET);
+            print(CYAN + 'Running Setup of: ' + te + RESET);
             content = `(function(){ const runSetup = true; const getOptions = false; ${fileContent}
 }())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
 
-            if (!executeScript(content, true, testFile)) {
+            if (!executeScript(content, true, te)) {
               throw new Error("setup of test failed");
             }
           } catch (ex) {
-            shutdownStatus = obj.instanceManager.shutdownInstance(false);                                     // stop
-            results[testFile] = {
+            shutdownStatus = this.instanceManager.shutdownInstance(false);                                     // stop
+            this.results[te] = {
               status: false,
               messages: 'Warmup of system failed: ' + ex,
               shutdown: shutdownStatus
             };
-            results['shutdown'] = results['shutdown'] && shutdownStatus;
+            this.results['shutdown'] = this.results['shutdown'] && shutdownStatus;
             return;
           }
-          if (obj.instanceManager.shutdownInstance(false)) {                                                     // stop
-            obj.instanceManager.arangods.forEach(function(arangod) {
+          if (this.instanceManager.shutdownInstance(false)) {                                                     // stop
+            this.instanceManager.arangods.forEach(function(arangod) {
               arangod.pid = null;
             });
-            if (obj.options.extremeVerbosity !== 'silent') {
+            if (this.options.extremeVerbosity !== 'silent') {
               print(paramsSecondRun);
             }
             try {
               // if failurepoints are active, disable SUT-sanity checks:
               if (paramsSecondRun.hasOwnProperty('server.failure-point')) {
-                obj.instanceManager.arangods.forEach(
+                this.instanceManager.arangods.forEach(
                   arangod => { arangod.suspended = true; });
               }
-              obj.instanceManager.reStartInstance(paramsSecondRun);      // restart with restricted permissions
+              this.instanceManager.reStartInstance(paramsSecondRun);      // restart with restricted permissions
             } catch (ex) {
-              results[testFile] = {
+              this.results[te] = {
                 message: "Aborting testrun; failed to launch instance: " +
                   ex.message + " - " +
-                  JSON.stringify(obj.instanceManager.getStructure()),
+                  JSON.stringify(this.instanceManager.getStructure()),
                 status: false,
                 shutdown: false
               };
-              results.status = false;
-              obj.instanceManager.shutdownInstance(true);
-              return results;
+              this.results.status = false;
+              this.instanceManager.shutdownInstance(true);
+              return this.results;
             }
           }
           else {
-            results[testFile] = {
+            this.results.shutdown = false;
+            this.results[te] = {
               status: false,
               message: "failed to stop instance",
               shutdown: false
             };
           }
         } else {
-          obj.instanceManager = new im.instanceManager(clonedOpts.protocol,
+          this.instanceManager = new im.instanceManager(clonedOpts.protocol,
                                                        clonedOpts,
                                                        paramsSecondRun,
-                                                       obj.friendlyName,
+                                                       this.friendlyName,
                                                        rootDir);
           
-          obj.instanceManager.prepareInstance();
-          obj.instanceManager.launchTcpDump("");
+          this.instanceManager.prepareInstance();
+          this.instanceManager.launchTcpDump("");
           try {
-            if (!obj.instanceManager.launchInstance()) {
-              results[testFile] = {
-                message: "Aborting testrun; failed to launch instance: " + JSON.stringify(obj.instanceManager.getStructure()),
+            if (!this.instanceManager.launchInstance()) {
+              this.results[te] = {
+                message: "Aborting testrun; failed to launch instance: " + JSON.stringify(this.instanceManager.getStructure()),
                 status: false,
                 shutdown: false
               };
-              results.status = false;
-              obj.instanceManager.shutdownInstance(true);
-              return results;
+              this.results.status = false;
+              this.instanceManager.shutdownInstance(true);
+              return this.results;
             }
           } catch (ex) {
-              results[testFile] = {
+              this.results[te] = {
                 message: "Aborting testrun; failed to launch instance: " +
                   ex.message + " - " +
-                  JSON.stringify(obj.instanceManager.getStructure()),
+                  JSON.stringify(this.instanceManager.getStructure()),
                 status: false,
                 shutdown: false
               };
-            results.status = false;
-            obj.instanceManager.shutdownInstance(true);
-            return results;
+            this.results.shutdown = false;
+            this.results.status = false;
+            this.instanceManager.shutdownInstance(true);
+            return this.results;
           }
-          obj.instanceManager.reconnect();
+          this.instanceManager.reconnect();
         }
 
-        results[testFile] = obj.runOneTest(testFile);
-        if (obj.instanceManager.addArgs.hasOwnProperty("authOpts") &&
-            obj.instanceInfo.addArgs.hasOwnProperty("server.jwt-secret")) {
+        this.results[te] = this.runOneTest(te);
+        if (this.instanceManager.addArgs.hasOwnProperty("authOpts") &&
+            this.instanceInfo.addArgs.hasOwnProperty("server.jwt-secret")) {
           // Reconnect to set the server credentials right
           arango.reconnect(arango.getEndpoint(), '_system', "root", "", true,
-                           obj.instanceManager.addArgs["server.jwt-secret"]);
+                           this.instanceManager.addArgs["server.jwt-secret"]);
         }
-        shutdownStatus = obj.instanceManager.shutdownInstance(false);
-
-        results['shutdown'] = results['shutdown'] && shutdownStatus;
+        shutdownStatus = this.instanceManager.shutdownInstance(false);
+        this.results['shutdown'] = this.results['shutdown'] && shutdownStatus;
         
-        if (!results[testFile].status || !shutdownStatus) {
-          print("Not cleaning up " + obj.instanceManager.rootDir);
-          results.status = false;
+        if (!this.results[te].status || !shutdownStatus) {
+          print("Not cleaning up " + this.instanceManager.rootDir);
+          this.results.status = false;
+          this.results[te].status = false;
+          return this.results;
         }
         else {
           pu.cleanupLastDirectory(clonedOpts);
         }
       } else {
-        if (obj.options.extremeVerbosity !== 'silent') {
-          print('Skipped ' + testFile + ' because of ' + filtered.filter);
+        if (this.options.extremeVerbosity !== 'silent') {
+          print('Skipped ' + te + ' because of ' + filtered.filter);
         }
       }
-    });
-    return results;
+    }
+    return this.results;
   }
 }
 

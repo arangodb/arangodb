@@ -202,6 +202,7 @@ class instance {
     this.pid = null;
     this.exitStatus = null;
     this.serverCrashedLocal = false;
+    this.JWT = null;
   }
 
   getStructure() {
@@ -226,6 +227,7 @@ class instance {
       args: this.args,
       pid: this.pid,
       id: this.id,
+      JWT: this.JWT,
       exitStatus: this.exitStatus,
       serverCrashedLocal: this.serverCrashedLocal
     };
@@ -361,6 +363,9 @@ class instance {
         'cluster.agency-endpoint': this.agencyConfig.agencyEndpoint,
         'replication.active-failover': true
       });
+    }
+    if (this.args.hasOwnProperty('server.jwt-secret')) {
+      this.JWT = this.args['server.jwt-secret'];
     }
   }
 
@@ -502,6 +507,9 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   _executeArangod (moreArgs) {
+    if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
+      this.JWT = moreArgs['server.jwt-secret'];
+    }
     let cmd = pu.ARANGOD_BIN;
     let args = _.defaults(moreArgs, this.args);
     let argv = [];
@@ -688,7 +696,7 @@ class instance {
         if(this.options.extremeVerbosity) {
           print('tickeling ' + this.endpoint);
         }
-        arango.reconnect(this.endpoint, '_system', 'root', '');
+        arango.reconnect(this.endpoint, '_system', 'root', '', false, this.JWT);
         return;
       } catch (e) {
         if(this.options.extremeVerbosity) {
@@ -767,6 +775,7 @@ class instance {
         let sockStat = this.getSockStat("Sock stat for: ");
         let reply = {code: 555};
         try {
+          print(arango.reconnect(this.endpoint, '_system', 'root', '', false, this.JWT));
           reply = arango.DELETE_RAW('/_admin/shutdown');
         } catch(ex) {
           print(RED + 'while invoking shutdown via unix domain socket: ' + ex + RESET);
@@ -788,7 +797,7 @@ class instance {
           print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
         }
       } else {
-        const requestOptions = pu.makeAuthorizationHeaders(this.options, this.args);
+        const requestOptions = pu.makeAuthorizationHeaders(this.options, this.args, this.JWT);
         requestOptions.method = 'DELETE';
         requestOptions.timeout = 60; // 60 seconds hopefully are enough for getting a response
         if (!this.options.noStartStopLogs) {

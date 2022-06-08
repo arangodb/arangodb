@@ -594,6 +594,9 @@ function unitTest (cases, options) {
   options.extremeVerbosity = true;
   options.noStartStopLogs = !options.extremeVerbosity && options.noStartStopLogs;
 
+  if (options.extremeVerbosity) {
+    print(JSON.stringify(options));
+  }
   if (options.failed ||
       (Array.isArray(options.commandSwitches) && options.commandSwitches.includes("failed"))) {
     options.failed = rp.getFailedTestCases(options);

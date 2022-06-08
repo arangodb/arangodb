@@ -1187,12 +1187,19 @@ class instanceManager {
     if (this.options.cluster && !this.options.skipReconnect) {
       this.checkClusterAlive({}); // todo addArgs
       print("reconnecting " + this.endpoint);
+      let JWT;
+      if (this.addArgs.hasOwnProperty('server.jwt-secret')) {
+        JWT = this.addArgs['server.jwt-secret'];
+      }
+      if (moreArgs.hasOwnProperty('server.jwt-secret')) {
+        JWT = moreArgs['server.jwt-secret'];
+      }
       arango.reconnect(this.endpoint,
                        '_system',
                        this.options.username,
                        this.options.password,
-                       false
-                      );
+                       false,
+                       JWT);
     }
     this.launchFinalize(startTime);
   }

@@ -686,8 +686,11 @@ function getJwtSecret(args) {
 // / @brief adds authorization headers
 // //////////////////////////////////////////////////////////////////////////////
 
-function makeAuthorizationHeaders (options, args) {
-  const jwtSecret = getJwtSecret(args);
+function makeAuthorizationHeaders (options, args, JWT) {
+  let jwtSecret = getJwtSecret(args);
+  if (JWT) {
+    jwtSecret = JWT;
+  }
 
   if (jwtSecret) {
     let jwt = crypto.jwtEncode(jwtSecret,
