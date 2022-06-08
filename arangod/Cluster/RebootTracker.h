@@ -65,7 +65,7 @@ class RebootTracker {
   using Callbacks = containers::FlatHashMap<ServerID, RebootIds>;
   struct PeerState {
     std::string serverId;
-    RebootId rebootId;
+    RebootId rebootId{0};
   };
 
   explicit RebootTracker(SchedulerPointer scheduler);
