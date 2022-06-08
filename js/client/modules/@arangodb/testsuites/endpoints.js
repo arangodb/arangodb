@@ -235,7 +235,7 @@ class endpointRunner extends tu.runInArangoshRunner {
         },
         shellTests: [
           {
-            name: 'tcp',
+            name: 'unix',
             endpoint: function (endpoint) { return endpoint; },
             success: true
           },
@@ -335,7 +335,6 @@ class endpointRunner extends tu.runInArangoshRunner {
         results.shutdown = false;
         results.message += message;
       }
-      ////// throw new Error("snatoheusantohe")
       return results;
     }, { failed: 0, shutdown: true });
     pu.cleanupLastDirectory(this.options);

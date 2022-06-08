@@ -781,7 +781,12 @@ class instance {
         let sockStat = this.getSockStat("Sock stat for: ");
         let reply = {code: 555};
         try {
-          print(arango.reconnect(this.endpoint, '_system', 'root', '', false, this.JWT));
+          if (this.JWT) {
+            print(this.JWT)
+            print(arango.reconnect(this.endpoint, '_system', 'root', '', true, this.JWT));
+          } else {
+            print(arango.reconnect(this.endpoint, '_system', 'root', '', true));
+          }
           reply = arango.DELETE_RAW('/_admin/shutdown');
         } catch(ex) {
           print(RED + 'while invoking shutdown via unix domain socket: ' + ex + RESET);
@@ -797,7 +802,6 @@ class instance {
           this.shutdownArangod(true);
         } else if (!this.options.noStartStopLogs) {
           print(sockStat);
-          this.pid = null;
         }
         if (this.options.extremeVerbosity) {
           print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
