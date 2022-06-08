@@ -248,14 +248,22 @@ class instanceManager {
     /// todo
     if (this.options.cluster && !this.options.skipReconnect) {
       this.checkClusterAlive({}); // todo addArgs
-      print("reconnecting " + this.endpoint);
-      arango.reconnect(this.endpoint,
-                       '_system',
-                       this.options.username,
-                       this.options.password,
-                       false,
-                       this.JWT
-                      );
+      if (this.JWT) {
+        print("reconnecting with JWT " + this.endpoint);
+        arango.reconnect(this.endpoint,
+                         '_system',
+                         this.options.username,
+                         this.options.password,
+                         false,
+                         this.JWT);
+      } else {
+        print("reconnecting " + this.endpoint);
+        arango.reconnect(this.endpoint,
+                         '_system',
+                         this.options.username,
+                         this.options.password,
+                         false);
+      }
     }
     this.launchFinalize(startTime);
   }
@@ -1073,13 +1081,22 @@ class instanceManager {
           wait(1, false);
           if (this.options.useReconnect && arangod.isFrontend()) {
             try {
-              print(Date() + " reconnecting " + arangod.url);
-              arango.reconnect(arangod.endpoint,
-                               '_system',
-                               this.options.username,
-                               this.options.password,
-                               count > 50,
-                               this.JWT);
+              if (this.JWT) {
+                print(Date() + " reconnecting with JWT " + arangod.url);
+                arango.reconnect(arangod.endpoint,
+                                 '_system',
+                                 this.options.username,
+                                 this.options.password,
+                                 count > 50,
+                                 this.JWT);
+              } else {
+                print(Date() + " reconnecting " + arangod.url);
+                arango.reconnect(arangod.endpoint,
+                                 '_system',
+                                 this.options.username,
+                                 this.options.password,
+                                 count > 50);
+              }
               break;
             } catch (e) {
               this.arangods.forEach( arangod => {
