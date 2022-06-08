@@ -81,6 +81,10 @@ class instanceManager {
     this.arangods = [];
     this.restKeyFile = '';
     this.tcpdump = null;
+    this.JWT = null;
+    if (addArgs.hasOwnProperty('server.jwt-secret')) {
+      this.JWT = addArgs['server.jwt-secret'];
+    }
     if (this.options.encryptionAtRest) {
       this.restKeyFile = fs.join(this.rootDir, 'openSesame.txt');
       fs.makeDirectoryRecursive(this.rootDir);
@@ -252,7 +256,6 @@ class instanceManager {
                        false,
                        this.JWT
                       );
-      print('moep')
     }
     this.launchFinalize(startTime);
   }

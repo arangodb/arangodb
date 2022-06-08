@@ -182,6 +182,12 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
                                                        this.friendlyName,
                                                        rootDir);
           
+          // if failurepoints are active, disable SUT-sanity checks:
+          if (paramsSecondRun.hasOwnProperty('server.failure-point')) {
+            print("Failure points active, marking suspended");
+            this.instanceManager.arangods.forEach(
+              arangod => { arangod.suspended = true; });
+          }
           this.instanceManager.prepareInstance();
           this.instanceManager.launchTcpDump("");
           try {
