@@ -3593,7 +3593,7 @@ Result RestReplicationHandler::createBlockingTransaction(
 
       auto rGuard =
           std::make_unique<RebootCookie>(ci.rebootTracker().callMeOnChange(
-              serverId, rebootId, std::move(f), std::move(comment)));
+              {serverId, rebootId}, std::move(f), std::move(comment)));
       auto ctx = mgr->leaseManagedTrx(id, AccessMode::Type::WRITE,
                                       /*isSideUser*/ false);
 

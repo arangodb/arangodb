@@ -115,25 +115,24 @@ void RebootTracker::updateServerState(State state) {
   _state = std::move(state);
 }
 
-CallbackGuard RebootTracker::callMeOnChange(std::string_view serverId,
-                                            RebootId rebootId,
+CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState peer,
                                             Callback callback,
                                             std::string_view description) {
   std::lock_guard guard{_mutex};
-  auto const it = _state.find(serverId);
+  auto const it = _state.find(peer.serverId);
   // We MUST NOT insert something in _callbacks[serverId]
   // unless _state[serverId] exists!
   if (it == _state.end()) {
     auto const error =
         absl::StrCat("When trying to register callback '", description,
-                     "': The server ", serverId,
+                     "': The server ", peer.serverId,
                      " is not known. If this server joined the cluster in the "
                      "last seconds, this can happen.");
     LOG_TOPIC("76abc", INFO, Logger::CLUSTER) << error;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_SERVER_UNKNOWN, error);
   }
   auto const currRebootId = it->second;
-  if (rebootId < currRebootId) {
+  if (peer.rebootId < currRebootId) {
     // If this ID is already older, schedule the callback immediately.
     queueCallback({std::move(callback), std::string{description}});
     return CallbackGuard{};
@@ -141,17 +140,17 @@ CallbackGuard RebootTracker::callMeOnChange(std::string_view serverId,
 
   // For the given server, get the existing rebootId => [callbacks] map,
   // or create a new one
-  auto& rebootsMap = _callbacks[serverId];
+  auto& rebootsMap = _callbacks[peer.serverId];
   // For the given rebootId, get the existing callbacks map, or create a new one
-  auto& callbacksMap = rebootsMap[rebootId];
+  auto& callbacksMap = rebootsMap[peer.rebootId];
   auto const callbackId = _nextCallbackId++;
   auto [_, inserted] = callbacksMap.try_emplace(
       callbackId,
       DescriptedCallback{std::move(callback), std::string{description}});
   TRI_ASSERT(inserted);
-  return CallbackGuard{[this, serverId = std::string{serverId}, rebootId,
-                        callbackId]() noexcept {
-    unregisterCallback(serverId, rebootId, callbackId);
+  return CallbackGuard{[this, serverId = std::string{peer.serverId},
+                        rebootId = peer.rebootId, callbackId]() noexcept {
+    unregisterCallback({serverId, rebootId}, callbackId);
   }};
 }
 
@@ -191,13 +190,12 @@ void RebootTracker::queueCallback(DescriptedCallback&& callback) noexcept {
                     });
 }
 
-void RebootTracker::unregisterCallback(std::string_view serverId,
-                                       RebootId rebootId,
+void RebootTracker::unregisterCallback(RebootTracker::PeerState peer,
                                        CallbackId callbackId) noexcept {
   std::lock_guard guard{_mutex};
-  if (auto const it = _callbacks.find(serverId); it != _callbacks.end()) {
+  if (auto const it = _callbacks.find(peer.serverId); it != _callbacks.end()) {
     auto& reboots = it->second;
-    if (auto const rbIt = reboots.find(rebootId); rbIt != reboots.end()) {
+    if (auto const rbIt = reboots.find(peer.rebootId); rbIt != reboots.end()) {
       auto& callbacks = rbIt->second;
       callbacks.erase(callbackId);
       if (callbacks.empty()) {

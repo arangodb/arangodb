@@ -572,7 +572,7 @@ struct DistributedQueryInstanciator final
         };
 
         engine->rebootTrackers().emplace_back(ci.rebootTracker().callMeOnChange(
-            server, rebootId, std::move(f), std::move(comment)));
+            {server, rebootId}, std::move(f), std::move(comment)));
       }
     }
 

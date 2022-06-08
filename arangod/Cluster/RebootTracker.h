@@ -63,17 +63,20 @@ class RebootTracker {
       std::map<RebootId,
                containers::FlatHashMap<CallbackId, DescriptedCallback>>;
   using Callbacks = containers::FlatHashMap<ServerID, RebootIds>;
+  struct PeerState {
+    std::string_view serverId;
+    RebootId rebootId;
+  };
 
   explicit RebootTracker(SchedulerPointer scheduler);
 
-  CallbackGuard callMeOnChange(std::string_view serverId, RebootId rebootId,
-                               Callback callback, std::string_view description);
+  CallbackGuard callMeOnChange(PeerState peer, Callback callback,
+                               std::string_view description);
 
   void updateServerState(State state);
 
  private:
-  void unregisterCallback(std::string_view serverId, RebootId rebootId,
-                          CallbackId callbackId) noexcept;
+  void unregisterCallback(PeerState peer, CallbackId callbackId) noexcept;
 
   void queueCallback(DescriptedCallback&& callback) noexcept;
   void queueCallbacks(std::string_view serverId, RebootId to);

@@ -281,7 +281,7 @@ arangodb::cluster::CallbackGuard Manager::buildCallbackGuard(
       auto& clusterFeature = _feature.server().getFeature<ClusterFeature>();
       auto& clusterInfo = clusterFeature.clusterInfo();
       rGuard = clusterInfo.rebootTracker().callMeOnChange(
-          origin.serverId, origin.rebootId,
+          {origin.serverId, origin.rebootId},
           [this, tid = state.id()]() {
             // abort the transaction once the coordinator goes away
             abortManagedTrx(tid, std::string());
