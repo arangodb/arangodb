@@ -782,7 +782,6 @@ class instance {
         let reply = {code: 555};
         try {
           if (this.JWT) {
-            print(this.JWT)
             print(arango.reconnect(this.endpoint, '_system', 'root', '', true, this.JWT));
           } else {
             print(arango.reconnect(this.endpoint, '_system', 'root', '', true));
