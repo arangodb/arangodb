@@ -537,3 +537,4 @@ ServerID TransactionState::whichReplica(ShardID const& shard) {
   TRI_ASSERT(it != _chosenReplicas->end());
   return it->second;
 }
+
