@@ -103,8 +103,6 @@ struct QueryOptions {
   bool count;
   // skips audit logging - used only internally
   bool skipAudit;
-  // Read from followers (enterprise only)
-  bool allowDirtyReads;
 
   ExplainRegisterPlan explainRegisters;
 

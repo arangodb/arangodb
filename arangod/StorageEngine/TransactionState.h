@@ -262,6 +262,8 @@ class TransactionState {
   /// up things in `_chosenReplicas`, but if the shard is not found there,
   /// it uses `chooseReplicas` to make a choice.
   ServerID whichReplica(ShardID const& shard);
+  containers::FlatHashMap<ShardID, ServerID> whichReplicas(
+      std::vector<ShardID> const& shardIds);
 
   /// @returns tick of last operation in a transaction
   /// @note the value is guaranteed to be valid only after
@@ -364,7 +366,7 @@ class TransactionState {
   /// Do not fill in this map yourself, always use the method `chooseReplicas`
   /// for this. If you use `whichReplica(<shardID>)`, then this happens
   /// automatically. This member is only relevant (and != nullptr) if the
-  /// transaction hint ALLOW_DIRTY_READS is set.
+  /// transaction option allowDirtyReads is set.
   std::unique_ptr<containers::FlatHashMap<ShardID, ServerID>> _chosenReplicas;
 
   QueryAnalyzerRevisions _analyzersRevision;

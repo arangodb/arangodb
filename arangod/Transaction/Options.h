@@ -81,12 +81,10 @@ struct Options {
   bool waitForSync = false;
   bool fillBlockCache = true;
   bool isFollowerTransaction = false;
-  /// The following flag is used in a few places to hand the information in
-  /// that we want to read from followers. This is a property of the
-  /// transaction, not of individual read operations. The actual decision
-  /// as to whether we read from followers or not is in the end due to
-  /// the hint ALLOW_DIRTY_READS of the transaction, stored in the
-  /// transaction state.
+  /// The following flag indicates if a transaction is allowed to perform
+  /// dirty reads (aka read-from-followers). This is stored in the
+  /// `TransactionState`. The decision is taken when the transaction is
+  /// created.
   bool allowDirtyReads = false;
 
   /// @brief originating server of this transaction. will be populated

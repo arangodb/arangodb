@@ -538,3 +538,14 @@ ServerID TransactionState::whichReplica(ShardID const& shard) {
   return it->second;
 }
 
+containers::FlatHashMap<ShardID, ServerID> TransactionState::whichReplicas(
+    std::vector<ShardID> const& shardIds) {
+  chooseReplicas(shardIds);
+  containers::FlatHashMap<ShardID, ServerID> result;
+  for (auto const& shard : shardIds) {
+    auto it = _chosenReplicas->find(shard);
+    TRI_ASSERT(it != _chosenReplicas->end());
+    result.try_emplace(shard, it->second);
+  }
+  return result;
+}

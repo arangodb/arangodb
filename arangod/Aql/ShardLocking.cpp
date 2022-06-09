@@ -35,6 +35,7 @@
 #include "Aql/Query.h"
 #include "Cluster/ClusterFeature.h"
 #include "Logger/LogMacros.h"
+#include "StorageEngine/TransactionState.h"
 #include "Utilities/NameValidator.h"
 
 using namespace arangodb;
@@ -385,9 +386,9 @@ ShardLocking::getShardMapping() {
     }
     auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
 #ifdef USE_ENTERPRISE
-    if (_query.queryOptions().allowDirtyReads) {
-      _shardMapping.clear();
-      ci.getResponsibleServersReadFromFollower(shardIds, _shardMapping);
+    auto& trx = _query.trxForOptimization();
+    if (trx.state()->options().allowDirtyReads) {
+      _shardMapping = trx.state()->whichReplicas(shardIds);
     } else
 #endif
     {

@@ -1958,8 +1958,7 @@ Future<OperationResult> getDocumentOnCoordinator(
   // lazily begin transactions on leaders
   bool const isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-  bool const allowDirtyReads =
-      trx.state()->hasHint(transaction::Hints::Hint::ALLOW_DIRTY_READS);
+  bool const allowDirtyReads = trx.state()->options().allowDirtyReads;
 
   // Some stuff to prepare cluster-internal requests:
 
