@@ -1155,7 +1155,7 @@
         var buttons = []; var tableContent = [];
 
         let isEnterpriseEdge = false;
-        if (this.graphSettings && !this.graphSettings.smartGraphAttribute) {
+        if (this.graphSettings && this.graphSettings.isSmart && !this.graphSettings.smartGraphAttribute) {
           // If we are smart, but we do not have a smartGraphAttribute set,
           // we are in an EnterpriseGraph context.
           isEnterpriseEdge = true;
