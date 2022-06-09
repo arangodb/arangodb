@@ -250,6 +250,19 @@ class TransactionState {
 
   void clearKnownServers() { _knownServers.clear(); }
 
+  /// @brief add the choice of replica for some more shards to the map
+  /// _chosenReplicas. Please note that the choice of replicas is not
+  /// arbitrary! If two collections have the same `distributeShardsLike`
+  /// (or one has the other as `distributeShardsLike`), then the choices for
+  /// corresponding shards must be made in a coherent fashion. Therefore:
+  /// Do not fill in this map yourself, always use this method for this.
+  void chooseReplicas(std::vector<ShardID> const& shards);
+
+  /// @brief lookup a replica choice for some shard, this basically looks
+  /// up things in `_chosenReplicas`, but if the shard is not found there,
+  /// it uses `chooseReplicas` to make a choice.
+  ServerID whichReplica(ShardID const& shard);
+
   /// @returns tick of last operation in a transaction
   /// @note the value is guaranteed to be valid only after
   ///       transaction is committed
@@ -332,6 +345,27 @@ class TransactionState {
 
   /// @brief servers we already talked to for this transactions
   containers::FlatHashSet<ServerID> _knownServers;
+
+  /// @brief current choice of replica to read from for read-from-followers
+  /// (aka allowDirtyReads). Please note that the choice of replicas is not
+  /// arbitrary! If two collections have the same `distributeShardsLike`
+  /// (or one has the other as `distributeShardsLike`), then the choices for
+  /// corresponding shards must be made in a coherent fashion. We call these
+  /// shards the "shard group" and the shard of the collection, of which all
+  /// others are `distributeShardsLike`, the "shard group leader".
+  /// The principle is the following: Whenever a shard appears first in a
+  /// read-from-follower read-only transaction, then we determine its shard
+  /// group leader and decide for it the replica, from which we read for
+  /// the whole shard group in this transaction. Note that this needs to
+  /// take into account **all** shards of the shard group, since we must be
+  /// sure that the server chosen is in sync **for all shards in the group**!
+  /// We store this choice in this map here for the shard group leader as well
+  /// as for the shard which just occurred.
+  /// Do not fill in this map yourself, always use the method `chooseReplicas`
+  /// for this. If you use `whichReplica(<shardID>)`, then this happens
+  /// automatically. This member is only relevant (and != nullptr) if the
+  /// transaction hint ALLOW_DIRTY_READS is set.
+  std::unique_ptr<containers::FlatHashMap<ShardID, ServerID>> _chosenReplicas;
 
   QueryAnalyzerRevisions _analyzersRevision;
   bool _registeredTransaction = false;

@@ -563,6 +563,9 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
         ServerState::instance()->isDBServer()) {
       tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
     }
+    if (opOptions.allowDirtyReads && AccessMode::isRead(type)) {
+      tmp->addHint(transaction::Hints::Hint::ALLOW_DIRTY_READS);
+    }
     return tmp;
   }
 
@@ -639,6 +642,9 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
         basics::abortOrThrow(TRI_ERROR_INTERNAL,
                              "invalid access mode for request", ADB_HERE);
       }
+    }
+    if (opOptions.allowDirtyReads && AccessMode::isRead(type)) {
+      trx->addHint(transaction::Hints::Hint::ALLOW_DIRTY_READS);
     }
   }
   return trx;

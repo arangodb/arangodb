@@ -51,6 +51,8 @@ class Hints {
     ALLOW_FAST_LOCK_ROUND_CLUSTER =
         2048,  // allow the coordinator to try a fast-lock path (parallel on all
                // DBServers), and if that fails revert to slow-lock path
+    ALLOW_DIRTY_READS =
+        4096,  // only for read-only operations, allows to read from followers
   };
 
   Hints() : _value(0) {}

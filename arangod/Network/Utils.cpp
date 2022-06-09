@@ -75,29 +75,7 @@ ErrorCode resolveDestination(ClusterInfo& ci, DestinationId const& dest,
   // is looked up, both can fail and immediately lead to a CL_COMM_ERROR
   // state.
 
-  if (dest.compare(0, 8, "replica:", 8) == 0) {
-    spec.shardId = dest.substr(8);
-    {
-      std::shared_ptr<std::vector<ServerID> const> resp =
-          ci.getResponsibleServer(spec.shardId);
-      if (!resp->empty()) {
-        if (resp->size() == 1) {
-          spec.serverId = (*resp)[0];
-        } else {
-          size_t pos = RandomGenerator::interval(
-              static_cast<uint32_t>(resp->size() - 1));
-          spec.serverId = (*resp)[pos];
-        }
-      } else {
-        LOG_TOPIC("60ee9", ERR, Logger::CLUSTER)
-            << "cannot find responsible server for shard '" << spec.shardId
-            << "'";
-        return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
-      }
-    }
-    LOG_TOPIC("64671", DEBUG, Logger::CLUSTER)
-        << "Responsible server: " << spec.serverId;
-  } else if (dest.compare(0, 6, "shard:", 6) == 0) {
+  if (dest.compare(0, 6, "shard:", 6) == 0) {
     spec.shardId = dest.substr(6);
     {
       std::shared_ptr<std::vector<ServerID> const> resp =

@@ -359,7 +359,7 @@ void ShardLocking::serializeIntoBuilder(
 containers::FlatHashMap<ShardID, ServerID> const&
 ShardLocking::getShardMapping() {
   if (_shardMapping.empty() && !_collectionLocking.empty()) {
-    containers::FlatHashSet<ShardID> shardIds;
+    std::vector<ShardID> shardIds;
     for (auto& lockInfo : _collectionLocking) {
       auto& allShards = lockInfo.second.allShards;
       TRI_ASSERT(!allShards.empty());
@@ -368,13 +368,13 @@ ShardLocking::getShardMapping() {
           // We have an unrestricted snippet for this collection
           // Use all shards for locking
           for (auto const& s : allShards) {
-            shardIds.emplace(s);
+            shardIds.emplace_back(s);
           }
           // No need to search further
           break;
         }
         for (auto const& s : rest.second.restrictedShards) {
-          shardIds.emplace(s);
+          shardIds.emplace_back(s);
         }
       }
     }
@@ -386,7 +386,8 @@ ShardLocking::getShardMapping() {
     auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
 #ifdef USE_ENTERPRISE
     if (_query.queryOptions().allowDirtyReads) {
-      _shardMapping = ci.getResponsibleServersReadFromFollower(shardIds);
+      _shardMapping.clear();
+      ci.getResponsibleServersReadFromFollower(shardIds, _shardMapping);
     } else
 #endif
     {

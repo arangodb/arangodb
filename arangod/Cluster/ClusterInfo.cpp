@@ -1024,7 +1024,8 @@ void ClusterInfo::loadPlan() {
   decltype(_plannedCollections) newCollections;
   decltype(_shards) newShards;
   decltype(_shardServers) newShardServers;
-  decltype(_shardToProtoShard) newShardToProtoShard;
+  decltype(_shardToShardGroupLeader) newShardToShardGroupLeader;
+  decltype(_shardGroups) newShardGroups;
   decltype(_shardToName) newShardToName;
   decltype(_dbAnalyzersRevision) newDbAnalyzersRevision;
   decltype(_newStuffByDatabase) newStuffByDatabase;
@@ -1041,7 +1042,8 @@ void ClusterInfo::loadPlan() {
     newCollections = _plannedCollections;
     newShards = _shards;
     newShardServers = _shardServers;
-    newShardToProtoShard = _shardToProtoShard;
+    newShardToShardGroupLeader = _shardToShardGroupLeader;
+    newShardGroups = _shardGroups;
     newShardToName = _shardToName;
     newDbAnalyzersRevision = _dbAnalyzersRevision;
     newStuffByDatabase = _newStuffByDatabase;
@@ -1100,7 +1102,9 @@ void ClusterInfo::loadPlan() {
                 newShardToName.erase(shardName);
                 // if (col.value.hasKey("distributeShardsLike")) {
                 // Probably faster to try to erase anyway!
-                newShardToProtoShard.erase(shardName);
+                newShardToShardGroupLeader.erase(shardName);
+                // } else {
+                newShardGroups.erase(shardName);
                 //}
               }
             }
@@ -1455,8 +1459,9 @@ void ClusterInfo::loadPlan() {
               newShardServers.erase(shardId);
               newShardToName.erase(shardId);
               // We try to erase the shard ID anyway, no problem if it is
-              // not in there, because it is a prototype!
-              newShardToProtoShard.erase(shardId);
+              // not in there, should it be a shard group leader!
+              newShardToShardGroupLeader.erase(shardId);
+              newShardGroups.erase(shardId);
             }
             collectionsPath.pop_back();
           }
@@ -1558,7 +1563,7 @@ void ClusterInfo::loadPlan() {
       }
     }
     // Now that the loop is completed, we have to run through it one more
-    // time to get the prototypes of shards done:
+    // time to get the shard groups done:
     for (auto const& colPair : *databaseCollections) {
       if (colPair.first == colPair.second.collection->name()) {
         // Every collection shows up once with its ID and once with its name.
@@ -1566,17 +1571,31 @@ void ClusterInfo::loadPlan() {
         // the name as key:
         continue;
       }
-      auto const& proto = colPair.second.collection->distributeShardsLike();
-      if (!proto.empty()) {
-        auto protoCol = newShards.find(proto);
-        if (protoCol != newShards.end()) {
+      auto const& groupLeader =
+          colPair.second.collection->distributeShardsLike();
+      if (!groupLeader.empty()) {
+        auto groupLeaderCol = newShards.find(groupLeader);
+        if (groupLeaderCol != newShards.end()) {
           auto col = newShards.find(
               std::to_string(colPair.second.collection->id().id()));
           if (col != newShards.end()) {
-            TRI_ASSERT(protoCol->second->size() == col->second->size());
+            TRI_ASSERT(groupLeaderCol->second->size() == col->second->size());
             for (size_t i = 0; i < col->second->size(); ++i) {
-              newShardToProtoShard.try_emplace(col->second->at(i),
-                                               protoCol->second->at(i));
+              newShardToShardGroupLeader.try_emplace(
+                  col->second->at(i), groupLeaderCol->second->at(i));
+              auto it = newShardGroups.find(groupLeaderCol->second->at(i));
+              if (it == newShardGroups.end()) {
+                // Need to create a new list:
+                auto list = std::make_shared<std::vector<ShardID>>(2);
+                // group leader as well as member:
+                list->emplace_back(groupLeaderCol->second->at(i));
+                list->emplace_back(col->second->at(i));
+                newShardGroups.try_emplace(groupLeaderCol->second->at(i),
+                                           std::move(list));
+              } else {
+                // Need to add us to the list:
+                it->second->push_back(col->second->at(i));
+              }
             }
           } else {
             LOG_TOPIC("12f32", WARN, Logger::CLUSTER)
@@ -1586,7 +1605,7 @@ void ClusterInfo::loadPlan() {
         } else {
           LOG_TOPIC("22312", WARN, Logger::CLUSTER)
               << "loadPlan: Strange, could not find proto collection: "
-              << proto;
+              << groupLeader;
         }
       }
     }
@@ -1683,7 +1702,8 @@ void ClusterInfo::loadPlan() {
     _plannedCollections.swap(newCollections);
     _shards.swap(newShards);
     _shardServers.swap(newShardServers);
-    _shardToProtoShard.swap(newShardToProtoShard);
+    _shardToShardGroupLeader.swap(newShardToShardGroupLeader);
+    _shardGroups.swap(newShardGroups);
     _shardToName.swap(newShardToName);
   }
 
@@ -5832,7 +5852,7 @@ std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(
 //////////////////////////////////////////////////////////////////////////////
 
 containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
-    containers::FlatHashSet<ShardID> const& shardIds) {
+    std::vector<ShardID> const& shardIds) {
   TRI_ASSERT(!shardIds.empty());
 
   containers::FlatHashMap<ShardID, ServerID> result;
@@ -6059,10 +6079,17 @@ void ClusterInfo::setServerAdvertisedEndpoints(
   _serverAdvertisedEndpoints = std::move(advertisedEndpoints);
 }
 
-void ClusterInfo::setShardToProtoShard(
-    containers::FlatHashMap<ShardID, ShardID> shardToProtoShards) {
+void ClusterInfo::setShardToShardGroupLeader(
+    containers::FlatHashMap<ShardID, ShardID> shardToShardGroupLeader) {
   WRITE_LOCKER(writeLocker, _planProt.lock);
-  _shardToProtoShard = std::move(shardToProtoShards);
+  _shardToShardGroupLeader = std::move(shardToShardGroupLeader);
+}
+
+void ClusterInfo::setShardGroups(
+    containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ShardID>>>
+        shardGroups) {
+  WRITE_LOCKER(writeLocker, _planProt.lock);
+  _shardGroups = std::move(shardGroups);
 }
 
 void ClusterInfo::setShardIds(
@@ -6943,10 +6970,10 @@ VPackBuilder ClusterInfo::toVelocyPack() {
             }
           }
         }
-        dump.add(VPackValue("shardToProtoShards"));
+        dump.add(VPackValue("shardToShardGroupLeader"));
         {
           VPackObjectBuilder d(&dump);
-          for (auto const& s : _shardToProtoShard) {
+          for (auto const& s : _shardToShardGroupLeader) {
             dump.add(s.first, VPackValue(s.second));
           }
         }

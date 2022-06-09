@@ -29,6 +29,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/overload.h"
+#include "Cluster/ClusterFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -508,4 +509,31 @@ TransactionStatistics& TransactionState::statistics() noexcept {
       .getFeature<metrics::MetricsFeature>()
       .serverStatistics()
       ._transactionsStatistics;
+}
+
+void TransactionState::chooseReplicas(std::vector<ShardID> const& shards) {
+  if (_chosenReplicas == nullptr) {
+    _chosenReplicas =
+        std::make_unique<containers::FlatHashMap<ShardID, ServerID>>(
+            shards.size());
+  }
+  auto& cf = _vocbase.server().getFeature<ClusterFeature>();
+  auto& ci = cf.clusterInfo();
+  ci.getResponsibleServersReadFromFollower(shards, *_chosenReplicas);
+}
+
+ServerID TransactionState::whichReplica(ShardID const& shard) {
+  if (_chosenReplicas != nullptr) {
+    auto it = _chosenReplicas->find(shard);
+    if (it != _chosenReplicas->end()) {
+      return it->second;
+    }
+  }
+  // Not yet decided
+  std::vector<ShardID> shards;
+  shards.emplace_back(shard);
+  chooseReplicas(shards);
+  auto it = _chosenReplicas->find(shard);
+  TRI_ASSERT(it != _chosenReplicas->end());
+  return it->second;
 }

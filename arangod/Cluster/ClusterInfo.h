@@ -893,7 +893,7 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
 
   containers::FlatHashMap<ShardID, ServerID> getResponsibleServers(
-      containers::FlatHashSet<ShardID> const&);
+      std::vector<ShardID> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief atomically find all servers who are responsible for the given
@@ -903,12 +903,18 @@ class ClusterInfo final {
   /// of the shards. Will return an empty result if the shards couldn't be
   /// determined after a while - it is the responsibility of the caller to
   /// check for an empty result!
+  /// The map `result` can already contain a partial choice, this method
+  /// ensures that all the shards in `list` are in the end set in the
+  /// `result` map. Additional shards can be added to `result` as needed,
+  /// in particular the shard prototypes of the shards in list will be added.
+  /// It is not allowed that `result` contains a setting for a shard but
+  /// no setting (or a different one) for its shard prototype!
   //////////////////////////////////////////////////////////////////////////////
 
 #ifdef USE_ENTERPRISE
-  containers::FlatHashMap<ShardID, ServerID>
-  getResponsibleServersReadFromFollower(
-      containers::FlatHashSet<ShardID> const&);
+  void getResponsibleServersReadFromFollower(
+      std::vector<ShardID> const& list,
+      containers::FlatHashMap<ShardID, ServerID>& result);
 #endif
 
   //////////////////////////////////////////////////////////////////////////////
@@ -961,8 +967,11 @@ class ClusterInfo final {
   void setServerAdvertisedEndpoints(
       containers::FlatHashMap<ServerID, std::string> advertisedEndpoints);
 
-  void setShardToProtoShard(
-      containers::FlatHashMap<ShardID, ShardID> shardToProtoShards);
+  void setShardToShardGroupLeader(
+      containers::FlatHashMap<ShardID, ShardID> shardToShardGroupLeader);
+
+  void setShardGroups(
+      containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ShardID>>>);
 
   void setShardIds(
       containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ServerID>>>
@@ -1256,16 +1265,44 @@ class ClusterInfo final {
   containers::FlatHashMap<ShardID, std::vector<ServerID>> _shardServers;
   // planned shard ID => collection name
   containers::FlatHashMap<ShardID, CollectionID> _shardToName;
-  // planned shard ID => prototype shard ID
+
+  // planned shard ID => shard ID of shard group leader
   // This deserves an explanation. If collection B has `distributeShardsLike`
   // collection A, then A and B have the same number of shards. We say that
-  // A is B's prototype in this case. We then call the k-th shard of A
-  // the prototype shard of the k-th shard of B. It is guaranteed that
-  // a shard and its prototype are always planned to be on the same
-  // dbserver, and the leaders are always the same. If a shard is a shard
-  // prototype, it does not appear in this map. Recall that there are no
-  // chains of prototypes!
-  containers::FlatHashMap<ShardID, ShardID> _shardToProtoShard;
+  // the k-th shard of A and the k-th shard of B are in the same "shard group".
+  // This can be true for multiple collections, but they must then always
+  // have the same collection A under `distributeShardsLike`. The shard of
+  // collection A is then called the "shard group leader". It is guaranteed that
+  // the shards of a shard group are always planned to be on the same
+  // dbserver, and the leader is always the same for all shards in the group.
+  // If a shard is a shard group leader, it does not appear in this map.
+  // Example:
+  //        Collection:      A        B        C
+  //        Shard index 0:   s1       s5       s9
+  //        Shard index 1:   s2       s6       s10
+  //        Shard index 2:   s3       s7       s11
+  //        Shard index 3:   s4       s8       s12
+  // Here, collection B has "distributeShardsLike" set to "A",
+  //       collection C has "distributeShardsLike" set to "B",
+  //       the `numberOfShards` is 4 for all three collections.
+  // Shard groups are: s1, s5, s9
+  //              and: s2, s6, s10
+  //              and: s3, s7, s11
+  //              and: s4, s8, s12
+  // Shard group leaders are s1, s2, s3 and s4.
+  // That is, "shard group" is across collections, "shard index" is
+  // within a collection.
+  // All three collections must have the same `replicationFactor`, and
+  // it is guaranteed, that all shards in a group always have the same
+  // leader and the same list of followers.
+  // Note however, that a follower for a shard group can be in sync with
+  // its leader for some of the shards in the group and not for others!
+  // Note that shard group leaders themselves do not appear in this map:
+  containers::FlatHashMap<ShardID, ShardID> _shardToShardGroupLeader;
+  // In the following map we store for each shard group leader the list
+  // of shards in the group.
+  containers::FlatHashMap<ShardID, std::shared_ptr<std::vector<ShardID>>>
+      _shardGroups;
 
   AllViews _plannedViews;     // from Plan/Views/
   AllViews _newPlannedViews;  // views that have been created during `loadPlan`

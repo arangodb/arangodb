@@ -193,7 +193,7 @@ void addTransactionHeaderForShard(transaction::Methods const& trx,
   } else {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "couldnt find shard in shardMap");
+                                   "couldn't find shard in shardMap");
   }
 }
 
@@ -1958,6 +1958,8 @@ Future<OperationResult> getDocumentOnCoordinator(
   // lazily begin transactions on leaders
   bool const isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  bool const allowDirtyReads =
+      trx.state()->hasHint(transaction::Hints::Hint::ALLOW_DIRTY_READS);
 
   // Some stuff to prepare cluster-internal requests:
 
@@ -2042,13 +2044,13 @@ Future<OperationResult> getDocumentOnCoordinator(
           builder.close();
         }
         std::string dest;
-        if (!isManaged && options.allowDirtyReads) {
-          dest = "replica:";
-          headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
-        } else {
-          dest = "shard:";
-        }
+        dest.reserve(6 + it.first.size());
+        dest.append("shard:");
         dest.append(it.first);
+        if (allowDirtyReads) {
+          reqOpts.overrideDestination = trx.state()->whichReplica(it.first);
+          headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
+        }
         futures.emplace_back(network::sendRequestRetry(
             pool, dest, restVerb, std::move(url), std::move(buffer), reqOpts,
             std::move(headers)));
@@ -2117,13 +2119,13 @@ Future<OperationResult> getDocumentOnCoordinator(
       }
 
       std::string dest;
-      if (!isManaged && options.allowDirtyReads) {
-        dest = "replica:";
-        headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
-      } else {
-        dest = "shard:";
-      }
+      dest.reserve(6 + shard.size());
+      dest.append("shard:");
       dest.append(shard);
+      if (allowDirtyReads) {
+        reqOpts.overrideDestination = trx.state()->whichReplica(shard);
+        headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
+      }
 
       futures.emplace_back(network::sendRequestRetry(
           pool, dest, restVerb,
@@ -2140,13 +2142,13 @@ Future<OperationResult> getDocumentOnCoordinator(
       addTransactionHeaderForShard(trx, *shardIds, shard, headers);
 
       std::string dest;
-      if (!isManaged && options.allowDirtyReads) {
-        dest = "replica:";
-        headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
-      } else {
-        dest = "shard:";
-      }
+      dest.reserve(6 + shard.size());
+      dest.append("shard:");
       dest.append(shard);
+      if (allowDirtyReads) {
+        reqOpts.overrideDestination = trx.state()->whichReplica(shard);
+        headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
+      }
 
       futures.emplace_back(network::sendRequestRetry(
           pool, dest, restVerb,

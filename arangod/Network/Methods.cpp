@@ -141,9 +141,6 @@ std::string Response::destinationShard() const {
   if (this->destination.size() > 6 &&
       this->destination.compare(0, 6, "shard:", 6) == 0) {
     return this->destination.substr(6);
-  } else if (this->destination.size() > 8 &&
-      this->destination.compare(0, 8, "replica:", 8) == 0) {
-    return this->destination.substr(8);
   }
   return StaticStrings::Empty;
 }
@@ -301,7 +298,11 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     }
 
     arangodb::network::EndpointSpec spec;
-    auto res = resolveDestination(*pool->config().clusterInfo, dest, spec);
+    auto res =
+        options.overrideDestination.empty()
+            ? resolveDestination(*pool->config().clusterInfo, dest, spec)
+            : resolveDestination(*pool->config().clusterInfo,
+                                 "server:" + options.overrideDestination, spec);
     if (res != TRI_ERROR_NO_ERROR) {
       // We fake a successful request with statusCode 503 and a backend not
       // available error here:
@@ -401,8 +402,12 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     }
 
     arangodb::network::EndpointSpec spec;
-    auto res =
-        resolveDestination(*_pool->config().clusterInfo, _destination, spec);
+    auto res = _options.overrideDestination.empty()
+                   ? resolveDestination(*_pool->config().clusterInfo,
+                                        _destination, spec)
+                   : resolveDestination(
+                         *_pool->config().clusterInfo,
+                         "server:" + _options.overrideDestination, spec);
     if (res != TRI_ERROR_NO_ERROR) {  // ClusterInfo did not work
       // We fake a successful request with statusCode 503 and a backend not
       // available error here:
