@@ -2539,7 +2539,8 @@ const testProjectionsUsage = (testGraph, mode, useEdges) => {
   const query = `
     FOR v,e IN 1 OUTBOUND "${testGraph.vertex('A')}" GRAPH "${testGraph.name()}"
     OPTIONS {order: "${mode}"}
-    RETURN ${useEdges ? "[v, e._key]" : "[v._key, e]"}
+    LET keys = KEYS(${useEdges ? "v" : "e"})
+    RETURN ${useEdges ? "[keys, e._key]" : "[v._key, keys]"}
   `;
   const cursor = db._query(query);
   const memoryOptimized = cursor.getExtra().stats.peakMemoryUsage;

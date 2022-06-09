@@ -36,6 +36,7 @@
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Query.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Containers/HashSet.h"
 #include "Graph/ShortestPathOptions.h"
@@ -54,6 +55,8 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
+
+using VPackHelper = arangodb::basics::VelocyPackHelper;
 
 BaseOptions::LookupInfo::LookupInfo(TRI_edge_direction_e direction)
     : indexCondition(nullptr),
@@ -325,23 +328,7 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info,
     itCollections.next();
   }
 
-  // parallelism is optional
-  read = info.get("parallelism");
-  if (read.isInteger()) {
-    _parallelism = read.getNumber<size_t>();
-  }
-  _refactor = basics::VelocyPackHelper::getBooleanValue(
-      info, StaticStrings::GraphRefactorFlag, false);
-
-  TRI_ASSERT(_produceVertices);
-  read = info.get("produceVertices");
-  if (read.isFalse()) {
-    _produceVertices = false;
-  }
-
-  // read back projections
-  _vertexProjections = Projections::fromVelocyPack(info, "vertexProjections");
-  _edgeProjections = Projections::fromVelocyPack(info, "edgeProjections");
+  parseShardIndependentFlags(info);
 }
 
 BaseOptions::~BaseOptions() = default;
@@ -650,4 +637,23 @@ void BaseOptions::toVelocyPackBase(VPackBuilder& builder) const {
   if (!_edgeProjections.empty()) {
     _edgeProjections.toVelocyPack(builder, "edgeProjections");
   }
+}
+
+void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
+  // parallelism is optional
+  _parallelism = VPackHelper::getNumericValue<size_t>(info, "parallelism", 1);
+
+  TRI_ASSERT(_produceVertices);
+  _produceVertices =
+      VPackHelper::getBooleanValue(info, "produceVertices", true);
+
+  // TODO: For some reason _produceEdges has not been deserialized (skipped
+  // in refactoring to avoid side-effects)
+
+  // read back projections
+  _vertexProjections = Projections::fromVelocyPack(info, "vertexProjections");
+  _edgeProjections = Projections::fromVelocyPack(info, "edgeProjections");
+  
+  _refactor = basics::VelocyPackHelper::getBooleanValue(
+      info, StaticStrings::GraphRefactorFlag, false);
 }

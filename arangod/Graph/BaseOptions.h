@@ -257,6 +257,8 @@ struct BaseOptions {
 
   void toVelocyPackBase(VPackBuilder& builder) const;
 
+  void parseShardIndependentFlags(arangodb::velocypack::Slice info);
+
  protected:
   mutable arangodb::transaction::Methods _trx;
 

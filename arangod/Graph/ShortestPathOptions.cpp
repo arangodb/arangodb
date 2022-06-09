@@ -59,6 +59,7 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
   TRI_ASSERT(type.isString());
   TRI_ASSERT(type.isEqualString("shortestPath"));
 #endif
+  parseShardIndependentFlags(info);
   minDepth = VPackHelper::getNumericValue<uint64_t>(info, "minDepth", 1);
   maxDepth = VPackHelper::getNumericValue<uint64_t>(info, "maxDepth", 1);
 
