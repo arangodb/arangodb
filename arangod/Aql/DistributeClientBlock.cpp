@@ -142,9 +142,7 @@ auto DistributeClientBlock::popJoinedBlock()
       numRows, registerInfos.numberOfOutputRegisters());
   // We create a block, with correct register information
   // but we do not allow outputs to be written.
-  RegIdSet const noOutputRegisters{};
-  OutputAqlItemRow output{newBlock, noOutputRegisters,
-                          registerInfos.registersToKeep(),
+  OutputAqlItemRow output{newBlock, RegIdSet{}, registerInfos.registersToKeep(),
                           registerInfos.registersToClear()};
   while (!output.isFull()) {
     // If the queue is empty our sizing above would not be correct
