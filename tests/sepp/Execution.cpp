@@ -41,6 +41,14 @@ Execution::Execution(Options const& options, std::shared_ptr<Workload> workload)
 
 Execution::~Execution() {
   _state.store(ExecutionState::kStopped);
+  joinThreads();
+}
+
+void Execution::createThreads(Server& server) {
+  _threads = _workload->createThreads(*this, server);
+}
+
+void Execution::joinThreads() {
   for (auto& thread : _threads) {
     if (thread->_thread.joinable()) {
       thread->_thread.join();
@@ -48,27 +56,38 @@ Execution::~Execution() {
   }
 }
 
-void Execution::createThreads(Server& server) {
-  _threads = _workload->createThreads(*this, server);
-}
-
 ExecutionState Execution::state(std::memory_order order) const noexcept {
   return _state.load(order);
 }
 
+void Execution::signalStartingThread() noexcept { _activeThreads.fetch_add(1); }
 void Execution::signalFinishedThread() noexcept { _activeThreads.fetch_sub(1); }
 
+void Execution::advanceStatusIfNotStopped(ExecutionState state) noexcept {
+  ExecutionState value = _state.load();
+  // never move the status backwards
+  while (value != ExecutionState::kStopped &&
+         !_state.compare_exchange_strong(value, state)) {
+    std::this_thread::yield();
+  }
+}
+
+void Execution::stop() noexcept { _state.store(ExecutionState::kStopped); }
+
+bool Execution::stopped() const noexcept {
+  return _state.load(std::memory_order_relaxed) == ExecutionState::kStopped;
+}
+
 Report Execution::run() {
-  _activeThreads.store(_threads.size());
-  _state.store(ExecutionState::kPreparing);
+  advanceStatusIfNotStopped(ExecutionState::kPreparing);
 
   waitUntilAllThreadsAre(ThreadState::kRunning);
 
-  _state.store(ExecutionState::kInitializing);
+  advanceStatusIfNotStopped(ExecutionState::kInitializing);
 
   waitUntilAllThreadsAre(ThreadState::kReady);
 
-  _state.store(ExecutionState::kRunning);
+  advanceStatusIfNotStopped(ExecutionState::kRunning);
 
   auto start = std::chrono::high_resolution_clock::now();
 
@@ -91,22 +110,26 @@ Report Execution::run() {
     // TODO - record samples (memory usage, rocksdb stats, ...)
   }
 
-  _state.store(ExecutionState::kStopped);
+  // set our execution state to stopped
+  stop();
 
   waitUntilAllThreadsAre(ThreadState::kFinished);
 
   std::chrono::duration<double, std::milli> runtime =
       std::chrono::high_resolution_clock::now() - start;
+
+  joinThreads();
+
+  for (auto const& thread : _threads) {
+    if (thread->failed()) {
+      throw std::runtime_error("aborted due to runtime failure");
+    }
+  }
+
   return buildReport(runtime.count());
 }
 
 Report Execution::buildReport(double runtime) {
-  for (auto& thread : _threads) {
-    if (thread->_thread.joinable()) {
-      thread->_thread.join();
-    }
-  }
-
   std::vector<ThreadReport> threadReports;
   threadReports.reserve(_threads.size());
   for (auto& thread : _threads) {
