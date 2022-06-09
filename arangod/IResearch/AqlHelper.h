@@ -256,7 +256,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
  public:
   static aql::AstNode const INVALID_NODE;
 
-  static irs::string_ref const& typeString(ScopedValueType type) noexcept;
+  static irs::string_ref typeString(ScopedValueType type) noexcept;
 
   explicit ScopedAqlValue(aql::AstNode const& node = INVALID_NODE) noexcept {
     reset(node);

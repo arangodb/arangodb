@@ -35,8 +35,8 @@ namespace iresearch {
 
 using namespace ::iresearch;
 
-constexpr byte_type MAX_LEVENSHTEIN_DISTANCE = 4;
-constexpr byte_type MAX_DAMERAU_LEVENSHTEIN_DISTANCE = 3;
+constexpr byte_type kMaxLevenshteinDistance = 4;
+constexpr byte_type kMaxDamerauLevenshteinDistance = 3;
 
 const parametric_description& getParametricDescription(
     byte_type max_distance, bool with_transpositions);

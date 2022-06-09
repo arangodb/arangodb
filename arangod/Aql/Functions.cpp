@@ -1846,7 +1846,7 @@ AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx,
 
   if (maxDistanceValue < 0 ||
       (!withTranspositionsValue &&
-       maxDistanceValue > arangodb::iresearch::MAX_LEVENSHTEIN_DISTANCE)) {
+       maxDistanceValue > arangodb::iresearch::kMaxLevenshteinDistance)) {
     registerInvalidArgumentWarning(ctx, AFN);
     return AqlValue{AqlValueHintNull{}};
   }

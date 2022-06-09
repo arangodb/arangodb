@@ -23,7 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "Basics/DownCast.h"
 
-#include "frozen/map.h"
+#include <frozen/map.h>
 
 // otherwise define conflict between 3rdParty\date\include\date\date.h and
 // 3rdParty\iresearch\core\shared.hpp
@@ -77,8 +77,6 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 
-using namespace arangodb;
-using namespace arangodb::iresearch;
 using namespace std::literals::string_literals;
 
 namespace arangodb::iresearch {
@@ -99,6 +97,9 @@ Result fromBooleanExpansion(irs::boolean_filter* filter,
 }  // namespace arangodb::iresearch
 
 namespace {
+
+using namespace arangodb;
+using namespace arangodb::iresearch;
 
 constexpr char const* GEO_INTERSECT_FUNC = "GEO_INTERSECTS";
 constexpr char const* GEO_DISTANCE_FUNC = "GEO_DISTANCE";
@@ -2874,12 +2875,12 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
     }
   }
 
-  if (!withTranspositions && maxDistance > MAX_LEVENSHTEIN_DISTANCE) {
+  if (!withTranspositions && maxDistance > kMaxLevenshteinDistance) {
     return {TRI_ERROR_BAD_PARAMETER,
             "'"s.append(funcName)
                 .append("' AQL function: max Levenshtein distance must be a "
                         "number in range [0, ")
-                .append(std::to_string(MAX_LEVENSHTEIN_DISTANCE))
+                .append(std::to_string(kMaxLevenshteinDistance))
                 .append("]")
                 .append(errorSuffix)};
   } else if (withTranspositions &&
@@ -4186,12 +4187,12 @@ Result fromExpansion(irs::boolean_filter* filter, QueryContext const& ctx,
   TRI_ASSERT(aql::NODE_TYPE_EXPANSION == node.type);
 
 #ifdef USE_ENTERPRISE
-  return node.hasFlag(aql::FLAG_BOOLEAN_EXPANSION)
-             ? fromBooleanExpansion(filter, ctx, filterCtx, node)
-             : fromExpression(filter, ctx, filterCtx, node);
-#else
-  return fromExpression(filter, ctx, filterCtx, node);
+  if (node.hasFlag(aql::FLAG_BOOLEAN_EXPANSION)) {
+    return fromBooleanExpansion(filter, ctx, filterCtx, node);
+  }
 #endif
+
+  return fromExpression(filter, ctx, filterCtx, node);
 }
 
 }  // namespace
@@ -4210,10 +4211,9 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
         appendExpression(*filter, node, ctx, filterCtx);
         return {};
       }
-    } else {
-      return {TRI_ERROR_NOT_IMPLEMENTED,
-              "ByExpression filter is supported for SEARCH only"};
     }
+    return {TRI_ERROR_NOT_IMPLEMENTED,
+            "ByExpression filter is supported for SEARCH only"};
   }
 
   if (!filter) {

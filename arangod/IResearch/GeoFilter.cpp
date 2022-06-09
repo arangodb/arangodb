@@ -99,8 +99,9 @@ class GeoIterator : public irs::doc_iterator {
     std::get<irs::attribute_ptr<irs::document>>(_attrs) =
         irs::get_mutable<irs::document>(_approx.get());
 
-    std::get<irs::cost>(_attrs).reset(
-        [this]() { return EXTRA_COST * irs::cost::extract(*_approx); });
+    std::get<irs::cost>(_attrs).reset([this]() noexcept {
+      return EXTRA_COST * irs::cost::extract(*_approx);
+    });
 
     if (!order.empty()) {
       auto& score = std::get<irs::score>(_attrs);
