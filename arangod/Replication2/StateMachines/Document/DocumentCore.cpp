@@ -20,20 +20,26 @@
 ///
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
-#pragma once
 
-#include "RestServer/arangod.h"
+#include "DocumentCore.h"
+#include "DocumentStateMachine.h"
 
-namespace arangodb::replication2::replicated_state::document {
+using namespace arangodb::replication2::replicated_state::document;
 
-struct DocumentStateMachineFeature : public ArangodFeature {
-  static constexpr std::string_view name() noexcept {
-    return "DocumentStateMachine";
-  }
-
-  explicit DocumentStateMachineFeature(Server& server);
-  void prepare() override;
-  void start() override;
-};
-
-}  // namespace arangodb::replication2::replicated_state::document
+DocumentCore::DocumentCore(
+    GlobalLogIdentifier gid, DocumentCoreParameters coreParameters,
+    std::shared_ptr<IDocumentStateAgencyReader> agencyReader,
+    std::shared_ptr<IDocumentStateShardHandler> shardHandler,
+    LoggerContext loggerContext)
+    : loggerContext(std::move(loggerContext)),
+      _gid(std::move(gid)),
+      _params(std::move(coreParameters)),
+      _agencyReader(std::move(agencyReader)),
+      _shardHandler(std::move(shardHandler)) {
+  auto collectionProperties =
+      _agencyReader->getCollectionInfo(_gid.database, _params.collectionId);
+  auto result = _shardHandler->createShard(_gid, _params.collectionId,
+                                           std::move(collectionProperties));
+  TRI_ASSERT(result.ok());
+  LOG_CTX("b7e0d", TRACE, loggerContext) << "Created shard " << result.get();
+}

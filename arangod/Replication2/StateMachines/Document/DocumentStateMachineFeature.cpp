@@ -21,17 +21,41 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ServerState.h"
+#include "Cluster/MaintenanceFeature.h"
+
+#include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
+
 #include "DocumentStateMachineFeature.h"
 #include "DocumentStateMachine.h"
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 
 using namespace arangodb::replication2::replicated_state::document;
 
+void DocumentStateMachineFeature::prepare() {
+  bool const enabled = ServerState::instance()->isDBServer();
+  setEnabled(enabled);
+}
+
 void DocumentStateMachineFeature::start() {
-  auto& feature = server().getFeature<ReplicatedStateAppFeature>();
-  feature.registerStateType<DocumentState>(std::string{DocumentState::NAME});
+  auto& replicatedStateFeature =
+      server().getFeature<ReplicatedStateAppFeature>();
+  auto& clusterFeature = server().getFeature<ClusterFeature>();
+  auto& maintenanceFeature = server().getFeature<MaintenanceFeature>();
+
+  replicatedStateFeature.registerStateType<DocumentState>(
+      std::string{DocumentState::NAME},
+      std::make_shared<DocumentStateAgencyCacheReader>(
+          clusterFeature.agencyCache()),
+      std::make_shared<DocumentStateShardHandler>(maintenanceFeature));
 }
 
 DocumentStateMachineFeature::DocumentStateMachineFeature(Server& server)
-    : ArangodFeature{server, *this} {}
+    : ArangodFeature{server, *this} {
+  setOptional(true);
+  startsAfter<ClusterFeature>();
+  startsAfter<MaintenanceFeature>();
+  startsAfter<ReplicatedStateAppFeature>();
+  onlyEnabledWith<ReplicatedStateAppFeature>();
+}

@@ -26,6 +26,10 @@
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
 
+#include "DocumentStateStrategy.h"
+
+#include <memory>
+
 namespace arangodb::replication2::replicated_state {
 /**
  * The Document State Machine is used as a middle-man between a shard and a
@@ -54,7 +58,6 @@ struct DocumentState {
 
 /* Empty for now */
 struct DocumentLogEntry {};
-struct DocumentCore {};
 
 struct DocumentCoreParameters {
   std::string collectionId;
@@ -96,12 +99,23 @@ struct DocumentFollowerState
 };
 
 struct DocumentFactory {
+  explicit DocumentFactory(
+      std::shared_ptr<IDocumentStateAgencyReader> agencyReader,
+      std::shared_ptr<IDocumentStateShardHandler> shardHandler);
+
   auto constructFollower(std::unique_ptr<DocumentCore> core)
       -> std::shared_ptr<DocumentFollowerState>;
   auto constructLeader(std::unique_ptr<DocumentCore> core)
       -> std::shared_ptr<DocumentLeaderState>;
-  auto constructCore(GlobalLogIdentifier const&, DocumentCoreParameters)
+  auto constructCore(GlobalLogIdentifier, DocumentCoreParameters)
       -> std::unique_ptr<DocumentCore>;
+
+  auto getAgencyReader() -> std::shared_ptr<IDocumentStateAgencyReader>;
+  auto getShardHandler() -> std::shared_ptr<IDocumentStateShardHandler>;
+
+ private:
+  std::shared_ptr<IDocumentStateAgencyReader> const _agencyReader;
+  std::shared_ptr<IDocumentStateShardHandler> const _shardHandler;
 };
 }  // namespace document
 
