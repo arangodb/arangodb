@@ -2884,12 +2884,12 @@ Result getLevenshteinArguments(char const* funcName, bool isFilter,
                 .append("]")
                 .append(errorSuffix)};
   } else if (withTranspositions &&
-             maxDistance > MAX_DAMERAU_LEVENSHTEIN_DISTANCE) {
+             maxDistance > kMaxDamerauLevenshteinDistance) {
     return {TRI_ERROR_BAD_PARAMETER,
             "'"s.append(funcName)
                 .append("' AQL function: max Damerau-Levenshtein distance must "
                         "be a number in range [0, ")
-                .append(std::to_string(MAX_DAMERAU_LEVENSHTEIN_DISTANCE))
+                .append(std::to_string(kMaxDamerauLevenshteinDistance))
                 .append("]")
                 .append(errorSuffix)};
   }
