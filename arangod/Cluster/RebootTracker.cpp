@@ -41,14 +41,10 @@ void safeInvoke(RebootTracker::DescriptedCallback& callback) noexcept {
     LOG_TOPIC("afdfd", DEBUG, Logger::CLUSTER)
         << "Executing callback " << callback.description;
     callback.callback();
-  } catch (basics::Exception const& ex) {
-    LOG_TOPIC("88a63", INFO, Logger::CLUSTER)
-        << "Failed to execute reboot callback: " << callback.description << ": "
-        << "[" << ex.code() << "] " << ex.what();
-  } catch (std::exception const& ex) {
+  } catch (std::exception const& e) {
     LOG_TOPIC("3d935", INFO, Logger::CLUSTER)
         << "Failed to execute reboot callback: " << callback.description << ": "
-        << ex.what();
+        << e.what();
   } catch (...) {
     LOG_TOPIC("f7427", INFO, Logger::CLUSTER)
         << "Failed to execute reboot callback: " << callback.description << ": "
@@ -168,18 +164,18 @@ void RebootTracker::queueCallbacks(std::string_view serverId, RebootId to) {
   };
   auto& reboots = it->second;
   TRI_ASSERT(!reboots.empty());
-  if (to > reboots.crbegin()->first) {
+  if (reboots.crbegin()->first < to) {
     schedule(std::move(it->second));
     _callbacks.erase(it);
     return;
   }
   std::vector<RebootIds::node_type> callbacks;
   for (auto rbIt = reboots.begin(); rbIt->first < to;) {
-    TRI_ASSERT(rbIt != reboots.end());
     callbacks.push_back(reboots.extract(rbIt++));
+    TRI_ASSERT(rbIt != reboots.end());
   }
-  TRI_ASSERT(!reboots.empty());
   schedule(std::move(callbacks));
+  TRI_ASSERT(!reboots.empty());
 }
 
 void RebootTracker::queueCallback(DescriptedCallback&& callback) noexcept {
