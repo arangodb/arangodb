@@ -548,7 +548,7 @@ struct PrototypeStateMethodsCoordinator final
 
  private:
   [[nodiscard]] auto getLogLeader(LogId id) const -> ServerID {
-    auto leader = _clusterInfo.getReplicatedLogLeader(_vocbase.name(), id);
+    auto leader = _clusterInfo.getReplicatedLogLeader(id);
     if (leader.fail()) {
       if (leader.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED)) {
         throw ParticipantResignedException(leader.result(), ADB_HERE);

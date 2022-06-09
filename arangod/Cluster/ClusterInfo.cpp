@@ -917,13 +917,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
 }
 
 struct ClusterInfo::NewStuffByDatabase {
-  using ReplicatedLogsMap = containers::FlatHashMap<
-      replication2::LogId,
-      std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
   ReplicatedLogsMap replicatedLogs;
-  using CollectionGroupMap = containers::FlatHashMap<
-      replication2::agency::CollectionGroupId,
-      std::shared_ptr<replication2::agency::CollectionGroup const>>;
   CollectionGroupMap collectionGroups;
 };
 
@@ -1559,6 +1553,7 @@ void ClusterInfo::loadPlan() {
                                     std::move(databaseCollections));
   }
 
+  decltype(_replicatedLogs) newReplicatedLogs;
   // And now for replicated logs
   for (auto const& [databaseName, query] : changeSet.dbs) {
     if (databaseName.empty()) {
@@ -1574,7 +1569,7 @@ void ClusterInfo::loadPlan() {
 
       auto logsSlice = query->slice()[0].get(replicatedLogsPaths);
       if (!logsSlice.isNone()) {
-        NewStuffByDatabase::ReplicatedLogsMap newLogs;
+        ReplicatedLogsMap newLogs;
         for (auto const& [idString, logSlice] :
              VPackObjectIterator(logsSlice)) {
           auto spec =
@@ -1582,6 +1577,7 @@ void ClusterInfo::loadPlan() {
                   velocypack::deserialize<
                       replication2::agency::LogPlanSpecification>(logSlice));
           newLogs.emplace(spec->id, spec);
+          newReplicatedLogs.emplace(spec->id, std::move(spec));
         }
         stuff->replicatedLogs = std::move(newLogs);
       }
@@ -1592,12 +1588,12 @@ void ClusterInfo::loadPlan() {
           AgencyCommHelper::path(), "Plan", "CollectionGroups", databaseName};
       auto groupsSlice = query->slice()[0].get(collectionGroupsPath);
       if (!groupsSlice.isNone()) {
-        NewStuffByDatabase::CollectionGroupMap groups;
+        CollectionGroupMap groups;
         for (auto const& [idString, groupSlice] :
              VPackObjectIterator(groupsSlice)) {
           auto spec = std::make_shared<replication2::agency::CollectionGroup>(
               groupSlice);
-          groups.emplace(spec->id, spec);
+          groups.emplace(spec->id, std::move(spec));
         }
         stuff->collectionGroups = std::move(groups);
       }
@@ -1659,6 +1655,7 @@ void ClusterInfo::loadPlan() {
   }
 
   _newStuffByDatabase.swap(newStuffByDatabase);
+  _replicatedLogs.swap(newReplicatedLogs);
 
   if (planValid) {
     _planProt.isValid = true;
@@ -6116,22 +6113,16 @@ auto ClusterInfo::getReplicatedLogsParticipants(std::string_view database) const
   return replicatedLogs;
 }
 
-auto ClusterInfo::getReplicatedLogLeader(std::string_view database,
-                                         replication2::LogId id) const
+auto ClusterInfo::getReplicatedLogLeader(replication2::LogId id) const
     -> ResultT<ServerID> {
   READ_LOCKER(readLocker, _planProt.lock);
 
-  auto it = _newStuffByDatabase.find(database);
-  if (it == std::end(_newStuffByDatabase)) {
-    return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
-  }
-
-  auto it2 = it->second->replicatedLogs.find(id);
-  if (it2 == std::end(it->second->replicatedLogs)) {
+  auto it = _replicatedLogs.find(id);
+  if (it == std::end(_replicatedLogs)) {
     return Result::fmt(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
   }
 
-  if (auto const& term = it2->second->currentTerm) {
+  if (auto const& term = it->second->currentTerm) {
     if (auto const& leader = term->leader) {
       return leader->serverId;
     }
@@ -6973,23 +6964,18 @@ void ClusterInfo::triggerWaiting(
 }
 
 auto arangodb::ClusterInfo::getReplicatedLogPlanSpecification(
-    std::string_view database, replication2::LogId id) const
+    replication2::LogId id) const
     -> ResultT<
         std::shared_ptr<replication2::agency::LogPlanSpecification const>> {
   READ_LOCKER(readLocker, _planProt.lock);
 
-  auto it = _newStuffByDatabase.find(database);
-  if (it == std::end(_newStuffByDatabase)) {
-    return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND};
-  }
-
-  auto it2 = it->second->replicatedLogs.find(id);
-  if (it2 == std::end(it->second->replicatedLogs)) {
+  auto it = _replicatedLogs.find(id);
+  if (it == std::end(_replicatedLogs)) {
     return Result::fmt(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND, id);
   }
 
-  TRI_ASSERT(it2->second != nullptr);
-  return it2->second;
+  TRI_ASSERT(it->second != nullptr);
+  return it->second;
 }
 
 AnalyzerModificationTransaction::AnalyzerModificationTransaction(
