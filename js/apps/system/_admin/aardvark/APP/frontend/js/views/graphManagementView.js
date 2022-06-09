@@ -12,6 +12,8 @@
     eCollList: [],
     removedECollList: [],
     readOnly: false,
+    smartGraphName: "SmartGraph",
+    enterpriseGraphName: "EnterpriseGraph",
 
     dropdownVisible: false,
 
@@ -43,8 +45,8 @@
         $('#modal-dialog .modal-footer .button-success').css('display', 'initial');
       }
 
-      if (id === 'smartGraph') {
-        this.setSmartGraphRows(true);
+      if (id === 'smartGraph' || id === 'enterpriseGraph') {
+        this.setSmartGraphRows(true, id);
       } else if (id === 'satelliteGraph') {
         this.setSatelliteGraphRows(true);
       } else if (id === 'createGraph') {
@@ -71,6 +73,11 @@
       'row_new-replicationFactor',
       'row_new-writeConcern',
       'row_hybridSatelliteCollections',
+      'row_new-isDisjoint'
+    ],
+
+    nonNeededEnterpriseGraphRows: [
+      'row_new-smartGraphAttribute',
       'row_new-isDisjoint'
     ],
 
@@ -125,15 +132,30 @@
       });
     },
 
-    setSmartGraphRows: function (cache) {
+    setSmartGraphRows: function (cache, id) {
       $('#createGraph').addClass('active');
-      this.setCacheModeState(cache);
+      if (cache) {
+        this.setCacheModeState(cache);
+      }
 
       this.hideGeneralGraphRows();
       this.checkSmartGraphOneShardInfoHint();
       _.each(this.neededSmartGraphRows, function (rowId) {
         $('#' + rowId).show();
       });
+
+      // Extra rule to identify whether we need to display smartGraphAttribute field
+      if (id === 'enterpriseGraph') {
+        // In enterpriseGraph case is not allowed to be set
+        _.each(this.nonNeededEnterpriseGraphRows, function (rowId) {
+          $('#' + rowId).hide();
+        });
+      } else if (id === 'smartGraph') {
+        // In smartGraph case it must be set
+        _.each(this.nonNeededEnterpriseGraphRows, function (rowId) {
+          $('#' + rowId).show();
+        });
+      }
     },
 
     hideSmartGraphRows: function () {
@@ -229,6 +251,8 @@
         } else {
           this.createEditGraphModal();
           // hide tab entries
+          // no EnterpriseGraphs in single server mode
+          $('#tab-enterpriseGraph').parent().remove();
           // no SmartGraphs in single server mode
           $('#tab-smartGraph').parent().remove();
           // no SatelliteGraphs in single server mode
@@ -493,7 +517,10 @@
       var map = this.calculateEdgeDefinitionMap();
       var id;
 
-      if ($('#tab-smartGraph').parent().hasClass('active')) {
+      const smartGraphActive = $('#tab-smartGraph').parent().hasClass('active');
+      const enterpriseGraphActive = $('#tab-enterpriseGraph').parent().hasClass('active');
+
+      if (smartGraphActive || enterpriseGraphActive) {
         if (e.added) {
           if (this.eCollList.indexOf(e.added.id) === -1 && this.removedECollList.indexOf(e.added.id) !== -1) {
             id = e.currentTarget.id.split('row_newEdgeDefinitions')[1];
@@ -782,29 +809,43 @@
         orphanCollections: vertexCollections
       };
 
-      // SmartGraph enterprise area
-      if ($('#tab-smartGraph').parent().hasClass('active')) {
-        if ($('#new-numberOfShards').val() === '' || $('#new-smartGraphAttribute').val() === '') {
-          arangoHelper.arangoError('SmartGraph creation', 'numberOfShards and/or smartGraphAttribute not set!');
-          return;
-        } else {
-          newCollectionObject.isSmart = true;
-          newCollectionObject.options = {
-            numberOfShards: parseInt($('#new-numberOfShards').val()),
-            smartGraphAttribute: $('#new-smartGraphAttribute').val(),
-            replicationFactor: parseInt($('#new-replicationFactor').val()),
-            minReplicationFactor: parseInt($('#new-writeConcern').val()),
-            isDisjoint: $('#new-isDisjoint').is(':checked')
-          };
+      const smartGraphActive = $('#tab-smartGraph').parent().hasClass('active');
+      const enterpriseGraphActive = $('#tab-enterpriseGraph').parent().hasClass('active');
+      const graphTypeName = smartGraphActive ? this.smartGraphName : this.enterpriseGraphName;
 
-          let satellites = $('#s2id_hybridSatelliteCollections').select2('data');
-          if (satellites.length > 0) {
-            let satelliteOptions = [];
-            _.forEach(satellites, function(sat) {
-              satelliteOptions.push(sat.id);
-            });
-            newCollectionObject.options.satellites = satelliteOptions;
+      // SmartGraph && EnterpriseGraph area
+      if (smartGraphActive || enterpriseGraphActive) {
+        if ($('#new-numberOfShards').val() === '') {
+          arangoHelper.arangoError(`${graphTypeName} creation`, 'numberOfShards not set!');
+        }
+        if (smartGraphActive) {
+          if ($('#new-smartGraphAttribute').val() === '') {
+            // Only needs to be set during SmartGraph creation
+            arangoHelper.arangoError(`${graphTypeName} creation`, 'smartGraphAttribute not set!');
+            return;
           }
+        }
+
+        newCollectionObject.isSmart = true;
+        newCollectionObject.options = {
+          numberOfShards: parseInt($('#new-numberOfShards').val()),
+          replicationFactor: parseInt($('#new-replicationFactor').val()),
+          minReplicationFactor: parseInt($('#new-writeConcern').val()),
+          isDisjoint: $('#new-isDisjoint').is(':checked'),
+          isSmart: true
+        };
+        if (smartGraphActive) {
+          // Only needs to be set during SmartGraph creation
+          newCollectionObject.smartGraphAttribute = $('#new-smartGraphAttribute').val();
+        }
+
+        let satellites = $('#s2id_hybridSatelliteCollections').select2('data');
+        if (satellites.length > 0) {
+          let satelliteOptions = [];
+          _.forEach(satellites, function (sat) {
+            satelliteOptions.push(sat.id);
+          });
+          newCollectionObject.options.satellites = satelliteOptions;
         }
       } else if ($('#tab-satelliteGraph').parent().hasClass('active')) {
         // SatelliteGraph enterprise area
@@ -896,8 +937,18 @@
 
       // edit graph section
       if (graph) {
+        let isEnterpriseGraph = false;
+
         if (isSmart) {
-          title = 'Edit SmartGraph';
+          if (!graph.get("smartGraphAttribute")) {
+            isEnterpriseGraph = true;
+          }
+          if (!isEnterpriseGraph) {
+            title = 'Edit SmartGraph';
+          } else {
+            // If smartGraphAttribute not available, it must be an EnterpriseGraph
+            title = 'Edit EnterpriseGraph';
+          }
         } else if (isSatellite) {
           title = 'Edit SatelliteGraph';
         } else {
@@ -920,7 +971,7 @@
           )
         );
 
-        if (isSmart) {
+        if (isSmart && !isEnterpriseGraph) {
           tableContent.push(
             window.modalView.createReadOnlyEntry(
               'smartGraphAttribute',
@@ -1266,6 +1317,14 @@
         // hide them by default, as we're showing general graph as default
         // satellite does not need to appear here as it has no additional input fields
         self.hideSmartGraphRows();
+      } else if ($('#tab-enterpriseGraph').parent().hasClass('active')) {
+        // In enterpriseGraph case is not allowed to be set
+        // Special stunt here, as we need to generate that row to be generally available,
+        // but we need to hide it as "enterpriseGraphs" is the new default (if we do have
+        // an enterprise instance running).
+        self.setSmartGraphRows(null, 'enterpriseGraph');
+      } else if ($('#tab-smartGraph').parent().hasClass('active')) {
+        self.setSmartGraphRows(null, 'smartGraph');
       }
 
       if (graph) {

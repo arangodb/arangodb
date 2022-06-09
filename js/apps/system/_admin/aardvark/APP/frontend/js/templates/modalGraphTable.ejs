@@ -1,7 +1,19 @@
 
   <ul id="graphTab" class="nav nav-tabs">
-    <li class="active"><a href="#createGraph" data-toggle="tab" id="tab-createGraph">Graph</a></li>
+    <%
+      let enterpriseGraphClass = '';
+      let graphClass = '';
+      if (frontendConfig.isEnterprise) {
+        // In case we do have an Enterprise intance up and running, EnterpriseGraphs will be our default ...
+        enterpriseGraphClass = "active"
+      } else {
+        // ... otherwise, general graphs will be.
+        graphClass = "active";
+      }
+    %>
+    <li class="<%=enterpriseGraphClass%>"><a href="#enterpriseGraph" data-toggle="tab" id="tab-enterpriseGraph">EnterpriseGraph</a></li>
     <li><a href="#smartGraph" data-toggle="tab" id="tab-smartGraph">SmartGraph</a></li>
+    <li class="<%=graphClass%>"><a href="#createGraph" data-toggle="tab" id="tab-createGraph">Graph</a></li>
     <li><a href="#satelliteGraph" data-toggle="tab" id="tab-satelliteGraph">SatelliteGraph</a></li>
     <li><a href="#exampleGraphs" data-toggle="tab" id="tab-exampleGraphs">Examples</a></li>
   </ul>
@@ -67,7 +79,14 @@
 
     <div class="active tab-pane" id="createGraph">
 
-    <div id="smartGraphInfo" class="infoMessage" style="display: none;">
+    <%
+      let smartGraphInfoStyle = "";
+      if (!frontendConfig.isEnterprise) {
+        // In case it we do not have a Enterprise instance, we must hide this by default.
+        smartGraphInfoStyle = "display: none;"
+      }
+    %>
+    <div id="smartGraphInfo" class="infoMessage" style="<%=smartGraphInfoStyle%>">
       <span>SmartGraph Info: Only use non-existent collection names (vertices/edges).</span>
     </div>
 
