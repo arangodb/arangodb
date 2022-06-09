@@ -23,8 +23,8 @@
 
 #include "ExecutionThread.h"
 
-#include <iostream>
 #include <filesystem>
+#include <iostream>
 #include <memory>
 #include <thread>
 
@@ -38,14 +38,22 @@ ExecutionThread::ExecutionThread(Execution& exec, Server& server)
       _thread(&ExecutionThread::threadFunc, this) {}
 
 void ExecutionThread::threadFunc() {
+  _execution.signalStartingThread();
   waitUntilAllThreadsAreStarted();
+
   try {
     doRun();
-  } catch (std::exception& e) {
+  } catch (std::exception const& e) {
     std::cerr << "Thread " << std::this_thread::get_id()
               << " failed: " << e.what() << std::endl;
+    // signal the executor to stop
+    _execution.stop();
+    // note our own failure
+    _failed = true;
   }
+
   _state.store(ThreadState::kFinished);
+  _execution.signalFinishedThread();
 }
 
 void ExecutionThread::doRun() {
@@ -70,7 +78,6 @@ void ExecutionThread::doRun() {
   }
 
   _runtime = std::chrono::high_resolution_clock::now() - start;
-  _execution.signalFinishedThread();
 }
 
 void ExecutionThread::waitUntilAllThreadsAreStarted() const {
