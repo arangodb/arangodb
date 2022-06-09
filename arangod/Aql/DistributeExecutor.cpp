@@ -29,10 +29,9 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/RegisterPlan.h"
-#include "Aql/ShadowAqlItemRow.h"
 #include "Aql/SkipResult.h"
 #include "Basics/StaticStrings.h"
-#include "Transaction/Helpers.h"
+#include "Containers/FlatHashMap.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Slice.h>
@@ -115,19 +114,19 @@ DistributeExecutor::DistributeExecutor(DistributeExecutorInfos const& infos)
 auto DistributeExecutor::distributeBlock(
     SharedAqlItemBlockPtr const& block, SkipResult skipped,
     std::unordered_map<std::string, ClientBlockData>& blockMap) -> void {
-  std::unordered_map<std::string, std::vector<std::size_t>> choosenMap;
-  choosenMap.reserve(blockMap.size());
-
   if (block != nullptr) {
+    containers::FlatHashMap<std::string, std::vector<std::size_t>> chosenMap;
+    chosenMap.reserve(blockMap.size());
+
     for (size_t i = 0; i < block->numRows(); ++i) {
       if (block->isShadowRow(i)) {
         // ShadowRows need to be added to all Clients
         for (auto const& [key, value] : blockMap) {
-          choosenMap[key].emplace_back(i);
+          chosenMap[key].emplace_back(i);
         }
       } else {
         // check first input register
-        AqlValue val = InputAqlItemRow{block, i}.getValue(_infos.registerId());
+        AqlValue val = block->getValue(i, _infos.registerId());
 
         VPackSlice input = val.slice();  // will throw when wrong type
         if (input.isNone()) {
@@ -140,13 +139,13 @@ auto DistributeExecutor::distributeBlock(
               "DistributeExecutor requires an object as input");
         }
         // NONE is ignored.
-        // Object is processd
+        // Object is processed
         // All others throw.
         TRI_ASSERT(input.isObject());
         if (_infos.shouldDistributeToAll(input)) {
           // This input should be added to all clients
           for (auto const& [key, value] : blockMap) {
-            choosenMap[key].emplace_back(i);
+            chosenMap[key].emplace_back(i);
           }
         } else {
           auto client = getClient(input);
@@ -158,17 +157,17 @@ auto DistributeExecutor::distributeBlock(
                   TRI_ERROR_INTERNAL, std::string("unexpected client id '") +
                                           client + "' found in blockMap");
             }
-            choosenMap[client].emplace_back(i);
+            chosenMap[client].emplace_back(i);
           }
         }
       }
     }
 
     // We cannot have more in choosen than we have blocks
-    TRI_ASSERT(choosenMap.size() <= blockMap.size());
+    TRI_ASSERT(chosenMap.size() <= blockMap.size());
     for (auto& [key, target] : blockMap) {
-      auto value = choosenMap.find(key);
-      if (value != choosenMap.end()) {
+      auto value = chosenMap.find(key);
+      if (value != chosenMap.end()) {
         // we have data in this block
         target.addBlock(skipped, block, std::move(value->second));
       } else {

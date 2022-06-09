@@ -103,12 +103,6 @@ class DistributeExecutor {
   auto getClient(velocypack::Slice input) const -> std::string;
 
   DistributeExecutorInfos const& _infos;
-
-  // a reusable Builder object for building _key values
-  arangodb::velocypack::Builder _keyBuilder;
-
-  // a reusable Builder object for building document objects
-  arangodb::velocypack::Builder _objectBuilder;
 };
 
 /**
