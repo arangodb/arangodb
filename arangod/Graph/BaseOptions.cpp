@@ -653,7 +653,7 @@ void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
   // read back projections
   _vertexProjections = Projections::fromVelocyPack(info, "vertexProjections");
   _edgeProjections = Projections::fromVelocyPack(info, "edgeProjections");
-  
+
   _refactor = basics::VelocyPackHelper::getBooleanValue(
       info, StaticStrings::GraphRefactorFlag, false);
 }
