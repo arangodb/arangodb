@@ -150,6 +150,7 @@ resilience_repair full cluster weight=500 -- --dumpAgencyOnError true
 resilience_sharddist full cluster weight=500 -- --dumpAgencyOnError true
 resilience_transactions full cluster weight=500 -- --dumpAgencyOnError true
 shell_client_aql full cluster weight=2500 -- --dumpAgencyOnError true
+wal_cleanup full cluster weight=2500 -- --dumpAgencyOnError true
 
 # Common Full Tests
 communication full weight=1000
