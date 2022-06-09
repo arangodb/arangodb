@@ -119,6 +119,7 @@ const G6JsGraph = () => {
   const [vertexCollections, setVertexCollections] = useState([]);
   const [vertexCollectionsColors, setVertexCollectionsColors] = useState();
   const [nodesSizeMinMax, setNodesSizeMinMax] = useState();
+  const [connectionsMinMax, setConnectionsMinMax] = useState();
   const [edgeCollections, setEdgeCollections] = useState([]);
   const [edgeModelToAdd, setEdgeModelToAdd] = useState([]);
   const [nodeToEdit, setNodeToEdit] = useState({});
@@ -689,7 +690,9 @@ const G6JsGraph = () => {
         console.log("Current nodes: ", graphData.nodes);
         console.log("Received nodes: ", data.nodes);
         console.log("Current edges: ", graphData.edges);
+        console.log("Whatever there is");
         console.log("Received edges: ", data.edges);
+        console.log("Received settings: ", data.settings);
         
         const mergedNodes = graphData.nodes.concat(data.nodes);
         const mergedEdges = graphData.edges.concat(data.edges);
@@ -708,6 +711,57 @@ const G6JsGraph = () => {
         
         if(urlParameters.nodeSize) {
           setNodesSizeMinMax(data.settings.nodesSizeMinMax);
+        }
+        if(urlParameters.nodeSizeByEdges) {
+
+          console.error("connectionsMinMax currently is: ", connectionsMinMax);
+
+          if(typeof connectionsMinMax == "undefined") {
+            console.error("connectionsMinMax is undefined");
+            console.log("The new connectionsMinMax are: ", data.settings.connectionsMinMax);
+            setConnectionsMinMax(data.settings.connectionsMinMax);
+          } else {
+            if(data.settings.connectionsMinMax[0] < connectionsMinMax[0]) {
+              console.error("(HERE) The minimum of edgescount changed from " + connectionsMinMax[0] + " to " + data.settings.connectionsMinMax[0]);
+              setConnectionsMinMax([data.settings.connectionsMinMax[0], connectionsMinMax[1]]);
+            }
+  
+            if(data.settings.connectionsMinMax[1] > connectionsMinMax[1]) {
+              console.error("(HERE) The maximum of edgescount changed from " + connectionsMinMax[1] + " to " + data.settings.connectionsMinMax[1]);
+              setConnectionsMinMax([connectionsMinMax[0], data.settings.connectionsMinMax[1]]);
+            }
+          }
+
+          /*
+          ////////////
+          if(typeof connectionsMinMax == "undefined") {
+            console.error("connectionsMinMax is undefined");
+            setConnectionsMinMax(newGraphData.settings.connectionsMinMax);
+          }
+          
+          if(typeof connectionsMinMax != "undefined") {
+            console.log("(HERE) newGraphData.settings.connectionsMinMax[0]: ", newGraphData.settings.connectionsMinMax[0]);
+            console.log("(HERE) connectionsMinMax[0]: ", connectionsMinMax[0]);
+            if(newGraphData.settings.connectionsMinMax[0] < connectionsMinMax[0]) {
+              console.error("(HERE) The minimum of edgescount changed from " + connectionsMinMax[0] + " to " + newGraphData.settings.connectionsMinMax[0]);
+              setConnectionsMinMax([newGraphData.settings.connectionsMinMax[0], connectionsMinMax[1]]);
+            }
+          }
+          if(typeof connectionsMinMax != "undefined") {
+            console.log("(HERE) newGraphData.settings.connectionsMinMax[1]: ", newGraphData.settings.connectionsMinMax[1]);
+            console.log("(HERE) connectionsMinMax[1]: ", connectionsMinMax[1]);
+            if(newGraphData.settings.connectionsMinMax[1] > connectionsMinMax[1]) {
+              console.error("(HERE) The maximum of edgescount changed from " + connectionsMinMax[1] + " to " + newGraphData.settings.connectionsMinMax[1]);
+              setConnectionsMinMax([connectionsMinMax[0], newGraphData.settings.connectionsMinMax[1]]);
+            }
+          }
+          //////////////
+
+          if(data.settings.connectionsMinMax[0]) {
+            console.log("FOUND THE PLACE (data.settings.connectionsMinMax[0]): ", data.settings.connectionsMinMax[0]);
+          }
+          */
+          //setConnectionsMinMax(data.settings.connectionsMinMax);
         }
         setGraphData(newGraphData);
       })
@@ -885,6 +939,9 @@ const G6JsGraph = () => {
           console.log("nodesColorAttributes: ", nodesColorAttributes)
           }}>Print nodesColorAttributes</button>
         
+        <button onClick={() => {
+          console.log("connectionsMinMax: ", connectionsMinMax)
+          }}>Print connectionsMinMax</button>
         
         */
         
@@ -1043,6 +1100,35 @@ const G6JsGraph = () => {
                 if(newGraphData.settings.nodesSizeMinMax) {
                   setNodesSizeMinMax(newGraphData.settings.nodesSizeMinMax);
                 }
+                if(newGraphData.settings.connectionsMinMax) {
+                  setConnectionsMinMax(newGraphData.settings.connectionsMinMax);
+
+                  /*
+                  if(typeof connectionsMinMax == "undefined") {
+                    console.error("connectionsMinMax is undefined");
+                    setConnectionsMinMax(newGraphData.settings.connectionsMinMax);
+                  }
+                  
+                  if(typeof connectionsMinMax != "undefined") {
+                    console.log("(HERE) newGraphData.settings.connectionsMinMax[0]: ", newGraphData.settings.connectionsMinMax[0]);
+                    console.log("(HERE) connectionsMinMax[0]: ", connectionsMinMax[0]);
+                    if(newGraphData.settings.connectionsMinMax[0] < connectionsMinMax[0]) {
+                      console.error("(HERE) The minimum of edgescount changed from " + connectionsMinMax[0] + " to " + newGraphData.settings.connectionsMinMax[0]);
+                      setConnectionsMinMax([newGraphData.settings.connectionsMinMax[0], connectionsMinMax[1]]);
+                    }
+                  }
+                  if(typeof connectionsMinMax != "undefined") {
+                    console.log("(HERE) newGraphData.settings.connectionsMinMax[1]: ", newGraphData.settings.connectionsMinMax[1]);
+                    console.log("(HERE) connectionsMinMax[1]: ", connectionsMinMax[1]);
+                    if(newGraphData.settings.connectionsMinMax[1] > connectionsMinMax[1]) {
+                      console.error("(HERE) The maximum of edgescount changed from " + connectionsMinMax[1] + " to " + newGraphData.settings.connectionsMinMax[1]);
+                      setConnectionsMinMax([connectionsMinMax[0], newGraphData.settings.connectionsMinMax[1]]);
+                    }
+                  }
+                  */
+                  
+                  //setConnectionsMinMax(newGraphData.settings.connectionsMinMax);
+                }
                 if(newGraphData.settings.edgesColorAttributes) {
                   setEdgesColorAttributes(newGraphData.settings.edgesColorAttributes);
                   console.log("newGraphData.settings.edgesColorAttributes: ", newGraphData.settings.edgesColorAttributes);
@@ -1059,6 +1145,7 @@ const G6JsGraph = () => {
               edgeColorAttribute={urlParameters.edgeColorAttribute}
               edgeColorByCollection={urlParameters.edgeColorByCollection}
               nodesSizeMinMax={nodesSizeMinMax}
+              connectionsMinMax={connectionsMinMax}
         />
         <AttributesInfo attributes={lookedUpData} />
         <ButtonScrollTo />

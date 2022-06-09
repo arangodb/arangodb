@@ -1249,6 +1249,8 @@ authRouter.get('/g6graph/:name', function (req, res) {
     }
     var nodesSizeValues = [];
     var nodesSizeMinMax = [];
+    var connectionsCounts = [];
+    var connectionsMinMax = [];
 
     var nodeNames = {};
     var edgesObj = {};
@@ -1304,6 +1306,7 @@ authRouter.get('/g6graph/:name', function (req, res) {
                 nodeEdgesCount[edge._to] += 1;
               }
             }
+            //connectionsCounts.push(nodeEdgesCount[node.id]);
           }
 
           /*
@@ -1532,7 +1535,11 @@ authRouter.get('/g6graph/:name', function (req, res) {
     _.each(nodesObj, function (node) {
       if (config.nodeSizeByEdges === 'true') {
         // + 10 visual adjustment sigma
-        node.size = nodeEdgesCount[node.id] + 10;
+
+        // original code
+        //node.size = nodeEdgesCount[node.id] + 10;
+        node.nodeEdgesCount = nodeEdgesCount[node.id];
+        connectionsCounts.push(nodeEdgesCount[node.id]);
 
         // if a node without edges is found, use def. size 10
         if (Number.isNaN(node.size)) {
@@ -1562,7 +1569,9 @@ authRouter.get('/g6graph/:name', function (req, res) {
         nodesColorAttributes: nodesColorAttributes,
         edgesColorAttributes: edgesColorAttributes,
         nodesSizeValues: nodesSizeValues,
-        nodesSizeMinMax: [Math.min(...nodesSizeValues), Math.max(...nodesSizeValues)]
+        nodesSizeMinMax: [Math.min(...nodesSizeValues), Math.max(...nodesSizeValues)],
+        connectionsCounts: connectionsCounts,
+        connectionsMinMax: [Math.min(...connectionsCounts), Math.max(...connectionsCounts)]
       }
     };
     if (isEnterprise) {

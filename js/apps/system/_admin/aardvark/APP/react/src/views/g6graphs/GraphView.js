@@ -469,7 +469,16 @@ export class GraphView extends React.Component {
       }
     }
     if(this.props.nodesSizeMinMax) {
+      if(this.props.nodesSizeMinMax[0] !== null) {
+        console.log("this.props.nodesSizeMinMax: ", this.props.nodesSizeMinMax);
         this.resizeNodesByAttribute();
+      }
+    }
+    if(this.props.connectionsMinMax) {
+      if(this.props.connectionsMinMax[0] !== null) {
+        console.log("this.props.connectionsMinMax: ", this.props.connectionsMinMax);
+        this.resizeNodesByConnections();
+      }
     }
     if(this.props.edgeColorAttribute) {
       if(!this.props.edgeColorByCollection) {
@@ -729,6 +738,7 @@ export class GraphView extends React.Component {
   }
 
   resizeNodesByAttribute = () => {
+    console.error("resizeNodesByAttribute is happening");
     const nodes = this.graph.getNodes();
     nodes.forEach((node) => {
 
@@ -753,6 +763,46 @@ export class GraphView extends React.Component {
 
       const tempNodeSize = Math.floor(minNodeSize + nodeSizeDiff * (d / maxDiff));
       console.log("tempNodeSize: ", tempNodeSize);
+
+      const model = {
+        size: tempNodeSize
+      };
+      this.graph.updateItem(node, model);
+    });
+    this.graph.render();
+  }
+
+  resizeNodesByConnections = () => {
+    console.error("resizeNodesByConnections is happening");
+    const nodes = this.graph.getNodes();
+    nodes.forEach((node) => {
+
+      const minNodeSize = 20;
+      const maxNodeSize = 200;
+
+      const maxDiff = this.props.connectionsMinMax[1] - this.props.connectionsMinMax[0];
+
+      console.error("node._cfg.model.id (resizeNodesByConnections): ", node._cfg.model.id);
+      
+      console.log("this.props.connectionsMinMax (resizeNodesByConnections): ", this.props.connectionsMinMax);
+      console.log("this.props.connectionsMinMax[0] (resizeNodesByConnections): ", this.props.connectionsMinMax[0]);
+      console.log("this.props.connectionsMinMax[1] (resizeNodesByConnections): ", this.props.connectionsMinMax[1]);
+      console.log("maxDiff (resizeNodesByConnections): ", maxDiff);
+
+      const nodeSizeDiff = maxNodeSize - minNodeSize;
+      console.log("nodeSizeDiff: ", nodeSizeDiff);
+
+      console.log("node (resizeNodesByConnections): ", node);
+      console.log("node._cfg.model.nodeEdgesCount (resizeNodesByConnections): ", node._cfg.model.nodeEdgesCount);
+      console.log("node._cfg.edges (resizeNodesByConnections): ", node._cfg.edges);
+      console.log("node._cfg.edges.length (resizeNodesByConnections): ", node._cfg.edges.length);
+
+      //const d = node._cfg.model.nodeEdgesCount - this.props.connectionsMinMax[0];
+      const d = node._cfg.edges.length - this.props.connectionsMinMax[0];
+      console.log("d (resizeNodesByConnections): ", d);
+
+      const tempNodeSize = Math.floor(minNodeSize + nodeSizeDiff * (d / maxDiff));
+      console.log("tempNodeSize (resizeNodesByConnections): ", tempNodeSize);
 
       const model = {
         size: tempNodeSize
@@ -945,7 +995,7 @@ export class GraphView extends React.Component {
       type: layout,
       preventOverlap: true,
       fitView: true,
-      linkDistance: 100
+      //linkDistance: 100
     });
   }
 
@@ -1047,6 +1097,10 @@ export class GraphView extends React.Component {
       <LoadingSpinner />
       <button onClick={() => this.colorNodesByAttribute()}>Color nodes by attribute</button>
       <button onClick={() => this.resizeNodesByAttribute()}>resizeNodesByAttribute</button>
+      <button onClick={() => this.resizeNodesByConnections()}>resizeNodesByConnections</button>
+    
+    <button onClick={() => console.log("this.graph.getNodes(): ", this.graph.getNodes())}>GraphView: this.graph.getNodes()</button>
+    <button onClick={() => console.log("this.graph.getEdges(): ", this.graph.getEdges())}>GraphView: this.graph.getEdges()</button>
   */
 
   render() {
