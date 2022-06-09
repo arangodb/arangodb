@@ -81,6 +81,7 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint64_t _transactionLockStripes;
   int64_t _transactionLockTimeout;
   std::string _walDirectory;
+  std::string _compressionType;
   uint64_t _totalWriteBufferSize;
   uint64_t _writeBufferSize;
   // Update max_write_buffer_number above if you change number of families used
