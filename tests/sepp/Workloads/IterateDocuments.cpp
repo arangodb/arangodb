@@ -113,13 +113,17 @@ void IterateDocuments::Thread::run() {
   OperationOptions options;
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     ++_operations;
-    if (_operations % 512 == 0 && execution().stopped()) {
+    if (_operations % 512 == 0 && shouldStop()) {
       break;
     }
   }
 }
 
 auto IterateDocuments::Thread::shouldStop() const noexcept -> bool {
+  if (execution().stopped()) {
+    return true;
+  }
+
   using StopAfterOps = StoppingCriterion::NumberOfOperations;
   if (std::holds_alternative<StopAfterOps>(_options.stop)) {
     return _operations >= std::get<StopAfterOps>(_options.stop).count;

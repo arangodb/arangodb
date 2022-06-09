@@ -65,10 +65,6 @@ void Execution::signalFinishedThread() noexcept { _activeThreads.fetch_sub(1); }
 
 void Execution::advanceStatusIfNotStopped(ExecutionState state) noexcept {
   ExecutionState value = _state.load();
-  if (state == ExecutionState::kStopped && value == state) {
-    // already stopped
-    return;
-  }
   // never move the status backwards
   while (value != ExecutionState::kStopped &&
          !_state.compare_exchange_strong(value, state)) {
@@ -76,13 +72,7 @@ void Execution::advanceStatusIfNotStopped(ExecutionState state) noexcept {
   }
 }
 
-void Execution::stop() noexcept {
-  ExecutionState value = ExecutionState::kRunning;
-  // try to advance from Running to Stopped
-  while (!_state.compare_exchange_strong(value, ExecutionState::kStopped)) {
-    std::this_thread::yield();
-  }
-}
+void Execution::stop() noexcept { _state.store(ExecutionState::kStopped); }
 
 bool Execution::stopped() const noexcept {
   return _state.load(std::memory_order_relaxed) == ExecutionState::kStopped;
