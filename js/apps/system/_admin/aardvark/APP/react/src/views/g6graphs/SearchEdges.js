@@ -20,6 +20,8 @@ const SearchEdges = ({ edges, graphData, onEdgeInfo, data, onDeleteEdge, onEdgeS
               if(e.target.value.includes("/")) {
                 onEdgeSelect(previousSearchedEdge, e.target.value);
                 setPreviousSearchedEdge(e.target.value);
+                const element = document.getElementById("graph-card");
+                element.scrollIntoView({ behavior: "smooth" });
               }
             }
           }
