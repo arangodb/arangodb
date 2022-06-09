@@ -7,6 +7,8 @@ devel
   on index creation. Default: 2 threads, 5000 batch size. The number of threads
   is hardcoded to 2 for now.  
 
+* Change default `format_version` for RocksDB .sst files from 3 to 5.
+
 * Added support for creating autoincrement keys on cluster mode, but only for 
   single sharded collections.
 
