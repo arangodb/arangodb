@@ -146,7 +146,6 @@ devel
   the early startup phase. Incoming requests relying on other authentication
   mechanisms that require access to the database data will also be responded to
   with HTTP 503 errors, even if correct credentials are used.
->>>>>>> 71c6d6f03704d644ad9be4539870e975f015ee54
 
 * Fix behavior when accessing a view instead of a collection by name in a REST
   document operation. Now return a proper error.
