@@ -148,7 +148,7 @@ function analyzeCoreDumpMac (instanceInfo, options, storeArangodPath, pid) {
   sleep(5);
   executeExternalAndWait('/bin/bash', args);
   GDB_OUTPUT += `--------------------------------------------------------------------------------
-Crash analysis of: ` + JSON.stringify(instanceInfo) + '\n';
+Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
   let thisDump = fs.read(lldbOutputFile);
   GDB_OUTPUT += thisDump;
   if (options.extremeVerbosity === true) {
@@ -293,7 +293,7 @@ function analyzeCoreDumpWindows (instanceInfo) {
   process.env['_NT_DEBUG_LOG_FILE_OPEN'] = cdbOutputFile;
   executeExternalAndWait('cdb', args);
   GDB_OUTPUT += `--------------------------------------------------------------------------------
-Crash analysis of: ` + JSON.stringify(instanceInfo) + '\n';
+Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n';
   // cdb will output to stdout anyways, so we can't turn this off here.
   GDB_OUTPUT += fs.read(cdbOutputFile);
   return 'cdb ' + args.join(' ');
