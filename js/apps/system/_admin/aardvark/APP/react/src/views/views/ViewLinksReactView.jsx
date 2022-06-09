@@ -73,23 +73,20 @@ const ViewLinksReactView = ({ name }) => {
     <div className={'centralContent'} id={'content'}>
       <HashRouter basename={`view/${name}/links`} hashType={'noslash'}>
         <Switch>
-          <Route exact path={'/'}>
-            <LinkList name={name}/>
-          </Route>
           <Route exact path={'/_add'}>
             {
               isAdminUser
-                ? <NewLink
-                  disabled={addDisabled || !options.includes(collection)}
-                  collection={collection}
-                  updateCollection={setCollection}
-                  options={options}
-                />
+                ? <NewLink disabled={addDisabled || !options.includes(collection)}
+                           collection={collection} updateCollection={setCollection}
+                           options={options}/>
                 : null
             }
           </Route>
           <Route path={'/:link'}>
-            <LinkPropertiesForm/>
+            <LinkPropertiesForm name={name}/>
+          </Route>
+          <Route exact path={'/'}>
+            <LinkList name={name}/>
           </Route>
         </Switch>
       </HashRouter>

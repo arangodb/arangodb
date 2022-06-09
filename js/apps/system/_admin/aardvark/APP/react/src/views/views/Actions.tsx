@@ -5,7 +5,7 @@ import { FormState } from "./constants";
 import { pick } from "lodash";
 import { IconButton } from "../../components/arango/buttons";
 import { mutate } from "swr";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 
 declare var arangoHelper: { [key: string]: any };
 declare var window: { [key: string]: any };
@@ -26,15 +26,18 @@ type BackButtonProps = {
 
 export const BackButton = ({ disabled }: BackButtonProps) => {
   const history = useHistory();
+  const location = useLocation();
+
+  const up = location.pathname.slice(0, location.pathname.lastIndexOf('/'));
 
   return (
     <IconButton
-      icon={"arrow-left"}
-      onClick={() => history.goBack()}
+      icon={"arrow-up"}
+      onClick={() => history.push(up)}
       type={"default"}
       disabled={disabled}
     >
-      Back
+      Up
     </IconButton>
   );
 };

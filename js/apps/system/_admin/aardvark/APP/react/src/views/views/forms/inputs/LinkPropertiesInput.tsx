@@ -1,7 +1,7 @@
 import { FormProps } from "../../../../utils/constants";
 import { LinkProperties } from "../../constants";
 import React, { ChangeEvent, useEffect, useMemo, useState } from "react";
-import { chain, get, isEmpty, noop, without } from "lodash";
+import { chain, get, isEmpty, without } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
 import { ArangoTable, ArangoTD } from "../../../../components/arango/table";
@@ -35,8 +35,6 @@ const LinkPropertiesInput = ({
   const [options, setOptions] = useState<string[]>([]);
 
   const analyzers = useMemo(() => get(formState, 'analyzers', [] as string[]), [formState]);
-
-  const setCurrentField = noop;
 
   useEffect(() => {
     if (data) {
@@ -97,26 +95,6 @@ const LinkPropertiesInput = ({
         value: event.target.checked ? "id" : "none"
       },
       basePath
-    });
-  };
-
-  // const removeField = (field: string | number) => {
-  //   dispatch({
-  //     type: "unsetField",
-  //     field: {
-  //       path: `fields[${field}]`
-  //     },
-  //     basePath
-  //   });
-  // };
-
-  // const getFieldRemover = (field: string | number) => () => {
-  //   removeField(field);
-  // };
-  const handleShowField = (field: string) => {
-    setCurrentField({
-      field: field,
-      basePath: basePath
     });
   };
 
@@ -238,44 +216,9 @@ const LinkPropertiesInput = ({
               fields={fields}
               disabled={disabled}
               basePath={basePath}
-              viewField={handleShowField}
             />
           )}
         </Fieldset>
-
-        {/* {map(fields, (properties, fld) => {
-              return (
-                <tr key={fld} style={{ borderBottom: "1px  solid #DDD" }}>
-                  <ArangoTD seq={disabled ? 0 : 1}>{fld}</ArangoTD>
-                  <ArangoTD seq={disabled ? 1 : 2}>
-                    <LinkPropertiesInput
-                      formState={properties}
-                      disabled={disabled}
-                      basePath={`${basePath}.fields[${fld}]`}
-                      dispatch={
-                        (dispatch as unknown) as Dispatch<
-                          DispatchArgs<LinkProperties>
-                        >
-                      }
-                    />
-                  </ArangoTD>
-                  {disabled ? null : (
-                    <ArangoTD seq={0} valign={"middle"}>
-                      <IconButton
-                        icon={"trash-o"}
-                        type={"danger"}
-                        onClick={getFieldRemover(fld)}
-                      />
-                      <IconButton
-                        icon={"eye"}
-                        type={"warning"}
-                        onClick={getFieldRemover(fld)}
-                      />
-                    </ArangoTD>
-                  )}
-                </tr>
-              );
-            })} */}
       </Cell>
     </Grid>
   );

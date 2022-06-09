@@ -4,23 +4,23 @@ import { ArangoTable, ArangoTD } from "../../../components/arango/table";
 import AutoCompleteTextInput from "../../../components/pure-css/form/AutoCompleteTextInput";
 import { IconButton } from "../../../components/arango/buttons";
 import { ViewContext } from "../constants";
+import { useHistory } from "react-router-dom";
 
 type NewLinkProps = {
   disabled: boolean;
   options: string[] | number[];
   collection: string | number;
   updateCollection: (value: string | number) => void;
-  view?: string | undefined;
 };
 
 const NewLink = ({
   collection,
   options,
   updateCollection,
-  disabled,
-  view
+  disabled
 }: NewLinkProps) => {
   const { dispatch } = useContext(ViewContext);
+  const history = useHistory();
 
   const addLink = () => {
     dispatch({
@@ -30,10 +30,11 @@ const NewLink = ({
         value: {}
       }
     });
+    history.goBack();
   };
 
   return (
-    <ViewLinkLayout view={view}>
+    <ViewLinkLayout fragments={['[New]']}>
       <ArangoTable>
         <tbody>
           <tr style={{ borderBottom: "1px  solid #DDD" }}>

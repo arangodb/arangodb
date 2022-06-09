@@ -5,6 +5,7 @@ import { FormState, ViewContext, ViewProps } from "../constants";
 import Modal, { ModalFooter, ModalHeader } from "../../../components/modal/Modal";
 import { Link as HashLink, useRouteMatch } from 'react-router-dom';
 import { SaveButton } from "../Actions";
+import { chain } from "lodash";
 
 type DeleteButtonProps = {
   collection: string;
@@ -42,21 +43,6 @@ const LinkList = ({ name }: ViewProps) => {
   const match = useRouteMatch();
 
   const formState = fs as FormState;
-  const links = formState.links;
-  const checkLinks = (links: any) => {
-    let linksArr = [];
-    if (links) {
-      for (const l in links) {
-        linksArr.push({
-          name: l,
-          link: links[l]
-        });
-      }
-    }
-    return linksArr;
-  };
-
-  const linksArr = checkLinks(links);
 
   return (
     <div id="modal-dialog">
@@ -65,26 +51,24 @@ const LinkList = ({ name }: ViewProps) => {
           <thead>
           <tr className="figuresHeader">
             <ArangoTH seq={0}>Collection</ArangoTH>
-            <ArangoTH seq={1}>Action</ArangoTH>
+            <ArangoTH seq={1}>Actions</ArangoTH>
           </tr>
           </thead>
 
           <tbody>
-          {links && linksArr.filter(p => p.link !== null)
-            .map((p, key) => (
+          {
+            chain(formState.links || {}).toPairs().filter(pair => pair[1] !== null).map((pair, key) =>
               <tr key={key}>
-                <ArangoTD seq={0}>{p.name}</ArangoTD>
+                <ArangoTD seq={0}>{pair[0]}</ArangoTD>
                 <ArangoTD seq={1}>
-                  <DeleteButton collection={p.name} modalCid={`modal-content-view-${key}`}/>
-                  <HashLink to={p.name}>
-                    <IconButton
-                      icon={"eye"}
-                      type={"warning"}
-                    />
+                  <DeleteButton collection={pair[0]} modalCid={`modal-content-view-${key}`}/>
+                  <HashLink to={`/${pair[0]}`}>
+                    <IconButton icon={"eye"} type={"warning"}/>
                   </HashLink>
                 </ArangoTD>
               </tr>
-            ))}
+            ).value()
+          }
           </tbody>
           <tfoot>
           <tr>
