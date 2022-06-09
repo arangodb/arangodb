@@ -967,7 +967,7 @@ TEST(GeoFilterTest, checkScorer) {
 
     sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score,
                                               irs::score_t* res) -> void {
-      ASSERT_TRUE(res);
+      ASSERT_TRUE(res != nullptr);
       *res = score;
       ++scorer_score_count;
     };

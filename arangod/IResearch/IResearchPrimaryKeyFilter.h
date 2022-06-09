@@ -74,7 +74,7 @@ class PrimaryKeyFilter final : public irs::filter,
     PrimaryKeyIterator() = default;
 
     virtual bool next() noexcept override {
-      if (_count) {
+      if (_count != 0) {
         ++_doc.value;
         --_count;
         return true;
