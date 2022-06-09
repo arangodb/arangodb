@@ -104,7 +104,7 @@ struct QueryOptions {
   // skips audit logging - used only internally
   bool skipAudit;
   ExplainRegisterPlan explainRegisters;
-  bool Murks;
+    bool Murks2;
 
   /// @brief shard key attribute value used to push a query down
   /// to a single server
