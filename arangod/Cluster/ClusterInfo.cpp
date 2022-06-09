@@ -5750,9 +5750,27 @@ std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(
     tries++;
   }
 
+  auto logId = LogicalCollection::shardIdToStateId(shardID);
+
   while (true) {
     {
       READ_LOCKER(readLocker, _currentProt.lock);
+      {
+        // if we find a replicated log for this shard, then this is a
+        // replication 2.0 db, in which case we want to use the participant
+        // information from the log instead
+        auto it = _replicatedLogs.find(logId);
+        if (it != _replicatedLogs.end()) {
+          auto& participants = it->second->participantsConfig.participants;
+          auto result = std::make_shared<std::vector<ServerID>>();
+          result->reserve(participants.size());
+          for (auto& [k, v] : participants) {
+            result->emplace_back(k);
+          }
+          return result;
+        }
+      }
+
       // _shardIds is a map-type <ShardId,
       // std::shared_ptr<std::vector<ServerId>>>
       auto it = _shardIds.find(shardID);
@@ -5802,6 +5820,30 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
     Result r = waitForCurrent(1).get();
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(r);
+    }
+  }
+
+  {
+    READ_LOCKER(readLocker, _currentProt.lock);
+    bool isReplicationTwo = false;
+    for (auto const& shardId : shardIds) {
+      auto logId = LogicalCollection::shardIdToStateId(shardId);
+      // if we find a replicated log for this shard, then this is a
+      // replication 2.0 db, in which case we want to use the leader
+      // information from the log instead
+      auto it = _replicatedLogs.find(logId);
+      if (it != _replicatedLogs.end()) {
+        isReplicationTwo = true;
+        result.emplace(shardId, it->second->currentTerm->leader->serverId);
+      } else if (isReplicationTwo) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+            "no replicated log found for shard " + shardId);
+      } else {
+        // this seems to be no replication 2.0 db -> skip the remaining shards
+        // and continue as usual
+        break;
+      }
     }
   }
 
