@@ -169,12 +169,15 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
       _overrideValue(false){}
 
     FieldRecord(std::vector<basics::AttributeName> const& path,
-                FieldMeta::Analyzer&& a, std::vector<FieldRecord>&& nested,
+                FieldMeta::Analyzer&& a,
+                std::vector<FieldRecord>&& nested,
                 std::optional<Features>&& features, std::string&& expression,
                 bool isArray, bool includeAllFields, bool trackListPositions,
-                bool overrideValue);
+                bool overrideValue, bool isPrimitiveAnalyzer);
 
     std::string toString() const;
+    std::string toPath() const;
+    std::string attributeString() const;
 
     std::string const& analyzerName() const noexcept {
       TRI_ASSERT(_analyzers[0]._pool);
@@ -235,9 +238,9 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
     absl::InlinedVector<FieldMeta::Analyzer, 1> _analyzers;
     /// @brief override for field features
     std::optional<Features> _features;
-    // Since Inverted index always have one analyzer per field
-    // this value is const and used to match old view's behaviour
-    size_t const _primitiveOffset{0};
+
+    /// @brief start point for non primitive analyzers
+    size_t  _primitiveOffset{0};
     /// @brief fields ids storage
     // Inverted index always needs field ids in order to
     // execute cross types range queries

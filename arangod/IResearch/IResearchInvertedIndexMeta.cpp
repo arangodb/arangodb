@@ -69,6 +69,7 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
   AnalyzerPool::ptr analyzer;
   std::string expression;
   std::vector<basics::AttributeName> fieldParts;
+  std::string shortName;
   bool isArray{false};
   bool trackListPositions{false};
   bool includeAllFields{false};
@@ -101,7 +102,7 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
         auto analyzerSlice = slice.get(kAnalyzerFieldName);
         if (analyzerSlice.isString()) {
           auto name = analyzerSlice.copyString();
-          auto shortName = name;
+          shortName = name;
           if (!defaultVocbase.null()) {
             name = IResearchAnalyzerFeature::normalize(name, defaultVocbase);
             shortName = IResearchAnalyzerFeature::normalize(
@@ -264,10 +265,12 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
     errorField = kNameFieldName;
     return std::nullopt;
   }
+  bool const isAnalyzerPrimitive =
+      !analyzer->accepts(AnalyzerValueType::Array | AnalyzerValueType::Object);
   return std::make_optional<IResearchInvertedIndexMeta::FieldRecord>(
-      std::move(fieldParts), std::move(analyzer),
+      std::move(fieldParts), FieldMeta::Analyzer(std::move(analyzer), std::move(shortName)),
       std::move(nestedFields), std::move(features), std::move(expression),
-      isArray, includeAllFields, trackListPositions, overrideValue);
+      isArray, includeAllFields, trackListPositions, overrideValue, isAnalyzerPrimitive);
 }
 
 void toVelocyPack(IResearchInvertedIndexMeta::FieldRecord const& field, VPackBuilder& vpack) {
@@ -709,11 +712,12 @@ IResearchInvertedIndexMeta::FieldRecord::FieldRecord(
     std::vector<basics::AttributeName> const& path, FieldMeta::Analyzer&& a,
     std::vector<FieldRecord>&& nested, std::optional<Features>&& features,
     std::string&& expression, bool isArray, bool includeAllFields, bool trackListPositions,
-    bool overrideValue)
+    bool overrideValue, bool isPrimitiveAnalyzer)
     : _fields(std::move(nested)),
       _expression(std::move(expression)),
       _analyzers{std::move(a)},
       _features(std::move(features)),
+      _primitiveOffset(isPrimitiveAnalyzer ? 1 : 0),
       _isArray(isArray),
       _includeAllFields(includeAllFields),
       _trackListPositions(trackListPositions),
@@ -742,6 +746,24 @@ IResearchInvertedIndexMeta::FieldRecord::FieldRecord(
 std::string IResearchInvertedIndexMeta::FieldRecord::toString() const {
   std::string attr;
   TRI_AttributeNamesToString(_attribute, attr, false);
+  if (!_expansion.empty()) {
+    attr += ".";
+    std::string exp;
+    TRI_AttributeNamesToString(_expansion, exp, true);
+    attr += exp;
+  }
+  return attr;
+}
+
+std::string IResearchInvertedIndexMeta::FieldRecord::attributeString() const {
+  std::string attr;
+  TRI_AttributeNamesToString(_attribute, attr, true);
+  return attr;
+}
+
+std::string IResearchInvertedIndexMeta::FieldRecord::toPath() const {
+  std::string attr;
+  TRI_AttributeNamesToString(_attribute, attr, _expansion.empty());
   if (!_expansion.empty()) {
     attr += ".";
     std::string exp;

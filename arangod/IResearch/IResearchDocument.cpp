@@ -228,11 +228,12 @@ typedef bool (*InvertedIndexFilter)(std::string& buffer,
                        arangodb::iresearch::IResearchInvertedIndexMeta::FieldRecord const*& context,
                        arangodb::iresearch::IteratorValue const& value);
 
-
-// FIXME: make true accept all version
-inline bool acceptAllFiltered(std::string& buffer,
-                           arangodb::iresearch::IResearchInvertedIndexMeta::FieldRecord const*& context,
-                           arangodb::iresearch::IteratorValue const& value) {
+template<bool defaultAccept>
+inline bool acceptAll(
+    std::string& buffer,
+    arangodb::iresearch::IResearchInvertedIndexMeta::FieldRecord const*&
+        context,
+    arangodb::iresearch::IteratorValue const& value) {
   irs::string_ref key;
 
   if (!arangodb::iresearch::keyFromSlice(value.key, key)) {
@@ -241,58 +242,72 @@ inline bool acceptAllFiltered(std::string& buffer,
 
   buffer.append(key.c_str(), key.size());
   for (auto& nested : context->_fields) {
-    if (nested.toString() == key) {
-#ifdef USE_ENTERPRISE
-      if (!nested.nested().empty()) {
-        arangodb::iresearch::kludge::mangleNested(buffer);
+    auto fullName = nested.toPath();
+    if (fullName.starts_with(buffer)) {
+      //#ifdef USE_ENTERPRISE
+      //      if (!nested.nested().empty()) {
+      //        arangodb::iresearch::kludge::mangleNested(buffer);
+      //      }
+      //#endif
+      if (buffer == nested.attributeString()) {
+        if (value.value.isObject() &&
+            !nested.analyzer()->accepts(
+                arangodb::iresearch::AnalyzerValueType::Object)) {
+          THROW_ARANGO_EXCEPTION_FORMAT(
+              TRI_ERROR_NOT_IMPLEMENTED,
+              "Inverted index does not support indexing objects and configured "
+              "analyzer does "
+              "not accept objects. Please use another analyzer to process an "
+              "object or exclude field '%s' "
+              "from index definition",
+              buffer.c_str());
+        } else if (nested.isArray() && !value.value.isArray()) {
+          std::cout << "NON array rejected " << key << " Buffer:" << buffer
+                    << std::endl;
+          return false;
+        } else if (value.value.isArray() && !nested.isArray()) {
+          if (!nested.analyzer()->accepts(
+                  arangodb::iresearch::AnalyzerValueType::Array)) {
+            THROW_ARANGO_EXCEPTION_FORMAT(
+                TRI_ERROR_NOT_IMPLEMENTED,
+                "Configured analyzer does not accepts arrays and field has no "
+                "expansion set. "
+                "Please use another analyzer to process an array or exclude "
+                "field '%s' "
+                "from index definition or enable expansion",
+                buffer.c_str());
+          }
+        }
       }
-#endif
-      context = &nested;
+      if (fullName == buffer) {
+        std::cout << "Context switched " << key << " Buffer:" << buffer
+                  << std::endl;
+        context = &nested;
+      }
+      std::cout << "Accepted " << key << " Buffer:" << buffer << std::endl;
       return true;
     }
   }
-  return false;
+  std::cout << "Rejected " << key << " Buffer:" << buffer << std::endl;
+  return defaultAccept;
 }
-
-// FIXME: make true accept all version
-inline bool acceptAll(std::string& buffer,
-                           arangodb::iresearch::IResearchInvertedIndexMeta::FieldRecord const*& context,
-                           arangodb::iresearch::IteratorValue const& value) {
-  irs::string_ref key;
-
-  if (!arangodb::iresearch::keyFromSlice(value.key, key)) {
-    return false;
-  }
-
-  buffer.append(key.c_str(), key.size());
-  for (auto& nested : context->_fields) {
-    if (nested.toString() == key) {
-#ifdef USE_ENTERPRISE
-      if (!nested.nested().empty()) {
-        arangodb::iresearch::kludge::mangleNested(buffer);
-      }
-#endif
-      context = &nested;
-      break;
-    }
-  }
-  return true;
-}
-
-#ifdef USE_ENTERPRISE
-
-#endif
 
 inline bool inArrayInverted(std::string& buffer,
-                           arangodb::iresearch::IResearchInvertedIndexMeta::FieldRecord const*&,
-                           arangodb::iresearch::IteratorValue const&) {
-  buffer += "[*]";
+                           arangodb::iresearch::IResearchInvertedIndexMeta::FieldRecord const*& context,
+                           arangodb::iresearch::IteratorValue const& value) {
+  if (context->trackListPositions()) {
+    buffer += arangodb::iresearch::NESTING_LIST_OFFSET_PREFIX;
+    append(buffer, value.pos);
+    buffer += arangodb::iresearch::NESTING_LIST_OFFSET_SUFFIX;
+  } else {
+    buffer += "[*]";
+  }
   return true;
 }
 
 InvertedIndexFilter const valueAcceptorsInverted[] = {
-  &acceptAll,
-  &acceptAllFiltered,
+  &acceptAll<false>,
+  &acceptAll<true>,
   &inArrayInverted,
   &inArrayInverted
 };
@@ -661,7 +676,7 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
 #ifdef USE_ENTERPRISE
           if constexpr (std::is_same_v<IndexMetaStruct,
                                        IResearchInvertedIndexMeta>) {
-            if (level.filter == &acceptAll && _nameBuffer.back() == '\2') {
+            if (level.filter == &acceptAll<true> && _nameBuffer.back() == '\2') {
               _value._root = true;
               _value._name = _nameBuffer;
               _value._analyzer.reset();
