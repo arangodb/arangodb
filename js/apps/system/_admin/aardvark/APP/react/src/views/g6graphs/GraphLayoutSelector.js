@@ -14,12 +14,16 @@ const GraphLayoutSelector = ({ onGraphLayoutChange} ) => {
     {
       layout: 'gForce'
     },
+    /*
     {
       layout: 'force'
     },
+    */
+    /*
     {
       layout: 'fruchterman'
     },
+    */
     {
       layout: 'circular'
     },
