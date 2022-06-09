@@ -71,7 +71,7 @@ class RebootTracker {
   explicit RebootTracker(SchedulerPointer scheduler);
 
   CallbackGuard callMeOnChange(PeerState peer, Callback callback,
-                               std::string_view description);
+                               std::string description);
 
   void updateServerState(State state);
 

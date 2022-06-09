@@ -117,7 +117,7 @@ void RebootTracker::updateServerState(State state) {
 
 CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState peer,
                                             Callback callback,
-                                            std::string_view description) {
+                                            std::string description) {
   std::lock_guard guard{_mutex};
   auto const it = _state.find(peer.serverId);
   // We MUST NOT insert something in _callbacks[serverId]
@@ -134,7 +134,7 @@ CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState peer,
   auto const currRebootId = it->second;
   if (peer.rebootId < currRebootId) {
     // If this ID is already older, schedule the callback immediately.
-    queueCallback({std::move(callback), std::string{description}});
+    queueCallback({std::move(callback), std::move(description)});
     return CallbackGuard{};
   }
 
@@ -146,7 +146,7 @@ CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState peer,
   auto const callbackId = _nextCallbackId++;
   auto [_, inserted] = callbacksMap.try_emplace(
       callbackId,
-      DescriptedCallback{std::move(callback), std::string{description}});
+      DescriptedCallback{std::move(callback), std::move(description)});
   TRI_ASSERT(inserted);
   return CallbackGuard{[this, peer = std::move(peer), callbackId]() noexcept {
     unregisterCallback(peer, callbackId);
