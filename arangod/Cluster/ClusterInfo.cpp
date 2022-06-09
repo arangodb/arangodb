@@ -5845,6 +5845,9 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
         break;
       }
     }
+    if (isReplicationTwo) {
+      return result;
+    }
   }
 
   while (true) {
