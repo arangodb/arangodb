@@ -1553,7 +1553,6 @@ void ClusterInfo::loadPlan() {
                                     std::move(databaseCollections));
   }
 
-  decltype(_replicatedLogs) newReplicatedLogs;
   // And now for replicated logs
   for (auto const& [databaseName, query] : changeSet.dbs) {
     if (databaseName.empty()) {
@@ -1576,8 +1575,7 @@ void ClusterInfo::loadPlan() {
               std::make_shared<replication2::agency::LogPlanSpecification>(
                   velocypack::deserialize<
                       replication2::agency::LogPlanSpecification>(logSlice));
-          newLogs.emplace(spec->id, spec);
-          newReplicatedLogs.emplace(spec->id, std::move(spec));
+          newLogs.emplace(spec->id, std::move(spec));
         }
         stuff->replicatedLogs = std::move(newLogs);
       }
@@ -1600,6 +1598,13 @@ void ClusterInfo::loadPlan() {
     }
 
     newStuffByDatabase[databaseName] = std::move(stuff);
+  }
+
+  decltype(_replicatedLogs) newReplicatedLogs;
+  for (auto& dbs : newStuffByDatabase) {
+    for (auto& it : dbs.second->replicatedLogs) {
+      newReplicatedLogs.emplace(it.first, it.second);
+    }
   }
 
   if (isCoordinator) {
