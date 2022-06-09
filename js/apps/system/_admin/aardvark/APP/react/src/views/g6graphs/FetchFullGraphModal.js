@@ -1,9 +1,8 @@
 /* global arangoHelper, arangoFetch, frontendConfig, document, $ */
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState } from 'react';
 import styled from "styled-components";
 import { JsonEditor as Editor } from 'jsoneditor-react';
 import { Modal, Button, notification, Space } from 'antd';
-
 
 const ModalBackground = styled.div`
   position: fixed;
@@ -40,12 +39,13 @@ const ModalBody = styled.div`
     };
 
     const fetchFullGraph = () => {
+
       const ajaxData = {
         "depth": "2",
         "limit": "250",
-        "nodeColor": "#2ecc71",
+        "nodeColor": "#fbe08e",
         "nodeColorAttribute": "",
-        "nodeColorByCollection": "true",
+        "nodeColorByCollection": "false",
         "edgeColor": "#cccccc",
         "edgeColorAttribute": "",
         "edgeColorByCollection": "false",
@@ -69,31 +69,13 @@ const ModalBody = styled.div`
           console.log("Full graph loaded: ", data);
           onRequestClose();
           onFullGraphLoaded(data);
+          const element = document.getElementById("graph-card");
+          element.scrollIntoView({ behavior: "smooth" });
         },
         error: function (e) {
           arangoHelper.arangoError('Graph', 'Could not load full graph.');
         }
       });
-      /*
-      $.ajax({
-        cache: false,
-        type: 'GET',
-        //url: arangoHelper.databaseUrl('/_api/document/' + nodeCollection + '?returnNew=true'),
-        url: url,
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          //openNotificationWithIcon('success');
-          console.log("Full graph loaded: ", data);
-        },
-        error: function (data) {
-          console.log("Error loading full graph: ", data);
-        }
-      });
-      */
-      //onRequestClose();
-      
-      //onUpdateNode(mergedGraphData);
 }
 
   return shouldShow ? (
