@@ -34,7 +34,6 @@
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "Random/RandomGenerator.h"
 #include "VocBase/ticks.h"
 
 #include <fuerte/types.h>
