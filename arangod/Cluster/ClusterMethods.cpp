@@ -2043,17 +2043,13 @@ Future<OperationResult> getDocumentOnCoordinator(
           }
           builder.close();
         }
-        std::string dest;
-        dest.reserve(6 + it.first.size());
-        dest.append("shard:");
-        dest.append(it.first);
         if (allowDirtyReads) {
           reqOpts.overrideDestination = trx.state()->whichReplica(it.first);
           headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
         }
         futures.emplace_back(network::sendRequestRetry(
-            pool, dest, restVerb, std::move(url), std::move(buffer), reqOpts,
-            std::move(headers)));
+            pool, "shard:" + it.first, restVerb, std::move(url),
+            std::move(buffer), reqOpts, std::move(headers)));
       }
 
       // Now compute the result
@@ -2118,17 +2114,13 @@ Future<OperationResult> getDocumentOnCoordinator(
         headers.try_emplace(StaticStrings::AqlDocumentCall, "true");
       }
 
-      std::string dest;
-      dest.reserve(6 + shard.size());
-      dest.append("shard:");
-      dest.append(shard);
       if (allowDirtyReads) {
         reqOpts.overrideDestination = trx.state()->whichReplica(shard);
         headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
       }
 
       futures.emplace_back(network::sendRequestRetry(
-          pool, dest, restVerb,
+          pool, "shard:" + shard, restVerb,
           "/_api/document/" + StringUtils::urlEncode(shard) + "/" +
               StringUtils::urlEncode(key.data(), key.size()),
           VPackBuffer<uint8_t>(), reqOpts, std::move(headers)));
@@ -2141,17 +2133,13 @@ Future<OperationResult> getDocumentOnCoordinator(
       network::Headers headers;
       addTransactionHeaderForShard(trx, *shardIds, shard, headers);
 
-      std::string dest;
-      dest.reserve(6 + shard.size());
-      dest.append("shard:");
-      dest.append(shard);
       if (allowDirtyReads) {
         reqOpts.overrideDestination = trx.state()->whichReplica(shard);
         headers.try_emplace(StaticStrings::AllowDirtyReads, "true");
       }
 
       futures.emplace_back(network::sendRequestRetry(
-          pool, dest, restVerb,
+          pool, "shard:" + shard, restVerb,
           "/_api/document/" + StringUtils::urlEncode(shard),
           /*cannot move*/ buffer, reqOpts, std::move(headers)));
     }

@@ -6977,6 +6977,19 @@ VPackBuilder ClusterInfo::toVelocyPack() {
             dump.add(s.first, VPackValue(s.second));
           }
         }
+        dump.add(VPackValue("shardGroups"));
+        {
+          VPackObjectBuilder d(&dump);
+          for (auto const& s : _shardGroups) {
+            dump.add(VPackValue(s.first));
+            {
+              VPackArrayBuilder d2(&dump);
+              for (auto const& ss : *s.second) {
+                dump.add(VPackValue(ss));
+              }
+            }
+          }
+        }
         dump.add(VPackValue("shards"));
         {
           VPackObjectBuilder d(&dump);
