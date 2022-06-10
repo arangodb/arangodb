@@ -742,7 +742,12 @@ class instance {
       }
       crashUtils.runProcdump (this.options, this, this.rootDir, this.pid, true);
     }
-    this.exitStatus = killExternal(this.pid, abortSignal);
+    if (this.options.test !== undefined) {
+      print(CYAN + this.name + " - in single test mode, hard killing." + RESET);
+      this.exitStatus = killExternal(this.pid, termSignal);
+    } else {
+      this.exitStatus = killExternal(this.pid, abortSignal);
+    }
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief commands a server to shut down via webcall
