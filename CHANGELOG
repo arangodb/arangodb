@@ -5,7 +5,7 @@ devel
   in foreground or background mode. The batch size for the thread to process 
   before splitting its partitions is given by the  parameter `threadBatchSize` 
   on index creation. The number of threads is hardcoded to 2 and the thread 
-  batch size is hardcoded to 75000 for now. 
+  batch size is hardcoded to 100000 for now. 
 
 * Change default `format_version` for RocksDB .sst files from 3 to 5.
 
