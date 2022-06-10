@@ -690,7 +690,7 @@ class instance {
         this.message += msg;
         msg = " checkArangoAlive: Marking crashy";
         this.message += msg;
-        print(Date() + msg + ' - ' + JSON.stringify(this));
+        print(Date() + msg + ' - ' + JSON.stringify(this.getStructure()));
       }
     }
     return ret;
