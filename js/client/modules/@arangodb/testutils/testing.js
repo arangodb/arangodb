@@ -546,6 +546,14 @@ function iterateTests(cases, options) {
       pu.cleanupLastDirectory(localOptions);
     } else {
       cleanup = false;
+      print('cleanupdisabled:\n' +
+            pu.getCleanupDBDirectories() + " " +
+            cleanup + ' - ' +
+            globalStatus + ' - ' +
+            pu.serverCrashed + ' - ' +
+            status + ' - ' +
+            localOptions.cleanup + ' - ' +
+            shutdownSuccess + "\n");
     }
     //// TODOpu.aggregateFatalErrors(currentTest);
   }
@@ -562,9 +570,7 @@ function iterateTests(cases, options) {
             cleanup + ' - ' +
             globalStatus + ' - ' +
             pu.serverCrashed + ' - ' +
-            status + ' - ' +
-            localOptions.cleanup + ' - ' +
-            shutdownSuccess + "\n");
+            localOptions.cleanup + "\n");
     }
   } else {
     print("not cleaning up since we didn't start the server ourselves\n");
