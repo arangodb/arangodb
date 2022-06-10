@@ -693,14 +693,13 @@ void RocksDBEngine::start() {
 
 #ifdef USE_SST_INGESTION
   _idxPath = basics::FileUtils::buildFilename(_path, "tmp-idx-creation");
-  if (basics::FileUtils::isDirectory(_idxPath.data())) {
-    ::cleanUpTempFiles(_idxPath.data());
+  if (basics::FileUtils::isDirectory(_idxPath)) {
+    ::cleanUpExtFiles(_idxPath);
   } else {
     auto errorMsg = TRI_ERROR_NO_ERROR;
-    if (!basics::FileUtils::createDirectory(_idxPath.data(), &errorMsg)) {
+    if (!basics::FileUtils::createDirectory(_idxPath, &errorMsg)) {
       LOG_TOPIC("6d10f", FATAL, Logger::ENGINES)
-          << "Cannot create tmp-idx-creation directory, error: code '"
-          << TRI_last_error() << "'";
+          << "Cannot create tmp-idx-creation directory: " << TRI_last_error();
       FATAL_ERROR_EXIT();
     }
   }
