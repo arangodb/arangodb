@@ -194,7 +194,7 @@ class RocksDBEngine final : public StorageEngine {
   std::string databasePath(TRI_vocbase_t const* /*vocbase*/) const override {
     return _basePath;
   }
-  std::string idxPath() { return _idxPath; }
+  std::string idxPath() const { return _idxPath; }
 
   void cleanupReplicationContexts() override;
 
