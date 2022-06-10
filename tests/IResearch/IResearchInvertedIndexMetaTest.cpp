@@ -147,7 +147,6 @@ class IResearchInvertedIndexMetaTest
 };
 
 TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
-
   // invalid analyzer
   constexpr std::string_view kWrongDefinition2 = R"(
   {
@@ -441,7 +440,6 @@ TEST_F(IResearchInvertedIndexMetaTest, testWrongDefinitions) {
   // string instead of object
   constexpr std::string_view kWrongDefinition22 = R"("field_name")";
 
-
   // wrong locale in "primarySort"
   constexpr std::string_view kWrongDefinition24 = R"(
   {
@@ -507,8 +505,6 @@ TEST_F(IResearchInvertedIndexMetaTest, testCorrectDefinitions) {
     "fields": ["foo"],
     "analyzerDefinitions":[]
    })";
-
-
 
   // "features" is empty
   constexpr std::string_view kDefinition6 = R"(

@@ -236,9 +236,9 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchAnyBoost) {
       R"(FOR d IN myView FILTER BOoST(d.array[? 1 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1.555) RETURN d)",
       expected);
   assertFilterSuccess(
-    vocbase(),
-    R"(FOR d IN myView FILTER bOOSt(d.array[? 1..4294967295 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1.555) RETURN d)",
-    expected);
+      vocbase(),
+      R"(FOR d IN myView FILTER bOOSt(d.array[? 1..4294967295 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1.555) RETURN d)",
+      expected);
 }
 
 TEST_F(IResearchFilterNestedTest, testNestedFilterMatchAnyChildBoost) {
@@ -273,9 +273,9 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchAnyChildBoost) {
       R"(FOR d IN myView FILTER d.array[? 1 FILTER BOOST(CURRENT.foo == 'bar', 1.45) AND CURRENT.bar == 'baz'] RETURN d)",
       expected);
   assertFilterSuccess(
-    vocbase(),
-    R"(FOR d IN myView FILTER d.array[? 1..4294967295 FILTER bOosT(CURRENT.foo == 'bar', 1.45) AND CURRENT.bar == 'baz'] RETURN d)",
-    expected);
+      vocbase(),
+      R"(FOR d IN myView FILTER d.array[? 1..4294967295 FILTER bOosT(CURRENT.foo == 'bar', 1.45) AND CURRENT.bar == 'baz'] RETURN d)",
+      expected);
 }
 
 // ALL
@@ -398,6 +398,8 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchAllChildBoost) {
 // NONE
 //  ? NONE FILTER
 //  ? 0..0 FILTER
+
+// FIX ME: ? 0 FILTER
 
 TEST_F(IResearchFilterNestedTest, testNestedFilterMatchNone) {
   irs::Or expected;
@@ -565,10 +567,9 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchMinChildBoost) {
 
   parent = makeByColumnExistence(parentField);
   child = std::make_unique<irs::Or>();
-  makeAnd(
-      static_cast<irs::Or&>(*child),
-      {{std::string_view{fooField}, std::string_view{"bar"}, 1.4f},
-       {std::string_view{barField}, std::string_view{"baz"}, 1.2f}});
+  makeAnd(static_cast<irs::Or&>(*child),
+          {{std::string_view{fooField}, std::string_view{"bar"}, 1.4f},
+           {std::string_view{barField}, std::string_view{"baz"}, 1.2f}});
   mergeType = irs::sort::MergeType::kSum;
   match = irs::Match{2};
 
@@ -648,10 +649,9 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchRangeChildBoost) {
 
   parent = makeByColumnExistence(parentField);
   child = std::make_unique<irs::Or>();
-  makeAnd(
-      static_cast<irs::Or&>(*child),
-      {{std::string_view{fooField}, std::string_view{"bar"}, irs::kNoBoost},
-       {std::string_view{barField}, std::string_view{"baz"}, 2.001f}});
+  makeAnd(static_cast<irs::Or&>(*child),
+          {{std::string_view{fooField}, std::string_view{"bar"}, irs::kNoBoost},
+           {std::string_view{barField}, std::string_view{"baz"}, 2.001f}});
   mergeType = irs::sort::MergeType::kSum;
   match = irs::Match{1, 5};
 
@@ -665,24 +665,18 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchRangeChildBoost) {
 
 TEST_F(IResearchFilterNestedTest, testParseFailingCases) {
 
-  // wrong ranges with nested
+  // wrong ranges
   assertFilterParseFail(
       vocbase(),
-      R"(FOR d IN myView FILTER d.array[? ANY FILTER CURRENT.foo == 'bar' AND
-                                                 CURRENT.bar[? 4..3 FILTER CURRENT.foo == 'baz')]] RETURN d)");
-
-  // wrong ranges without nested
-  assertFilterParseFail(
-        vocbase(),
-        R"(FOR d IN myView FILTER d.array[? 2..1 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
+      R"(FOR d IN myView FILTER d.array[? 2..1 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
 
   assertFilterParseFail(
-        vocbase(),
-        R"(FOR d IN myView FILTER d.array[? 'range' FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
+      vocbase(),
+      R"(FOR d IN myView FILTER d.array[? 'range' FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
 
   assertFilterParseFail(
-        vocbase(),
-        R"(FOR d IN myView FILTER d.array[? 'range' FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
+      vocbase(),
+      R"(FOR d IN myView FILTER d.array[? 'range' FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
 }
 
 #if USE_ENTERPRISE
