@@ -47,6 +47,23 @@ function projectionsTestSuite () {
     },
 
     testProjections : function () {
+      // Will generate an array of characters 'a', 'b', ... with number many entries
+      const expectProjections = (number) => {
+        const charA = "a".charCodeAt(0);
+        const res = [];
+        for (let i = 0; i < number; ++i) {
+          res.push(String.fromCharCode(charA + i));
+        }
+        return res;
+      };
+
+      // Will generate a return statement of RETURN [variable.a, variable.b, ...] with number many entries
+      const returnProjections = (variable, number) => {
+        const res = expectProjections(number).map(n => `${variable}.${n}`);
+        return `RETURN [${res.join(",")}]`;
+      };
+
+
       let queries = [
         // [ query, vertex projections, edge projections, produce vertices, produce paths vertices, produce paths edges ]
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} RETURN 1`, [], ["_from", "_to"], false, false, false],
@@ -137,6 +154,19 @@ function projectionsTestSuite () {
 
         /* Test for WEIGHT. NOTE: Only cluster needs to retain the distance on projection, as it is internally used on coordinator */
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} OPTIONS {order: "weighted", weightAttribute: "distance", defaultWeight: 1.0} RETURN v`, [], isCluster ? ["_from", "_to", "distance"] : ["_from", "_to"], true, false, false],
+
+        /* Test for max Projections */
+        /* Cap to 10 by default*/
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} ${returnProjections("v", 11)}`, [], ["_from", "_to"], true, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} ${returnProjections("e", 9)}`, [], [], false, false, false],
+        /* Increase maxProjections beyond cap of 10*/
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} OPTIONS {maxProjections: 20} ${returnProjections("v", 11)}`, expectProjections(11), ["_from", "_to"], true, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} OPTIONS {maxProjections: 20} ${returnProjections("e", 9)}`, [], expectProjections(9).concat(["_from", "_to"]), false, false, false],
+        /* Test decrease maxProjections */
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} ${returnProjections("v", 5)}`, expectProjections(5), ["_from", "_to"], true, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} ${returnProjections("e", 3)}`, [], expectProjections(3).concat(["_from", "_to"]), false, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} OPTIONS {maxProjections: 4} ${returnProjections("v", 5)}`, [], ["_from", "_to"], true, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} OPTIONS {maxProjections: 4} ${returnProjections("e", 3)}`, [], [], false, false, false],
       ];
 
 
