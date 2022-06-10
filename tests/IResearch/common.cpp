@@ -113,8 +113,13 @@ std::ostream& operator<<(std::ostream& os, by_term const& term) {
 
 std::ostream& operator<<(std::ostream& os, irs::ByNestedFilter const& filter) {
   auto& [parent, child, match, _] = filter.options();
-  os << "NESTED[MATCH[" << match.Min << ", " << match.Max << "], PARENT["
-     << *parent << "], CHILD[" << *child << "]]";
+  os << "NESTED[MATCH[";
+  if (auto* range = std::get_if<irs::Match>(&match); range) {
+    os << range->Min << ", " << range->Max;
+  } else if (nullptr != std::get_if<irs::DocIteratorProvider>(&match)) {
+    os << "<Predicate>";
+  }
+  os << "], CHILD[" << *child << "]]";
   return os;
 }
 

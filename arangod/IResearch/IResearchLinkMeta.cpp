@@ -22,6 +22,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "IResearchLinkMeta.h"
+
+#include "frozen/map.h"
+
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/norm.hpp"
@@ -36,7 +40,6 @@
 #include "Cluster/ServerState.h"
 #include "VocBase/vocbase.h"
 #include "IResearch/IResearchCommon.h"
-#include "IResearchLinkMeta.h"
 #include "Misc.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/DatabaseFeature.h"

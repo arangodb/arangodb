@@ -1846,14 +1846,13 @@ AqlValue Functions::LevenshteinMatch(ExpressionContext* ctx,
 
   if (maxDistanceValue < 0 ||
       (!withTranspositionsValue &&
-       maxDistanceValue > arangodb::iresearch::MAX_LEVENSHTEIN_DISTANCE)) {
+       maxDistanceValue > arangodb::iresearch::kMaxLevenshteinDistance)) {
     registerInvalidArgumentWarning(ctx, AFN);
     return AqlValue{AqlValueHintNull{}};
   }
 
   if (withTranspositionsValue &&
-      maxDistanceValue >
-          arangodb::iresearch::MAX_DAMERAU_LEVENSHTEIN_DISTANCE) {
+      maxDistanceValue > arangodb::iresearch::kMaxDamerauLevenshteinDistance) {
     // fallback to LEVENSHTEIN_DISTANCE
     auto const dist = Functions::LevenshteinDistance(ctx, node, args);
     TRI_ASSERT(dist.isNumber());

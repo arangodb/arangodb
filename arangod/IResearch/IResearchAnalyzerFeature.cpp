@@ -1598,10 +1598,8 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
     auto cleanup = irs::make_finally([&erase, &inserted, this]() noexcept {
       if (erase) {
         for (auto const& s : inserted) {
-          if (auto itr = _analyzers.find(s); itr == _analyzers.end()) {
-            // ensure no broken analyzers are left behind
-            _analyzers.erase(itr);
-          }
+          // ensure no broken analyzers are left behind
+          _analyzers.erase(s);
         }
       }
     });

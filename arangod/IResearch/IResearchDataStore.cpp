@@ -1082,7 +1082,7 @@ Result IResearchDataStore::initDataStore(
   // as meta is still not filled at this moment
   // we need to store all compression mapping there
   // as values provided may be temporary
-  std::map<std::string, irs::type_info::type_id> compressionMap;
+  std::map<std::string, irs::type_info::type_id, std::less<>> compressionMap;
   for (auto const& c : storedColumns) {
     if (ADB_LIKELY(c.compression != nullptr)) {
       compressionMap.emplace(c.name, c.compression);
@@ -1094,23 +1094,27 @@ Result IResearchDataStore::initDataStore(
   // setup columnstore compression/encryption if requested by storage engine
   auto const encrypt =
       (nullptr != _dataStore._directory->attributes().encryption());
-  options.column_info = [encrypt, compressionMap = std::move(compressionMap),
-                         primarySortCompression](
-                            const irs::string_ref& name) -> irs::column_info {
+  options.column_info =
+      [encrypt, compressionMap = std::move(compressionMap),
+       primarySortCompression](irs::string_ref name) -> irs::column_info {
     if (name.null()) {
-      return {primarySortCompression(), {}, encrypt};
+      return {.compression = primarySortCompression(),
+              .options = {},
+              .encryption = encrypt,
+              .track_prev_doc = false};
     }
-    auto compress = compressionMap.find(
-        static_cast<std::string>(name));  // FIXME: remove cast after C++20
-    if (compress != compressionMap.end()) {
+    if (auto compress = compressionMap.find(name);
+        compress != compressionMap.end()) {
       // do not waste resources to encrypt primary key column
-      return {compress->second(),
-              {},
-              encrypt && (DocumentPrimaryKey::PK() != name)};
+      return {.compression = compress->second(),
+              .options = {},
+              .encryption = encrypt && (DocumentPrimaryKey::PK() != name),
+              .track_prev_doc = false};
     }
-    return {getDefaultCompression()(),
-            {},
-            encrypt && (DocumentPrimaryKey::PK() != name)};
+    return {.compression = getDefaultCompression()(),
+            .options = {},
+            .encryption = encrypt && (DocumentPrimaryKey::PK() != name),
+            .track_prev_doc = false};
   };
 
   auto openFlags = irs::OM_APPEND;

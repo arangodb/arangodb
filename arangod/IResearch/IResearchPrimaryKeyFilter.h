@@ -74,38 +74,52 @@ class PrimaryKeyFilter final : public irs::filter,
     PrimaryKeyIterator() = default;
 
     virtual bool next() noexcept override {
-      _doc = _next;
-      _next = irs::doc_limits::eof();
-      return !irs::doc_limits::eof(_doc);
+      if (_count != 0) {
+        ++_doc.value;
+        --_count;
+        return true;
+      }
+
+      _doc.value = irs::doc_limits::eof();
+      return false;
     }
 
-    virtual irs::doc_id_t seek(irs::doc_id_t target) noexcept override {
-      _doc = target <= _next ? _next : irs::doc_limits::eof();
-
-      return _doc;
+    virtual irs::doc_id_t seek(irs::doc_id_t) noexcept override {
+      TRI_ASSERT(false);
+      // We don't expect this is ever called for removals.
+      _count = 0;
+      _doc.value = irs::doc_limits::eof();
+      return irs::doc_limits::eof();
     }
 
-    virtual irs::doc_id_t value() const noexcept override { return _doc; }
+    virtual irs::doc_id_t value() const noexcept override { return _doc.value; }
 
     virtual irs::attribute* get_mutable(
-        irs::type_info::type_id) noexcept override {
-      return nullptr;
+        irs::type_info::type_id id) noexcept override {
+      return irs::type<irs::document>::id() == id ? &_doc : nullptr;
     }
 
-    void reset(irs::doc_id_t doc) noexcept {
-      _doc = irs::doc_limits::invalid();
-      _next = doc;
+    void reset(irs::doc_id_t begin, irs::doc_id_t end) noexcept {
+      if (ADB_LIKELY(irs::doc_limits::valid(begin) &&
+                     !irs::doc_limits::eof(begin) && begin <= end)) {
+        _doc.value = begin - 1;
+        _count = end - begin + 1;
+      } else {
+        _count = 0;
+      }
     }
 
-    mutable irs::doc_id_t _doc{irs::doc_limits::invalid()};
-    mutable irs::doc_id_t _next{irs::doc_limits::eof()};
-  };  // PrimaryKeyIterator
+    // We intentionally violate iresearch iterator specification
+    // to keep memory footprint as small as possible.
+    irs::document _doc;
+    irs::doc_id_t _count;
+  };
 
   mutable LocalDocumentId::BaseType _pk;
   mutable PrimaryKeyIterator _pkIterator;
-  mutable bool _pkSeen;  // true == do not perform further execution
-                         // (first-match optimization)
-};                       // PrimaryKeyFilter
+  // true == do not perform further execution (first-match optimization)
+  mutable bool _pkSeen;
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @class PrimaryKeyFilterContainer
@@ -123,7 +137,7 @@ class PrimaryKeyFilterContainer final : public irs::filter {
   PrimaryKeyFilterContainer& operator=(PrimaryKeyFilterContainer&&) = default;
 
   PrimaryKeyFilter& emplace(StorageEngine& engine,
-                            arangodb::LocalDocumentId const& value) {
+                            arangodb::LocalDocumentId value) {
     _filters.emplace_back(engine, value);
 
     return _filters.back();

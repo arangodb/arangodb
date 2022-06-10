@@ -99,8 +99,9 @@ class GeoIterator : public irs::doc_iterator {
     std::get<irs::attribute_ptr<irs::document>>(_attrs) =
         irs::get_mutable<irs::document>(_approx.get());
 
-    std::get<irs::cost>(_attrs).reset(
-        [this]() { return EXTRA_COST * irs::cost::extract(*_approx); });
+    std::get<irs::cost>(_attrs).reset([this]() noexcept {
+      return EXTRA_COST * irs::cost::extract(*_approx);
+    });
 
     if (!order.empty()) {
       auto& score = std::get<irs::score>(_attrs);
@@ -640,8 +641,6 @@ irs::filter::prepared::ptr GeoFilter::prepare(
   }
 }
 
-DEFINE_FACTORY_DEFAULT(GeoFilter)
-
 irs::filter::prepared::ptr GeoDistanceFilter::prepare(
     irs::index_reader const& index, irs::Order const& order, irs::score_t boost,
     irs::attribute_provider const* /*ctx*/) const {
@@ -661,8 +660,6 @@ irs::filter::prepared::ptr GeoDistanceFilter::prepare(
                                  lowerBound);
   }
 }
-
-DEFINE_FACTORY_DEFAULT(GeoDistanceFilter)
 
 }  // namespace iresearch
 }  // namespace arangodb

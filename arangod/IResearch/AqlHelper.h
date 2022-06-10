@@ -256,7 +256,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
  public:
   static aql::AstNode const INVALID_NODE;
 
-  static irs::string_ref const& typeString(ScopedValueType type) noexcept;
+  static irs::string_ref typeString(ScopedValueType type) noexcept;
 
   explicit ScopedAqlValue(aql::AstNode const& node = INVALID_NODE) noexcept {
     reset(node);
@@ -286,6 +286,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
   bool isArray() const noexcept { return _type == SCOPED_VALUE_TYPE_ARRAY; }
   bool isDouble() const noexcept { return _type == SCOPED_VALUE_TYPE_DOUBLE; }
   bool isString() const noexcept { return _type == SCOPED_VALUE_TYPE_STRING; }
+  bool isRange() const noexcept { return _type == SCOPED_VALUE_TYPE_RANGE; }
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief executes expression specified in the given `node`
   /// @returns true if expression has been executed, false otherwise

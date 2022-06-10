@@ -40,6 +40,17 @@ inline void normalizeExpansion(std::string& name) {
   }
 }
 
+constexpr char kTypeDelimiter = '\0';
+constexpr char kAnalyzerDelimiter = '\1';
+#ifdef USE_ENTERPRISE
+constexpr char kNestedDelimiter = '\2';
+#endif
+
+std::string_view constexpr kNullSuffix{"\0_n", 3};
+std::string_view constexpr kBoolSuffix{"\0_b", 3};
+std::string_view constexpr kNumericSuffix{"\0_d", 3};
+std::string_view constexpr kStirngSuffix{"\0_s", 3};
+
 }  // namespace
 
 namespace arangodb {
@@ -63,17 +74,6 @@ void syncIndexOnCreate(Index& index) {
 }  // namespace arangodb
 
 namespace arangodb::iresearch::kludge {
-
-static constexpr char kTypeDelimiter = '\0';
-static constexpr char kAnalyzerDelimiter = '\1';
-#ifdef USE_ENTERPRISE
-static constexpr char kNestedDelimiter = '\2';
-#endif
-
-static std::string_view constexpr kNullSuffix{"\0_n", 3};
-static std::string_view constexpr kBoolSuffix{"\0_b", 3};
-static std::string_view constexpr kNumericSuffix{"\0_d", 3};
-static std::string_view constexpr kStirngSuffix{"\0_s", 3};
 
 void mangleType(std::string& name) { name += kTypeDelimiter; }
 
