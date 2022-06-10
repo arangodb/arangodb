@@ -192,9 +192,10 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   /// @brief fill the index, assume already locked exclusively
   /// @param locker locks and unlocks the collection
   Result fillIndexBackground(Locker& locker);
+  // it's public for SharedWorkEnv to access
+  static constexpr size_t kNumThreads = 2;
 
  private:
-  static constexpr size_t kNumThreads = 2;
   static constexpr uint64_t kThreadBatchSize = 100000;
   static constexpr size_t kSingleThreadThreshold = 120000;
   std::shared_ptr<arangodb::RocksDBIndex> _wrapped;
@@ -240,7 +241,7 @@ class SharedWorkEnv {
         return true;
       }
       _numWaitingThreads++;
-      if (_numWaitingThreads == kNumThreads) {
+      if (_numWaitingThreads == RocksDBBuilderIndex::kNumThreads) {
         _done = true;
         _numWaitingThreads--;
         _condition.notify_all();
@@ -264,7 +265,7 @@ class SharedWorkEnv {
   void incTerminatedThreads() {
     std::unique_lock<std::mutex> extLock(_mtx);
     ++_numTerminatedThreads;
-    if (_numTerminatedThreads == kNumThreads) {
+    if (_numTerminatedThreads == RocksDBBuilderIndex::kNumThreads) {
       _condition.notify_all();
     }
   }
@@ -276,8 +277,9 @@ class SharedWorkEnv {
 
   void waitUntilAllThreadsTerminate() {
     std::unique_lock<std::mutex> extLock(_mtx);
-    _condition.wait(extLock,
-                    [&]() { return _numTerminatedThreads == kNumThreads; });
+    _condition.wait(extLock, [&]() {
+      return _numTerminatedThreads == RocksDBBuilderIndex::kNumThreads;
+    });
   }
 
   void postStatistics(ThreadStatistics stats) {
@@ -296,8 +298,6 @@ class SharedWorkEnv {
   }
 
  private:
-  static constexpr size_t kNumThreads = 2;
-
   bool _done = false;
   size_t _numWaitingThreads = 0;
   size_t _numTerminatedThreads = 0;

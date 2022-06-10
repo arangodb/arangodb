@@ -118,6 +118,9 @@
 #include <iomanip>
 #include <limits>
 
+// we will not use the multithreaded index creation that uses rocksdb's sst
+// file ingestion until rocksdb external file ingestion is fixed to have
+// correct sequence numbers for the files without gaps
 #undef USE_SST_INGESTION
 
 using namespace arangodb;
@@ -126,10 +129,9 @@ using namespace arangodb::options;
 
 #ifdef USE_SST_INGESTION
 namespace {
-void cleanUpExtFiles(std::string_view path) {
+void cleanUpTempFiles(std::string_view path) {
   for (auto const& fileName : TRI_FullTreeDirectory(path.data())) {
-    TRI_UnlinkFile(
-        basics::FileUtils::buildFilename(path, fileName).data());
+    TRI_UnlinkFile(basics::FileUtils::buildFilename(path, fileName).data());
   }
 }
 }  // namespace
@@ -692,7 +694,7 @@ void RocksDBEngine::start() {
 #ifdef USE_SST_INGESTION
   _idxPath = basics::FileUtils::buildFilename(_path, "tmp-idx-creation");
   if (basics::FileUtils::isDirectory(_idxPath.data())) {
-    ::cleanUpExtFiles(_idxPath.data());
+    ::cleanUpTempFiles(_idxPath.data());
   } else {
     auto errorMsg = TRI_ERROR_NO_ERROR;
     if (!basics::FileUtils::createDirectory(_idxPath.data(), &errorMsg)) {

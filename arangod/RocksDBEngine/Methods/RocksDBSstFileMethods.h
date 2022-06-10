@@ -62,7 +62,7 @@ class RocksDBSstFileMethods final : public RocksDBMethods {
                                RocksDBKey const&) override;
   void PutLogData(rocksdb::Slice const&) override;
 
-  rocksdb::Status stealFileNames(std::vector<std::string>& fileNames);
+  Result stealFileNames(std::vector<std::string>& fileNames);
 
  private:
   void cleanUpFiles();

@@ -23,6 +23,9 @@
 
 #include "RocksDBBuilderIndex.h"
 
+// we will not use the multithreaded index creation that uses rocksdb's sst
+// file ingestion until rocksdb external file ingestion is fixed to have
+// correct sequence numbers for the files without gaps
 #undef USE_SST_INGESTION
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -138,18 +141,15 @@ IndexCreatorThread::IndexCreatorThread(
     THROW_ARANGO_EXCEPTION(res);
   }
   _trxColl = _trx.resolveTrxCollection();
-  if (_isUniqueIndex) {
-    // for later
-  } else {
+  TRI_ASSERT(_isUniqueIndex == false);
 #ifdef USE_SST_INGESTION
-    _methods = std::make_unique<RocksDBSstFileMethods>(
-        _isForeground, _rootDB, _trxColl, _ridx, _dbOptions, idxPath);
+  _methods = std::make_unique<RocksDBSstFileMethods>(
+      _isForeground, _rootDB, _trxColl, _ridx, _dbOptions, idxPath);
 #else
-    _batch = std::make_unique<rocksdb::WriteBatch>(32 * 1024 * 1024);
-    _methods = std::make_unique<RocksDBBatchedMethods>(
-        reinterpret_cast<rocksdb::WriteBatch*>(_batch.get()));
+  _batch = std::make_unique<rocksdb::WriteBatch>(32 * 1024 * 1024);
+  _methods = std::make_unique<RocksDBBatchedMethods>(
+      reinterpret_cast<rocksdb::WriteBatch*>(_batch.get()));
 #endif
-  }
 }
 
 IndexCreatorThread::~IndexCreatorThread() { Thread::shutdown(); }
@@ -307,8 +307,8 @@ void IndexCreatorThread::run() {
 #ifdef USE_SST_INGESTION
     if (res.ok()) {
       std::vector<std::string> fileNames;
-      rocksdb::Status s = static_cast<RocksDBSstFileMethods*>(_methods.get())
-                              ->stealFileNames(fileNames);
+      Result s = static_cast<RocksDBSstFileMethods*>(_methods.get())
+                     ->stealFileNames(fileNames);
       if (s.ok() && !fileNames.empty()) {
         rocksdb::IngestExternalFileOptions ingestOptions;
         ingestOptions.move_files = true;
@@ -454,9 +454,16 @@ static Result processPartitions(
     idxCreatorThreads.emplace_back(std::move(newThread));
   }
 
+  struct threadException : std::exception {
+    const char* what() const noexcept override {
+      return "failed to start thread.\n";
+    }
+  };
   try {
     for (auto& idxCreatorThread : idxCreatorThreads) {
-      idxCreatorThread->start();
+      if (!idxCreatorThread->start()) {
+        throw threadException();
+      }
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC("01ad6", WARN, Logger::ENGINES)
@@ -473,7 +480,8 @@ static Result processPartitions(
     nextCounter += threadStats.numNexts;
   }
   LOG_TOPIC("d9bf2", DEBUG, Logger::ENGINES)
-      << "Total seeks: " << seekCounter << ", next: " << nextCounter;
+      << "Parallel index creation status Total seeks: " << seekCounter
+      << ", next: " << nextCounter;
 
   return sharedWorkEnv->getResponse();
 }

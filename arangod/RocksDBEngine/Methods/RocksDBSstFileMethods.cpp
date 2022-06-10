@@ -109,13 +109,13 @@ rocksdb::Status RocksDBSstFileMethods::writeToFile() {
   return res;
 }
 
-rocksdb::Status RocksDBSstFileMethods::stealFileNames(
+Result RocksDBSstFileMethods::stealFileNames(
     std::vector<std::string>& fileNames) {
   rocksdb::Status res = writeToFile();
   if (res.ok()) {
     fileNames = std::move(_sstFileNames);
   }
-  return res;
+  return rocksutils::convertStatus(res);
 }
 
 void RocksDBSstFileMethods::cleanUpFiles() {
