@@ -695,7 +695,7 @@ void RocksDBEngine::start() {
     ::cleanUpExtFiles(_idxPath.data());
   } else {
     auto errorMsg = TRI_ERROR_NO_ERROR;
-    if (!basics::FileUtils::createDirectory(_idxPath.data(), &errorMsg)) {
+    if (!basics::FileUtils::createDirectory(_idxPath, &errorMsg)) {
       LOG_TOPIC("6d10f", FATAL, Logger::ENGINES)
           << "Cannot create tmp-idx-creation directory, error: code '"
           << TRI_last_error() << "'";
