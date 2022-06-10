@@ -614,6 +614,8 @@ void extractNonConstPartsOfAndPart(
       captureFCallArgumentExpressions(ast, varInfo, leaf, std::move(path),
                                       indexVariable, result);
       continue;
+    } else if (leaf->type == NODE_TYPE_EXPANSION) {
+      continue;  // FIXME: traverse filter
     } else if (leaf->numMembers() != 2) {
       // The Index cannot solve non-binary operators.
       TRI_ASSERT(false);

@@ -140,9 +140,10 @@ class IResearchRocksDBInvertedIndex final : public IResearchInvertedIndex,
                 LocalDocumentId const& documentId, VPackSlice doc,
                 OperationOptions const& /*options*/,
                 bool /*performChecks*/) override {
-    return IResearchDataStore::insert<InvertedIndexFieldIterator,
-                                      IResearchInvertedIndexMeta>(
-        trx, documentId, doc, meta());
+    return IResearchDataStore::insert<
+        FieldIterator<IResearchInvertedIndexMeta,
+                      IResearchInvertedIndexMeta::FieldRecord>,
+        IResearchInvertedIndexMeta>(trx, documentId, doc, meta());
   }
 
   Result remove(transaction::Methods& trx, RocksDBMethods*,

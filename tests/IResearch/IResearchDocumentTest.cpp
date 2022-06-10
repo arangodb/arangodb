@@ -3729,7 +3729,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_object) {
       EMPTY, EMPTY, arangodb::transaction::Options());
 
   auto json = arangodb::velocypack::Parser::fromJson(
-      R"({"keys": { "a":1, "b":2, "c":3}, "boost": 10})");
+      R"({"boost": 10, "keys": { "a":1, "b":2, "c":3}})");
 
   InvertedIndexFieldIterator it(
       trx, irs::string_ref::EMPTY, arangodb::IndexId(0));

@@ -173,11 +173,13 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
                 std::vector<FieldRecord>&& nested,
                 std::optional<Features>&& features, std::string&& expression,
                 bool isArray, bool includeAllFields, bool trackListPositions,
-                bool overrideValue, bool isPrimitiveAnalyzer);
+                bool overrideValue, bool isPrimitiveAnalyzer,
+                std::string_view parentName);
+
+    std::string_view path() const noexcept;
+    std::string attributeString() const;
 
     std::string toString() const;
-    std::string toPath() const;
-    std::string attributeString() const;
 
     std::string const& analyzerName() const noexcept {
       TRI_ASSERT(_analyzers[0]._pool);
@@ -238,7 +240,6 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
     absl::InlinedVector<FieldMeta::Analyzer, 1> _analyzers;
     /// @brief override for field features
     std::optional<Features> _features;
-
     /// @brief start point for non primitive analyzers
     size_t  _primitiveOffset{0};
     /// @brief fields ids storage
@@ -256,6 +257,8 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
     bool _isArray;
     /// @brief force computed value to override existing value
     bool _overrideValue;
+    /// @brief Full mangled path to the value
+    std::string _path;
   };
 
   bool operator==(IResearchInvertedIndexMeta const& other) const noexcept;
@@ -263,6 +266,12 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
   static bool matchesFieldsDefinition(IResearchInvertedIndexMeta const& meta,
                                       VPackSlice other);
 
+  
+  std::vector<FieldRecord> const& fields() {
+      return _fields._fields;
+  }
+
+  /// @brief custom conversion to match FieldIterator expectations
   operator FieldRecord const&() const noexcept {
     return _fields;
   }
