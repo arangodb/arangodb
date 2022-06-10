@@ -61,6 +61,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
+#include <stdexcept>
 
 using namespace arangodb;
 using namespace arangodb::rocksutils;
@@ -454,15 +455,10 @@ static Result processPartitions(
     idxCreatorThreads.emplace_back(std::move(newThread));
   }
 
-  struct threadException : std::exception {
-    const char* what() const noexcept override {
-      return "failed to start thread.\n";
-    }
-  };
   try {
     for (auto& idxCreatorThread : idxCreatorThreads) {
       if (!idxCreatorThread->start()) {
-        throw threadException();
+        throw std::runtime_error("couldn't start thread");
       }
     }
   } catch (std::exception const& ex) {
