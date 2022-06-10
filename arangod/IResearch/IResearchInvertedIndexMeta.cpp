@@ -23,6 +23,8 @@
 
 #include "IResearchInvertedIndexMeta.h"
 
+#include "frozen/map.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
@@ -38,7 +40,7 @@ using namespace arangodb;
 using namespace arangodb::iresearch;
 
 constexpr auto consistencyTypeMap =
-    frozen::make_map<irs::string_ref, Consistency>({
+    frozen::map<irs::string_ref, Consistency, 2>({
         {"eventual", Consistency::kEventual},
         {"immediate", Consistency::kImmediate}
     });

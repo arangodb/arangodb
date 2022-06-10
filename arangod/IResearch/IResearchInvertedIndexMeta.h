@@ -267,7 +267,7 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
                                       VPackSlice other);
 
   
-  std::vector<FieldRecord> const& fields() {
+  std::vector<FieldRecord> const& fields() const noexcept {
       return _fields._fields;
   }
 
