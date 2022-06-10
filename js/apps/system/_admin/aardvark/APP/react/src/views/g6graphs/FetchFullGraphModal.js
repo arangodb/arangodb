@@ -43,7 +43,7 @@ const ModalBody = styled.div`
       const ajaxData = {
         "depth": "2",
         "limit": "250",
-        "nodeColor": "#fbe08e",
+        "nodeColor": "#CBDF2F",
         "nodeColorAttribute": "",
         "nodeColorByCollection": "false",
         "edgeColor": "#cccccc",

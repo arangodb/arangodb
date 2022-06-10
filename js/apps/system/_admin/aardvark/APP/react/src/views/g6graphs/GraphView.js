@@ -236,7 +236,7 @@ export class GraphView extends React.Component {
           fill: '#' + this.props.nodeColor,
           //stroke: '#576e3e', // The stroke color of nodes
           stroke: '#' + this.props.nodeColor,
-          lineWidth: 1, // The line width of the stroke of nodes
+          lineWidth: 8, // The line width of the stroke of nodes
           cursor: 'pointer',
         },
         labelCfg: {
@@ -253,8 +253,9 @@ export class GraphView extends React.Component {
       nodeStateStyles: {
         hover: {
           //fill: '#' + this.props.nodeColor,
+          //fill: '#CBDF2F',
           stroke: '#ffffff',
-          lineWidth: 2,
+          lineWidth: 4,
           //shadowColor: '#' + this.props.nodeColor,
           shadowColor: '#cccccc',
           shadowBlur: 20,
@@ -275,7 +276,7 @@ export class GraphView extends React.Component {
         },
         searchedNode: {
           fill: '#' + this.props.nodeColor,
-          stroke: '#555555',
+          stroke: '#1D2A12',
           lineWidth: 4,
           shadowColor: '#' + this.props.nodeColor,
           shadowBlur: 10,
@@ -289,7 +290,7 @@ export class GraphView extends React.Component {
           refY: 10,
           style: {
             //fill: '#576e3e',
-            fill: '#555555',
+            fill: '#1D2A12',
             fontStyle: 'regular',
             fontFamily: 'Roboto',
             fontSize: 12
@@ -302,9 +303,10 @@ export class GraphView extends React.Component {
       },
       edgeStateStyles: {
         hover: {
+          fill: '#9F7000',
           shadowColor: '#848484',
           shadowBlur: 10,
-          lineWidth: 1,
+          lineWidth: 4,
           cursor: 'pointer'
         },
         selected: {

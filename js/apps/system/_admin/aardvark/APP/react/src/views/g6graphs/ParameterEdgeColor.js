@@ -29,9 +29,6 @@ const ParameterEdgeColor = () => {
         }}
       disabled={urlParameters.edgeColorByCollection}>
       </Textinput>
-      <Tooltip placement="bottom" title={"Default edge color."}>
-        <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
-      </Tooltip>
     </div>
   );
 };

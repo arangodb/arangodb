@@ -29,9 +29,6 @@ const ParameterNodeColor = () => {
       }}
       disabled={urlParameters.nodeColorByCollection}>
       </Textinput>
-      <Tooltip placement="bottom" title={"Default node color."}>
-        <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
-      </Tooltip>
     </div>
   );
 };

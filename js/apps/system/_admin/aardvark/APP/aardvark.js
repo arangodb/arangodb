@@ -1318,7 +1318,7 @@ authRouter.get('/g6graph/:name', function (req, res) {
             target: edge._to
           };
           */
-          var calculatedEdgeColor = '#555555';
+          var calculatedEdgeColor = '#1D2A12';
           if (config.edgeColor !== undefined) {
             calculatedEdgeColor = '#' + config.edgeColor;
           }
@@ -1343,7 +1343,7 @@ authRouter.get('/g6graph/:name', function (req, res) {
             var coll = edge._id.split('/')[0];
             if (tmpObjEdges.hasOwnProperty(coll)) {
               edgeObj.color = tmpObjEdges[coll];
-              edgeObj.style.stroke = tmpObjEdges[coll] || '#555555';
+              edgeObj.style.stroke = tmpObjEdges[coll] || '#1D2A12';
             } else {
               tmpObjEdges[coll] = colors.jans[Object.keys(tmpObjEdges).length];
               edgeObj.color = tmpObjEdges[coll];
@@ -1446,7 +1446,7 @@ authRouter.get('/g6graph/:name', function (req, res) {
             y: Math.random()
           };
           */
-        var calculatedNodeColor = '#fbe08e';
+        var calculatedNodeColor = '#CBDF2F';
         if (config.nodeColor !== undefined) {
           if(!config.nodeColor.startsWith('#')) {
             calculatedNodeColor = '#' + config.nodeColor;

@@ -13,7 +13,7 @@ const ParameterNodeColorAttribute = ({ nodesColorAttributes }) => {
 
   return (
     <>
-      <form>
+      <div>
         <Textinput
           label={'Node color attribute'}
           value={nodeColorAttribute}
@@ -28,7 +28,7 @@ const ParameterNodeColorAttribute = ({ nodesColorAttributes }) => {
         <Tooltip placement="bottom" title={"If an attribute is given, nodes will then be colorized by the attribute. This setting ignores default node color if set."}>
           <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
         </Tooltip>
-      </form>
+      </div>
     </>
   );
 };
