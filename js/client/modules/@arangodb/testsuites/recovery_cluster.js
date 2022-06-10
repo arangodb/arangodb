@@ -197,7 +197,7 @@ function runArangodRecovery (params) {
     return; // without test server test will for sure fail
   }
   if (params.setup) {
-    let dbServers = params.instanceManager.arangods.slice().filter(
+    let dbServers = params.instanceManager.arangods.filter(
       (a) => {
         return a.isRole(inst.instanceRole.dbServer) ||
           a.isRole(inst.instanceRole.coordinator);
