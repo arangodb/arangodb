@@ -52,6 +52,9 @@ using DocsMap =
 using StoredFields = std::vector<std::vector<std::string>>;
 using Fields = std::vector<std::string>;
 using SortFields = std::vector<std::pair<std::string, bool>>;
+using InvertedIndexFieldIterator = arangodb::iresearch::FieldIterator<
+    arangodb::iresearch::IResearchInvertedIndexMeta,
+    arangodb::iresearch::IResearchInvertedIndexMeta::FieldRecord>;
 
 class SimpleDataSetProvider {
  public:
@@ -150,7 +153,7 @@ class IResearchInvertedIndexIteratorTestBase
         // MSVC fails to compile if EXPECT_TRUE  is called directly
         auto res =
             _index
-                ->insert<arangodb::iresearch::InvertedIndexFieldIterator,
+                ->insert<InvertedIndexFieldIterator,
                          arangodb::iresearch::IResearchInvertedIndexMeta>(
                     trx, doc->first, doc->second->slice(), _index->meta())
                 .ok();
@@ -168,7 +171,7 @@ class IResearchInvertedIndexIteratorTestBase
     while (doc != _docs.end()) {
       // MSVC fails to compile if EXPECT_TRUE  is called directly
       auto res = _index
-                     ->insert<arangodb::iresearch::InvertedIndexFieldIterator,
+                     ->insert<InvertedIndexFieldIterator,
                               arangodb::iresearch::IResearchInvertedIndexMeta>(
                          trx, doc->first, doc->second->slice(), _index->meta())
                      .ok();
