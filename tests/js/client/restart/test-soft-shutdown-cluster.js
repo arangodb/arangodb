@@ -80,6 +80,7 @@ function restartInstance(arangod) {
   options.skipReconnect = false;
   arangod.restartOneInstance();
   waitForAlive(30, arangod.url, {});
+  arangod.checkArangoConnection(5);
 };
 
 function testSuite() {
@@ -89,9 +90,11 @@ function testSuite() {
     setUp : function() {
       db._drop(cn);
       let collection = db._create(cn, {numberOfShards:2, replicationFactor:2});
+      let docs = [];
       for (let i = 0; i < 10; ++i) {
-        collection.insert({Hallo:i});
+        docs.push({Hallo:i});
       }
+      collection.save(docs);
     },
 
     tearDown : function() {
