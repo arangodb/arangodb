@@ -205,9 +205,7 @@ void IndexCreatorThread::run() {
           RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(
               _rcoll->objectId(), workItem.first, UINT64_MAX);
           it->Seek(bounds.start());
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           _statistics.numSeeks++;
-#endif
         }
 
         bool timeExceeded = false;
@@ -230,9 +228,7 @@ void IndexCreatorThread::run() {
 
           it->Next();
           numDocsWritten++;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           _statistics.numNexts++;
-#endif
 
           if (++count > 100) {
             count = 0;
@@ -471,15 +467,14 @@ static Result processPartitions(
   }
   sharedWorkEnv->waitUntilAllThreadsTerminate();
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   uint64_t seekCounter = 2;
   uint64_t nextCounter = 0;
   for (auto const& threadStats : sharedWorkEnv->getThreadStatistics()) {
     seekCounter += threadStats.numSeeks;
     nextCounter += threadStats.numNexts;
   }
-  LOG_DEVEL << "Total seeks: " << seekCounter << ", next: " << nextCounter;
-#endif
+  LOG_TOPIC("d9bf2", DEBUG, Logger::ENGINES)
+      << "Total seeks: " << seekCounter << ", next: " << nextCounter;
 
   return sharedWorkEnv->getResponse();
 }
