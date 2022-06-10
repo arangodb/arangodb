@@ -480,7 +480,7 @@ static Result processPartitions(
     nextCounter += threadStats.numNexts;
   }
   LOG_TOPIC("d9bf2", DEBUG, Logger::ENGINES)
-      << "Parallel index creation status Total seeks: " << seekCounter
+      << "Parallel index creation status. Total seeks: " << seekCounter
       << ", next: " << nextCounter;
 
   return sharedWorkEnv->getResponse();
