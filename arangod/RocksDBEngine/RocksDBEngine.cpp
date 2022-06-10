@@ -129,7 +129,7 @@ namespace {
 void cleanUpExtFiles(std::string_view path) {
   for (auto const& fileName : TRI_FullTreeDirectory(path.data())) {
     TRI_UnlinkFile(
-        basics::FileUtils::buildFilename(path.data(), fileName.data()).data());
+        basics::FileUtils::buildFilename(path, fileName).data());
   }
 }
 }  // namespace
