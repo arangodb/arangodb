@@ -535,18 +535,6 @@ void IndexFactory::processIndexInBackground(VPackSlice definition,
   builder.add(StaticStrings::IndexInBackground, VPackValue(bck));
 }
 
-Result IndexFactory::processIndexThreadBatchSize(VPackSlice definition,
-                                                 VPackBuilder& builder) {
-  uint64_t batchSize = basics::VelocyPackHelper::getNumericValue<uint64_t>(
-      definition, StaticStrings::IndexThreadBatchSize, 5000);
-  if (batchSize < 50) {
-    return Result(TRI_ERROR_BAD_PARAMETER,
-                  "threadBatchSize attribute must be a number greater than 50");
-  }
-  builder.add(StaticStrings::IndexThreadBatchSize, VPackValue(batchSize));
-  return Result();
-}
-
 /// @brief process the unique flag and add it to the json
 void IndexFactory::processIndexUniqueFlag(VPackSlice definition,
                                           VPackBuilder& builder) {
@@ -630,10 +618,6 @@ Result IndexFactory::enhanceJsonIndexGeneric(VPackSlice definition,
     // "cacheEnabled"
     processIndexCacheEnabled(definition, builder);
   }
-  if (res.ok()) {
-    // "threadBatchSize"
-    res = processIndexThreadBatchSize(definition, builder);
-  }
 
   return res;
 }
@@ -668,10 +652,6 @@ Result IndexFactory::enhanceJsonIndexTtl(VPackSlice definition,
     builder.add(StaticStrings::IndexExpireAfter, v);
     processIndexInBackground(definition, builder);
   }
-  if (res.ok()) {
-    // "threadBatchSize"
-    res = processIndexThreadBatchSize(definition, builder);
-  }
 
   return res;
 }
@@ -691,10 +671,6 @@ Result IndexFactory::enhanceJsonIndexGeo(VPackSlice definition,
     IndexFactory::processIndexLegacyPolygonsFlag(definition, builder);
 
     processIndexInBackground(definition, builder);
-  }
-  if (res.ok()) {
-    // "threadBatchSize"
-    res = processIndexThreadBatchSize(definition, builder);
   }
 
   return res;
@@ -730,10 +706,6 @@ Result IndexFactory::enhanceJsonIndexFulltext(VPackSlice definition,
     builder.add("minLength", VPackValue(minWordLength));
     processIndexInBackground(definition, builder);
   }
-  if (res.ok()) {
-    // "threadBatchSize"
-    res = processIndexThreadBatchSize(definition, builder);
-  }
 
   return res;
 }
@@ -763,10 +735,6 @@ Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
 
     processIndexUniqueFlag(definition, builder);
     processIndexInBackground(definition, builder);
-  }
-  if (res.ok()) {
-    // "threadBatchSize"
-    res = processIndexThreadBatchSize(definition, builder);
   }
 
   return res;

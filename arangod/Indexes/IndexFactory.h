@@ -142,10 +142,6 @@ class IndexFactory {
   static void processIndexInBackground(velocypack::Slice definition,
                                        velocypack::Builder& builder);
 
-  /// @brief process the "threadBatchSize" parameter and add it to the json
-  static Result processIndexThreadBatchSize(velocypack::Slice definition,
-                                            velocypack::Builder& builder);
-
   /// @brief process the "unique" flag and add it to the json
   static void processIndexUniqueFlag(velocypack::Slice definition,
                                      velocypack::Builder& builder);

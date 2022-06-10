@@ -118,13 +118,13 @@
 #include <iomanip>
 #include <limits>
 
-#define USE_SST_INGESTION false
+#undef USE_SST_INGESTION
 
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::options;
 
-#if USE_SST_INGESTION
+#ifdef USE_SST_INGESTION
 namespace {
 void cleanUpExtFiles(std::string_view path) {
   for (auto const& fileName : TRI_FullTreeDirectory(path.data())) {
@@ -689,7 +689,7 @@ void RocksDBEngine::start() {
     }
   }
 
-#if USE_SST_INGESTION
+#ifdef USE_SST_INGESTION
   _idxPath = basics::FileUtils::buildFilename(_path, "tmp-idx-creation");
   if (basics::FileUtils::isDirectory(_idxPath.data())) {
     ::cleanUpExtFiles(_idxPath.data());

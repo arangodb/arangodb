@@ -196,6 +196,8 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
 
  private:
   static constexpr size_t kNumThreads = 2;
+  static constexpr uint64_t kThreadBatchSize = 100000;
+  static constexpr size_t kSingleThreadThreshold = 120000;
   std::shared_ptr<arangodb::RocksDBIndex> _wrapped;
   std::uint64_t _numDocsHint;
   std::atomic<uint64_t> _docsProcessed;
@@ -296,6 +298,7 @@ class SharedWorkEnv {
 
  private:
   static constexpr size_t kNumThreads = 2;
+
   bool _done = false;
   size_t _numWaitingThreads = 0;
   size_t _numTerminatedThreads = 0;
