@@ -216,6 +216,17 @@ const impTodos = [{
   datatype: "value=string",
   mergeAttributes: ["Id=[id]", "IdAndValue=[id]:[value]", "ValueAndId=value:[value]/id:[id]", "_key=[id][value]", "newAttr=[_key]"],
 }, {
+  id: 'csvheadersmergeattributes',
+  data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
+  skipLines: 1,
+  headers: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs-headers.csv')),
+  coll: 'UnitTestsImportCsvHeadersMergeAttributes',
+  type: 'csv',
+  create: 'true',
+  separator: ',',
+  convert: true,
+  mergeAttributes: ["Id=[id]", "IdAndValue=[id]:[value]", "ValueAndId=value:[value]/id:[id]", "_key=[id][value]", "newAttr=[_key]"],
+}, {
   id: 'csvmergeattributesInvalid',
   data: tu.makePathUnix(fs.join(testPaths.importing[1], 'import-merge-attrs.csv')),
   coll: 'UnitTestsImportCsvMergeAttributesInvalid',
