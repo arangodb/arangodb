@@ -692,7 +692,7 @@ void RocksDBEngine::start() {
 #ifdef USE_SST_INGESTION
   _idxPath = basics::FileUtils::buildFilename(_path, "tmp-idx-creation");
   if (basics::FileUtils::isDirectory(_idxPath)) {
-    ::cleanUpExtFiles(_idxPath.data());
+    ::cleanUpExtFiles(_idxPath);
   } else {
     auto errorMsg = TRI_ERROR_NO_ERROR;
     if (!basics::FileUtils::createDirectory(_idxPath, &errorMsg)) {
