@@ -971,7 +971,7 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
   // add --merge-attributes arguments
   if (!_mergeAttributesInstructions.empty()) {
     for (auto& [key, value] : _mergeAttributesInstructions) {
-      if (row == _rowsToSkip) {
+      if (row == _rowsToSkip && !_headersSeen) {
         std::for_each(
             value.begin(), value.end(),
             [this, key = &key](Step const& attrProperties) {
@@ -982,7 +982,7 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
                       << "In --merge-attributes: No matching value for "
                          "attribute name "
                       << attrProperties.value << " to populate attribute "
-                      << key;
+                      << *key;
                 }
               }
             });
