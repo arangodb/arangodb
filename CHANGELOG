@@ -2,10 +2,9 @@ devel
 -----
 
 * APM-135: Added multithreading to assigning non-unique indexes to documents,
-  in foreground or background mode. The batch size for the thread to process 
-  before splitting its partitions is given by the  parameter `threadBatchSize` 
-  on index creation. The number of threads is hardcoded to 2 and the thread 
-  batch size is hardcoded to 100000 for now. 
+  in foreground or background mode. The number of index creation threads 
+  is hardcoded to 2 for now. Improvements for higher parallelism are expected
+  for future versions.
 
 * Change default `format_version` for RocksDB .sst files from 3 to 5.
 

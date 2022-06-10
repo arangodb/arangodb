@@ -26,7 +26,6 @@
 #undef USE_SST_INGESTION
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/TempFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
