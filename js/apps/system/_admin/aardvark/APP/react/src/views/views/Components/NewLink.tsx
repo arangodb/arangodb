@@ -5,6 +5,7 @@ import AutoCompleteTextInput from "../../../components/pure-css/form/AutoComplet
 import { IconButton } from "../../../components/arango/buttons";
 import { ViewContext } from "../constants";
 import { useHistory } from "react-router-dom";
+import { NavButton } from "../Actions";
 
 type NewLinkProps = {
   disabled: boolean;
@@ -14,11 +15,11 @@ type NewLinkProps = {
 };
 
 const NewLink = ({
-  collection,
-  options,
-  updateCollection,
-  disabled
-}: NewLinkProps) => {
+                   collection,
+                   options,
+                   updateCollection,
+                   disabled
+                 }: NewLinkProps) => {
   const { dispatch } = useContext(ViewContext);
   const history = useHistory();
 
@@ -37,7 +38,7 @@ const NewLink = ({
     <ViewLinkLayout fragments={['[New]']}>
       <ArangoTable>
         <tbody>
-          <tr style={{ borderBottom: "1px  solid #DDD" }}>
+        <tr style={{ borderBottom: "1px  solid #DDD" }}>
           <ArangoTD seq={0} colSpan={2}>
             <AutoCompleteTextInput
               placeholder={"Collection"}
@@ -62,6 +63,9 @@ const NewLink = ({
           </ArangoTD>
         </tr>
         </tbody>
+        <tfoot>
+        <tr><ArangoTD seq={0}><NavButton arrow={'left'} text={'Back'}/></ArangoTD></tr>
+        </tfoot>
       </ArangoTable>
     </ViewLinkLayout>
   );

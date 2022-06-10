@@ -3,7 +3,7 @@ import { get } from "lodash";
 import LinkView from "../Components/LinkView";
 import FieldView from "../Components/FieldView";
 import { Route, Switch, useRouteMatch } from "react-router-dom";
-import { BackButton, SaveButton } from "../Actions";
+import { NavButton, SaveButton } from "../Actions";
 import { FormState, ViewContext, ViewProps } from "../constants";
 
 const LinkPropertiesForm = ({ name }: ViewProps) => {
@@ -27,6 +27,9 @@ const LinkPropertiesForm = ({ name }: ViewProps) => {
         <div className="tab-pane tab-pane-modal active" id="Links">
           <main>
             <Switch>
+              <Route path={`${match.path}/:field+/_add`}>
+                <FieldView disabled={disabled}/>
+              </Route>
               <Route path={`${match.path}/:field+`}>
                 <FieldView disabled={disabled}/>
               </Route>
@@ -39,7 +42,7 @@ const LinkPropertiesForm = ({ name }: ViewProps) => {
       </div>
     </div>
     <div className="modal-footer">
-      <BackButton/>
+      <NavButton/>
       {
         isAdminUser && changed
           ? <SaveButton view={formState as FormState} setChanged={setChanged} oldName={name}/>

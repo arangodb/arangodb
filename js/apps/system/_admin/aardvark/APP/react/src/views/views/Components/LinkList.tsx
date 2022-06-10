@@ -5,7 +5,7 @@ import { FormState, ViewContext, ViewProps } from "../constants";
 import Modal, { ModalFooter, ModalHeader } from "../../../components/modal/Modal";
 import { Link as HashLink, useRouteMatch } from 'react-router-dom';
 import { SaveButton } from "../Actions";
-import { chain } from "lodash";
+import { chain, size } from "lodash";
 
 type DeleteButtonProps = {
   collection: string;
@@ -43,6 +43,7 @@ const LinkList = ({ name }: ViewProps) => {
   const match = useRouteMatch();
 
   const formState = fs as FormState;
+  const validLinks = chain(formState.links || {}).toPairs().filter(pair => pair[1] !== null).value();
 
   return (
     <div id="modal-dialog">
@@ -57,29 +58,36 @@ const LinkList = ({ name }: ViewProps) => {
 
           <tbody>
           {
-            chain(formState.links || {}).toPairs().filter(pair => pair[1] !== null).map((pair, key) =>
-              <tr key={key}>
-                <ArangoTD seq={0}>{pair[0]}</ArangoTD>
-                <ArangoTD seq={1}>
-                  <DeleteButton collection={pair[0]} modalCid={`modal-content-view-${key}`}/>
-                  <HashLink to={`/${pair[0]}`}>
-                    <IconButton icon={"eye"} type={"warning"}/>
+            size(validLinks)
+              ? validLinks.map((pair, key) =>
+                <tr key={key}>
+                  <ArangoTD seq={0}>{pair[0]}</ArangoTD>
+                  <ArangoTD seq={1}>
+                    <DeleteButton collection={pair[0]} modalCid={`modal-content-view-${key}`}/>
+                    <HashLink to={`/${pair[0]}`}>
+                      <IconButton icon={"edit"} type={"warning"}/>
+                    </HashLink>
+                  </ArangoTD>
+                </tr>
+              )
+              : <tr>
+                <ArangoTD seq={0} colSpan={2}>No links.</ArangoTD>
+              </tr>
+          }
+          </tbody>
+          {
+            isAdminUser
+              ? <tfoot>
+              <tr>
+                <ArangoTD seq={0} colSpan={2}>
+                  <HashLink to={`${match.url}_add`}>
+                    <i className={'fa fa-plus-circle'}/>
                   </HashLink>
                 </ArangoTD>
               </tr>
-            ).value()
+              </tfoot>
+              : null
           }
-          </tbody>
-          <tfoot>
-          <tr>
-            <ArangoTD seq={0}> </ArangoTD>
-            <ArangoTD seq={1}>
-              <HashLink to={`${match.path}_add`}>
-                <i className={'fa fa-plus-circle'}/>
-              </HashLink>
-            </ArangoTD>
-          </tr>
-          </tfoot>
         </ArangoTable>
       </div>
       {

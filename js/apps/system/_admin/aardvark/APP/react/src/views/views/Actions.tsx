@@ -14,106 +14,26 @@ type ButtonProps = {
   view: FormState;
 };
 
-type SaveButtonProps = ButtonProps & {
-  oldName?: string;
-  menu?: string;
-  setChanged: (changed: boolean) => void;
-};
-
-type BackButtonProps = {
+type NavButtonProps = {
   disabled?: boolean;
+  arrow?: string;
+  text?: string;
 };
 
-export const BackButton = ({ disabled }: BackButtonProps) => {
+export const NavButton = ({ disabled, arrow = 'up', text = 'Up' }: NavButtonProps) => {
   const history = useHistory();
   const location = useLocation();
 
   const up = location.pathname.slice(0, location.pathname.lastIndexOf('/'));
 
-  return (
-    <IconButton
-      icon={"arrow-up"}
-      onClick={() => history.push(up)}
-      type={"default"}
-      disabled={disabled}
-    >
-      Up
-    </IconButton>
-  );
+  return <IconButton icon={`arrow-${arrow}`} onClick={() => history.push(up)} type={"default"}
+                     disabled={disabled}>{text}</IconButton>;
 };
 
-export const handleSave = async ({
-                                   view,
-                                   oldName,
-                                   menu,
-                                   setChanged
-                                 }: SaveButtonProps) => {
-  const route = getApiRouteForCurrentDB();
-  let result;
-  let error = false;
-  const path = `/view/${view.name}/properties`;
-
-  try {
-    if (oldName && view.name !== oldName) {
-      result = await route.put(`/view/${oldName}/rename`, {
-        name: view.name
-      });
-
-      if (result.body.error) {
-        arangoHelper.arangoError(
-          "Failure",
-          `Got unexpected server response: ${result.body.errorMessage}`
-        );
-        error = true;
-      }
-    }
-
-    if (!error) {
-      const properties = pick(
-        view,
-        "consolidationIntervalMsec",
-        "commitIntervalMsec",
-        "cleanupIntervalStep",
-        "links",
-        "consolidationPolicy"
-      );
-      result = await route.patch(path, properties);
-
-      if (result.body.error) {
-        arangoHelper.arangoError(
-          "Failure",
-          `Got unexpected server response: ${result.body.errorMessage}`
-        );
-      } else {
-        if (view.name === oldName) {
-          await mutate(path);
-        } else {
-          let newRoute = `#view/${view.name}`;
-          if (menu) {
-            newRoute += `/${menu}`;
-          }
-          window.App.navigate(newRoute, {
-            trigger: true,
-            replace: true
-          });
-        }
-
-        window.sessionStorage.removeItem(oldName);
-        window.sessionStorage.removeItem(`${oldName}-changed`);
-        setChanged(false);
-
-        arangoHelper.arangoNotification(
-          "Success",
-          `Updated View: ${view.name}`
-        );
-      }
-    }
-  } catch (e) {
-    arangoHelper.arangoError(
-      "Failure",
-      `Got unexpected server response: ${e.message}`
-    );
-  }
+type SaveButtonProps = ButtonProps & {
+  oldName?: string;
+  menu?: string;
+  setChanged: (changed: boolean) => void;
 };
 
 export const SaveButton = ({
@@ -122,17 +42,78 @@ export const SaveButton = ({
                              menu,
                              setChanged
                            }: SaveButtonProps) => {
+  const handleSave = async () => {
+    const route = getApiRouteForCurrentDB();
+    let result;
+    let error = false;
+    const path = `/view/${view.name}/properties`;
+
+    try {
+      if (oldName && view.name !== oldName) {
+        result = await route.put(`/view/${oldName}/rename`, {
+          name: view.name
+        });
+
+        if (result.body.error) {
+          arangoHelper.arangoError(
+            "Failure",
+            `Got unexpected server response: ${result.body.errorMessage}`
+          );
+          error = true;
+        }
+      }
+
+      if (!error) {
+        const properties = pick(
+          view,
+          "consolidationIntervalMsec",
+          "commitIntervalMsec",
+          "cleanupIntervalStep",
+          "links",
+          "consolidationPolicy"
+        );
+        result = await route.patch(path, properties);
+
+        if (result.body.error) {
+          arangoHelper.arangoError(
+            "Failure",
+            `Got unexpected server response: ${result.body.errorMessage}`
+          );
+        } else {
+          if (view.name === oldName) {
+            await mutate(path);
+          } else {
+            let newRoute = `#view/${view.name}`;
+            if (menu) {
+              newRoute += `/${menu}`;
+            }
+            window.App.navigate(newRoute, {
+              trigger: true,
+              replace: true
+            });
+          }
+
+          window.sessionStorage.removeItem(oldName);
+          window.sessionStorage.removeItem(`${oldName}-changed`);
+          setChanged(false);
+
+          arangoHelper.arangoNotification(
+            "Success",
+            `Updated View: ${view.name}`
+          );
+        }
+      }
+    } catch (e) {
+      arangoHelper.arangoError(
+        "Failure",
+        `Got unexpected server response: ${e.message}`
+      );
+    }
+  };
 
 
   return (
-    <IconButton icon={"save"} onClick={() => handleSave({
-      view,
-      oldName,
-      menu,
-      setChanged
-    })} type={"success"}>
-      Save
-    </IconButton>
+    <IconButton icon={"save"} onClick={handleSave} type={"success"}>Save</IconButton>
   );
 };
 

@@ -23,6 +23,9 @@ const LinkView = ({
         <tbody>
         <tr style={{ borderBottom: "1px  solid #DDD" }}>
           <ArangoTD seq={0}>
+            <b>{link}</b>
+          </ArangoTD>
+          <ArangoTD seq={1}>
             <LinkPropertiesInput formState={links[link] || {}} disabled={disabled} dispatch={dispatch}
                                  basePath={`links[${link}]`}/>
           </ArangoTD>

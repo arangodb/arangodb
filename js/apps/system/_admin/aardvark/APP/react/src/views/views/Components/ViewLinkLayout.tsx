@@ -17,10 +17,10 @@ const ViewLinkLayout = ({ fragments = [], children }: ViewLinkLayoutProps) =>
           fragments.slice(0, fragments.length - 1).map((fragment, idx) => {
             const path = fragments.slice(0, idx + 1).join('/');
 
-            return <span key={idx}>&#47;<Link to={`/${path}`}>{fragment}</Link></span>;
+            return <span key={idx}>&nbsp;&#47;&nbsp;<Link to={`/${path}`}>{fragment}</Link></span>;
           })
         }
-        &#47;{fragments[fragments.length - 1]}
+        &nbsp;&#47;&nbsp;{fragments[fragments.length - 1]}
       </ArangoTH>
     </tr>
     </thead>

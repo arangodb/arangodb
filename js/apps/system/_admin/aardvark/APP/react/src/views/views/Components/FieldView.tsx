@@ -14,10 +14,9 @@ const FieldView = ({ disabled }: FieldViewProps) => {
   const { formState, dispatch } = useContext(ViewContext);
   const match = useRouteMatch();
 
-  const fieldStr = get(match.params, 'field');
-  const fieldName = last(fieldStr.split('/')) as string;
-
   const fragments = match.url.slice(1).split('/');
+  const fieldName = last(fragments);
+
   let basePath = `links[${fragments[0]}]`;
   for (let i = 1; i < fragments.length - 1; ++i) {
     basePath += `.fields[${fragments[i]}]`;
@@ -26,26 +25,36 @@ const FieldView = ({ disabled }: FieldViewProps) => {
   const field = get(formState, `${basePath}.fields[${fieldName}]`);
 
   return <ViewLinkLayout fragments={fragments}>
-      <ArangoTable style={{ marginLeft: 0 }}>
-        <tbody>
-        <tr key={fieldName} style={{ borderBottom: "1px  solid #794242" }}>
-          <ArangoTD seq={0}>{fieldName}</ArangoTD>
-          <ArangoTD seq={1}>
-            {
-              field
-                ? <LinkPropertiesInput
-                  formState={field}
-                  disabled={disabled}
-                  basePath={`${basePath}.fields[${fieldName}]`}
-                  dispatch={dispatch}
-                />
-                : null
-            }
-          </ArangoTD>
-        </tr>
-        </tbody>
-      </ArangoTable>
-    </ViewLinkLayout>;
+    <ArangoTable style={{ marginLeft: 0 }}>
+      <tbody>
+      <tr key={fieldName} style={{ borderBottom: "1px  solid #794242" }}>
+        <ArangoTD seq={0} style={{ textAlign: "center" }}>
+          {
+            fragments.map((fragment, idx) => {
+              if (idx < fragments.length - 1) {
+                return <><b>{fragment}</b><br/><i className={'fa fa-angle-double-down'}/><br/></>;
+              }
+
+              return <b>{fragment}</b>;
+            })
+          }
+        </ArangoTD>
+        <ArangoTD seq={1}>
+          {
+            field
+              ? <LinkPropertiesInput
+                formState={field}
+                disabled={disabled}
+                basePath={`${basePath}.fields[${fieldName}]`}
+                dispatch={dispatch}
+              />
+              : null
+          }
+        </ArangoTD>
+      </tr>
+      </tbody>
+    </ArangoTable>
+  </ViewLinkLayout>;
 };
 
 export default FieldView;
