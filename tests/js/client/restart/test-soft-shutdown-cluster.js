@@ -540,6 +540,6 @@ function testSuitePregel() {
   };
 }
 
-jsunity.run(testSuite);
 jsunity.run(testSuitePregel);
+jsunity.run(testSuite);
 return jsunity.done();
