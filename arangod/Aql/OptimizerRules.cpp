@@ -6219,9 +6219,9 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
       if (useEdgeProjections) {
         // if we found any projections, make sure that they include_from
         // and _to, as the traversal code will refer to these attributes later.
-        if (!traversal->isSmart() && !traversal->isLocalGraphNode() &&
-            !traversal->isUsedAsSatellite()) {
-          // On community variant we will also need the ID value on the
+        if (ServerState::instance()->isCoordinator() && !traversal->isSmart() &&
+            !traversal->isLocalGraphNode() && !traversal->isUsedAsSatellite()) {
+          // On cluster community variant we will also need the ID value on the
           // coordinator to uniquely identify edges
           attributes.emplace(StaticStrings::IdString);
           // Also the community variant needs to transport weight, as the

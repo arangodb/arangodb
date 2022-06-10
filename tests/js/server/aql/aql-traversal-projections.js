@@ -27,6 +27,7 @@
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const cn = "UnitTestsOptimizer";
+const isCluster = require("internal").isCluster();
 
 function projectionsTestSuite () {
   return {
@@ -134,7 +135,10 @@ function projectionsTestSuite () {
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} FILTER p.edges[*].c ALL == "foo" AND p.vertices[*].bar ALL == "foo" RETURN [v.testi, e.a]`, ["bar", "testi"], ["_from", "_to", "a", "c"], true, false, false],
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} FILTER p.vertices[*].c ALL == "foo" AND p.edges[*].d ALL == "foo" RETURN [v.a, e.b]`, ["a", "c"], ["_from", "_to", "b", "d"], true, false, false],
 
+        /* Test for WEIGHT. NOTE: Only cluster needs to retain the distance on projection, as it is internally used on coordinator */
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} OPTIONS {order: "weighted", weightAttribute: "distance", defaultWeight: 1.0} RETURN v`, [], isCluster ? ["_from", "_to", "distance"] : ["_from", "_to"], true, false, false],
       ];
+
 
       // normalize projections
       const normalize = (v) => {
@@ -144,19 +148,30 @@ function projectionsTestSuite () {
         return v.sort();
       };
 
-      queries.forEach(function(q) {
+      queries.forEach(function (q) {
         let [query, vertexProjections, edgeProjections, produceVertices, producePathsVertices, producePathsEdges] = q;
-        
+        if (isCluster) {
+          // In the cluster variant we require the edge_id to be extracted to
+          // match unique edges on coordinator.
+          if (edgeProjections.length !== 0) {
+            edgeProjections.push("_id");
+          }
+        }
         let plan = AQL_EXPLAIN(query).plan;
-        let nodes = plan.nodes.filter(function(node) { return node.type === 'TraversalNode'; });
+        let nodes = plan.nodes.filter(function (node) {
+          return node.type === 'TraversalNode';
+        });
         assertEqual(1, nodes.length, query);
 
         let traversalNode = nodes[0];
-        assertEqual(normalize(vertexProjections), normalize(traversalNode.options.vertexProjections), { q, traversalNode });
-        assertEqual(normalize(edgeProjections), normalize(traversalNode.options.edgeProjections), { q, traversalNode });
-        assertEqual(produceVertices, traversalNode.options.produceVertices, { q, traversalNode });
-        assertEqual(producePathsVertices, traversalNode.options.producePathsVertices, { q, traversalNode });
-        assertEqual(producePathsEdges, traversalNode.options.producePathsEdges, { q, traversalNode });
+        assertEqual(normalize(vertexProjections), normalize(traversalNode.options.vertexProjections), {
+          q,
+          traversalNode
+        });
+        assertEqual(normalize(edgeProjections), normalize(traversalNode.options.edgeProjections), {q, traversalNode});
+        assertEqual(produceVertices, traversalNode.options.produceVertices, {q, traversalNode});
+        assertEqual(producePathsVertices, traversalNode.options.producePathsVertices, {q, traversalNode});
+        assertEqual(producePathsEdges, traversalNode.options.producePathsEdges, {q, traversalNode});
       });
     },
 
