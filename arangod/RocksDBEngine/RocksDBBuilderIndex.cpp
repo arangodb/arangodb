@@ -481,7 +481,7 @@ static Result processPartitions(
   }
   LOG_TOPIC("d9bf2", DEBUG, Logger::ENGINES)
       << "Parallel index creation status. Total seeks: " << seekCounter
-      << ", next: " << nextCounter;
+      << ", number of next calls: " << nextCounter;
 
   return sharedWorkEnv->getResponse();
 }
