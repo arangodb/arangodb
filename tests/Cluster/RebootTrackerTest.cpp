@@ -43,14 +43,14 @@ class CallbackGuardTest : public ::testing::Test {
  protected:
   uint64_t counterA{0};
   uint64_t counterB{0};
-  std::function<void(void)> incrCounterA;
-  std::function<void(void)> incrCounterB;
+  fu2::function<void() noexcept> incrCounterA;
+  fu2::function<void() noexcept> incrCounterB;
 
   void SetUp() override {
     counterA = 0;
     counterB = 0;
-    incrCounterA = [&counterA = this->counterA]() { ++counterA; };
-    incrCounterB = [&counterB = this->counterB]() { ++counterB; };
+    incrCounterA = [&counterA = this->counterA]() noexcept { ++counterA; };
+    incrCounterB = [&counterB = this->counterB]() noexcept { ++counterB; };
   }
 };
 
@@ -150,7 +150,6 @@ class RebootTrackerTest
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
-  using PeerState = RebootTracker::PeerState;
 
   MockRestServer mockApplicationServer;
   std::unique_ptr<SupervisedScheduler> scheduler;
@@ -202,8 +201,7 @@ TEST_F(RebootTrackerTest, one_server_call_once_after_change) {
     rebootTracker.updateServerState(state);
 
     // Register callback
-    guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{1}},
-                                         callback, "");
+    guard = rebootTracker.callMeOnChange({serverA, RebootId{1}}, callback, "");
     guards.emplace_back(std::move(guard));
     waitForSchedulerEmpty();
     EXPECT_EQ(0, numCalled) << "Callback must not be called before a change";
@@ -248,8 +246,7 @@ TEST_F(RebootTrackerTest, one_server_call_once_with_old_rebootid) {
     rebootTracker.updateServerState(state);
 
     // Register callback
-    guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{1}},
-                                         callback, "");
+    guard = rebootTracker.callMeOnChange({serverA, RebootId{1}}, callback, "");
     guards.emplace_back(std::move(guard));
     waitForSchedulerEmpty();
     EXPECT_EQ(1, numCalled)
@@ -288,8 +285,7 @@ TEST_F(RebootTrackerTest, one_server_call_interleaved) {
     rebootTracker.updateServerState(state);
 
     // Register callback
-    guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{1}},
-                                         callback, "");
+    guard = rebootTracker.callMeOnChange({serverA, RebootId{1}}, callback, "");
     guards.emplace_back(std::move(guard));
     waitForSchedulerEmpty();
     EXPECT_EQ(0, numCalled) << "Callback must not be called before a change";
@@ -307,8 +303,7 @@ TEST_F(RebootTrackerTest, one_server_call_interleaved) {
     EXPECT_EQ(1, numCalled) << "Callback must not be called twice";
 
     // Register callback
-    guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{3}},
-                                         callback, "");
+    guard = rebootTracker.callMeOnChange({serverA, RebootId{3}}, callback, "");
     guards.emplace_back(std::move(guard));
     waitForSchedulerEmpty();
     EXPECT_EQ(1, numCalled) << "Callback must not be called before a change";
@@ -352,15 +347,13 @@ TEST_F(RebootTrackerTest, one_server_call_sequential) {
     rebootTracker.updateServerState(state);
 
     // Register callback
-    guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{1}},
-                                         callback, "");
+    guard = rebootTracker.callMeOnChange({serverA, RebootId{1}}, callback, "");
     guards.emplace_back(std::move(guard));
     waitForSchedulerEmpty();
     EXPECT_EQ(0, numCalled) << "Callback must not be called before a change";
 
     // Register callback
-    guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{1}},
-                                         callback, "");
+    guard = rebootTracker.callMeOnChange({serverA, RebootId{1}}, callback, "");
     guards.emplace_back(std::move(guard));
     waitForSchedulerEmpty();
     EXPECT_EQ(0, numCalled) << "Callback must not be called before a change";
@@ -403,8 +396,8 @@ TEST_F(RebootTrackerTest, one_server_guard_removes_callback) {
 
     {
       // Register callback
-      auto guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{1}},
-                                                callback, "");
+      auto guard =
+          rebootTracker.callMeOnChange({serverA, RebootId{1}}, callback, "");
       waitForSchedulerEmpty();
       EXPECT_EQ(0, numCalled) << "Callback must not be called before a change";
     }
@@ -447,23 +440,23 @@ TEST_F(RebootTrackerTest, one_server_guard_doesnt_interfere) {
     rebootTracker.updateServerState(state);
 
     // Register callback
-    guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{1}},
-                                         incrCounterA, "");
+    guard =
+        rebootTracker.callMeOnChange({serverA, RebootId{1}}, incrCounterA, "");
     guards.emplace_back(std::move(guard));
     waitForSchedulerEmpty();
     EXPECT_EQ(0, counterA) << "Callback must not be called before a change";
 
     {
       // Register callback with a local guard
-      auto localGuard = rebootTracker.callMeOnChange(
-          PeerState{serverA, RebootId{1}}, incrCounterB, "");
+      auto localGuard = rebootTracker.callMeOnChange({serverA, RebootId{1}},
+                                                     incrCounterB, "");
       waitForSchedulerEmpty();
       EXPECT_EQ(0, counterA) << "Callback must not be called before a change";
       EXPECT_EQ(0, counterB) << "Callback must not be called before a change";
 
       // Register callback
-      guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{1}},
-                                           incrCounterC, "");
+      guard = rebootTracker.callMeOnChange({serverA, RebootId{1}}, incrCounterC,
+                                           "");
       guards.emplace_back(std::move(guard));
       waitForSchedulerEmpty();
       EXPECT_EQ(0, counterA) << "Callback must not be called before a change";
@@ -517,8 +510,8 @@ TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_same_id) {
     // State is empty { }
 
     // Register callback
-    EXPECT_THROW(guard = rebootTracker.callMeOnChange(
-                     PeerState{serverA, RebootId{1}}, callback, ""),
+    EXPECT_THROW(guard = rebootTracker.callMeOnChange({serverA, RebootId{1}},
+                                                      callback, ""),
                  arangodb::basics::Exception)
         << "Trying to add a callback for an unknown server should be refused";
     waitForSchedulerEmpty();
@@ -558,8 +551,8 @@ TEST_F(RebootTrackerTest, one_server_add_callback_before_state_with_older_id) {
     // State is empty { }
 
     // Register callback
-    EXPECT_THROW(guard = rebootTracker.callMeOnChange(
-                     PeerState{serverA, RebootId{2}}, callback, ""),
+    EXPECT_THROW(guard = rebootTracker.callMeOnChange({serverA, RebootId{2}},
+                                                      callback, ""),
                  arangodb::basics::Exception)
         << "Trying to add a callback for an unknown server should be refused";
     waitForSchedulerEmpty();
@@ -608,8 +601,7 @@ TEST_F(RebootTrackerTest, two_servers_call_interleaved) {
     rebootTracker.updateServerState(state);
 
     // Register callback
-    guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{1}},
-                                         callback, "");
+    guard = rebootTracker.callMeOnChange({serverA, RebootId{1}}, callback, "");
     guards.emplace_back(std::move(guard));
     waitForSchedulerEmpty();
     EXPECT_EQ(0, numCalled) << "Callback must not be called before a change";
@@ -627,8 +619,7 @@ TEST_F(RebootTrackerTest, two_servers_call_interleaved) {
     EXPECT_EQ(1, numCalled) << "Callback must not be called twice";
 
     // Register callback
-    guard = rebootTracker.callMeOnChange(PeerState{serverA, RebootId{3}},
-                                         callback, "");
+    guard = rebootTracker.callMeOnChange({serverA, RebootId{3}}, callback, "");
     guards.emplace_back(std::move(guard));
     waitForSchedulerEmpty();
     EXPECT_EQ(1, numCalled) << "Callback must not be called before a change";

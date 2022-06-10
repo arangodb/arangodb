@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <limits>
 #include <optional>
 #include <variant>
 
@@ -36,17 +37,21 @@
 
 namespace arangodb::sepp::workloads {
 
-struct IterateDocuments : Workload {
+struct GetByPrimaryKey : Workload {
   struct ThreadOptions {
-    std::string collection;
+    std::string keyPrefix;
+    std::uint64_t minNumericKeyValue{0};
+    std::uint64_t maxNumericKeyValue{std::numeric_limits<std::uint64_t>::max()};
     bool fillBlockCache{false};
+    bool fetchFullDocument{true};
+    std::string collection;
     StoppingCriterion::type stop;
   };
   struct Options;
   struct Thread;
   struct Object;
 
-  IterateDocuments(Options const& options) : _options(options) {}
+  GetByPrimaryKey(Options const& options) : _options(options) {}
 
   auto createThreads(Execution& exec, Server& server)
       -> WorkerThreadList override;
@@ -56,15 +61,23 @@ struct IterateDocuments : Workload {
   Options const& _options;
 };
 
-struct IterateDocuments::Options {
+struct GetByPrimaryKey::Options {
   struct Thread {
-    std::string collection;
+    std::string keyPrefix;
+    std::uint64_t minNumericKeyValue{0};
+    std::uint64_t maxNumericKeyValue{std::numeric_limits<std::uint64_t>::max()};
     bool fillBlockCache{false};
+    bool fetchFullDocument{true};
+    std::string collection;
 
     template<class Inspector>
     friend inline auto inspect(Inspector& f, Thread& o) {
       return f.object(o).fields(
+          f.field("keyPrefix", o.keyPrefix),
+          f.field("minNumericKeyValue", o.minNumericKeyValue),
+          f.field("maxNumericKeyValue", o.maxNumericKeyValue),
           f.field("fillBlockCache", o.fillBlockCache).fallback(f.keep()),
+          f.field("fetchFullDocument", o.fetchFullDocument).fallback(f.keep()),
           f.field("collection", o.collection));
     }
   };
@@ -75,13 +88,13 @@ struct IterateDocuments::Options {
 };
 
 template<class Inspector>
-inline auto inspect(Inspector& f, IterateDocuments::Options& o) {
+inline auto inspect(Inspector& f, GetByPrimaryKey::Options& o) {
   return f.object(o).fields(f.field("default", o.defaultThreadOptions),
                             f.field("threads", o.threads),
                             f.field("stopAfter", o.stop));
 }
 
-struct IterateDocuments::Thread : ExecutionThread {
+struct GetByPrimaryKey::Thread : ExecutionThread {
   Thread(ThreadOptions options, Execution& exec, Server& server);
   ~Thread();
   void run() override;
