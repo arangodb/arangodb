@@ -769,8 +769,6 @@ TraversalNode::getSingleServerBaseProviderOptions(
       usedIndexes{};
   usedIndexes.first = buildUsedIndexes();
   usedIndexes.second = buildUsedDepthBasedIndexes();
-  // TODO : _vertexProjections are copied here, we could potentially
-  // move or reference them.
   return {opts->tmpVar(),
           std::move(usedIndexes),
           opts->getExpressionCtx(),
