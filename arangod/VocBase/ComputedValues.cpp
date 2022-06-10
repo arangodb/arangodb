@@ -33,20 +33,30 @@
 #include <velocypack/Slice.h>
 
 #include <string_view>
+#include <type_traits>
 #include <unordered_set>
 
 namespace {
 constexpr std::string_view docParameter("doc");
+
+std::underlying_type<arangodb::ExecuteOn>::type executeOnValue(
+    arangodb::ExecuteOn executeOn) {
+  return static_cast<std::underlying_type<arangodb::ExecuteOn>::type>(
+      executeOn);
 }
+
+}  // namespace
 
 namespace arangodb {
 
 ComputedValues::ComputedValue::ComputedValue(std::string_view name,
                                              std::string_view expression,
+                                             ExecuteOn executeOn,
                                              bool doOverride)
-    : _name(name), _expression(expression), _override(doOverride) {
-  // TODO: validate
-}
+    : _name(name),
+      _expression(expression),
+      _executeOn(executeOn),
+      _override(doOverride) {}
 
 ComputedValues::ComputedValue::~ComputedValue() = default;
 
@@ -55,20 +65,56 @@ void ComputedValues::ComputedValue::toVelocyPack(
   result.openObject();
   result.add("name", VPackValue(_name));
   result.add("expression", VPackValue(_expression));
+  result.add("executeOn", VPackValue(VPackValueType::Array));
+  if (::executeOnValue(_executeOn) & ::executeOnValue(ExecuteOn::kInsert)) {
+    result.add(VPackValue("insert"));
+  }
+  if (::executeOnValue(_executeOn) & ::executeOnValue(ExecuteOn::kUpdate)) {
+    result.add(VPackValue("update"));
+  }
+  if (::executeOnValue(_executeOn) & ::executeOnValue(ExecuteOn::kReplace)) {
+    result.add(VPackValue("replace"));
+  }
+  result.close();  // executeOn
   result.add("override", VPackValue(_override));
   result.close();
 }
 
 ComputedValues::ComputedValues(TRI_vocbase_t& vocbase,
                                std::vector<std::string> const& shardKeys,
-                               velocypack::Slice params) {
+                               velocypack::Slice params)
+    : _executeOn(ExecuteOn::kNever) {
   Result res = buildDefinitions(vocbase, shardKeys, params);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+
+  TRI_ASSERT(_executeOn != ExecuteOn::kNever);
 }
 
 ComputedValues::~ComputedValues() = default;
+
+bool ComputedValues::mustRunOnInsert() const noexcept {
+  return mustRunOn(ExecuteOn::kInsert);
+}
+
+bool ComputedValues::mustRunOnUpdate() const noexcept {
+  return mustRunOn(ExecuteOn::kUpdate);
+}
+
+bool ComputedValues::mustRunOnReplace() const noexcept {
+  return mustRunOn(ExecuteOn::kReplace);
+}
+
+void ComputedValues::computeAttributes(velocypack::Slice input,
+                                       ExecuteOn executeOn,
+                                       velocypack::Builder& output) const {
+  TRI_ASSERT(mustRunOn(executeOn));
+}
+
+bool ComputedValues::mustRunOn(ExecuteOn executeOn) const noexcept {
+  return ((::executeOnValue(_executeOn) & ::executeOnValue(executeOn)) != 0);
+}
 
 Result ComputedValues::buildDefinitions(
     TRI_vocbase_t& vocbase, std::vector<std::string> const& shardKeys,
@@ -113,6 +159,48 @@ Result ComputedValues::buildDefinitions(
       }
     }
 
+    ExecuteOn executeOn = ExecuteOn::kInsert;
+
+    VPackSlice on = it.get("on");
+    if (on.isArray()) {
+      executeOn = ExecuteOn::kNever;
+
+      for (auto const& onValue : VPackArrayIterator(on)) {
+        if (!onValue.isString()) {
+          return res.reset(
+              TRI_ERROR_BAD_PARAMETER,
+              "invalid 'computedValues' entry: invalid on enumeration value");
+        }
+        std::string_view ov = onValue.stringView();
+        if (ov == "insert") {
+          executeOn =
+              static_cast<ExecuteOn>(::executeOnValue(executeOn) |
+                                     ::executeOnValue(ExecuteOn::kInsert));
+        } else if (ov == "update") {
+          executeOn =
+              static_cast<ExecuteOn>(::executeOnValue(executeOn) |
+                                     ::executeOnValue(ExecuteOn::kUpdate));
+        } else if (ov == "replace") {
+          executeOn =
+              static_cast<ExecuteOn>(::executeOnValue(executeOn) |
+                                     ::executeOnValue(ExecuteOn::kReplace));
+        } else {
+          return res.reset(
+              TRI_ERROR_BAD_PARAMETER,
+              "invalid 'computedValues' entry: invalid on value '"s +
+                  onValue.copyString() + "'");
+        }
+      }
+
+      if (executeOn == ExecuteOn::kNever) {
+        return res.reset(TRI_ERROR_BAD_PARAMETER,
+                         "invalid 'computedValues' entry: empty on value");
+      }
+    }
+
+    _executeOn = static_cast<ExecuteOn>(::executeOnValue(_executeOn) |
+                                        ::executeOnValue(executeOn));
+
     VPackSlice expression = it.get("expression");
     if (!expression.isString()) {
       return res.reset(
@@ -124,7 +212,7 @@ Result ComputedValues::buildDefinitions(
     res.reset(aql::StandaloneCalculation::validateQuery(
         vocbase, expression.stringView(), ::docParameter, ""));
     if (res.fail()) {
-      std::string errorMsg = "invalid 'computedValues' entry: "s;
+      std::string errorMsg = "invalid 'computedValues' entry: ";
       errorMsg.append(res.errorMessage()).append(" in computation expression");
       res.reset(TRI_ERROR_BAD_PARAMETER, std::move(errorMsg));
       break;
@@ -147,8 +235,9 @@ Result ComputedValues::buildDefinitions(
     }
 
     try {
-      _values.emplace_back(ComputedValue{
-          name.stringView(), expression.stringView(), doOverride.getBoolean()});
+      _values.emplace_back(ComputedValue{name.stringView(),
+                                         expression.stringView(), executeOn,
+                                         doOverride.getBoolean()});
     } catch (std::exception const& ex) {
       return res.reset(TRI_ERROR_BAD_PARAMETER,
                        "invalid 'computedValues' entry: "s + ex.what());
@@ -169,10 +258,5 @@ void ComputedValues::toVelocyPack(velocypack::Builder& result) const {
     result.close();
   }
 }
-/*
-Result ComputedValues::validateDefinitions(LogicalCollection& collection,
-velocypack::Slice params) { return buildDefinitions(collection, params);
-}
-*/
 
 }  // namespace arangodb

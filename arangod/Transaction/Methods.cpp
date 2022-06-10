@@ -65,6 +65,7 @@
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
+#include "VocBase/ComputedValues.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
@@ -1087,6 +1088,13 @@ Future<OperationResult> transaction::Methods::insertLocal(
     options.schema = collection->schema();
   } else {
     options.schema = nullptr;
+  }
+
+  if (!options.isRestore && options.isSynchronousReplicationFrom.empty()) {
+    std::shared_ptr<ComputedValues> cv = collection->computedValues();
+    if (cv != nullptr && cv->mustRunOnInsert()) {
+      LOG_DEVEL << "MUST COMPUTE VALUES!";
+    }
   }
 
   [[maybe_unused]] size_t numExclusions = 0;

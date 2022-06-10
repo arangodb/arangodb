@@ -345,6 +345,9 @@ class LogicalCollection : public LogicalDataSource {
 
   void computedValuesToVelocyPack(VPackBuilder&) const;
 
+  // return a pointer to the computed values. can be a nullptr
+  std::shared_ptr<ComputedValues> computedValues() const;
+
   void schemaToVelocyPack(VPackBuilder&) const;
 
   // return a pointer to the schema. can be a nullptr if no schema

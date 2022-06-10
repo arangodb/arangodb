@@ -25,6 +25,7 @@
 
 #include "Basics/Result.h"
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -36,11 +37,18 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 
+enum class ExecuteOn : uint8_t {
+  kNever = 0,
+  kInsert = 1,
+  kUpdate = 2,
+  kReplace = 4,
+};
+
 class ComputedValues {
   class ComputedValue {
    public:
     ComputedValue(std::string_view name, std::string_view expression,
-                  bool doOverride);
+                  ExecuteOn executeOn, bool doOverride);
     ~ComputedValue();
 
     void toVelocyPack(velocypack::Builder&) const;
@@ -48,6 +56,7 @@ class ComputedValues {
    private:
     std::string _name;
     std::string _expression;
+    ExecuteOn _executeOn;
     bool _override;
   };
 
@@ -61,14 +70,24 @@ class ComputedValues {
 
   void toVelocyPack(velocypack::Builder&) const;
 
-  // static Result validateDefinitions(LogicalCollection& collection,
-  // velocypack::Slice params);
+  bool mustRunOnInsert() const noexcept;
+  bool mustRunOnUpdate() const noexcept;
+  bool mustRunOnReplace() const noexcept;
+
+  void computeAttributes(velocypack::Slice input, ExecuteOn executeOn,
+                         velocypack::Builder& output) const;
 
  private:
+  bool mustRunOn(ExecuteOn executeOn) const noexcept;
+
   Result buildDefinitions(TRI_vocbase_t& vocbase,
                           std::vector<std::string> const& shardKeys,
                           velocypack::Slice params);
 
+  // where will the computations be executed (overall)
+  ExecuteOn _executeOn;
+
+  // individual instructions for computed values
   std::vector<ComputedValue> _values;
 };
 

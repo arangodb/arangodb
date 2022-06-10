@@ -1215,6 +1215,10 @@ void LogicalCollection::computedValuesToVelocyPack(VPackBuilder& b) const {
   }
 }
 
+std::shared_ptr<ComputedValues> LogicalCollection::computedValues() const {
+  return std::atomic_load_explicit(&_computedValues, std::memory_order_relaxed);
+}
+
 void LogicalCollection::schemaToVelocyPack(VPackBuilder& b) const {
   auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
   if (schema != nullptr) {
