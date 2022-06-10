@@ -559,7 +559,12 @@ function iterateTests(cases, options) {
     } else {
       print('not cleaning up as some tests weren\'t successful:\n' +
             pu.getCleanupDBDirectories() + " " +
-            cleanup + ' - ' + globalStatus + ' - ' + pu.serverCrashed + "\n");
+            cleanup + ' - ' +
+            globalStatus + ' - ' +
+            pu.serverCrashed + ' - ' +
+            status + ' - ' +
+            localOptions.cleanup + ' - ' +
+            shutdownSuccess + "\n");
     }
   } else {
     print("not cleaning up since we didn't start the server ourselves\n");
