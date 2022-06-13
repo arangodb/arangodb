@@ -47,8 +47,10 @@ auto DocumentStateAgencyHandler::getCollectionPlan(
     std::string const& database, std::string const& collectionId)
     -> std::shared_ptr<VPackBuilder> {
   auto builder = std::make_shared<VPackBuilder>();
-  auto path = basics::StringUtils::joinT("/", "Plan", "Collections", database,
-                                         collectionId);
+  auto path = cluster::paths::aliases::plan()
+                  ->collections()
+                  ->database(database)
+                  ->collection(collectionId);
   _agencyCache.get(*builder, path);
 
   // TODO better error handling
