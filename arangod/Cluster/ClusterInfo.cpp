@@ -5769,10 +5769,15 @@ std::shared_ptr<std::vector<ServerID> const> ClusterInfo::getResponsibleServer(
           auto& participants = it->second->participantsConfig.participants;
           auto result = std::make_shared<std::vector<ServerID>>();
           result->reserve(participants.size());
+          // participants is an unordered map, but the resulting list requires
+          // that the leader is the first entry!
+          auto& leader = it->second->currentTerm->leader->serverId;
+          result->emplace_back(leader);
           for (auto& [k, v] : participants) {
-            result->emplace_back(k);
+            if (k != leader) {
+              result->emplace_back(k);
+            }
           }
-          return result;
         }
       }
 
