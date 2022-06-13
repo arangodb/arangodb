@@ -194,7 +194,7 @@ function runArangodRecovery (params) {
   } catch(err) {
     print('Error while launching test:' + err);
     params.instanceManager.shutdownInstance(false);
-    this.instanceManager.destructor();
+    params.instanceManager.destructor();
     return; // without test server test will for sure fail
   }
   if (params.setup) {
@@ -212,7 +212,7 @@ function runArangodRecovery (params) {
     });
   } else {
     params.instanceManager.shutdownInstance(false);
-    this.instanceManager.destructor();
+    params.instanceManager.destructor();
   }
 }
 
