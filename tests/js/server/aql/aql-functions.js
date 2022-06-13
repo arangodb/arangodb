@@ -1085,6 +1085,19 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test merge function
 ////////////////////////////////////////////////////////////////////////////////
+    
+    testMerge6 : function () {
+      var expected = [ { "age" : 15, "id" : 33, "sub": {"name": "foo"} } ];
+      var actual = getQueryResults("RETURN MERGE({ \"id\" : 33, \"age\" : 15, \"sub\": {\"name\": \"foo\" } })");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN MERGE( [ { \"id\" : 33, \"age\" : 15, \"sub\": {\"name\": \"foo\" } } ] )");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test merge function
+////////////////////////////////////////////////////////////////////////////////
     testMergeArray : function () {
       var expected = [ { "abc" : [ 1, 2, 3 ], "chicken" : "is a language", "empty" : false, "foo" : "bar", "foobar" : "baz", "quarter" : 1, "quux" : 123, "value" : true, "year" : 2010 } ];
       var actual = getQueryResults("RETURN MERGE([ { quarter: 1, year: 2010 }, { foo: 'bar' }, { chicken: 'is a language' }, { }, { foobar: 'baz' }, { quux: 123, value: true }, { empty: false }, { }, { abc: [1,2,3] } ])");
@@ -1232,10 +1245,30 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test merge_recursive function
 ////////////////////////////////////////////////////////////////////////////////
+    
+    testMergeRecursive7 : function () {
+      var doc1 = "{ }";
+      var doc2 = "{ \"continent\" : { \"Europe\" : { \"country\" : { \"DE\" : { \"city\" : \"Cologne\" } } } } }";
+
+      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ")");
+      assertEqual([ { } ], actual);
+
+      actual = getQueryResults("RETURN MERGE_RECURSIVE( [ " + doc1 + " ] )");
+      assertEqual([ { } ], actual);
+
+      actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc2 + ")");
+      assertEqual([ { "continent" : { "Europe" : { "country" : { "DE" : { "city" : "Cologne" } } } } } ], actual);
+
+      actual = getQueryResults("RETURN MERGE_RECURSIVE( [ " + doc2 + " ] )");
+      assertEqual([ { "continent" : { "Europe" : { "country" : { "DE" : { "city" : "Cologne" } } } } } ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test merge_recursive function
+////////////////////////////////////////////////////////////////////////////////
 
     testMergeRecursiveInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN MERGE_RECURSIVE()"); 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN MERGE_RECURSIVE({ })"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE({ }, null)"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE({ }, true)"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE_RECURSIVE({ }, 3)"); 
