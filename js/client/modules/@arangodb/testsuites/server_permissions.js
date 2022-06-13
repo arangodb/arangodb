@@ -115,6 +115,7 @@ class permissionsRunner extends tu.runLocalInArangoshRunner {
           this.instanceManager.prepareInstance();
           this.instanceManager.launchTcpDump("");
           if (!this.instanceManager.launchInstance()) {
+            this.instanceManager.destructor();
             throw new Error("failed to launch instance");
           }
           this.instanceManager.reconnect();

@@ -453,6 +453,7 @@ class importRunner extends tu.runInArangoshRunner {
     }
     print('Shutting down...');
     result['shutdown'] = this.instanceManager.shutdownInstance();
+    this.instanceManager.destructor();
     print('done.');
     return result;
   }

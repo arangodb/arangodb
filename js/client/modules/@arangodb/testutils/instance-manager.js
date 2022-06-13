@@ -97,6 +97,7 @@ class instanceManager {
     this.arangods.forEach(arangod => {
       arangod.pm.deregister(arangod.port);
     });
+    this.stopTcpDump();
   }
   getStructure() {
     let d = [];

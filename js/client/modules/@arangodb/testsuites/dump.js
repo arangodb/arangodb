@@ -232,6 +232,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     if (this.restartServer) {
       print(CYAN + 'Shutting down...' + RESET);
       this.results['shutdown'] = this.instanceManager.shutdownInstance();
+      this.instanceManager.destructor();
       print(CYAN + 'done.' + RESET);
       this.which = this.which + "_2";
       this.instanceManager = new im.instanceManager('tcp', this.secondRunOptions, this.serverOptions, this.which);
@@ -292,6 +293,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     }
     print(CYAN + 'Shutting down...' + RESET);
     this.results['shutdown'] = this.instanceManager.shutdownInstance();
+    this.instanceManager.destructor();
     print(CYAN + 'done.' + RESET);
 
     print();
