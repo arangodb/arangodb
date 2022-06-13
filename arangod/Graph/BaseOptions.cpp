@@ -289,6 +289,7 @@ BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
       _parallelism(other._parallelism),
       _produceVertices(other._produceVertices),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
+      _maxProjections{other._maxProjections},
       _vertexProjections{other._vertexProjections},
       _edgeProjections{other._edgeProjections},
       _refactor(other._refactor) {
@@ -616,6 +617,14 @@ void BaseOptions::setEdgeProjections(Projections projections) {
   _edgeProjections = std::move(projections);
 }
 
+void BaseOptions::setMaxProjections(size_t projections) noexcept {
+  _maxProjections = projections;
+}
+
+size_t BaseOptions::getMaxProjections() const noexcept {
+  return _maxProjections;
+}
+
 Projections const& BaseOptions::getVertexProjections() const {
   return _vertexProjections;
 }
@@ -629,6 +638,7 @@ void BaseOptions::toVelocyPackBase(VPackBuilder& builder) const {
   builder.add("parallelism", VPackValue(_parallelism));
   builder.add(StaticStrings::GraphRefactorFlag, VPackValue(refactor()));
   builder.add("produceVertices", VPackValue(_produceVertices));
+  builder.add(StaticStrings::MaxProjections, VPackValue(getMaxProjections()));
 
   if (!_vertexProjections.empty()) {
     _vertexProjections.toVelocyPack(builder, "vertexProjections");
@@ -651,6 +661,9 @@ void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
   // in refactoring to avoid side-effects)
 
   // read back projections
+  setMaxProjections(VPackHelper::getNumericValue<size_t>(
+      info, StaticStrings::MaxProjections,
+      DocumentProducingNode::kMaxProjections));
   _vertexProjections = Projections::fromVelocyPack(info, "vertexProjections");
   _edgeProjections = Projections::fromVelocyPack(info, "edgeProjections");
 

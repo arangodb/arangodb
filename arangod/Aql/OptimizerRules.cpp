@@ -6173,8 +6173,7 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
 
     // handle projections (must be done after path variable optimization)
     {
-      // TODO: make maxProjections configurable
-      constexpr size_t maxProjections = 10;
+      size_t maxProjections = options->getMaxProjections();
 
       // find projections for vertex output variable
       attributes.clear();

@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Aql/AqlFunctionsInternalCache.h"
+#include "Aql/DocumentProducingNode.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/Projections.h"
@@ -211,6 +212,10 @@ struct BaseOptions {
 
   void setEdgeProjections(aql::Projections projections);
 
+  void setMaxProjections(size_t projections) noexcept;
+
+  size_t getMaxProjections() const noexcept;
+
   aql::Projections const& getVertexProjections() const;
 
   aql::Projections const& getEdgeProjections() const;
@@ -316,6 +321,8 @@ struct BaseOptions {
 
   /// @brief whether or not we are running on a coordinator
   bool const _isCoordinator;
+
+  size_t _maxProjections{aql::DocumentProducingNode::kMaxProjections};
 
   /// @brief Projections used on vertex data
   aql::Projections _vertexProjections;

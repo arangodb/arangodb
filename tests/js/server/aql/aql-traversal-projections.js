@@ -164,7 +164,7 @@ function projectionsTestSuite () {
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} OPTIONS {maxProjections: 20} ${returnProjections("e", 9)}`, [], expectProjections(9).concat(["_from", "_to"]), false, false, false],
         /* Test decrease maxProjections */
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} ${returnProjections("v", 5)}`, expectProjections(5), ["_from", "_to"], true, false, false],
-        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} ${returnProjections("e", 3)}`, [], expectProjections(3).concat(["_from", "_to"]), false, false, false],
+        [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} ${returnProjections("e", 2)}`, [], expectProjections(2).concat(["_from", "_to"]), false, false, false],
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} OPTIONS {maxProjections: 4} ${returnProjections("v", 5)}`, [], ["_from", "_to"], true, false, false],
         [`FOR v, e, p IN 1..2 OUTBOUND 'v/test0' ${cn} OPTIONS {maxProjections: 4} ${returnProjections("e", 3)}`, [], [], false, false, false],
       ];
