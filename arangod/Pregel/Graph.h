@@ -87,7 +87,8 @@ class Edge {
 template<typename V, typename E>
 // cppcheck-suppress noConstructor
 class Vertex {
-  char const* _key;  // uint64_t
+  std::string _key;
+  //  char const* _key;  // uint64_t
 
   // these members are initialized by the GraphStore
   Edge<E>* _edges;  // uint64_t
@@ -175,24 +176,24 @@ class Vertex {
   PregelShard shard() const noexcept { return _shard; }
 
   void setKey(char const* key, uint16_t keyLength) noexcept {
+    _key = std::string(key, keyLength);
+
     // must only be called during initial vertex creation
-    TRI_ASSERT(active());
-    TRI_ASSERT(this->keyLength() == 0);
-    _key = key;
-    _keyLength = keyLength;
-    TRI_ASSERT(active());
-    TRI_ASSERT(this->keyLength() == keyLength);
+    // TRI_ASSERT(active());
+    // TRI_ASSERT(this->keyLength() == 0);
+    // _key = key;
+    // _keyLength = keyLength;
+    // TRI_ASSERT(active());
+    // TRI_ASSERT(this->keyLength() == keyLength);
   }
 
-  uint16_t keyLength() const noexcept { return _keyLength; }
+  uint16_t keyLength() const noexcept { return _key.size(); }
 
-  std::string_view key() const { return std::string_view(_key, keyLength()); }
+  std::string_view key() const { return std::string_view(_key); }
   V const& data() const& { return _data; }
   V& data() & { return _data; }
 
-  PregelID pregelId() const {
-    return PregelID(_shard, std::string(_key, keyLength()));
-  }
+  PregelID pregelId() const { return PregelID(_shard, _key); }
 };
 
 }  // namespace pregel
