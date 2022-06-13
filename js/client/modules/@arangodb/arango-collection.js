@@ -719,8 +719,13 @@ ArangoCollection.prototype.document = function (id, options) {
   }
 
   let headers = {};
-  if (options && options.transactionId) {
-    headers['x-arango-trx-id'] = options.transactionId;
+  if (options) {
+    if (options.transactionId) {
+      headers['x-arango-trx-id'] = options.transactionId;
+    }
+    if (options.allowDirtyReads) {
+      headers['x-arango-allow-dirty-read'] = "true";
+    }
   }
 
   if (Array.isArray(id)) {
