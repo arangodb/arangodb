@@ -339,7 +339,7 @@ void RestAqlHandler::setupClusterQuery() {
     auto& clusterFeature = _server.getFeature<ClusterFeature>();
     auto& clusterInfo = clusterFeature.clusterInfo();
     rGuard = clusterInfo.rebootTracker().callMeOnChange(
-        cluster::RebootTracker::PeerState(coordinatorId, rebootId),
+        {coordinatorId, rebootId},
         [queryRegistry = _queryRegistry, vocbaseName = _vocbase.name(),
          queryId = q->id()]() {
           queryRegistry->destroyQuery(vocbaseName, queryId,

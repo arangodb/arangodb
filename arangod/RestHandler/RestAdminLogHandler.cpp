@@ -206,7 +206,6 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
             } else {
               self->generateResult(rest::ResponseCode::OK, r.slice());
             }
-            return RestStatus::DONE;
           }));
     }
   }

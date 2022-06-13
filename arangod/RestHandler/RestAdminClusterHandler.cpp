@@ -2244,7 +2244,6 @@ RestStatus RestAdminClusterHandler::handleFailureOracleFlush() {
         [self = std::static_pointer_cast<RestAdminClusterHandler>(
              shared_from_this())](auto builder) mutable {
           self->generateOk(rest::ResponseCode::OK, std::move(builder.slice()));
-          return RestStatus::DONE;
         }));
   }
 

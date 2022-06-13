@@ -47,6 +47,11 @@ struct ExecutionThread {
   virtual bool shouldStop() const noexcept = 0;
   [[nodiscard]] virtual ThreadReport report() const { return {{}, 0}; }
 
+  // not supposed to be accessed while the test is running, but only
+  // at the end
+  virtual bool failed() const noexcept { return _failed; }
+  Execution const& execution() const { return _execution; }
+
  protected:
   Server& _server;
 
@@ -56,6 +61,7 @@ struct ExecutionThread {
   std::mt19937_64 _randomizer{};
   std::thread _thread{};
   std::chrono::duration<double, std::milli> _runtime{};
+  bool _failed{false};
 
   friend struct Execution;
   void threadFunc();
