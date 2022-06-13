@@ -100,7 +100,7 @@ struct DocumentFollowerState
 
 struct DocumentFactory {
   explicit DocumentFactory(
-      std::shared_ptr<IDocumentStateAgencyReader> agencyReader,
+      std::shared_ptr<IDocumentStateAgencyHandler> agencyReader,
       std::shared_ptr<IDocumentStateShardHandler> shardHandler);
 
   auto constructFollower(std::unique_ptr<DocumentCore> core)
@@ -110,11 +110,11 @@ struct DocumentFactory {
   auto constructCore(GlobalLogIdentifier, DocumentCoreParameters)
       -> std::unique_ptr<DocumentCore>;
 
-  auto getAgencyReader() -> std::shared_ptr<IDocumentStateAgencyReader>;
+  auto getAgencyReader() -> std::shared_ptr<IDocumentStateAgencyHandler>;
   auto getShardHandler() -> std::shared_ptr<IDocumentStateShardHandler>;
 
  private:
-  std::shared_ptr<IDocumentStateAgencyReader> const _agencyReader;
+  std::shared_ptr<IDocumentStateAgencyHandler> const _agencyReader;
   std::shared_ptr<IDocumentStateShardHandler> const _shardHandler;
 };
 }  // namespace document

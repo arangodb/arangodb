@@ -28,18 +28,25 @@ using namespace arangodb::replication2::replicated_state::document;
 
 DocumentCore::DocumentCore(
     GlobalLogIdentifier gid, DocumentCoreParameters coreParameters,
-    std::shared_ptr<IDocumentStateAgencyReader> agencyReader,
+    std::shared_ptr<IDocumentStateAgencyHandler> agencyHandler,
     std::shared_ptr<IDocumentStateShardHandler> shardHandler,
     LoggerContext loggerContext)
     : loggerContext(std::move(loggerContext)),
       _gid(std::move(gid)),
       _params(std::move(coreParameters)),
-      _agencyReader(std::move(agencyReader)),
+      _agencyHandler(std::move(agencyHandler)),
       _shardHandler(std::move(shardHandler)) {
   auto collectionProperties =
-      _agencyReader->getCollectionInfo(_gid.database, _params.collectionId);
-  auto result = _shardHandler->createShard(_gid, _params.collectionId,
-                                           std::move(collectionProperties));
-  TRI_ASSERT(result.ok());
-  LOG_CTX("b7e0d", TRACE, loggerContext) << "Created shard " << result.get();
+      _agencyHandler->getCollectionPlan(_gid.database, _params.collectionId);
+
+  auto shardResult = _shardHandler->createLocalShard(_gid, _params.collectionId,
+                                                     collectionProperties);
+  TRI_ASSERT(shardResult.ok());
+  auto shardId = shardResult.get();
+
+  auto commResult = _agencyHandler->reportShardInCurrent(
+      _gid.database, _params.collectionId, shardId, collectionProperties);
+  TRI_ASSERT(shardResult.ok());
+
+  LOG_CTX("b7e0d", TRACE, loggerContext) << "Created shard " << shardId;
 }

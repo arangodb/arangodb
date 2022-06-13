@@ -519,6 +519,14 @@ const updateReplicatedLogTarget = function(database, id, callback) {
   replicatedLogSetTarget(database, id, result);
 };
 
+const sortedArrayEqualOrError = (left, right) => {
+  if (_.isEqual(left, right)) {
+    return true;
+  } else {
+    return Error(`Expected the following to be equal: ${JSON.stringify(left)} and ${JSON.stringify(right)}`);
+  }
+};
+
 exports.checkRequestResult = checkRequestResult;
 exports.continueServer = continueServerImpl;
 exports.continueServerWaitOk = continueServerWaitOk;
@@ -557,3 +565,4 @@ exports.testHelperFunctions = testHelperFunctions;
 exports.updateReplicatedLogTarget = updateReplicatedLogTarget;
 exports.waitFor = waitFor;
 exports.waitForReplicatedLogAvailable = waitForReplicatedLogAvailable;
+exports.sortedArrayEqualOrError = sortedArrayEqualOrError;

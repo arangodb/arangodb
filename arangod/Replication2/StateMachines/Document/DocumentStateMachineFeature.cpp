@@ -39,15 +39,15 @@ void DocumentStateMachineFeature::prepare() {
 }
 
 void DocumentStateMachineFeature::start() {
-  auto& replicatedStateFeature =
-      server().getFeature<ReplicatedStateAppFeature>();
-  auto& clusterFeature = server().getFeature<ClusterFeature>();
-  auto& maintenanceFeature = server().getFeature<MaintenanceFeature>();
+  ArangodServer& s = server();
+  auto& replicatedStateFeature = s.getFeature<ReplicatedStateAppFeature>();
+  auto& clusterFeature = s.getFeature<ClusterFeature>();
+  auto& maintenanceFeature = s.getFeature<MaintenanceFeature>();
 
   replicatedStateFeature.registerStateType<DocumentState>(
       std::string{DocumentState::NAME},
-      std::make_shared<DocumentStateAgencyCacheReader>(
-          clusterFeature.agencyCache()),
+      std::make_shared<DocumentStateAgencyHandler>(
+          s, clusterFeature.agencyCache()),
       std::make_shared<DocumentStateShardHandler>(maintenanceFeature));
 }
 

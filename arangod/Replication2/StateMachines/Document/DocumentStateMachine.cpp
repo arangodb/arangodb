@@ -69,7 +69,7 @@ auto DocumentFollowerState::applyEntries(
 };
 
 DocumentFactory::DocumentFactory(
-    std::shared_ptr<IDocumentStateAgencyReader> agencyReader,
+    std::shared_ptr<IDocumentStateAgencyHandler> agencyReader,
     std::shared_ptr<IDocumentStateShardHandler> shardHandler)
     : _agencyReader(std::move(agencyReader)),
       _shardHandler(std::move(shardHandler)){};
@@ -99,7 +99,7 @@ auto DocumentFactory::constructCore(GlobalLogIdentifier gid,
 }
 
 auto DocumentFactory::getAgencyReader()
-    -> std::shared_ptr<IDocumentStateAgencyReader> {
+    -> std::shared_ptr<IDocumentStateAgencyHandler> {
   return _agencyReader;
 };
 

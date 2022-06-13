@@ -25,6 +25,7 @@
 
 #include <velocypack/Builder.h>
 
+#include "Agency/AgencyStrings.h"
 #include "Basics/ResultT.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ActionDescription.h"
@@ -32,16 +33,17 @@
 #include "Cluster/CreateCollection.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Cluster/MaintenanceStrings.h"
 #include "Cluster/ServerState.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
 using namespace arangodb::replication2::replicated_state::document;
 
-DocumentStateAgencyCacheReader::DocumentStateAgencyCacheReader(
-    AgencyCache& agencyCache)
-    : _agencyCache(agencyCache){};
+DocumentStateAgencyHandler::DocumentStateAgencyHandler(ArangodServer& server,
+                                                       AgencyCache& agencyCache)
+    : _server(server), _agencyCache(agencyCache){};
 
-auto DocumentStateAgencyCacheReader::getCollectionInfo(
+auto DocumentStateAgencyHandler::getCollectionPlan(
     std::string const& database, std::string const& collectionId)
     -> std::shared_ptr<VPackBuilder> {
   auto builder = std::make_shared<VPackBuilder>();
@@ -56,6 +58,36 @@ auto DocumentStateAgencyCacheReader::getCollectionInfo(
   return builder;
 }
 
+auto DocumentStateAgencyHandler::reportShardInCurrent(
+    std::string const& database, std::string const& collectionId,
+    std::string const& shardId,
+    std::shared_ptr<velocypack::Builder> const& properties) -> Result {
+  auto participants = properties->slice().get(maintenance::SHARDS).get(shardId);
+
+  VPackBuilder localShard;
+  {
+    VPackObjectBuilder ob(&localShard);
+
+    localShard.add(StaticStrings::Error, VPackValue(false));
+    localShard.add(StaticStrings::ErrorMessage, VPackValue(std::string()));
+    localShard.add(StaticStrings::ErrorNum, VPackValue(0));
+    localShard.add(maintenance::SERVERS, participants);
+    localShard.add(StaticStrings::FailoverCandidates, participants);
+  }
+
+  AgencyOperation op(consensus::CURRENT_COLLECTIONS + database + "/" +
+                         collectionId + "/" + shardId,
+                     AgencyValueOperationType::SET, localShard.slice());
+  AgencyPrecondition pr(consensus::PLAN_COLLECTIONS + database + "/" +
+                            collectionId + "/shards/" + shardId,
+                        AgencyPrecondition::Type::VALUE, participants);
+
+  AgencyComm comm(_server);
+  AgencyWriteTransaction currentTransaction(op, pr);
+  AgencyCommResult r = comm.sendTransactionWithFailover(currentTransaction);
+  return r.asResult();
+}
+
 DocumentStateShardHandler::DocumentStateShardHandler(
     MaintenanceFeature& maintenanceFeature)
     : _maintenanceFeature(maintenanceFeature){};
@@ -64,13 +96,14 @@ auto DocumentStateShardHandler::stateIdToShardId(LogId logId) -> std::string {
   return fmt::format("s{}", logId);
 }
 
-auto DocumentStateShardHandler::createShard(
+auto DocumentStateShardHandler::createLocalShard(
     GlobalLogIdentifier const& gid, std::string const& collectionId,
-    std::shared_ptr<velocypack::Builder> properties) -> ResultT<std::string> {
+    std::shared_ptr<velocypack::Builder> const& properties)
+    -> ResultT<std::string> {
   auto shardId = stateIdToShardId(gid.id);
 
   // For the moment, use the shard information to get the leader
-  auto participants = properties->slice().get("shards").get(shardId);
+  auto participants = properties->slice().get(maintenance::SHARDS).get(shardId);
   TRI_ASSERT(participants.isArray());
   auto leaderId = participants[0].toString();
   auto serverId = ServerState::instance()->getId();
@@ -96,5 +129,6 @@ auto DocumentStateShardHandler::createShard(
     return ResultT<std::string>::error(
         TRI_ERROR_INTERNAL, fmt::format("Cannot create shard ID {}", shardId));
   }
+
   return ResultT<std::string>::success(std::move(shardId));
 }

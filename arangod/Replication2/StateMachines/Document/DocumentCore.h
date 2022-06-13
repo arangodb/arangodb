@@ -35,7 +35,7 @@ struct DocumentCoreParameters;
 struct DocumentCore {
   explicit DocumentCore(
       GlobalLogIdentifier gid, DocumentCoreParameters coreParameters,
-      std::shared_ptr<IDocumentStateAgencyReader> agencyReader,
+      std::shared_ptr<IDocumentStateAgencyHandler> agencyHandler,
       std::shared_ptr<IDocumentStateShardHandler> shardHandler,
       LoggerContext loggerContext);
 
@@ -44,7 +44,7 @@ struct DocumentCore {
  private:
   GlobalLogIdentifier _gid;
   DocumentCoreParameters _params;
-  std::shared_ptr<IDocumentStateAgencyReader> _agencyReader;
+  std::shared_ptr<IDocumentStateAgencyHandler> _agencyHandler;
   std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
 };
 }  // namespace arangodb::replication2::replicated_state::document
