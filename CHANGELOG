@@ -1,6 +1,8 @@
 devel
 -----
 
+* Issue 15592: Permit `MERGE_RECURSIVE()` to be called with a single argument
+
 * Change default `format_version` for RocksDB .sst files from 3 to 5.
 
 * Added support for creating autoincrement keys on cluster mode, but only for 
