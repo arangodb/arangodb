@@ -1,6 +1,18 @@
 devel
 -----
 
+* Change default `format_version` for RocksDB .sst files from 3 to 5.
+
+* Added support for creating autoincrement keys on cluster mode, but only for 
+  single sharded collections.
+
+* Add support for LZ4 and LZ4HC compression support for RocksDB.
+
+* Allow parallel access to the shards of smart edge collections in AQL via 
+  parallel GatherNodes.
+
+* Update RocksDB internal table checksum type to xxHash64.
+
 * Updated arangosync to v2.10.0.
 
 * Added several startup option to configure parallelism for individual Pregel 

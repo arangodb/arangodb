@@ -25,137 +25,13 @@
 
 #include <chrono>
 #include <cstdlib>
-#include <filesystem>
 #include <memory>
 #include <iostream>
 #include <stdexcept>
 #include <thread>
 #include <type_traits>
 
-#include "Actions/ActionFeature.h"
-#include "Agency/AgencyFeature.h"
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "ApplicationFeatures/ConfigFeature.h"
-#include "ApplicationFeatures/GreetingsFeature.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ApplicationFeatures/LanguageFeature.h"
-#include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/ShutdownFeature.h"
-#include "ApplicationFeatures/TempFeature.h"
-#include "ApplicationFeatures/V8PlatformFeature.h"
-#include "ApplicationFeatures/V8SecurityFeature.h"
-#include "ApplicationFeatures/VersionFeature.h"
-#include "Aql/AqlFunctionFeature.h"
-#include "Aql/OptimizerRulesFeature.h"
-#include "Basics/ArangoGlobalContext.h"
-#include "Basics/Common.h"
-#include "Basics/CrashHandler.h"
-#include "Basics/FileUtils.h"
-#include "Basics/directories.h"
-#include "Basics/operating-system.h"
-#include "Basics/tri-strings.h"
-#include "Cache/CacheManagerFeature.h"
-#include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterUpgradeFeature.h"
-#include "Cluster/MaintenanceFeature.h"
-#include "Cluster/FailureOracleFeature.h"
-#include "Cluster/ReplicationTimeoutFeature.h"
-#include "Cluster/ServerState.h"
-#include "ClusterEngine/ClusterEngine.h"
-#include "FeaturePhases/AgencyFeaturePhase.h"
-#include "FeaturePhases/AqlFeaturePhase.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
-#include "FeaturePhases/ClusterFeaturePhase.h"
-#include "FeaturePhases/DatabaseFeaturePhase.h"
-#include "FeaturePhases/FinalFeaturePhase.h"
-#include "FeaturePhases/FoxxFeaturePhase.h"
-#include "FeaturePhases/ServerFeaturePhase.h"
-#include "FeaturePhases/V8FeaturePhase.h"
-#include "GeneralServer/AuthenticationFeature.h"
-#include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/ServerSecurityFeature.h"
-#include "GeneralServer/SslServerFeature.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
-#include "IResearch/IResearchFeature.h"
-#include "Logger/LoggerFeature.h"
-#include "Metrics/ClusterMetricsFeature.h"
-#include "Metrics/MetricsFeature.h"
-#include "Network/NetworkFeature.h"
-#include "Pregel/PregelFeature.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "Random/RandomFeature.h"
-#include "Replication/ReplicationFeature.h"
-#include "Replication/ReplicationMetricsFeature.h"
-#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
-#include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
-#include "Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.h"
-#include "Replication2/StateMachines/Prototype/PrototypeStateMachineFeature.h"
-#include "RestServer/AqlFeature.h"
-#include "RestServer/BootstrapFeature.h"
-#include "RestServer/CheckVersionFeature.h"
-#include "RestServer/ConsoleFeature.h"
-#include "RestServer/CpuUsageFeature.h"
-#include "RestServer/DaemonFeature.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabasePathFeature.h"
-#include "RestServer/EndpointFeature.h"
-#include "RestServer/EnvironmentFeature.h"
-#include "RestServer/FileDescriptorsFeature.h"
-#include "RestServer/FlushFeature.h"
-#include "RestServer/FortuneFeature.h"
-#include "RestServer/FrontendFeature.h"
-#include "RestServer/InitDatabaseFeature.h"
-#include "RestServer/LanguageCheckFeature.h"
-#include "RestServer/LockfileFeature.h"
-#include "RestServer/LogBufferFeature.h"
-#include "RestServer/MaxMapCountFeature.h"
-#include "RestServer/NonceFeature.h"
-#include "RestServer/PrivilegeFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/RestartAction.h"
-#include "RestServer/ScriptFeature.h"
-#include "RestServer/ServerFeature.h"
-#include "RestServer/ServerIdFeature.h"
-#include "RestServer/SharedPRNGFeature.h"
-#include "RestServer/SoftShutdownFeature.h"
-#include "RestServer/SupervisorFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TimeZoneFeature.h"
-#include "RestServer/TtlFeature.h"
-#include "RestServer/UpgradeFeature.h"
-#include "RestServer/ViewTypesFeature.h"
-#include "RestServer/arangod.h"
-#include "RocksDBEngine/RocksDBEngine.h"
-#include "RocksDBEngine/RocksDBOptionFeature.h"
-#include "RocksDBEngine/RocksDBRecoveryManager.h"
-#include "Scheduler/SchedulerFeature.h"
-#include "Sharding/ShardingFeature.h"
-#include "Ssl/SslFeature.h"
-#include "Statistics/StatisticsFeature.h"
-#include "Statistics/StatisticsWorker.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngineFeature.h"
-#include "Transaction/ManagerFeature.h"
-#include "V8Server/FoxxFeature.h"
-#include "V8Server/V8DealerFeature.h"
-#include "VocBase/vocbase.h"
-
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#include "RestServer/WindowsServiceFeature.h"
-#endif
-
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Audit/AuditFeature.h"
-#include "Enterprise/Encryption/EncryptionFeature.h"
-#include "Enterprise/Ldap/LdapFeature.h"
-#include "Enterprise/License/LicenseFeature.h"
-#include "Enterprise/RClone/RCloneFeature.h"
-#include "Enterprise/Ssl/SslServerFeatureEE.h"
-#include "Enterprise/StorageEngine/HotBackupFeature.h"
-#endif
+#include "RestServer/arangod_includes.h"
 
 namespace {
 
@@ -311,11 +187,6 @@ void Server::Impl::setupServer(std::string const& name, int& result) {
 }
 
 void Server::Impl::runServer(char const* exectuable) {
-  int ret{EXIT_FAILURE};
-
-  // TODO
-  std::filesystem::remove_all(_databaseDirectory);
-
   std::vector<std::string> args{exectuable, "--database.directory",
                                 _databaseDirectory, "--server.endpoint",
                                 "tcp://127.0.0.1:8530"};
@@ -332,12 +203,10 @@ void Server::Impl::runServer(char const* exectuable) {
     LOG_TOPIC("5d508", ERR, arangodb::Logger::FIXME)
         << "sepp ArangodServer terminated because of an exception: "
         << ex.what();
-    ret = EXIT_FAILURE;
   } catch (...) {
     LOG_TOPIC("3c63a", ERR, arangodb::Logger::FIXME)
         << "sepp ArangodServer terminated because of an exception of "
            "unknown type";
-    ret = EXIT_FAILURE;
   }
   arangodb::Logger::flush();
 }

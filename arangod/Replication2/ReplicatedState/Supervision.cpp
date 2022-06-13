@@ -32,6 +32,7 @@
 #include "Logger/LogMacros.h"
 
 using namespace arangodb;
+using namespace arangodb::replication2::agency;
 
 /*
  * This is the flow graph of the replicated state supervision. Operations that
@@ -165,10 +166,12 @@ auto checkStateAdded(SupervisionContext& ctx, RSA::State const& state) {
                   // participants and *then* increments the generation
                   .generation = StateGeneration{2},
                   .properties = state.target.properties,
+                  .owner = "target",
                   .participants = {}};
 
     auto logTarget =
         replication2::agency::LogTarget(id, {}, state.target.config);
+    logTarget.owner = "replicated-state";
 
     for (auto const& [participantId, _] : state.target.participants) {
       logTarget.participants.emplace(participantId, ParticipantFlags{});

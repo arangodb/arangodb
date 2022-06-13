@@ -80,7 +80,7 @@ auto replicated_log::InMemoryLog::getEntryByIndex(
   }
 
   auto const& e = _log.at(idx.value - _first.value);
-  TRI_ASSERT(e.entry().logIndex() == idx)
+  ADB_PROD_ASSERT(e.entry().logIndex() == idx)
       << "idx = " << idx << ", entry = " << e.entry().logIndex();
   return e;
 }
@@ -89,11 +89,12 @@ auto replicated_log::InMemoryLog::slice(LogIndex from, LogIndex to) const
     -> log_type {
   from = std::max(from, _first);
   to = std::max(to, _first);
-  TRI_ASSERT(from <= to) << "from = " << from << ", to = " << to;
+  ADB_PROD_ASSERT(from <= to)
+      << "from = " << from << ", to = " << to << ", _first = " << _first;
   auto res = _log.take(to.value - _first.value).drop(from.value - _first.value);
-  TRI_ASSERT(res.size() <= to.value - from.value)
+  ADB_PROD_ASSERT(res.size() <= to.value - from.value)
       << "res.size() = " << res.size() << ", to = " << to.value
-      << ", from = " << from.value;
+      << ", from = " << from.value << ", first = " << _first;
   return res;
 }
 
@@ -140,7 +141,10 @@ replicated_log::InMemoryLog::InMemoryLog(log_type log)
 
 replicated_log::InMemoryLog::InMemoryLog(log_type log, LogIndex first)
     : _log(std::move(log)), _first(first) {
-  TRI_ASSERT(_log.empty() || first == _log.front().entry().logIndex());
+  TRI_ASSERT(_log.empty() || first == _log.front().entry().logIndex())
+      << " log.empty = " << std::boolalpha << _log.empty()
+      << " first = " << first << " log.front.idx = "
+      << (!_log.empty() ? _log.front().entry().logIndex().value : 0);
 }
 
 #if (_MSC_VER >= 1)
@@ -278,8 +282,8 @@ void replicated_log::InMemoryLog::appendInPlace(LoggerContext const& logContext,
 auto replicated_log::InMemoryLog::append(LoggerContext const& logContext,
                                          log_type entries) const
     -> InMemoryLog {
-  TRI_ASSERT(entries.empty() ||
-             getNextIndex() == entries.front().entry().logIndex())
+  ADB_PROD_ASSERT(entries.empty() ||
+                  getNextIndex() == entries.front().entry().logIndex())
       << std::boolalpha << "entries.empty() = " << entries.empty()
       << ", front = " << entries.front().entry().logIndex()
       << ", getNextIndex = " << getNextIndex();
@@ -291,7 +295,8 @@ auto replicated_log::InMemoryLog::append(LoggerContext const& logContext,
 auto replicated_log::InMemoryLog::append(
     LoggerContext const& logContext, log_type_persisted const& entries) const
     -> InMemoryLog {
-  TRI_ASSERT(entries.empty() || getNextIndex() == entries.front().logIndex())
+  ADB_PROD_ASSERT(entries.empty() ||
+                  getNextIndex() == entries.front().logIndex())
       << std::boolalpha << "entries.empty() = " << entries.empty()
       << ", front = " << entries.front().logIndex()
       << ", getNextIndex = " << getNextIndex();
@@ -304,7 +309,8 @@ auto replicated_log::InMemoryLog::append(
 
 auto replicated_log::InMemoryLog::takeSnapshotUpToAndIncluding(
     LogIndex until) const -> InMemoryLog {
-  TRI_ASSERT(_first <= (until + 1));
+  ADB_PROD_ASSERT(_first <= (until + 1))
+      << "first = " << _first << " until = " << until;
   return InMemoryLog{_log.take(until.value - _first.value + 1), _first};
 }
 

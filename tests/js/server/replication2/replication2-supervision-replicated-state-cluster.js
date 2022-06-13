@@ -1,5 +1,5 @@
 /*jshint strict: true */
-/*global assertEqual */
+/*global assertEqual, assertTrue */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -37,7 +37,6 @@ const replicatedStateSuite = function (stateType) {
   const targetConfig = {
     writeConcern: 2,
     softWriteConcern: 2,
-    replicationFactor: 3,
     waitForSync: false,
   };
   const {setUpAll, tearDownAll, stopServerWait, setUp, tearDown} = lh.testHelperFunctions(database);
@@ -103,10 +102,9 @@ const replicatedStateSuite = function (stateType) {
       lh.waitFor(spreds.replicatedStateStatusAvailable(database, stateId));
       lh.waitFor(lpreds.replicatedLogLeaderCommitFail(database, stateId, "NonEligibleServerRequiredForQuorum"));
 
-
       const report = sh.getReplicatedStateStatus(database, stateId);
-      assertEqual(1, report.length);
-      assertEqual("LogParticipantNotYetGone", report[0].code);
+      assertTrue(report.length >= 1, `asserting report.length < 1, report is ${JSON.stringify(report)}`);
+      assertTrue(_.every(report, r => r.code === "LogParticipantNotYetGone"), `report is ${JSON.stringify(report)}`);
       const secondFollower = report[0].participant;
 
       // now bring back one of the followers

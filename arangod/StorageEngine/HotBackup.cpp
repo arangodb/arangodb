@@ -45,12 +45,8 @@ HotBackup::HotBackup(ArangodServer& server)
 #endif
   if (ServerState::instance()->isCoordinator()) {
     _engine = BACKUP_ENGINE::CLUSTER;
-  } else if (server.getFeature<EngineSelectorFeature>().isRocksDB()) {
-    _engine = BACKUP_ENGINE::ROCKSDB;
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_NOT_IMPLEMENTED,
-        "hot backup not implemented for this storage engine");
+    _engine = BACKUP_ENGINE::ROCKSDB;
   }
 }
 

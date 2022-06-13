@@ -195,8 +195,11 @@ class Supervision : public arangodb::Thread {
   /// @brief Check replicated logs
   void checkReplicatedStates();
 
-  /// @brief Check replicated logs
+  /// @brief Clean up replicated logs
   void cleanupReplicatedLogs();
+
+  /// @brief Clean up replicated states
+  void cleanupReplicatedStates();
 
   struct ResourceCreatorLostEvent {
     std::shared_ptr<Node> const& resource;

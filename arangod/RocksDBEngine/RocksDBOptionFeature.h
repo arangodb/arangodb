@@ -81,6 +81,7 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint64_t _transactionLockStripes;
   int64_t _transactionLockTimeout;
   std::string _walDirectory;
+  std::string _compressionType;
   uint64_t _totalWriteBufferSize;
   uint64_t _writeBufferSize;
   // Update max_write_buffer_number above if you change number of families used
@@ -108,6 +109,12 @@ class RocksDBOptionFeature final : public ArangodFeature,
   int64_t _level0StopTrigger;
   uint64_t _pendingCompactionBytesSlowdownTrigger;
   uint64_t _pendingCompactionBytesStopTrigger;
+  std::string _checksumType;
+  uint32_t _formatVersion;
+  bool _enableIndexCompression;
+  bool _prepopulateBlockCache;
+  bool _reserveTableBuilderMemory;
+  bool _reserveTableReaderMemory;
   bool _recycleLogFileNum;
   bool _enforceBlockCacheSizeLimit;
   bool _cacheIndexAndFilterBlocks;
@@ -128,11 +135,11 @@ class RocksDBOptionFeature final : public ArangodFeature,
   bool _allowFAllocate;
   bool _exclusiveWrites;
 
+  bool _minWriteBufferNumberToMergeTouched;
+
   /// per column family write buffer limits
   std::array<uint64_t, RocksDBColumnFamilyManager::numberOfColumnFamilies>
       _maxWriteBufferNumberCf;
-
-  bool _minWriteBufferNumberToMergeTouched;
 };
 
 }  // namespace arangodb

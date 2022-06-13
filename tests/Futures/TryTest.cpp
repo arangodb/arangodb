@@ -25,6 +25,8 @@
 
 #include "gtest/gtest.h"
 
+#include <memory>
+
 using namespace arangodb::futures;
 
 // from folly Utilities.h

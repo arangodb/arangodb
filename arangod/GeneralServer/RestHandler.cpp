@@ -631,6 +631,27 @@ void RestHandler::generateError(arangodb::Result const& r) {
   generateError(code, r.errorNumber(), r.errorMessage());
 }
 
+RestStatus RestHandler::waitForFuture(futures::Future<futures::Unit>&& f) {
+  if (f.isReady()) {             // fast-path out
+    f.result().throwIfFailed();  // just throw the error upwards
+    return RestStatus::DONE;
+  }
+  bool done = false;
+  std::move(f).thenFinal(
+      withLogContext([self = shared_from_this(),
+                      &done](futures::Try<futures::Unit>&& t) -> void {
+        if (t.hasException()) {
+          self->handleExceptionPtr(std::move(t).exception());
+        }
+        if (std::this_thread::get_id() == self->_executionMutexOwner.load()) {
+          done = true;
+        } else {
+          self->wakeupHandler();
+        }
+      }));
+  return done ? RestStatus::DONE : RestStatus::WAITING;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------

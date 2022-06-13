@@ -58,13 +58,13 @@ class PhysicalCollectionTest
       arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION,
                                      arangodb::LogLevel::WARN> {
  protected:
-  StorageEngineMock engine;
   arangodb::ArangodServer server;
+  StorageEngineMock engine;
   std::vector<std::reference_wrapper<
       arangodb::application_features::ApplicationFeature>>
       features;
 
-  PhysicalCollectionTest() : engine(server), server(nullptr, nullptr) {
+  PhysicalCollectionTest() : server(nullptr, nullptr), engine(server) {
     // setup required application features
     features.emplace_back(
         server.addFeature<

@@ -48,7 +48,7 @@ const sortedArrayEqualOrError = (left, right) => {
 const replaceParticipant = (database, logId, oldParticipant, newParticipant) => {
   const url = lh.getServerUrl(_.sample(lh.coordinators));
   const res = request.post(
-    `${url}/_db/${database}/_api/replicated-state/${logId}/participant/${oldParticipant}/replace-with/${newParticipant}`
+      `${url}/_db/${database}/_api/replicated-state/${logId}/participant/${oldParticipant}/replace-with/${newParticipant}`
   );
   lh.checkRequestResult(res);
   const {json: {result}} = res;
@@ -69,12 +69,17 @@ const unsetLeader = (database, logId) => {
   const {json: {result}} = res;
   return result;
 };
+const dropState = (database, logId) => {
+  const url = lh.getServerUrl(_.sample(lh.coordinators));
+  const res = request.delete(`${url}/_db/${database}/_api/replicated-state/${logId}`);
+  lh.checkRequestResult(res);
+  return res.json;
+};
 
 const replicatedStateSuite = function (stateType) {
   const targetConfig = {
     writeConcern: 2,
     softWriteConcern: 2,
-    replicationFactor: 3,
     waitForSync: false,
   };
 
@@ -361,6 +366,16 @@ const replicatedStateSuite = function (stateType) {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
         assertUndefined(stateAgencyContent.target.leader);
       }
+    },
+
+    testDropReplicatedState: function () {
+      const {stateId} = sh.createReplicatedStateTarget(database, targetConfig, stateType);
+
+      const res = dropState(database, stateId);
+      assertEqual(200, res.code);
+
+      lh.waitFor(spreds.replicatedStateIsGone(database, stateId));
+      lh.waitFor(lpreds.replicatedLogIsGone(database, stateId));
     },
   };
 };

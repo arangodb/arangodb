@@ -94,7 +94,6 @@ RestStatus RestPrototypeStateHandler::handleCreateState(
                 } else {
                   generateError(createResult.result());
                 }
-                return RestStatus::DONE;
               }));
 }
 
@@ -214,7 +213,6 @@ RestStatus RestPrototypeStateHandler::handlePutCompareExchange(
                                                 : rest::ResponseCode::ACCEPTED,
                          result.slice());
             }
-            return RestStatus::DONE;
           }));
 }
 
@@ -257,7 +255,6 @@ RestStatus RestPrototypeStateHandler::handlePostInsert(
                                             ? rest::ResponseCode::OK
                                             : rest::ResponseCode::ACCEPTED,
                                         result.slice());
-                             return RestStatus::DONE;
                            }));
 }
 
@@ -333,7 +330,6 @@ RestStatus RestPrototypeStateHandler::handleGetRequest(
         velocypack::serialize(response, result.get());
         generateOk(rest::ResponseCode::OK, response.slice());
       }
-      return RestStatus::DONE;
     }));
   }
 
@@ -446,21 +442,29 @@ RestStatus RestPrototypeStateHandler::handleGetSnapshot(
                                generateOk(rest::ResponseCode::OK,
                                           result.slice());
                              }
-                             return RestStatus::DONE;
                            }));
 }
 
 RestStatus RestPrototypeStateHandler::handleDeleteRequest(
     replication2::PrototypeStateMethods const& methods) {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
-  if (suffixes.size() < 2) {
+  if (suffixes.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expected DELETE /_api/prototype-state/<state-id>/[verb]");
+                  "expected DELETE /_api/prototype-state/<state-id>(/[verb])");
     return RestStatus::DONE;
   }
 
   LogId logId{basics::StringUtils::uint64(suffixes[0])};
-  if (auto& verb = suffixes[1]; verb == "entry") {
+  if (suffixes.size() == 1) {
+    return waitForFuture(methods.drop(logId).thenValue([this](auto&& result) {
+      if (result.ok()) {
+        generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
+      } else {
+        generateError(result);
+      }
+    }));
+
+  } else if (auto& verb = suffixes[1]; verb == "entry") {
     return handleDeleteRemove(methods, logId);
   } else if (verb == "multi-remove") {
     bool parseSuccess = false;
@@ -502,7 +506,6 @@ RestStatus RestPrototypeStateHandler::handleDeleteRemove(
                                             ? rest::ResponseCode::OK
                                             : rest::ResponseCode::ACCEPTED,
                                         result.slice());
-                             return RestStatus::DONE;
                            }));
 }
 
@@ -551,6 +554,5 @@ RestStatus RestPrototypeStateHandler::handleDeleteRemoveMulti(
                                             ? rest::ResponseCode::OK
                                             : rest::ResponseCode::ACCEPTED,
                                         result.slice());
-                             return RestStatus::DONE;
                            }));
 }

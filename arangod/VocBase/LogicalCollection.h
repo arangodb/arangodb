@@ -112,6 +112,8 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief current version for collections
   static constexpr Version currentVersion() { return Version::v37; }
 
+  static replication2::LogId shardIdToStateId(ShardID const& shardId);
+
   // SECTION: Meta Information
   Version version() const { return _version; }
 
@@ -199,6 +201,7 @@ class LogicalCollection : public LogicalDataSource {
   size_t numberOfShards() const noexcept;
   size_t replicationFactor() const noexcept;
   size_t writeConcern() const noexcept;
+  replication::Version replicationVersion() const noexcept;
   std::string const& distributeShardsLike() const noexcept;
   std::vector<std::string> const& avoidServers() const noexcept;
   bool isSatellite() const noexcept;

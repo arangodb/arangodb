@@ -37,7 +37,6 @@ const replicatedLogSuite = function () {
   const targetConfig = {
     writeConcern: 2,
     softWriteConcern: 2,
-    replicationFactor: 3,
     waitForSync: false,
   };
 
