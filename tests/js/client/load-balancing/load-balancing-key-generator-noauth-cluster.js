@@ -37,8 +37,6 @@ const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorE
 const servers = getCoordinatorEndpoints();
 const ERRORS = require("@arangodb").errors;
 
-function KeyGeneratorSuite () {
-
 function KeyGeneratorSuite() {
   'use strict';
   const cn = 'UnitTestsCollection';
