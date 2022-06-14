@@ -1,14 +1,12 @@
-import { chain, cloneDeep, difference, isNull, map } from 'lodash';
+import { cloneDeep } from 'lodash';
 import React, { useEffect, useReducer, useRef, useState } from 'react';
 import { HashRouter, Route, Switch } from 'react-router-dom';
-import useSWR from 'swr';
-import { getApiRouteForCurrentDB } from '../../utils/arangoClient';
 import { getReducer, isAdminUser as userIsAdmin, usePermissions } from '../../utils/helpers';
 import LinkList from './Components/LinkList';
 import NewLink from './Components/NewLink';
 import { ViewContext } from './constants';
 import LinkPropertiesForm from './forms/LinkPropertiesForm';
-import { postProcessor, useLinkState, useNavbar, useView } from './helpers';
+import { postProcessor, useNavbar, useView } from './helpers';
 
 const ViewLinksReactView = ({ name }) => {
   const initialState = useRef({
@@ -23,24 +21,6 @@ const ViewLinksReactView = ({ name }) => {
   );
   const permissions = usePermissions();
   const [isAdminUser, setIsAdminUser] = useState(false);
-  const [collection, setCollection, addDisabled, links] = useLinkState(state.formState, 'links');
-  const { data } = useSWR(['/collection', 'excludeSystem=true'], (path, qs) =>
-    getApiRouteForCurrentDB().get(path, qs)
-  );
-  const [options, setOptions] = useState([]);
-
-  useEffect(() => {
-    if (data) {
-      const linkKeys = chain(links)
-        .omitBy(isNull)
-        .keys()
-        .value();
-      const collNames = map(data.body.result, 'name');
-      const tempOptions = difference(collNames, linkKeys).sort();
-
-      setOptions(tempOptions);
-    }
-  }, [data, links]);
 
   useEffect(() => {
     initialState.current.formCache = cloneDeep(view);
@@ -74,13 +54,7 @@ const ViewLinksReactView = ({ name }) => {
       <HashRouter basename={`view/${name}/links`} hashType={'noslash'}>
         <Switch>
           <Route exact path={'/_add'}>
-            {
-              isAdminUser
-                ? <NewLink disabled={addDisabled || !options.includes(collection)}
-                           collection={collection} updateCollection={setCollection}
-                           options={options}/>
-                : null
-            }
+            { isAdminUser ? <NewLink/> : null }
           </Route>
           <Route path={'/:link'}>
             <LinkPropertiesForm name={name}/>
