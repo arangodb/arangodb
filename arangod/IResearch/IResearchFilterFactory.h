@@ -26,6 +26,7 @@
 
 #include "IResearchFilterOptimization.h"
 #include "IResearchLinkMeta.h"
+#include "IResearchInvertedIndexMeta.h"
 
 #include "VocBase/voc-types.h"
 
@@ -49,57 +50,24 @@ struct AstNode;  // forward declaration
 namespace iresearch {
 
 struct QueryContext;
-struct InvertedIndexField;
 
 using AnalyzerProvider =
     std::function<FieldMeta::Analyzer const&(std::string_view)>;
 
-class FilterContext {
- public:
-  FilterContext(FieldMeta::Analyzer const& analyzer, irs::score_t boost,
-                AnalyzerProvider const* provider, std::string_view namePrefix,
-                InvertedIndexField const* field = nullptr) noexcept
-      : _analyzerProvider{provider},
-        _analyzer{analyzer},
-        _field{field},
-        _namePrefix{namePrefix},
-        _boost{boost} {
-    TRI_ASSERT(_analyzer._pool);
-  }
-
-  FilterContext(FilterContext const&) = default;
-  FilterContext& operator=(FilterContext const&) = delete;
-
-  irs::score_t boost() const noexcept { return _boost; }
-
-  FieldMeta::Analyzer const& analyzer() const noexcept { return _analyzer; }
-
+struct FilterContext {
   FieldMeta::Analyzer const& fieldAnalyzer(std::string_view name) const {
-    if (_analyzerProvider == nullptr) {
-      return _analyzer;
+    if (analyzerProvider == nullptr) {
+      return analyzer;
     }
-    return (*_analyzerProvider)(name);
+    return (*analyzerProvider)(name);
   }
 
-  AnalyzerProvider const* analyzerProvider() const noexcept {
-    return _analyzerProvider;
-  }
-
-  FieldMeta::Analyzer const& contextAnalyzer() const noexcept {
-    return _analyzer;
-  }
-
-  std::string_view namePrefix() const noexcept { return _namePrefix; }
-
-  InvertedIndexField const* field() const noexcept { return _field; }
-
- private:
-  AnalyzerProvider const* _analyzerProvider;
+  AnalyzerProvider const* analyzerProvider{};
   // need shared_ptr since pool could be deleted from the feature
-  FieldMeta::Analyzer const& _analyzer;
-  InvertedIndexField const* _field;
-  std::string_view _namePrefix;  // field name prefix
-  irs::score_t _boost;
+  FieldMeta::Analyzer const& analyzer;
+  std::span<const InvertedIndexField> fields{};
+  std::string_view namePrefix{};  // field name prefix
+  irs::score_t boost{irs::kNoBoost};
 };
 
 struct FilterFactory {

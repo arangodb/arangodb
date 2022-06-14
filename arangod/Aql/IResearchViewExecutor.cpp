@@ -725,9 +725,9 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
     // The analyzer is referenced in the FilterContext and used during the
     // following ::makeFilter() call, so may not be a temporary.
     FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
+    FilterContext const filterCtx{.analyzer = analyzer};
 
-    auto rv = FilterFactory::filter(&root, queryCtx,
-                                    {analyzer, irs::kNoBoost, nullptr, {}},
+    auto rv = FilterFactory::filter(&root, queryCtx, filterCtx,
                                     infos().filterCondition());
 
     if (rv.fail()) {

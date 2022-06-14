@@ -507,7 +507,7 @@ FORCE_INLINE void appendExpression(irs::boolean_filter& filter,
                                    FilterContext const& filterCtx) {
   auto& exprFilter = filter.add<ByExpression>();
   exprFilter.init(*ctx.plan, *ctx.ast, const_cast<aql::AstNode&>(node));
-  exprFilter.boost(filterCtx.boost());
+  exprFilter.boost(filterCtx.boost);
 }
 
 Result byTerm(irs::by_term* filter, std::string&& name,
@@ -518,7 +518,7 @@ Result byTerm(irs::by_term* filter, std::string&& name,
       if (filter) {
         kludge::mangleNull(name);
         *filter->mutable_field() = std::move(name);
-        filter->boost(filterCtx.boost());
+        filter->boost(filterCtx.boost);
         irs::assign(filter->mutable_options()->term,
                     irs::null_token_stream::value_null());
       }
@@ -527,7 +527,7 @@ Result byTerm(irs::by_term* filter, std::string&& name,
       if (filter) {
         kludge::mangleBool(name);
         *filter->mutable_field() = std::move(name);
-        filter->boost(filterCtx.boost());
+        filter->boost(filterCtx.boost);
         irs::assign(filter->mutable_options()->term,
                     irs::boolean_token_stream::value(value.getBoolean()));
       }
@@ -551,7 +551,7 @@ Result byTerm(irs::by_term* filter, std::string&& name,
         stream.next();
 
         *filter->mutable_field() = std::move(name);
-        filter->boost(filterCtx.boost());
+        filter->boost(filterCtx.boost);
         irs::assign(filter->mutable_options()->term, token->value);
       }
       return {};
@@ -568,7 +568,7 @@ Result byTerm(irs::by_term* filter, std::string&& name,
         TRI_ASSERT(analyzer._pool);
         kludge::mangleField(name, ctx.isSearchQuery, analyzer);
         *filter->mutable_field() = std::move(name);
-        filter->boost(filterCtx.boost());
+        filter->boost(filterCtx.boost);
         irs::assign(filter->mutable_options()->term,
                     irs::ref_cast<irs::byte_type>(strValue));
       }
@@ -582,7 +582,7 @@ Result byTerm(irs::by_term* filter, std::string&& name,
 Result byTerm(irs::by_term* filter, aql::AstNode const& attribute,
               ScopedAqlValue const& value, QueryContext const& ctx,
               FilterContext const& filterCtx) {
-  std::string name{filterCtx.namePrefix()};
+  std::string name{filterCtx.namePrefix};
   if (filter && !nameFromAttributeAccess(name, attribute, ctx)) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Failed to generate field name from node "s.append(
@@ -619,7 +619,7 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attribute,
                FilterContext const& filterCtx) {
   TRI_ASSERT(attribute.isDeterministic());
 
-  std::string name{filterCtx.namePrefix()};
+  std::string name{filterCtx.namePrefix};
   if (filter && !nameFromAttributeAccess(name, attribute, ctx)) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Failed to generate field name from node "s.append(
@@ -631,7 +631,7 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attribute,
 
   kludge::mangleNumeric(name);
   *range.mutable_field() = std::move(name);
-  range.boost(filterCtx.boost());
+  range.boost(filterCtx.boost);
 
   irs::numeric_token_stream stream;
 
@@ -654,7 +654,7 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
                ScopedAqlValue const& min, bool const minInclude,
                ScopedAqlValue const& max, bool const maxInclude,
                QueryContext const& ctx, FilterContext const& filterCtx) {
-  std::string name{filterCtx.namePrefix()};
+  std::string name{filterCtx.namePrefix};
   if (filter && !nameFromAttributeAccess(name, attributeNode, ctx)) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Failed to generate field name from node "s.append(
@@ -668,7 +668,7 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
 
         auto& range = filter->add<irs::by_range>();
         *range.mutable_field() = std::move(name);
-        range.boost(filterCtx.boost());
+        range.boost(filterCtx.boost);
         auto* opts = range.mutable_options();
         irs::assign(opts->range.min, irs::null_token_stream::value_null());
         opts->range.min_type =
@@ -686,7 +686,7 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
 
         auto& range = filter->add<irs::by_range>();
         *range.mutable_field() = std::move(name);
-        range.boost(filterCtx.boost());
+        range.boost(filterCtx.boost);
         auto* opts = range.mutable_options();
         irs::assign(opts->range.min,
                     irs::boolean_token_stream::value(min.getBoolean()));
@@ -713,7 +713,7 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
 
         kludge::mangleNumeric(name);
         *range.mutable_field() = std::move(name);
-        range.boost(filterCtx.boost());
+        range.boost(filterCtx.boost);
 
         irs::numeric_token_stream stream;
         auto* opts = range.mutable_options();
@@ -748,7 +748,7 @@ Result byRange(irs::boolean_filter* filter, aql::AstNode const& attributeNode,
         TRI_ASSERT(analyzer._pool);
         kludge::mangleField(name, ctx.isSearchQuery, analyzer);
         *range.mutable_field() = std::move(name);
-        range.boost(filterCtx.boost());
+        range.boost(filterCtx.boost);
 
         auto* opts = range.mutable_options();
         irs::assign(opts->range.min,
@@ -825,11 +825,11 @@ Result byRange(irs::boolean_filter* filter, std::string name,
         } else {
           auto& rangeOr = filter->add<irs::Or>();
           range = &rangeOr.add<irs::by_range>();
-          setupTypeOrderRangeFilter<Min, 0>(rangeOr, name, filterCtx.boost());
+          setupTypeOrderRangeFilter<Min, 0>(rangeOr, name, filterCtx.boost);
         }
         kludge::mangleNull(name);
         *range->mutable_field() = std::move(name);
-        range->boost(filterCtx.boost());
+        range->boost(filterCtx.boost);
         auto* opts = range->mutable_options();
         irs::assign(Min ? opts->range.min : opts->range.max,
                     irs::null_token_stream::value_null());
@@ -846,12 +846,12 @@ Result byRange(irs::boolean_filter* filter, std::string name,
         } else {
           auto& rangeOr = filter->add<irs::Or>();
           range = &rangeOr.add<irs::by_range>();
-          setupTypeOrderRangeFilter<Min, 1>(rangeOr, name, filterCtx.boost());
+          setupTypeOrderRangeFilter<Min, 1>(rangeOr, name, filterCtx.boost);
         }
         TRI_ASSERT(range);
         kludge::mangleBool(name);
         *range->mutable_field() = std::move(name);
-        range->boost(filterCtx.boost());
+        range->boost(filterCtx.boost);
         auto* opts = range->mutable_options();
         irs::assign(Min ? opts->range.min : opts->range.max,
                     irs::boolean_token_stream::value(value.getBoolean()));
@@ -876,13 +876,13 @@ Result byRange(irs::boolean_filter* filter, std::string name,
         } else {
           auto& rangeOr = filter->add<irs::Or>();
           range = &rangeOr.add<irs::by_granular_range>();
-          setupTypeOrderRangeFilter<Min, 2>(rangeOr, name, filterCtx.boost());
+          setupTypeOrderRangeFilter<Min, 2>(rangeOr, name, filterCtx.boost);
         }
         irs::numeric_token_stream stream;
 
         kludge::mangleNumeric(name);
         *range->mutable_field() = std::move(name);
-        range->boost(filterCtx.boost());
+        range->boost(filterCtx.boost);
 
         stream.reset(dblValue);
         auto* opts = range->mutable_options();
@@ -907,14 +907,14 @@ Result byRange(irs::boolean_filter* filter, std::string name,
         } else {
           auto& rangeOr = filter->add<irs::Or>();
           range = &rangeOr.add<irs::by_range>();
-          setupTypeOrderRangeFilter<Min, 3>(rangeOr, name, filterCtx.boost());
+          setupTypeOrderRangeFilter<Min, 3>(rangeOr, name, filterCtx.boost);
         }
 
         auto& analyzer = filterCtx.fieldAnalyzer(name);
         TRI_ASSERT(analyzer._pool);
         kludge::mangleField(name, ctx.isSearchQuery, analyzer);
         *range->mutable_field() = std::move(name);
-        range->boost(filterCtx.boost());
+        range->boost(filterCtx.boost);
         auto* opts = range->mutable_options();
         irs::assign(Min ? opts->range.min : opts->range.max,
                     irs::ref_cast<irs::byte_type>(strValue));
@@ -937,7 +937,7 @@ Result byRange(irs::boolean_filter* filter, NormalizedCmpNode const& node,
   TRI_ASSERT(node.attribute && node.attribute->isDeterministic());
   TRI_ASSERT(node.value && node.value->isDeterministic());
 
-  std::string name{filterCtx.namePrefix()};
+  std::string name{filterCtx.namePrefix};
   if (filter && !nameFromAttributeAccess(name, *node.attribute, ctx)) {
     return {TRI_ERROR_BAD_PARAMETER,
             "Failed to generate field name from node "s.append(
@@ -1065,13 +1065,13 @@ Result fromFuncGeoInRange(char const* funcName, irs::boolean_filter* filter,
   }
 
   if (filter) {
-    std::string name{filterCtx.namePrefix()};
+    std::string name{filterCtx.namePrefix};
     if (!nameFromAttributeAccess(name, *fieldNode, ctx)) {
       return error::failedToGenerateName(funcName, fieldNodeIdx);
     }
 
     auto& geo_filter = filter->add<GeoDistanceFilter>();
-    geo_filter.boost(filterCtx.boost());
+    geo_filter.boost(filterCtx.boost);
 
     auto& analyzer = filterCtx.fieldAnalyzer(name);
 
@@ -1170,7 +1170,7 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
   }
 
   if (filter) {
-    std::string name{filterCtx.namePrefix()};
+    std::string name{filterCtx.namePrefix};
     if (!nameFromAttributeAccess(name, *fieldNode, ctx)) {
       return error::failedToGenerateName(GEO_DISTANCE_FUNC, fieldNodeIdx);
     }
@@ -1180,7 +1180,7 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
              ? filter->add<irs::Not>().filter<GeoDistanceFilter>()
              : filter->add<GeoDistanceFilter>());
 
-    geo_filter.boost(filterCtx.boost());
+    geo_filter.boost(filterCtx.boost);
 
     auto* options = geo_filter.mutable_options();
 
@@ -1299,7 +1299,7 @@ Result fromRange(irs::boolean_filter* filter, QueryContext const& /*ctx*/,
 
   // ranges are always true
   if (filter) {
-    filter->add<irs::all>().boost(filterCtx.boost());
+    filter->add<irs::all>().boost(filterCtx.boost);
   }
 
   return {};
@@ -1621,16 +1621,19 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
       return buildRes;
     }
     if (filter) {
-      filter->boost(filterCtx.boost());
+      filter->boost(filterCtx.boost);
     }
     if (aql::NODE_TYPE_ROOT == arrayExpansionNodeType) {
       // nothing to do more
       return {};
     }
-    FilterContext const subFilterCtx{filterCtx.analyzer(),
-                                     irs::kNoBoost,  // reset boost
-                                     filterCtx.analyzerProvider(),
-                                     filterCtx.namePrefix()};
+
+    FilterContext const subFilterCtx{
+        .analyzerProvider = filterCtx.analyzerProvider,
+        .analyzer = filterCtx.analyzer,
+        .namePrefix = filterCtx.namePrefix,
+        .boost = irs::kNoBoost};  // reset boost
+
     // Expand array interval as several binaryInterval nodes ('array' feature is
     // ensured by pre-filter)
     NormalizedCmpNode normalized;
@@ -1713,17 +1716,19 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
       if (!buildRes.ok()) {
         return buildRes;
       }
-      filter->boost(filterCtx.boost());
+      filter->boost(filterCtx.boost);
       if (aql::NODE_TYPE_ROOT == arrayExpansionNodeType) {
         // nothing to do more
         return {};
       }
-      FilterContext const subFilterCtx{filterCtx.analyzer(),
-                                       irs::kNoBoost,  // reset boost
-                                       filterCtx.analyzerProvider(),
-                                       filterCtx.namePrefix()};
 
-      std::string fieldName{filterCtx.namePrefix()};
+      FilterContext const subFilterCtx{
+          .analyzerProvider = filterCtx.analyzerProvider,
+          .analyzer = filterCtx.analyzer,
+          .namePrefix = filterCtx.namePrefix,
+          .boost = irs::kNoBoost};  // reset boost
+
+      std::string fieldName{filterCtx.namePrefix};
       if (filter && !nameFromAttributeAccess(fieldName, *attributeNode, ctx)) {
         return {TRI_ERROR_BAD_PARAMETER,
                 "Failed to generate field name from node " +
@@ -1789,7 +1794,7 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
     if (filter) {
       if (aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type) {
         // not in [] means 'all'
-        filter->add<irs::all>().boost(filterCtx.boost());
+        filter->add<irs::all>().boost(filterCtx.boost);
       } else {
         filter->add<irs::empty>();
       }
@@ -1804,13 +1809,14 @@ Result fromInArray(irs::boolean_filter* filter, QueryContext const& ctx,
                  ? &static_cast<irs::boolean_filter&>(
                        filter->add<irs::Not>().filter<irs::Or>())
                  : &static_cast<irs::boolean_filter&>(filter->add<irs::Or>());
-    filter->boost(filterCtx.boost());
+    filter->boost(filterCtx.boost);
   }
 
-  FilterContext const subFilterCtx{filterCtx.analyzer(),
-                                   irs::kNoBoost,  // reset boost
-                                   filterCtx.analyzerProvider(),
-                                   filterCtx.namePrefix()};
+  FilterContext const subFilterCtx{
+      .analyzerProvider = filterCtx.analyzerProvider,
+      .analyzer = filterCtx.analyzer,
+      .namePrefix = filterCtx.namePrefix,
+      .boost = irs::kNoBoost};  // reset boost
 
   NormalizedCmpNode normalized;
   aql::AstNode toNormalize(aql::NODE_TYPE_OPERATOR_BINARY_EQ);
@@ -1943,7 +1949,7 @@ Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
       if (!n) {
         if (aql::NODE_TYPE_OPERATOR_BINARY_NIN == node.type) {
           filter->add<irs::all>().boost(
-              filterCtx.boost());  // not in [] means 'all'
+              filterCtx.boost);  // not in [] means 'all'
         } else {
           filter->add<irs::empty>();
         }
@@ -1956,12 +1962,13 @@ Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
                    ? &static_cast<irs::boolean_filter&>(
                          filter->add<irs::Not>().filter<irs::Or>())
                    : &static_cast<irs::boolean_filter&>(filter->add<irs::Or>());
-      filter->boost(filterCtx.boost());
+      filter->boost(filterCtx.boost);
 
-      FilterContext const subFilterCtx{filterCtx.analyzer(),
-                                       irs::kNoBoost,  // reset boost
-                                       filterCtx.analyzerProvider(),
-                                       filterCtx.namePrefix()};
+      FilterContext const subFilterCtx{
+          .analyzerProvider = filterCtx.analyzerProvider,
+          .analyzer = filterCtx.analyzer,
+          .namePrefix = filterCtx.namePrefix,
+          .boost = irs::kNoBoost};  // reset boost
 
       for (size_t i = 0; i < n; ++i) {
         // failed to create a filter
@@ -2016,15 +2023,16 @@ Result fromNegation(irs::boolean_filter* filter, QueryContext const& ctx,
 
   if (filter) {
     auto& notFilter = filter->add<irs::Not>();
-    notFilter.boost(filterCtx.boost());
+    notFilter.boost(filterCtx.boost);
 
     filter = &notFilter.filter<irs::And>();
   }
 
-  FilterContext const subFilterCtx{filterCtx.analyzer(),
-                                   irs::kNoBoost,  // reset boost
-                                   filterCtx.analyzerProvider(),
-                                   filterCtx.namePrefix()};
+  FilterContext const subFilterCtx{
+      .analyzerProvider = filterCtx.analyzerProvider,
+      .analyzer = filterCtx.analyzer,
+      .namePrefix = filterCtx.namePrefix,
+      .boost = irs::kNoBoost};  // reset boost
 
   return makeFilter(filter, ctx, subFilterCtx, *member);
 }
@@ -2100,13 +2108,14 @@ Result fromGroup(irs::boolean_filter* filter, QueryContext const& ctx,
 
   if (filter) {
     filter = &filter->add<Filter>();
-    filter->boost(filterCtx.boost());
+    filter->boost(filterCtx.boost);
   }
 
-  FilterContext const subFilterCtx{filterCtx.analyzer(),
-                                   irs::kNoBoost,  // reset boost
-                                   filterCtx.analyzerProvider(),
-                                   filterCtx.namePrefix()};
+  FilterContext const subFilterCtx{
+      .analyzerProvider = filterCtx.analyzerProvider,
+      .analyzer = filterCtx.analyzer,
+      .namePrefix = filterCtx.namePrefix,
+      .boost = irs::kNoBoost};  // reset boost
 
   for (size_t i = 0; i < n; ++i) {
     auto const* valueNode = node.getMemberUnchecked(i);
@@ -2187,8 +2196,10 @@ Result fromFuncAnalyzer(char const* funcName, irs::boolean_filter* filter,
   }
 
   // override analyzer and throw away provider
-  FilterContext const subFilterContext(analyzerValue, filterCtx.boost(),
-                                       nullptr, filterCtx.namePrefix());
+  FilterContext const subFilterContext{.analyzerProvider = nullptr,
+                                       .analyzer = analyzerValue,
+                                       .namePrefix = filterCtx.namePrefix,
+                                       .boost = filterCtx.boost};
 
   rv = makeFilter(filter, ctx, subFilterContext, *expressionArg);
 
@@ -2236,9 +2247,10 @@ Result fromFuncBoost(char const* funcName, irs::boolean_filter* filter,
   }
 
   FilterContext const subFilterContext{
-      filterCtx.analyzer(),
-      filterCtx.boost() * static_cast<float_t>(boostValue),
-      filterCtx.analyzerProvider(), filterCtx.namePrefix()};
+      .analyzerProvider = filterCtx.analyzerProvider,
+      .analyzer = filterCtx.analyzer,
+      .namePrefix = filterCtx.namePrefix,
+      .boost = filterCtx.boost * static_cast<float_t>(boostValue)};
 
   rv = makeFilter(filter, ctx, subFilterContext, *expressionArg);
 
@@ -2283,7 +2295,7 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
   bool prefixMatch = true;
   auto const isIndexFilter = ctx.isSearchQuery;
 
-  std::string fieldName{filterCtx.namePrefix()};
+  std::string fieldName{filterCtx.namePrefix};
   if (filter && !nameFromAttributeAccess(fieldName, *fieldArg, ctx)) {
     return error::failedToGenerateName(funcName, 1);
   }
@@ -2379,7 +2391,7 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
         if (!filter && !analyzer._pool) {
           // use default context analyzer for the optimization stage
           // if actual analyzer could not be evaluated for now
-          analyzer = filterCtx.contextAnalyzer();
+          analyzer = filterCtx.analyzer;
         }
 
         TRI_ASSERT(analyzer._pool);
@@ -2395,7 +2407,7 @@ Result fromFuncExists(char const* funcName, irs::boolean_filter* filter,
   if (filter) {
     auto& exists = filter->add<irs::by_column_existence>();
     *exists.mutable_field() = std::move(fieldName);
-    exists.boost(filterCtx.boost());
+    exists.boost(filterCtx.boost);
     auto* opts = exists.mutable_options();
     opts->prefix_match = prefixMatch;
   }
@@ -2438,16 +2450,16 @@ Result fromFuncMinMatch(char const* funcName, irs::boolean_filter* filter,
   if (filter) {
     auto& minMatchFilter = filter->add<irs::Or>();
     minMatchFilter.min_match_count(static_cast<size_t>(minMatchCount));
-    minMatchFilter.boost(filterCtx.boost());
+    minMatchFilter.boost(filterCtx.boost);
 
     // become a new root
     filter = &minMatchFilter;
   }
 
-  FilterContext const subFilterCtx{filterCtx.analyzer(),
-                                   irs::kNoBoost,  // reset boost
-                                   filterCtx.analyzerProvider(),
-                                   filterCtx.namePrefix()};
+  FilterContext const subFilterCtx{
+      .analyzerProvider = filterCtx.analyzerProvider,
+      .analyzer = filterCtx.analyzer,
+      .namePrefix = filterCtx.namePrefix};
 
   for (size_t i = 0; i < lastArg; ++i) {
     auto subFilterExpression = args.getMemberUnchecked(i);
@@ -3407,7 +3419,7 @@ Result fromFuncPhrase(char const* funcName, irs::boolean_filter* filter,
     if (!filter && !analyzerPool._pool) {
       // use default context analyzer for the optimization stage
       // if actual analyzer could not be evaluated for now
-      analyzerPool = filterCtx.contextAnalyzer();
+      analyzerPool = filterCtx.analyzer;
     }
 
     TRI_ASSERT(analyzerPool._pool);
@@ -3427,7 +3439,7 @@ Result fromFuncPhrase(char const* funcName, irs::boolean_filter* filter,
   AnalyzerPool::CacheType::ptr analyzer;
   // prepare filter if execution phase
   if (filter) {
-    std::string name{filterCtx.namePrefix()};
+    std::string name{filterCtx.namePrefix};
     if (!nameFromAttributeAccess(name, *fieldArg, ctx)) {
       return error::failedToGenerateName(funcName, 1);
     }
@@ -3452,7 +3464,7 @@ Result fromFuncPhrase(char const* funcName, irs::boolean_filter* filter,
 
     phrase = &filter->add<irs::by_phrase>();
     *phrase->mutable_field() = std::move(name);
-    phrase->boost(filterCtx.boost());
+    phrase->boost(filterCtx.boost);
   }
   // on top level we require explicit offsets - to be backward compatible and be
   // able to distinguish last argument as analyzer or value Also we allow
@@ -3577,7 +3589,7 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
     if (!filter && !analyzerPool._pool) {
       // use default context analyzer for the optimization stage
       // if actual analyzer could not be evaluated for now
-      analyzerPool = filterCtx.contextAnalyzer();
+      analyzerPool = filterCtx.analyzer;
     }
 
     TRI_ASSERT(analyzerPool._pool);
@@ -3587,7 +3599,7 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
   }
 
   if (filter) {
-    std::string name{filterCtx.namePrefix()};
+    std::string name{filterCtx.namePrefix};
     if (!nameFromAttributeAccess(name, *field, ctx)) {
       auto message = "'"s.append(funcName).append(
           "' AQL function: Failed to generate field name from the 1st "
@@ -3617,7 +3629,7 @@ Result fromFuncNgramMatch(char const* funcName, irs::boolean_filter* filter,
     *ngramFilter.mutable_field() = std::move(name);
     auto* opts = ngramFilter.mutable_options();
     opts->threshold = static_cast<float_t>(threshold);
-    ngramFilter.boost(filterCtx.boost());
+    ngramFilter.boost(filterCtx.boost);
 
     analyzer->reset(matchValue);
     irs::term_attribute const* token = irs::get<irs::term_attribute>(*analyzer);
@@ -3745,7 +3757,7 @@ Result fromFuncStartsWith(char const* funcName, irs::boolean_filter* filter,
   }
 
   if (filter) {
-    std::string name{filterCtx.namePrefix()};
+    std::string name{filterCtx.namePrefix};
     if (!nameFromAttributeAccess(name, *field, ctx)) {
       return error::failedToGenerateName(funcName, 1);
     }
@@ -3764,7 +3776,7 @@ Result fromFuncStartsWith(char const* funcName, irs::boolean_filter* filter,
     if (isMultiPrefix) {
       auto& minMatchFilter = filter->add<irs::Or>();
       minMatchFilter.min_match_count(static_cast<size_t>(minMatchCount));
-      minMatchFilter.boost(filterCtx.boost());
+      minMatchFilter.boost(filterCtx.boost);
       // become a new root
       filter = &minMatchFilter;
     }
@@ -3773,7 +3785,7 @@ Result fromFuncStartsWith(char const* funcName, irs::boolean_filter* filter,
       auto& prefixFilter = filter->add<irs::by_prefix>();
       if (!isMultiPrefix) {
         TRI_ASSERT(prefixes.size() == 1);
-        prefixFilter.boost(filterCtx.boost());
+        prefixFilter.boost(filterCtx.boost);
       }
       if (i + 1 < size) {
         *prefixFilter.mutable_field() = name;
@@ -3855,7 +3867,7 @@ Result fromFuncLike(char const* funcName, irs::boolean_filter* filter,
   const auto scoringLimit = FilterConstants::DefaultScoringTermsLimit;
 
   if (filter) {
-    std::string name{filterCtx.namePrefix()};
+    std::string name{filterCtx.namePrefix};
     if (!nameFromAttributeAccess(name, *field, ctx)) {
       return error::failedToGenerateName(funcName, 1);
     }
@@ -3866,7 +3878,7 @@ Result fromFuncLike(char const* funcName, irs::boolean_filter* filter,
 
     auto& wildcardFilter = filter->add<irs::by_wildcard>();
     *wildcardFilter.mutable_field() = std::move(name);
-    wildcardFilter.boost(filterCtx.boost());
+    wildcardFilter.boost(filterCtx.boost);
     auto* opts = wildcardFilter.mutable_options();
     opts->scored_terms_limit = scoringLimit;
     irs::assign(opts->term, irs::ref_cast<irs::byte_type>(pattern));
@@ -3895,7 +3907,7 @@ Result fromFuncLevenshteinMatch(char const* funcName,
   }
 
   if (filter) {
-    std::string name{filterCtx.namePrefix()};
+    std::string name{filterCtx.namePrefix};
     if (!nameFromAttributeAccess(name, *field, ctx)) {
       return error::failedToGenerateName(funcName, 1);
     }
@@ -3905,7 +3917,7 @@ Result fromFuncLevenshteinMatch(char const* funcName,
     kludge::mangleField(name, ctx.isSearchQuery, analyzer);
 
     auto& levenshtein_filter = filter->add<irs::by_edit_distance>();
-    levenshtein_filter.boost(filterCtx.boost());
+    levenshtein_filter.boost(filterCtx.boost);
     *levenshtein_filter.mutable_field() = std::move(name);
     *levenshtein_filter.mutable_options() = std::move(opts);
   }
@@ -4003,13 +4015,13 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
   }
 
   if (filter) {
-    std::string name{filterCtx.namePrefix()};
+    std::string name{filterCtx.namePrefix};
     if (!nameFromAttributeAccess(name, *fieldNode, ctx)) {
       return error::failedToGenerateName(funcName, fieldNodeIdx);
     }
 
     auto& geo_filter = filter->add<GeoFilter>();
-    geo_filter.boost(filterCtx.boost());
+    geo_filter.boost(filterCtx.boost);
 
     auto* options = geo_filter.mutable_options();
 
@@ -4198,7 +4210,7 @@ Result fromExpression(irs::boolean_filter* filter, QueryContext const& ctx,
   }
 
   if (result) {
-    filter->add<irs::all>().boost(filterCtx.boost());
+    filter->add<irs::all>().boost(filterCtx.boost);
   } else {
     filter->add<irs::empty>();
   }
