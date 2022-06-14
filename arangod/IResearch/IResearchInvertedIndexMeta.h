@@ -167,9 +167,9 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
 
   struct FieldRecord {
     FieldRecord() : // FIXME: turn into delegate ctor once attributes are not needed
-      _isArray(false),
       _includeAllFields(false),
       _trackListPositions(false),
+      _isArray(false),
       _overrideValue(false){}
 
     FieldRecord(std::vector<basics::AttributeName> const& path,
