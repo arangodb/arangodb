@@ -45,7 +45,7 @@ class IResearchInvertedIndexSort {
 
   bool operator==(IResearchInvertedIndexSort const& rhs) const noexcept {
     return _fields == rhs._fields && _directions == rhs._directions &&
-           _locale.getName() == rhs._locale.getName();
+           std::string_view(_locale.getName()) == std::string_view(rhs._locale.getName());
   }
 
   bool operator!=(IResearchInvertedIndexSort const& rhs) const noexcept {
@@ -105,6 +105,10 @@ class IResearchInvertedIndexSort {
     TRI_ASSERT(i < this->size());
 
     return _directions[i];
+  }
+
+  std::string_view Locale() const noexcept {
+    return _locale.getName();
   }
 
   size_t memory() const noexcept;
@@ -206,6 +210,10 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
 
     auto const& expansion() const noexcept {
       return _expansion;
+    }
+
+    auto const& expression() const noexcept {
+      return _expression;
     }
 
     auto const& nested() const noexcept {

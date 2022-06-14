@@ -309,7 +309,7 @@ void toVelocyPack(IResearchInvertedIndexMeta::FieldRecord const& field, VPackBui
     VPackBuilder nestedFields;
     {
       VPackArrayBuilder nestedArray(&nestedFields);
-      for (auto const nested : field.nested()) {
+      for (auto const& nested : field.nested()) {
         toVelocyPack(nested, nestedFields);
       }
     }
