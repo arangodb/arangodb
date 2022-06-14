@@ -3526,11 +3526,13 @@ ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
 }
 
 namespace {
-struct RebootCookie : public arangodb::TransactionState::Cookie {
-  RebootCookie(CallbackGuard&& g) : guard(std::move(g)) {}
-  ~RebootCookie() = default;
+
+struct RebootCookie final : public arangodb::TransactionState::Cookie {
+  explicit RebootCookie(CallbackGuard&& g) noexcept : guard{std::move(g)} {}
+
   CallbackGuard guard;
 };
+
 }  // namespace
 
 Result RestReplicationHandler::createBlockingTransaction(
@@ -3591,8 +3593,7 @@ Result RestReplicationHandler::createBlockingTransaction(
 
       auto rGuard =
           std::make_unique<RebootCookie>(ci.rebootTracker().callMeOnChange(
-              RebootTracker::PeerState(serverId, rebootId), std::move(f),
-              std::move(comment)));
+              {serverId, rebootId}, std::move(f), std::move(comment)));
       auto ctx = mgr->leaseManagedTrx(id, AccessMode::Type::WRITE,
                                       /*isSideUser*/ false);
 

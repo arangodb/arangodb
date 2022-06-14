@@ -37,6 +37,7 @@ const optionsDocumentation = [
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const im = require('@arangodb/testutils/instance-manager');
 const yaml = require('js-yaml');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -189,20 +190,20 @@ function authenticationParameters (options) {
   for (let test = 0; test < 3; test++) {
     let cleanup = true;
 
-    let instanceInfo = pu.startInstance('tcp', options,
-      authTestServerParams[test],
-      'authentication_parameters_' + authTestNames[test]);
-
-    if (instanceInfo === false) {
+    let instanceManager = new im.instanceManager('tcp', options,
+                                                 authTestServerParams[test],
+                                                 'authentication_parameters_' + authTestNames[test]);
+    instanceManager.prepareInstance();
+    instanceManager.launchTcpDump("");
+    if (!instanceManager.launchInstance()) {
       return {
         authentication_parameters: {
           status: false,
-          total: 1,
-          failed: 1,
-          message: authTestNames[test] + ': failed to start server!'
+          message: 'failed to launch instance'
         }
       };
     }
+    instanceManager.reconnect();
 
     print(CYAN + Date() + ' Starting ' + authTestNames[test] + ' test' + RESET);
 
@@ -217,23 +218,23 @@ function authenticationParameters (options) {
 
       ++results[testName].total;
 
-      print(CYAN + '  URL: ' + instanceInfo.url + authTestUrl + RESET);
+      print(CYAN + '  URL: ' + instanceManager.url + authTestUrl + RESET);
 
       if (!continueTesting) {
         print(RED + 'Skipping ' + authTestUrl + ', server is gone.' + RESET);
 
         results[testName][authTestUrl] = {
           status: false,
-          message: instanceInfo.exitStatus
+          message: instanceManager.exitStatus
         };
 
         results[testName].failed++;
-        instanceInfo.exitStatus = 'server is gone.';
+        instanceManager.exitStatus = 'server is gone.';
         cleanup = false;
         break;
       }
 
-      let reply = download(instanceInfo.url + authTestUrl, '', downloadOptions);
+      let reply = download(instanceManager.url + authTestUrl, '', downloadOptions);
 
       if (reply.code === authTestExpectRC[test][i]) {
         results[testName][authTestUrl] = {
@@ -254,13 +255,13 @@ function authenticationParameters (options) {
         cleanup = false;
       }
 
-      continueTesting = pu.arangod.check.instanceAlive(instanceInfo, options);
+      continueTesting = instanceManager.checkInstanceAlive();
     }
 
     results[testName].status = results[testName].failed === 0;
 
     print(CYAN + 'Shutting down ' + authTestNames[test] + ' test...' + RESET);
-    results['shutdown'] = pu.shutdownInstance(instanceInfo, options);
+    results['shutdown'] = instanceManager.shutdownInstance();
     print(CYAN + 'done with ' + authTestNames[test] + ' test.' + RESET);
 
     if (cleanup) {

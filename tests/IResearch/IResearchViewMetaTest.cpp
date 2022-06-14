@@ -38,10 +38,10 @@
 
 class IResearchViewMetaTest : public ::testing::Test {
  protected:
-  StorageEngineMock engine;
   arangodb::ArangodServer server;
+  StorageEngineMock engine;
 
-  IResearchViewMetaTest() : engine(server), server(nullptr, nullptr) {
+  IResearchViewMetaTest() : server(nullptr, nullptr), engine(server) {
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     selector.setEngineTesting(&engine);
   }

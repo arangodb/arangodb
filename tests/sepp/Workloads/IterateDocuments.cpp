@@ -28,6 +28,7 @@
 #include <stdexcept>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/ScopeGuard.h"
 #include "RestServer/arangod.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -39,7 +40,11 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/Methods/Collections.h"
 
+#include "Execution.h"
 #include "Server.h"
+
+#include <rocksdb/db.h>
+#include <rocksdb/options.h>
 
 namespace arangodb::sepp::workloads {
 
@@ -54,6 +59,8 @@ auto IterateDocuments::createThreads(Execution& exec, Server& server)
   defaultThread.stop = _options.stop;
 
   if (_options.defaultThreadOptions) {
+    defaultThread.fillBlockCache =
+        _options.defaultThreadOptions->fillBlockCache;
     defaultThread.collection = _options.defaultThreadOptions->collection;
   }
 
@@ -88,8 +95,7 @@ void IterateDocuments::Thread::run() {
       _server.vocbase()->server().getFeature<arangodb::RocksDBEngine>();
   rocksdb::DB* rootDB = engine.db()->GetRootDB();
 
-  rocksdb::Status s;
-  rocksdb::ReadOptions ro(/*cksum*/ false, /*cache*/ false);
+  rocksdb::ReadOptions ro(/*cksum*/ false, /*cache*/ _options.fillBlockCache);
   ro.snapshot = rootDB->GetSnapshot();
   auto guard = scopeGuard([&]() noexcept {
     if (ro.snapshot) {
@@ -105,14 +111,19 @@ void IterateDocuments::Thread::run() {
   std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
 
   OperationOptions options;
-  std::uint64_t numIts = 0;
-  for (it->Seek(bounds.start()); it->Valid(); it->Next(), ++numIts) {
-    // TODO
+  for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
+    ++_operations;
+    if (_operations % 512 == 0 && shouldStop()) {
+      break;
+    }
   }
-  _operations += numIts;
 }
 
 auto IterateDocuments::Thread::shouldStop() const noexcept -> bool {
+  if (execution().stopped()) {
+    return true;
+  }
+
   using StopAfterOps = StoppingCriterion::NumberOfOperations;
   if (std::holds_alternative<StopAfterOps>(_options.stop)) {
     return _operations >= std::get<StopAfterOps>(_options.stop).count;

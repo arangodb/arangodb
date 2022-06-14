@@ -5327,7 +5327,7 @@ void ClusterInfo::loadServers() {
     }
     // RebootTracker has its own mutex, and doesn't strictly need to be in
     // sync with the other members.
-    rebootTracker().updateServerState(rebootIds);
+    rebootTracker().updateServerState(std::move(rebootIds));
     return;
   }
 
