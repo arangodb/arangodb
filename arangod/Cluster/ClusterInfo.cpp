@@ -5837,11 +5837,17 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
     READ_LOCKER(readLocker, _currentProt.lock);
     bool isReplicationTwo = false;
     for (auto const& shardId : shardIds) {
-      auto logId = LogicalCollection::shardIdToStateId(shardId);
+      auto logId = LogicalCollection::tryShardIdToStateId(shardId);
+      if (!logId.has_value()) {
+        // could not convert shardId to logId, but this implies that
+        // the shardId is not valid.
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                       "invalid shard " + shardId);
+      }
       // if we find a replicated log for this shard, then this is a
       // replication 2.0 db, in which case we want to use the leader
       // information from the log instead
-      auto it = _replicatedLogs.find(logId);
+      auto it = _replicatedLogs.find(*logId);
       if (it != _replicatedLogs.end()) {
         isReplicationTwo = true;
         result.emplace(shardId, it->second->currentTerm->leader->serverId);

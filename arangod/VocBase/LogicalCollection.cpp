@@ -1228,11 +1228,19 @@ void LogicalCollection::decorateWithInternalValidators() {
 
 replication2::LogId LogicalCollection::shardIdToStateId(
     std::string_view shardId) {
-  auto stateId = shardId.substr(1, shardId.size() - 1);
-  auto logId = replication2::LogId::fromString(stateId);
+  auto logId = tryShardIdToStateId(shardId);
   ADB_PROD_ASSERT(logId.has_value())
       << " converting " << shardId << " to LogId failed";
   return logId.value();
+}
+
+std::optional<replication2::LogId> LogicalCollection::tryShardIdToStateId(
+    std::string_view shardId) {
+  if (shardId.empty()) {
+    return {};
+  }
+  auto stateId = shardId.substr(1, shardId.size() - 1);
+  return replication2::LogId::fromString(stateId);
 }
 
 #ifndef USE_ENTERPRISE

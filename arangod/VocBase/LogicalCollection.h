@@ -113,6 +113,8 @@ class LogicalCollection : public LogicalDataSource {
   static constexpr Version currentVersion() { return Version::v37; }
 
   static replication2::LogId shardIdToStateId(std::string_view shardId);
+  static std::optional<replication2::LogId> tryShardIdToStateId(
+      std::string_view shardId);
 
   // SECTION: Meta Information
   Version version() const { return _version; }
