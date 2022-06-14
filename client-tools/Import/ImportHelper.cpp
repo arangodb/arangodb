@@ -892,9 +892,8 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
         size_t bufPos = _lineBuffer.length();
         _lineBuffer.appendInteger(num);
         if (!_mergeAttributesInstructions.empty()) {
-          lookUpTableValue = std::string(
-            _lineBuffer.stringBuffer()->_buffer, bufPos,
-            _lineBuffer.length() - bufPos);
+          lookUpTableValue = std::string(_lineBuffer.stringBuffer()->_buffer,
+                                         bufPos, _lineBuffer.length() - bufPos);
         }
       } catch (...) {
         // conversion failed
@@ -913,10 +912,10 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
             size_t bufPos = _lineBuffer.length();
             _lineBuffer.appendDecimal(num);
             if (!_mergeAttributesInstructions.empty()) {
-              lookUpTableValue = std::string(
-                _lineBuffer.stringBuffer()->_buffer, bufPos,
-                _lineBuffer.length() - bufPos);
-	    }
+              lookUpTableValue =
+                  std::string(_lineBuffer.stringBuffer()->_buffer, bufPos,
+                              _lineBuffer.length() - bufPos);
+            }
             return;
           }
         }
