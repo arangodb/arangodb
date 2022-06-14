@@ -368,7 +368,6 @@ void GraphStore<V, E>::loadVertices(
       << (vertexIdRangeStart + numVertices) << ")";
 
   std::vector<std::unique_ptr<TypedBuffer<Vertex<V, E>>>> vertices;
-  std::vector<std::unique_ptr<TypedBuffer<char>>> vKeys;
   std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>> edges;
   std::vector<std::unique_ptr<TypedBuffer<char>>> eKeys;
 
@@ -382,7 +381,6 @@ void GraphStore<V, E>::loadVertices(
   }
 
   TypedBuffer<Vertex<V, E>>* vertexBuff = nullptr;
-  TypedBuffer<char>* keyBuff = nullptr;
   size_t segmentSize = std::min<size_t>(numVertices, vertexSegmentSize());
 
   // make a copy, as we are going to decrease the original value as we load
@@ -400,26 +398,11 @@ void GraphStore<V, E>::loadVertices(
     Vertex<V, E>* ventry = vertexBuff->appendElement();
     _observables.memoryBytesUsed += sizeof(Vertex<V, E>);
 
-    VPackValueLength keyLen;
     VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
-    char const* key = keySlice.getString(keyLen);
-    if (keyBuff == nullptr || keyLen > keyBuff->remainingCapacity()) {
-      TRI_ASSERT(keyLen < ::maxStringChunkSize);
-      auto const chunkSize = ::stringChunkSize(vKeys.size(), numVertices, true);
-      vKeys.push_back(createBuffer<char>(_feature, *_config, chunkSize));
-      _feature.metrics()->pregelMemoryUsedForGraph->fetch_add(chunkSize);
-      keyBuff = vKeys.back().get();
-    }
 
     ventry->setShard(sourceShard);
-    ventry->setKey(keyBuff->end(), static_cast<uint16_t>(keyLen));
+    ventry->setKey(keySlice.stringView());
     ventry->setActive(true);
-    TRI_ASSERT(keyLen <= std::numeric_limits<uint16_t>::max());
-
-    // actually copy in the key
-    memcpy(keyBuff->end(), key, keyLen);
-    keyBuff->advance(keyLen);
-    _observables.memoryBytesUsed += keyLen;
 
     // load vertex data
     documentId = trx.extractIdString(slice);
@@ -475,7 +458,6 @@ void GraphStore<V, E>::loadVertices(
 
   std::lock_guard<std::mutex> guard(_bufferMutex);
   ::moveAppend(vertices, _vertices);
-  ::moveAppend(vKeys, _vertexKeys);
   ::moveAppend(edges, _edges);
   ::moveAppend(eKeys, _edgeKeys);
 
