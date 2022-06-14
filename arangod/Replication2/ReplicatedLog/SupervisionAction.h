@@ -106,6 +106,12 @@ struct AddLogToPlanAction {
             .generation = 1, .participants = _participants, .config = _config});
     newPlan.owner = "target";
     ctx.setValue<LogPlanSpecification>(std::move(newPlan));
+
+    ctx.modifyOrCreate<LogCurrentSupervision>(
+        [&](LogCurrentSupervision& currentSupervision) {
+          currentSupervision.assumedWriteConcern =
+              _config.effectiveWriteConcern;
+        });
   }
 };
 
