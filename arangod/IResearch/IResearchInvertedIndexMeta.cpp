@@ -736,9 +736,9 @@ IResearchInvertedIndexMeta::FieldRecord::FieldRecord(
       _analyzers{std::move(a)},
       _features(std::move(features)),
       _primitiveOffset(isPrimitiveAnalyzer ? 1 : 0),
-      _isArray(isArray),
       _includeAllFields(includeAllFields),
       _trackListPositions(trackListPositions),
+      _isArray(isArray),
       _overrideValue(overrideValue) {
   TRI_ASSERT(_attribute.empty());
   TRI_ASSERT(_expansion.empty());
