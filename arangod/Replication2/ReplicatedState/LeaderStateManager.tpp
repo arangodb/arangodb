@@ -134,6 +134,7 @@ void LeaderStateManager<S>::run() noexcept {
                     if (state != nullptr) {
                       state->onSnapshotCompleted();
                       self->beginWaitingForParticipantResigned();
+                      TRI_ASSERT(result.ok());
                       return result;
                     } else {
                       // TODO It's not the log that resigned; should we make
@@ -171,10 +172,10 @@ void LeaderStateManager<S>::run() noexcept {
           if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED)) {
             return;
           }
-          TRI_ASSERT(res.ok());
-          if (!res.ok()) {
-            THROW_ARANGO_EXCEPTION(res);
-          }
+          ADB_PROD_ASSERT(res.ok())
+              << "Logic error: The expected result here must be either ok, or "
+                 "TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, but is "
+              << res;
         } catch (replicated_log::ParticipantResignedException const& e) {
           // TODO Don't we have to do a forceRebuild here?
           TRI_ASSERT(e.code() ==

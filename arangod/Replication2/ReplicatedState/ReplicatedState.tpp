@@ -273,6 +273,8 @@ auto ReplicatedState<S>::GuardedData::runUnconfigured(
 template<typename S>
 auto ReplicatedState<S>::GuardedData::forceRebuild() -> DeferredAction {
   try {
+    // TODO forceRebuild can race with a resign, and a double-resign will run
+    //      into an assertion.
     auto [core, token, queueAction] = std::move(*currentManager).resign();
     auto runAction = rebuild(std::move(core), std::move(token));
     return DeferredAction::combine(std::move(queueAction),
