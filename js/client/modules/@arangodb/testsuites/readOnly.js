@@ -150,7 +150,7 @@ function readOnly (options) {
         body: Object.keys(r[4]).length ? JSON.stringify(r[4]) : '',
         auth: { username: r[3], password: '' },
         timeout: 60.0
-      }
+      };
       const res = request[r[1]](req);
       try {
         bodies.push(JSON.parse(res.body));
