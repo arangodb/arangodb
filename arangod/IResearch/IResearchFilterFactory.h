@@ -109,8 +109,8 @@ struct FilterFactory {
   ////////////////////////////////////////////////////////////////////////////////
   static arangodb::Result filter(irs::boolean_filter* filter,
                                  QueryContext const& ctx,
-                                 arangodb::aql::AstNode const& node,
-                                 AnalyzerProvider const* provider = nullptr);
+                                 FilterContext const& filterCtx,
+                                 arangodb::aql::AstNode const& node);
 };  // FilterFactory
 
 struct FilterConstants {

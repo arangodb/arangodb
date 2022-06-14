@@ -125,7 +125,13 @@ bool supportsFilterNode(
     return false;
   }
 
-  auto rv = FilterFactory::filter(nullptr, queryCtx, *node, provider);
+  // The analyzer is referenced in the FilterContext and used during the
+  // following ::makeFilter() call, so may not be a temporary.
+  FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
+
+  auto rv = FilterFactory::filter(
+      nullptr, queryCtx, {analyzer, irs::kNoBoost, provider, {}}, *node);
+
   LOG_TOPIC_IF("ee0f7", TRACE, arangodb::iresearch::TOPIC, rv.fail())
       << "Failed to build filter with error'" << rv.errorMessage()
       << "' Skipping index " << id.id();
@@ -348,8 +354,14 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
               transaction::Methods::kNoMutableConditionIdx ||
           (condition->type != aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND &&
            condition->type != aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR)) {
-        auto rv = FilterFactory::filter(&root, queryCtx, *condition,
-                                        &analyzerProvider);
+        // The analyzer is referenced in the FilterContext and used during the
+        // following ::makeFilter() call, so may not be a temporary.
+        FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
+
+        auto rv = FilterFactory::filter(
+            &root, queryCtx, {analyzer, irs::kNoBoost, &analyzerProvider, {}},
+            *condition);
+
         if (rv.fail()) {
           arangodb::velocypack::Builder builder;
           condition->toVelocyPack(builder, true);
@@ -384,10 +396,13 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
           conditionJoiner = &root.add<irs::Or>();
         }
 
+        FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
+
         auto& mutable_root = conditionJoiner->add<irs::Or>();
         auto rv = FilterFactory::filter(
             &mutable_root, queryCtx,
-            *condition->getMember(_mutableConditionIdx), &analyzerProvider);
+            {analyzer, irs::kNoBoost, &analyzerProvider, {}},
+            *condition->getMember(_mutableConditionIdx));
         if (rv.fail()) {
           arangodb::velocypack::Builder builder;
           condition->toVelocyPack(builder, true);
@@ -421,12 +436,18 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 
           auto const conditionSize =
               static_cast<int64_t>(condition->numMembers());
+
+          // The analyzer is referenced in the FilterContext and used during the
+          // following ::filter() call, so may not be a temporary.
+          FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
+          FilterContext const filterCtx{
+              analyzer, irs::kNoBoost, &analyzerProvider, {}};
+
           for (int64_t i = 0; i < conditionSize; ++i) {
             if (i != _mutableConditionIdx) {
               auto& tmp_root = immutableRoot->add<irs::Or>();
-              auto rv = FilterFactory::filter(&tmp_root, queryCtx,
-                                              *condition->getMember(i),
-                                              &analyzerProvider);
+              auto rv = FilterFactory::filter(&tmp_root, queryCtx, filterCtx,
+                                              *condition->getMember(i));
               if (rv.fail()) {
                 arangodb::velocypack::Builder builder;
                 condition->toVelocyPack(builder, true);

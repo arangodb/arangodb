@@ -722,7 +722,13 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
   if (infos().volatileFilter() || !_isInitialized) {
     irs::Or root;
 
-    auto rv = FilterFactory::filter(&root, queryCtx, infos().filterCondition());
+    // The analyzer is referenced in the FilterContext and used during the
+    // following ::makeFilter() call, so may not be a temporary.
+    FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
+
+    auto rv = FilterFactory::filter(&root, queryCtx,
+                                    {analyzer, irs::kNoBoost, nullptr, {}},
+                                    infos().filterCondition());
 
     if (rv.fail()) {
       arangodb::velocypack::Builder builder;

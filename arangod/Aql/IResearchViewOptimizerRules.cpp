@@ -196,12 +196,17 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
       TRI_ASSERT(starts_with);
       pushFuncToBack(*searchCondition.root(), starts_with);
     }
-    auto filterCreated =
-        FilterFactory::filter(nullptr,
-                              {.trx = &query.trxForOptimization(),
-                               .ref = &viewNode.outVariable(),
-                               .isSearchQuery = true},
-                              *searchCondition.root());
+
+    // The analyzer is referenced in the FilterContext and used during the
+    // following ::makeFilter() call, so may not be a temporary.
+    FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
+
+    auto filterCreated = FilterFactory::filter(
+        nullptr,
+        {.trx = &query.trxForOptimization(),
+         .ref = &viewNode.outVariable(),
+         .isSearchQuery = true},
+        {analyzer, irs::kNoBoost, nullptr, {}}, *searchCondition.root());
 
     if (filterCreated.fail()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(

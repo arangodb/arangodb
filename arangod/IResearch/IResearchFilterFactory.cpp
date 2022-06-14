@@ -4268,18 +4268,14 @@ Result makeFilter(irs::boolean_filter* filter, QueryContext const& queryCtx,
   }
 }
 
-/*static*/ Result FilterFactory::filter(
-    irs::boolean_filter* filter, QueryContext const& ctx,
-    aql::AstNode const& node, AnalyzerProvider const* provider /*= nullptr*/) {
+/*static*/ Result FilterFactory::filter(irs::boolean_filter* filter,
+                                        QueryContext const& ctx,
+                                        FilterContext const& filterCtx,
+                                        aql::AstNode const& node) {
   if (node.willUseV8()) {
     return {TRI_ERROR_NOT_IMPLEMENTED,
             "using V8 dependent function is not allowed in SEARCH statement"};
   }
-
-  // The analyzer is referenced in the FilterContext and used during the
-  // following ::makeFilter() call, so may not be a temporary.
-  FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-  FilterContext const filterCtx(analyzer, irs::kNoBoost, provider, {});
 
   const auto res = makeFilter(filter, ctx, filterCtx, node);
 
