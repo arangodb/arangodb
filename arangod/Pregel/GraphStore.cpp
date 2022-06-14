@@ -66,32 +66,6 @@ using namespace arangodb::pregel;
 #define LOG_PREGEL(logId, level) \
   LOG_TOPIC(logId, level, Logger::PREGEL) << "[job " << _executionNumber << "] "
 
-namespace {
-static constexpr size_t minStringChunkSize = 16 * 1024 * sizeof(char);
-static constexpr size_t maxStringChunkSize = 32 * 1024 * 1024 * sizeof(char);
-static constexpr size_t chunkUnit = 4 * 1024 * sizeof(char);
-
-static_assert(minStringChunkSize % chunkUnit == 0, "invalid chunkUnit value");
-static_assert(maxStringChunkSize % chunkUnit == 0, "invalid chunkUnit value");
-
-size_t stringChunkSize(size_t /*numberOfChunks*/, uint64_t numVerticesLeft,
-                       bool isVertex) {
-  // we assume a conservative 64 bytes per document key
-  size_t numBytes = numVerticesLeft * 64;
-  if (!isVertex) {
-    // assume 16 edges per vertex. this is an arbitrary estimate.
-    numBytes *= 16;
-  }
-  // round up to nearest multiple of chunkUnit (4096)
-  numBytes = ((numBytes - 1u) & ~(chunkUnit - 1u)) + chunkUnit;
-  numBytes = std::max<size_t>(minStringChunkSize, numBytes);
-  numBytes = std::min<size_t>(maxStringChunkSize, numBytes);
-
-  TRI_ASSERT(numBytes % chunkUnit == 0);
-  return numBytes;
-}
-}  // namespace
-
 template<typename V, typename E>
 GraphStore<V, E>::GraphStore(PregelFeature& feature, TRI_vocbase_t& vocbase,
                              uint64_t executionNumber,
@@ -360,7 +334,6 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
 
   std::vector<std::unique_ptr<TypedBuffer<Vertex<V, E>>>> vertices;
   std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>> edges;
-  std::vector<std::unique_ptr<TypedBuffer<char>>> eKeys;
 
   std::vector<std::unique_ptr<traverser::EdgeCollectionInfo>>
       edgeCollectionInfos;
@@ -406,8 +379,7 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
     for (std::size_t i = 0; i < edgeShards.size(); ++i) {
       auto const& edgeShard = edgeShards[i];
       auto& info = *edgeCollectionInfos[i];
-      loadEdges(trx, *ventry, edgeShard, documentId, edges, eKeys, numVertices,
-                info);
+      loadEdges(trx, *ventry, edgeShard, documentId, edges, numVertices, info);
     }
     return true;
   };
@@ -445,7 +417,6 @@ void GraphStore<V, E>::loadVertices(ShardID const& vertexShard,
   std::lock_guard<std::mutex> guard(_bufferMutex);
   ::moveAppend(vertices, _vertices);
   ::moveAppend(edges, _edges);
-  ::moveAppend(eKeys, _edgeKeys);
 
   LOG_PREGEL("6d389", DEBUG)
       << "Pregel worker: done loading from vertex shard " << vertexShard;
@@ -456,26 +427,16 @@ void GraphStore<V, E>::loadEdges(
     transaction::Methods& trx, Vertex<V, E>& vertex, ShardID const& edgeShard,
     std::string const& documentID,
     std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>& edges,
-    std::vector<std::unique_ptr<TypedBuffer<char>>>& edgeKeys,
     uint64_t numVertices, traverser::EdgeCollectionInfo& info) {
   auto cursor = info.getEdges(documentID);
 
   TypedBuffer<Edge<E>>* edgeBuff = edges.empty() ? nullptr : edges.back().get();
-  TypedBuffer<char>* keyBuff =
-      edgeKeys.empty() ? nullptr : edgeKeys.back().get();
 
   auto allocateSpace = [&](size_t keyLen) {
     if (edgeBuff == nullptr || edgeBuff->remainingCapacity() == 0) {
       edges.push_back(
           createBuffer<Edge<E>>(_feature, *_config, edgeSegmentSize()));
       edgeBuff = edges.back().get();
-    }
-    if (keyBuff == nullptr || keyLen > keyBuff->remainingCapacity()) {
-      TRI_ASSERT(keyLen < ::maxStringChunkSize);
-      edgeKeys.push_back(createBuffer<char>(
-          _feature, *_config,
-          ::stringChunkSize(edgeKeys.size(), numVertices, false)));
-      keyBuff = edgeKeys.back().get();
     }
   };
 
@@ -493,14 +454,10 @@ void GraphStore<V, E>::loadEdges(
 
     std::size_t pos = toValue.find('/');
     collectionName = std::string(toValue.substr(0, pos));
-    std::string_view key = toValue.substr(pos + 1);
-    edge->_toKey = keyBuff->end();
-    edge->_toKeyLength = static_cast<uint16_t>(key.size());
-    TRI_ASSERT(key.size() <= std::numeric_limits<uint16_t>::max());
-    keyBuff->advance(key.size());
 
-    // actually copy in the key
-    memcpy(edge->_toKey, key.data(), key.size());
+    std::string_view key = toValue.substr(pos + 1);
+    edge->setToKey(key);
+    TRI_ASSERT(key.size() <= std::numeric_limits<uint16_t>::max());
 
     if (isCluster) {
       // resolve the shard of the target vertex.
@@ -516,13 +473,13 @@ void GraphStore<V, E>::loadEdges(
         return res;
       }
 
-      edge->_targetShard = (PregelShard)_config->shardId(responsibleShard);
+      edge->setTargetShard((PregelShard)_config->shardId(responsibleShard));
     } else {
       // single server is much simpler
-      edge->_targetShard = (PregelShard)_config->shardId(collectionName);
+      edge->setTargetShard((PregelShard)_config->shardId(collectionName));
     }
 
-    if (edge->_targetShard == InvalidPregelShard) {
+    if (edge->targetShard() == InvalidPregelShard) {
       LOG_PREGEL("1f413", ERR) << "Could not resolve target shard of edge";
       return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
     }
