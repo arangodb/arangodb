@@ -548,7 +548,7 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchNoneChildBoost) {
   child = std::make_unique<irs::Or>();
   makeAnd(
       static_cast<irs::Or&>(*child),
-      {{std::string_view{fooField}, std::string_view{"bar"}, 1.54},
+      {{std::string_view{fooField}, std::string_view{"bar"}, 1.54f},
        {std::string_view{barField}, std::string_view{"baz"}, irs::kNoBoost}});
   mergeType = irs::sort::MergeType::kSum;
   match = irs::kMatchNone;

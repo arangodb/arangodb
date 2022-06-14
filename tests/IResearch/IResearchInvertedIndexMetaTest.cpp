@@ -861,26 +861,26 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
 
 TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
   auto json = VPackParser::fromJson(R"(
-  {
-    "cleanupIntervalStep" : 2,
-    "commitIntervalMsec" : 3,
-    "consolidationIntervalMsec" : 4,
-    "consolidationPolicy" : {
-      "type" : "tier",
-      "segmentsBytesFloor" : 5,
-      "segmentsBytesMax" : 6,
-      "segmentsMax" : 7,
-      "segmentsMin" : 8,
-      "minScore" : 9
-    },
-    "version" : 1,
-    "writebufferActive" : 10,
-    "writebufferIdle" : 11,
-    "writebufferSizeMax" : 12,
-    "fields": [
-      "foo"
-    ]
-   })");
+    {
+      "cleanupIntervalStep" : 2,
+      "commitIntervalMsec" : 3,
+      "consolidationIntervalMsec" : 4,
+      "consolidationPolicy" : {
+        "type" : "tier",
+        "segmentsBytesFloor" : 5,
+        "segmentsBytesMax" : 6,
+        "segmentsMax" : 7,
+        "segmentsMin" : 8,
+        "minScore" : 9
+      },
+      "version" : 1,
+      "writebufferActive" : 10,
+      "writebufferIdle" : 11,
+      "writebufferSizeMax" : 12,
+      "fields": [
+        "foo"
+      ]
+     })");
 
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
   std::string errorString;
@@ -909,10 +909,12 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
   ASSERT_TRUE(meta._defaultAnalyzerName.empty());
   ASSERT_FALSE(meta._features);
 
+  VPackBuilder serialized;
   {
     VPackObjectBuilder obj(&serialized);
     ASSERT_TRUE(meta.json(server.server(), serialized, true, &vocbase));
   }
+
 }
 
 #if USE_ENTERPRISE
