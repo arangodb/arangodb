@@ -57,11 +57,11 @@ using AnalyzerProvider =
 class FilterContext {
  public:
   FilterContext(FieldMeta::Analyzer const& analyzer, irs::score_t boost,
-                AnalyzerProvider const* provider,
-                std::string_view namePrefix) noexcept
+                AnalyzerProvider const* provider, std::string_view namePrefix,
+                InvertedIndexField const* field = nullptr) noexcept
       : _analyzerProvider{provider},
         _analyzer{analyzer},
-        _nested{},
+        _field{field},
         _namePrefix{namePrefix},
         _boost{boost} {
     TRI_ASSERT(_analyzer._pool);
@@ -91,13 +91,13 @@ class FilterContext {
 
   std::string_view namePrefix() const noexcept { return _namePrefix; }
 
-  InvertedIndexField const* nested() const noexcept { return _nested; }
+  InvertedIndexField const* field() const noexcept { return _field; }
 
  private:
   AnalyzerProvider const* _analyzerProvider;
   // need shared_ptr since pool could be deleted from the feature
   FieldMeta::Analyzer const& _analyzer;
-  InvertedIndexField const* _nested;
+  InvertedIndexField const* _field;
   std::string_view _namePrefix;  // field name prefix
   irs::score_t _boost;
 };

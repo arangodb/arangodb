@@ -71,7 +71,7 @@ struct CheckFieldsAccess {
   CheckFieldsAccess(
       QueryContext const& ctx, aql::Variable const& ref,
       std::vector<std::vector<basics::AttributeName>> const& fields)
-      : _ctx(ctx), _ref(ref), _fields(fields) {}
+      : _ctx{ctx}, _ref{ref}, _fields{fields} {}
 
   bool operator()(std::string_view name) const {
     try {
@@ -96,18 +96,16 @@ struct CheckFieldsAccess {
     return true;
   }
 
-  mutable std::vector<arangodb::basics::AttributeName> _parsed;
+  mutable std::vector<basics::AttributeName> _parsed;
   QueryContext const& _ctx;
   aql::Variable const& _ref;
-  std::vector<std::vector<basics::AttributeName>> const& _fields;
+  std::span<const std::vector<basics::AttributeName>> _fields;
 };
 
 bool supportsFilterNode(
-    arangodb::IndexId id,
-    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
-    arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference,
-    arangodb::iresearch::AnalyzerProvider const* provider) {
+    IndexId id, std::vector<std::vector<basics::AttributeName>> const& fields,
+    aql::AstNode const* node, aql::Variable const* reference,
+    InvertedIndexField const& field, AnalyzerProvider const* provider) {
   // We don`t want byExpression filters
   // and can`t apply index if we are not sure what attribute is
   // accessed so we provide QueryContext which is unable to
@@ -128,9 +126,9 @@ bool supportsFilterNode(
   // The analyzer is referenced in the FilterContext and used during the
   // following ::makeFilter() call, so may not be a temporary.
   FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
+  FilterContext const filterCtx{analyzer, irs::kNoBoost, provider, {}, &field};
 
-  auto rv = FilterFactory::filter(
-      nullptr, queryCtx, {analyzer, irs::kNoBoost, provider, {}}, *node);
+  auto rv = FilterFactory::filter(nullptr, queryCtx, filterCtx, *node);
 
   LOG_TOPIC_IF("ee0f7", TRACE, arangodb::iresearch::TOPIC, rv.fail())
       << "Failed to build filter with error'" << rv.errorMessage()
@@ -302,8 +300,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 
   bool canRearm() const override { return _mutableConditionIdx != -1; }
 
-  bool rearmImpl(arangodb::aql::AstNode const* node,
-                 arangodb::aql::Variable const*,
+  bool rearmImpl(aql::AstNode const* node, aql::Variable const*,
                  IndexIteratorOptions const&) override {
     TRI_ASSERT(node);
     if (ADB_LIKELY(node)) {
@@ -315,7 +312,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
   }
 
  protected:
-  void resetFilter(arangodb::aql::AstNode const* condition) {
+  void resetFilter(aql::AstNode const* condition) {
     if (!_trx->state()) {
       LOG_TOPIC("a9ccd", WARN, arangodb::iresearch::TOPIC)
           << "failed to get transaction state while creating inverted index "
@@ -355,15 +352,17 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
           (condition->type != aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND &&
            condition->type != aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR)) {
         // The analyzer is referenced in the FilterContext and used during the
-        // following ::makeFilter() call, so may not be a temporary.
+        // following FilterFactory::::filter() call, so may not be a temporary.
         FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
-
-        auto rv = FilterFactory::filter(
-            &root, queryCtx, {analyzer, irs::kNoBoost, &analyzerProvider, {}},
-            *condition);
+        FilterContext const filterCtx{analyzer,
+                                      irs::kNoBoost,
+                                      &analyzerProvider,
+                                      {},
+                                      &_index->meta()._fields};
+        auto rv = FilterFactory::filter(&root, queryCtx, filterCtx, *condition);
 
         if (rv.fail()) {
-          arangodb::velocypack::Builder builder;
+          velocypack::Builder builder;
           condition->toVelocyPack(builder, true);
           THROW_ARANGO_EXCEPTION_MESSAGE(
               rv.errorNumber(),
@@ -377,7 +376,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
                    _mutableConditionIdx);
         if (ADB_UNLIKELY(static_cast<int64_t>(condition->numMembers()) <=
                          _mutableConditionIdx)) {
-          arangodb::velocypack::Builder builder;
+          velocypack::Builder builder;
           condition->toVelocyPack(builder, true);
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_INTERNAL_AQL,
@@ -397,14 +396,18 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
         }
 
         FieldMeta::Analyzer analyzer{IResearchAnalyzerFeature::identity()};
+        FilterContext const filterCtx{analyzer,
+                                      irs::kNoBoost,
+                                      &analyzerProvider,
+                                      {},
+                                      &_index->meta()._fields};
 
         auto& mutable_root = conditionJoiner->add<irs::Or>();
-        auto rv = FilterFactory::filter(
-            &mutable_root, queryCtx,
-            {analyzer, irs::kNoBoost, &analyzerProvider, {}},
-            *condition->getMember(_mutableConditionIdx));
+        auto rv =
+            FilterFactory::filter(&mutable_root, queryCtx, filterCtx,
+                                  *condition->getMember(_mutableConditionIdx));
         if (rv.fail()) {
-          arangodb::velocypack::Builder builder;
+          velocypack::Builder builder;
           condition->toVelocyPack(builder, true);
           THROW_ARANGO_EXCEPTION_MESSAGE(
               rv.errorNumber(),
@@ -449,7 +452,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
               auto rv = FilterFactory::filter(&tmp_root, queryCtx, filterCtx,
                                               *condition->getMember(i));
               if (rv.fail()) {
-                arangodb::velocypack::Builder builder;
+                velocypack::Builder builder;
                 condition->toVelocyPack(builder, true);
                 THROW_ARANGO_EXCEPTION_MESSAGE(
                     rv.errorNumber(),
@@ -470,7 +473,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
     TRI_ASSERT(_filter);
     if (ADB_UNLIKELY(!_filter)) {
       if (condition) {
-        arangodb::velocypack::Builder builder;
+        velocypack::Builder builder;
         condition->toVelocyPack(builder, true);
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_INTERNAL_AQL,
@@ -789,9 +792,9 @@ void IResearchInvertedIndex::toVelocyPack(ArangodServer& server,
   }
 }
 
-std::vector<std::vector<arangodb::basics::AttributeName>>
-IResearchInvertedIndex::fields(IResearchInvertedIndexMeta const& meta) {
-  std::vector<std::vector<arangodb::basics::AttributeName>> res;
+std::vector<std::vector<basics::AttributeName>> IResearchInvertedIndex::fields(
+    IResearchInvertedIndexMeta const& meta) {
+  std::vector<std::vector<basics::AttributeName>> res;
   res.reserve(meta._fields._fields.size());
   for (auto const& f : meta._fields._fields) {
     res.push_back(f.combinedName());
@@ -799,9 +802,9 @@ IResearchInvertedIndex::fields(IResearchInvertedIndexMeta const& meta) {
   return res;
 }
 
-std::vector<std::vector<arangodb::basics::AttributeName>>
+std::vector<std::vector<basics::AttributeName>>
 IResearchInvertedIndex::sortedFields(IResearchInvertedIndexMeta const& meta) {
-  std::vector<std::vector<arangodb::basics::AttributeName>> res;
+  std::vector<std::vector<basics::AttributeName>> res;
   res.reserve(meta._sort.fields().size());
   for (auto const& f : meta._sort.fields()) {
     res.push_back(f);
@@ -858,8 +861,7 @@ AnalyzerPool::ptr IResearchInvertedIndex::findAnalyzer(
   return nullptr;
 }
 
-bool IResearchInvertedIndex::covers(
-    arangodb::aql::Projections& projections) const {
+bool IResearchInvertedIndex::covers(aql::Projections& projections) const {
   std::vector<std::vector<aql::latematerialized::ColumnVariant<true>>>
       usedColumns;
   std::vector<aql::latematerialized::AttributeAndField<
@@ -945,8 +947,8 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
 }
 
 Index::SortCosts IResearchInvertedIndex::supportsSortCondition(
-    arangodb::aql::SortCondition const* sortCondition,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex) const {
+    aql::SortCondition const* sortCondition, aql::Variable const* reference,
+    size_t itemsInIndex) const {
   auto fields = sortedFields(_meta);
 
   // FIXME: We store null slice in case of missing attribute - so do we really
@@ -977,11 +979,10 @@ Index::SortCosts IResearchInvertedIndex::supportsSortCondition(
 }
 
 Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
-    IndexId id,
-    std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
-    std::vector<std::shared_ptr<arangodb::Index>> const& /*allIndexes*/,
-    arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex) const {
+    IndexId id, std::vector<std::vector<basics::AttributeName>> const& fields,
+    std::vector<std::shared_ptr<Index>> const& /*allIndexes*/,
+    aql::AstNode const* node, aql::Variable const* reference,
+    size_t itemsInIndex) const {
   TRI_ASSERT(node);
   TRI_ASSERT(reference);
   auto filterCosts = Index::FilterCosts::defaultCosts(itemsInIndex);
@@ -998,7 +999,8 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
   AnalyzerProvider analyzerProvider = makeAnalyzerProvider(_meta);
 
   // at first try to cover whole node
-  if (supportsFilterNode(id, fields, node, reference, &analyzerProvider)) {
+  if (supportsFilterNode(id, fields, node, reference, _meta._fields,
+                         &analyzerProvider)) {
     filterCosts.supportsCondition = true;
     filterCosts.coveredAttributes = node->numMembers();
     filterCosts.estimatedCosts = static_cast<double>(itemsInIndex);
@@ -1007,7 +1009,8 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
     size_t const n = node->numMembers();
     for (size_t i = 0; i < n; ++i) {
       auto part = node->getMemberUnchecked(i);
-      if (supportsFilterNode(id, fields, part, reference, &analyzerProvider)) {
+      if (supportsFilterNode(id, fields, part, reference, _meta._fields,
+                             &analyzerProvider)) {
         filterCosts.supportsCondition = true;
         ++filterCosts.coveredAttributes;
         filterCosts.estimatedCosts = static_cast<double>(itemsInIndex);
@@ -1027,15 +1030,15 @@ aql::AstNode* IResearchInvertedIndex::specializeCondition(
 
   AnalyzerProvider analyzerProvider = makeAnalyzerProvider(_meta);
 
-  if (!supportsFilterNode(id(), indexedFields, node, reference,
+  if (!supportsFilterNode(id(), indexedFields, node, reference, _meta._fields,
                           &analyzerProvider)) {
     TRI_ASSERT(node->type == aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
-    std::vector<arangodb::aql::AstNode const*> children;
+    std::vector<aql::AstNode const*> children;
     size_t const n = node->numMembers();
     for (size_t i = 0; i < n; ++i) {
       auto part = node->getMemberUnchecked(i);
       if (supportsFilterNode(id(), indexedFields, part, reference,
-                             &analyzerProvider)) {
+                             _meta._fields, &analyzerProvider)) {
         children.push_back(part);
       }
     }
@@ -1062,17 +1065,16 @@ void IResearchInvertedClusterIndex::toVelocyPack(
   // can't use Index::toVelocyPack as it will try to output 'fields'
   // but we have custom storage format
   builder.add(arangodb::StaticStrings::IndexId,
-              arangodb::velocypack::Value(std::to_string(_iid.id())));
+              velocypack::Value(std::to_string(_iid.id())));
   builder.add(arangodb::StaticStrings::IndexType,
-              arangodb::velocypack::Value(oldtypeName(type())));
-  builder.add(arangodb::StaticStrings::IndexName,
-              arangodb::velocypack::Value(name()));
+              ::velocypack::Value(oldtypeName(type())));
+  builder.add(arangodb::StaticStrings::IndexName, velocypack::Value(name()));
   builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
   builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
 }
 
 bool IResearchInvertedClusterIndex::matchesDefinition(
-    arangodb::velocypack::Slice const& other) const {
+    velocypack::Slice const& other) const {
   TRI_ASSERT(other.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto typeSlice = other.get(arangodb::StaticStrings::IndexType);
