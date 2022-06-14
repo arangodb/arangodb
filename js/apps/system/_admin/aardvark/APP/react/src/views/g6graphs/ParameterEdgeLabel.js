@@ -9,39 +9,23 @@ const ParameterEdgeLabel = () => {
   const [edgeLabel, setEdgeLabel] = useState(urlParameters.edgeLabel);
 
   const NEWURLPARAMETERS = { ...urlParameters };  
-
-  /*
-  <>
-      <form>
-        <Textinput
-          label={'Edge label'}
-          value={edgeLabel}
-          onChange={(e) => {
-            setEdgeLabel(e.target.value);
-            NEWURLPARAMETERS.edgeLabel = e.target.value;
-            setUrlParameters(NEWURLPARAMETERS);
-          }}>
-        </Textinput>
-      </form>
-    </>
-  */
   
   return (
     <div style={{'marginTop': '24px'}}>
-        <Textinput
-          label={'Edge label'}
-          value={edgeLabel}
-          width={'300px'}
-          onChange={(e) => {
-            setEdgeLabel(e.target.value);
-            NEWURLPARAMETERS.edgeLabel = e.target.value;
-            setUrlParameters(NEWURLPARAMETERS);
-          }}>
-        </Textinput>
-        <Tooltip placement="bottom" title={"Enter a valid edge attribute to be used as an edge label."}>
-          <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
-        </Tooltip>
-      </div>
+      <Textinput
+        label={'Edge label'}
+        value={edgeLabel}
+        width={'300px'}
+        onChange={(e) => {
+          setEdgeLabel(e.target.value);
+          NEWURLPARAMETERS.edgeLabel = e.target.value;
+          setUrlParameters(NEWURLPARAMETERS);
+        }}>
+      </Textinput>
+      <Tooltip placement="bottom" title={"Enter a valid edge attribute to be used as an edge label."}>
+        <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
+      </Tooltip>
+    </div>
   );
 };
 

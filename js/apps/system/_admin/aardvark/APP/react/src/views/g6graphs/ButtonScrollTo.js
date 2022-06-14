@@ -1,11 +1,10 @@
-/* global arangoHelper, arangoFetch, frontendConfig, $ */
+/* global */
 
 import React from "react";
 import { Button, Tooltip } from 'antd';
 import { ArrowUpOutlined } from '@ant-design/icons';
 
 const ButtonScrollTo = ({ graphName, onGraphDataLoaded }) => {
-  
   return (
     <>
       <Tooltip placement="bottom" title={"Scroll to settings"}>
@@ -15,7 +14,6 @@ const ButtonScrollTo = ({ graphName, onGraphDataLoaded }) => {
           icon={<ArrowUpOutlined />}
           onClick={() => {
             const element = document.getElementById("content");
-            console.log("element: ", element);
             element.scrollIntoView({ behavior: "smooth" });
           }}>
             To settings

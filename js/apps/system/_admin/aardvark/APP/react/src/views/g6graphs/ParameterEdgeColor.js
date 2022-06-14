@@ -1,7 +1,5 @@
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";
-import { Tooltip } from 'antd';
-import { InfoCircleFilled } from '@ant-design/icons';
 import Textinput from "./components/pure-css/form/Textinput.tsx";
 
 const ParameterEdgeColor = () => {

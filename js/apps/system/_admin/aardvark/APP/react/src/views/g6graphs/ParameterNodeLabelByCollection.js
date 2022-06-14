@@ -9,36 +9,6 @@ const ParameterNodeLabelByCollection = ({ graphData, onAddCollectionNameChange }
 
   const NEWURLPARAMETERS = { ...urlParameters };
 
-  /*
-  // add collection name to nodes on the client side
-  const addCollectionToNodeLabel = ({onAddCollectionNameChange}) => {
-    const nodes = graphData.nodes;
-    console.log("nodes in blablablubb: ", nodes);
-    
-    nodes.forEach((node) => {
-      console.log("node: ", node);
-      const idSplit = node.id.split('/');
-
-      const model = {
-        label: `${idSplit[1]} (${idSplit[0]})`
-      };
-      this.graph.updateItem(node, model);
-    });
-  }
-
-  <input
-          type="checkbox"
-          checked={nodeLabelByCollection}
-          onChange={() => {
-            const newNodeLabelByCollection = !nodeLabelByCollection;
-            setNodeLabelByCollection(newNodeLabelByCollection);
-            NEWURLPARAMETERS.nodeLabelByCollection = newNodeLabelByCollection;
-            setUrlParameters(NEWURLPARAMETERS);
-            onAddCollectionNameChange(newNodeLabelByCollection);
-          }}
-        />
-  */
-
   return (
     <div>
       <Checkbox
@@ -48,7 +18,6 @@ const ParameterNodeLabelByCollection = ({ graphData, onAddCollectionNameChange }
           setNodeLabelByCollection(newNodeLabelByCollection);
           NEWURLPARAMETERS.nodeLabelByCollection = newNodeLabelByCollection;
           setUrlParameters(NEWURLPARAMETERS);
-          onAddCollectionNameChange(newNodeLabelByCollection);
         }}
         style={{ 'color': '#736b68' }}
       >

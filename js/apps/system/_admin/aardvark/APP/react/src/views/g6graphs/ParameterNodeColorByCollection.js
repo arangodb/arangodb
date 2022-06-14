@@ -11,21 +11,21 @@ const ParameterNodeColorByCollection = () => {
 
   return (
     <div>
-        <Checkbox
-          checked={nodeColorByCollection}
-          onChange={() => {
-            const newNodeColorByCollection = !nodeColorByCollection;
-            setNodeColorByCollection(newNodeColorByCollection);
-            NEWURLPARAMETERS.nodeColorByCollection = newNodeColorByCollection;
-            setUrlParameters(NEWURLPARAMETERS);
-          }}
-          style={{ 'color': '#736b68' }}
-        >
-          Color nodes by collection
-        </Checkbox>
-        <Tooltip placement="bottom" title={"Should nodes be colorized by their collection? If enabled, node color and node color attribute will be ignored."}>
-          <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
-        </Tooltip>
+      <Checkbox
+        checked={nodeColorByCollection}
+        onChange={() => {
+          const newNodeColorByCollection = !nodeColorByCollection;
+          setNodeColorByCollection(newNodeColorByCollection);
+          NEWURLPARAMETERS.nodeColorByCollection = newNodeColorByCollection;
+          setUrlParameters(NEWURLPARAMETERS);
+        }}
+        style={{ 'color': '#736b68' }}
+      >
+        Color nodes by collection
+      </Checkbox>
+      <Tooltip placement="bottom" title={"Should nodes be colorized by their collection? If enabled, node color and node color attribute will be ignored."}>
+        <InfoCircleFilled style={{ fontSize: '12px', color: '#555555' }} />
+      </Tooltip>
     </div>
   );
 };

@@ -4,7 +4,7 @@ import { Node } from './components/node/node.component';
 import { InfoCircleFilled } from '@ant-design/icons';
 import PlainLabel from "./components/pure-css/form/PlainLabel";
 
-const SearchNodes = ({ nodes, graphData, onNodeInfo, data, onDeleteNode, onNodeSelect }) => {
+const SearchNodes = ({ nodes, graphData, data, onDeleteNode, onNodeSelect }) => {
   const [previousSearchedNode, setPreviousSearchedNode] = useState(null);
 
   return (

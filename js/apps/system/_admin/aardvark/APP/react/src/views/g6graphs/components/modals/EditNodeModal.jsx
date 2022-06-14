@@ -1,35 +1,8 @@
 import React, { useState } from 'react';
 import Modal, { ModalBody, ModalFooter, ModalHeader } from '../../../../components/modal/Modal';
-import { EditOutlined } from '@ant-design/icons';
 
 export const EditNodeModal = ({ node, visible, onToggle }) => {
   const [show, setShow] = useState(visible);
-  
-  /*
-  if(visible) {
-    setShow(visible);
-  }
-  */
-
-  /*
-  const showEditNodeModal = (event) => {
-    console.log("in editnodemodal: ", node);
-    event.preventDefault();
-    setShow(true);
-  };
-  */
-
-  /*
-  if(visible) {
-    return <>
-      Modal ist sichtbar
-    </>
-  } else {
-    return <>
-      Modal ist VERSTECKT
-    </>
-  }
-  */
 
   if(visible) {
     return <>

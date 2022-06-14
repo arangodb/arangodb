@@ -1,5 +1,9 @@
+/* global arangoHelper, $ */
+import React, { useState, useRef } from 'react';
 import styled from "styled-components";
-
+import { JsonEditor as Editor } from 'jsoneditor-react';
+import {  notification } from 'antd';
+import { AttributesInfo } from './AttributesInfo';
 
 const ModalBackground = styled.div`
   position: fixed;
@@ -19,61 +23,68 @@ const ModalBody = styled.div`
   width: 50%;
 `;
 
-  export const EditNodeModal = ({ graphData, shouldShow, onUpdateNode, onRequestClose, node, children }) => {
+export const EditNodeModal = ({ shouldShow, onUpdateNode, onRequestClose, node, nodeData, basicNodeData, editorContent, children, nodeKey, nodeCollection }) => {
 
-    const updateNode = (graphData, updateNodeId) => {
-      console.log("#################");
-      console.log("EditNodeFromGraphData in updateNode (node): ", node);
-      console.log("#################");
-      console.log("EditNodeFromGraphData in updateNode (graphData): ", graphData);
-      console.log("EditNodeFromGraphData in updateNode (updateNodeId): ", updateNodeId);
+  const jsonEditorRef = useRef();
+  const [json, setJson] = useState(nodeData);
 
-      console.log("EditNodeFromGraphData() - graphData.nodes: ", graphData.nodes);
-      console.log("EditNodeFromGraphData() - graphData.edges: ", graphData.edges);
-      console.log("EditNodeFromGraphData() - graphData.settings: ", graphData.settings);
+  const openNotificationWithIcon = type => {
+    notification[type]({
+      message: 'Node updates',
+      description:
+        `The node ${node} was successfully updated`,
+    });
+  };
 
-      // delete node from nodes
-      const nodes = graphData.nodes.filter((node) => {
-        return node.id !== updateNodeId;
-      });
-
-      // delete edges with updateNodeId as source
-      let edges = graphData.edges.filter((edge) => {
-        return edge.source !== updateNodeId;
-      });
-
-      // delete edges with updateNodeId as target
-      edges = edges.filter((edge) => {
-        return edge.target !== updateNodeId;
-      });
-    
-      //const edges = graphData.edges;
-      const settings = graphData.settings;
-      const mergedGraphData = {
-        nodes,
-        edges,
-        settings
-      };
-      console.log("########################");
-      console.log("EditNodeFromGraphData() - nodes: ", nodes);
-      console.log("EditNodeFromGraphData() - edges: ", edges);
-      //console.log("EditNodeFromGraphData() - newGraphData: ", newGraphData);
-      console.log("------------------------");
-      console.log("EditNodeFromGraphData() - mergedGraphData: ", mergedGraphData);
-      console.log("########################");
-      onUpdateNode(mergedGraphData);
+  const updateNode = (graphData, updateNodeId) => {
+    const newNodeData = {
+        ...basicNodeData,
+        ...json
+    };
+    $.ajax({
+      cache: false,
+      type: 'PUT',
+      url: arangoHelper.databaseUrl('/_api/document/' + nodeCollection + '?returnNew=true'),
+      data: JSON.stringify([newNodeData]),
+      contentType: 'application/json',
+      processData: false,
+      success: function (data) {
+        openNotificationWithIcon('success');
+      },
+      error: function (data) {
+        console.log("Error saving document: ", data);
+        arangoHelper.arangoError('Graph', 'Could not update this node.');
+      }
+    });
+    onRequestClose();
   }
 
-  // nodeId: {node.id}
-
   return shouldShow ? (
-      <ModalBackground onClick={onRequestClose}>
-        <ModalBody onClick={(e) => e.stopPropagation()}>
-          <div>{children}<br />
-          </div>
-          <button onClick={onRequestClose}>Cancel</button>
-          <button className="button-success" onClick={() => { updateNode(graphData, node) }}>Update</button>
-        </ModalBody>
-      </ModalBackground>
+    <ModalBackground onClick={onRequestClose}>
+      <ModalBody onClick={(e) => e.stopPropagation()}>
+        <div>
+          {children}<br />
+        </div>
+        <AttributesInfo attributes={basicNodeData} />
+        <div>
+          {
+            nodeData ? (
+              <Editor
+                ref={jsonEditorRef}
+                value={nodeData}
+                onChange={(value) => {
+                  setJson(value);
+                }}
+                mode={'code'}
+                history={true} />
+            ) : 'Loading data...'
+          }
+        </div>
+        <div style={{ 'margin-top': '38px', 'text-align': 'right' }}>
+          <button className="button-close" onClick={onRequestClose}>Cancel</button>
+          <button className="button-success" onClick={() => { updateNode(node) }}>Update</button>
+        </div>
+      </ModalBody>
+    </ModalBackground>
   ) : null;
 };

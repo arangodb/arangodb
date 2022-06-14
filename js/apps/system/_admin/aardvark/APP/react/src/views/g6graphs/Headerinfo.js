@@ -1,12 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Dropdown, Switch, Input, Space, Menu, Tag, Card, Select, PageHeader, Tabs, Button, Statistic, Descriptions, Tooltip } from 'antd';
-import GraphDataInfo from './GraphDataInfo';
-import { RollbackOutlined, InfoCircleOutlined, SaveOutlined, NodeIndexOutlined, NodeExpandOutlined, DownloadOutlined, FullscreenOutlined, ShareAltOutlined, CameraOutlined, SearchOutlined } from '@ant-design/icons';
-import LayoutSelector from './LayoutSelector.js';
+import React, { useState } from 'react';
+import { Dropdown, Space, Menu, Tag, PageHeader, Tabs, Button, Descriptions, Tooltip } from 'antd';
+import { RollbackOutlined, NodeIndexOutlined, NodeExpandOutlined, DownloadOutlined, FullscreenOutlined, ShareAltOutlined, CameraOutlined, SearchOutlined } from '@ant-design/icons';
 import { ResponseInfo } from './ResponseInfo';
-import { data2 } from './data2';
-import { NodeList } from './components/node-list/node-list.component';
-import { EdgeList } from './components/edge-list/edge-list.component';
 import ParameterNodeStart from "./ParameterNodeStart";
 import ParameterDepth from "./ParameterDepth";
 import ParameterLimit from "./ParameterLimit";
@@ -23,7 +18,6 @@ import ParameterEdgeColor from "./ParameterEdgeColor";
 import ParameterNodeSize from './ParameterNodeSize';
 import ParameterNodeSizeByEdges from "./ParameterNodeSizeByEdges";
 import ButtonSave from "./ButtonSave";
-import ButtonRestoreDefault from "./ButtonRestoreDefault";
 import EdgeStyleSelector from "./EdgeStyleSelector";
 import GraphLayoutSelector from "./GraphLayoutSelector";
 import SearchNodes from "./SearchNodes";
@@ -32,27 +26,8 @@ import LoadingSpinner from './LoadingSpinner.js';
 
 export const Headerinfo = ({ graphName, graphData, responseDuration, nodesColorAttributes, edgesColorAttributes, onDownloadScreenshot, onDownloadFullScreenshot, onChangeLayout, onChangeGraphData, onLoadFullGraph, onDocumentSelect, onNodeSearched, onEdgeSearched, onEdgeStyleChanged, onGraphLayoutChange, onGraphDataLoaded, onIsLoadingData }) => {
   
-  const [layout, setLayout] = useState('gForce');
   const [isLoadingData, setIsLoadingData] = useState(false);
-  const { Option } = Select;
   const { TabPane } = Tabs;
-
-  function handleChange(value) {
-    console.log(`selected ${value}`);
-  }
-
-  function onSwitchChange(checked) {
-    console.log(`switch to ${checked}`);
-  }
-
-  const changeLayout = ({ newLayout }) => {
-    /*
-    this.graph.updateLayout({
-      type: value,
-    });
-    */
-   console.log("New graph newLayout: ", newLayout);
-  }
 
   const renderContent = (column = 2) => (
     <>
@@ -156,7 +131,6 @@ const screenshotMenu = (
               <br />
               <GraphLayoutSelector
                 onGraphLayoutChange={(layout) => {
-                  console.log("onGraphLayoutChange (layout): ", layout);
                   onGraphLayoutChange(layout);
                 }}
               />
@@ -176,11 +150,7 @@ const screenshotMenu = (
               <br />
               <ParameterNodeColor />
               <br />
-              <ParameterNodeLabelByCollection
-                graphData={graphData}
-                onAddCollectionNameChange={
-                  (nodeLabelByCollection) => console.log("nodeLabelByCollection: ", nodeLabelByCollection)
-                } />
+              <ParameterNodeLabelByCollection graphData={graphData} />
               <br />
               <ParameterNodeColorByCollection />
               <br />
@@ -211,7 +181,6 @@ const screenshotMenu = (
               <br />
               <EdgeStyleSelector
                 onEdgeStyleChange={(typeModel) => {
-                  console.log("onEdgeStyleChange (typeModel): ", typeModel);
                   onEdgeStyleChanged(typeModel);
                 }}
               />
@@ -228,13 +197,11 @@ const screenshotMenu = (
               <SearchNodes
                 nodes={graphData.nodes}
                 graphData={graphData}
-                onNodeInfo={() => console.log('onNodeInfo() in MenuGraph')}
                 onNodeSelect={(previousSearchedNode, node) => onNodeSearched(previousSearchedNode, node)}
               />
               <SearchEdges
                 edges={graphData.edges}
                 graphData={graphData}
-                onEdgeInfo={() => console.log('onEdgeInfo() in MenuGraph')}
                 onEdgeSelect={(previousSearchedEdge, edge) => onEdgeSearched(previousSearchedEdge, edge)}
               />
             </TabPane>

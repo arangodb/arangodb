@@ -1,4 +1,4 @@
-/* global arangoHelper, arangoFetch, frontendConfig, $ */
+/* global arangoHelper, $ */
 
 import React, { useContext, useState } from "react";
 import { UrlParametersContext } from "./url-parameters-context";

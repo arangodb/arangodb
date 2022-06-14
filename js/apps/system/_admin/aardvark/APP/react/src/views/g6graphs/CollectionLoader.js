@@ -1,4 +1,4 @@
-/* global arangoHelper, arangoFetch, frontendConfig */
+/* global arangoHelper, arangoFetch */
 
 import React, { useState, useEffect, useCallback } from 'react';
 
@@ -9,8 +9,6 @@ const CollectionLoader = ({ onLoadCollection }) => {
   };
   let [formData, setFormData] = useState(clearData);
   const [collections, setCollections] = useState([]);
-  let textInput = React.createRef();
-  let nodesInput = React.createRef();
 
   // fetching data # start
   const fetchData = useCallback(() => {

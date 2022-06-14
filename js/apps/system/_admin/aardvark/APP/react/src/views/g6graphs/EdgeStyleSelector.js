@@ -1,25 +1,13 @@
-import React, { useState } from 'react';
+import React, { useContext, useState } from 'react';
 import { Select, Tooltip } from 'antd';
 import PlainLabel from "./components/pure-css/form/PlainLabel";
 import { InfoCircleFilled } from '@ant-design/icons';
+import { UrlParametersContext } from "./url-parameters-context";
 
 const EdgeStyleSelector = ({ onEdgeStyleChange} ) => {
-  const [type, setType] = useState('line');
+  const [urlParameters, setUrlParameters] = useContext(UrlParametersContext);
+  const [type, setType] = useState(urlParameters.edgeType);
   const SelectOption = Select.Option;
-  const strokeColorInput = React.createRef();
-  const lineWidthInput = React.createRef();
-
-  const labelModel = {
-      label: {
-        fill: "#fff",
-        fontSize: 12,
-        background: {
-          fill: "lightgreen",
-          radius: 8,
-          stroke: "#000"
-        }
-      }
-  };
 
   const styles = [
     {
@@ -27,9 +15,6 @@ const EdgeStyleSelector = ({ onEdgeStyleChange} ) => {
     },
     {
       type: 'arrow'
-    },
-    {
-      type: 'curve'
     },
     {
       type: 'dotted'
