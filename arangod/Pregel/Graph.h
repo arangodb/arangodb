@@ -87,7 +87,7 @@ class Edge {
 template<typename V, typename E>
 // cppcheck-suppress noConstructor
 class Vertex {
-  char const* _key;  // uint64_t
+  std::string _key;
 
   // these members are initialized by the GraphStore
   Edge<E>* _edges;  // uint64_t
@@ -113,7 +113,7 @@ class Vertex {
 
  public:
   Vertex() noexcept
-      : _key(nullptr),
+      : _key(),
         _edges(nullptr),
         _edgeCount(0),
         _active(1),
@@ -121,16 +121,6 @@ class Vertex {
         _shard(InvalidPregelShard) {
     TRI_ASSERT(keyLength() == 0);
     TRI_ASSERT(active());
-
-    // make sure that Vertex has the smallest possible size, especially
-    // that the bitfield for _acitve and _keyLength takes up only 16 bits in
-    // total.
-    static_assert(sizeof(Vertex<V, E>) ==
-                      sizeof(char const*) + sizeof(Edge<E>*) +
-                          sizeof(uint32_t) +
-                          sizeof(uint16_t) +  // combined size of the bitfield
-                          sizeof(PregelShard) + std::max<size_t>(8U, sizeof(V)),
-                  "invalid size of Vertex");
   }
 
   // note: the destructor for this type is never called,
@@ -174,25 +164,19 @@ class Vertex {
   void setShard(PregelShard shard) noexcept { _shard = shard; }
   PregelShard shard() const noexcept { return _shard; }
 
+  void setKey(std::string_view key) noexcept { _key = key; }
   void setKey(char const* key, uint16_t keyLength) noexcept {
-    // must only be called during initial vertex creation
-    TRI_ASSERT(active());
-    TRI_ASSERT(this->keyLength() == 0);
-    _key = key;
-    _keyLength = keyLength;
-    TRI_ASSERT(active());
-    TRI_ASSERT(this->keyLength() == keyLength);
+    ADB_PROD_ASSERT(this->keyLength() == 0);
+    _key = std::string(key, keyLength);
   }
 
-  uint16_t keyLength() const noexcept { return _keyLength; }
+  uint16_t keyLength() const noexcept { return _key.size(); }
 
-  std::string_view key() const { return std::string_view(_key, keyLength()); }
+  std::string_view key() const { return std::string_view(_key); }
   V const& data() const& { return _data; }
   V& data() & { return _data; }
 
-  PregelID pregelId() const {
-    return PregelID(_shard, std::string(_key, keyLength()));
-  }
+  PregelID pregelId() const { return PregelID(_shard, _key); }
 };
 
 }  // namespace pregel
