@@ -511,9 +511,16 @@ auto checkLogExists(SupervisionContext& ctx, Log const& log,
     } else {
       auto leader = pickLeader(target.leader, target.participants, health,
                                log.target.id.id());
-      auto config = LogPlanConfig(target.config.writeConcern,
-                                  target.config.softWriteConcern,
-                                  target.config.waitForSync);
+
+      auto const numberNotFailedParticipants =
+          health.numberNotIsFailedOf(target.participants);
+
+      auto effectiveWriteConcern = std::max(
+          target.config.writeConcern, std::min(numberNotFailedParticipants,
+                                               target.config.softWriteConcern));
+
+      auto config =
+          LogPlanConfig(effectiveWriteConcern, target.config.waitForSync);
       ctx.createAction<AddLogToPlanAction>(target.id, target.participants,
                                            config, leader);
     }

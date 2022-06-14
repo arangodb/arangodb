@@ -258,6 +258,7 @@ struct LogCurrentSupervision {
 
   using StatusReport = std::vector<StatusMessage>;
 
+  size_t assumedWriteConcern;
   std::optional<uint64_t> targetVersion;
   std::optional<StatusReport> statusReport;
   std::optional<clock::time_point> lastTimeModified;
