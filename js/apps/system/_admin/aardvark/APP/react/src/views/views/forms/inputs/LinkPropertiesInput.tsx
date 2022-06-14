@@ -1,7 +1,7 @@
 import { FormProps } from "../../../../utils/constants";
 import { LinkProperties } from "../../constants";
 import React, { ChangeEvent, useEffect, useMemo, useState } from "react";
-import { chain, get, isEmpty, without } from "lodash";
+import { chain, get, without } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
 import Fieldset from "../../../../components/pure-css/form/Fieldset";
@@ -153,11 +153,7 @@ const LinkPropertiesInput = ({
 
       <Cell size={"1"}>
         <Fieldset legend={"Fields"}>
-          {
-            isEmpty(formState.fields)
-              ? null
-              : <FieldList fields={formState.fields} disabled={disabled} basePath={basePath}/>
-          }
+          <FieldList fields={formState.fields} disabled={disabled} basePath={basePath}/>
         </Fieldset>
       </Cell>
     </Grid>

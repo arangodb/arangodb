@@ -82,6 +82,11 @@ const AutoCompleteMultiSelect = ({
           <AutoCompleteTextInput key={1} minChars={1} spacer={''} onSelect={handleSelect} matchAny={true}
                                  value={value} onChange={setValue} options={options}
                                  disabled={disabled} {...rest}/>
+          {
+            value && !((options || []) as string[]).includes(value as string)
+              ? <div style={{ color: 'red' }}>Invalid option.</div>
+              : null
+          }
         </li>
       </ul>
     </div>

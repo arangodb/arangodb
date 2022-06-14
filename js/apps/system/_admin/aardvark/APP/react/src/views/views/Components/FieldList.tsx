@@ -5,7 +5,7 @@ import { ViewContext } from "../constants";
 import { Link as HashLink, Link, useRouteMatch } from "react-router-dom";
 
 type FieldListProps = {
-  fields: object | any;
+  fields: object | undefined;
   disabled: boolean | undefined;
   basePath: string;
 };
@@ -32,7 +32,7 @@ const FieldList = ({
     removeField(field);
   };
 
-  const fieldKeys = Object.keys(fields);
+  const fieldKeys = Object.keys(fields || {});
 
   return (
     <ArangoTable style={{ marginLeft: 0 }}>

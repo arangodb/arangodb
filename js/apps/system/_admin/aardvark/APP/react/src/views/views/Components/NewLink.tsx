@@ -56,6 +56,8 @@ const NewLink = () => {
             <AutoCompleteTextInput placeholder={"Collection"} value={collection} minChars={1}
                                    spacer={""} onSelect={setCollection} matchAny={true} options={options}
                                    onChange={setCollection}/>
+            { collection && addDisabled ? <div style={{ color: 'red' }}>This link already exists</div> : null }
+            { !collection || options.includes(collection) ? null : addDisabled ? null : <div style={{ color: 'red' }}>This collection does not exist</div> }
           </ArangoTD>
           <ArangoTD seq={1} style={{ width: "20%" }}>
             <IconButton icon={"plus"} type={"warning"} onClick={addLink}

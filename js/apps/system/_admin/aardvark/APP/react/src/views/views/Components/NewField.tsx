@@ -46,6 +46,7 @@ const NewField = () => {
       <tr style={{ borderBottom: "1px  solid #DDD" }}>
         <ArangoTD seq={0} style={{ width: "80%" }}>
           <Textbox placeholder={'Field'} type={'text'} value={newField} onChange={updateNewField}/>
+          { newField && addDisabled ? <div style={{ color: 'red' }}>This field already exists</div> : null }
         </ArangoTD>
         <ArangoTD seq={1} style={{ width: "20%" }}>
           <IconButton icon={"plus"} type={"warning"} onClick={addField} disabled={addDisabled}>

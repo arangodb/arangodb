@@ -64,6 +64,10 @@ export const SaveButton = ({
       }
 
       if (!error) {
+        arangoHelper.arangoMessage(
+          "Saving",
+          `Please wait while the view is being saved. This could take some time for large views.`
+        );
         const properties = pick(
           view,
           "consolidationIntervalMsec",
@@ -73,6 +77,7 @@ export const SaveButton = ({
           "consolidationPolicy"
         );
         result = await route.patch(path, properties);
+        arangoHelper.hideArangoNotifications();
 
         if (result.body.error) {
           arangoHelper.arangoError(
