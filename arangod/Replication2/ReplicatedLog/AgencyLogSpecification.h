@@ -46,9 +46,6 @@ struct LogPlanConfig {
 
   LogPlanConfig() noexcept = default;
   LogPlanConfig(std::size_t effectiveWriteConcern, bool waitForSync) noexcept;
-  LogPlanConfig(std::size_t writeConcern, std::size_t softWriteConcern,
-                bool waitForSync) noexcept;
-
   friend auto operator==(LogPlanConfig const& left,
                          LogPlanConfig const& right) noexcept -> bool = default;
 };

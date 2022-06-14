@@ -23,6 +23,7 @@
 
 #include "Supervision.h"
 
+#include <cstddef>
 #include <memory>
 
 #include "Agency/AgencyPaths.h"
