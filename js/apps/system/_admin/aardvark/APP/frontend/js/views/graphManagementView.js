@@ -161,7 +161,7 @@
       var name = $(e.currentTarget).attr('id');
       if (name) {
         name = name.substr(0, name.length - 5);
-        window.App.navigate('graph/' + encodeURIComponent(name), {trigger: true});
+        window.App.navigate('g6graphs/' + encodeURIComponent(name), {trigger: true});
       }
     },
 
