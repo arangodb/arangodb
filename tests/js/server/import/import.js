@@ -958,6 +958,24 @@ function importTestSuite () {
           "id": 11,
           "newAttr": "11007",
           "value": "007"
+        },
+        {
+          "Id": "12",
+          "IdAndValue": "12:2e307",
+          "ValueAndId": "value:2e307/id:12",
+          "_key": "122e307",
+          "id": 12,
+          "newAttr": "122e307",
+          "value": "2e307"
+        },
+        {
+          "Id": "13",
+          "IdAndValue": "13:2e309",
+          "ValueAndId": "value:2e309/id:13",
+          "_key": "132e309",
+          "id": 13,
+          "newAttr": "132e309",
+          "value": "2e309"
         }
       ];
 
@@ -976,8 +994,7 @@ function importTestSuite () {
           "ValueAndId": "value:null/id:1",
           "_key": "1null",
           "id": 1,
-          "newAttr": "1null",
-          "value": "null"
+          "newAttr": "1null"
         },
         {
           "Id": "2",
@@ -986,7 +1003,7 @@ function importTestSuite () {
           "_key": "2false",
           "id": 2,
           "newAttr": "2false",
-          "value": "false"
+          "value": false
         },
         {
           "Id": "3",
@@ -995,7 +1012,7 @@ function importTestSuite () {
           "_key": "3true",
           "id": 3,
           "newAttr": "3true",
-          "value": "true"
+          "value": true
         },
         {
           "Id": "4",
@@ -1004,7 +1021,7 @@ function importTestSuite () {
           "_key": "4-1",
           "id": 4,
           "newAttr": "4-1",
-          "value": "-1"
+          "value": -1
         },
         {
           "Id": "5",
@@ -1013,7 +1030,7 @@ function importTestSuite () {
           "_key": "50",
           "id": 5,
           "newAttr": "50",
-          "value": "0"
+          "value": 0
         },
         {
           "Id": "6",
@@ -1022,7 +1039,7 @@ function importTestSuite () {
           "_key": "61",
           "id": 6,
           "newAttr": "61",
-          "value": "1"
+          "value": 1
         },
         {
           "Id": "7",
@@ -1031,7 +1048,7 @@ function importTestSuite () {
           "_key": "72",
           "id": 7,
           "newAttr": "72",
-          "value": "2"
+          "value": 2
         },
         {
           "Id": "8",
@@ -1040,7 +1057,7 @@ function importTestSuite () {
           "_key": "8123456.43",
           "id": 8,
           "newAttr": "8123456.43",
-          "value": "123456.43"
+          "value": 123456.43
         },
         {
           "Id": "9",
@@ -1049,7 +1066,7 @@ function importTestSuite () {
           "_key": "9-13323.322",
           "id": 9,
           "newAttr": "9-13323.322",
-          "value": "-13323.322"
+          "value": -13323.322
         },
         {
           "Id": "10",
@@ -1057,17 +1074,34 @@ function importTestSuite () {
           "ValueAndId": "value:null/id:10",
           "_key": "10null",
           "id": 10,
-          "newAttr": "10null",
-          "value": "null"
+          "newAttr": "10null"
         },
         {
           "Id": "11",
-          "IdAndValue": "11:007",
-          "ValueAndId": "value:007/id:11",
-          "_key": "11007",
+          "IdAndValue": "11:7",
+          "ValueAndId": "value:7/id:11",
+          "_key": "117",
           "id": 11,
-          "newAttr": "11007",
-          "value": "007"
+          "newAttr": "117",
+          "value": 7
+        },
+        {
+          "Id": "12",
+          "IdAndValue": "12:2e+307",
+          "ValueAndId": "value:2e+307/id:12",
+          "_key": "122e+307",
+          "id": 12,
+          "newAttr": "122e+307",
+          "value": 2e+307
+        },
+        {
+          "Id": "13",
+          "IdAndValue": "13:2e309",
+          "ValueAndId": "value:2e309/id:13",
+          "_key": "132e309",
+          "id": 13,
+          "newAttr": "132e309",
+          "value": "2e309"
         }
       ];
 

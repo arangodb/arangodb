@@ -889,10 +889,13 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
         }
 
         int64_t num = StringUtils::int64(field, fieldLength);
-        if (!_mergeAttributesInstructions.empty()) {
-          lookUpTableValue = std::to_string(num);
-        }
+        size_t bufPos = _lineBuffer.length();
         _lineBuffer.appendInteger(num);
+        if (!_mergeAttributesInstructions.empty()) {
+          lookUpTableValue = std::string(
+            _lineBuffer.stringBuffer()->_buffer, bufPos,
+            _lineBuffer.length() - bufPos);
+        }
       } catch (...) {
         // conversion failed
         _lineBuffer.appendJsonEncoded(field, fieldLength);
@@ -907,10 +910,13 @@ void ImportHelper::addField(char const* field, size_t fieldLength, size_t row,
         if (pos == fieldLength) {
           bool failed = (num != num || num == HUGE_VAL || num == -HUGE_VAL);
           if (!failed) {
-            if (!_mergeAttributesInstructions.empty()) {
-              lookUpTableValue = std::to_string(num);
-            }
+            size_t bufPos = _lineBuffer.length();
             _lineBuffer.appendDecimal(num);
+            if (!_mergeAttributesInstructions.empty()) {
+              lookUpTableValue = std::string(
+                _lineBuffer.stringBuffer()->_buffer, bufPos,
+                _lineBuffer.length() - bufPos);
+	    }
             return;
           }
         }
