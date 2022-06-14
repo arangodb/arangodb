@@ -62,7 +62,7 @@ export function useView (name: string) {
 
       setView(viewState);
     }
-  }, [data]);
+  }, [data, name]);
 
   return view;
 }
