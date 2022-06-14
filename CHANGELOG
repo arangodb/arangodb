@@ -1,6 +1,12 @@
 devel
 -----
 
+* Fixed issue 16337: arangoimport with --headers-file and --merge-attributes
+  merges column names instead of row values on the first line.
+
+  Additionally, floating-point numbers are now merged using their standard
+  string representation instead of with a fixed precision of 6 decimal places.
+
 * Change default `format_version` for RocksDB .sst files from 3 to 5.
 
 * Added support for creating autoincrement keys on cluster mode, but only for 

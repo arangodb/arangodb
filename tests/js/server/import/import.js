@@ -976,6 +976,15 @@ function importTestSuite () {
           "id": 13,
           "newAttr": "132e309",
           "value": "2e309"
+        },
+        {
+          "Id": "14",
+          "IdAndValue": "14:0.123456789",
+          "ValueAndId": "value:0.123456789/id:14",
+          "_key": "140.123456789",
+          "id": 14,
+          "newAttr": "140.123456789",
+          "value": "0.123456789"
         }
       ];
 
@@ -1102,6 +1111,15 @@ function importTestSuite () {
           "id": 13,
           "newAttr": "132e309",
           "value": "2e309"
+        },
+        {
+          "Id": "14",
+          "IdAndValue": "14:0.123456789",
+          "ValueAndId": "value:0.123456789/id:14",
+          "_key": "140.123456789",
+          "id": 14,
+          "newAttr": "140.123456789",
+          "value": 0.123456789
         }
       ];
 
