@@ -42,18 +42,23 @@
 #include "Aql/Function.h"
 #include "IResearch/common.h"
 #include "IResearch/IResearchCommon.h"
+#include "IResearch/ExpressionContextMock.h"
 #include "RestServer/DatabaseFeature.h"
 #include "VocBase/Methods/Collections.h"
 
 // exists(name)
 auto makeByColumnExistence(std::string_view name) {
-  auto filter = std::make_unique<irs::by_column_existence>();
-  *filter->mutable_field() = name;
-  return filter;
+  return [name](irs::sub_reader const& segment) {
+    auto* col = segment.column(name);
+
+    return col ? col->iterator(irs::ColumnHint::kMask |
+                               irs::ColumnHint::kPrevDoc)
+               : nullptr;
+  };
 }
 
 // name == value
-auto MakeByTerm(std::string_view name, std::string_view value,
+auto makeByTerm(std::string_view name, std::string_view value,
                 irs::score_t boost) {
   auto filter = std::make_unique<irs::by_term>();
   *filter->mutable_field() = name;
@@ -70,7 +75,7 @@ void makeAnd(
   for (const auto& [name, value, boost] : parts) {
     auto& sub = filter.add<irs::by_term>();
     sub =
-        std::move(static_cast<irs::by_term&>(*MakeByTerm(name, value, boost)));
+        std::move(static_cast<irs::by_term&>(*makeByTerm(name, value, boost)));
   }
 }
 
@@ -166,6 +171,8 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchAny) {
   mergeType = irs::sort::MergeType::kSum;
   match = irs::kMatchAny;
 
+  ExpressionContextMock ctx;
+
   assertFilterSuccess(
       vocbase(),
       R"(FOR d IN myView FILTER d.array[? FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
@@ -182,6 +189,14 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchAny) {
       vocbase(),
       R"(FOR d IN myView FILTER d.array[? 1..4294967295 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
       expected);
+  assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER d.array[? 1..4294967295  FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
+      expected, &ctx);
+  assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER d.array[? 1..14294967295  FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
+      expected, &ctx);
 
   // Same queries, but with BOOST function. Boost value is 1 (default)
 
@@ -201,6 +216,10 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchAny) {
       vocbase(),
       R"(FOR d IN myView FILTER BOOsT(d.array[? 1..4294967295 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1) RETURN d)",
       expected);
+  assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER BOOST(d.array[? 1..142949672957 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1) RETURN d)",
+      expected, &ctx);
 }
 
 TEST_F(IResearchFilterNestedTest, testNestedFilterMatchAnyBoost) {
@@ -222,6 +241,8 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchAnyBoost) {
   match = irs::kMatchAny;
   filter.boost(1.555f);
 
+  ExpressionContextMock ctx;
+
   // boost value is checked
   assertFilterSuccess(
       vocbase(),
@@ -239,6 +260,10 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchAnyBoost) {
       vocbase(),
       R"(FOR d IN myView FILTER bOOSt(d.array[? 1..4294967295 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1.555) RETURN d)",
       expected);
+  assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER BOOST(d.array[? 1..4294967295 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1.555) RETURN d)",
+      expected, &ctx);
 }
 
 TEST_F(IResearchFilterNestedTest, testNestedFilterMatchAnyChildBoost) {
@@ -259,6 +284,8 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchAnyChildBoost) {
   mergeType = irs::sort::MergeType::kSum;
   match = irs::kMatchAny;
 
+  ExpressionContextMock ctx;
+
   // check boost value for child field
   assertFilterSuccess(
       vocbase(),
@@ -276,6 +303,10 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchAnyChildBoost) {
       vocbase(),
       R"(FOR d IN myView FILTER d.array[? 1..4294967295 FILTER bOosT(CURRENT.foo == 'bar', 1.45) AND CURRENT.bar == 'baz'] RETURN d)",
       expected);
+  assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER d.array[? 1..4294967295 FILTER BOOST(CURRENT.foo == 'bar', 1.45) AND CURRENT.bar == 'baz'] RETURN d)",
+      expected, &ctx);
 }
 
 // ALL
@@ -299,7 +330,9 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchAll) {
       {{std::string_view{fooField}, std::string_view{"bar"}, irs::kNoBoost},
        {std::string_view{barField}, std::string_view{"baz"}, irs::kNoBoost}});
   mergeType = irs::sort::MergeType::kSum;
-  match = irs::kMatchAll;
+
+  // Actual implementation doesn't matter
+  match = [](irs::sub_reader const&) { return nullptr; };
 
   assertFilterSuccess(
       vocbase(),
@@ -346,7 +379,8 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchAllBoost) {
       {{std::string_view{fooField}, std::string_view{"bar"}, irs::kNoBoost},
        {std::string_view{barField}, std::string_view{"baz"}, irs::kNoBoost}});
   mergeType = irs::sort::MergeType::kSum;
-  match = irs::kMatchAll;
+  // Actual implementation doesn't matter
+  match = [](irs::sub_reader const&) { return nullptr; };
   filter.boost(1.98f);
 
   assertFilterSuccess(
@@ -379,7 +413,8 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchAllChildBoost) {
       {{std::string_view{fooField}, std::string_view{"bar"}, irs::kNoBoost},
        {std::string_view{barField}, std::string_view{"baz"}, irs::kNoBoost}});
   mergeType = irs::sort::MergeType::kSum;
-  match = irs::kMatchAll;
+  // Actual implementation doesn't matter
+  match = [](irs::sub_reader const&) { return nullptr; };
 
   assertFilterSuccess(
       vocbase(),
@@ -419,6 +454,13 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchNone) {
   mergeType = irs::sort::MergeType::kSum;
   match = irs::kMatchNone;
 
+  ExpressionContextMock ctx;
+  {
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{0});
+    arangodb::aql::AqlValueGuard guard(value, true);
+    ctx.vars.emplace("x", value);
+  }
+
   assertFilterSuccess(
       vocbase(),
       R"(FOR d IN myView FILTER d.array[? NONE FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
@@ -427,6 +469,18 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchNone) {
       vocbase(),
       R"(FOR d IN myView FILTER d.array[? 0..0 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
       expected);
+  assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER d.array[? 0..0 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
+      expected, &ctx);
+  assertFilterSuccess(
+      vocbase(),
+      R"(LET x = 0 FOR d IN myView FILTER d.array[? x FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
+      expected, &ctx);
+  assertFilterSuccess(
+      vocbase(),
+      R"(LET x = 0 FOR d IN myView FILTER d.array[? x..x FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
+      expected, &ctx);
 
   // Same queries, but with BOOST function. Boost value is 1 (default)
 
@@ -438,6 +492,18 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchNone) {
       vocbase(),
       R"(FOR d IN myView FILTER Boost(d.array[? 0..0 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1) RETURN d)",
       expected);
+  assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER Boost(d.array[? 0..0 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1) RETURN d)",
+      expected, &ctx);
+  assertFilterSuccess(
+      vocbase(),
+      R"(LET x = 0 FOR d IN myView FILTER Boost(d.array[? x FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1) RETURN d)",
+      expected, &ctx);
+  assertFilterSuccess(
+      vocbase(),
+      R"(LET x = 0 FOR d IN myView FILTER Boost(d.array[? x..x FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'], 1) RETURN d)",
+      expected, &ctx);
 }
 
 TEST_F(IResearchFilterNestedTest, testNestedFilterMatchNoneBoost) {
@@ -660,6 +726,164 @@ TEST_F(IResearchFilterNestedTest, testNestedFilterMatchRangeChildBoost) {
       R"(FOR d IN myView FILTER d.array[? 1..5 FILTER CURRENT.foo == 'bar' AND BooSt(CURRENT.bar == 'baz', 2.001)] RETURN d)",
       expected);
 }
+
+TEST_F(IResearchFilterNestedTest, NestedFilterMatchExact) {
+  irs::Or expected;
+  auto& filter = expected.add<irs::ByNestedFilter>();
+  auto& [parent, child, match, mergeType] = *filter.mutable_options();
+
+  const auto parentField = mangleNested("array");
+  const auto fooField = parentField + mangleStringIdentity(".foo");
+  const auto barField = parentField + mangleStringIdentity(".bar");
+
+  parent = makeByColumnExistence(parentField);
+  child = std::make_unique<irs::Or>();
+  makeAnd(
+      static_cast<irs::Or&>(*child),
+      {{std::string_view{fooField}, std::string_view{"bar"}, irs::kNoBoost},
+       {std::string_view{barField}, std::string_view{"baz"}, irs::kNoBoost}});
+  mergeType = irs::sort::MergeType::kSum;
+  match = irs::Match{2, 2};
+
+  assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER d.array[? 2 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
+      expected);
+}
+
+TEST_F(IResearchFilterNestedTest, NestedFilterMatchMin) {
+  irs::Or expected;
+  auto& filter = expected.add<irs::ByNestedFilter>();
+  auto& [parent, child, match, mergeType] = *filter.mutable_options();
+
+  const auto parentField = mangleNested("array");
+  const auto fooField = parentField + mangleStringIdentity(".foo");
+  const auto barField = parentField + mangleStringIdentity(".bar");
+
+  parent = makeByColumnExistence(parentField);
+  child = std::make_unique<irs::Or>();
+  makeAnd(
+      static_cast<irs::Or&>(*child),
+      {{std::string_view{fooField}, std::string_view{"bar"}, irs::kNoBoost},
+       {std::string_view{barField}, std::string_view{"baz"}, irs::kNoBoost}});
+  mergeType = irs::sort::MergeType::kSum;
+  match = irs::Match{2};
+
+  ExpressionContextMock ctx;
+
+  assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER d.array[? 2..4294967295 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
+      expected, &ctx);
+}
+
+TEST_F(IResearchFilterNestedTest, NestedFilterMatchRange) {
+  irs::Or expected;
+  auto& filter = expected.add<irs::ByNestedFilter>();
+  auto& [parent, child, match, mergeType] = *filter.mutable_options();
+
+  const auto parentField = mangleNested("array");
+  const auto fooField = parentField + mangleStringIdentity(".foo");
+  const auto barField = parentField + mangleStringIdentity(".bar");
+
+  parent = makeByColumnExistence(parentField);
+  child = std::make_unique<irs::Or>();
+  makeAnd(
+      static_cast<irs::Or&>(*child),
+      {{std::string_view{fooField}, std::string_view{"bar"}, irs::kNoBoost},
+       {std::string_view{barField}, std::string_view{"baz"}, irs::kNoBoost}});
+  mergeType = irs::sort::MergeType::kSum;
+  match = irs::Match{2, 5};
+
+  ExpressionContextMock ctx;
+  arangodb::aql::AqlValue value(2, 5);
+  arangodb::aql::AqlValueGuard guard(value, true);
+  ctx.vars.emplace("x", value);
+
+  assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER d.array[? 2..5 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
+      expected, &ctx);
+  assertFilterSuccess(
+      vocbase(),
+      R"(LET x = 2..5 FOR d IN myView FILTER d.array[? x FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)",
+      expected, &ctx);
+}
+
+TEST_F(IResearchFilterNestedTest, NestedFilterMatchTooMany) {
+  assertExpressionFilter(
+      vocbase(),
+      R"(FOR d IN myView FILTER d.array[? 4294967295..1 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
+  assertExpressionFilter(
+      vocbase(),
+      R"(FOR d IN myView FILTER d.array[? 4294967295 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
+  assertExpressionFilter(
+      vocbase(),
+      R"(FOR d IN myView FILTER d.array[? 4294967296 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
+  assertExpressionFilter(
+      vocbase(),
+      R"(FOR d IN myView FILTER d.array[? 4294967296..4294967297 FILTER CURRENT.foo == 'bar' AND CURRENT.bar == 'baz'] RETURN d)");
+}
+
+TEST_F(IResearchFilterNestedTest, NestedFilterMatchAnyNested) {
+  irs::Or expected;
+
+  auto& filter = expected.add<irs::ByNestedFilter>();
+  auto& opts = *filter.mutable_options();
+  const auto parentField = mangleNested("array");
+
+  opts.merge_type = irs::sort::MergeType::kSum;
+  opts.match = irs::kMatchAny;
+  opts.parent = makeByColumnExistence(parentField);
+  opts.child = std::make_unique<irs::Or>();
+
+  {
+    auto& subChild = static_cast<irs::Or&>(*opts.child).add<irs::And>();
+    subChild.add<irs::by_term>() =
+        std::move(static_cast<irs::by_term&>(*makeByTerm(
+            parentField + mangleStringIdentity(".foo"), "bar", irs::kNoBoost)));
+    auto& subNested = subChild.add<irs::ByNestedFilter>();
+    auto& subOpts = *subNested.mutable_options();
+    const auto subParentField = mangleNested(parentField + ".bar");
+
+    subOpts.merge_type = irs::sort::MergeType::kSum;
+    subOpts.match = irs::Match{42, 43};
+    subOpts.parent = makeByColumnExistence(subParentField);
+    subOpts.child = std::make_unique<irs::Or>();
+    makeAnd(static_cast<irs::Or&>(*subOpts.child),
+            {{std::string_view{subParentField + mangleStringIdentity(".foo")},
+              std::string_view{"bar"}, irs::kNoBoost},
+             {std::string_view{subParentField + mangleStringIdentity(".bar")},
+              std::string_view{"baz"}, irs::kNoBoost}});
+  }
+
+  ExpressionContextMock ctx;
+  arangodb::aql::AqlValue value{arangodb::aql::AqlValueHintInt{40}};
+  arangodb::aql::AqlValueGuard guard{value, true};
+  ctx.vars.emplace("x", value);
+
+  assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER d.array[? FILTER CURRENT.foo == 'bar' AND
+                                                 CURRENT.bar[? 42..43 FILTER CURRENT.foo == 'bar' AND
+                                                                   CURRENT.bar == 'baz']] RETURN d)",
+      expected, &ctx);
+  assertFilterSuccess(
+      vocbase(),
+      R"(FOR d IN myView FILTER boOst(d.array[? FILTER CURRENT.foo == 'bar' AND
+                                                 CURRENT.bar[? 42..43 FILTER CURRENT.foo == 'bar' AND
+                                                                   CURRENT.bar == 'baz']], 1) RETURN d)",
+      expected, &ctx);
+  assertFilterSuccess(
+      vocbase(),
+      R"(LET x = 40 FOR d IN myView FILTER boOst(d.array[? 1..4294967295 FILTER CURRENT.foo == 'bar' AND
+                                                 CURRENT.bar[? x+2..x+3 FILTER BOOsT(CURRENT.foo == 'bar', 1) AND
+                                                                   CURRENT.bar == 'baz']], 1) RETURN d)",
+      expected, &ctx);
+}
+
+
+
 
 // FAILING TESTS
 
