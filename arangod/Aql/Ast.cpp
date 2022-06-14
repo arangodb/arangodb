@@ -63,6 +63,14 @@ namespace StringUtils = arangodb::basics::StringUtils;
 
 namespace {
 
+struct RecursiveAttributeFinderContext {
+  Variable const* variable;
+  bool couldExtractAttributePath;
+  std::string_view expectedAttribute;
+  containers::SmallVector<AstNode const*, 128> seen;
+  std::unordered_set<arangodb::aql::AttributeNamePath>& attributes;
+};
+
 struct ValidateAndOptimizeContext {
   explicit ValidateAndOptimizeContext(transaction::Methods& t) : trx(t) {}
 
@@ -87,6 +95,98 @@ auto doNothingVisitor = [](AstNode const*) {};
       arangodb::aql::QueryWarnings::buildFormattedString(code, details);
   query.warnings().registerError(code, msg);
 }
+
+/// @brief translate the stack of seen AqlNodes inside the
+/// AttributeFinderContext to a single AttributePath, and injects it into the
+/// attributeNamePath within the Context.
+/// Returns true if and only if the context found an attribute access path.
+bool translateNodeStackToAttributePath(RecursiveAttributeFinderContext& state) {
+  TRI_ASSERT(!state.seen.empty());
+  AstNode const* top = state.seen.back();
+  TRI_ASSERT(top->type == NODE_TYPE_REFERENCE);
+
+  auto v = static_cast<Variable const*>(top->getData());
+  state.seen.pop_back();
+
+  if (v == state.variable) {
+    // the target variable we are looking for.
+    // e.g.
+    // - p.vertices....
+    //   ^
+    // - v.x
+    //   ^
+    if (state.seen.empty()) {
+      // only the variable found.
+      return false;
+    }
+
+    if (!state.expectedAttribute.empty()) {
+      // p.vertices....
+      //   ^
+      top = state.seen.back();
+      if (top->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+        return false;
+      }
+
+      // take attribute name off the stack
+      if (top->getStringView() != state.expectedAttribute) {
+        // different attribute, e.g. p.lump
+        return true;
+      }
+
+      // p.vertices
+      //   ^
+      state.seen.pop_back();
+
+      if (state.seen.empty()) {
+        return false;
+      }
+
+      top = state.seen.back();
+
+      if (top->type != NODE_TYPE_INDEXED_ACCESS &&
+          top->type != NODE_TYPE_EXPANSION) {
+        return false;
+      }
+
+      // p.vertices[0]...
+      //           ^
+      // or
+      //
+      // v[0]...
+      //  ^
+      state.seen.pop_back();
+
+      if (state.seen.empty()) {
+        return false;
+      }
+    }
+
+    TRI_ASSERT(!state.seen.empty());
+    top = state.seen.back();
+
+    if (top->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // something following that we cannot handle
+      return false;
+    }
+
+    // now take off all projections from the stack
+    std::vector<std::string> path;
+    while (top->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      path.emplace_back(top->getString());
+      state.seen.pop_back();
+      if (state.seen.empty()) {
+        break;
+      }
+      top = state.seen.back();
+    }
+
+    TRI_ASSERT(!path.empty());
+    state.attributes.emplace(std::move(path));
+  }
+
+  return true;
+};
 
 /**
  * @brief Register the given datasource with the given accesstype in the query.
@@ -2624,11 +2724,17 @@ size_t Ast::countReferences(AstNode const* node, Variable const* search) {
   return result.count;
 }
 
-// @brief determines the attributes (and their subattributes) referenced in an
-// expression for the specified out variable and a subattribute from it
-// (e.g. p.edges[0].abc, p.vertices[*].abc). if the subattribute is empty,
-// then it will be ignored.
-// we need to take care of the following example cases here:
+// @brief Analyzes the handed in expression (as ASTNode node).
+// If the handed in expression contains the given variable, this method
+// extracts which AttributePath on the given variable is accessed.
+// (e.g. v.a.b will extract ["a", "b"] on variable "v")
+// The identified AttributePath will be appended to the attributes parameter.
+// If expectedAttribute is a non-empty this method starts extracting the
+// attribute path only inside the expectedAttribute, and only if
+// expectedAttribute is on top-level. (e.g NODE= p.vertices[*].a.b with
+// expectedAttribute "vertices[*]" will extract ["a", "b"]) if expectedAttribute
+// is empty the method will extract from top-level. Here are some more examples
+// of expected results:
 // - v                  => no projections
 // - v[0]               => no projections
 // - v[0][1]            => no projections
@@ -2648,111 +2754,18 @@ bool Ast::getReferencedAttributesRecursive(
     AstNode const* node, Variable const* variable,
     std::string_view expectedAttribute,
     std::unordered_set<arangodb::aql::AttributeNamePath>& attributes) {
-  // traversal state
-  struct TraversalState {
-    Variable const* variable;
-    bool isSafeForOptimization;
-    std::string_view expectedAttribute;
-    containers::SmallVector<AstNode const*, 128> seen;
-    std::unordered_set<arangodb::aql::AttributeNamePath>& attributes;
-  };
+  RecursiveAttributeFinderContext state{variable,
+                                        /*couldExtractAttributePath*/ true,
+                                        expectedAttribute,
+                                        {},
+                                        attributes};
 
-  TraversalState state{variable,
-                       /*isSafeForOptimization*/ true,
-                       expectedAttribute,
-                       {},
-                       attributes};
-
-  auto evalStack = [&state]() -> bool {
-    TRI_ASSERT(!state.seen.empty());
-    AstNode const* top = state.seen.back();
-    TRI_ASSERT(top->type == NODE_TYPE_REFERENCE);
-
-    auto v = static_cast<Variable const*>(top->getData());
-    state.seen.pop_back();
-
-    if (v == state.variable) {
-      // the target variable we are looking for.
-      // e.g.
-      // - p.vertices....
-      //   ^
-      // - v.x
-      //   ^
-      if (state.seen.empty()) {
-        // only the variable found.
-        return false;
-      }
-
-      if (!state.expectedAttribute.empty()) {
-        // p.vertices....
-        //   ^
-        top = state.seen.back();
-        if (top->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
-          return false;
-        }
-
-        // take attribute name off the stack
-        if (top->getStringView() != state.expectedAttribute) {
-          // different attribute, e.g. p.lump
-          return true;
-        }
-
-        // p.vertices
-        //   ^
-        state.seen.pop_back();
-
-        if (state.seen.empty()) {
-          return false;
-        }
-
-        top = state.seen.back();
-
-        if (top->type != NODE_TYPE_INDEXED_ACCESS &&
-            top->type != NODE_TYPE_EXPANSION) {
-          return false;
-        }
-
-        // p.vertices[0]...
-        //           ^
-        // or
-        //
-        // v[0]...
-        //  ^
-        state.seen.pop_back();
-
-        if (state.seen.empty()) {
-          return false;
-        }
-      }
-
-      TRI_ASSERT(!state.seen.empty());
-      top = state.seen.back();
-
-      if (top->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
-        // something following that we cannot handle
-        return false;
-      }
-
-      // now take off all projections from the stack
-      std::vector<std::string> path;
-      while (top->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        path.emplace_back(top->getString());
-        state.seen.pop_back();
-        if (state.seen.empty()) {
-          break;
-        }
-        top = state.seen.back();
-      }
-
-      TRI_ASSERT(!path.empty());
-      state.attributes.emplace(std::move(path));
-    }
-
-    return true;
-  };
-
+  // Recursively visit an analyze all members of an expression.
+  // If no attribute access is found abort visiting and fail.
+  // If only attribute access found up until all leaves:
+  // Map the collected Nodes to a flat attribute access path.
   auto visitor = [&](AstNode const* node) -> bool {
-    if (node == nullptr || !state.isSafeForOptimization) {
+    if (node == nullptr || !state.couldExtractAttributePath) {
       return false;
     }
 
@@ -2764,14 +2777,14 @@ bool Ast::getReferencedAttributesRecursive(
           // expansion has a filter or a projection set, e.g.
           // p.vertices[FILTER CURRENT.x == 1 RETURN CURRENT.y].
           // we currently cannot handle this.
-          state.isSafeForOptimization = false;
+          state.couldExtractAttributePath = false;
           state.seen.clear();
           return false;
         }
 
         if (node->getIntValue(true) != 1) {
           // incompatible flattening level: p.vertices[**]...
-          state.isSafeForOptimization = false;
+          state.couldExtractAttributePath = false;
           state.seen.clear();
           return false;
         }
@@ -2805,8 +2818,8 @@ bool Ast::getReferencedAttributesRecursive(
             state.seen.push_back(iterRhs);
             // finally the stack is complete... now eval it to find the
             // projection
-            if (!evalStack()) {
-              state.isSafeForOptimization = false;
+            if (!::translateNodeStackToAttributePath(state)) {
+              state.couldExtractAttributePath = false;
             }
           }
         }
@@ -2826,8 +2839,8 @@ bool Ast::getReferencedAttributesRecursive(
       // reference to a variable
       state.seen.push_back(node);
       // evaluate whatever we have on the stack
-      if (!evalStack()) {
-        state.isSafeForOptimization = false;
+      if (!translateNodeStackToAttributePath(state)) {
+        state.couldExtractAttributePath = false;
       }
       // fall-through intentional
     }
@@ -2835,12 +2848,12 @@ bool Ast::getReferencedAttributesRecursive(
     // different node type. no idea how to handle it...
     state.seen.clear();
     // go deeper or don't.
-    return state.isSafeForOptimization;
+    return state.couldExtractAttributePath;
   };
 
   traverseReadOnly(node, visitor, ::doNothingVisitor);
 
-  return state.isSafeForOptimization;
+  return state.couldExtractAttributePath;
 }
 
 /// @brief copies node payload from node into copy. this is *not* copying

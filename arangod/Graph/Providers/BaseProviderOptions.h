@@ -140,7 +140,8 @@ struct SingleServerBaseProviderOptions {
 
   // CollectionName to ShardMap, used if the Traversal is pushed down to
   // DBServer
-  /// Ownership of this struct is at the BaseOptions
+  // Ownership of this _collectionToShardMap stays at the BaseOptions, and is
+  // not transferred into this class.
   std::unordered_map<std::string, std::vector<std::string>> const&
       _collectionToShardMap;
 

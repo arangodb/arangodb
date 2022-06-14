@@ -6118,6 +6118,7 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
 
   // first make a pass over all traversal nodes and remove unused
   // variables from them
+  // While on it, pick up possible projections on the vertex and edge documents
   for (auto const& n : tNodes) {
     TraversalNode* traversal = ExecutionNode::castTo<TraversalNode*>(n);
     auto* options = static_cast<arangodb::traverser::TraverserOptions*>(
@@ -6216,7 +6217,7 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
       }
 
       if (useEdgeProjections) {
-        // if we found any projections, make sure that they include_from
+        // if we found any projections, make sure that they include _from
         // and _to, as the traversal code will refer to these attributes later.
         if (ServerState::instance()->isCoordinator() && !traversal->isSmart() &&
             !traversal->isLocalGraphNode() && !traversal->isUsedAsSatellite()) {

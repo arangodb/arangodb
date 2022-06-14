@@ -675,9 +675,12 @@ bool findProjections(ExecutionNode* n, Variable const* v,
 
   VarSet vars;
 
-  auto checkExpressionNode = [&vars, &attributes, expectedAttribute, v](
-                                 ExecutionNode const* current,
-                                 AstNode const* node) -> bool {
+  // Returns true if we managed to extract an attribute path on the given
+  // variable. in the true case attributes set is modified by the found
+  // AttributeNamePath.
+  auto tryAndExtractProjectionsFromExpression =
+      [&vars, &attributes, expectedAttribute, v](ExecutionNode const* current,
+                                                 AstNode const* node) -> bool {
     vars.clear();
     current->getVariablesUsedHere(vars);
 
@@ -690,9 +693,11 @@ bool findProjections(ExecutionNode* n, Variable const* v,
     return true;
   };
 
-  auto checkExpression = [&checkExpressionNode](ExecutionNode const* current,
-                                                Expression const* exp) -> bool {
-    return (exp == nullptr || checkExpressionNode(current, exp->node()));
+  auto checkExpression = [&tryAndExtractProjectionsFromExpression](
+                             ExecutionNode const* current,
+                             Expression const* exp) -> bool {
+    return (exp == nullptr ||
+            tryAndExtractProjectionsFromExpression(current, exp->node()));
   };
 
   ExecutionNode* current = n;
@@ -783,7 +788,8 @@ bool findProjections(ExecutionNode* n, Variable const* v,
       Condition const* condition = indexNode->condition();
 
       if (condition != nullptr && condition->root() != nullptr &&
-          !checkExpressionNode(indexNode, condition->root())) {
+          !tryAndExtractProjectionsFromExpression(indexNode,
+                                                  condition->root())) {
         return false;
       }
     } else {
