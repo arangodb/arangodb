@@ -25,6 +25,7 @@
 #include <cstddef>
 #include <ios>
 #include <limits>
+#include <memory>
 
 #include "RocksDBOptionFeature.h"
 
@@ -44,6 +45,7 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
 
+#include <rocksdb/filter_policy.h>
 #include <rocksdb/options.h>
 #include <rocksdb/slice_transform.h>
 #include <rocksdb/table.h>
@@ -54,6 +56,9 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 namespace {
+std::unordered_set<std::string> const compressionTypes = {
+    {"snappy"}, {"lz4"}, {"lz4hc"}, {"none"}};
+
 rocksdb::TransactionDBOptions rocksDBTrxDefaults;
 rocksdb::Options rocksDBDefaults;
 rocksdb::BlockBasedTableOptions rocksDBTableOptionsDefaults;
@@ -133,6 +138,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _transactionLockStripes(
           std::max(NumberOfCores::getValue(), std::size_t(16))),
       _transactionLockTimeout(rocksDBTrxDefaults.transaction_lock_timeout),
+      _compressionType("snappy"),
       _totalWriteBufferSize(rocksDBDefaults.db_write_buffer_size),
       _writeBufferSize(rocksDBDefaults.write_buffer_size),
       _maxWriteBufferNumber(8 + 2),  // number of column families plus 2
@@ -165,6 +171,15 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _level0StopTrigger(256),
       _pendingCompactionBytesSlowdownTrigger(128 * 1024ull),
       _pendingCompactionBytesStopTrigger(16 * 1073741824ull),
+      _checksumType("xxHash64"),
+      _formatVersion(5),
+      _enableIndexCompression(
+          rocksDBTableOptionsDefaults.enable_index_compression),
+      _prepopulateBlockCache(false),
+      _reserveTableBuilderMemory(
+          rocksDBTableOptionsDefaults.reserve_table_builder_memory),
+      _reserveTableReaderMemory(
+          rocksDBTableOptionsDefaults.reserve_table_reader_memory),
       _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _enforceBlockCacheSizeLimit(true),
       _cacheIndexAndFilterBlocks(true),
@@ -189,9 +204,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _limitOpenFilesAtStartup(false),
       _allowFAllocate(true),
       _exclusiveWrites(false),
-      _vpackCmp(new RocksDBVPackComparator()),
-      _maxWriteBufferNumberCf{0, 0, 0, 0, 0, 0, 0},
-      _minWriteBufferNumberToMergeTouched(false) {
+      _minWriteBufferNumberToMergeTouched(false),
+      _maxWriteBufferNumberCf{0, 0, 0, 0, 0, 0, 0} {
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(
       std::max(static_cast<size_t>(2), NumberOfCores::getValue()));
@@ -219,7 +233,12 @@ void RocksDBOptionFeature::collectOptions(
                      "optional path to the RocksDB WAL directory. "
                      "If not set, the WAL directory will be located inside the "
                      "regular data directory",
-                     new StringParameter(&_walDirectory));
+                     new StringParameter(&_walDirectory),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
 
   options
       ->addOption("--rocksdb.target-file-size-base",
@@ -227,7 +246,12 @@ void RocksDBOptionFeature::collectOptions(
                   "actual target file size for each level is "
                   "`--rocksdb.target-file-size-base` multiplied by "
                   "`--rocksdb.target-file-size-multiplier` ^ (level - 1)",
-                  new UInt64Parameter(&_targetFileSizeBase))
+                  new UInt64Parameter(&_targetFileSizeBase),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30701);
 
   options
@@ -236,13 +260,30 @@ void RocksDBOptionFeature::collectOptions(
           "multiplier for `--rocksdb.target-file-size`, a value of 1 means "
           "that files in different levels will have the same size",
           new UInt64Parameter(&_targetFileSizeMultiplier, /*base*/ 1,
-                              /*minValue*/ 1))
+                              /*minValue*/ 1),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30701);
+
+  options
+      ->addOption("--rocksdb.compression-type",
+                  "compression algorithm to use within RocksDB",
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_compressionType, ::compressionTypes))
+      .setIntroducedIn(31000);
 
   options
       ->addOption("--rocksdb.transaction-lock-stripes",
                   "Number of lock stripes to use for transaction locks",
-                  new UInt64Parameter(&_transactionLockStripes))
+                  new UInt64Parameter(&_transactionLockStripes),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30902);
 
   options->addOption(
@@ -251,25 +292,45 @@ void RocksDBOptionFeature::collectOptions(
       " a transaction attempts to lock a document. A negative value "
       "is not recommended as it can lead to deadlocks (0 = no waiting, < 0 no "
       "timeout)",
-      new Int64Parameter(&_transactionLockTimeout));
+      new Int64Parameter(&_transactionLockTimeout),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnAgent,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--rocksdb.total-write-buffer-size",
       "maximum total size of in-memory write buffers (0 = unbounded)",
       new UInt64Parameter(&_totalWriteBufferSize),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::Dynamic,
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnAgent,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle));
 
   options->addOption("--rocksdb.write-buffer-size",
                      "amount of data to build up in memory before converting "
                      "to a sorted on-disk file (0 = disabled)",
-                     new UInt64Parameter(&_writeBufferSize));
+                     new UInt64Parameter(&_writeBufferSize),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--rocksdb.max-write-buffer-number",
       "maximum number of write buffers that build up in memory "
       "(default: number of column families + 2 = 9 write buffers). "
       "You can increase the amount only",
-      new UInt64Parameter(&_maxWriteBufferNumber));
+      new UInt64Parameter(&_maxWriteBufferNumber),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnAgent,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle));
 
   options
       ->addOption(
@@ -281,13 +342,23 @@ void RocksDBOptionFeature::collectOptions(
           "0 = do not keep immutable flushed write buffers, which is the "
           "default and usually "
           "correct))",
-          new Int64Parameter(&_maxWriteBufferSizeToMaintain))
+          new Int64Parameter(&_maxWriteBufferSizeToMaintain),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30703);
 
   options->addOption("--rocksdb.max-total-wal-size",
                      "maximum total size of WAL files that will force flush "
                      "stale column families",
-                     new UInt64Parameter(&_maxTotalWalSize));
+                     new UInt64Parameter(&_maxTotalWalSize),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--rocksdb.delayed-write-rate",
@@ -296,35 +367,65 @@ void RocksDBOptionFeature::collectOptions(
       "have surpassed a certain number of level-0 files and need to slowdown "
       "writes",
       new UInt64Parameter(&_delayedWriteRate),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::Uncommon,
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnAgent,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle));
+
   options->addOldOption("rocksdb.delayed_write_rate",
                         "rocksdb.delayed-write-rate");
 
-  options->addOption(
-      "--rocksdb.min-write-buffer-number-to-merge",
-      "minimum number of write buffers that will be merged "
-      "together before writing to storage",
-      new UInt64Parameter(&_minWriteBufferNumberToMerge),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
+  options->addOption("--rocksdb.min-write-buffer-number-to-merge",
+                     "minimum number of write buffers that will be merged "
+                     "together before writing to storage",
+                     new UInt64Parameter(&_minWriteBufferNumberToMerge),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::Dynamic,
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
 
   options->addOption("--rocksdb.num-levels",
                      "number of levels for the database",
                      new UInt64Parameter(&_numLevels, /*base*/ 1,
-                                         /*minValue*/ 1, /*maxValue*/ 20));
+                                         /*minValue*/ 1, /*maxValue*/ 20),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
 
   options->addOption("--rocksdb.num-uncompressed-levels",
                      "number of uncompressed levels for the database",
-                     new UInt64Parameter(&_numUncompressedLevels));
+                     new UInt64Parameter(&_numUncompressedLevels),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
 
   options->addOption("--rocksdb.dynamic-level-bytes",
                      "if true, determine the number of bytes for each level "
                      "dynamically to minimize space amplification",
-                     new BooleanParameter(&_dynamicLevelBytes));
+                     new BooleanParameter(&_dynamicLevelBytes),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
 
   options->addOption("--rocksdb.max-bytes-for-level-base",
                      "if not using dynamic level sizes, this controls the "
                      "maximum total data size for level-1",
-                     new UInt64Parameter(&_maxBytesForLevelBase));
+                     new UInt64Parameter(&_maxBytesForLevelBase),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--rocksdb.max-bytes-for-level-multiplier",
@@ -335,21 +436,41 @@ void RocksDBOptionFeature::collectOptions(
       new DoubleParameter(&_maxBytesForLevelMultiplier, /*base*/ 1.0,
                           /*minValue*/ 0.0,
                           /*maxValue*/ std::numeric_limits<double>::max(),
-                          /*minInclusive*/ false));
+                          /*minInclusive*/ false),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnAgent,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--rocksdb.block-align-data-blocks",
       "if true, aligns data blocks on lesser of page size and block size",
-      new BooleanParameter(&_blockAlignDataBlocks));
+      new BooleanParameter(&_blockAlignDataBlocks),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnAgent,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--rocksdb.enable-pipelined-write",
       "if true, use a two stage write queue for WAL writes and memtable writes",
-      new BooleanParameter(&_enablePipelinedWrite));
+      new BooleanParameter(&_enablePipelinedWrite),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnAgent,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle));
 
   options->addOption("--rocksdb.enable-statistics",
                      "whether or not RocksDB statistics should be turned on",
-                     new BooleanParameter(&_enableStatistics));
+                     new BooleanParameter(&_enableStatistics),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--rocksdb.optimize-filters-for-hits",
@@ -359,7 +480,12 @@ void RocksDBOptionFeature::collectOptions(
       "that there are very few misses or the performance in the case of "
       "misses is not important",
       new BooleanParameter(&_optimizeFiltersForHits),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::Uncommon,
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnAgent,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle));
 
 #ifdef __linux__
   options->addOption(
@@ -378,36 +504,65 @@ void RocksDBOptionFeature::collectOptions(
                                    arangodb::options::Flags::Uncommon));
 #endif
 
-  options->addOption(
-      "--rocksdb.use-fsync",
-      "issue an fsync when writing to disk (set to true "
-      "for issuing fdatasync only)",
-      new BooleanParameter(&_useFSync),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  options->addOption("--rocksdb.use-fsync",
+                     "issue an fsync when writing to disk (set to true "
+                     "for issuing fdatasync only)",
+                     new BooleanParameter(&_useFSync),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::Uncommon,
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--rocksdb.max-background-jobs",
       "Maximum number of concurrent background jobs (compactions and flushes)",
       new Int32Parameter(&_maxBackgroundJobs),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
-                                          arangodb::options::Flags::Dynamic));
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::Uncommon, arangodb::options::Flags::Dynamic,
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnAgent,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle));
 
   options->addOption("--rocksdb.max-subcompactions",
                      "maximum number of concurrent subjobs for a background "
                      "compaction",
-                     new UInt32Parameter(&_maxSubcompactions));
+                     new UInt32Parameter(&_maxSubcompactions),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
 
   options->addOption("--rocksdb.level0-compaction-trigger",
                      "number of level-0 files that triggers a compaction",
-                     new Int64Parameter(&_level0CompactionTrigger));
+                     new Int64Parameter(&_level0CompactionTrigger),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
 
   options->addOption("--rocksdb.level0-slowdown-trigger",
                      "number of level-0 files that triggers a write slowdown",
-                     new Int64Parameter(&_level0SlowdownTrigger));
+                     new Int64Parameter(&_level0SlowdownTrigger),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
 
   options->addOption("--rocksdb.level0-stop-trigger",
                      "number of level-0 files that triggers a full write stop",
-                     new Int64Parameter(&_level0StopTrigger));
+                     new Int64Parameter(&_level0StopTrigger),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
+
   options
       ->addOption(
           "--rocksdb.pending-compactions-slowdown-trigger",
@@ -415,9 +570,11 @@ void RocksDBOptionFeature::collectOptions(
           new UInt64Parameter(&_pendingCompactionBytesSlowdownTrigger),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnAgent,
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30805);
+
   options
       ->addOption(
           "--rocksdb.pending-compactions-stop-trigger",
@@ -425,6 +582,7 @@ void RocksDBOptionFeature::collectOptions(
           new UInt64Parameter(&_pendingCompactionBytesStopTrigger),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnAgent,
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30805);
@@ -433,29 +591,54 @@ void RocksDBOptionFeature::collectOptions(
       "--rocksdb.num-threads-priority-high",
       "number of threads for high priority operations (e.g. flush)",
       new UInt32Parameter(&_numThreadsHigh, /*base*/ 1, /*minValue*/ 0,
-                          /*maxValue*/ 64));
+                          /*maxValue*/ 64),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnAgent,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--rocksdb.num-threads-priority-low",
       "number of threads for low priority operations (e.g. compaction)",
       new UInt32Parameter(&_numThreadsLow, /*base*/ 1, /*minValue*/ 0,
-                          /*maxValue*/ 256));
+                          /*maxValue*/ 256),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnAgent,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle));
 
-  options->addOption(
-      "--rocksdb.block-cache-size", "size of block cache in bytes",
-      new UInt64Parameter(&_blockCacheSize),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
+  options->addOption("--rocksdb.block-cache-size",
+                     "size of block cache in bytes",
+                     new UInt64Parameter(&_blockCacheSize),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::Dynamic,
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--rocksdb.block-cache-shard-bits",
       "number of shard bits to use for block cache (use -1 for default value)",
       new Int64Parameter(&_blockCacheShardBits, /*base*/ 1, /*minValue*/ -1,
                          /*maxValue*/ 20, /*minInclusive*/ true,
-                         /*maxInclusive*/ false));
+                         /*maxInclusive*/ false),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnAgent,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle));
 
   options->addOption("--rocksdb.enforce-block-cache-size-limit",
                      "if true, strictly enforces the block cache size limit",
-                     new BooleanParameter(&_enforceBlockCacheSizeLimit));
+                     new BooleanParameter(&_enforceBlockCacheSizeLimit),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
 
   options
       ->addOption(
@@ -463,8 +646,12 @@ void RocksDBOptionFeature::collectOptions(
           "if turned on, the RocksDB block cache quota will also include "
           "RocksDB memtable sizes",
           new BooleanParameter(&_cacheIndexAndFilterBlocks),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30701);
 
   options
@@ -475,8 +662,12 @@ void RocksDBOptionFeature::collectOptions(
           "making index and filter blocks be less likely to be evicted than "
           "data blocks",
           new BooleanParameter(&_cacheIndexAndFilterBlocksWithHighPriority),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30701);
 
   options
@@ -486,8 +677,12 @@ void RocksDBOptionFeature::collectOptions(
           "filter and index blocks are pinned and only evicted from cache when "
           "the table reader is freed",
           new BooleanParameter(&_pinl0FilterAndIndexBlocksInCache),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30701);
 
   options
@@ -497,20 +692,34 @@ void RocksDBOptionFeature::collectOptions(
           "the top-level index of partitioned filter and index blocks are "
           "pinned and only evicted from cache when the table reader is freed",
           new BooleanParameter(&_pinTopLevelIndexAndFilter),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30701);
 
   options->addOption(
       "--rocksdb.table-block-size",
       "approximate size (in bytes) of user data packed per block",
-      new UInt64Parameter(&_tableBlockSize));
+      new UInt64Parameter(&_tableBlockSize),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::Uncommon,
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnAgent,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle));
 
-  options->addOption(
-      "--rocksdb.recycle-log-file-num",
-      "if true, keep a pool of log files around for recycling",
-      new BooleanParameter(&_recycleLogFileNum),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  options->addOption("--rocksdb.recycle-log-file-num",
+                     "if true, keep a pool of log files around for recycling",
+                     new BooleanParameter(&_recycleLogFileNum),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::Uncommon,
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
 
   options->addOption(
       "--rocksdb.compaction-read-ahead-size",
@@ -518,27 +727,44 @@ void RocksDBOptionFeature::collectOptions(
       "running RocksDB on spinning disks, you should set this to at least 2MB. "
       "that way RocksDB's compaction is doing sequential instead of random "
       "reads.",
-      new UInt64Parameter(&_compactionReadaheadSize));
+      new UInt64Parameter(&_compactionReadaheadSize),
+      arangodb::options::makeFlags(
+          arangodb::options::Flags::DefaultNoComponents,
+          arangodb::options::Flags::OnAgent,
+          arangodb::options::Flags::OnDBServer,
+          arangodb::options::Flags::OnSingle));
 
-  options->addOption(
-      "--rocksdb.use-file-logging",
-      "use a file-base logger for RocksDB's own logs",
-      new BooleanParameter(&_useFileLogging),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  options->addOption("--rocksdb.use-file-logging",
+                     "use a file-base logger for RocksDB's own logs",
+                     new BooleanParameter(&_useFileLogging),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::Uncommon,
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
 
-  options->addOption(
-      "--rocksdb.wal-recovery-skip-corrupted",
-      "skip corrupted records in WAL recovery",
-      new BooleanParameter(&_skipCorrupted),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+  options->addOption("--rocksdb.wal-recovery-skip-corrupted",
+                     "skip corrupted records in WAL recovery",
+                     new BooleanParameter(&_skipCorrupted),
+                     arangodb::options::makeFlags(
+                         arangodb::options::Flags::Uncommon,
+                         arangodb::options::Flags::DefaultNoComponents,
+                         arangodb::options::Flags::OnAgent,
+                         arangodb::options::Flags::OnDBServer,
+                         arangodb::options::Flags::OnSingle));
 
   options
       ->addOption("--rocksdb.limit-open-files-at-startup",
                   "limit the amount of .sst files RocksDB will inspect at "
                   "startup, in order to reduce startup IO",
                   new BooleanParameter(&_limitOpenFilesAtStartup),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30405);
 
   options
@@ -546,9 +772,14 @@ void RocksDBOptionFeature::collectOptions(
                   "if true, allow RocksDB to use fallocate calls. if false, "
                   "fallocate calls are bypassed",
                   new BooleanParameter(&_allowFAllocate),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30405);
+
   options
       ->addOption(
           "--rocksdb.exclusive-writes",
@@ -558,10 +789,91 @@ void RocksDBOptionFeature::collectOptions(
           "engine, "
           "but will inhibit concurrent write operations",
           new BooleanParameter(&_exclusiveWrites),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::Uncommon,
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30504)
       .setDeprecatedIn(30800);
+
+  std::unordered_set<std::string> checksumTypes = {"crc32c", "xxHash",
+                                                   "xxHash64", "XXH3"};
+  TRI_ASSERT(checksumTypes.contains(_checksumType));
+  options
+      ->addOption("--rocksdb.checksum-type",
+                  "checksum type to use for table files",
+                  new DiscreteValuesParameter<StringParameter>(&_checksumType,
+                                                               checksumTypes),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31000);
+
+  std::unordered_set<uint32_t> formatVersions = {3, 4, 5};
+  options
+      ->addOption("--rocksdb.format-version",
+                  "table format version to use inside RocksDB",
+                  new DiscreteValuesParameter<UInt32Parameter>(&_formatVersion,
+                                                               formatVersions),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31000);
+
+  options
+      ->addOption("--rocksdb.enable-index-compression",
+                  "enable index compression",
+                  new BooleanParameter(&_enableIndexCompression),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31000);
+
+  options
+      ->addOption("--rocksdb.prepopulate-block-cache",
+                  "prepopulate block cache on flushes",
+                  new BooleanParameter(&_prepopulateBlockCache),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31000);
+
+  options
+      ->addOption("--rocksdb.reserve-table-builder-memory",
+                  "account for table building memory in block cache",
+                  new BooleanParameter(&_reserveTableBuilderMemory),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31000);
+
+  options
+      ->addOption("--rocksdb.reserve-table-reader-memory",
+                  "account for table reader memory in block cache",
+                  new BooleanParameter(&_reserveTableReaderMemory),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31000);
 
   //////////////////////////////////////////////////////////////////////////////
   /// add column family-specific options now
@@ -617,9 +929,6 @@ void RocksDBOptionFeature::validateOptions(
     FATAL_ERROR_EXIT();
   }
 
-  if (_maxSubcompactions > _numThreadsLow) {
-    _maxSubcompactions = _numThreadsLow;
-  }
   _minWriteBufferNumberToMergeTouched = options->processingResult().touched(
       "--rocksdb.min-write-buffer-number-to-merge");
 
@@ -695,9 +1004,22 @@ void RocksDBOptionFeature::start() {
     _numThreadsLow = clamped;
   }
 
+  if (_maxSubcompactions > _numThreadsLow) {
+    if (server().options()->processingResult().touched(
+            "--rocksdb.max-subcompactions")) {
+      LOG_TOPIC("e7c85", WARN, Logger::ENGINES)
+          << "overriding value for option `--rocksdb.max-subcompactions` to "
+          << _numThreadsLow
+          << " because the specified value is greater than the number of "
+             "threads for low priority operations";
+    }
+    _maxSubcompactions = _numThreadsLow;
+  }
+
   LOG_TOPIC("f66e4", TRACE, Logger::ROCKSDB)
       << "using RocksDB options:"
       << " wal_dir: '" << _walDirectory << "'"
+      << ", compression type: " << _compressionType
       << ", write_buffer_size: " << _writeBufferSize
       << ", total_write_buffer_size: " << _totalWriteBufferSize
       << ", max_write_buffer_number: " << _maxWriteBufferNumber
@@ -732,81 +1054,269 @@ void RocksDBOptionFeature::start() {
       << ", compaction_read_ahead_size: " << _compactionReadaheadSize
       << ", level0_compaction_trigger: " << _level0CompactionTrigger
       << ", level0_slowdown_trigger: " << _level0SlowdownTrigger
+      << ", checksum: " << _checksumType
+      << ", format_version: " << _formatVersion
+      << ", enable_index_compression: " << _enableIndexCompression
+      << ", prepopulate_block_cache: " << _prepopulateBlockCache
+      << ", reserve_table_builder_memory: " << _reserveTableBuilderMemory
+      << ", reserve_reader_builder_memory: " << _reserveTableReaderMemory
       << ", enable_pipelined_write: " << _enablePipelinedWrite
-      << ", optimize_filters_for_hits: " << std::boolalpha
-      << _optimizeFiltersForHits << ", use_direct_reads: " << std::boolalpha
-      << _useDirectReads
-      << ", use_direct_io_for_flush_and_compaction: " << std::boolalpha
-      << _useDirectIoForFlushAndCompaction << ", use_fsync: " << std::boolalpha
-      << _useFSync << ", allow_fallocate: " << std::boolalpha << _allowFAllocate
-      << ", max_open_files limit: " << std::boolalpha
-      << _limitOpenFilesAtStartup << ", dynamic_level_bytes: " << std::boolalpha
-      << _dynamicLevelBytes;
+      << ", optimize_filters_for_hits: " << _optimizeFiltersForHits
+      << ", use_direct_reads: " << _useDirectReads
+      << ", use_direct_io_for_flush_and_compaction: "
+      << _useDirectIoForFlushAndCompaction << ", use_fsync: " << _useFSync
+      << ", allow_fallocate: " << _allowFAllocate
+      << ", max_open_files limit: " << _limitOpenFilesAtStartup
+      << ", dynamic_level_bytes: " << _dynamicLevelBytes;
 }
 
-rocksdb::ColumnFamilyOptions RocksDBOptionFeature::columnFamilyOptions(
-    RocksDBColumnFamilyManager::Family family, rocksdb::Options const& base,
-    rocksdb::BlockBasedTableOptions const& tableBase) const {
-  rocksdb::ColumnFamilyOptions options(base);
+rocksdb::TransactionDBOptions RocksDBOptionFeature::getTransactionDBOptions()
+    const {
+  rocksdb::TransactionDBOptions result;
+  // number of locks per column_family
+  result.num_stripes =
+      std::max(size_t(1), static_cast<size_t>(_transactionLockStripes));
+  result.transaction_lock_timeout = _transactionLockTimeout;
+  return result;
+}
 
-  switch (family) {
-    case RocksDBColumnFamilyManager::Family::Definitions:
-    case RocksDBColumnFamilyManager::Family::Invalid:
-      break;
+rocksdb::Options RocksDBOptionFeature::doGetOptions() const {
+  rocksdb::Options result;
+  result.allow_fallocate = _allowFAllocate;
+  result.enable_pipelined_write = _enablePipelinedWrite;
+  result.write_buffer_size = static_cast<size_t>(_writeBufferSize);
+  result.max_write_buffer_number = static_cast<int>(_maxWriteBufferNumber);
+  // The following setting deserves an explanation: We found that if we leave
+  // the default for max_write_buffer_number_to_maintain at 0, then setting
+  // max_write_buffer_size_to_maintain to 0 has not the desired effect, rather
+  // TransactionDB::PrepareWrap then sets the latter to -1 which in turn is
+  // later corrected to max_write_buffer_number * write_buffer_size.
+  // Therefore, we set the deprecated option max_write_buffer_number_to_maintain
+  // to 1, so that we can then configure max_write_buffer_size_to_maintain
+  // correctly. Set to -1, 0 or a concrete number as needed. The default of
+  // 0 should be good, since we do not use OptimisticTransactionDBs anyway.
+  result.max_write_buffer_number_to_maintain = 1;
+  result.max_write_buffer_size_to_maintain = _maxWriteBufferSizeToMaintain;
+  result.delayed_write_rate = _delayedWriteRate;
+  result.min_write_buffer_number_to_merge =
+      static_cast<int>(_minWriteBufferNumberToMerge);
+  result.num_levels = static_cast<int>(_numLevels);
+  result.level_compaction_dynamic_level_bytes = _dynamicLevelBytes;
+  result.max_bytes_for_level_base = _maxBytesForLevelBase;
+  result.max_bytes_for_level_multiplier =
+      static_cast<int>(_maxBytesForLevelMultiplier);
+  result.optimize_filters_for_hits = _optimizeFiltersForHits;
+  result.use_direct_reads = _useDirectReads;
+  result.use_direct_io_for_flush_and_compaction =
+      _useDirectIoForFlushAndCompaction;
 
-    case RocksDBColumnFamilyManager::Family::Documents:
-      // in the documents column family, it is totally unexpected to not
-      // find a document by local document id. that means even in the lowest
-      // levels we expect to find the document when looking it up.
-      options.optimize_filters_for_hits = true;
-      [[fallthrough]];
+  result.target_file_size_base = _targetFileSizeBase;
+  result.target_file_size_multiplier =
+      static_cast<int>(_targetFileSizeMultiplier);
+  // during startup, limit the total WAL size to a small value so we do not see
+  // large WAL files created at startup.
+  // Instead, we will start with a small value here and up it later in the
+  // startup process
+  result.max_total_wal_size = 4 * 1024 * 1024;
 
-    case RocksDBColumnFamilyManager::Family::PrimaryIndex:
-    case RocksDBColumnFamilyManager::Family::GeoIndex:
-    case RocksDBColumnFamilyManager::Family::FulltextIndex:
-    case RocksDBColumnFamilyManager::Family::ZkdIndex:
-    case RocksDBColumnFamilyManager::Family::ReplicatedLogs: {
-      // fixed 8 byte object id prefix
-      options.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
-          rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
-      break;
-    }
+  result.wal_dir = _walDirectory;
 
-    case RocksDBColumnFamilyManager::Family::EdgeIndex: {
-      options.prefix_extractor = std::make_shared<RocksDBPrefixExtractor>();
-      // also use hash-search based SST file format
-      rocksdb::BlockBasedTableOptions tableOptions(tableBase);
-      tableOptions.index_type =
-          rocksdb::BlockBasedTableOptions::IndexType::kHashSearch;
-      options.table_factory = std::shared_ptr<rocksdb::TableFactory>(
-          rocksdb::NewBlockBasedTableFactory(tableOptions));
-      break;
-    }
-    case RocksDBColumnFamilyManager::Family::VPackIndex: {
-      // velocypack based index variants with custom comparator
-      rocksdb::BlockBasedTableOptions tableOptions(tableBase);
-      tableOptions.filter_policy.reset();  // intentionally no bloom filter here
-      options.table_factory = std::shared_ptr<rocksdb::TableFactory>(
-          rocksdb::NewBlockBasedTableFactory(tableOptions));
-      options.comparator = _vpackCmp.get();
-      break;
-    }
+  if (_skipCorrupted) {
+    result.wal_recovery_mode =
+        rocksdb::WALRecoveryMode::kSkipAnyCorruptedRecords;
+  } else {
+    result.wal_recovery_mode = rocksdb::WALRecoveryMode::kPointInTimeRecovery;
   }
+
+  result.max_background_jobs = static_cast<int>(_maxBackgroundJobs);
+  result.max_subcompactions = _maxSubcompactions;
+  result.use_fsync = _useFSync;
+
+  rocksdb::CompressionType compressionType = rocksdb::kNoCompression;
+  if (_compressionType == "none") {
+    compressionType = rocksdb::kNoCompression;
+  } else if (_compressionType == "snappy") {
+    compressionType = rocksdb::kSnappyCompression;
+  } else if (_compressionType == "lz4") {
+    compressionType = rocksdb::kLZ4Compression;
+  } else if (_compressionType == "lz4hc") {
+    compressionType = rocksdb::kLZ4HCCompression;
+  } else {
+    TRI_ASSERT(false);
+    LOG_TOPIC("edc91", FATAL, arangodb::Logger::STARTUP)
+        << "unexpected compression type '" << _compressionType << "'";
+    FATAL_ERROR_EXIT();
+  }
+
+  // only compress levels >= 2
+  result.compression_per_level.resize(result.num_levels);
+  for (int level = 0; level < result.num_levels; ++level) {
+    result.compression_per_level[level] =
+        (((uint64_t)level >= _numUncompressedLevels) ? compressionType
+                                                     : rocksdb::kNoCompression);
+  }
+
+  // Number of files to trigger level-0 compaction. A value <0 means that
+  // level-0 compaction will not be triggered by number of files at all.
+  // Default: 4
+  result.level0_file_num_compaction_trigger =
+      static_cast<int>(_level0CompactionTrigger);
+
+  // Soft limit on number of level-0 files. We start slowing down writes at this
+  // point. A value <0 means that no writing slow down will be triggered by
+  // number of files in level-0.
+  result.level0_slowdown_writes_trigger =
+      static_cast<int>(_level0SlowdownTrigger);
+
+  // Maximum number of level-0 files.  We stop writes at this point.
+  result.level0_stop_writes_trigger = static_cast<int>(_level0StopTrigger);
+
+  // Soft limit on pending compaction bytes. We start slowing down writes
+  // at this point.
+  result.soft_pending_compaction_bytes_limit =
+      _pendingCompactionBytesSlowdownTrigger;
+
+  // Maximum number of pending compaction bytes. We stop writes at this point.
+  result.hard_pending_compaction_bytes_limit =
+      _pendingCompactionBytesStopTrigger;
+
+  result.recycle_log_file_num = _recycleLogFileNum;
+  result.compaction_readahead_size =
+      static_cast<size_t>(_compactionReadaheadSize);
+
+  // intentionally set the RocksDB logger to ERROR because it will
+  // log lots of things otherwise
+  if (!_useFileLogging) {
+    // if we don't use file logging but log into ArangoDB's logfile,
+    // we only want real errors
+    result.info_log_level = rocksdb::InfoLogLevel::ERROR_LEVEL;
+  }
+
+  if (_enableStatistics) {
+    result.statistics = rocksdb::CreateDBStatistics();
+    // result.stats_dump_period_sec = 1;
+  }
+
+  result.table_factory.reset(
+      rocksdb::NewBlockBasedTableFactory(getTableOptions()));
+
+  result.create_if_missing = true;
+  result.create_missing_column_families = true;
+
+  if (_limitOpenFilesAtStartup) {
+    result.max_open_files = 16;
+    result.skip_stats_update_on_db_open = true;
+    result.avoid_flush_during_recovery = true;
+  } else {
+    result.max_open_files = -1;
+  }
+
+  if (_totalWriteBufferSize > 0) {
+    result.db_write_buffer_size = _totalWriteBufferSize;
+  }
+
+  // WAL_ttl_seconds needs to be bigger than the sync interval of the count
+  // manager. Should be several times bigger counter_sync_seconds
+  result.WAL_ttl_seconds = 60 * 60 * 24 * 30;  // we manage WAL file deletion
+  // ourselves, don't let RocksDB
+  // garbage collect them
+  result.WAL_size_limit_MB = 0;
+  result.memtable_prefix_bloom_size_ratio = 0.2;  // TODO: pick better value?
+  // TODO: enable memtable_insert_with_hint_prefix_extractor?
+  result.bloom_locality = 1;
+
+  if (!server().options()->processingResult().touched(
+          "rocksdb.max-write-buffer-number")) {
+    // TODO It is unclear if this value makes sense as a default, but we aren't
+    // changing it yet, in order to maintain backwards compatibility.
+
+    // user hasn't explicitly set the number of write buffers, so we use a
+    // default value based on the number of column families this is
+    // cfFamilies.size() + 2 ... but _option needs to be set before
+    //  building cfFamilies
+    // Update max_write_buffer_number above if you change number of families
+    // used
+    result.max_write_buffer_number = 8 + 2;
+  } else if (result.max_write_buffer_number < 4) {
+    // user set the value explicitly, and it is lower than recommended
+    result.max_write_buffer_number = 4;
+    LOG_TOPIC("d5c49", WARN, Logger::ENGINES)
+        << "overriding value for option `--rocksdb.max-write-buffer-number` "
+           "to 4 because it is lower than recommended";
+  }
+
+  return result;
+}
+
+rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
+    const {
+  rocksdb::BlockBasedTableOptions result;
+
+  if (_blockCacheSize > 0) {
+    result.block_cache = rocksdb::NewLRUCache(
+        _blockCacheSize, static_cast<int>(_blockCacheShardBits),
+        /*strict_capacity_limit*/ _enforceBlockCacheSizeLimit);
+    // result.cache_index_and_filter_blocks =
+    // result.pin_l0_filter_and_index_blocks_in_cache
+    // _compactionReadaheadSize > 0;
+  } else {
+    result.no_block_cache = true;
+  }
+  result.cache_index_and_filter_blocks = _cacheIndexAndFilterBlocks;
+  result.cache_index_and_filter_blocks_with_high_priority =
+      _cacheIndexAndFilterBlocksWithHighPriority;
+  result.pin_l0_filter_and_index_blocks_in_cache =
+      _pinl0FilterAndIndexBlocksInCache;
+  result.pin_top_level_index_and_filter = _pinTopLevelIndexAndFilter;
+
+  result.block_size = _tableBlockSize;
+  result.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, true));
+  result.enable_index_compression = _enableIndexCompression;
+  result.format_version = _formatVersion;
+  result.prepopulate_block_cache =
+      _prepopulateBlockCache
+          ? rocksdb::BlockBasedTableOptions::PrepopulateBlockCache::kFlushOnly
+          : rocksdb::BlockBasedTableOptions::PrepopulateBlockCache::kDisable;
+  result.reserve_table_builder_memory = _reserveTableBuilderMemory;
+  result.reserve_table_reader_memory = _reserveTableReaderMemory;
+  result.block_align = _blockAlignDataBlocks;
+
+  if (_checksumType == "crc32c") {
+    result.checksum = rocksdb::ChecksumType::kCRC32c;
+  } else if (_checksumType == "xxHash") {
+    result.checksum = rocksdb::ChecksumType::kxxHash;
+  } else if (_checksumType == "xxHash64") {
+    result.checksum = rocksdb::ChecksumType::kxxHash64;
+  } else if (_checksumType == "XXH3") {
+    result.checksum = rocksdb::ChecksumType::kXXH3;
+  } else {
+    TRI_ASSERT(false);
+    LOG_TOPIC("8d602", WARN, arangodb::Logger::FIXME)
+        << "unexpected value for '--rocksdb.checksum-type'";
+  }
+
+  return result;
+}
+
+rocksdb::ColumnFamilyOptions RocksDBOptionFeature::getColumnFamilyOptions(
+    RocksDBColumnFamilyManager::Family family) const {
+  rocksdb::ColumnFamilyOptions result =
+      RocksDBOptionsProvider::getColumnFamilyOptions(family);
 
   // override
   std::size_t index = static_cast<
       std::underlying_type<RocksDBColumnFamilyManager::Family>::type>(family);
   TRI_ASSERT(index < _maxWriteBufferNumberCf.size());
   if (_maxWriteBufferNumberCf[index] > 0) {
-    options.max_write_buffer_number =
+    result.max_write_buffer_number =
         static_cast<int>(_maxWriteBufferNumberCf[index]);
   }
   if (!_minWriteBufferNumberToMergeTouched) {
-    options.min_write_buffer_number_to_merge =
+    result.min_write_buffer_number_to_merge =
         static_cast<int>(defaultMinWriteBufferNumberToMerge(
             _totalWriteBufferSize, _writeBufferSize,
-            options.max_write_buffer_number));
+            result.max_write_buffer_number));
   }
 
-  return options;
+  return result;
 }

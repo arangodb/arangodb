@@ -237,18 +237,11 @@ struct custom_sort : public irs::sort {
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector;
   std::function<void(irs::doc_id_t&, irs::score_t*)> scorer_score;
 
-  static ptr make();
   custom_sort() : sort(irs::type<custom_sort>::get()) {}
   virtual prepared::ptr prepare() const override {
     return std::make_unique<custom_sort::prepared>(*this);
   }
 };
-
-DEFINE_FACTORY_DEFAULT(custom_sort)
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
 
 struct IResearchExpressionFilterTest
     : public ::testing::Test,
@@ -1194,7 +1187,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                               irs::score_t* res) -> void {
       ASSERT_NE(nullptr, res);
       ++scorer_score_count;
-      *res = doc;
+      *res = static_cast<irs::score_t>(doc);
     };
     auto preparedOrder = irs::Order::Prepare(order);
 

@@ -1,11 +1,86 @@
 devel
 -----
 
+* Change default `format_version` for RocksDB .sst files from 3 to 5.
 
-* Enterprise only: Restricted behaviour of Hybrid Disjoint Smart Graphs. Within a single
-  traversal or path query we now restrict that you can only switch between
-  Smart and Satellite sharding once, all queries where  more than one switch
-  is (in theory) possible will be rejected. e.g:
+* Added support for creating autoincrement keys on cluster mode, but only for 
+  single sharded collections.
+
+* Add support for LZ4 and LZ4HC compression support for RocksDB.
+
+* Allow parallel access to the shards of smart edge collections in AQL via 
+  parallel GatherNodes.
+
+* Update RocksDB internal table checksum type to xxHash64.
+
+* Updated arangosync to v2.10.0.
+
+* Added several startup option to configure parallelism for individual Pregel 
+  jobs:
+
+  - `--pregel.min-parallelism`: minimum parallelism usable in Pregel jobs.
+  - `--pregel.max-parallelism`: maximum parallelism usable in Pregel jobs.
+  - `--pregel.parallelism`: default parallelism to use in Pregel jobs.
+
+  These parallelism options can be used by administrators to set concurrency
+  defaults and bounds for Pregel jobs. Each individual Pregel job can set
+  its own parallelism value using the job's `parallelism` option, but the
+  job's parallelism value will be clamped to the bounds defined by
+  `--pregel,min-parallelism` and `--pregel.max-parallelism`. If a job does
+  not set its `parallelism` value, it will default to the parallelism value
+  configured via `--pregel.parallelism`.
+
+* Added startup options to configure the usage of memory-mapped files for 
+  Pregel temporary data:
+
+  - `--pregel.memory-mapped-files`: if set to `true`, Pregel jobs will by 
+    default store their temporary data in disk-backed memory-mapped files. 
+    If set to `false`, the temporary data of Pregel jobs will be buffered in 
+    RAM. The default value is `true`, meaning that memory-mapped files will
+    be used. The option can be overriden for each Pregel job by setting the 
+    `useMemoryMaps` option of the job.
+
+  - `--pregel.memory-mapped-files-location-type`: location for memory-mapped
+    files written by Pregel. This option is only meaningful if memory-mapped
+    files are actually used. The option can have one of the following values:
+    - `temp-directory`: store memory-mapped files in the temporary directory,
+      as configured via `--temp.path`. If `--temp.path` is not set, the
+      system's temporary directory will be used.
+    - `database-directory`: store memory-mapped files in a separate directory
+      underneath the database directory. 
+    - `custom`: use a custom directory location for memory-mapped files. The
+      exact location must be set via the configuration parameter
+      `--pregel.memory-mapped-files-custom-path`.
+
+    The default value for this option is `temp-directory`.
+
+  - `--pregel.memory-mapped-files-custom-path`: custom directory location for
+    Pregel's memory-mapped files. This setting can only be used if the option
+    `--pregel.memory-mapped-files-location-type` is set to `custom`.
+
+  The default location for Pregel's memory-mapped files is the temporary
+  directory (`temp-directory`), which may not provide enough capacity for 
+  larger Pregel jobs.
+  It may be more sensible to configure a custom directory for memory-mapped
+  files and provide the necessary disk space there (`custom`). Such custom 
+  directory can be mounted on ephemeral storage, as the files are only needed 
+  temporarily.
+  There is also the option to use a subdirectory of the database directory 
+  as the storage location for the memory-mapped files (`database-directory`). 
+  The database directory often provides a lot of disk space capacity, but 
+  when it is used for both the regular database data and Pregel's memory-mapped
+  files, it has to provide enough capacity to store both.
+
+* Pregel status now reports whether memory mapped files are used in a job.
+
+* Fixed issue BTS-875.
+
+* Updated arangosync to v2.10.0-preview-1.
+
+* Enterprise only: Restricted behaviour of Hybrid Disjoint Smart Graphs. Within 
+  a single traversal or path query we now restrict that you can only switch 
+  between Smart and Satellite sharding once, all queries where more than one 
+  switch is (in theory) possible will be rejected. e.g:
   ```
     FOR v IN 2 OUTBOUND @start smartToSatEdges, satToSmartEdges
   ```

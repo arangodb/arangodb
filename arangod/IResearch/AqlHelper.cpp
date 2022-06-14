@@ -353,11 +353,11 @@ void visitReferencedVariables(
 
 aql::AstNode const ScopedAqlValue::INVALID_NODE(aql::NODE_TYPE_ROOT);
 
-/*static*/ irs::string_ref const& ScopedAqlValue::typeString(
+/*static*/ irs::string_ref ScopedAqlValue::typeString(
     ScopedValueType type) noexcept {
-  static irs::string_ref const kTypeNames[] = {"invalid", "null",   "boolean",
-                                               "double",  "string", "array",
-                                               "range",   "object"};
+  static irs::string_ref constexpr kTypeNames[] = {
+      "invalid", "null",  "boolean", "double",
+      "string",  "array", "range",   "object"};
 
   TRI_ASSERT(size_t(type) < std::size(kTypeNames));
 
@@ -665,7 +665,7 @@ bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
    public:
     AttributeChecker(std::string& str, QueryContext const& ctx,
                      bool expansion) noexcept
-        : _str{&str}, _ctx{&ctx}, _expansion(expansion) {}
+        : _str{str}, _ctx{ctx}, _expansion{expansion} {}
 
     bool attributeAccess(aql::AstNode const& node) {
       irs::string_ref strValue;
@@ -683,14 +683,14 @@ bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
       if (!_expansion) {
         return false;
       }
-      _str->append("[*]");
+      _str.append("[*]");
       return true;
     }
 
     bool indexAccess(aql::AstNode const& node) {
       _value.reset(node);
 
-      if (!_value.execute(*_ctx)) {
+      if (!_value.execute(_ctx)) {
         // failed to evaluate value
         return false;
       }
@@ -716,23 +716,23 @@ bool nameFromAttributeAccess(std::string& name, aql::AstNode const& node,
     }
 
     void append(irs::string_ref const& value) {
-      if (!_str->empty()) {
-        (*_str) += NESTING_LEVEL_DELIMITER;
+      if (!_str.empty()) {
+        _str += NESTING_LEVEL_DELIMITER;
       }
-      _str->append(value.c_str(), value.size());
+      _str.append(value.c_str(), value.size());
     }
 
     void append(int64_t value) {
-      (*_str) += NESTING_LIST_OFFSET_PREFIX;
+      _str += NESTING_LIST_OFFSET_PREFIX;
       auto const written = sprintf(_buf, "%" PRIu64, value);
-      _str->append(_buf, written);
-      (*_str) += NESTING_LIST_OFFSET_SUFFIX;
+      _str.append(_buf, written);
+      _str += NESTING_LIST_OFFSET_SUFFIX;
     }
 
    private:
     ScopedAqlValue _value;
-    std::string* _str;
-    QueryContext const* _ctx;
+    std::string& _str;
+    QueryContext const& _ctx;
     char _buf[21];  // enough to hold all numbers up to 64-bits
     bool _expansion;
   } builder{name, ctx, allowExpansion};

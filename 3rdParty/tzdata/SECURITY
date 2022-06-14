@@ -1,0 +1,15 @@
+Please report any sensitive security-related bugs via email to the
+tzdb designated coordinators, currently Paul Eggert
+<eggert@cs.ucla.edu> and Tim Parenti <tim@timtimeonline.com>.
+Put "tzdb security" at the start of your email's subject line.
+We prefer communications to be in English.
+
+You should receive a response within a week. If not, please follow up
+via email to make sure we received your original message.
+
+If we confirm the bug, we plan to notify affected third-party services
+or software that we know about, prepare an advisory, commit fixes to
+the main development branch as quickly as is practical, and finally
+publish the advisory on tz@iana.org.  As with all tzdb contributions,
+we give credit to security contributors unless they wish to remain
+anonymous.

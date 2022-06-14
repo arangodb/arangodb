@@ -26,7 +26,7 @@
 
 #include "Basics/Endian.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
+#include "VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "IResearchAnalyzerFeature.h"
 #include "IResearch/GeoAnalyzer.h"
@@ -80,21 +80,6 @@ constexpr bool const Endianness = BigEndian;  // current PK endianness
 // --SECTION--                                       FieldIterator dependencies
 // ----------------------------------------------------------------------------
 
-enum AttributeType : uint8_t {
-  AT_REG =
-      arangodb::basics::VelocyPackHelper::AttributeBase,  // regular attribute
-  AT_KEY = arangodb::basics::VelocyPackHelper::KeyAttribute,    // _key
-  AT_REV = arangodb::basics::VelocyPackHelper::RevAttribute,    // _rev
-  AT_ID = arangodb::basics::VelocyPackHelper::IdAttribute,      // _id
-  AT_FROM = arangodb::basics::VelocyPackHelper::FromAttribute,  // _from
-  AT_TO = arangodb::basics::VelocyPackHelper::ToAttribute       // _to
-};                                                              // AttributeType
-
-static_assert(
-    arangodb::iresearch::adjacencyChecker<AttributeType>::checkAdjacency<
-        AT_TO, AT_FROM, AT_ID, AT_REV, AT_KEY, AT_REG>(),
-    "Values are not adjacent");
-
 irs::string_ref const PK_COLUMN("@_PK");
 size_t constexpr DEFAULT_POOL_SIZE = 8;  // arbitrary value
 irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder>
@@ -114,46 +99,6 @@ inline void append(std::string& out, size_t value) {
   out.resize(size + 21);         // enough to hold all numbers up to 64-bits
   auto const written = sprintf(&out[size], IR_SIZE_T_SPECIFIER, value);
   out.resize(size + written);
-}
-
-inline bool keyFromSlice(VPackSlice keySlice, irs::string_ref& key) {
-  // according to Helpers.cpp, see
-  // `transaction::helpers::extractKeyFromDocument`
-  // `transaction::helpers::extractRevFromDocument`
-  // `transaction::helpers::extractIdFromDocument`
-  // `transaction::helpers::extractFromFromDocument`
-  // `transaction::helpers::extractToFromDocument`
-
-  switch (keySlice.type()) {
-    case VPackValueType::SmallInt:               // system attribute
-      switch (AttributeType(keySlice.head())) {  // system attribute type
-        case AT_REG:
-          return false;
-        case AT_KEY:
-          key = arangodb::StaticStrings::KeyString;
-          break;
-        case AT_REV:
-          key = arangodb::StaticStrings::RevString;
-          break;
-        case AT_ID:
-          key = arangodb::StaticStrings::IdString;
-          break;
-        case AT_FROM:
-          key = arangodb::StaticStrings::FromString;
-          break;
-        case AT_TO:
-          key = arangodb::StaticStrings::ToString;
-          break;
-        default:
-          return false;
-      }
-      return true;
-    case VPackValueType::String:  // regular attribute
-      key = arangodb::iresearch::getStringRef(keySlice);
-      return true;
-    default:  // unsupported
-      return false;
-  }
 }
 
 inline bool canHandleValue(
@@ -202,7 +147,7 @@ inline bool inObjectFiltered(std::string& buffer,
                              arangodb::iresearch::IteratorValue const& value) {
   irs::string_ref key;
 
-  if (!keyFromSlice(value.key, key)) {
+  if (!arangodb::iresearch::keyFromSlice(value.key, key)) {
     return false;
   }
 
@@ -223,7 +168,7 @@ inline bool inObject(std::string& buffer,
                      arangodb::iresearch::IteratorValue const& value) {
   irs::string_ref key;
 
-  if (!keyFromSlice(value.key, key)) {
+  if (!arangodb::iresearch::keyFromSlice(value.key, key)) {
     return false;
   }
 
@@ -279,6 +224,98 @@ inline Filter getFilter(VPackSlice value,
                         meta._includeAllFields];
 }
 
+typedef bool (*InvertedIndexFilter)(std::string& buffer,
+                       arangodb::iresearch::IResearchInvertedIndexMeta::FieldRecord const*& context,
+                       arangodb::iresearch::IteratorValue const& value);
+
+template<bool defaultAccept>
+inline bool acceptAll(
+    std::string& buffer,
+    arangodb::iresearch::IResearchInvertedIndexMeta::FieldRecord const*&
+        context,
+    arangodb::iresearch::IteratorValue const& value) {
+  irs::string_ref key;
+
+  if (!arangodb::iresearch::keyFromSlice(value.key, key)) {
+    return false;
+  }
+
+  buffer.append(key.c_str(), key.size());
+  for (auto& nested : context->_fields) {
+    auto fullName = nested.path();
+    // FIXME: starts_with will not work in general/ need to check up to first nesting delimiter!
+    if (fullName.starts_with(buffer)) {
+      if (buffer == nested.attributeString()) {
+        if (value.value.isObject() &&
+            !nested.analyzer()->accepts(
+                arangodb::iresearch::AnalyzerValueType::Object)) {
+          THROW_ARANGO_EXCEPTION_FORMAT(
+              TRI_ERROR_NOT_IMPLEMENTED,
+              "Inverted index does not support indexing objects and configured "
+              "analyzer does "
+              "not accept objects. Please use another analyzer to process an "
+              "object or exclude field '%s' "
+              "from index definition",
+              buffer.c_str());
+        } else if (nested.isArray() && !value.value.isArray()) {
+          // we were expecting an array but something else were given
+          // this case is just skipped. Just like regular indicies do
+          return false;
+        } else if (value.value.isArray() && !nested.isArray() &&
+                   nested.nested().empty()) {
+          if (!nested.analyzer()->accepts(
+                  arangodb::iresearch::AnalyzerValueType::Array)) {
+            THROW_ARANGO_EXCEPTION_FORMAT(
+                TRI_ERROR_NOT_IMPLEMENTED,
+                "Configured analyzer does not accepts arrays and field has no "
+                "expansion set. "
+                "Please use another analyzer to process an array or exclude "
+                "field '%s' "
+                "from index definition or enable expansion",
+                buffer.c_str());
+          }
+        }
+      }
+      if (fullName == buffer) {
+        context = &nested;
+      }
+      return true;
+    }
+  }
+  return defaultAccept;
+}
+
+inline bool inArrayInverted(std::string& buffer,
+                           arangodb::iresearch::IResearchInvertedIndexMeta::FieldRecord const*& context,
+                           arangodb::iresearch::IteratorValue const& value) {
+  if (context->trackListPositions()) {
+    buffer += arangodb::iresearch::NESTING_LIST_OFFSET_PREFIX;
+    append(buffer, value.pos);
+    buffer += arangodb::iresearch::NESTING_LIST_OFFSET_SUFFIX;
+  } else {
+    buffer += "[*]";
+  }
+  return true;
+}
+
+InvertedIndexFilter const valueAcceptorsInverted[] = {
+  &acceptAll<false>,
+  &acceptAll<true>,
+  &inArrayInverted,
+  &inArrayInverted
+};
+
+inline InvertedIndexFilter getFilter(
+    VPackSlice value,
+    arangodb::iresearch::IResearchInvertedIndexMeta::FieldRecord const&
+        meta) noexcept {
+  TRI_ASSERT(arangodb::iresearch::isArrayOrObject(value));
+
+  return valueAcceptorsInverted
+      [value.isArray() * 2 +
+       meta._includeAllFields];
+}
+
 std::string getDocumentId(irs::string_ref collection, VPackSlice document) {
   std::string_view const key =
       arangodb::transaction::helpers::extractKeyPart(document);
@@ -319,17 +356,19 @@ namespace iresearch {
 // ----------------------------------------------------------------------------
 // --SECTION--                                     FieldIterator implementation
 // ----------------------------------------------------------------------------
-
-FieldIterator::FieldIterator(arangodb::transaction::Methods& trx,
+template<typename IndexMetaStruct, typename LevelMeta>
+FieldIterator<IndexMetaStruct, LevelMeta>::FieldIterator(arangodb::transaction::Methods& trx,
                              irs::string_ref collection, IndexId linkId)
     : _trx(&trx),
       _collection(collection),
       _linkId(linkId),
-      _isDBServer(ServerState::instance()->isDBServer()) {
+      _isDBServer(ServerState::instance()->isDBServer()),
+      _disableFlush(false) {
   // initialize iterator's value
 }
 
-void FieldIterator::reset(VPackSlice doc, FieldMeta const& linkMeta) {
+template<typename IndexMetaStruct, typename LevelMeta>
+void FieldIterator<IndexMetaStruct, LevelMeta>::reset(VPackSlice doc, IndexMetaStruct const& linkMeta) {
   _slice = doc;
   _begin = nullptr;
   _end = nullptr;
@@ -338,15 +377,22 @@ void FieldIterator::reset(VPackSlice doc, FieldMeta const& linkMeta) {
   _primitiveTypeResetter = nullptr;
   _stack.clear();
   _nameBuffer.clear();
+  _disableFlush = false;
 
   // push the provided 'doc' on stack and initialize current value
-  auto const filter = getFilter(doc, linkMeta);
-  _stack.emplace_back(doc, 0, linkMeta, filter);
-
+  auto const filter = getFilter(doc, static_cast<LevelMeta const&>(linkMeta));
+#ifdef USE_ENTERPRISE
+  // this is set for root level as general mark.
+  _hasNested = MetaTraits::hasNested(linkMeta);
+  pushLevel(doc, static_cast<LevelMeta const&>(linkMeta), filter);
+#else
+  _stack.emplace_back(doc, 0, static_cast<LevelMeta const&>(linkMeta), filter);
+#endif
   next();
 }
 
-void FieldIterator::setBoolValue(VPackSlice const value) {
+template<typename IndexMetaStruct, typename LevelMeta>
+void FieldIterator<IndexMetaStruct, LevelMeta>::setBoolValue(VPackSlice const value) {
   TRI_ASSERT(value.isBool());
 
   arangodb::iresearch::kludge::mangleBool(_nameBuffer);
@@ -362,7 +408,8 @@ void FieldIterator::setBoolValue(VPackSlice const value) {
   _value._fieldFeatures = {};
 }
 
-void FieldIterator::setNumericValue(VPackSlice const value) {
+template<typename IndexMetaStruct, typename LevelMeta>
+void FieldIterator<IndexMetaStruct, LevelMeta>::setNumericValue(VPackSlice const value) {
   TRI_ASSERT(value.isNumber());
 
   arangodb::iresearch::kludge::mangleNumeric(_nameBuffer);
@@ -380,7 +427,8 @@ void FieldIterator::setNumericValue(VPackSlice const value) {
                            NumericStreamFeatures.size()};
 }
 
-void FieldIterator::setNullValue(VPackSlice const value) {
+template<typename IndexMetaStruct, typename LevelMeta>
+void FieldIterator<IndexMetaStruct, LevelMeta>::setNullValue(VPackSlice const value) {
   TRI_ASSERT(value.isNull());
 
   arangodb::iresearch::kludge::mangleNull(_nameBuffer);
@@ -396,7 +444,8 @@ void FieldIterator::setNullValue(VPackSlice const value) {
   _value._fieldFeatures = {};
 }
 
-bool FieldIterator::setValue(VPackSlice const value,
+template<typename IndexMetaStruct, typename LevelMeta>
+bool FieldIterator<IndexMetaStruct, LevelMeta>::setValue(VPackSlice const value,
                              FieldMeta::Analyzer const& valueAnalyzer) {
   TRI_ASSERT(  // assert
       (value.isCustom() &&
@@ -508,7 +557,11 @@ bool FieldIterator::setValue(VPackSlice const value,
       };
     } break;
     default: {
-      iresearch::kludge::mangleField(_nameBuffer, true, valueAnalyzer);
+      if constexpr (std::is_same_v<IndexMetaStruct, IResearchInvertedIndexMeta>) {
+        iresearch::kludge::mangleField(_nameBuffer, false, valueAnalyzer);
+      } else {
+        iresearch::kludge::mangleField(_nameBuffer, true, valueAnalyzer);
+      }
       _value._analyzer = std::move(analyzer);
       _value._fieldFeatures = pool->fieldFeatures();
       _value._indexFeatures = pool->indexFeatures();
@@ -531,7 +584,8 @@ bool FieldIterator::setValue(VPackSlice const value,
   return true;
 }
 
-void FieldIterator::next() {
+template<typename IndexMetaStruct, typename LevelMeta>
+void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
   TRI_ASSERT(valid());
 
   if (_currentTypedAnalyzer) {
@@ -547,28 +601,30 @@ void FieldIterator::next() {
     }
   }
 
-  FieldMeta const* context = top().meta;
+  auto const* context = top().meta;
 
   // restore value
   _value._storeValues = context->_storeValues;
   _value._value = irs::bytes_ref::NIL;
-
+  _value._root = false;
+  _needDoc = false;
   while (true) {
   setAnalyzers:
     while (_begin != _end) {
       // remove previous suffix
       _nameBuffer.resize(_prefixLength);
-
       if (setValue(_valueSlice, *_begin++)) {
         return;
       }
     }
-
     while (true) {
       // pop all exhausted iterators
       while (!top().it.next()) {
+#ifdef USE_ENTERPRISE
+        popLevel();
+#else
         _stack.pop_back();
-
+#endif
         if (!valid()) {
           // reached the end
           return;
@@ -593,6 +649,14 @@ void FieldIterator::next() {
         continue;
       }
 
+      if constexpr (std::is_same_v<IndexMetaStruct,
+                                   IResearchInvertedIndexMeta>) {
+        if (level.filter == &acceptOnlyObjects) {
+          // Requesting nested document
+          _needDoc = true;
+        } 
+      }
+
       _value._storeValues = context->_storeValues;
       _value._value = irs::bytes_ref::NIL;
       _begin = nullptr;
@@ -607,13 +671,32 @@ void FieldIterator::next() {
           return;
         case VPackValueType::Object:
         case VPackValueType::Array: {
+#ifdef USE_ENTERPRISE
+          // FIXME: move to setRoot or smth
+          if constexpr (std::is_same_v<IndexMetaStruct,
+                                       IResearchInvertedIndexMeta>) {
+            if (level.isRoot) {
+              _value._root = true;
+              kludge::mangleNested(_nameBuffer);
+              _value._name = _nameBuffer;
+              _value._analyzer.reset();
+              _value._indexFeatures = irs::IndexFeatures::NONE;
+              _value._fieldFeatures = {};
+              return;
+            }
+          }
+          auto filter = getFilter(valueSlice, *context);
+          bool setAnalyzers = pushLevel(valueSlice, *context, filter);
+#else
+          bool setAnalyzers = true;
           _stack.emplace_back(valueSlice, _nameBuffer.size(), *context,
-                              getFilter(valueSlice, *context));
-
-          auto const& analyzers = context->_analyzers;
-          _begin = analyzers.data() + context->_primitiveOffset;
-          _end = analyzers.data() + analyzers.size();
-
+                              false, getFilter(valueSlice, *context));
+#endif
+          if (setAnalyzers) {
+            auto const& analyzers = context->_analyzers;
+            _begin = analyzers.data() + context->_primitiveOffset;
+            _end = analyzers.data() + analyzers.size();
+          } 
           _prefixLength = _nameBuffer.size();  // save current prefix length
           _valueSlice = valueSlice;
 
@@ -723,304 +806,314 @@ bool StoredValue::write(irs::data_output& out) const {
   }
   return true;
 }
-
-InvertedIndexFieldIterator::InvertedIndexFieldIterator(
-    arangodb::transaction::Methods&, irs::string_ref,
-    IndexId indexId)
-    : _indexId(indexId) {
-  // we need id column for range queries
-  _value._storeValues = ValueStorage::ID;
-}
-
-void InvertedIndexFieldIterator::next() {
-  TRI_ASSERT(valid());
-  if (_currentTypedAnalyzer) {
-    if (_currentTypedAnalyzer->next()) {
-      TRI_ASSERT(_primitiveTypeResetter);
-      TRI_ASSERT(_currentTypedAnalyzerValue);
-      TRI_ASSERT(_value._analyzer.get());
-      _primitiveTypeResetter(_value._analyzer.get(),
-                             _currentTypedAnalyzerValue->value);
-      return;
-    }
-    _currentTypedAnalyzer.reset();
-  }
-  while (_begin != _end) {
-    _valueSlice = VPackSlice::noneSlice();
-    while (!_arrayStack.empty()) {
-      if (_arrayStack.back().valid()) {
-        if (_begin->expansion().empty()) {
-          _valueSlice = *_arrayStack.back();
-        } else {
-          // for array subobjects we index "null" in case of absence as declared
-          // for other indicies
-          _valueSlice = get(*_arrayStack.back(), _begin->expansion(),
-                            VPackSlice::nullSlice());
-        }
-        ++_arrayStack.back();
-        _nameBuffer.resize(_prefixLength);  // FIXME: just clear should work!
-        break;
-      }
-      _arrayStack.pop_back();
-    }
-    if (_arrayStack.empty()) {
-      while (_valueSlice.isNone()) {
-        if (++_begin == _end) {
-          TRI_ASSERT(!valid());
-          return;  // exhausted
-        }
-        _valueSlice = get(_slice, _begin->attribute(), VPackSlice::noneSlice());
-        if (!_valueSlice.isNone() && !_valueSlice.isArray() &&
-            _begin->isArray()) {
-          _valueSlice = VPackSlice::noneSlice();
-        }
-      }
-      _nameBuffer.clear();
-    }
-    if (!_valueSlice.isNone()) {
-      if (_nameBuffer.empty()) {
-#ifdef USE_ENTERPRISE
-        if (!_parentNameBuffer.empty()) {
-          _nameBuffer = _parentNameBuffer;
-          _nameBuffer += NESTING_LEVEL_DELIMITER;
-        }
-#endif
-        bool isFirst = true;
-        for (auto& a : _begin->attribute()) {
-          if (!isFirst) {
-            _nameBuffer += NESTING_LEVEL_DELIMITER;
-          }
-          _nameBuffer.append(a.name);
-          isFirst = false;
-        }
-        if (!_begin->expansion().empty()) {
-          _nameBuffer.append("[*]");
-        }
-        for (auto& a : _begin->expansion()) {
-          _nameBuffer += NESTING_LEVEL_DELIMITER;
-          _nameBuffer.append(a.name);
-        }
-      }
-      TRI_ASSERT(_begin->analyzer()._pool);
-      switch (_valueSlice.type()) {
-        case VPackValueType::Null:
-          setNullValue();
-          return;
-        case VPackValueType::Bool:
-          setBoolValue(_valueSlice);
-          return;
-        case VPackValueType::Object:
-          if (setValue(_valueSlice, _begin->analyzer())) {
-            return;
-          }
-          THROW_ARANGO_EXCEPTION_FORMAT(
-              TRI_ERROR_NOT_IMPLEMENTED,
-              "Inverted index does not support indexing objects and configured "
-              "analyzer does "
-              "not accept objects. Please use another analyzer to process an "
-              "object or exclude field '%s' "
-              "from index definition",
-              _nameBuffer.c_str());
-          return;  // never reached
-        case VPackValueType::Array: {
-#ifdef USE_ENTERPRISE
-          if (!_begin->nested().empty()) {
-            return;
-          }
-#endif
-          if (_begin->isArray() && _arrayStack.empty()) {
-            _arrayStack.push_back(VPackArrayIterator(_valueSlice));
-            _prefixLength = _nameBuffer.size();
-          } else if (setValue(_valueSlice, _begin->analyzer())) {
-            return;
-          } else {
-            THROW_ARANGO_EXCEPTION_FORMAT(
-                TRI_ERROR_NOT_IMPLEMENTED,
-                "Configured analyzer does not accepts arrays and field has no "
-                "expansion set. "
-                "Please use another analyzer to process an array or exclude "
-                "field '%s' "
-                "from index definition or enable expansion",
-                _nameBuffer.c_str());
-          }
-          break;
-        }
-        case VPackValueType::Double:
-        case VPackValueType::Int:
-        case VPackValueType::UInt:
-        case VPackValueType::SmallInt:
-          setNumericValue(_valueSlice);
-          return;
-        case VPackValueType::String: {
-          setValue(_valueSlice, _begin->analyzer());
-          return;
-        }
-        default:
-          break;
-      }
-    }
-  }
-}
-
-void InvertedIndexFieldIterator::setBoolValue(VPackSlice const value) {
-  TRI_ASSERT(value.isBool());
-
-  arangodb::iresearch::kludge::mangleBool(_nameBuffer);
-
-  // init stream
-  auto stream = BoolStreamPool.emplace(AnalyzerPool::BooleanStreamTag());
-  static_cast<irs::boolean_token_stream*>(stream.get())->reset(value.getBool());
-
-  // set field properties
-  _value._name = _nameBuffer;
-  _value._analyzer = std::move(stream);
-  _value._indexFeatures = irs::IndexFeatures::NONE;
-  _value._fieldFeatures = {};
-}
-
-void InvertedIndexFieldIterator::setNumericValue(VPackSlice const value) {
-  TRI_ASSERT(value.isNumber());
-
-  arangodb::iresearch::kludge::mangleNumeric(_nameBuffer);
-
-  // init stream
-  auto stream = NumericStreamPool.emplace(AnalyzerPool::NumericStreamTag());
-  static_cast<irs::numeric_token_stream*>(stream.get())
-      ->reset(value.getNumber<double>());
-
-  // set field properties
-  _value._name = _nameBuffer;
-  _value._analyzer = std::move(stream);  // FIXME don't use shared_ptr
-  _value._indexFeatures = irs::IndexFeatures::NONE;
-  _value._fieldFeatures = {NumericStreamFeatures.begin(),
-                           NumericStreamFeatures.size()};
-}
-
-void InvertedIndexFieldIterator::setNullValue() {
-  arangodb::iresearch::kludge::mangleNull(_nameBuffer);
-
-  // init stream
-  auto stream = NullStreamPool.emplace(AnalyzerPool::NullStreamTag());
-  static_cast<irs::null_token_stream*>(stream.get())->reset();
-
-  // set field properties
-  _value._name = _nameBuffer;
-  _value._analyzer = std::move(stream);  // FIXME don't use shared_ptr
-  _value._indexFeatures = irs::IndexFeatures::NONE;
-  _value._fieldFeatures = {};
-}
-
-bool InvertedIndexFieldIterator::setValue(
-    VPackSlice const value, FieldMeta::Analyzer const& valueAnalyzer) {
-  TRI_ASSERT(value.isObject() || value.isArray() || value.isString());
-
-  auto& pool = valueAnalyzer._pool;
-
-  if (!pool) {
-    LOG_TOPIC("189db", WARN, iresearch::TOPIC)
-        << "got nullptr analyzer factory";
-
-    return false;
-  }
-
-  irs::string_ref valueRef;
-  AnalyzerValueType valueType{AnalyzerValueType::Undefined};
-
-  switch (value.type()) {
-    case VPackValueType::Array: {
-      valueRef = iresearch::ref<char>(value);
-      valueType = AnalyzerValueType::Array;
-    } break;
-    case VPackValueType::Object: {
-      valueRef = iresearch::ref<char>(value);
-      valueType = AnalyzerValueType::Object;
-    } break;
-    case VPackValueType::String: {
-      valueRef = iresearch::getStringRef(value);
-      valueType = AnalyzerValueType::String;
-    } break;
-    default:
-      TRI_ASSERT(false);
-      return false;
-  }
-
-  if (!pool->accepts(valueType)) {
-    return false;
-  }
-
-  // init stream
-  auto analyzer = pool->get();
-
-  if (!analyzer) {
-    LOG_TOPIC("22eeb", WARN, arangodb::iresearch::TOPIC)
-        << "got nullptr from analyzer factory, name '" << pool->name() << "'";
-    return false;
-  }
-  if (!analyzer->reset(valueRef)) {
-    return false;
-  }
-  // set field properties
-  switch (pool->returnType()) {
-    case AnalyzerValueType::Bool: {
-      if (!analyzer->next()) {
-        return false;
-      }
-      _currentTypedAnalyzer = std::move(analyzer);
-      _currentTypedAnalyzerValue =
-          irs::get<VPackTermAttribute>(*_currentTypedAnalyzer);
-      TRI_ASSERT(_currentTypedAnalyzerValue);
-      setBoolValue(_currentTypedAnalyzerValue->value);
-      _primitiveTypeResetter = [](irs::token_stream* stream,
-                                  VPackSlice slice) -> void {
-        TRI_ASSERT(stream);
-        TRI_ASSERT(slice.isBool());
-        auto* bool_stream = basics::downCast<irs::boolean_token_stream>(stream);
-        bool_stream->reset(slice.getBool());
-      };
-    } break;
-    case AnalyzerValueType::Number: {
-      if (!analyzer->next()) {
-        return false;
-      }
-      _currentTypedAnalyzer = std::move(analyzer);
-      _currentTypedAnalyzerValue =
-          irs::get<VPackTermAttribute>(*_currentTypedAnalyzer);
-      TRI_ASSERT(_currentTypedAnalyzerValue);
-      setNumericValue(_currentTypedAnalyzerValue->value);
-      _primitiveTypeResetter = [](irs::token_stream* stream,
-                                  VPackSlice slice) -> void {
-        TRI_ASSERT(stream);
-        TRI_ASSERT(slice.isNumber());
-        auto* number_stream =
-            basics::downCast<irs::numeric_token_stream>(stream);
-        number_stream->reset(slice.getNumber<double>());
-      };
-    } break;
-    default: {
-      iresearch::kludge::mangleField(_nameBuffer, false, valueAnalyzer);
-      _value._analyzer = std::move(analyzer);
-      _value._fieldFeatures = pool->fieldFeatures();
-      _value._indexFeatures = pool->indexFeatures();
-      _value._name = _nameBuffer;
-    } break;
-  }
-  auto* storeFunc = pool->storeFunc();
-  if (storeFunc) {
-    auto const valueSlice =
-        storeFunc(_currentTypedAnalyzer ? _currentTypedAnalyzer.get()
-                                        : _value._analyzer.get(),
-                  value, _buffer);
-
-    if (!valueSlice.isNone()) {
-      _value._value = iresearch::ref<irs::byte_type>(valueSlice);
-      _value._storeValues = std::max(ValueStorage::VALUE, _value._storeValues);
-    }
-  }
-  return true;
-}
+//
+//InvertedIndexFieldIterator::InvertedIndexFieldIterator(
+//    arangodb::transaction::Methods&, irs::string_ref,
+//    IndexId indexId)
+//    : _indexId(indexId) {
+//  // we need id column for range queries
+//  _value._storeValues = ValueStorage::ID;
+//}
+//
+//void InvertedIndexFieldIterator::next() {
+//  TRI_ASSERT(valid());
+//  if (_currentTypedAnalyzer) {
+//    if (_currentTypedAnalyzer->next()) {
+//      TRI_ASSERT(_primitiveTypeResetter);
+//      TRI_ASSERT(_currentTypedAnalyzerValue);
+//      TRI_ASSERT(_value._analyzer.get());
+//      _primitiveTypeResetter(_value._analyzer.get(),
+//                             _currentTypedAnalyzerValue->value);
+//      return;
+//    }
+//    _currentTypedAnalyzer.reset();
+//  }
+//  while (_begin != _end) {
+//    _valueSlice = VPackSlice::noneSlice();
+//    while (!_arrayStack.empty()) {
+//      if (_arrayStack.back().valid()) {
+//        if (_begin->expansion().empty()) {
+//          _valueSlice = *_arrayStack.back();
+//        } else {
+//          // for array subobjects we index "null" in case of absence as declared
+//          // for other indicies
+//          _valueSlice = get(*_arrayStack.back(), _begin->expansion(),
+//                            VPackSlice::nullSlice());
+//        }
+//        ++_arrayStack.back();
+//        _nameBuffer.resize(_prefixLength);  // FIXME: just clear should work!
+//        break;
+//      }
+//      _arrayStack.pop_back();
+//    }
+//    if (_arrayStack.empty()) {
+//      while (_valueSlice.isNone()) {
+//        if (++_begin == _end) {
+//          TRI_ASSERT(!valid());
+//          return;  // exhausted
+//        }
+//        _valueSlice = get(_slice, _begin->attribute(), VPackSlice::noneSlice());
+//        if (!_valueSlice.isNone() && !_valueSlice.isArray() &&
+//            _begin->isArray()) {
+//          _valueSlice = VPackSlice::noneSlice();
+//        }
+//      }
+//      _nameBuffer.clear();
+//    }
+//    if (!_valueSlice.isNone()) {
+//      if (_nameBuffer.empty()) {
+//#ifdef USE_ENTERPRISE
+//        //if (!_parentNameBuffer.empty()) {
+//        //  _nameBuffer = _parentNameBuffer;
+//        //  _nameBuffer += NESTING_LEVEL_DELIMITER;
+//        //}
+//#endif
+//        bool isFirst = true;
+//        for (auto& a : _begin->attribute()) {
+//          if (!isFirst) {
+//            _nameBuffer += NESTING_LEVEL_DELIMITER;
+//          }
+//          _nameBuffer.append(a.name);
+//          isFirst = false;
+//        }
+//        if (!_begin->expansion().empty()) {
+//          _nameBuffer.append("[*]");
+//        }
+//        for (auto& a : _begin->expansion()) {
+//          _nameBuffer += NESTING_LEVEL_DELIMITER;
+//          _nameBuffer.append(a.name);
+//        }
+//      }
+//      TRI_ASSERT(_begin->analyzer()._pool);
+//      switch (_valueSlice.type()) {
+//        case VPackValueType::Null:
+//          setNullValue();
+//          return;
+//        case VPackValueType::Bool:
+//          setBoolValue(_valueSlice);
+//          return;
+//        case VPackValueType::Object:
+//          if (setValue(_valueSlice, _begin->analyzer())) {
+//            return;
+//          }
+//          THROW_ARANGO_EXCEPTION_FORMAT(
+//              TRI_ERROR_NOT_IMPLEMENTED,
+//              "Inverted index does not support indexing objects and configured "
+//              "analyzer does "
+//              "not accept objects. Please use another analyzer to process an "
+//              "object or exclude field '%s' "
+//              "from index definition",
+//              _nameBuffer.c_str());
+//          return;  // never reached
+//        case VPackValueType::Array: {
+//#ifdef USE_ENTERPRISE
+//          if (!_begin->nested().empty()) {
+//            return;
+//          }
+//#endif
+//          if (_begin->isArray() && _arrayStack.empty()) {
+//            _arrayStack.push_back(VPackArrayIterator(_valueSlice));
+//            _prefixLength = _nameBuffer.size();
+//          } else if (setValue(_valueSlice, _begin->analyzer())) {
+//            return;
+//          } else {
+//            THROW_ARANGO_EXCEPTION_FORMAT(
+//                TRI_ERROR_NOT_IMPLEMENTED,
+//                "Configured analyzer does not accepts arrays and field has no "
+//                "expansion set. "
+//                "Please use another analyzer to process an array or exclude "
+//                "field '%s' "
+//                "from index definition or enable expansion",
+//                _nameBuffer.c_str());
+//          }
+//          break;
+//        }
+//        case VPackValueType::Double:
+//        case VPackValueType::Int:
+//        case VPackValueType::UInt:
+//        case VPackValueType::SmallInt:
+//          setNumericValue(_valueSlice);
+//          return;
+//        case VPackValueType::String: {
+//          setValue(_valueSlice, _begin->analyzer());
+//          return;
+//        }
+//        default:
+//          break;
+//      }
+//    }
+//  }
+//}
+//
+//void InvertedIndexFieldIterator::setBoolValue(VPackSlice const value) {
+//  TRI_ASSERT(value.isBool());
+//
+//  arangodb::iresearch::kludge::mangleBool(_nameBuffer);
+//
+//  // init stream
+//  auto stream = BoolStreamPool.emplace(AnalyzerPool::BooleanStreamTag());
+//  static_cast<irs::boolean_token_stream*>(stream.get())->reset(value.getBool());
+//
+//  // set field properties
+//  _value._name = _nameBuffer;
+//  _value._analyzer = std::move(stream);
+//  _value._indexFeatures = irs::IndexFeatures::NONE;
+//  _value._fieldFeatures = {};
+//}
+//
+//void InvertedIndexFieldIterator::setNumericValue(VPackSlice const value) {
+//  TRI_ASSERT(value.isNumber());
+//
+//  arangodb::iresearch::kludge::mangleNumeric(_nameBuffer);
+//
+//  // init stream
+//  auto stream = NumericStreamPool.emplace(AnalyzerPool::NumericStreamTag());
+//  static_cast<irs::numeric_token_stream*>(stream.get())
+//      ->reset(value.getNumber<double>());
+//
+//  // set field properties
+//  _value._name = _nameBuffer;
+//  _value._analyzer = std::move(stream);  // FIXME don't use shared_ptr
+//  _value._indexFeatures = irs::IndexFeatures::NONE;
+//  _value._fieldFeatures = {NumericStreamFeatures.begin(),
+//                           NumericStreamFeatures.size()};
+//}
+//
+//void InvertedIndexFieldIterator::setNullValue() {
+//  arangodb::iresearch::kludge::mangleNull(_nameBuffer);
+//
+//  // init stream
+//  auto stream = NullStreamPool.emplace(AnalyzerPool::NullStreamTag());
+//  static_cast<irs::null_token_stream*>(stream.get())->reset();
+//
+//  // set field properties
+//  _value._name = _nameBuffer;
+//  _value._analyzer = std::move(stream);  // FIXME don't use shared_ptr
+//  _value._indexFeatures = irs::IndexFeatures::NONE;
+//  _value._fieldFeatures = {};
+//}
+//
+//bool InvertedIndexFieldIterator::setValue(
+//    VPackSlice const value, FieldMeta::Analyzer const& valueAnalyzer) {
+//  TRI_ASSERT(value.isObject() || value.isArray() || value.isString());
+//
+//  auto& pool = valueAnalyzer._pool;
+//
+//  if (!pool) {
+//    LOG_TOPIC("189db", WARN, iresearch::TOPIC)
+//        << "got nullptr analyzer factory";
+//
+//    return false;
+//  }
+//
+//  irs::string_ref valueRef;
+//  AnalyzerValueType valueType{AnalyzerValueType::Undefined};
+//
+//  switch (value.type()) {
+//    case VPackValueType::Array: {
+//      valueRef = iresearch::ref<char>(value);
+//      valueType = AnalyzerValueType::Array;
+//    } break;
+//    case VPackValueType::Object: {
+//      valueRef = iresearch::ref<char>(value);
+//      valueType = AnalyzerValueType::Object;
+//    } break;
+//    case VPackValueType::String: {
+//      valueRef = iresearch::getStringRef(value);
+//      valueType = AnalyzerValueType::String;
+//    } break;
+//    default:
+//      TRI_ASSERT(false);
+//      return false;
+//  }
+//
+//  if (!pool->accepts(valueType)) {
+//    return false;
+//  }
+//
+//  // init stream
+//  auto analyzer = pool->get();
+//
+//  if (!analyzer) {
+//    LOG_TOPIC("22eeb", WARN, arangodb::iresearch::TOPIC)
+//        << "got nullptr from analyzer factory, name '" << pool->name() << "'";
+//    return false;
+//  }
+//  if (!analyzer->reset(valueRef)) {
+//    return false;
+//  }
+//  // set field properties
+//  switch (pool->returnType()) {
+//    case AnalyzerValueType::Bool: {
+//      if (!analyzer->next()) {
+//        return false;
+//      }
+//      _currentTypedAnalyzer = std::move(analyzer);
+//      _currentTypedAnalyzerValue =
+//          irs::get<VPackTermAttribute>(*_currentTypedAnalyzer);
+//      TRI_ASSERT(_currentTypedAnalyzerValue);
+//      setBoolValue(_currentTypedAnalyzerValue->value);
+//      _primitiveTypeResetter = [](irs::token_stream* stream,
+//                                  VPackSlice slice) -> void {
+//        TRI_ASSERT(stream);
+//        TRI_ASSERT(slice.isBool());
+//        auto* bool_stream = basics::downCast<irs::boolean_token_stream>(stream);
+//        bool_stream->reset(slice.getBool());
+//      };
+//    } break;
+//    case AnalyzerValueType::Number: {
+//      if (!analyzer->next()) {
+//        return false;
+//      }
+//      _currentTypedAnalyzer = std::move(analyzer);
+//      _currentTypedAnalyzerValue =
+//          irs::get<VPackTermAttribute>(*_currentTypedAnalyzer);
+//      TRI_ASSERT(_currentTypedAnalyzerValue);
+//      setNumericValue(_currentTypedAnalyzerValue->value);
+//      _primitiveTypeResetter = [](irs::token_stream* stream,
+//                                  VPackSlice slice) -> void {
+//        TRI_ASSERT(stream);
+//        TRI_ASSERT(slice.isNumber());
+//        auto* number_stream =
+//            basics::downCast<irs::numeric_token_stream>(stream);
+//        number_stream->reset(slice.getNumber<double>());
+//      };
+//    } break;
+//    default: {
+//      iresearch::kludge::mangleField(_nameBuffer, false, valueAnalyzer);
+//      _value._analyzer = std::move(analyzer);
+//      _value._fieldFeatures = pool->fieldFeatures();
+//      _value._indexFeatures = pool->indexFeatures();
+//      _value._name = _nameBuffer;
+//    } break;
+//  }
+//  auto* storeFunc = pool->storeFunc();
+//  if (storeFunc) {
+//    auto const valueSlice =
+//        storeFunc(_currentTypedAnalyzer ? _currentTypedAnalyzer.get()
+//                                        : _value._analyzer.get(),
+//                  value, _buffer);
+//
+//    if (!valueSlice.isNone()) {
+//      _value._value = iresearch::ref<irs::byte_type>(valueSlice);
+//      _value._storeValues = std::max(ValueStorage::VALUE, _value._storeValues);
+//    }
+//  }
+//  return true;
+//}
 
 }  // namespace iresearch
 }  // namespace arangodb
+
+#if USE_ENTERPRISE
+#include "enterprise/IResearch/IResearchDocumentEE.hpp"
+#endif
+
+template arangodb::iresearch::FieldIterator<arangodb::iresearch::FieldMeta,
+                                            arangodb::iresearch::FieldMeta>;
+
+template arangodb::iresearch::FieldIterator<arangodb::iresearch::IResearchInvertedIndexMeta,
+                                            arangodb::iresearch::IResearchInvertedIndexMeta::FieldRecord>;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

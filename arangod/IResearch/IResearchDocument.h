@@ -26,6 +26,12 @@
 
 #include "VocBase/voc-types.h"
 
+#include "IResearchCommon.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/IResearch/IResearchDocumentEE.h"
+#endif
+
 #include "IResearchAnalyzerFeature.h"
 #include "IResearchLinkMeta.h"
 #include "IResearchInvertedIndexMeta.h"
@@ -72,25 +78,6 @@ class Methods;  // forward declaration
 namespace arangodb {
 namespace iresearch {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the delimiter used to separate jSON nesting levels when
-/// generating
-///        flat iResearch field names
-////////////////////////////////////////////////////////////////////////////////
-constexpr char const NESTING_LEVEL_DELIMITER = '.';
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the prefix used to denote start of jSON list offset when generating
-///        flat iResearch field names
-////////////////////////////////////////////////////////////////////////////////
-constexpr char const NESTING_LIST_OFFSET_PREFIX = '[';
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the suffix used to denote end of jSON list offset when generating
-///        flat iResearch field names
-////////////////////////////////////////////////////////////////////////////////
-constexpr char const NESTING_LIST_OFFSET_SUFFIX = ']';
-
 struct IResearchViewMeta;  // forward declaration
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,7 +107,9 @@ struct Field {
 
     return true;
   }
-
+#ifdef USE_ENTERPRISE
+  bool _root{false};
+#endif
   AnalyzerPool::CacheType::ptr _analyzer;
   irs::string_ref _name;
   irs::bytes_ref _value;
@@ -129,10 +118,11 @@ struct Field {
   irs::IndexFeatures _indexFeatures;
 };  // Field
 
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
 /// @brief allows to iterate over the provided VPack accoring the specified
 ///        IResearchLinkMeta
 ////////////////////////////////////////////////////////////////////////////////
+template<typename IndexMetaStruct, typename LevelMeta>
 class FieldIterator {
  public:
   explicit FieldIterator(arangodb::transaction::Methods& trx,
@@ -151,48 +141,47 @@ class FieldIterator {
 
   bool valid() const noexcept { return !_stack.empty(); }
 
-  void reset(velocypack::Slice slice, FieldMeta const& linkMeta);
+  void reset(velocypack::Slice slice, IndexMetaStruct const& linkMeta);
+
+  bool  disableFlush() const noexcept {
+    return _disableFlush;
+  }
 
 #ifdef USE_ENTERPRISE
-  FieldIterator makeNestedIterator() const {
-    return FieldIterator(*_trx, _collection, _linkId);
+
+  bool onRootLevel() const noexcept {
+    return _stack.size() <= 1;
   }
 
-  Field const& parentField() const {
-    return _value;
+  bool hasNested() const noexcept;
+
+  bool needDoc() const noexcept {
+    return _needDoc;
   }
 
-  VPackSlice getCurrentValue() const noexcept {
-    return _valueSlice;
+  void setDisableFlush() noexcept {
+    _disableFlush = true;
   }
-
-  bool hasNested() const noexcept {
-    return false;
-  }
-
-  void resetNested(VPackSlice slice) {
-    
-  }
-
 #endif
 
  private:
   using AnalyzerIterator = FieldMeta::Analyzer const*;
 
-  using Filter = bool (*)(std::string& buffer, FieldMeta const*& rootMeta,
+  using Filter = bool (*)(std::string& buffer, LevelMeta const*& rootMeta,
                           IteratorValue const& value);
 
   using PrimitiveTypeResetter = void (*)(irs::token_stream* stream,
                                          VPackSlice slice);
 
   struct Level {
-    Level(velocypack::Slice slice, size_t nameLength, FieldMeta const& meta,
-          Filter filter)
-        : it(slice), nameLength(nameLength), meta(&meta), filter(filter) {}
+    Level(velocypack::Slice slice, size_t nameLength, LevelMeta const& meta,
+          bool rootLevel, Filter filter)
+        : it(slice), nameLength(nameLength), meta(&meta), isRoot(rootLevel), filter(filter) {}
 
     Iterator it;
     size_t nameLength;      // length of the name at the current level
-    FieldMeta const* meta;  // metadata
+    LevelMeta const* meta;  // metadata
+    bool isRoot;
     Filter filter;
   };  // Level
 
@@ -200,6 +189,13 @@ class FieldIterator {
     TRI_ASSERT(!_stack.empty());
     return _stack.back();
   }
+
+#ifdef USE_ENTERPRISE
+  using MetaTraits = IndexMetaTraits<LevelMeta>;
+
+  void popLevel();
+  bool pushLevel(VPackSlice value, LevelMeta const& meta, Filter filter);
+#endif
 
   // disallow copy and assign
   FieldIterator(FieldIterator const&) = delete;
@@ -231,100 +227,99 @@ class FieldIterator {
   AnalyzerPool::CacheType::ptr _currentTypedAnalyzer;
   VPackTermAttribute const* _currentTypedAnalyzerValue{nullptr};
   PrimitiveTypeResetter _primitiveTypeResetter{nullptr};
-
   bool _isDBServer;
+  bool _disableFlush;
+ #ifdef USE_ENTERPRISE
+  std::vector<std::string> _nestingBuffers;
+  bool _needDoc{false};
+  bool _hasNested{false};
+#endif
 };  // FieldIterator
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief allows to iterate over the provided VPack according to the specified
 ///        IResearchInvertedIndexMeta
 ////////////////////////////////////////////////////////////////////////////////
-class InvertedIndexFieldIterator {
- public:
-  // must match interface of FieldIterator to make usable template insert
-  // implementation
-  Field const& operator*() const noexcept { return _value; }
-
-  InvertedIndexFieldIterator& operator++() {
-    next();
-    return *this;
-  }
-
-  // we don't need trx as we don't index the _id attribute.
-  // but we require it here just to match signature of "FieldIterator" in
-  // general
-  explicit InvertedIndexFieldIterator(arangodb::transaction::Methods&,
-                                      irs::string_ref collection,
-                                      IndexId indexId);
-
-#ifdef USE_ENTERPRISE
-  explicit InvertedIndexFieldIterator(
-      InvertedIndexFieldIterator const& parent,
-      IResearchInvertedIndexMeta::Fields const& fields);
-
-  InvertedIndexFieldIterator makeNestedIterator() const;
-  
-  VPackSlice getCurrentValue() const noexcept {
-    return _valueSlice;
-  }
-
-  void resetNested(VPackSlice slice);
-
-  bool hasNested() const noexcept {
-    return valid() && !_begin->nested().empty() &&
-           _valueSlice.isArray();
-  }
-
-  Field const& parentField() const {
-    return _parentField;
-  }
-#endif
-
-  bool valid() const noexcept { return _fieldsMeta && _begin != _end; }
-
-
-  void reset(VPackSlice slice,
-             IResearchInvertedIndexMeta const& fieldsMeta) {
-    _slice = slice;
-    _fieldsMeta = &fieldsMeta;
-    TRI_ASSERT(!_fieldsMeta->_fields.empty());
-    _begin = _fieldsMeta->_fields.data() - 1;
-    _end = _fieldsMeta->_fields.data() + _fieldsMeta->_fields.size();
-    next();
-  }
-
- private:
-  void next();
-  bool setValue(VPackSlice const value,
-                FieldMeta::Analyzer const& valueAnalyzer);
-  void setNullValue();
-  void setNumericValue(VPackSlice const value);
-  void setBoolValue(VPackSlice const value);
-
-  // Support for outputting primitive type from analyzer
-  using PrimitiveTypeResetter = void (*)(irs::token_stream* stream,
-                                         VPackSlice slice);
-
-  size_t _prefixLength{};
-  IResearchInvertedIndexMeta::FieldRecord const* _begin{nullptr};
-  IResearchInvertedIndexMeta::FieldRecord const* _end{nullptr};
-  IResearchInvertedIndexMeta const* _fieldsMeta{nullptr};
-  Field _value;       // iterator's value
-  VPackSlice _slice;  // input slice
-  VPackSlice _valueSlice;
-  IndexId _indexId;
-  AnalyzerPool::CacheType::ptr _currentTypedAnalyzer;
-  VPackTermAttribute const* _currentTypedAnalyzerValue{nullptr};
-  PrimitiveTypeResetter _primitiveTypeResetter{nullptr};
-  std::vector<VPackArrayIterator> _arrayStack;
-  std::string _nameBuffer;
-  VPackBuffer<uint8_t> _buffer;  // buffer for stored values
-#ifdef USE_ENTERPRISE
-  Field _parentField;
-  std::string _parentNameBuffer;
-  InvertedIndexFieldIterator const* _parent{nullptr};
-#endif
-};
+// FIXME: remove after "gather nulls is implemented"
+//class InvertedIndexFieldIterator {
+// public:
+//  // must match interface of FieldIterator to make usable template insert
+//  // implementation
+//  Field const& operator*() const noexcept { return _value; }
+//
+//  InvertedIndexFieldIterator& operator++() {
+//    next();
+//    return *this;
+//  }
+//
+//  // we don't need trx as we don't index the _id attribute.
+//  // but we require it here just to match signature of "FieldIterator" in
+//  // general
+//  explicit InvertedIndexFieldIterator(arangodb::transaction::Methods&,
+//                                      irs::string_ref collection,
+//                                      IndexId indexId);
+//
+//#ifdef USE_ENTERPRISE
+//  bool hasNested() const noexcept {
+//    return valid() &&
+//           std::any_of(_fieldsMeta->_fields._fields.begin(), _fieldsMeta->_fields._fields.end(),
+//                       [](IResearchInvertedIndexMeta::FieldRecord const& f) {
+//                         return !f.nested().empty();
+//                       });
+//  }
+//
+//  bool onRootLevel() const noexcept;
+//  
+//  bool needDoc() const noexcept {
+//    return false;
+//  }
+//#endif
+//
+//  bool valid() const noexcept { return _fieldsMeta && _begin != _end; }
+//
+//
+//  void reset(VPackSlice slice,
+//             IResearchInvertedIndexMeta const& fieldsMeta) {
+//    _slice = slice;
+//    _fieldsMeta = &fieldsMeta;
+//    TRI_ASSERT(!_fieldsMeta->_fields._fields.empty());
+//    _begin = _fieldsMeta->_fields._fields.data() - 1;
+//    _end = _fieldsMeta->_fields._fields.data() + _fieldsMeta->_fields._fields.size();
+//    next();
+//  }
+//
+// private:
+//  void next();
+//
+//#ifdef USE_ENTERPRISE
+//  bool nextNested();
+//#endif
+//
+//  bool setValue(VPackSlice const value,
+//                FieldMeta::Analyzer const& valueAnalyzer);
+//  void setNullValue();
+//  void setNumericValue(VPackSlice const value);
+//  void setBoolValue(VPackSlice const value);
+//
+//  // Support for outputting primitive type from analyzer
+//  using PrimitiveTypeResetter = void (*)(irs::token_stream* stream,
+//                                         VPackSlice slice);
+//
+//  size_t _prefixLength{};
+//  IResearchInvertedIndexMeta::FieldRecord const* _begin{nullptr};
+//  IResearchInvertedIndexMeta::FieldRecord const* _end{nullptr};
+//  IResearchInvertedIndexMeta const* _fieldsMeta{nullptr};
+//  Field _value;       // iterator's value
+//  VPackSlice _slice;  // input slice
+//  VPackSlice _valueSlice;
+//  IndexId _indexId;
+//  AnalyzerPool::CacheType::ptr _currentTypedAnalyzer;
+//  VPackTermAttribute const* _currentTypedAnalyzerValue{nullptr};
+//  PrimitiveTypeResetter _primitiveTypeResetter{nullptr};
+//  std::vector<VPackArrayIterator> _arrayStack;
+//  std::string _nameBuffer;
+//  VPackBuffer<uint8_t> _buffer;  // buffer for stored values
+//};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief represents stored primary key of the ArangoDB document

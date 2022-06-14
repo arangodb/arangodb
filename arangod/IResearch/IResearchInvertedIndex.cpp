@@ -54,7 +54,7 @@ AnalyzerProvider makeAnalyzerProvider(IResearchInvertedIndexMeta const& meta) {
       FieldMeta::Analyzer(IResearchAnalyzerFeature::identity());
   return [&meta, &defaultAnalyzer = std::as_const(defaultAnalyzer)](
              std::string_view ex) -> FieldMeta::Analyzer const& {
-    for (auto const& field : meta._fields) {
+    for (auto const& field : meta._fields._fields) {
       if (field.toString() == ex) {
         return field.analyzer();
       }
@@ -773,8 +773,8 @@ void IResearchInvertedIndex::toVelocyPack(ArangodServer& server,
 std::vector<std::vector<arangodb::basics::AttributeName>>
 IResearchInvertedIndex::fields(IResearchInvertedIndexMeta const& meta) {
   std::vector<std::vector<arangodb::basics::AttributeName>> res;
-  res.reserve(meta._fields.size());
-  for (auto const& f : meta._fields) {
+  res.reserve(meta._fields._fields.size());
+  for (auto const& f : meta._fields._fields) {
     res.push_back(f.combinedName());
   }
   return res;

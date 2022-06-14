@@ -723,10 +723,12 @@ std::unordered_map<
     {static_cast<GeneratorMapType>(GeneratorType::AUTOINCREMENT),
      [](LogicalCollection const& collection,
         VPackSlice options) -> std::unique_ptr<KeyGenerator> {
-       if (ServerState::instance()->isCoordinator()) {
-         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNSUPPORTED,
-                                        "the specified key generator is not "
-                                        "supported for sharded collections");
+       if (!ServerState::instance()->isSingleServer() &&
+           collection.numberOfShards() > 1) {
+         THROW_ARANGO_EXCEPTION_MESSAGE(
+             TRI_ERROR_CLUSTER_UNSUPPORTED,
+             "the specified key generator is not "
+             "supported for collections with more than one shard");
        }
 
        uint64_t offset = 0;
@@ -956,11 +958,13 @@ std::unique_ptr<KeyGenerator> KeyGeneratorHelper::createKeyGenerator(
 }
 
 #ifndef USE_ENTERPRISE
+
 std::unique_ptr<KeyGenerator> KeyGeneratorHelper::createEnterpriseKeyGenerator(
     std::unique_ptr<KeyGenerator> generator) {
   // nothing to be done here
   return generator;
 }
+
 #endif
 
 /// @brief create the key generator

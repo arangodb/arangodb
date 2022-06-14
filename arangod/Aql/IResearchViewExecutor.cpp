@@ -733,10 +733,11 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
     }
 
     if (infos().volatileSort() || !_isInitialized) {
+      auto const& scorers = infos().scorers();
       std::vector<irs::sort::ptr> order;
-      irs::sort::ptr scorer;
+      order.reserve(scorers.size());
 
-      for (auto const& scorerNode : infos().scorers()) {
+      for (irs::sort::ptr scorer; auto const& scorerNode : scorers) {
         TRI_ASSERT(scorerNode.node);
 
         if (!OrderFactory::scorer(&scorer, *scorerNode.node, queryCtx)) {

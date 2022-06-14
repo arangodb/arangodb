@@ -92,8 +92,6 @@ class ByExpression final : public irs::filter {
     return "arangodb::iresearch::ByExpression";
   }
 
-  static ptr make();
-
   ByExpression() noexcept;
 
   void init(aql::ExecutionPlan const& plan, aql::Ast& ast,

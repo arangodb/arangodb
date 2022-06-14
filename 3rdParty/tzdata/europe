@@ -68,7 +68,6 @@
 #        0:00       GMT  BST  BDST  Greenwich, British Summer
 #        0:00       GMT  IST        Greenwich, Irish Summer
 #        0:00       WET  WEST WEMT  Western Europe
-#        0:19:32.13 AMT* NST*       Amsterdam, Netherlands Summer (1835-1937)
 #        1:00       BST             British Standard (1968-1971)
 #        1:00       IST  GMT        Irish Standard (1968-) with winter DST
 #        1:00       CET  CEST CEMT  Central Europe
@@ -822,7 +821,7 @@ Zone	Europe/Andorra	0:06:04 -	LMT	1901
 # Shanks & Pottenger give 02:00, the BEV 00:00.  Go with the BEV,
 # and guess 02:00 for 1945-04-12.
 
-# From Alois Triendl (2019-07-22):
+# From Alois Treindl (2019-07-22):
 # In 1946 the end of DST was on Monday, 7 October 1946, at 3:00 am.
 # Shanks had this right.  Source: Die Weltpresse, 5. Oktober 1946, page 5.
 
@@ -1736,19 +1735,22 @@ Zone Atlantic/Reykjavik	-1:28	-	LMT	1908
 # advanced to sixty minutes later starting at hour two on 1944-04-02; ...
 # Starting at hour three on the date 1944-09-17 standard time will be resumed.
 #
-# From Alois Triendl (2019-07-02):
+# From Alois Treindl (2019-07-02):
 # I spent 6 Euros to buy two archive copies of Il Messaggero, a Roman paper,
 # for 1 and 2 April 1944.  The edition of 2 April has this note: "Tonight at 2
 # am, put forward the clock by one hour.  Remember that in the night between
 # today and Monday the 'ora legale' will come in force again."  That makes it
 # clear that in Rome the change was on Monday, 3 April 1944 at 2 am.
 #
-# From Paul Eggert (2016-10-27):
+# From Paul Eggert (2021-10-05):
 # Go with INRiM for DST rules, except as corrected by Inglis for 1944
 # for the Kingdom of Italy.  This is consistent with Renzo Baldini.
 # Model Rome's occupation by using C-Eur rules from 1943-09-10
 # to 1944-06-04; although Rome was an open city during this period, it
-# was effectively controlled by Germany.
+# was effectively controlled by Germany.  Using C-Eur is consistent
+# with Treindl's comment about Rome in April 1944, as the "Rule Italy"
+# lines during German occupation do not affect Europe/Rome
+# (though they do affect Europe/Malta).
 #
 # Rule	NAME	FROM	TO	-	IN	ON	AT	SAVE	LETTER/S
 Rule	Italy	1916	only	-	Jun	 3	24:00	1:00	S
@@ -1799,6 +1801,10 @@ Zone	Europe/Rome	0:49:56 -	LMT	1866 Dec 12
 			1:00	C-Eur	CE%sT	1944 Jun  4
 			1:00	Italy	CE%sT	1980
 			1:00	EU	CE%sT
+
+# Kosovo
+# See Europe/Belgrade.
+
 
 Link	Europe/Rome	Europe/Vatican
 Link	Europe/Rome	Europe/San_Marino
@@ -2150,6 +2156,10 @@ Zone	Europe/Monaco	0:29:32 -	LMT	1892 Jun  1
 # The data entries before 1945 are taken from
 # https://www.staff.science.uu.nl/~gent0113/wettijd/wettijd.htm
 
+# From Paul Eggert (2021-05-09):
+# I invented the abbreviations AMT for Amsterdam Mean Time and NST for
+# Netherlands Summer Time, used in the Netherlands from 1835 to 1937.
+
 # Rule	NAME	FROM	TO	-	IN	ON	AT	SAVE	LETTER/S
 Rule	Neth	1916	only	-	May	 1	0:00	1:00	NST	# Netherlands Summer Time
 Rule	Neth	1916	only	-	Oct	 1	0:00	0	AMT	# Amsterdam Mean Time
@@ -2376,12 +2386,10 @@ Rule	Port	1943	1945	-	Aug	Sat>=25	22:00s	1:00	S
 Rule	Port	1944	1945	-	Apr	Sat>=21	22:00s	2:00	M
 Rule	Port	1946	only	-	Apr	Sat>=1	23:00s	1:00	S
 Rule	Port	1946	only	-	Oct	Sat>=1	23:00s	0	-
-Rule	Port	1947	1949	-	Apr	Sun>=1	 2:00s	1:00	S
-Rule	Port	1947	1949	-	Oct	Sun>=1	 2:00s	0	-
-# Shanks & Pottenger say DST was observed in 1950; go with Whitman.
+# Whitman says DST was not observed in 1950; go with Shanks & Pottenger.
 # Whitman gives Oct lastSun for 1952 on; go with Shanks & Pottenger.
-Rule	Port	1951	1965	-	Apr	Sun>=1	 2:00s	1:00	S
-Rule	Port	1951	1965	-	Oct	Sun>=1	 2:00s	0	-
+Rule	Port	1947	1965	-	Apr	Sun>=1	 2:00s	1:00	S
+Rule	Port	1947	1965	-	Oct	Sun>=1	 2:00s	0	-
 Rule	Port	1977	only	-	Mar	27	 0:00s	1:00	S
 Rule	Port	1977	only	-	Sep	25	 0:00s	0	-
 Rule	Port	1978	1979	-	Apr	Sun>=1	 0:00s	1:00	S
@@ -2618,7 +2626,7 @@ Zone Europe/Bucharest	1:44:24 -	LMT	1891 Oct
 # Although Shanks lists 1945-01-01 as the date for transition from
 # +01/+02 to +02/+03, more likely this is a placeholder.  Guess that
 # the transition occurred at 1945-04-10 00:00, which is about when
-# Königsberg surrendered to Soviet troops.  (Thanks to Alois Triendl.)
+# Königsberg surrendered to Soviet troops.  (Thanks to Alois Treindl.)
 
 # From Paul Eggert (2016-03-18):
 # The 1989 transition is from USSR act No. 227 (1989-03-14).
@@ -2777,8 +2785,26 @@ Zone Europe/Kaliningrad	 1:22:00 -	LMT	1893 Apr
 # says he remembers that Samara opted out of the 1992-01-19 exception
 # 2 days before the switch.
 #
+# From Alois Treindl (2022-02-15):
+# the Russian wikipedia page
+# https://ru.wikipedia.org/wiki/Московское_время#Перемещение_границы_применения_московского_времени_на_восток
+# contains the sentence (in Google translation) "In the autumn of
+# 1981, Arkhangelsk, Vologda, Yaroslavl, Ivanovo, Vladimir, Ryazan,
+# Lipetsk, Voronezh, Rostov-on-Don, Krasnodar and regions to the east
+# of those named (about 30 in total) parted ways with Moscow time.
+# However, the convenience of common time with Moscow turned out to be
+# decisive - in 1982, these regions again switched to Moscow time."
+# Shanks International atlas has similar information, and also the
+# Russian book Zaitsev A., Kutalev D. A new astrologer's reference
+# book. Coordinates of cities and time corrections, - The World of
+# Urania, 2012 (Russian: Зайцев А., Куталёв Д., Новый справочник
+# астролога. Координаты городов и временные поправки).
+# To me it seems that an extra zone is needed, which starts with LMT
+# util 1919, later follows Moscow since 1930, but deviates from it
+# between 1 October 1981 until 1 April 1982.
 #
-# From Paul Eggert (2016-03-18):
+#
+# From Paul Eggert (2022-02-15):
 # Given the above, we appear to be missing some Zone entries for the
 # chaotic early 1980s in Russia.  It's not clear what these entries
 # should be.  For now, sweep this under the rug and just document the
@@ -2825,7 +2851,7 @@ Zone Europe/Simferopol	 2:16:24 -	LMT	1880
 			 1:00	C-Eur	CE%sT	1944 Apr 13
 			 3:00	Russia	MSK/MSD	1990
 			 3:00	-	MSK	1990 Jul  1  2:00
-			 2:00	-	EET	1992
+			 2:00	-	EET	1992 Mar 20
 # Central Crimea used Moscow time 1994/1997.
 #
 # From Paul Eggert (2006-03-22):
@@ -2835,7 +2861,7 @@ Zone Europe/Simferopol	 2:16:24 -	LMT	1880
 # sometime between the 1994 DST switches.  Shanks & Pottenger simply say
 # 1994-09-25 03:00, but that can't be right.  For now, guess it
 # changed in May.
-			 2:00	E-Eur	EE%sT	1994 May
+			 2:00	C-Eur	EE%sT	1994 May
 # From IATA SSIM (1994/1997), which also says that Kerch is still like Kiev.
 			 3:00	E-Eur	MSK/MSD	1996 Mar 31  0:00s
 			 3:00	1:00	MSD	1996 Oct 27  3:00s
@@ -3683,6 +3709,9 @@ Zone	Atlantic/Canary	-1:01:36 -	LMT	1922 Mar # Las Palmas de Gran C.
 #
 # Source: The newspaper "Dagens Nyheter", 1916-10-01, page 7 upper left.
 
+# An extra-special abbreviation style is SET for Swedish Time (svensk
+# normaltid) 1879-1899, 3° west of the Stockholm Observatory.
+
 # Zone	NAME		STDOFF	RULES	FORMAT	[UNTIL]
 Zone Europe/Stockholm	1:12:12 -	LMT	1879 Jan  1
 			1:00:14	-	SET	1900 Jan  1 # Swedish Time
@@ -3999,6 +4028,27 @@ Link	Europe/Istanbul	Asia/Istanbul	# Istanbul is in both continents.
 
 # Ukraine
 #
+# From Alois Triendl (2014-03-01):
+# REGULATION A N O V A on March 20, 1992 N 139 ...  means that from
+# 1992 on, Ukraine had DST with begin time at 02:00 am, on last Sunday
+# in March, and end time 03:00 am, last Sunday in September....
+# CABINET OF MINISTERS OF UKRAINE RESOLUTION on May 13, 1996 N 509
+# "On the order of computation time on the territory of Ukraine" ....
+# As this cabinet decision is from May 1996, it seems likely that the
+# transition in March 1996, which predates it, was still at 2:00 am
+# and not at 3:00 as would have been under EU rules.
+# This is why I have set the change to EU rules into May 1996,
+# so that the change in March is stil covered by the Ukraine rule.
+# The next change in October 1996 happened under EU rules....
+# TZ database holds three other zones for Ukraine.... I have not yet
+# worked out the consequences for these three zones, as we (me and my
+# US colleague David Cochrane) are still trying to get more
+# information upon these local deviations from Kiev rules.
+#
+# From Paul Eggert (2022-02-08):
+# For now, assume that Ukraine's other three zones followed the same rules,
+# except that Crimea switched to Moscow time in 1994 as described elsewhere.
+
 # From Igor Karpov, who works for the Ukrainian Ministry of Justice,
 # via Garrett Wollman (2003-01-27):
 # BTW, I've found the official document on this matter. It's government
@@ -4088,7 +4138,7 @@ Zone Europe/Kiev	2:02:04 -	LMT	1880
 			1:00	C-Eur	CE%sT	1943 Nov  6
 			3:00	Russia	MSK/MSD	1990 Jul  1  2:00
 			2:00	1:00	EEST	1991 Sep 29  3:00
-			2:00	E-Eur	EE%sT	1995
+			2:00	C-Eur	EE%sT	1996 May 13
 			2:00	EU	EE%sT
 # Transcarpathia used CET 1990/1991.
 # "Uzhhorod" is the transliteration of the Rusyn/Ukrainian pronunciation, but
@@ -4101,8 +4151,8 @@ Zone Europe/Uzhgorod	1:29:12 -	LMT	1890 Oct
 			3:00	Russia	MSK/MSD	1990
 			3:00	-	MSK	1990 Jul  1  2:00
 			1:00	-	CET	1991 Mar 31  3:00
-			2:00	-	EET	1992
-			2:00	E-Eur	EE%sT	1995
+			2:00	-	EET	1992 Mar 20
+			2:00	C-Eur	EE%sT	1996 May 13
 			2:00	EU	EE%sT
 # Zaporozh'ye and eastern Lugansk oblasts observed DST 1990/1991.
 # "Zaporizhia" is the transliteration of the Ukrainian name, but
@@ -4115,7 +4165,8 @@ Zone Europe/Zaporozhye	2:20:40 -	LMT	1880
 			3:00	-	MSK	1941 Aug 25
 			1:00	C-Eur	CE%sT	1943 Oct 25
 			3:00	Russia	MSK/MSD	1991 Mar 31  2:00
-			2:00	E-Eur	EE%sT	1995
+			2:00	E-Eur	EE%sT	1992 Mar 20
+			2:00	C-Eur	EE%sT	1996 May 13
 			2:00	EU	EE%sT
 
 # Vatican City

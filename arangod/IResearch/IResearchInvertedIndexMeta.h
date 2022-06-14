@@ -164,18 +164,30 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
 
   using AnalyzerDefinitions = std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer>;
 
+
   struct FieldRecord {
+    FieldRecord() : // FIXME: turn into delegate ctor once attributes are not needed
+      _isArray(false),
+      _includeAllFields(false),
+      _trackListPositions(false),
+      _overrideValue(false){}
+
     FieldRecord(std::vector<basics::AttributeName> const& path,
-                FieldMeta::Analyzer&& a, std::vector<FieldRecord>&& nested,
+                FieldMeta::Analyzer&& a,
+                std::vector<FieldRecord>&& nested,
                 std::optional<Features>&& features, std::string&& expression,
                 bool isArray, bool includeAllFields, bool trackListPositions,
-                bool overrideValue);
+                bool overrideValue, bool isPrimitiveAnalyzer,
+                std::string_view parentName);
+
+    std::string_view path() const noexcept;
+    std::string attributeString() const;
 
     std::string toString() const;
 
     std::string const& analyzerName() const noexcept {
-      TRI_ASSERT(_analyzer._pool);
-      return _analyzer._shortName;
+      TRI_ASSERT(_analyzers[0]._pool);
+      return _analyzers[0]._shortName;
     }
 
     bool namesMatch(FieldRecord const& other) const noexcept;
@@ -184,7 +196,7 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
                      irs::string_ref analyzerName) const noexcept;
 
     FieldMeta::Analyzer const& analyzer() const noexcept {
-      return _analyzer;
+      return _analyzers[0];
     }
 
     bool isArray() const noexcept {
@@ -205,7 +217,7 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
     }
 
     auto const& nested() const noexcept {
-      return _nested;
+      return _fields;
     }
 
     auto const& features() const noexcept {
@@ -226,39 +238,55 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
 
     std::vector<arangodb::basics::AttributeName> combinedName() const;
 
-   private:
     /// @brief nested fields
-    std::vector<FieldRecord> _nested;
+    std::vector<FieldRecord> _fields;
+    /// @brief parse fields recursively
+    bool _includeAllFields;
+    /// @brief array processing variant
+    bool _trackListPositions;
+    /// @brief analyzer to apply. Array to comply with old views definition
+    absl::InlinedVector<FieldMeta::Analyzer, 1> _analyzers;
+    /// @brief override for field features
+    std::optional<Features> _features;
+    /// @brief start point for non primitive analyzers
+    size_t  _primitiveOffset{0};
+    /// @brief fields ids storage
+    // Inverted index always needs field ids in order to
+    // execute cross types range queries
+    ValueStorage const _storeValues{ValueStorage::ID};
+   private:
     /// @brief attribute path
     std::vector<basics::AttributeName> _attribute;
     /// @brief array sub-path in case of expansion (maybe empty)
     std::vector<basics::AttributeName> _expansion;
     /// @brief AQL expression to be computed as field value
     std::string _expression;
-    /// @brief analyzer to apply
-    FieldMeta::Analyzer _analyzer;
-    /// @brief override for field features
-    std::optional<Features> _features;
     /// @brief mark that field value is expected to be an array
     bool _isArray;
-    /// @brief parse fields recursively
-    bool _includeAllFields;
-    /// @brief array processing variant
-    bool _trackListPositions;
     /// @brief force computed value to override existing value
     bool _overrideValue;
+    /// @brief Full mangled path to the value
+    std::string _path;
   };
-
-  using Fields = std::vector<FieldRecord>;
 
   bool operator==(IResearchInvertedIndexMeta const& other) const noexcept;
 
   static bool matchesFieldsDefinition(IResearchInvertedIndexMeta const& meta,
                                       VPackSlice other);
 
+  
+  std::vector<FieldRecord> const& fields() const noexcept {
+      return _fields._fields;
+  }
+
+  /// @brief custom conversion to match FieldIterator expectations
+  operator FieldRecord const&() const noexcept {
+    return _fields;
+  }
+
   AnalyzerDefinitions _analyzerDefinitions;
 
-  Fields _fields;
+  FieldRecord _fields;
   // sort condition associated with the link (primarySort)
   IResearchInvertedIndexSort _sort;
   // stored values associated with the link
@@ -272,9 +300,5 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
   Consistency _consistency{Consistency::kEventual};
   std::string _defaultAnalyzerName;
   std::optional<Features> _features;
-  /// @brief parse fields recursively
-  bool _includeAllFields;
-  /// @brief array processing variant
-  bool _trackListPositions;
 };
 }  // namespace arangodb::iresearch

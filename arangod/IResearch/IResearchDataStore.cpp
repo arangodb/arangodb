@@ -56,6 +56,12 @@ using namespace std::literals;
 namespace arangodb::iresearch {
 namespace {
 
+#ifndef USE_ENTERPRISE
+inline bool needTrackPrevDoc(irs::string_ref) {
+  return false;
+}
+#endif
+
 class IResearchFlushSubscription final : public FlushSubscription {
  public:
   explicit IResearchFlushSubscription(TRI_voc_tick_t tick = 0) noexcept
@@ -176,9 +182,40 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
   if (!body.valid()) {
     return {};  // no fields to index
   }
-
-  auto doc = ctx.insert();
   auto& field = *body;
+#ifdef USE_ENTERPRISE
+  if (body.hasNested()) {
+    auto nestedRes = handleNestedFields(ctx, body);
+    if (nestedRes.fail()) {
+      return {TRI_ERROR_INTERNAL,
+              "failed to insert document nested fields into arangosearch index '" +
+                  std::to_string(id.id()) + "', document '" +
+                  std::to_string(documentId.id()) + "'"};
+    }
+  }
+#endif
+  auto doc = ctx.insert(body.disableFlush());
+  if (!doc) {
+    return {TRI_ERROR_INTERNAL,
+            "failed to insert document into arangosearch link '" +
+                std::to_string(id.id()) + "', revision '" +
+                std::to_string(documentId.id()) + "'"};
+  }
+
+  // User fields
+  while (body.valid()) {
+#ifdef USE_ENTERPRISE
+    if (field._root) {
+      handleNestedRoot(doc, field);
+    } else
+#endif
+    if (ValueStorage::NONE == field._storeValues) {
+      doc.insert<irs::Action::INDEX>(field);
+    } else {
+      doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
+    }
+    ++body;
+  }
 
   // Sorted field
   {
@@ -205,40 +242,13 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
     }
   }
 
-    // Indexed and Stored: LocalDocumentId
+  // System fields
+  // Indexed and Stored: LocalDocumentId
   auto docPk = DocumentPrimaryKey::encode(documentId);
 
   // reuse the 'Field' instance stored inside the 'FieldIterator'
   Field::setPkValue(const_cast<Field&>(field), docPk);
   doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
-
-  // User fields
-  while (body.valid()) {
-#ifdef USE_ENTERPRISE
-    if (handleNestedFields(ctx, doc, body)) {
-      ++body;
-      continue;
-    }
-#endif
-
-    if (ValueStorage::NONE == field._storeValues) {
-      doc.insert<irs::Action::INDEX>(field);
-    } else {
-      doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
-    }
-    ++body;
-  }
-
-  // System fields
-
-
-
-  if (!doc) {
-    return {TRI_ERROR_INTERNAL,
-            "failed to insert document into arangosearch link '" +
-                std::to_string(id.id()) + "', revision '" +
-                std::to_string(documentId.id()) + "'"};
-  }
 
   if (trx.state()->hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
     ctx.tick(engine->currentTick());
@@ -1071,7 +1081,7 @@ Result IResearchDataStore::initDataStore(
   // as meta is still not filled at this moment
   // we need to store all compression mapping there
   // as values provided may be temporary
-  std::map<std::string, irs::type_info::type_id> compressionMap;
+  std::map<std::string, irs::type_info::type_id, std::less<>> compressionMap;
   for (auto const& c : storedColumns) {
     if (ADB_LIKELY(c.compression != nullptr)) {
       compressionMap.emplace(c.name, c.compression);
@@ -1083,23 +1093,27 @@ Result IResearchDataStore::initDataStore(
   // setup columnstore compression/encryption if requested by storage engine
   auto const encrypt =
       (nullptr != _dataStore._directory->attributes().encryption());
-  options.column_info = [encrypt, compressionMap = std::move(compressionMap),
-                         primarySortCompression](
-                            const irs::string_ref& name) -> irs::column_info {
+  options.column_info =
+      [encrypt, compressionMap = std::move(compressionMap),
+       primarySortCompression](irs::string_ref name) -> irs::column_info {
     if (name.null()) {
-      return {primarySortCompression(), {}, encrypt};
+      return {.compression = primarySortCompression(),
+              .options = {},
+              .encryption = encrypt,
+              .track_prev_doc = false};
     }
-    auto compress = compressionMap.find(
-        static_cast<std::string>(name));  // FIXME: remove cast after C++20
-    if (compress != compressionMap.end()) {
+    if (auto compress = compressionMap.find(name);
+        compress != compressionMap.end()) {
       // do not waste resources to encrypt primary key column
-      return {compress->second(),
-              {},
-              encrypt && (DocumentPrimaryKey::PK() != name)};
+      return {.compression = compress->second(),
+              .options = {},
+              .encryption = encrypt && (DocumentPrimaryKey::PK() != name),
+              .track_prev_doc = false};
     }
-    return {getDefaultCompression()(),
-            {},
-            encrypt && (DocumentPrimaryKey::PK() != name)};
+    return {.compression = getDefaultCompression()(),
+            .options = {},
+            .encryption = encrypt && (DocumentPrimaryKey::PK() != name),
+            .track_prev_doc = needTrackPrevDoc(name)};
   };
 
   auto openFlags = irs::OM_APPEND;
@@ -1666,13 +1680,16 @@ irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
   return dataPath;
 }
 
-template Result IResearchDataStore::insert<FieldIterator, IResearchLinkMeta>(
+template Result IResearchDataStore::insert<FieldIterator<FieldMeta, FieldMeta>, IResearchLinkMeta>(
     transaction::Methods& trx, LocalDocumentId documentId,
     velocypack::Slice doc, IResearchLinkMeta const& meta);
 
-template Result IResearchDataStore::insert<InvertedIndexFieldIterator,
-                                           IResearchInvertedIndexMeta>(
-    transaction::Methods& trx, LocalDocumentId documentId,
-    velocypack::Slice doc, IResearchInvertedIndexMeta const& meta);
+template Result IResearchDataStore::insert<
+    FieldIterator<IResearchInvertedIndexMeta,
+                  IResearchInvertedIndexMeta::FieldRecord>,
+    IResearchInvertedIndexMeta>(transaction::Methods& trx,
+                                LocalDocumentId documentId,
+                                velocypack::Slice doc,
+                                IResearchInvertedIndexMeta const& meta);
 
 }  // namespace arangodb::iresearch

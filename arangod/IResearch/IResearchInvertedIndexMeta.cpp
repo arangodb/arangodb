@@ -23,9 +23,12 @@
 
 #include "IResearchInvertedIndexMeta.h"
 
+#include "frozen/map.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
+#include "IResearch/IResearchKludge.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "VelocyPackHelper.h"
@@ -37,7 +40,7 @@ using namespace arangodb;
 using namespace arangodb::iresearch;
 
 constexpr auto consistencyTypeMap =
-    frozen::make_map<irs::string_ref, Consistency>({
+    frozen::map<irs::string_ref, Consistency, 2>({
         {"eventual", Consistency::kEventual},
         {"immediate", Consistency::kImmediate}
     });
@@ -63,12 +66,15 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
     IResearchInvertedIndexMeta::AnalyzerDefinitions& analyzerDefinitions,
     AnalyzerPool::ptr versionSpecificIdentity, LinkVersion version,
     bool extendedNames, IResearchAnalyzerFeature& analyzers,
-    irs::string_ref const defaultVocbase, std::string& errorField) {
+    irs::string_ref const defaultVocbase, std::string& errorField,
+    std::string_view parentName) {
   std::optional<Features> features;
-  IResearchInvertedIndexMeta::Fields nestedFields;
+  std::vector<IResearchInvertedIndexMeta::FieldRecord> nestedFields;
   AnalyzerPool::ptr analyzer;
   std::string expression;
   std::vector<basics::AttributeName> fieldParts;
+  std::string shortName;
+  std::string fieldName;
   bool isArray{false};
   bool trackListPositions{false};
   bool includeAllFields{false};
@@ -76,7 +82,9 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
   if (slice.isString()) {
     try {
       analyzer = versionSpecificIdentity;
-      TRI_ParseAttributeString(slice.stringView(), fieldParts, true);
+      shortName = versionSpecificIdentity->name();
+      fieldName = slice.copyString();
+      TRI_ParseAttributeString(fieldName, fieldParts, true);
       TRI_ASSERT(!fieldParts.empty());
     } catch (arangodb::basics::Exception const& err) {
       LOG_TOPIC("1d04c", ERR, arangodb::iresearch::TOPIC)
@@ -87,6 +95,7 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
   } else if (slice.isObject()) {
     auto nameSlice = slice.get(kNameFieldName);
     if (nameSlice.isString()) {
+      fieldName = nameSlice.copyString();
       try {
         TRI_ParseAttributeString(nameSlice.stringView(), fieldParts, true);
         TRI_ASSERT(!fieldParts.empty());
@@ -101,7 +110,7 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
         auto analyzerSlice = slice.get(kAnalyzerFieldName);
         if (analyzerSlice.isString()) {
           auto name = analyzerSlice.copyString();
-          auto shortName = name;
+          shortName = name;
           if (!defaultVocbase.null()) {
             name = IResearchAnalyzerFeature::normalize(name, defaultVocbase);
             shortName = IResearchAnalyzerFeature::normalize(
@@ -158,6 +167,7 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
         }
       } else {
         analyzer = versionSpecificIdentity;
+        shortName = versionSpecificIdentity->name();
       }
       {
         if (slice.hasKey(kFeaturesFieldName)) {
@@ -179,10 +189,19 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
           return std::nullopt;
         }
         std::string localError;
+        std::string myPath;
+        if (!parentName.empty()) {
+          myPath += parentName;
+          myPath += ".";
+        }
+        myPath += fieldName;
+        kludge::mangleNested(myPath);
+
         for (auto it = VPackArrayIterator(nestedSlice); it.valid(); ++it) {
           auto nested = fromVelocyPack(
               it.value(), true, analyzerDefinitions, versionSpecificIdentity,
-              version, extendedNames, analyzers, defaultVocbase, localError);
+              version, extendedNames, analyzers, defaultVocbase, localError,
+              myPath);
           if (nested) {
             nestedFields.push_back(std::move(*nested));
           } else {
@@ -264,10 +283,12 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
     errorField = kNameFieldName;
     return std::nullopt;
   }
+  bool const isAnalyzerPrimitive =
+      !analyzer->accepts(AnalyzerValueType::Array | AnalyzerValueType::Object);
   return std::make_optional<IResearchInvertedIndexMeta::FieldRecord>(
-      std::move(fieldParts), std::move(analyzer),
+      std::move(fieldParts), FieldMeta::Analyzer(std::move(analyzer), std::move(shortName)),
       std::move(nestedFields), std::move(features), std::move(expression),
-      isArray, includeAllFields, trackListPositions, overrideValue);
+      isArray, includeAllFields, trackListPositions, overrideValue, isAnalyzerPrimitive, parentName);
 }
 
 void toVelocyPack(IResearchInvertedIndexMeta::FieldRecord const& field, VPackBuilder& vpack) {
@@ -532,9 +553,9 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
     std::string localError;
     auto field = fromVelocyPack(itr.value(), false, _analyzerDefinitions,
                                 versionSpecificIdentity, LinkVersion{_version}, extendedNames,
-                                analyzers, defaultVocbase, localError);
+                                analyzers, defaultVocbase, localError, "");
     if (field) {
-      _fields.push_back(std::move(*field));
+      _fields._fields.push_back(std::move(*field));
     }
     else {
       errorField = std::string{kFieldsFieldName} + "[" +
@@ -549,7 +570,7 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
       errorField = kTrackListPositionsFieldName;
       return false;
     }
-    _trackListPositions = subSlice.getBool();
+    _fields._trackListPositions = subSlice.getBool();
   }
   if (slice.hasKey(kIncludeAllFieldsFieldName)) {
     auto subSlice = slice.get(kIncludeAllFieldsFieldName);
@@ -557,7 +578,7 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
       errorField = kIncludeAllFieldsFieldName;
       return false;
     }
-    _includeAllFields = subSlice.getBool();
+    _fields._includeAllFields = subSlice.getBool();
   }
 
   if (slice.hasKey(kFeaturesFieldName)) {
@@ -600,8 +621,8 @@ bool IResearchInvertedIndexMeta::json(
   velocypack::Builder fieldsBuilder;
   {
     VPackArrayBuilder fieldsArray(&fieldsBuilder);
-    TRI_ASSERT(!_fields.empty());
-    for (auto& entry : _fields) {
+    TRI_ASSERT(!_fields._fields.empty());
+    for (auto& entry : _fields._fields) {
        toVelocyPack(entry, fieldsBuilder);
     }
   }
@@ -613,8 +634,8 @@ bool IResearchInvertedIndexMeta::json(
     builder.add(kFeaturesFieldName, tmp.slice());
   }
 
-  builder.add(kTrackListPositionsFieldName, VPackValue(_trackListPositions));
-  builder.add(kIncludeAllFieldsFieldName, VPackValue(_includeAllFields));
+  builder.add(kTrackListPositionsFieldName, VPackValue(_fields._trackListPositions));
+  builder.add(kIncludeAllFieldsFieldName, VPackValue(_fields._includeAllFields));
 
   return true;
 }
@@ -638,20 +659,20 @@ bool IResearchInvertedIndexMeta::operator==(
     return false;
   }
 
-  if (_fields.size() != other._fields.size()) {
+  if (_fields._fields.size() != other._fields._fields.size()) {
     return false;
   }
 
   size_t matched{0};
-  for (auto const& thisField : _fields) {
-    for (auto const& otherField : _fields) {
+  for (auto const& thisField : _fields._fields) {
+    for (auto const& otherField : _fields._fields) {
       if (thisField.namesMatch(otherField)) {
         matched++;
         break;
       }
     }
   }
-  return matched == _fields.size();
+  return matched == _fields._fields.size();
 }
 
 bool IResearchInvertedIndexMeta::matchesFieldsDefinition(
@@ -663,7 +684,7 @@ bool IResearchInvertedIndexMeta::matchesFieldsDefinition(
   }
 
   size_t const n = static_cast<size_t>(value.length());
-  auto const count = meta._fields.size();
+  auto const count = meta._fields._fields.size();
   if (n != count) {
     return false;
   }
@@ -692,7 +713,7 @@ bool IResearchInvertedIndexMeta::matchesFieldsDefinition(
     auto in = name.stringView();
     irs::string_ref analyzerName = analyzer.stringView();
     TRI_ParseAttributeString(in, translate, true);
-    for (auto const& f : meta._fields) {
+    for (auto const& f : meta._fields._fields) {
       if (f.isIdentical(translate, analyzerName)) {
         matched++;
         break;
@@ -709,11 +730,12 @@ IResearchInvertedIndexMeta::FieldRecord::FieldRecord(
     std::vector<basics::AttributeName> const& path, FieldMeta::Analyzer&& a,
     std::vector<FieldRecord>&& nested, std::optional<Features>&& features,
     std::string&& expression, bool isArray, bool includeAllFields, bool trackListPositions,
-    bool overrideValue)
-    : _nested(std::move(nested)),
+    bool overrideValue, bool isPrimitiveAnalyzer, std::string_view parentName)
+    : _fields(std::move(nested)),
       _expression(std::move(expression)),
-      _analyzer(std::move(a)),
+      _analyzers{std::move(a)},
       _features(std::move(features)),
+      _primitiveOffset(isPrimitiveAnalyzer ? 1 : 0),
       _isArray(isArray),
       _includeAllFields(includeAllFields),
       _trackListPositions(trackListPositions),
@@ -735,6 +757,23 @@ IResearchInvertedIndexMeta::FieldRecord::FieldRecord(
     _expansion.push_back(*it);
     ++it;
   }
+  _path = parentName;
+#ifdef USE_ENTERPRISE
+  if (!parentName.empty()) {
+    _path += ".";
+  }
+#endif
+  {
+    std::string tmp;
+    TRI_AttributeNamesToString(_attribute, tmp, _expansion.empty());
+    _path += tmp;
+    if (!_expansion.empty()) {
+      _path += ".";
+      std::string exp;
+      TRI_AttributeNamesToString(_expansion, exp, true);
+      _path += exp;
+    }
+  }
 }
 
 
@@ -749,6 +788,16 @@ std::string IResearchInvertedIndexMeta::FieldRecord::toString() const {
     attr += exp;
   }
   return attr;
+}
+
+std::string IResearchInvertedIndexMeta::FieldRecord::attributeString() const {
+  std::string attr;
+  TRI_AttributeNamesToString(_attribute, attr, true);
+  return attr;
+}
+
+std::string_view IResearchInvertedIndexMeta::FieldRecord::path() const noexcept {
+   return _path;
 }
 
 std::vector<arangodb::basics::AttributeName>
@@ -770,7 +819,7 @@ bool IResearchInvertedIndexMeta::FieldRecord::namesMatch(
 bool IResearchInvertedIndexMeta::FieldRecord::isIdentical(
     std::vector<basics::AttributeName> const& path,
     irs::string_ref analyzerName) const noexcept {
-  if (_analyzer._shortName == analyzerName &&
+  if (_analyzers.front()._shortName == analyzerName &&
       path.size() == (_attribute.size() + _expansion.size())) {
     auto it = path.begin();
     auto atr = _attribute.begin();

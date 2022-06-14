@@ -33,6 +33,7 @@
 #include "Basics/Common.h"
 #include "RestServer/arangod.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
+#include "RocksDBEngine/RocksDBOptionsProvider.h"
 
 namespace arangodb {
 namespace options {
@@ -45,7 +46,8 @@ class ProgramOptions;
 // that are never activated at the same time take options set
 // in this feature
 
-class RocksDBOptionFeature final : public ArangodFeature {
+class RocksDBOptionFeature final : public ArangodFeature,
+                                   public RocksDBOptionsProvider {
  public:
   static constexpr std::string_view name() noexcept { return "RocksDBOption"; }
 
@@ -56,13 +58,30 @@ class RocksDBOptionFeature final : public ArangodFeature {
   void prepare() override final;
   void start() override final;
 
-  rocksdb::ColumnFamilyOptions columnFamilyOptions(
-      RocksDBColumnFamilyManager::Family family, rocksdb::Options const& base,
-      rocksdb::BlockBasedTableOptions const& tableBase) const;
+  rocksdb::TransactionDBOptions getTransactionDBOptions() const override;
+  rocksdb::ColumnFamilyOptions getColumnFamilyOptions(
+      RocksDBColumnFamilyManager::Family family) const override;
 
+  bool exclusiveWrites() const noexcept { return _exclusiveWrites; }
+  bool useFileLogging() const noexcept override { return _useFileLogging; }
+  bool limitOpenFilesAtStartup() const noexcept override {
+    return _limitOpenFilesAtStartup;
+  }
+  uint64_t maxTotalWalSize() const noexcept override {
+    return _maxTotalWalSize;
+  }
+  uint32_t numThreadsHigh() const noexcept override { return _numThreadsHigh; }
+  uint32_t numThreadsLow() const noexcept override { return _numThreadsLow; }
+
+ protected:
+  rocksdb::Options doGetOptions() const override;
+  rocksdb::BlockBasedTableOptions doGetTableOptions() const override;
+
+ private:
   uint64_t _transactionLockStripes;
   int64_t _transactionLockTimeout;
   std::string _walDirectory;
+  std::string _compressionType;
   uint64_t _totalWriteBufferSize;
   uint64_t _writeBufferSize;
   // Update max_write_buffer_number above if you change number of families used
@@ -90,6 +109,12 @@ class RocksDBOptionFeature final : public ArangodFeature {
   int64_t _level0StopTrigger;
   uint64_t _pendingCompactionBytesSlowdownTrigger;
   uint64_t _pendingCompactionBytesStopTrigger;
+  std::string _checksumType;
+  uint32_t _formatVersion;
+  bool _enableIndexCompression;
+  bool _prepopulateBlockCache;
+  bool _reserveTableBuilderMemory;
+  bool _reserveTableReaderMemory;
   bool _recycleLogFileNum;
   bool _enforceBlockCacheSizeLimit;
   bool _cacheIndexAndFilterBlocks;
@@ -110,15 +135,11 @@ class RocksDBOptionFeature final : public ArangodFeature {
   bool _allowFAllocate;
   bool _exclusiveWrites;
 
- private:
-  /// arangodb comparator - required because of vpack in keys
-  std::unique_ptr<RocksDBVPackComparator> _vpackCmp;
+  bool _minWriteBufferNumberToMergeTouched;
 
   /// per column family write buffer limits
   std::array<uint64_t, RocksDBColumnFamilyManager::numberOfColumnFamilies>
       _maxWriteBufferNumberCf;
-
-  bool _minWriteBufferNumberToMergeTouched;
 };
 
 }  // namespace arangodb

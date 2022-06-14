@@ -226,10 +226,6 @@ class DeterministicExpressionQuery final : public irs::filter::prepared {
 namespace arangodb {
 namespace iresearch {
 
-///////////////////////////////////////////////////////////////////////////////
-/// --SECTION--                     ExpressionCompilationContext implementation
-///////////////////////////////////////////////////////////////////////////////
-
 size_t ExpressionCompilationContext::hash() const noexcept {
   return irs::hash_combine(
       irs::hash_combine(
@@ -238,12 +234,6 @@ size_t ExpressionCompilationContext::hash() const noexcept {
           plan),
       ast);
 }
-
-///////////////////////////////////////////////////////////////////////////////
-/// --SECTION--                                     ByExpression implementation
-///////////////////////////////////////////////////////////////////////////////
-
-DEFINE_FACTORY_DEFAULT(ByExpression);
 
 ByExpression::ByExpression() noexcept
     : irs::filter(irs::type<ByExpression>::get()) {}

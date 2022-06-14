@@ -23,6 +23,7 @@
 
 #include <Basics/ResultT.h>
 #include <Basics/Exceptions.h>
+#include <Basics/Exceptions.tpp>
 #include <Basics/voc-errors.h>
 #include <Futures/Future.h>
 
@@ -162,6 +163,10 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
+  auto drop(LogId id) const -> futures::Future<Result> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
  private:
   [[nodiscard]] auto getPrototypeStateLeaderById(LogId id) const
       -> std::shared_ptr<PrototypeLeaderState> {
@@ -169,10 +174,10 @@ struct PrototypeStateMethodsDBServer final : PrototypeStateMethods {
         std::dynamic_pointer_cast<ReplicatedState<PrototypeState>>(
             _vocbase.getReplicatedStateById(id));
     if (stateMachine == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
-          basics::StringUtils::concatT("Failed to get ProtoypeState with id ",
-                                       id));
+      using namespace fmt::literals;
+      throw basics::Exception::fmt(
+          ADB_HERE, TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND,
+          "id"_a = id, "type"_a = "PrototypeState");
     }
     auto leader = stateMachine->getLeader();
     if (leader == nullptr) {
@@ -404,6 +409,12 @@ struct PrototypeStateMethodsCoordinator final
         });
   }
 
+  auto drop(LogId id) const -> futures::Future<Result> override {
+    auto methods =
+        replication2::ReplicatedStateMethods::createInstance(_vocbase);
+    return methods->deleteReplicatedState(id);
+  }
+
   auto waitForApplied(LogId id, LogIndex waitForIndex) const
       -> futures::Future<Result> override {
     auto path = basics::StringUtils::joinT("/", "_api/prototype-state", id,
@@ -426,15 +437,13 @@ struct PrototypeStateMethodsCoordinator final
     auto dbservers = _clusterInfo.getCurrentDBServers();
     std::size_t expectedNumberOfServers =
         std::min(dbservers.size(), std::size_t{3});
-    if (options.config.has_value()) {
-      expectedNumberOfServers = options.config->replicationFactor;
-    } else if (!options.servers.empty()) {
+    if (!options.servers.empty()) {
       expectedNumberOfServers = options.servers.size();
     }
 
     if (!options.config.has_value()) {
-      options.config =
-          LogConfig{2, expectedNumberOfServers, expectedNumberOfServers, false};
+      options.config = arangodb::replication2::agency::LogTargetConfig{
+          2, expectedNumberOfServers, false};
     }
 
     if (expectedNumberOfServers > dbservers.size()) {
@@ -595,14 +604,14 @@ auto PrototypeStateMethods::createInstance(TRI_vocbase_t& vocbase)
 [[nodiscard]] auto PrototypeStateMethods::get(LogId id, std::string key,
                                               LogIndex waitForApplied) const
     -> futures::Future<ResultT<std::optional<std::string>>> {
-  return get(id, std::move(key), {.waitForApplied = waitForApplied});
+  return get(id, std::move(key), {waitForApplied, std::nullopt});
 }
 
 [[nodiscard]] auto PrototypeStateMethods::get(LogId id,
                                               std::vector<std::string> keys,
                                               LogIndex waitForApplied) const
     -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>> {
-  return get(id, std::move(keys), {.waitForApplied = waitForApplied});
+  return get(id, std::move(keys), {waitForApplied, std::nullopt});
 }
 
 [[nodiscard]] auto PrototypeStateMethods::get(

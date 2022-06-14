@@ -30,16 +30,8 @@
 #include "Aql/Stats.h"
 #include "Basics/debugging.h"
 
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 using namespace arangodb::aql;
-
-struct Dependency {
-  Dependency() : _number{0} {};
-
-  size_t _number;
-};
 
 UnsortedGatherExecutor::UnsortedGatherExecutor(Fetcher&, Infos&) {}
 
@@ -65,7 +57,8 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
         auto callSet = AqlCallSet{};
         callSet.calls.emplace_back(AqlCallSet::DepCallPair{
             currentDependency(), AqlCallList{output.getClientCall()}});
-        return {input.upstreamState(currentDependency()), Stats{}, callSet};
+        return {input.upstreamState(currentDependency()), Stats{},
+                std::move(callSet)};
       }
     }
   }
@@ -91,7 +84,8 @@ auto UnsortedGatherExecutor::produceRows(typename Fetcher::DataRange& input,
     auto callSet = AqlCallSet{};
     callSet.calls.emplace_back(AqlCallSet::DepCallPair{
         currentDependency(), AqlCallList{output.getClientCall()}});
-    return {input.upstreamState(currentDependency()), Stats{}, callSet};
+    return {input.upstreamState(currentDependency()), Stats{},
+            std::move(callSet)};
   }
 }
 
@@ -133,7 +127,7 @@ auto UnsortedGatherExecutor::skipRowsRange(typename Fetcher::DataRange& input,
     callSet.calls.emplace_back(
         AqlCallSet::DepCallPair{currentDependency(), AqlCallList{call}});
   }
-  return {ExecutorState::HASMORE, Stats{}, skipped, callSet};
+  return {ExecutorState::HASMORE, Stats{}, skipped, std::move(callSet)};
 }
 
 auto UnsortedGatherExecutor::initialize(
