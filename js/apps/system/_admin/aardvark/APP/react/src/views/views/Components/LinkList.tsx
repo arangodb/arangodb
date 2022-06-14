@@ -59,11 +59,11 @@ const LinkList = ({ name }: ViewProps) => {
           <tbody>
           {
             size(validLinks)
-              ? validLinks.map((pair, key) =>
-                <tr key={key}>
+              ? validLinks.map(pair =>
+                <tr key={pair[0]}>
                   <ArangoTD seq={0}>{pair[0]}</ArangoTD>
                   <ArangoTD seq={1}>
-                    <DeleteButton collection={pair[0]} modalCid={`modal-content-view-${key}`}/>
+                    <DeleteButton collection={pair[0]} modalCid={`modal-content-view-${pair[0]}`}/>
                     <HashLink to={`/${pair[0]}`}>
                       <IconButton icon={"edit"} type={"warning"}/>
                     </HashLink>
