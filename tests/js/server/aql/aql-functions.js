@@ -1102,6 +1102,14 @@ function ahuacatlFunctionsTestSuite () {
       var expected = [ { "abc" : [ 1, 2, 3 ], "chicken" : "is a language", "empty" : false, "foo" : "bar", "foobar" : "baz", "quarter" : 1, "quux" : 123, "value" : true, "year" : 2010 } ];
       var actual = getQueryResults("RETURN MERGE([ { quarter: 1, year: 2010 }, { foo: 'bar' }, { chicken: 'is a language' }, { }, { foobar: 'baz' }, { quux: 123, value: true }, { empty: false }, { }, { abc: [1,2,3] } ])");
       assertEqual(expected, actual);
+
+      expected = [ { } ];
+      actual = getQueryResults("RETURN MERGE( [ { } ] )");
+      assertEqual(expected, actual);
+
+      expected = [ { } ];
+      actual = getQueryResults("RETURN MERGE( [ ] )");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1124,6 +1132,7 @@ function ahuacatlFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE({ }, { }, 3)"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE({ }, { }, \"yes\")"); 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE({ }, { }, [ ])"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN MERGE([ ], { })"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1231,15 +1240,19 @@ function ahuacatlFunctionsTestSuite () {
       var doc10 = "{ \"continent\" : { \"Australia\" : { \"country\" : { \"AU\" : { \"city\" : \"Sydney\" } } } } }";
       var doc11 ="{ \"continent\" : { \"Australia\" : { \"country\" : { \"AU\" : { \"city\" : \"Melbourne\" } } } } }";
       var doc12 ="{ \"continent\" : { \"Africa\" : { \"country\" : { \"EG\" : { \"city\" : \"Cairo\" } } } } }";
-
-      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ", " + doc3 + ", " + doc4 + ", " + doc5 + ", " + doc6 + ", " + doc7 + ", " + doc8 + ", " + doc9 + ", " + doc10 + ", " + doc11 + ", " + doc12 + ")");
-
-      assertEqual([ { "continent" : { 
+      
+      var expected = [ { "continent" : { 
         "Europe" : { "country" : { "DE" : { "city" : "Munich" }, "UK" : { "city" : "London" }, "FR" : { "city" : "Paris" } } }, 
         "Asia" : { "country" : { "CN" : { "city" : "Shanghai" }, "JP" : { "city" : "Tokyo" } } }, 
         "Australia" : { "country" : { "AU" : { "city" : "Melbourne" } } }, 
         "Africa" : { "country" : { "EG" : { "city" : "Cairo" } } } 
-      } } ], actual);
+      } } ];
+
+      var actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc1 + ", " + doc2 + ", " + doc3 + ", " + doc4 + ", " + doc5 + ", " + doc6 + ", " + doc7 + ", " + doc8 + ", " + doc9 + ", " + doc10 + ", " + doc11 + ", " + doc12 + ")");
+      assertEqual(expected, actual);
+
+      actual = getQueryResults("RETURN MERGE_RECURSIVE( [ " + doc1 + ", " + doc2 + ", " + doc3 + ", " + doc4 + ", " + doc5 + ", " + doc6 + ", " + doc7 + ", " + doc8 + ", " + doc9 + ", " + doc10 + ", " + doc11 + ", " + doc12 + " ] )");
+      assertEqual(expected, actual);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1254,6 +1267,9 @@ function ahuacatlFunctionsTestSuite () {
       assertEqual([ { } ], actual);
 
       actual = getQueryResults("RETURN MERGE_RECURSIVE( [ " + doc1 + " ] )");
+      assertEqual([ { } ], actual);
+
+      actual = getQueryResults("RETURN MERGE_RECURSIVE( [ ] )");
       assertEqual([ { } ], actual);
 
       actual = getQueryResults("RETURN MERGE_RECURSIVE(" + doc2 + ")");
