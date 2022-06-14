@@ -805,11 +805,19 @@ class ClusterInfo final {
   };
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief get current MetricsState from agencyCache
-  /// @param wantLeader if true we need to propose self to leader if current die
-  /// @note can throw exception if something not founded, or another error
-  /// @note if leader is nullopt that means our server is a leader
-  /// @return who is leader, and what it cache version
+  /// @brief Gets the current MetricsState from the agencyCache.
+  /// @param wantLeader If it is `true`, a RebootTracker event is set,
+  /// in which we will try to become the new leader ourselves, if the current
+  /// leader dies. If the flag is `false`, no new event is set,
+  /// but the old one is also not deleted.
+  /// @note This method can throw exceptions of various types, if
+  /// something is not founded or some other error occurs, so the called
+  /// must guard against this. In particular, this can happen in the
+  /// bootstrap phase if the `AgencyCache` has not yet heard about this.
+  /// @note If `leader` in the resulting `MetricsState` is `nullopt`
+  /// that means we ourselves are the leader.
+  /// @note If `wantLeader` is true, then thread-safe, otherwise not
+  /// @return Who is the leader, and what cache version is current.
   //////////////////////////////////////////////////////////////////////////////
   MetricsState getMetricsState(bool wantLeader);
 
