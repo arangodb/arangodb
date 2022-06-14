@@ -4,7 +4,7 @@ import { ArangoTable, ArangoTD } from "../../../components/arango/table";
 import AutoCompleteTextInput from "../../../components/pure-css/form/AutoCompleteTextInput";
 import { IconButton } from "../../../components/arango/buttons";
 import { ViewContext } from "../constants";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import { NavButton } from "../Actions";
 
 type NewLinkProps = {
@@ -22,6 +22,9 @@ const NewLink = ({
                  }: NewLinkProps) => {
   const { dispatch } = useContext(ViewContext);
   const history = useHistory();
+  const location = useLocation();
+
+  const up = location.pathname.slice(0, location.pathname.lastIndexOf('/'));
 
   const addLink = () => {
     dispatch({
@@ -31,11 +34,11 @@ const NewLink = ({
         value: {}
       }
     });
-    history.goBack();
+    history.push(up);
   };
 
   return (
-    <ViewLinkLayout fragments={['[New]']}>
+    <ViewLinkLayout fragments={['[New Link]']}>
       <ArangoTable>
         <tbody>
         <tr style={{ borderBottom: "1px  solid #DDD" }}>

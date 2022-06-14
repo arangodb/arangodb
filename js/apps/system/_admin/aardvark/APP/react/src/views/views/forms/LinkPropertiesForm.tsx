@@ -5,6 +5,7 @@ import FieldView from "../Components/FieldView";
 import { Route, Switch, useRouteMatch } from "react-router-dom";
 import { NavButton, SaveButton } from "../Actions";
 import { FormState, ViewContext, ViewProps } from "../constants";
+import NewField from "../Components/NewField";
 
 const LinkPropertiesForm = ({ name }: ViewProps) => {
   const { formState: fs, isAdminUser, changed, setChanged } = useContext(ViewContext);
@@ -27,8 +28,8 @@ const LinkPropertiesForm = ({ name }: ViewProps) => {
         <div className="tab-pane tab-pane-modal active" id="Links">
           <main>
             <Switch>
-              <Route path={`${match.path}/:field+/_add`}>
-                <FieldView disabled={disabled}/>
+              <Route path={`${match.path}/:field*/_add`}>
+                { isAdminUser ? <NewField/> : null }
               </Route>
               <Route path={`${match.path}/:field+`}>
                 <FieldView disabled={disabled}/>

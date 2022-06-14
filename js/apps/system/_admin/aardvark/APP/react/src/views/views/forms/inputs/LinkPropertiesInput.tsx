@@ -4,10 +4,6 @@ import React, { ChangeEvent, useEffect, useMemo, useState } from "react";
 import { chain, get, isEmpty, without } from "lodash";
 import { Cell, Grid } from "../../../../components/pure-css/grid";
 import Checkbox from "../../../../components/pure-css/form/Checkbox";
-import { ArangoTable, ArangoTD } from "../../../../components/arango/table";
-import Textbox from "../../../../components/pure-css/form/Textbox";
-import { IconButton } from "../../../../components/arango/buttons";
-import { useLinkState } from "../../helpers";
 import Fieldset from "../../../../components/pure-css/form/Fieldset";
 import { getBooleanFieldSetter } from "../../../../utils/helpers";
 import AutoCompleteMultiSelect from "../../../../components/pure-css/form/AutoCompleteMultiSelect";
@@ -25,10 +21,6 @@ const LinkPropertiesInput = ({
                                disabled,
                                basePath
                              }: LinkPropertiesInputProps) => {
-  const [field, setField, addDisabled, fields] = useLinkState(
-    formState,
-    "fields"
-  );
   const { data } = useSWR("/analyzer", path =>
     getApiRouteForCurrentDB().get(path)
   );
@@ -46,22 +38,6 @@ const LinkPropertiesInput = ({
       setOptions(tempOptions);
     }
   }, [analyzers, data]);
-
-  const updateField = (event: ChangeEvent<HTMLInputElement>) => {
-    setField(event.target.value);
-  };
-
-  const addField = () => {
-    dispatch({
-      type: "setField",
-      field: {
-        path: `fields[${field}]`,
-        value: {}
-      },
-      basePath
-    });
-    setField("");
-  };
 
   const addAnalyzer = (analyzer: string | number) => {
     dispatch({
@@ -102,40 +78,6 @@ const LinkPropertiesInput = ({
   const hideInBackgroundField = disabled || basePath.includes(".fields");
   return (
     <Grid>
-      <Cell size={"1-1"}>
-        <Grid>
-          <Cell size={"1-1"}>
-            {disabled ? null : (
-              <ArangoTable>
-                <tbody>
-                <tr>
-                  <ArangoTD seq={0} colSpan={2}>
-                    <Textbox
-                      type={"text"}
-                      placeholder={"Field"}
-                      onChange={updateField}
-                      value={field}
-                    />
-                  </ArangoTD>
-                  <ArangoTD seq={1}>
-                    <IconButton
-                      style={{ marginTop: "12px" }}
-                      icon={"plus"}
-                      type={"warning"}
-                      onClick={addField}
-                      disabled={addDisabled}
-                    >
-                      Add
-                    </IconButton>
-                  </ArangoTD>
-                </tr>
-                </tbody>
-              </ArangoTable>
-            )}
-          </Cell>
-        </Grid>
-      </Cell>
-
       <Cell size={"1-1"}>
         <Grid style={{ marginTop: 24 }}>
           <Cell size={"1-3"} style={{
@@ -211,9 +153,9 @@ const LinkPropertiesInput = ({
 
       <Cell size={"1"}>
         <Fieldset legend={"Fields"}>
-          {disabled && isEmpty(fields) ? null : (
+          {disabled && isEmpty(formState.fields) ? null : (
             <FieldList
-              fields={fields}
+              fields={formState.fields}
               disabled={disabled}
               basePath={basePath}
             />
