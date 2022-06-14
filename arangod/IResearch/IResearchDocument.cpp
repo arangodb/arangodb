@@ -362,7 +362,8 @@ FieldIterator<IndexMetaStruct, LevelMeta>::FieldIterator(arangodb::transaction::
     : _trx(&trx),
       _collection(collection),
       _linkId(linkId),
-      _isDBServer(ServerState::instance()->isDBServer()) {
+      _isDBServer(ServerState::instance()->isDBServer()),
+      _disableFlush(false) {
   // initialize iterator's value
 }
 
@@ -376,8 +377,7 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::reset(VPackSlice doc, IndexMetaS
   _primitiveTypeResetter = nullptr;
   _stack.clear();
   _nameBuffer.clear();
-
-
+  _disableFlush = false;
 
   // push the provided 'doc' on stack and initialize current value
   auto const filter = getFilter(doc, static_cast<LevelMeta const&>(linkMeta));

@@ -56,6 +56,12 @@ using namespace std::literals;
 namespace arangodb::iresearch {
 namespace {
 
+#ifndef USE_ENTERPRISE
+inline bool needTrackPrevDoc(irs::string_ref) {
+  return false;
+}
+#endif
+
 class IResearchFlushSubscription final : public FlushSubscription {
  public:
   explicit IResearchFlushSubscription(TRI_voc_tick_t tick = 0) noexcept
@@ -177,11 +183,8 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
     return {};  // no fields to index
   }
   auto& field = *body;
-
-  bool wasNested{false};
 #ifdef USE_ENTERPRISE
   if (body.hasNested()) {
-    wasNested = true;
     auto nestedRes = handleNestedFields(ctx, body);
     if (nestedRes.fail()) {
       return {TRI_ERROR_INTERNAL,
@@ -191,10 +194,7 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
     }
   }
 #endif
-  // flag if there was nested.
-  // first child should be without flag!
-  auto doc = ctx.insert(/*wasNested*/);
-
+  auto doc = ctx.insert(body.disableFlush());
   if (!doc) {
     return {TRI_ERROR_INTERNAL,
             "failed to insert document into arangosearch link '" +
@@ -202,6 +202,20 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
                 std::to_string(documentId.id()) + "'"};
   }
 
+  // User fields
+  while (body.valid()) {
+#ifdef USE_ENTERPRISE
+    if (field._root) {
+      handleNestedRoot(doc, field);
+    } else
+#endif
+    if (ValueStorage::NONE == field._storeValues) {
+      doc.insert<irs::Action::INDEX>(field);
+    } else {
+      doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
+    }
+    ++body;
+  }
 
   // Sorted field
   {
@@ -235,21 +249,6 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
   // reuse the 'Field' instance stored inside the 'FieldIterator'
   Field::setPkValue(const_cast<Field&>(field), docPk);
   doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
-
-  // User fields
-  while (body.valid()) {
-#ifdef USE_ENTERPRISE
-    if (field._root) {
-      handleNestedRoot(doc, field);
-    } else
-#endif
-    if (ValueStorage::NONE == field._storeValues) {
-      doc.insert<irs::Action::INDEX>(field);
-    } else {
-      doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
-    }
-    ++body;
-  }
 
   if (trx.state()->hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
     ctx.tick(engine->currentTick());
@@ -1114,7 +1113,7 @@ Result IResearchDataStore::initDataStore(
     return {.compression = getDefaultCompression()(),
             .options = {},
             .encryption = encrypt && (DocumentPrimaryKey::PK() != name),
-            .track_prev_doc = false};
+            .track_prev_doc = needTrackPrevDoc(name)};
   };
 
   auto openFlags = irs::OM_APPEND;

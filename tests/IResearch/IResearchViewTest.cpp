@@ -138,7 +138,7 @@ struct DocIdScorer : public irs::sort {
       return {std::make_unique<ScoreCtx>(doc),
               [](irs::score_ctx* ctx, irs::score_t* res) {
                 auto* state = static_cast<ScoreCtx*>(ctx);
-                *res = state->_doc->value;
+                *res = static_cast<irs::score_t>(state->_doc->value);
               }};
     }
   };

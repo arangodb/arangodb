@@ -82,6 +82,7 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
   if (slice.isString()) {
     try {
       analyzer = versionSpecificIdentity;
+      shortName = versionSpecificIdentity->name();
       fieldName = slice.copyString();
       TRI_ParseAttributeString(fieldName, fieldParts, true);
       TRI_ASSERT(!fieldParts.empty());
@@ -166,6 +167,7 @@ std::optional<IResearchInvertedIndexMeta::FieldRecord> fromVelocyPack(
         }
       } else {
         analyzer = versionSpecificIdentity;
+        shortName = versionSpecificIdentity->name();
       }
       {
         if (slice.hasKey(kFeaturesFieldName)) {
