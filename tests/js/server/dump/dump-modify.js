@@ -32,7 +32,7 @@ var jsunity = require("jsunity");
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function dumpTestSuite () {
+function dumpTestSuite() {
   'use strict';
   var db = internal.db;
 
@@ -42,7 +42,7 @@ function dumpTestSuite () {
 /// @brief test the empty collection
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEmpty : function () {
+    testEmpty: function() {
       var c = db._collection("UnitTestsDumpEmpty");
 
       c.ensureIndex({type: "hash", fields: ["abc"]});
@@ -53,7 +53,7 @@ function dumpTestSuite () {
 /// @brief test the collection with many documents
 ////////////////////////////////////////////////////////////////////////////////
 
-    testMany : function () {
+    testMany: function() {
       var c = db._collection("UnitTestsDumpMany");
       var p = c.properties();
 
@@ -98,12 +98,13 @@ function dumpTestSuite () {
       // add another bunch of documents
       l = [];
       for (let i = 100001; i < 200000; i += 2) {
-        l.push({_key: 'test' + i ,
-                abc: i,
-                value1: i,
-                value2: "this is a test", 
-                value3: "test" + i
-               });
+        l.push({
+          _key: 'test' + i,
+          abc: i,
+          value1: i,
+          value2: "this is a test",
+          value3: "test" + i
+        });
         if (l.length === 10000) {
           c.insert(l);
           l = [];
@@ -115,7 +116,7 @@ function dumpTestSuite () {
 /// @brief test the edges collection
 ////////////////////////////////////////////////////////////////////////////////
 
-    testEdges : function () {
+    testEdges: function() {
       var c = db._collection("UnitTestsDumpEdges");
       var p = c.properties();
 
@@ -129,21 +130,22 @@ function dumpTestSuite () {
       c.ensureIndex({type: "hash", fields: ["abc"]});
 
       // remove half of the documents
-      for (let i = 0; i < 10; i+=2) {
+      for (let i = 0; i < 10; i += 2) {
         var doc = c.document("test" + i);
         assertEqual(i + "->" + (i + 1), doc.what);
         c.remove(doc._key);
       }
       // add another bunch of documents
-      for (let i = 11; i < 20; i+=2) {
-        c.save({_key: 'test'+ i,
-                abc: i,
-                value2: "this is a test", 
-                value3: "test" + i,
-                _from: "UnitTestsDumpMany/test" + i,
-                _to: "UnitTestsDumpMany/test" + (i + 1), 
-                what: i + "->" + (i + 1)
-               });
+      for (let i = 11; i < 20; i += 2) {
+        c.save({
+          _key: 'test' + i,
+          abc: i,
+          value2: "this is a test",
+          value3: "test" + i,
+          _from: "UnitTestsDumpMany/test" + i,
+          _to: "UnitTestsDumpMany/test" + (i + 1),
+          what: i + "->" + (i + 1)
+        });
       }
     },
 
@@ -151,7 +153,7 @@ function dumpTestSuite () {
 /// @brief test the order of documents
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOrder : function () {
+    testOrder: function() {
       var c = db._collection("UnitTestsDumpOrder");
       var p = c.properties();
 
@@ -167,7 +169,7 @@ function dumpTestSuite () {
 /// @brief test document removal & update
 ////////////////////////////////////////////////////////////////////////////////
 
-    testRemoved : function () {
+    testRemoved: function() {
       var c = db._collection("UnitTestsDumpRemoved");
       var p = c.properties();
 
@@ -184,14 +186,14 @@ function dumpTestSuite () {
         docs.push("test" + i);
       }
       c.remove(docs);
-      c.save({ _key: "test" + 999999, value: 999999 });
+      c.save({_key: "test" + 999999, value: 999999});
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-    testIndexes : function () {
+    testIndexes: function() {
       var c = db._collection("UnitTestsDumpIndexes");
       var p = c.properties();
 
@@ -204,39 +206,39 @@ function dumpTestSuite () {
       assertEqual("hash", c.getIndexes()[1].type);
       assertTrue(c.getIndexes()[1].unique);
       assertFalse(c.getIndexes()[1].sparse);
-      assertEqual([ "a_uc" ], c.getIndexes()[1].fields);
+      assertEqual(["a_uc"], c.getIndexes()[1].fields);
 
       assertEqual("skiplist", c.getIndexes()[2].type);
       assertFalse(c.getIndexes()[2].unique);
       assertFalse(c.getIndexes()[2].sparse);
-      assertEqual([ "a_s1", "a_s2" ], c.getIndexes()[2].fields);
+      assertEqual(["a_s1", "a_s2"], c.getIndexes()[2].fields);
 
       assertEqual("hash", c.getIndexes()[3].type);
       assertFalse(c.getIndexes()[3].unique);
       assertFalse(c.getIndexes()[3].sparse);
-      assertEqual([ "a_h1", "a_h2" ], c.getIndexes()[3].fields);
+      assertEqual(["a_h1", "a_h2"], c.getIndexes()[3].fields);
 
       assertEqual("skiplist", c.getIndexes()[4].type);
       assertTrue(c.getIndexes()[4].unique);
       assertFalse(c.getIndexes()[4].sparse);
-      assertEqual([ "a_su" ], c.getIndexes()[4].fields);
+      assertEqual(["a_su"], c.getIndexes()[4].fields);
 
       assertEqual("hash", c.getIndexes()[5].type);
       assertFalse(c.getIndexes()[5].unique);
       assertTrue(c.getIndexes()[5].sparse);
-      assertEqual([ "a_hs1", "a_hs2" ], c.getIndexes()[5].fields);
+      assertEqual(["a_hs1", "a_hs2"], c.getIndexes()[5].fields);
 
       assertEqual("skiplist", c.getIndexes()[6].type);
       assertFalse(c.getIndexes()[6].unique);
       assertTrue(c.getIndexes()[6].sparse);
-      assertEqual([ "a_ss1", "a_ss2" ], c.getIndexes()[6].fields);
+      assertEqual(["a_ss1", "a_ss2"], c.getIndexes()[6].fields);
 
       assertFalse(c.getIndexes()[7].unique);
       assertEqual("fulltext", c.getIndexes()[7].type);
-      assertEqual([ "a_f" ], c.getIndexes()[7].fields);
+      assertEqual(["a_f"], c.getIndexes()[7].fields);
 
       assertEqual("geo", c.getIndexes()[8].type);
-      assertEqual([ "a_la", "a_lo" ], c.getIndexes()[8].fields);
+      assertEqual(["a_la", "a_lo"], c.getIndexes()[8].fields);
       assertFalse(c.getIndexes()[8].unique);
 
       assertEqual(0, c.count());
@@ -247,7 +249,7 @@ function dumpTestSuite () {
 /// @brief test truncate
 ////////////////////////////////////////////////////////////////////////////////
 
-    testTruncated : function () {
+    testTruncated: function() {
       var c = db._collection("UnitTestsDumpTruncated");
       var p = c.properties();
 
@@ -260,14 +262,10 @@ function dumpTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test keygen
+/// @brief test autoincrement keygen
 ////////////////////////////////////////////////////////////////////////////////
 
-    testKeygen : function () {
-      if (arango.getRole() === "COORDINATOR") {
-        // Only executed on single server tests.
-        return;
-      }
+    testKeygen: function() {
       var c = db._collection("UnitTestsDumpKeygen");
       var p = c.properties();
 
@@ -287,11 +285,11 @@ function dumpTestSuite () {
 
         assertEqual(String(7 + (i * 42)), doc._key);
         assertEqual(i, doc.value);
-        assertEqual({ value: [ i, i ] }, doc.more);
+        assertEqual({value: [i, i]}, doc.more);
       }
 
       for (let i = 0; i < 1000; ++i) {
-        c.save({value: i, more: [ i, i ] });
+        c.save({value: i, more: [i, i]});
       }
     },
 
@@ -299,7 +297,7 @@ function dumpTestSuite () {
 /// @brief test padded keygen
 ////////////////////////////////////////////////////////////////////////////////
 
-    testKeygenPadded : function () {
+    testKeygenPadded: function() {
       var c = db._collection("UnitTestsDumpKeygenPadded");
       var p = c.properties();
 
@@ -322,7 +320,7 @@ function dumpTestSuite () {
 
         assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
         assertEqual(i, doc.value);
-        assertEqual({ value: [ i, i ] }, doc.more);
+        assertEqual({value: [i, i]}, doc.more);
         lastKey = doc._key;
       }
       doc = c.save({});
@@ -333,7 +331,7 @@ function dumpTestSuite () {
 /// @brief test uuid keygen
 ////////////////////////////////////////////////////////////////////////////////
 
-    testKeygenUuid : function () {
+    testKeygenUuid: function() {
       var c = db._collection("UnitTestsDumpKeygenUuid");
       var p = c.properties();
 
@@ -363,7 +361,7 @@ function dumpTestSuite () {
 /// @brief test strings
 ////////////////////////////////////////////////////////////////////////////////
 
-    testStrings : function () { // todo: what to change here?
+    testStrings: function() { // todo: what to change here?
       var c = db._collection("UnitTestsDumpStrings");
       var p = c.properties();
 
@@ -385,7 +383,7 @@ function dumpTestSuite () {
         " 復讐者」. 復讐者」. 伯母さん 復讐者」. 復讐者」. 復讐者」. 復讐者」. 第九章 第五章 第六章 第七章 第八章. 復讐者」 伯母さん. 復讐者」 伯母さん. 第十一章 第十九章 第十四章 第十八章 第十三章 第十五章. 復讐者」 . 第十四章 第十一章 第十二章 第十五章 第十七章 手配書. 第十四章 手配書 第十八章 第十七章 第十六章 第十三章. 第十一章 第十三章 第十八章 第十四章 手配書. 復讐者」."
       ];
 
-      texts.forEach(function (t, i) {
+      texts.forEach(function(t, i) {
         var doc = c.document("text" + i);
 
         assertEqual(t, doc.value);
@@ -397,7 +395,7 @@ function dumpTestSuite () {
 /// @brief test committed trx
 ////////////////////////////////////////////////////////////////////////////////
 
-    testTransactionCommit : function () { // todo
+    testTransactionCommit: function() { // todo
       if (arango.getRole() === "COORDINATOR") {
         // Only executed on single server tests.
         return;
@@ -419,7 +417,7 @@ function dumpTestSuite () {
 /// @brief test committed trx
 ////////////////////////////////////////////////////////////////////////////////
 
-    testTransactionUpdate : function () {
+    testTransactionUpdate: function() {
       if (arango.getRole() === "COORDINATOR") {
         // Only executed on single server tests.
         return;
@@ -435,8 +433,7 @@ function dumpTestSuite () {
         assertEqual("this is a test", doc.value2);
         if (i % 2 === 0) {
           assertEqual(i, doc.value3);
-        }
-        else {
+        } else {
           assertEqual("test" + i, doc.value3);
         }
       }
@@ -446,7 +443,7 @@ function dumpTestSuite () {
 /// @brief test aborted trx
 ////////////////////////////////////////////////////////////////////////////////
 
-    testTransactionAbort : function () { // todo
+    testTransactionAbort: function() { // todo
       if (arango.getRole() === "COORDINATOR") {
         // Only executed on single server tests.
         return;
@@ -462,7 +459,7 @@ function dumpTestSuite () {
 /// @brief test persistent
 ////////////////////////////////////////////////////////////////////////////////
 
-    testPersistent : function () { // todo: does it make sense at all?
+    testPersistent: function() { // todo: does it make sense at all?
       if (arango.getRole() === "COORDINATOR") {
         // Only executed on single server tests.
         return;
@@ -492,7 +489,7 @@ function dumpTestSuite () {
 /// @brief test latestId
 ////////////////////////////////////////////////////////////////////////////////
 
-    testLatestId : function () {
+    testLatestId: function() {
       if (arango.getRole() === "COORDINATOR") {
         // Only executed in the cluster
         // The following increases /arango/Sync/LatestID in the agency
@@ -513,45 +510,45 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test view restoring
 ////////////////////////////////////////////////////////////////////////////////
-/* not yet implemented
-    testView : function () {
-      try {
-        db._createView("check", "arangosearch", {});
-      } catch (err) {}
+    /* not yet implemented
+        testView : function () {
+          try {
+            db._createView("check", "arangosearch", {});
+          } catch (err) {}
 
-      let views = db._views();
-      if (views.length === 0) {
-        return; // arangosearch views are not supported
-      }
+          let views = db._views();
+          if (views.length === 0) {
+            return; // arangosearch views are not supported
+          }
 
-      let view = db._view("UnitTestsDumpView");
-      assertTrue(view !== null);
-      let props = view.properties();
-      assertEqual(Object.keys(props.links).length, 1);
-      assertTrue(props.hasOwnProperty("links"));
-      assertTrue(props.links.hasOwnProperty("UnitTestsDumpViewCollection"));
-      assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("includeAllFields"));
-      assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("fields"));
-      assertTrue(props.links.UnitTestsDumpViewCollection.includeAllFields);
+          let view = db._view("UnitTestsDumpView");
+          assertTrue(view !== null);
+          let props = view.properties();
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.hasOwnProperty("links"));
+          assertTrue(props.links.hasOwnProperty("UnitTestsDumpViewCollection"));
+          assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("includeAllFields"));
+          assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("fields"));
+          assertTrue(props.links.UnitTestsDumpViewCollection.includeAllFields);
 
-      assertEqual(props.consolidationIntervalMsec, 0);
-      assertEqual(props.cleanupIntervalStep, 456);
-      assertTrue(Math.abs(props.consolidationPolicy.threshold - 0.3) < 0.001);
-      assertEqual(props.consolidationPolicy.type, "bytes_accum");
+          assertEqual(props.consolidationIntervalMsec, 0);
+          assertEqual(props.cleanupIntervalStep, 456);
+          assertTrue(Math.abs(props.consolidationPolicy.threshold - 0.3) < 0.001);
+          assertEqual(props.consolidationPolicy.type, "bytes_accum");
 
-      var res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
-      assertEqual(5000, res.length);
+          var res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
+          assertEqual(5000, res.length);
 
-      res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
-      assertEqual(2500, res.length);
+          res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 2500 RETURN doc").toArray();
+          assertEqual(2500, res.length);
 
-      res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 5000 RETURN doc").toArray();
-      assertEqual(0, res.length);
+          res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 5000 RETURN doc").toArray();
+          assertEqual(0, res.length);
 
-      res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en')  RETURN doc").toArray();
-      assertEqual(1, res.length);
-    }
-*/
+          res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en')  RETURN doc").toArray();
+          assertEqual(1, res.length);
+        }
+    */
   };
 }
 

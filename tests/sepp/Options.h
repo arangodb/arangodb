@@ -33,6 +33,7 @@
 
 #include "Inspection/Types.h"
 #include "Inspection/VPackLoadInspector.h"
+#include "Workloads/GetByPrimaryKey.h"
 #include "Workloads/InsertDocuments.h"
 #include "Workloads/IterateDocuments.h"
 
@@ -75,7 +76,8 @@ auto inspect(Inspector& f, Setup& o) {
                             f.field("prefill", o.prefill).fallback(f.keep()));
 }
 
-using WorkloadVariants = std::variant<workloads::InsertDocuments::Options,
+using WorkloadVariants = std::variant<workloads::GetByPrimaryKey::Options,
+                                      workloads::InsertDocuments::Options,
                                       workloads::IterateDocuments::Options>;
 namespace workloads {
 // this inspect function must be in namespace workloads for ADL to pick it up
@@ -83,6 +85,7 @@ template<class Inspector>
 inline auto inspect(Inspector& f, WorkloadVariants& o) {
   namespace insp = arangodb::inspection;
   return f.variant(o).unqualified().alternatives(
+      insp::type<workloads::GetByPrimaryKey::Options>("getByPrimaryKey"),
       insp::type<workloads::InsertDocuments::Options>("insert"),
       insp::type<workloads::IterateDocuments::Options>("iterate"));
 }
@@ -90,6 +93,7 @@ inline auto inspect(Inspector& f, WorkloadVariants& o) {
 
 struct Options {
   std::string databaseDirectory;
+  bool clearDatabaseDirectory{true};
 
   Setup setup;
 
@@ -105,9 +109,11 @@ auto inspect(Inspector& f, Options& o) {
           .fallback(basics::FileUtils::buildFilename(
               TRI_GetTempPath(),
               "sepp-" + std::to_string(Thread::currentProcessId()))),
-      f.field("setup", o.setup),                           //
+      f.field("clearDatabaseDirectory", o.clearDatabaseDirectory)
+          .fallback(true),
+      f.field("setup", o.setup).fallback(f.keep()),        //
       f.field("workload", o.workload).fallback(f.keep()),  //
-      f.field("rocksdb", o.rocksdb));
+      f.field("rocksdb", o.rocksdb).fallback(f.keep()));
 }
 
 }  // namespace arangodb::sepp

@@ -29,6 +29,7 @@
 #include "Logger/Escaper.h"
 
 #include <string>
+#include <memory>
 
 using namespace arangodb;
 
