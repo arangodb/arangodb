@@ -42,14 +42,18 @@ void LeaderStateManager<S>::run() noexcept {
       .thenValue([weak = this->weak_from_this()](auto&& result) {
         auto self = weak.lock();
         if (self == nullptr) {
+          // TODO It's not the log that resigned; should we make that a
+          //      different error code?
+          //      Or change the code into a more general one?
           return futures::Future<Result>{
               TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
         }
         LOG_CTX("53ba1", TRACE, self->loggerContext)
             << "LeaderStateManager established";
         auto f = self->guardedData.doUnderLock([&](GuardedData& data) {
-          TRI_ASSERT(data.internalState ==
-                     LeaderInternalState::kWaitingForLeadershipEstablished);
+          ADB_PROD_ASSERT(
+              data.internalState ==
+              LeaderInternalState::kWaitingForLeadershipEstablished);
           data.updateInternalState(LeaderInternalState::kIngestingExistingLog);
           auto mux = Multiplexer::construct(self->logLeader);
           mux->digestAvailableEntries();
@@ -66,11 +70,18 @@ void LeaderStateManager<S>::run() noexcept {
                                           std::unique_ptr<Iterator>&& result) {
           auto self = weak.lock();
           if (self == nullptr) {
+            // TODO It's not the log that resigned; should we make that a
+            //      different error code?
+            //      Or change the code into a more general one?
             return futures::Future<Result>{
                 TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
           }
           LOG_CTX("53ba0", TRACE, self->loggerContext)
               << "creating leader instance";
+          // TODO The core is held here locally without any lock. That means
+          //      a resign called after the following line, and before the
+          //      `state` (IReplicatedLeaderState) is set below, will fail
+          //      to take the core out.
           auto core = self->guardedData.doUnderLock([&](GuardedData& data) {
             data.updateInternalState(LeaderInternalState::kRecoveryInProgress,
                                      result->range());
@@ -78,6 +89,9 @@ void LeaderStateManager<S>::run() noexcept {
           });
           if (core == nullptr) {
             LOG_CTX("6d9ee", DEBUG, self->loggerContext) << "core already gone";
+            // TODO It's not the log that resigned; should we make that a
+            //      different error code?
+            //      Or change the code into a more general one?
             return futures::Future<Result>{
                 TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
           }
@@ -90,6 +104,9 @@ void LeaderStateManager<S>::run() noexcept {
                         futures::Try<Result>&& tryResult) mutable -> Result {
                 auto self = weak.lock();
                 if (self == nullptr) {
+                  // TODO It's not the log that resigned; should we make that a
+                  //      different error code?
+                  //      Or change the code into a more general one?
                   return Result{
                       TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
                 }
@@ -119,6 +136,9 @@ void LeaderStateManager<S>::run() noexcept {
                       self->beginWaitingForParticipantResigned();
                       return result;
                     } else {
+                      // TODO It's not the log that resigned; should we make
+                      //      that a different error code?
+                      //      Or change the code into a more general one?
                       return Result{
                           TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
                     }
@@ -155,11 +175,12 @@ void LeaderStateManager<S>::run() noexcept {
           if (!res.ok()) {
             THROW_ARANGO_EXCEPTION(res);
           }
+        } catch (replicated_log::ParticipantResignedException const& e) {
+          // TODO Don't we have to do a forceRebuild here?
+          TRI_ASSERT(e.code() ==
+                     TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
+          return;
         } catch (arangodb::basics::Exception const& e) {
-          if (e.code() ==
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED) {
-            return;
-          }
           LOG_CTX("e73bd", FATAL, self->loggerContext)
               << "Unexpected exception in leader startup procedure: "
               << e.what();
@@ -234,6 +255,10 @@ auto LeaderStateManager<S>::resign() && noexcept
       return std::move(guard->core);
     }
   });
+  // TODO The core can currently be nullptr if resign is called during recovery:
+  //      Because the core will be moved into the newly created state before
+  //      recovery, but the state will only be visible (i.e. non-nullptr) after
+  //      successful recovery.
   TRI_ASSERT(core != nullptr);
   TRI_ASSERT(guard->token != nullptr);
   TRI_ASSERT(!guard->_didResign);
