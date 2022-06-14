@@ -80,6 +80,10 @@ export const SaveButton = ({
             `Got unexpected server response: ${result.body.errorMessage}`
           );
         } else {
+          window.sessionStorage.removeItem(oldName);
+          window.sessionStorage.removeItem(`${oldName}-changed`);
+          setChanged(false);
+
           if (view.name === oldName) {
             await mutate(path);
           } else {
@@ -92,10 +96,6 @@ export const SaveButton = ({
               replace: true
             });
           }
-
-          window.sessionStorage.removeItem(oldName);
-          window.sessionStorage.removeItem(`${oldName}-changed`);
-          setChanged(false);
 
           arangoHelper.arangoNotification(
             "Success",

@@ -153,13 +153,11 @@ const LinkPropertiesInput = ({
 
       <Cell size={"1"}>
         <Fieldset legend={"Fields"}>
-          {disabled && isEmpty(formState.fields) ? null : (
-            <FieldList
-              fields={formState.fields}
-              disabled={disabled}
-              basePath={basePath}
-            />
-          )}
+          {
+            isEmpty(formState.fields)
+              ? null
+              : <FieldList fields={formState.fields} disabled={disabled} basePath={basePath}/>
+          }
         </Fieldset>
       </Cell>
     </Grid>
