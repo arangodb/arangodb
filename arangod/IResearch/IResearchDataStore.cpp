@@ -184,14 +184,9 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
   }
   auto& field = *body;
 #ifdef USE_ENTERPRISE
-  if (body.hasNested()) {
-    auto nestedRes = handleNestedFields(ctx, body);
-    if (nestedRes.fail()) {
-      return {TRI_ERROR_INTERNAL,
-              "failed to insert document nested fields into arangosearch index '" +
-                  std::to_string(id.id()) + "', document '" +
-                  std::to_string(documentId.id()) + "'"};
-    }
+  auto eeRes = insertDocumentEE(ctx, body, id, documentId);
+  if (eeRes.fail()) {
+    return eeRes;
   }
 #endif
   auto doc = ctx.insert(body.disableFlush());

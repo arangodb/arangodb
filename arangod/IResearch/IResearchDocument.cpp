@@ -606,7 +606,9 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
   // restore value
   _value._storeValues = context->_storeValues;
   _value._value = irs::bytes_ref::NIL;
+#ifdef USE_ENTERPRISE
   _value._root = false;
+#endif
   _needDoc = false;
   while (true) {
   setAnalyzers:
@@ -1106,7 +1108,7 @@ bool StoredValue::write(irs::data_output& out) const {
 }  // namespace arangodb
 
 #if USE_ENTERPRISE
-#include "enterprise/IResearch/IResearchDocumentEE.hpp"
+#include "Enterprise/IResearch/IResearchDocumentEE.hpp"
 #endif
 
 template arangodb::iresearch::FieldIterator<arangodb::iresearch::FieldMeta,

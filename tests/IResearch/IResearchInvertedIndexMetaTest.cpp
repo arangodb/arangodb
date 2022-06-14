@@ -739,8 +739,8 @@ TEST_F(IResearchInvertedIndexMetaTest, testDefaults) {
   ASSERT_EQ(Consistency::kEventual, meta._consistency);
   ASSERT_TRUE(meta._defaultAnalyzerName.empty());
   ASSERT_FALSE(meta._features);
-  ASSERT_FALSE(meta._trackListPositions);
-  ASSERT_FALSE(meta._includeAllFields);
+  ASSERT_FALSE(meta._fields._trackListPositions);
+  ASSERT_FALSE(meta._fields._includeAllFields);
 
   ASSERT_EQ(irs::type<irs::compression::lz4>::id(),
             meta._sort.sortCompression());
@@ -860,7 +860,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testReadDefaults) {
 }
 
 TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
-  constexpr std::string_view kDefinitionWithDataStoreFields = R"(
+  auto json = VPackParser::fromJson(R"(
   {
     "cleanupIntervalStep" : 2,
     "commitIntervalMsec" : 3,
@@ -880,7 +880,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testDataStoreMetaFields) {
     "fields": [
       "foo"
     ]
-   })";
+   })");
 
   arangodb::iresearch::IResearchInvertedIndexMeta meta;
   std::string errorString;
