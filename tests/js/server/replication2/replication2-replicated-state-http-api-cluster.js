@@ -37,14 +37,6 @@ const {waitFor} = require("@arangodb/testutils/replicated-logs-helper");
 
 const database = "replication2_replicated_state_http_api_db";
 
-const sortedArrayEqualOrError = (left, right) => {
-  if (_.isEqual(left, right)) {
-    return true;
-  } else {
-    return Error(`Expected the following to be equal: ${JSON.stringify(left)} and ${JSON.stringify(right)}`);
-  }
-};
-
 const replaceParticipant = (database, logId, oldParticipant, newParticipant) => {
   const url = lh.getServerUrl(_.sample(lh.coordinators));
   const res = request.post(
@@ -153,12 +145,12 @@ const replicatedStateSuite = function (stateType) {
 
       waitFor(() => {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
-        return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+        return lh.sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
       });
       // Current won't be cleaned up yet.
       // waitFor(() => {
       //   const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
-      //   return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
+      //   return lh.sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
       // });
 
       const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
@@ -188,12 +180,12 @@ const replicatedStateSuite = function (stateType) {
 
       waitFor(() => {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
-        return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+        return lh.sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
       });
       // Current won't be cleaned up yet.
       // waitFor(() => {
       //   const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
-      //   return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
+      //   return lh.sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
       // });
 
       const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
@@ -235,14 +227,14 @@ const replicatedStateSuite = function (stateType) {
       waitFor(spreds.replicatedStateTargetLeaderIs(database, stateId, newLeader));
       waitFor(() => {
         const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
-        return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
+        return lh.sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.plan.participants).sort());
       });
       waitFor(lpreds.replicatedLogLeaderTargetIs(database, stateId, newLeader));
       waitFor(lpreds.replicatedLogLeaderPlanIs(database, stateId, newLeader));
       // Current won't be cleaned up yet.
       // waitFor(() => {
       //   const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);
-      //   return sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
+      //   return lh.sortedArrayEqualOrError(newParticipants, Object.keys(stateAgencyContent.current.participants).sort());
       // });
 
       const stateAgencyContent = sh.readReplicatedStateAgency(database, stateId);

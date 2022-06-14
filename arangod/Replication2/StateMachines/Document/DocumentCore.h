@@ -20,20 +20,31 @@
 ///
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include "RestServer/arangod.h"
+#include "DocumentStateStrategy.h"
+#include "DocumentStateMachine.h"
+
+#include "Replication2/LoggerContext.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 
 namespace arangodb::replication2::replicated_state::document {
+struct DocumentCoreParameters;
 
-struct DocumentStateMachineFeature : public ArangodFeature {
-  static constexpr std::string_view name() noexcept {
-    return "DocumentStateMachine";
-  }
+struct DocumentCore {
+  explicit DocumentCore(
+      GlobalLogIdentifier gid, DocumentCoreParameters coreParameters,
+      std::shared_ptr<IDocumentStateAgencyHandler> agencyHandler,
+      std::shared_ptr<IDocumentStateShardHandler> shardHandler,
+      LoggerContext loggerContext);
 
-  explicit DocumentStateMachineFeature(Server& server);
-  void prepare() override;
-  void start() override;
+  LoggerContext const loggerContext;
+
+ private:
+  GlobalLogIdentifier _gid;
+  DocumentCoreParameters _params;
+  std::shared_ptr<IDocumentStateAgencyHandler> _agencyHandler;
+  std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
 };
-
 }  // namespace arangodb::replication2::replicated_state::document
