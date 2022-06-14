@@ -91,6 +91,7 @@ const LinkPropertiesInput = ({
               options={options}
               label={"Analyzers"}
               disabled={disabled}
+              errorMsg={'Analyzer does not exist.'}
             />
           </Cell>
           <Cell size={"1-1"} style={{
