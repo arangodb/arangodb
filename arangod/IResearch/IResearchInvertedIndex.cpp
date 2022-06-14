@@ -115,8 +115,7 @@ bool supportsFilterNode(
   // attributes access/values. Otherwise if we have say d[a.smth] where 'a' is a
   // variable from the upstream loop we may get here a field we don`t have in
   // the index.
-  QueryContext const queryCtx = {nullptr, nullptr, nullptr,
-                                 nullptr, nullptr, reference};
+  QueryContext const queryCtx{.ref = reference, .isSearchQuery = false};
 
   if (!nameFromAttributeAccesses(
           node, *reference, true, queryCtx,
@@ -126,7 +125,7 @@ bool supportsFilterNode(
     return false;
   }
 
-  auto rv = FilterFactory::filter(nullptr, queryCtx, *node, false, provider);
+  auto rv = FilterFactory::filter(nullptr, queryCtx, *node, provider);
   LOG_TOPIC_IF("ee0f7", TRACE, arangodb::iresearch::TOPIC, rv.fail())
       << "Failed to build filter with error'" << rv.errorMessage()
       << "' Skipping index " << id.id();
@@ -336,8 +335,10 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
       ctx->snapshot = _index->snapshot();
     }
     _reader = &ctx->snapshot.getDirectoryReader();
-    QueryContext const queryCtx = {_trx,    nullptr, nullptr,
-                                   nullptr, _reader, _variable};
+    QueryContext const queryCtx{.trx = _trx,
+                                .index = _reader,
+                                .ref = _variable,
+                                .isSearchQuery = false};
 
     AnalyzerProvider analyzerProvider = makeAnalyzerProvider(_index->meta());
 
@@ -347,7 +348,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
               transaction::Methods::kNoMutableConditionIdx ||
           (condition->type != aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND &&
            condition->type != aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR)) {
-        auto rv = FilterFactory::filter(&root, queryCtx, *condition, false,
+        auto rv = FilterFactory::filter(&root, queryCtx, *condition,
                                         &analyzerProvider);
         if (rv.fail()) {
           arangodb::velocypack::Builder builder;
@@ -374,7 +375,6 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
                   builder.toJson(), "'"));
         }
         irs::boolean_filter* conditionJoiner{nullptr};
-      
 
         if (condition->type == aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND) {
           conditionJoiner = &root.add<irs::And>();
@@ -384,12 +384,10 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
           conditionJoiner = &root.add<irs::Or>();
         }
 
-
         auto& mutable_root = conditionJoiner->add<irs::Or>();
-        auto rv =
-            FilterFactory::filter(&mutable_root, queryCtx,
-                                  *condition->getMember(_mutableConditionIdx),
-                                  false, &analyzerProvider);
+        auto rv = FilterFactory::filter(
+            &mutable_root, queryCtx,
+            *condition->getMember(_mutableConditionIdx), &analyzerProvider);
         if (rv.fail()) {
           arangodb::velocypack::Builder builder;
           condition->toVelocyPack(builder, true);
@@ -420,14 +418,14 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
             ctx->_immutablePartCache[condition] = res.second;
             immutableRoot = &res.first;
           }
-          
+
           auto const conditionSize =
               static_cast<int64_t>(condition->numMembers());
           for (int64_t i = 0; i < conditionSize; ++i) {
             if (i != _mutableConditionIdx) {
               auto& tmp_root = immutableRoot->add<irs::Or>();
               auto rv = FilterFactory::filter(&tmp_root, queryCtx,
-                                              *condition->getMember(i), false,
+                                              *condition->getMember(i),
                                               &analyzerProvider);
               if (rv.fail()) {
                 arangodb::velocypack::Builder builder;
@@ -746,8 +744,8 @@ class IResearchInvertedIndexMergeIterator final
 namespace arangodb {
 namespace iresearch {
 
-IResearchInvertedIndex::IResearchInvertedIndex(
-    IndexId iid, LogicalCollection& collection)
+IResearchInvertedIndex::IResearchInvertedIndex(IndexId iid,
+                                               LogicalCollection& collection)
     : IResearchDataStore(iid, collection) {}
 
 // Analyzer names storing
@@ -791,8 +789,7 @@ IResearchInvertedIndex::sortedFields(IResearchInvertedIndexMeta const& meta) {
 }
 
 Result IResearchInvertedIndex::init(
-    VPackSlice definition,
-    bool& pathExists,
+    VPackSlice definition, bool& pathExists,
     IResearchDataStore::InitCallback const& initCallback /*= {}*/) {
   std::string errField;
   if (!_meta.init(_collection.vocbase().server(), definition, true, errField,
@@ -810,7 +807,8 @@ Result IResearchInvertedIndex::init(
 
   TRI_ASSERT(_meta._sort.sortCompression());
   auto r = initDataStore(pathExists, initCallback, _meta._version, isSorted(),
-                         _meta._storedValues.columns(), _meta._sort.sortCompression());
+                         _meta._storedValues.columns(),
+                         _meta._sort.sortCompression());
   if (r.ok()) {
     _comparer.reset(_meta._sort);
   }
@@ -902,7 +900,7 @@ bool IResearchInvertedIndex::matchesFieldsDefinition(VPackSlice other) const {
 std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
     LogicalCollection* collection, transaction::Methods* trx,
     aql::AstNode const* node, aql::Variable const* reference,
-    IndexIteratorOptions const& opts, int mutableConditionIdx) {
+    IndexIteratorOptions const& /*opts*/, int mutableConditionIdx) {
   if (node) {
     if (_meta._sort.empty()) {
       // FIXME: we should use non-sorted iterator in case we are not "covering"
@@ -960,7 +958,7 @@ Index::SortCosts IResearchInvertedIndex::supportsSortCondition(
 Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
     IndexId id,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
-    std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+    std::vector<std::shared_ptr<arangodb::Index>> const& /*allIndexes*/,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex) const {
   TRI_ASSERT(node);

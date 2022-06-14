@@ -49,6 +49,7 @@ struct AstNode;  // forward declaration
 namespace iresearch {
 
 struct QueryContext;
+struct InvertedIndexField;
 
 using AnalyzerProvider =
     std::function<FieldMeta::Analyzer const&(std::string_view)>;
@@ -56,20 +57,18 @@ using AnalyzerProvider =
 class FilterContext {
  public:
   FilterContext(FieldMeta::Analyzer const& analyzer, irs::score_t boost,
-                bool search, AnalyzerProvider const* provider,
+                AnalyzerProvider const* provider,
                 std::string_view namePrefix) noexcept
       : _analyzerProvider{provider},
         _analyzer{analyzer},
+        _nested{},
         _namePrefix{namePrefix},
-        _boost{boost},
-        _isSearchFilter{search} {
+        _boost{boost} {
     TRI_ASSERT(_analyzer._pool);
   }
 
   FilterContext(FilterContext const&) = default;
   FilterContext& operator=(FilterContext const&) = delete;
-
-  bool isSearchFilter() const noexcept { return _isSearchFilter; }
 
   irs::score_t boost() const noexcept { return _boost; }
 
@@ -92,13 +91,15 @@ class FilterContext {
 
   std::string_view namePrefix() const noexcept { return _namePrefix; }
 
+  InvertedIndexField const* nested() const noexcept { return _nested; }
+
  private:
   AnalyzerProvider const* _analyzerProvider;
   // need shared_ptr since pool could be deleted from the feature
   FieldMeta::Analyzer const& _analyzer;
+  InvertedIndexField const* _nested;
   std::string_view _namePrefix;  // field name prefix
   irs::score_t _boost;
-  bool _isSearchFilter;  // filter is building for SEARCH clause
 };
 
 struct FilterFactory {
@@ -109,7 +110,6 @@ struct FilterFactory {
   static arangodb::Result filter(irs::boolean_filter* filter,
                                  QueryContext const& ctx,
                                  arangodb::aql::AstNode const& node,
-                                 bool forSearch = true,
                                  AnalyzerProvider const* provider = nullptr);
 };  // FilterFactory
 

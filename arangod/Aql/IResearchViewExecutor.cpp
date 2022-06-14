@@ -708,16 +708,18 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
   _ctx._inputRow = _inputRow;
 
   ExecutionPlan const* plan = &infos().plan();
-  iresearch::QueryContext const queryCtx = {&_trx,
-                                            plan,
-                                            plan->getAst(),
-                                            &_ctx,
-                                            _reader.get(),
-                                            &infos().outVariable(),
-                                            infos().filterOptimization()};
+  iresearch::QueryContext const queryCtx{
+      .trx = &_trx,
+      .plan = plan,
+      .ast = plan->getAst(),
+      .ctx = &_ctx,
+      .index = _reader.get(),
+      .ref = &infos().outVariable(),
+      .filterOptimization = infos().filterOptimization(),
+      .isSearchQuery = true};
 
-  if (infos().volatileFilter() ||
-      !_isInitialized) {  // `_volatileSort` implies `_volatileFilter`
+  // `_volatileSort` implies `_volatileFilter`
+  if (infos().volatileFilter() || !_isInitialized) {
     irs::Or root;
 
     auto rv = FilterFactory::filter(&root, queryCtx, infos().filterCondition());

@@ -161,7 +161,6 @@ auto getIndexFeatures() {
   };
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts ArangoDB document into an IResearch data store
 ////////////////////////////////////////////////////////////////////////////////
@@ -178,16 +177,17 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
   }
   auto& field = *body;
 
-  bool wasNested{false};
+  [[maybe_unused]] bool wasNested{false};
 #ifdef USE_ENTERPRISE
   if (body.hasNested()) {
     wasNested = true;
     auto nestedRes = handleNestedFields(ctx, body);
     if (nestedRes.fail()) {
-      return {TRI_ERROR_INTERNAL,
-              "failed to insert document nested fields into arangosearch index '" +
-                  std::to_string(id.id()) + "', document '" +
-                  std::to_string(documentId.id()) + "'"};
+      return {
+          TRI_ERROR_INTERNAL,
+          "failed to insert document nested fields into arangosearch index '" +
+              std::to_string(id.id()) + "', document '" +
+              std::to_string(documentId.id()) + "'"};
     }
   }
 #endif
@@ -201,7 +201,6 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
                 std::to_string(id.id()) + "', revision '" +
                 std::to_string(documentId.id()) + "'"};
   }
-
 
   // Sorted field
   {
@@ -243,7 +242,7 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
       handleNestedRoot(doc, field);
     } else
 #endif
-    if (ValueStorage::NONE == field._storeValues) {
+        if (ValueStorage::NONE == field._storeValues) {
       doc.insert<irs::Action::INDEX>(field);
     } else {
       doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
@@ -1681,13 +1680,13 @@ irs::utf8_path getPersistedPath(DatabasePathFeature const& dbPathFeature,
   return dataPath;
 }
 
-template Result IResearchDataStore::insert<FieldIterator<FieldMeta, FieldMeta>, IResearchLinkMeta>(
+template Result IResearchDataStore::insert<FieldIterator<FieldMeta, FieldMeta>,
+                                           IResearchLinkMeta>(
     transaction::Methods& trx, LocalDocumentId documentId,
     velocypack::Slice doc, IResearchLinkMeta const& meta);
 
 template Result IResearchDataStore::insert<
-    FieldIterator<IResearchInvertedIndexMeta,
-                  IResearchInvertedIndexMeta::FieldRecord>,
+    FieldIterator<IResearchInvertedIndexMeta, InvertedIndexField>,
     IResearchInvertedIndexMeta>(transaction::Methods& trx,
                                 LocalDocumentId documentId,
                                 velocypack::Slice doc,

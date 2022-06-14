@@ -1751,8 +1751,13 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
         irs::Or actual;
         arangodb::iresearch::QueryContext const ctx{
-            &trx,     dummyPlan.get(),           ast,
-            &exprCtx, &irs::sub_reader::empty(), ref};
+            .trx = &trx,
+            .plan = dummyPlan.get(),
+            .ast = ast,
+            .ctx = &exprCtx,
+            .index = &irs::sub_reader::empty(),
+            .ref = ref,
+            .isSearchQuery = true};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx,
                                                                 *filterNode)
                          .ok()));
@@ -1866,8 +1871,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
       // supportsFilterCondition
       {
-        arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
-                                                    nullptr, nullptr, ref};
+        arangodb::iresearch::QueryContext const ctx{.ref = ref,
+                                                    .isSearchQuery = true};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx,
                                                                 *filterNode)
                          .ok()));
@@ -1886,8 +1891,13 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
         irs::Or actual;
         arangodb::iresearch::QueryContext const ctx{
-            &trx,     dummyPlan.get(),           ast,
-            &exprCtx, &irs::sub_reader::empty(), ref};
+            .trx = &trx,
+            .plan = dummyPlan.get(),
+            .ast = ast,
+            .ctx = &exprCtx,
+            .index = &irs::sub_reader::empty(),
+            .ref = ref,
+            .isSearchQuery = true};
 
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx,
                                                                 *filterNode)
@@ -2003,8 +2013,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
       // supportsFilterCondition
       {
-        arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
-                                                    nullptr, nullptr, ref};
+        arangodb::iresearch::QueryContext const ctx{.ref = ref,
+                                                    .isSearchQuery = true};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx,
                                                                 *filterNode)
                          .ok()));
@@ -2023,8 +2033,13 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
         irs::Or actual;
         arangodb::iresearch::QueryContext const ctx{
-            &trx,     dummyPlan.get(),           ast,
-            &exprCtx, &irs::sub_reader::empty(), ref};
+            .trx = &trx,
+            .plan = dummyPlan.get(),
+            .ast = ast,
+            .ctx = &exprCtx,
+            .index = &irs::sub_reader::empty(),
+            .ref = ref,
+            .isSearchQuery = true};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx,
                                                                 *filterNode)
                          .ok()));
@@ -2139,8 +2154,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
       // supportsFilterCondition
       {
-        arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
-                                                    nullptr, nullptr, ref};
+        arangodb::iresearch::QueryContext const ctx{.ref = ref,
+                                                    .isSearchQuery = true};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx,
                                                                 *filterNode)
                          .ok()));
@@ -2159,8 +2174,13 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
         irs::Or actual;
         arangodb::iresearch::QueryContext const ctx{
-            &trx,     dummyPlan.get(),           ast,
-            &exprCtx, &irs::sub_reader::empty(), ref};
+            .trx = &trx,
+            .plan = dummyPlan.get(),
+            .ast = ast,
+            .ctx = &exprCtx,
+            .index = &irs::sub_reader::empty(),
+            .ref = ref,
+            .isSearchQuery = true};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx,
                                                                 *filterNode)
                          .ok()));
@@ -3696,8 +3716,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
       // supportsFilterCondition
       {
-        arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
-                                                    nullptr, nullptr, ref};
+        arangodb::iresearch::QueryContext const ctx{.ref = ref,
+                                                    .isSearchQuery = true};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx,
                                                                 *filterNode)
                          .ok()));
@@ -3716,8 +3736,13 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
         irs::Or actual;
         arangodb::iresearch::QueryContext const ctx{
-            &trx,     dummyPlan.get(),           ast,
-            &exprCtx, &irs::sub_reader::empty(), ref};
+            .trx = &trx,
+            .plan = dummyPlan.get(),
+            .ast = ast,
+            .ctx = &exprCtx,
+            .index = &irs::sub_reader::empty(),
+            .ref = ref,
+            .isSearchQuery = true};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx,
                                                                 *filterNode)
                          .ok()));
@@ -3830,8 +3855,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
       // supportsFilterCondition
       {
-        arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
-                                                    nullptr, nullptr, ref};
+        arangodb::iresearch::QueryContext const ctx{.ref = ref,
+                                                    .isSearchQuery = true};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx,
                                                                 *filterNode)
                          .ok()));
@@ -3850,8 +3875,13 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
         irs::Or actual;
         arangodb::iresearch::QueryContext const ctx{
-            &trx,     dummyPlan.get(),           ast,
-            &exprCtx, &irs::sub_reader::empty(), ref};
+            .trx = &trx,
+            .plan = dummyPlan.get(),
+            .ast = ast,
+            .ctx = &exprCtx,
+            .index = &irs::sub_reader::empty(),
+            .ref = ref,
+            .isSearchQuery = true};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx,
                                                                 *filterNode)
                          .ok()));
@@ -3964,8 +3994,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
       // supportsFilterCondition
       {
-        arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr,
-                                                    nullptr, nullptr, ref};
+        arangodb::iresearch::QueryContext const ctx{.ref = ref,
+                                                    .isSearchQuery = true};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx,
                                                                 *filterNode)
                          .ok()));
@@ -3984,8 +4014,13 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
         irs::Or actual;
         arangodb::iresearch::QueryContext const ctx{
-            &trx,     dummyPlan.get(),           ast,
-            &exprCtx, &irs::sub_reader::empty(), ref};
+            .trx = &trx,
+            .plan = dummyPlan.get(),
+            .ast = ast,
+            .ctx = &exprCtx,
+            .index = &irs::sub_reader::empty(),
+            .ref = ref,
+            .isSearchQuery = true};
         EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx,
                                                                 *filterNode)
                          .ok()));
