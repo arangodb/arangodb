@@ -683,7 +683,7 @@ struct ReplicatedLogMethodsCoordinator final
 
  private:
   auto getLogLeader(LogId id) const -> ServerID {
-    auto leader = clusterInfo.getReplicatedLogLeader(vocbase.name(), id);
+    auto leader = clusterInfo.getReplicatedLogLeader(id);
     if (leader.fail()) {
       if (leader.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED)) {
         throw ParticipantResignedException(leader.result(), ADB_HERE);
@@ -700,7 +700,7 @@ struct ReplicatedLogMethodsCoordinator final
       -> futures::Future<ResultT<std::shared_ptr<
           arangodb::replication2::agency::LogPlanSpecification const>>> {
     if (source == GlobalStatus::SpecificationSource::kLocalCache) {
-      return clusterInfo.getReplicatedLogPlanSpecification(database, id);
+      return clusterInfo.getReplicatedLogPlanSpecification(id);
     } else {
       AsyncAgencyComm ac;
       auto f = ac.getValues(arangodb::cluster::paths::aliases::plan()

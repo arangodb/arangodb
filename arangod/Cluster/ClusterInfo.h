@@ -49,6 +49,8 @@
 #include "Futures/Future.h"
 #include "Network/types.h"
 #include "Metrics/Fwd.h"
+#include "Replication2/AgencyCollectionSpecification.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/VocbaseInfo.h"
@@ -978,17 +980,13 @@ class ClusterInfo final {
   /// @brief map shardId to collection name (not ID)
   CollectionID getCollectionNameForShard(std::string_view shardId);
 
-  auto getReplicatedLogLeader(std::string_view database,
-                              replication2::LogId) const -> ResultT<ServerID>;
+  auto getReplicatedLogLeader(replication2::LogId) const -> ResultT<ServerID>;
 
-  auto getReplicatedLogParticipants(std::string_view database,
-                                    replication2::LogId) const
+  auto getReplicatedLogParticipants(replication2::LogId) const
       -> ResultT<std::vector<ServerID>>;
 
-  auto getReplicatedLogPlanSpecification(std::string_view database,
-                                         replication2::LogId) const
-      -> ResultT<
-          std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
+  auto getReplicatedLogPlanSpecification(replication2::LogId) const -> ResultT<
+      std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
 
   auto getReplicatedLogsParticipants(std::string_view database) const
       -> ResultT<
@@ -1252,6 +1250,15 @@ class ClusterInfo final {
   struct NewStuffByDatabase;
   containers::FlatHashMap<DatabaseID, std::shared_ptr<NewStuffByDatabase>>
       _newStuffByDatabase;
+
+  using ReplicatedLogsMap = containers::FlatHashMap<
+      replication2::LogId,
+      std::shared_ptr<replication2::agency::LogPlanSpecification const>>;
+  ReplicatedLogsMap _replicatedLogs;
+
+  using CollectionGroupMap = containers::FlatHashMap<
+      replication2::agency::CollectionGroupId,
+      std::shared_ptr<replication2::agency::CollectionGroup const>>;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief uniqid sequence
