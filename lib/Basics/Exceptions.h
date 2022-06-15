@@ -114,6 +114,11 @@ class Exception : public virtual std::exception {
     return Exception(code, std::move(message), location);
   }
 
+  // Include Exceptions.tpp when you want to call this function.
+  template<typename... Args>
+  static auto fmt(SourceLocation location, ErrorCode code, Args&&... args)
+      -> Exception;
+
  public:
   [[nodiscard]] char const* what() const noexcept override;
   [[nodiscard]] std::string const& message() const noexcept;

@@ -211,6 +211,27 @@ static void JS_WriteInternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  auto& vocbase = GetContextVocBase(isolate);
+  auto id = UnwrapPrototypeState(isolate, args.Holder());
+  if (!arangodb::ExecContext::current().isAdminUser()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_FORBIDDEN,
+        std::string("No access to prototype state '") + to_string(id) + "'");
+  }
+
+  auto const result =
+      PrototypeStateMethods::createInstance(vocbase)->drop(id).get();
+  if (result.fail()) {
+    TRI_V8_THROW_EXCEPTION(result);
+  }
+  TRI_V8_RETURN_UNDEFINED();
+  TRI_V8_TRY_CATCH_END
+}
+
 static void JS_GetSnapshot(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -376,6 +397,8 @@ void TRI_InitV8PrototypeStates(TRI_v8_global_t* v8g, v8::Isolate* isolate) {
       isolate, rt, TRI_V8_ASCII_STRING(isolate, "waitForApplied"), JS_WaitFor);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getSnapshot"),
                        JS_GetSnapshot);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "drop"),
+                       JS_Drop);
 
   v8g->VocbasePrototypeStateTempl.Reset(isolate, rt);
   TRI_AddGlobalFunctionVocbase(

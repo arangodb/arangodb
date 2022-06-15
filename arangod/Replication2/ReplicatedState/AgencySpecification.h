@@ -24,8 +24,10 @@
 #pragma once
 
 #include "Basics/ErrorCode.h"
+#include "Basics/StaticStrings.h"
 #include "Inspection/VPack.h"
 #include "Inspection/Transformers.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedState/StateCommon.h"
 
@@ -33,7 +35,6 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
-#include "Basics/StaticStrings.h"
 
 namespace arangodb::velocypack {
 class Builder;
@@ -76,6 +77,7 @@ struct Plan {
   LogId id;
   StateGeneration generation;
   Properties properties;
+  std::optional<std::string> owner;
 
   struct Participant {
     StateGeneration generation;
@@ -96,6 +98,7 @@ auto inspect(Inspector& f, Plan& x) {
       f.field(StaticStrings::Id, x.id),
       f.field(static_strings::String_Generation, x.generation),
       f.field(StaticStrings::Properties, x.properties),
+      f.field("owner", x.owner),
       f.field(StaticStrings::Participants, x.participants)
           .fallback(std::unordered_map<ParticipantId, Plan::Participant>{}));
 }
@@ -211,7 +214,7 @@ struct Target {
   };
 
   std::unordered_map<ParticipantId, Participant> participants;
-  LogConfig config;
+  arangodb::replication2::agency::LogTargetConfig config;
   std::optional<std::uint64_t> version;
 
   struct Supervision {};

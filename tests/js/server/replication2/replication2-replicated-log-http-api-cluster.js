@@ -42,7 +42,6 @@ const readFollowerLogs = function () {
   const targetConfig = {
     writeConcern: 3,
     softWriteConcern: 3,
-    replicationFactor: 3,
     waitForSync: false,
   };
 
@@ -126,7 +125,6 @@ const getLogInfo = function () {
   const targetConfig = {
     writeConcern: 3,
     softWriteConcern: 3,
-    replicationFactor: 3,
     waitForSync: false,
   };
 

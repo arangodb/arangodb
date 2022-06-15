@@ -37,7 +37,7 @@ namespace RLA = arangodb::replication2::agency;
 namespace RSA = arangodb::replication2::replicated_state::agency;
 
 struct ReplicatedStateSupervisionTest : ::testing::Test {
-  LogConfig const defaultConfig = {2, 2, 3, false};
+  RLA::LogTargetConfig const defaultConfig = {2, 2, false};
   LogId const logId{12};
 
   ParticipantFlags const flagsSnapshotComplete{};
