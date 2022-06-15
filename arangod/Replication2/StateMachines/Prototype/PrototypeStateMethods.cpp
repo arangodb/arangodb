@@ -604,14 +604,14 @@ auto PrototypeStateMethods::createInstance(TRI_vocbase_t& vocbase)
 [[nodiscard]] auto PrototypeStateMethods::get(LogId id, std::string key,
                                               LogIndex waitForApplied) const
     -> futures::Future<ResultT<std::optional<std::string>>> {
-  return get(id, std::move(key), {.waitForApplied = waitForApplied});
+  return get(id, std::move(key), {waitForApplied, std::nullopt});
 }
 
 [[nodiscard]] auto PrototypeStateMethods::get(LogId id,
                                               std::vector<std::string> keys,
                                               LogIndex waitForApplied) const
     -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>> {
-  return get(id, std::move(keys), {.waitForApplied = waitForApplied});
+  return get(id, std::move(keys), {waitForApplied, std::nullopt});
 }
 
 [[nodiscard]] auto PrototypeStateMethods::get(

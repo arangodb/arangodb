@@ -36,6 +36,7 @@
 #include "velocypack/Builder.h"
 #include "VocBase/Methods/Collections.h"
 
+#include "Execution.h"
 #include "Server.h"
 #include "ValueGenerators/RandomStringGenerator.h"
 
@@ -132,6 +133,10 @@ void InsertDocuments::Thread::buildDocument(velocypack::Builder& builder) {
 }
 
 auto InsertDocuments::Thread::shouldStop() const noexcept -> bool {
+  if (execution().stopped()) {
+    return true;
+  }
+
   using StopAfterOps = StoppingCriterion::NumberOfOperations;
   if (std::holds_alternative<StopAfterOps>(_options.stop)) {
     return _operations >= std::get<StopAfterOps>(_options.stop).count;

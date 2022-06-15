@@ -113,7 +113,6 @@ struct VPackLoadInspectorImpl
   }
 
   [[nodiscard]] Status::Success value(velocypack::SharedSlice& v) {
-    // TODO - fix SharedSlice to use uint8_t[]
     v = VPackBuilder{_slice}.sharedSlice();
     return {};
   }

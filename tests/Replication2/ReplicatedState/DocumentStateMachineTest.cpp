@@ -37,16 +37,56 @@ using namespace arangodb::replication2::test;
 
 #include "Replication2/ReplicatedState/ReplicatedState.tpp"
 
+struct MockDocumentStateAgencyHandler : public IDocumentStateAgencyHandler {
+  auto getCollectionPlan(std::string const& database,
+                         std::string const& collectionId)
+      -> std::shared_ptr<velocypack::Builder> override {
+    return std::make_shared<VPackBuilder>();
+  }
+
+  auto reportShardInCurrent(
+      std::string const& database, std::string const& collectionId,
+      std::string const& shardId,
+      std::shared_ptr<velocypack::Builder> const& properties)
+      -> Result override {
+    shards.emplace_back(shardId, collectionId);
+    return {};
+  }
+
+  std::vector<std::pair<std::string, std::string>> shards;
+};
+
+struct MockDocumentStateShardHandler : public IDocumentStateShardHandler {
+  MockDocumentStateShardHandler() : shardId{0} {};
+
+  auto createLocalShard(GlobalLogIdentifier const& gid,
+                        std::string const& collectionId,
+                        std::shared_ptr<velocypack::Builder> const& properties)
+      -> ResultT<std::string> override {
+    ++shardId;
+    return ResultT<std::string>::success(std::to_string(shardId));
+  }
+
+  int shardId;
+};
+
 struct DocumentStateMachineTest : test::ReplicatedLogTest {
   DocumentStateMachineTest() {
-    feature->registerStateType<DocumentState>(std::string{DocumentState::NAME});
+    feature->registerStateType<DocumentState>(std::string{DocumentState::NAME},
+                                              agencyHandler, shardHandler);
   }
 
   std::shared_ptr<ReplicatedStateFeature> feature =
       std::make_shared<ReplicatedStateFeature>();
+  std::shared_ptr<MockDocumentStateAgencyHandler> agencyHandler =
+      std::make_shared<MockDocumentStateAgencyHandler>();
+  std::shared_ptr<MockDocumentStateShardHandler> shardHandler =
+      std::make_shared<MockDocumentStateShardHandler>();
 };
 
 TEST_F(DocumentStateMachineTest, simple_operations) {
+  const std::string collectionId = "testCollectionID";
+
   auto followerLog = makeReplicatedLog(LogId{1});
   auto follower = followerLog->becomeFollower("follower", LogTerm{1}, "leader");
 
@@ -56,7 +96,7 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
   leader->triggerAsyncReplication();
 
   auto parameters =
-      document::DocumentCoreParameters{"testCollectionID"}.toSharedSlice();
+      document::DocumentCoreParameters{collectionId}.toSharedSlice();
 
   auto leaderReplicatedState =
       std::dynamic_pointer_cast<ReplicatedState<DocumentState>>(
@@ -65,6 +105,10 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
   leaderReplicatedState->start(
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}), parameters);
   follower->runAllAsyncAppendEntries();
+  ASSERT_EQ(shardHandler->shardId, 1);
+  ASSERT_EQ(agencyHandler->shards.size(), 1);
+  ASSERT_EQ(agencyHandler->shards[0].first, "1");
+  ASSERT_EQ(agencyHandler->shards[0].second, collectionId);
 
   auto leaderState = leaderReplicatedState->getLeader();
   ASSERT_NE(leaderState, nullptr);
@@ -75,6 +119,10 @@ TEST_F(DocumentStateMachineTest, simple_operations) {
   ASSERT_NE(followerReplicatedState, nullptr);
   followerReplicatedState->start(
       std::make_unique<ReplicatedStateToken>(StateGeneration{1}), parameters);
+  ASSERT_EQ(shardHandler->shardId, 2);
+  ASSERT_EQ(agencyHandler->shards.size(), 2);
+  ASSERT_EQ(agencyHandler->shards[1].first, "2");
+  ASSERT_EQ(agencyHandler->shards[1].second, collectionId);
 
   auto followerState = followerReplicatedState->getFollower();
   ASSERT_NE(followerState, nullptr);

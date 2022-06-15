@@ -24,7 +24,9 @@
 #include <Basics/voc-errors.h>
 #include <Futures/Future.h>
 
+#include "DocumentCore.h"
 #include "DocumentStateMachine.h"
+#include "Logger/LogContextKeys.h"
 
 using namespace arangodb::replication2::replicated_state::document;
 
@@ -66,6 +68,12 @@ auto DocumentFollowerState::applyEntries(
   return {TRI_ERROR_NO_ERROR};
 };
 
+DocumentFactory::DocumentFactory(
+    std::shared_ptr<IDocumentStateAgencyHandler> agencyReader,
+    std::shared_ptr<IDocumentStateShardHandler> shardHandler)
+    : _agencyReader(std::move(agencyReader)),
+      _shardHandler(std::move(shardHandler)){};
+
 auto DocumentFactory::constructFollower(std::unique_ptr<DocumentCore> core)
     -> std::shared_ptr<DocumentFollowerState> {
   return std::make_shared<DocumentFollowerState>(std::move(core));
@@ -76,11 +84,29 @@ auto DocumentFactory::constructLeader(std::unique_ptr<DocumentCore> core)
   return std::make_shared<DocumentLeaderState>(std::move(core));
 }
 
-auto DocumentFactory::constructCore(GlobalLogIdentifier const& gid,
-                                    DocumentCoreParameters)
+auto DocumentFactory::constructCore(GlobalLogIdentifier gid,
+                                    DocumentCoreParameters coreParameters)
     -> std::unique_ptr<DocumentCore> {
-  return std::make_unique<DocumentCore>();
+  LoggerContext logContext =
+      LoggerContext(Logger::REPLICATED_STATE)
+          .with<logContextKeyStateImpl>(DocumentState::NAME)
+          .with<logContextKeyDatabaseName>(gid.database)
+          .with<logContextKeyCollectionId>(coreParameters.collectionId)
+          .with<logContextKeyLogId>(gid.id);
+  return std::make_unique<DocumentCore>(
+      std::move(gid), std::move(coreParameters), getAgencyReader(),
+      getShardHandler(), std::move(logContext));
 }
+
+auto DocumentFactory::getAgencyReader()
+    -> std::shared_ptr<IDocumentStateAgencyHandler> {
+  return _agencyReader;
+};
+
+auto DocumentFactory::getShardHandler()
+    -> std::shared_ptr<IDocumentStateShardHandler> {
+  return _shardHandler;
+};
 
 auto arangodb::replication2::replicated_state::EntryDeserializer<
     DocumentLogEntry>::operator()(streams::serializer_tag_t<DocumentLogEntry>,

@@ -39,20 +39,6 @@ const shardIdToLogId = function (shardId) {
   return shardId.slice(1);
 };
 
-const getShardDistribution = function (serverUrl, database, collection) {
-  let result = request.get({url: `${serverUrl}/_db/${database}/_admin/cluster/shardDistribution`});
-  lh.checkRequestResult(result);
-  return result.json.results[collection];
-};
-
-const getDbServersById = function() {
-  return global.ArangoClusterInfo.getDBServers().reduce((result, x) => {
-    result[x.serverId] = x.serverName;
-    return result;
-  }, {});
-};
-
-
 const replicatedStateDocumentStoreSuiteReplication2 = function () {
   let previousDatabase, databaseExisted = true;
   return {
@@ -71,53 +57,41 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
         db._dropDatabase(database);
       }
     },
-    setUp: function () {
-      lh.registerAgencyTestBegin();
+    setUp: function (testName) {
+      lh.registerAgencyTestBegin(testName);
       db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
     },
-    tearDown: function () {
+    tearDown: function (testName) {
       if (db._collection(collectionName) !== null) {
         db._drop(collectionName);
       }
-      lh.registerAgencyTestEnd();
+      lh.registerAgencyTestEnd(testName);
     },
 
     testCreateReplicatedStateForEachShard: function() {
       let collection = db._collection(collectionName);
-
-      let dbServersIdToName = getDbServersById();
-      let coord = lh.coordinators[0];
-      let coordUrl = lh.getServerUrl(coord);
-      let shardDistribution = getShardDistribution(coordUrl, database, collectionName);
-      assertTrue(shardDistribution !== undefined);
-
-      const checkTarget = (state, shard) => {
-        assertEqual(dbServersIdToName[state.leader], shardDistribution.Current[shard].leader);
-        for (const p of Object.keys(state.participants)) {
-          let name = dbServersIdToName[p];
-          assertTrue(name === shardDistribution.Current[shard].leader
-              || shardDistribution.Current[shard].followers.includes(name));
-        }
-      };
-
-      const checkCurrent = (state, shard) => {
-        assertEqual(state.supervision.version, 1);
-        for (const [p, status] of Object.entries(state.participants)) {
-          let name = dbServersIdToName[p];
-          assertTrue(name === shardDistribution.Current[shard].leader
-              || shardDistribution.Current[shard].followers.includes(name));
-          assertEqual(status.snapshot.status, "Completed");
-        }
-      };
+      let colPlan = lh.readAgencyValueAt(`Plan/Collections/${database}/${collection._id}`);
+      let colCurrent = lh.readAgencyValueAt(`Current/Collections/${database}/${collection._id}`);
 
       for (const shard of collection.shards()) {
-        let {target, current} = sh.readReplicatedStateAgency(database, shardIdToLogId(shard));
-        checkTarget(target, shard);
-        checkCurrent(current, shard);
+        let {target, plan, current} = sh.readReplicatedStateAgency(database, shardIdToLogId(shard));
+        let shardPlan = colPlan.shards[shard];
+        let shardCurrent = colCurrent[shard];
+
+        // Check if the replicated state in Target and the shard in Plan match
+        assertEqual(target.leader, shardPlan[0]);
+        assertTrue(lh.sortedArrayEqualOrError(Object.keys(target.participants)), _.sortBy(shardPlan));
+
+        // Check if the replicated state in Plan and the shard in Plan match
+        assertTrue(lh.sortedArrayEqualOrError(Object.keys(plan.participants)), _.sortBy(shardPlan));
+
+        // Check if the replicated state in Current and the shard in Current match
+        assertEqual(target.leader, shardCurrent.servers[0]);
+        assertTrue(lh.sortedArrayEqualOrError(Object.keys(current.participants)), _.sortBy(shardCurrent.servers));
       }
     },
 
-    testDeleteReplicatedStateForEachShard: function() {
+    testDropCollection: function() {
       let collection = db._collection(collectionName);
       let shards = collection.shards();
       db._drop(collectionName);
@@ -150,7 +124,7 @@ const replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2 = function (
     setUp: lh.registerAgencyTestBegin,
     tearDown: lh.registerAgencyTestEnd,
 
-    testDatabaseDeletion: function() {
+    testDropDatabase: function() {
       let collection = db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
       let shards = collection.shards();
       db._useDatabase("_system");
@@ -184,7 +158,7 @@ const replicatedStateDocumentStoreSuiteReplication1 = function () {
     setUp: lh.registerAgencyTestBegin,
     tearDown: lh.registerAgencyTestEnd,
 
-    testDoNotCreateReplicatedStateForEachShard: function() {
+    testDoesNotCreateReplicatedStateForEachShard: function() {
       let collection = db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
       for (const shard of collection.shards()) {
         let {target} = sh.readReplicatedStateAgency(database, shardIdToLogId(shard));

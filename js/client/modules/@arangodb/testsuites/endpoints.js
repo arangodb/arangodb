@@ -34,9 +34,14 @@ const optionsDocumentation = [
   '   - `skipEndpointsUnix`: if set to true endpoints tests using Unix domain sockets are skipped',
 ];
 
+const _ = require('lodash');
 const fs = require('fs');
+const internal = require('internal');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const inst = require('@arangodb/testutils/instance');
+const im = require('@arangodb/testutils/instance-manager');
+const sleep = internal.sleep;
 
 const platform = require('internal').platform;
 
@@ -54,23 +59,39 @@ const testPaths = {
 class endpointRunner extends tu.runInArangoshRunner {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
+    
     this.info = "runImport";
+    // we append one cleanup directory for the invoking logic...
+    this.dummyDir = fs.join(fs.getTempPath(), 'endpointsdummy');
+    fs.makeDirectory(this.dummyDir);
+    this.instance = new inst.instance(this.options,
+                                      inst.instanceRole.single,
+                                      {}, {}, 'tcp', this.dummyDir, '',
+                                      new inst.agencyConfig(this.options, null));
+    this.endpoint = this.instance.args['server.endpoint'];
   }
-  
+  getEndpoint() {
+    return this.endpoint;
+  }
   run() {
     let obj = this;
-    // we append one cleanup directory for the invoking logic...
-    let dummyDir = fs.join(fs.getTempPath(), 'endpointsdummy');
-    fs.makeDirectory(dummyDir);
-    pu.cleanupDBDirectoriesAppend(dummyDir);
-
+    this.instanceManager = new im.instanceManager(this.options.protocol,
+                                                  this.options,
+                                                  this.serverOptions,
+                                                  this.friendlyName);
+    this.instanceManager['arangods'] = [this.instance];
+    this.instanceManager.rootDir = this.instance.rootDir;
+    pu.cleanupDBDirectoriesAppend(this.dummyDir);
+    
     const keyFile = fs.join(tu.pathForTesting('.'), '..', '..', 'UnitTests', 'server.pem');
+
     let endpoints = {
       ssl: {
         skip: function () { return obj.options.skipEndpointsSSL; },
+        protocol: 'ssl',
         serverArgs: function () {
           return {
-            'server.endpoint': 'ssl://127.0.0.1:' + pu.findFreePort(obj.options.minPort, obj.options.maxPort),
+            'server.endpoint': 'ssl://127.0.0.1:' + obj.instance.pm.findFreePort(obj.options.minPort, obj.options.maxPort),
             'ssl.keyfile': keyFile,
           };
         },
@@ -110,8 +131,11 @@ class endpointRunner extends tu.runInArangoshRunner {
 
       tcpv4: {
         skip: function () { return obj.options.skipEndpointsIpv4; },
+        protocol: 'tcp',
         serverArgs: function () {
-          return 'tcp://127.0.0.1:' + pu.findFreePort(obj.options.minPort, obj.options.maxPort);
+          return {
+            'server.endpoint': 'tcp://127.0.0.1:' + obj.instance.pm.findFreePort(obj.options.minPort, obj.options.maxPort)
+          };
         },
         shellTests: [
           {
@@ -154,8 +178,11 @@ class endpointRunner extends tu.runInArangoshRunner {
 
       tcpv6: {
         skip: function () { return obj.options.skipEndpointsIpv6; },
+        protocol: 'tcp',
         serverArgs: function () {
-          return 'tcp://[::1]:' + pu.findFreePort(obj.options.minPort, obj.options.maxPort);
+          return {
+            'server.endpoint': 'tcp://[::1]:' + obj.instance.pm.findFreePort(obj.options.minPort, obj.options.maxPort)
+          };
         },
         shellTests: [
           {
@@ -199,19 +226,23 @@ class endpointRunner extends tu.runInArangoshRunner {
 
       unix: {
         skip: function () { return obj.options.skipEndpointsUnix || platform.substr(0, 3) === 'win'; },
+        protocol: 'unix',
         serverArgs: function () {
           // use a random filename
-          return 'unix://' + dummyDir + '/arangodb-tmp.sock-' + require('internal').genRandomAlphaNumbers(8);
+          return {
+            'server.endpoint': 'unix://' + obj.dummyDir + '/arangodb-tmp.sock-' + require('internal').genRandomAlphaNumbers(8)
+          };
         },
         shellTests: [
           {
-            name: 'tcp',
+            name: 'unix',
             endpoint: function (endpoint) { return endpoint; },
             success: true
           },
         ]
       },
     };
+    obj.orgArgs = _.clone(obj.instance.args);
     return Object.keys(endpoints).reduce((results, endpointName) => {
       let testName = 'endpoint-' + endpointName;
       let testCase = endpoints[endpointName];
@@ -232,15 +263,11 @@ class endpointRunner extends tu.runInArangoshRunner {
         };
         return results;
       }
-
       let serverArgs = testCase.serverArgs();
-      if (typeof serverArgs === 'string') {
-        serverArgs = { 'server.endpoint': serverArgs };
-      }
-
-      obj.instanceInfo = pu.startInstance('tcp', Object.assign(obj.options, {useReconnect: true}), serverArgs, testName);
-
-      if (obj.instanceInfo === false) {
+      obj.instance.args = _.defaults(serverArgs, obj.orgArgs);
+      obj.instance.protocol = testCase.protocol;
+      obj.instance.launchInstance({});
+      if (!obj.instance.checkArangoAlive()) {
         results.failed += 1;
 
         results[endpointName + '-' + 'all'] = {
@@ -250,15 +277,20 @@ class endpointRunner extends tu.runInArangoshRunner {
         };
         return results;
       }
-
+      sleep(2);
+      obj.instance.checkArangoConnection(20);
+      internal.env.INSTANCEINFO = JSON.stringify(obj.instance.getStructure());
       const specFile = testPaths.endpoints[0];
       let filtered = {};
 
       testCase.shellTests.forEach(function(testCase) {
         if (tu.filterTestcaseByOptions(testCase.name, obj.options, filtered)) {
-          let old = obj.instanceInfo.endpoint;
+          let old = obj.instance.endpoint;
           let shellEndpoint = testCase.endpoint(serverArgs['server.endpoint']);
-          obj.instanceInfo.endpoint = shellEndpoint;
+          obj.endpoint = shellEndpoint;
+          if (obj.options.extremeVerbosity) {
+            print("Testing " + endpointName + '-' +testCase.name + " Endpoint: " + shellEndpoint);
+          }
           try {
             let arangoshOpts = { 'server.connection-timeout': 2, 'server.request-timeout': 2 };
             if (testCase.forceJson) {
@@ -266,7 +298,7 @@ class endpointRunner extends tu.runInArangoshRunner {
             }
             obj.addArgs = arangoshOpts;
             let result = obj.runOneTest(specFile);
-            obj.addArgs = undefined;
+
             let success = result.status === testCase.success;
             results[endpointName + '-' + testCase.name] = { status: success }; 
             if (!success) {
@@ -275,7 +307,7 @@ class endpointRunner extends tu.runInArangoshRunner {
               results.failed += 1;
             }
           } finally {
-            obj.instanceInfo.endpoint = old;
+            obj.instance.endpoint = old;
           }
         } else {
           if (obj.options.extremeVerbosity) {
@@ -285,18 +317,27 @@ class endpointRunner extends tu.runInArangoshRunner {
       });
 
       print(CYAN + 'Shutting down...' + RESET);
-      let shutdown = pu.shutdownInstance(obj.instanceInfo, Object.assign(obj.options, {useKillExternal: true}));
+      let shutdown = true;
+      let message = "";
+      try {
+        obj.instance.shutDownOneInstance({nonAgenciesCount: 1}, false, 30);
+        obj.instance.waitForInstanceShutdown(10);
+      } catch (ex) {
+        shutdown = false;
+        message = ex.message;
+      }
+      obj.instance.pid = null;
+      obj.instance.exitStatus = null;
       print(CYAN + 'done.' + RESET);
 
       if (!shutdown) {
         results.failed += 1;
         results.shutdown = false;
-      } else {
-        pu.cleanupLastDirectory(obj.options);
+        results.message += message;
       }
-
       return results;
     }, { failed: 0, shutdown: true });
+    pu.cleanupLastDirectory(this.options);
   }
 }
 

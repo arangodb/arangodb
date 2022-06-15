@@ -237,10 +237,10 @@ const waitForReplicatedLogAvailable = function (id) {
 
 const getServerProcessID = function (serverId) {
   let endpoint = global.ArangoClusterInfo.getServerEndpoint(serverId);
-  // Now look for instanceInfo:
-  let pos = _.findIndex(global.instanceInfo.arangods,
-      x => x.endpoint === endpoint);
-  return global.instanceInfo.arangods[pos].pid;
+  // Now look for instanceManager:
+  let pos = _.findIndex(global.instanceManager.arangods,
+                        x => x.endpoint === endpoint);
+  return global.instanceManager.arangods[pos].pid;
 };
 
 const stopServerImpl = function (serverId) {
@@ -519,6 +519,14 @@ const updateReplicatedLogTarget = function(database, id, callback) {
   replicatedLogSetTarget(database, id, result);
 };
 
+const sortedArrayEqualOrError = (left, right) => {
+  if (_.isEqual(left, right)) {
+    return true;
+  } else {
+    return Error(`Expected the following to be equal: ${JSON.stringify(left)} and ${JSON.stringify(right)}`);
+  }
+};
+
 exports.checkRequestResult = checkRequestResult;
 exports.continueServer = continueServerImpl;
 exports.continueServerWaitOk = continueServerWaitOk;
@@ -557,3 +565,4 @@ exports.testHelperFunctions = testHelperFunctions;
 exports.updateReplicatedLogTarget = updateReplicatedLogTarget;
 exports.waitFor = waitFor;
 exports.waitForReplicatedLogAvailable = waitForReplicatedLogAvailable;
+exports.sortedArrayEqualOrError = sortedArrayEqualOrError;

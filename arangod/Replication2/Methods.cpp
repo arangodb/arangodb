@@ -723,7 +723,7 @@ struct ReplicatedLogMethodsCoordinator final
 
             if (result->value().isNone()) {
               return Result::fmt(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND,
-                                 id.id());
+                                 id);
             }
 
             auto spec = velocypack::deserialize<
