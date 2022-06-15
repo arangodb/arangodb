@@ -31,6 +31,7 @@
 #include "Replication2/StateMachines/Prototype/PrototypeLeaderState.h"
 #include "Replication2/StateMachines/Prototype/PrototypeStateMachine.h"
 #include "Replication2/Mocks/AsyncFollower.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -140,15 +141,14 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
       ParticipantId id, LogTerm term,
       std::vector<std::shared_ptr<AbstractFollower>> const& follower,
       std::size_t writeConcern) -> std::shared_ptr<LogLeader> {
-    auto config =
-        LogConfig{writeConcern, writeConcern, follower.size() + 1, false};
+    auto config = agency::LogPlanConfig{writeConcern, writeConcern, false};
     auto participants =
         std::unordered_map<ParticipantId, ParticipantFlags>{{id, {}}};
     for (auto const& participant : follower) {
       participants.emplace(participant->getParticipantId(), ParticipantFlags{});
     }
     auto participantsConfig =
-        std::make_shared<ParticipantsConfig>(ParticipantsConfig{
+        std::make_shared<agency::ParticipantsConfig>(agency::ParticipantsConfig{
             .generation = 1,
             .participants = std::move(participants),
         });
@@ -159,13 +159,14 @@ struct PrototypeConcurrencyTest : test::ReplicatedLogTest {
 
   std::shared_ptr<ReplicatedStateFeature> feature =
       std::make_shared<ReplicatedStateFeature>();
-  std::shared_ptr<replication2::replicated_log::ReplicatedLog> leaderLog =
-      createAsyncReplicatedLog();
+
   std::shared_ptr<replication2::replicated_log::ReplicatedLog> followerLog =
       createAsyncReplicatedLog();
-
   std::shared_ptr<LogFollower> follower =
       followerLog->becomeFollower("follower", LogTerm{1}, "leader");
+
+  std::shared_ptr<replication2::replicated_log::ReplicatedLog> leaderLog =
+      createAsyncReplicatedLog();
   std::shared_ptr<LogLeader> leader = createLeaderWithDefaultFlags(
       leaderLog, "leader", LogTerm{1}, {follower}, 2);
 

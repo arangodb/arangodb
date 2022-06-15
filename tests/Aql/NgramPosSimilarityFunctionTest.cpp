@@ -66,8 +66,7 @@ class NgramPosSimilarityFunctionTest : public ::testing::Test {
     auto trx = server.createFakeTransaction();
     fakeit::When(Method(expressionContextMock, trx))
         .AlwaysDo([&]() -> transaction::Methods& { return *trx; });
-    SmallVector<AqlValue>::allocator_type::arena_type arena;
-    SmallVector<AqlValue> params{arena};
+    containers::SmallVector<AqlValue, 3> params;
     if (attribute) {
       params.emplace_back(*attribute);
     }

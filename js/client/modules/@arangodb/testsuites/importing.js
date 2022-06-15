@@ -35,6 +35,7 @@ const optionsDocumentation = [
 
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const im = require('@arangodb/testutils/instance-manager');
 const yaml = require('js-yaml');
 
 const testPaths = {
@@ -386,9 +387,10 @@ class importRunner extends tu.runInArangoshRunner {
   }
   
   run() {
-    this.instanceInfo = pu.startInstance('tcp', this.options, {}, 'importing');
-
-    if (this.instanceInfo === false) {
+        this.instanceManager = new im.instanceManager('tcp', this.options, {}, 'importing');
+    this.instanceManager.prepareInstance();
+    this.instanceManager.launchTcpDump("");
+    if (!this.instanceManager.launchInstance()) {
       return {
         'failed': 1,
         'importing': {
@@ -398,6 +400,8 @@ class importRunner extends tu.runInArangoshRunner {
         }
       };
     }
+    this.instanceManager.reconnect();
+
 
     let result = { failed: 0 };
 
@@ -413,8 +417,10 @@ class importRunner extends tu.runInArangoshRunner {
 
       for (let i = 0; i < impTodos.length; i++) {
         const impTodo = impTodos[i];
-
-        result[impTodo.id] = pu.run.arangoImport(this.options, this.instanceInfo, impTodo, this.options.coreCheck);
+        let cfg = pu.createBaseConfig('import', this.options, this.instanceManager);
+        cfg.setWhatToImport(impTodo);
+        cfg.setEndpoint(this.instanceManager.endpoint);
+        result[impTodo.id] = pu.run.arangoImport(cfg, this.options, this.instanceManager.rootDir, this.options.coreCheck);
         result[impTodo.id].failed = 0;
 
         if (impTodo.expectFailure) {
@@ -437,15 +443,18 @@ class importRunner extends tu.runInArangoshRunner {
       result.teardown = this.runOneTest(tu.makePathUnix(fs.join(testPaths.importing[0], 'import-teardown.js')));
 
       result.teardown.failed = result.teardown.success ? 0 : 1;
-    } catch (banana) {
-      print('An exceptions of the following form was caught:',
-            yaml.safeDump(banana));
+    } catch (exception) {
+      result['run'] = {
+        'failed': 1,
+        'message': 'An exception of the following form was caught: ' + exception + "\n" + exception.stack
+      };
+      print('An exception of the following form was caught: ',
+            exception);
     }
-
     print('Shutting down...');
-    result['shutdown'] = pu.shutdownInstance(this.instanceInfo, this.options);
+    result['shutdown'] = this.instanceManager.shutdownInstance();
+    this.instanceManager.destructor();
     print('done.');
-
     return result;
   }
 }

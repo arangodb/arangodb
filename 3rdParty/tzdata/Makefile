@@ -45,9 +45,9 @@ LOCALTIME=	GMT
 #
 # Any other value for POSIXRULES is obsolete and should not be relied on, as:
 # * It does not work correctly in popular implementations such as GNU/Linux.
-# * It does not work in the tzdb implementation for timestamps after 2037.
-# * It is incompatible with 'zic -b slim' if POSIXRULES specifies transitions
-#   at standard time or UT rather than at local time.
+# * It does not work even in tzcode, except for historical timestamps
+#   that precede the last explicit transition in the POSIXRULES file.
+#   Hence it typically does not work for current and future timestamps.
 # In short, software should avoid ruleless settings like TZ='EET-2EEST'
 # and so should not depend on the value of POSIXRULES.
 #
@@ -122,8 +122,8 @@ LIBDIR = $(TOPDIR)/$(USRDIR)/lib
 
 # Types to try, as an alternative to time_t.
 TIME_T_ALTERNATIVES = $(TIME_T_ALTERNATIVES_HEAD) $(TIME_T_ALTERNATIVES_TAIL)
-TIME_T_ALTERNATIVES_HEAD = int64_t
-TIME_T_ALTERNATIVES_TAIL = int32_t uint32_t uint64_t
+TIME_T_ALTERNATIVES_HEAD = int_least64_t
+TIME_T_ALTERNATIVES_TAIL = int_least32_t uint_least32_t uint_least64_t
 
 # What kind of TZif data files to generate.  (TZif is the binary time
 # zone data format that zic generates; see Internet RFC 8536.)
@@ -152,8 +152,10 @@ REDO=		posix_right
 # The EXPIRES_LINE value matters only if REDO's value contains "right".
 # If you change EXPIRES_LINE, remove the leapseconds file before running "make".
 # zic's support for the Expires line was introduced in tzdb 2020a,
-# and EXPIRES_LINE defaults to 0 for now so that the leapseconds file
-# can be given to older zic implementations.
+# and was modified in tzdb 2021b to generate version 4 TZif files.
+# EXPIRES_LINE defaults to 0 for now so that the leapseconds file
+# can be given to pre-2020a zic implementations and so that TZif files
+# built by newer zic implementations can be read by pre-2021b libraries.
 EXPIRES_LINE=	0
 
 # To install data in text form that has all the information of the TZif data,
@@ -210,6 +212,7 @@ LDLIBS=
 #  -DHAVE_LOCALTIME_R=0 if your system lacks a localtime_r function
 #  -DHAVE_LOCALTIME_RZ=0 if you do not want zdump to use localtime_rz
 #	localtime_rz can make zdump significantly faster, but is nonstandard.
+#  -DHAVE_MALLOC_ERRNO=0 if malloc etc. do not set errno on failure.
 #  -DHAVE_POSIX_DECLS=0 if your system's include files do not declare
 #	functions like 'link' or variables like 'tzname' required by POSIX
 #  -DHAVE_SNPRINTF=0 if your system lacks the snprintf function
@@ -220,7 +223,6 @@ LDLIBS=
 #  -DHAVE_STRTOLL=0 if your system lacks the strtoll function
 #  -DHAVE_SYMLINK=0 if your system lacks the symlink function
 #  -DHAVE_SYS_STAT_H=0 if your compiler lacks a <sys/stat.h>
-#  -DHAVE_SYS_WAIT_H=0 if your compiler lacks a <sys/wait.h>
 #  -DHAVE_TZSET=0 if your system lacks a tzset function
 #  -DHAVE_UNISTD_H=0 if your compiler lacks a <unistd.h>
 #  -Dlocale_t=XXX if your system uses XXX instead of locale_t
@@ -257,22 +259,26 @@ LDLIBS=
 GCC_INSTRUMENT = \
   -fsanitize=undefined -fsanitize-address-use-after-scope \
   -fsanitize-undefined-trap-on-error -fstack-protector
+# Omit -fanalyzer from GCC_DEBUG_FLAGS, as it makes GCC too slow.
 GCC_DEBUG_FLAGS = -DGCC_LINT -g3 -O3 -fno-common \
   $(GCC_INSTRUMENT) \
   -Wall -Wextra \
   -Walloc-size-larger-than=100000 -Warray-bounds=2 \
   -Wbad-function-cast -Wcast-align=strict -Wdate-time \
   -Wdeclaration-after-statement -Wdouble-promotion \
+  -Wduplicated-branches -Wduplicated-cond \
   -Wformat=2 -Wformat-overflow=2 -Wformat-signedness -Wformat-truncation \
-  -Winit-self -Wjump-misses-init -Wlogical-op \
+  -Winit-self -Wlogical-op \
   -Wmissing-declarations -Wmissing-prototypes -Wnested-externs \
+  -Wnull-dereference \
   -Wold-style-definition -Woverlength-strings -Wpointer-arith \
-  -Wshadow -Wshift-overflow=2 -Wstrict-prototypes -Wstringop-overflow=4 \
+  -Wshadow -Wshift-overflow=2 -Wstrict-overflow \
+  -Wstrict-prototypes -Wstringop-overflow=4 \
   -Wstringop-truncation -Wsuggest-attribute=cold \
   -Wsuggest-attribute=const -Wsuggest-attribute=format \
   -Wsuggest-attribute=malloc \
   -Wsuggest-attribute=noreturn -Wsuggest-attribute=pure \
-  -Wtrampolines -Wundef -Wuninitialized -Wunused \
+  -Wtrampolines -Wundef -Wuninitialized -Wunused-macros \
   -Wvariadic-macros -Wvla -Wwrite-strings \
   -Wno-address -Wno-format-nonliteral -Wno-sign-compare \
   -Wno-type-limits -Wno-unused-parameter
@@ -393,9 +399,10 @@ ZFLAGS=
 ZIC_INSTALL=	$(ZIC) -d '$(DESTDIR)$(TZDIR)' $(LEAPSECONDS)
 
 # The name of a Posix-compliant 'awk' on your system.
-# Older 'mawk' versions, such as the 'mawk' in Ubuntu 16.04, might dump core;
-# on Ubuntu you can work around this with
-#	AWK=		gawk
+# mawk 1.3.3 and Solaris 10 /usr/bin/awk do not work.
+# Also, it is better (though not essential) if 'awk' supports UTF-8,
+# and unfortunately mawk and busybox awk do not support UTF-8.
+# Try AWK=gawk or AWK=nawk if your awk has the abovementioned problems.
 AWK=		awk
 
 # The full path name of a Posix-compliant shell, preferably one that supports
@@ -460,7 +467,9 @@ OK_LINE=	'^'$(OK_CHAR)'*$$'
 
 # Flags to give 'tar' when making a distribution.
 # Try to use flags appropriate for GNU tar.
-GNUTARFLAGS= --numeric-owner --owner=0 --group=0 --mode=go+u,go-w --sort=name
+GNUTARFLAGS= --format=pax --pax-option='delete=atime,delete=ctime' \
+  --numeric-owner --owner=0 --group=0 \
+  --mode=go+u,go-w --sort=name
 TARFLAGS=	`if tar $(GNUTARFLAGS) --version >/dev/null 2>&1; \
 		 then echo $(GNUTARFLAGS); \
 		 else :; \
@@ -498,7 +507,7 @@ MANTXTS=	newctime.3.txt newstrftime.3.txt newtzset.3.txt \
 			tzfile.5.txt tzselect.8.txt zic.8.txt zdump.8.txt \
 			date.1.txt
 COMMON=		calendars CONTRIBUTING LICENSE Makefile \
-			NEWS README theory.html version
+			NEWS README SECURITY theory.html version
 WEB_PAGES=	tz-art.html tz-how-to.html tz-link.html
 CHECK_WEB_PAGES=check_theory.html check_tz-art.html \
 			check_tz-how-to.html check_tz-link.html
@@ -523,7 +532,7 @@ TZS_YEAR=	2050
 TZS_CUTOFF_FLAG=	-c $(TZS_YEAR)
 TZS=		to$(TZS_YEAR).tzs
 TZS_NEW=	to$(TZS_YEAR)new.tzs
-TZS_DEPS=	$(PRIMARY_YDATA) asctime.c localtime.c \
+TZS_DEPS=	$(YDATA) asctime.c localtime.c \
 			private.h tzfile.h zdump.c zic.c
 # EIGHT_YARDS is just a yard short of the whole ENCHILADA.
 EIGHT_YARDS = $(COMMON) $(DOCS) $(SOURCES) $(DATA) $(MISC) tzdata.zi
@@ -533,7 +542,7 @@ ENCHILADA = $(EIGHT_YARDS) $(TZS)
 # This list is not the same as the output of 'git ls-files', since
 # .gitignore is not distributed.
 VERSION_DEPS= \
-		calendars CONTRIBUTING LICENSE Makefile NEWS README \
+		calendars CONTRIBUTING LICENSE Makefile NEWS README SECURITY \
 		africa antarctica asctime.c asia australasia \
 		backward backzone \
 		checklinks.awk checktab.awk \
@@ -736,7 +745,7 @@ date:		$(DATEOBJS)
 tzselect:	tzselect.ksh version
 		VERSION=`cat version` && sed \
 			-e 's|#!/bin/bash|#!$(KSHELL)|g' \
-			-e 's|AWK=[^}]*|AWK=$(AWK)|g' \
+			-e 's|AWK=[^}]*|AWK='\''$(AWK)'\''|g' \
 			-e 's|\(PKGVERSION\)=.*|\1='\''($(PACKAGE)) '\''|' \
 			-e 's|\(REPORT_BUGS_TO\)=.*|\1=$(BUGEMAIL)|' \
 			-e 's|TZDIR=[^}]*|TZDIR=$(TZDIR)|' \
@@ -757,7 +766,7 @@ check_character_set: $(ENCHILADA)
 		sharp='#' && \
 		! grep -Env $(SAFE_LINE) $(MANS) date.1 $(MANTXTS) \
 			$(MISC) $(SOURCES) $(WEB_PAGES) \
-			CONTRIBUTING LICENSE README \
+			CONTRIBUTING LICENSE README SECURITY \
 			version tzdata.zi && \
 		! grep -Env $(SAFE_LINE)'|^UNUSUAL_OK_'$(OK_CHAR)'*$$' \
 			Makefile && \
@@ -796,9 +805,10 @@ check_links:	checklinks.awk $(TDATA_TO_CHECK) tzdata.zi
 		$(AWK) -f checklinks.awk tzdata.zi
 		touch $@
 
-check_tables:	checktab.awk $(PRIMARY_YDATA) $(ZONETABLES)
+check_tables:	checktab.awk $(YDATA) backward $(ZONETABLES)
 		for tab in $(ZONETABLES); do \
-		  $(AWK) -f checktab.awk -v zone_table=$$tab $(PRIMARY_YDATA) \
+		  test "$$tab" = zone.tab && links='$(BACKWARD)' || links=''; \
+		  $(AWK) -f checktab.awk -v zone_table=$$tab $(YDATA) $$links \
 		    || exit; \
 		done
 		touch $@
@@ -952,6 +962,12 @@ check_public: $(VERSION_DEPS)
 		  public.dir/zic -v -d public.dir/zoneinfo $$i 2>&1 || exit; \
 		done
 		public.dir/zic -v -d public.dir/zoneinfo-all $(TDATA_TO_CHECK)
+		:
+		: Also check 'backzone' syntax.
+		rm public.dir/main.zi
+		cd public.dir && $(MAKE) PACKRATDATA=backzone main.zi
+		public.dir/zic -d public.dir/zoneinfo main.zi
+		:
 		rm -fr public.dir
 		touch $@
 
@@ -964,7 +980,7 @@ $(TIME_T_ALTERNATIVES): $(VERSION_DEPS)
 		mkdir $@.dir
 		ln $(VERSION_DEPS) $@.dir
 		case $@ in \
-		  int32_t) range=-2147483648,2147483648;; \
+		  int*32_t) range=-2147483648,2147483648;; \
 		  u*) range=0,4294967296;; \
 		  *) range=-4294967296,4294967296;; \
 		esac && \

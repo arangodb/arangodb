@@ -21,6 +21,7 @@
 /// @author Michael Hackstein
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "LogicalCollection.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -35,6 +36,7 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Replication/ReplicationFeature.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -275,6 +277,10 @@ size_t LogicalCollection::writeConcern() const noexcept {
   return _sharding->writeConcern();
 }
 
+replication::Version LogicalCollection::replicationVersion() const noexcept {
+  return vocbase().replicationVersion();
+}
+
 std::string const& LogicalCollection::distributeShardsLike() const noexcept {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->distributeShardsLike();
@@ -437,8 +443,12 @@ std::string const& LogicalCollection::smartJoinAttribute() const noexcept {
 #endif
 
 #ifndef USE_ENTERPRISE
-std::string const& LogicalCollection::smartGraphAttribute() const noexcept {
+std::string LogicalCollection::smartGraphAttribute() const {
   return StaticStrings::Empty;
+}
+
+void LogicalCollection::setSmartGraphAttribute(std::string const& /*value*/) {
+  TRI_ASSERT(false);
 }
 #endif
 
@@ -461,12 +471,9 @@ bool LogicalCollection::useSyncByRevision() const noexcept {
 bool LogicalCollection::determineSyncByRevision() const {
   if (version() >= LogicalCollection::Version::v37) {
     auto& server = vocbase().server();
-    if (server.hasFeature<EngineSelectorFeature>() &&
-        server.hasFeature<ReplicationFeature>()) {
-      auto& engine = server.getFeature<EngineSelectorFeature>();
+    if (server.hasFeature<ReplicationFeature>()) {
       auto& replication = server.getFeature<ReplicationFeature>();
-      return engine.isRocksDB() && replication.syncByRevision() &&
-             usesRevisionsAsDocumentIds();
+      return replication.syncByRevision() && usesRevisionsAsDocumentIds();
     }
   }
   return false;
@@ -609,6 +616,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
                                                         bool useSystem,
                                                         bool isReady,
                                                         bool allInSync) const {
+  TRI_ASSERT(_sharding != nullptr);
   if (system() && !useSystem) {
     return;
   }
@@ -666,6 +674,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 
 Result LogicalCollection::appendVPack(velocypack::Builder& build,
                                       Serialization ctx, bool) const {
+  TRI_ASSERT(_sharding != nullptr);
   bool const forPersistence = (ctx == Serialization::Persistence ||
                                ctx == Serialization::PersistenceWithInProgress);
   bool const showInProgress = (ctx == Serialization::PersistenceWithInProgress);
@@ -772,6 +781,7 @@ void LogicalCollection::includeVelocyPackEnterprise(
 void LogicalCollection::increaseV8Version() { ++_v8CacheVersion; }
 
 Result LogicalCollection::properties(velocypack::Slice slice, bool) {
+  TRI_ASSERT(_sharding != nullptr);
   // the following collection properties are intentionally not updated,
   // as updating them would be very complicated:
   // - _cid
@@ -932,7 +942,7 @@ Result LogicalCollection::properties(velocypack::Slice slice, bool) {
         slice, StaticStrings::InternalValidatorTypes, _internalValidatorTypes);
     if (nextType != _internalValidatorTypes) {
       // This is a bit dangerous operation, if the internalValidators are NOT
-      // empty a concurrent writer could have one in it's hand while this thread
+      // empty a concurrent writer could have one in its hand while this thread
       // deletes it. For now the situation cannot happen, but may happen in the
       // future. As soon as it happens we need to make sure that we hold a write
       // lock on this collection while we swap the validators. (Or apply some
@@ -942,6 +952,18 @@ Result LogicalCollection::properties(velocypack::Slice slice, bool) {
       _internalValidatorTypes = nextType;
       _internalValidators.clear();
       decorateWithInternalValidators();
+    }
+
+    // Inject SmartGraphAttribute into Shards
+    if (slice.hasKey(StaticStrings::GraphSmartGraphAttribute) &&
+        smartGraphAttribute().empty()) {
+      // This is a bit dangerous operation and should only be run in MAINTENANCE
+      // task we upgrade the SmartGraphAttribute within the Shard, this is
+      // required to allow the DBServer to generate new ID values
+      auto sga = slice.get(StaticStrings::GraphSmartGraphAttribute);
+      if (sga.isString()) {
+        setSmartGraphAttribute(sga.copyString());
+      }
     }
   }
 
@@ -1138,9 +1160,13 @@ void LogicalCollection::schemaToVelocyPack(VPackBuilder& b) const {
   }
 }
 
-Result LogicalCollection::validate(VPackSlice s,
+std::shared_ptr<ValidatorBase> LogicalCollection::schema() const {
+  return std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
+}
+
+Result LogicalCollection::validate(std::shared_ptr<ValidatorBase> const& schema,
+                                   VPackSlice s,
                                    VPackOptions const* options) const {
-  auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
   if (schema != nullptr) {
     auto res = schema->validate(s, VPackSlice::noneSlice(), true, options);
     if (res.fail()) {
@@ -1156,9 +1182,11 @@ Result LogicalCollection::validate(VPackSlice s,
   return {};
 }
 
-Result LogicalCollection::validate(VPackSlice modifiedDoc, VPackSlice oldDoc,
+Result LogicalCollection::validate(std::shared_ptr<ValidatorBase> const& schema,
+                                   VPackSlice modifiedDoc, VPackSlice oldDoc,
                                    VPackOptions const* options) const {
-  auto schema = std::atomic_load_explicit(&_schema, std::memory_order_relaxed);
+  //  auto schema = std::atomic_load_explicit(&_schema,
+  //  std::memory_order_relaxed);
   if (schema != nullptr) {
     auto res = schema->validate(modifiedDoc, oldDoc, false, options);
     if (res.fail()) {
@@ -1196,6 +1224,15 @@ void LogicalCollection::addInternalValidator(
 void LogicalCollection::decorateWithInternalValidators() {
   // Community validators go in here.
   decorateWithInternalEEValidators();
+}
+
+replication2::LogId LogicalCollection::shardIdToStateId(
+    ShardID const& shardId) {
+  auto stateId = std::string_view(shardId).substr(1, shardId.size() - 1);
+  auto logId = replication2::LogId::fromString(stateId);
+  ADB_PROD_ASSERT(logId.has_value())
+      << " converting " << shardId << " to LogId failed";
+  return logId.value();
 }
 
 #ifndef USE_ENTERPRISE

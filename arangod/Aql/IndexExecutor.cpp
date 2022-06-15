@@ -65,7 +65,7 @@ using namespace arangodb::aql;
 namespace {
 
 bool hasMultipleExpansions(
-    std::span<transaction::Methods::IndexHandle> const& indexes) noexcept {
+    std::span<transaction::Methods::IndexHandle const> indexes) noexcept {
   // count how many attributes in the index are expanded (array index).
   // if more than a single attribute is expanded, we always need to
   // deduplicate the result later on.

@@ -117,7 +117,8 @@ Conductor::Conductor(
   _asyncMode =
       _algorithm->supportsAsyncMode() && async.isBool() && async.getBoolean();
   _useMemoryMaps = VelocyPackHelper::getBooleanValue(
-      _userParams.slice(), Utils::useMemoryMapsKey, _useMemoryMaps);
+      _userParams.slice(), Utils::useMemoryMapsKey, _feature.useMemoryMaps());
+
   VPackSlice storeSlice = config.get("store");
   _storeResults = !storeSlice.isBool() || storeSlice.getBool();
 
@@ -130,7 +131,8 @@ Conductor::Conductor(
   LOG_PREGEL("00f5f", INFO)
       << "Starting " << _algorithm->name() << " in database '" << vocbase.name()
       << "', ttl: " << _ttl.count() << "s"
-      << ", async: " << (_asyncMode ? "yes" : "no")
+      << ", async: " << (_asyncMode ? "yes" : "no") << ", parallelism: "
+      << WorkerConfig::parallelism(_feature, _userParams.slice())
       << ", memory mapping: " << (_useMemoryMaps ? "yes" : "no")
       << ", store: " << (_storeResults ? "yes" : "no")
       << ", config: " << _userParams.slice().toJson();
@@ -951,6 +953,7 @@ void Conductor::toVelocyPack(VPackBuilder& result) const {
     VPackObjectBuilder ob(&result, "masterContext");
     _masterContext->serializeValues(result);
   }
+  result.add("useMemoryMaps", VPackValue(_useMemoryMaps));
   result.close();
 }
 

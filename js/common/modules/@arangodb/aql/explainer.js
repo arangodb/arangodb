@@ -925,9 +925,13 @@ function processQuery(query, explain, planIndex) {
       case 'reference':
         if (references.hasOwnProperty(node.name)) {
           var ref = references[node.name];
+          var c = '*';
+          if (ref.length > 5 && ref[5]) {
+            c = '?';
+          }
           delete references[node.name];
           if (Array.isArray(ref)) {
-            var out = buildExpression(ref[1]) + '[' + (new Array(ref[0] + 1).join('*'));
+            var out = buildExpression(ref[1]) + '[' + (new Array(ref[0] + 1).join(c));
             if (ref[2].type !== 'no-op') {
               out += ' ' + keyword('FILTER') + ' ' + buildExpression(ref[2]);
             }
@@ -940,7 +944,7 @@ function processQuery(query, explain, planIndex) {
             out += ']';
             return out;
           }
-          return buildExpression(ref) + '[*]';
+          return buildExpression(ref) + '[' + c + ']';
         }
         return variableName(node);
       case 'collection':
@@ -987,7 +991,7 @@ function processQuery(query, explain, planIndex) {
       case 'expansion':
         if (node.subNodes.length > 2) {
           // [FILTER ...]
-          references[node.subNodes[0].subNodes[0].name] = [node.levels, node.subNodes[0].subNodes[1], node.subNodes[2], node.subNodes[3], node.subNodes[4]];
+          references[node.subNodes[0].subNodes[0].name] = [node.levels, node.subNodes[0].subNodes[1], node.subNodes[2], node.subNodes[3], node.subNodes[4], node.booleanize || false];
         } else {
           // [*]
           references[node.subNodes[0].subNodes[0].name] = node.subNodes[0].subNodes[1];
@@ -1266,6 +1270,25 @@ function processQuery(query, explain, planIndex) {
             return keyword(' LET ') + variableName(scorer) + ' = ' + buildExpression(scorer.node);
           }).join('');
         }
+        
+        var scorersSort = '';
+        if (node.hasOwnProperty('scorersSort') && node.scorersSort.length > 0) {
+          node.scorersSort.forEach(function(sort) {
+              if (scorersSort.length > 0 ) {
+                scorersSort += ', ';
+              }
+              scorersSort += variableName(node.scorers[sort.index]);
+              if (sort.asc) {
+                scorersSort += keyword(' ASC');
+              } else {
+                scorersSort += keyword(' DESC');
+              }
+          
+          });
+           scorersSort = keyword(' SORT ') + scorersSort;
+           scorersSort += keyword(' LIMIT ') + value('0, ' + JSON.stringify(node.scorersSortLimit));
+           
+        }
         let viewAnnotation = '/* view query';
         if (node.hasOwnProperty('outNmDocId') && node.hasOwnProperty('outNmColPtr')) {
           viewAnnotation += ' with late materialization';
@@ -1291,7 +1314,7 @@ function processQuery(query, explain, planIndex) {
         }
         return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') +
                view(node.view) + condition + sortCondition + scorers + viewVariables +
-               '   ' + annotation(viewAnnotation);
+               scorersSort + '   ' + annotation(viewAnnotation);
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
         if (node.filter) {

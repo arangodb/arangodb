@@ -133,7 +133,6 @@ const replicatedLogRegressionSuite = function () {
     testFailedServerDoesNotPreventProgress: function () {
       const targetConfig = {
         writeConcern: 3,
-        replicationFactor: 3,
         waitForSync: false,
       };
       const {logId, followers, leader} = helper.createReplicatedLog(database, targetConfig);

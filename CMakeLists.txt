@@ -154,7 +154,7 @@ if (DEFINED ARANGODB_VERSION_RELEASE_TYPE)
     set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.0~~${ARANGODB_VERSION_PATCH}")
     set(ARANGODB_DEBIAN_REVISION "1")
 
-    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.0")
+    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
     set(ARANGODB_RPM_REVISION "0.1.devel")
 
     set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
@@ -165,7 +165,7 @@ if (DEFINED ARANGODB_VERSION_RELEASE_TYPE)
     set(ARANGODB_DEBIAN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
     set(ARANGODB_DEBIAN_REVISION "1")
 
-    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}.0")
+    set(ARANGODB_RPM_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
     set(ARANGODB_RPM_REVISION "0.2.nightly")
 
     set(ARANGODB_DARWIN_UPSTREAM "${ARANGODB_PLAIN_VERSION}")
@@ -1193,7 +1193,7 @@ else ()
   find_package(OpenSSL REQUIRED)
 endif ()
 
-if (OPENSSL_FOUND)
+if (OPENSSL_FOUND AND USE_STRICT_OPENSSL_VERSION)
   if (NOT "${OPENSSL_VERSION}" MATCHES "${ARANGODB_REQUIRED_OPENSSL_VERSION}")
     message (FATAL_ERROR "Wrong OpenSSL version was found: ${OPENSSL_VERSION}! Required version: ${MSG_ARANGODB_REQUIRED_OPENSSL_VERSION}!")
   endif ()
@@ -1253,7 +1253,8 @@ link_libraries(
   absl::flat_hash_map
   absl::node_hash_set
   absl::node_hash_map
-  absl::inlined_vector
+  absl::synchronization
+  absl::strings
 )
 
 
@@ -1405,6 +1406,41 @@ add_subdirectory(arangod)
 if (USE_GOOGLE_TESTS)
   add_subdirectory(tests)
 endif ()
+
+option(BUILD_SEPP "Build SEPP (Storage Engine Performance Prediction)" OFF)
+
+if (BUILD_SEPP)
+  set(ARANGODB_SEPP_SOURCES
+    tests/sepp/main.cpp
+    tests/sepp/Execution.cpp
+    tests/sepp/ExecutionThread.cpp
+    tests/sepp/Runner.cpp
+    tests/sepp/RocksDBOptions.cpp
+    tests/sepp/Server.cpp
+    tests/sepp/ValueGenerators/RandomStringGenerator.cpp
+    tests/sepp/Workloads/GetByPrimaryKey.cpp
+    tests/sepp/Workloads/InsertDocuments.cpp
+    tests/sepp/Workloads/IterateDocuments.cpp
+  )
+
+  add_executable(
+    sepp
+    ${ARANGODB_SEPP_SOURCES}
+  )
+
+  target_include_directories(sepp PRIVATE
+    ${PROJECT_SOURCE_DIR}/arangod
+    ${PROJECT_SOURCE_DIR}/tests/sepp
+  )
+
+  target_link_libraries(sepp
+    arango_rocksdb
+    arangoserver
+    rocksdb
+    snappy
+    boost_boost
+  )
+endif()
 
 add_dependencies(arangobench   zlibstatic)
 if (USE_ENTERPRISE)

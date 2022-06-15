@@ -223,14 +223,12 @@ OperationResult handleResponsesFromAllShards(
   if (!result.fail()) {
     for (Try<arangodb::network::Response> const& tryRes : responses) {
       network::Response const& res = tryRes.get();  // throws exceptions upwards
-      ShardID sId = res.destinationShard();
-      auto commError = network::fuerteToArangoErrorCode(res);
-      if (commError != TRI_ERROR_NO_ERROR) {
-        result.reset(commError);
-      } else {
+
+      TRI_ASSERT(result.ok());
+      result = res.combinedResult();
+      if (result.ok()) {
         TRI_ASSERT(res.error == fuerte::Error::NoError);
-        VPackSlice answer = res.slice();
-        handler(result, builder, sId, answer);
+        handler(result, builder, res.destinationShard(), res.slice());
       }
 
       if (result.fail()) {
@@ -1030,11 +1028,11 @@ futures::Future<OperationResult> revisionOnCoordinator(
                 builder.clear();
                 builder.add(VPackValue(cmp.id()));
               }
+              return;
             }
-          } else {
-            // didn't get the expected response
-            result.reset(TRI_ERROR_INTERNAL);
           }
+          // didn't get the expected response
+          result.reset(TRI_ERROR_INTERNAL);
         });
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
@@ -1228,21 +1226,16 @@ futures::Future<OperationResult> figuresOnCoordinator(
     auto handler = [details](Result& result, VPackBuilder& builder,
                              ShardID const&,
                              VPackSlice answer) mutable -> void {
-      if (!answer.isObject()) {
-        // didn't get the expected response
-        result.reset(TRI_ERROR_INTERNAL);
-      } else if (!result.fail()) {
-        Result r = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
-        if (r.fail()) {
-          result.reset(r);
-        } else {
-          VPackSlice figures = answer.get("figures");
-          // add to the total
-          if (figures.isObject()) {
-            aggregateClusterFigures(details, false, figures, builder);
-          }
+      if (answer.isObject()) {
+        VPackSlice figures = answer.get("figures");
+        // add to the total
+        if (figures.isObject()) {
+          aggregateClusterFigures(details, false, figures, builder);
+          return;
         }
       }
+      // didn't get the expected response
+      result.reset(TRI_ERROR_INTERNAL);
     };
     auto pre = [](Result&, VPackBuilder& builder) -> void {
       // initialize to empty object
@@ -1324,15 +1317,16 @@ futures::Future<OperationResult> countOnCoordinator(
                       ShardID const& shardId,
                       VPackSlice answer) mutable -> void {
       if (answer.isObject()) {
-        // add to the total
-        VPackArrayBuilder array(&builder);
-        array->add(VPackValue(shardId));
-        array->add(
-            VPackValue(Helper::getNumericValue<uint64_t>(answer, "count", 0)));
-      } else {
-        // didn't get the expected response
-        result.reset(TRI_ERROR_INTERNAL);
+        if (VPackSlice count = answer.get("count"); count.isNumber()) {
+          // add to the total
+          VPackArrayBuilder array(&builder);
+          array->add(VPackValue(shardId));
+          array->add(count);
+          return;
+        }
       }
+      // didn't get the expected response
+      result.reset(TRI_ERROR_INTERNAL);
     };
     auto pre = [](Result&, VPackBuilder& builder) -> void {
       builder.openArray();
@@ -1909,12 +1903,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
           std::vector<Try<network::Response>>&& results) -> OperationResult {
     return handleResponsesFromAllShards(
         options, results,
-        [](Result& result, VPackBuilder&, ShardID const&,
-           VPackSlice answer) -> void {
-          if (Helper::getBooleanValue(answer, StaticStrings::Error, false)) {
-            result = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
-          }
-        });
+        [](Result&, VPackBuilder&, ShardID const&, VPackSlice) -> void {});
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
@@ -2409,19 +2398,22 @@ void fetchVerticesFromEngines(
     for (auto pair : VPackObjectIterator(resSlice, /*sequential*/ true)) {
       arangodb::velocypack::HashedStringRef key(pair.key);
       if (ADB_UNLIKELY(vertexIds.erase(key) == 0)) {
-        // We either found the same vertex twice,
-        // or found a vertex we did not request.
-        // Anyways something somewhere went seriously wrong
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
+        // This case is unlikely and can only happen for
+        // Satellite Vertex collections. There it is expected.
+        // If we fix above todo (fast-path) this case should
+        // be impossible.
+        TRI_ASSERT(result.find(key) != result.end());
+        TRI_ASSERT(VelocyPackHelper::equal(result.find(key)->second, pair.value,
+                                           true));
+      } else {
+        TRI_ASSERT(result.find(key) == result.end());
+        if (!cached) {
+          travCache.datalake().add(std::move(payload));
+          cached = true;
+        }
+        // Protected by datalake
+        result.try_emplace(key, pair.value);
       }
-
-      TRI_ASSERT(result.find(key) == result.end());
-      if (!cached) {
-        travCache.datalake().add(std::move(payload));
-        cached = true;
-      }
-      // Protected by datalake
-      result.try_emplace(key, pair.value);
     }
   }
 
@@ -2808,6 +2800,8 @@ ClusterMethods::persistCollectionsInAgency(
   // support cross-database operations and they cannot be triggered by
   // users)
   auto const dbName = collections[0]->vocbase().name();
+  auto const replicationVersion =
+      collections[0]->vocbase().replicationVersion();
   ClusterInfo& ci = feature.clusterInfo();
 
   std::vector<ClusterCollectionCreationInfo> infos;
@@ -2926,7 +2920,8 @@ ClusterMethods::persistCollectionsInAgency(
 
     // pass in the *endTime* here, not a timeout!
     Result res = ci.createCollectionsCoordinator(
-        dbName, infos, endTime, isNewDatabase, colToDistributeLike);
+        dbName, infos, endTime, isNewDatabase, colToDistributeLike,
+        replicationVersion);
 
     if (res.ok()) {
       // success! exit the loop and go on

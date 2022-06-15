@@ -228,31 +228,6 @@ struct GlobalLogIdentifier {
 
 auto to_string(GlobalLogIdentifier const&) -> std::string;
 
-struct LogConfig {
-  std::size_t writeConcern = 1;
-  std::size_t softWriteConcern = 1;
-  std::size_t replicationFactor = 1;
-  bool waitForSync = false;
-
-  auto toVelocyPack(velocypack::Builder&) const -> void;
-  explicit LogConfig(velocypack::Slice);
-  LogConfig() noexcept = default;
-  LogConfig(std::size_t writeConcern, std::size_t softWriteConcern,
-            std::size_t replicationFactor, bool waitForSync) noexcept;
-
-  friend auto operator==(LogConfig const& left, LogConfig const& right) noexcept
-      -> bool = default;
-};
-
-template<class Inspector>
-auto inspect(Inspector& f, LogConfig& x) {
-  return f.object(x).fields(f.field("writeConcern", x.writeConcern),
-                            f.field("softWriteConcern", x.softWriteConcern)
-                                .fallback(std::ref(x.writeConcern)),
-                            f.field("replicationFactor", x.replicationFactor),
-                            f.field("waitForSync", x.waitForSync));
-}
-
 struct ParticipantFlags {
   bool forced = false;
   bool allowedInQuorum = true;
@@ -278,28 +253,6 @@ auto inspect(Inspector& f, ParticipantFlags& x) {
 }
 
 auto operator<<(std::ostream&, ParticipantFlags const&) -> std::ostream&;
-
-using ParticipantsFlagsMap =
-    std::unordered_map<ParticipantId, ParticipantFlags>;
-
-struct ParticipantsConfig {
-  std::size_t generation = 0;
-  ParticipantsFlagsMap participants;
-
-  void toVelocyPack(velocypack::Builder&) const;
-  static auto fromVelocyPack(velocypack::Slice) -> ParticipantsConfig;
-
-  // to be defaulted soon
-  friend auto operator==(ParticipantsConfig const& left,
-                         ParticipantsConfig const& right) noexcept
-      -> bool = default;
-};
-
-template<class Inspector>
-auto inspect(Inspector& f, ParticipantsConfig& x) {
-  return f.object(x).fields(f.field("generation", x.generation),
-                            f.field("participants", x.participants));
-}
 
 // These settings are initialised by the ReplicatedLogFeature based on command
 // line arguments
@@ -387,8 +340,6 @@ struct CommitFailReason {
         -> bool = default;
   };
   struct FewerParticipantsThanWriteConcern {
-    std::size_t writeConcern{};
-    std::size_t softWriteConcern{};
     std::size_t effectiveWriteConcern{};
     std::size_t numParticipants{};
     static auto fromVelocyPack(velocypack::Slice)
@@ -472,6 +423,10 @@ struct velocypack::Extractor<replication2::LogId> {
 };
 
 }  // namespace arangodb
+
+template<>
+struct fmt::formatter<arangodb::replication2::LogId>
+    : fmt::formatter<arangodb::basics::Identifier> {};
 
 template<>
 struct std::hash<arangodb::replication2::LogIndex> {

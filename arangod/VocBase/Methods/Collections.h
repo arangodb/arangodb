@@ -90,8 +90,8 @@ struct Collections {
 
   /// Create collection, ownership of collection in callback is
   /// transferred to callee
-  static arangodb::Result create(  // create collection
-      TRI_vocbase_t& vocbase,      // collection vocbase
+  [[nodiscard]] static arangodb::Result create(  // create collection
+      TRI_vocbase_t& vocbase,                    // collection vocbase
       OperationOptions const& options,
       std::string const& name,                 // collection name
       TRI_col_type_e collectionType,           // collection type

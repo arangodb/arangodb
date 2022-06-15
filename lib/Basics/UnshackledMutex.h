@@ -23,8 +23,7 @@
 
 #pragma once
 
-#include <condition_variable>
-#include <mutex>
+#include <absl/synchronization/mutex.h>
 
 namespace arangodb::basics {
 
@@ -34,19 +33,12 @@ namespace arangodb::basics {
 // This mutex lifts this requirement and can be unlocked from another thread.
 class UnshackledMutex {
  public:
-  UnshackledMutex() = default;
-  ~UnshackledMutex() = default;
-
-  UnshackledMutex(UnshackledMutex const&) = delete;
-  auto operator=(UnshackledMutex const&) -> UnshackledMutex& = delete;
-
-  void lock();
-  void unlock();
-  bool try_lock();
+  void lock() noexcept;
+  void unlock() noexcept;
+  bool try_lock() noexcept;
 
  private:
-  std::mutex _mutex;
-  std::condition_variable _cv;
+  absl::Mutex _mutex;
   bool _locked{false};
 };
 

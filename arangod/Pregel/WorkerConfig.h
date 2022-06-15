@@ -23,17 +23,18 @@
 
 #pragma once
 
-#include <set>
-#include <map>
-
 #include <algorithm>
+#include <map>
+#include <set>
+
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Graph.h"
 
 struct TRI_vocbase_t;
-namespace arangodb {
-namespace pregel {
+
+namespace arangodb::pregel {
+class PregelFeature;
 
 template<typename V, typename E, typename M>
 class Worker;
@@ -46,8 +47,11 @@ class WorkerConfig {
   friend class Worker;
 
  public:
-  WorkerConfig(TRI_vocbase_t* vocbase, VPackSlice params);
-  void updateConfig(VPackSlice updated);
+  explicit WorkerConfig(TRI_vocbase_t* vocbase);
+  void updateConfig(PregelFeature& feature, VPackSlice updated);
+
+  // get effective parallelism from Pregel feature and params
+  static size_t parallelism(PregelFeature& feature, VPackSlice params);
 
   inline uint64_t executionNumber() const { return _executionNumber; }
 
@@ -135,14 +139,15 @@ class WorkerConfig {
   uint64_t _globalSuperstep = 0;
   uint64_t _localSuperstep = 0;
 
-  /// Let async
-  bool _asynchronousMode = false;
-  bool _useMemoryMaps = false;  /// always use mmaps
-
-  size_t _parallelism = 1;
-
   std::string _coordinatorId;
   TRI_vocbase_t* _vocbase;
+
+  /// Let async
+  bool _asynchronousMode = false;
+  // use memory mapping? will be updated by config later
+  bool _useMemoryMaps = true;
+  // parallelism. will be updated by config later
+  size_t _parallelism = 1;
 
   std::vector<ShardID> _globalShardIDs;
   std::vector<ShardID> _localVertexShardIDs, _localEdgeShardIDs;
@@ -162,5 +167,5 @@ class WorkerConfig {
   std::set<PregelShard> _localPregelShardIDs;
   std::unordered_set<PregelShard> _localPShardIDs_hash;
 };
-}  // namespace pregel
-}  // namespace arangodb
+
+}  // namespace arangodb::pregel

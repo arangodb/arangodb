@@ -64,6 +64,7 @@ void RocksDBTtlIndex::toVelocyPack(
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
   builder.add(StaticStrings::IndexExpireAfter, VPackValue(_expireAfter));
+  builder.add(StaticStrings::IndexEstimates, VPackValue(hasEstimates()));
   builder.close();
 }
 

@@ -22,6 +22,7 @@
 
 #pragma once
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
 #include "Replication2/ReplicatedState/Supervision.h"
 
@@ -50,7 +51,7 @@ struct AgencyLogBuilder {
     return *this;
   }
 
-  auto setTargetConfig(LogConfig config) -> AgencyLogBuilder& {
+  auto setTargetConfig(RLA::LogTargetConfig config) -> AgencyLogBuilder& {
     _log.target.config = config;
     return *this;
   }
@@ -72,13 +73,16 @@ struct AgencyLogBuilder {
     if (!plan.currentTerm.has_value()) {
       plan.currentTerm.emplace();
       plan.currentTerm->term = LogTerm{1};
-      plan.currentTerm->config = _log.target.config;
+      plan.participantsConfig.config = RLA::LogPlanConfig(
+          _log.target.config.writeConcern, _log.target.config.softWriteConcern,
+          _log.target.config.waitForSync);
     }
     return plan.currentTerm.value();
   }
 
-  auto setPlanLeader(ParticipantId const& id) -> AgencyLogBuilder& {
-    makeTerm().leader.emplace(id, RebootId{0});
+  auto setPlanLeader(ParticipantId const& id, RebootId rid = RebootId{0})
+      -> AgencyLogBuilder& {
+    makeTerm().leader.emplace(id, rid);
     return *this;
   }
 
@@ -95,6 +99,21 @@ struct AgencyLogBuilder {
       _log.plan->participantsConfig.generation = 1;
     }
     return _log.plan.value();
+  }
+
+  auto establishLeadership() -> AgencyLogBuilder& {
+    auto& leader = makeCurrent().leader.emplace();
+    leader.term = makeTerm().term;
+    leader.leadershipEstablished = true;
+    leader.serverId = makeTerm().leader.value().serverId;
+    leader.committedParticipantsConfig = makePlan().participantsConfig;
+    return *this;
+  }
+
+  auto acknowledgeTerm(ParticipantId const& id) -> AgencyLogBuilder& {
+    auto& current = makeCurrent();
+    current.localState[id].term = makeTerm().term;
+    return *this;
   }
 
   auto makeCurrent() -> RLA::LogCurrent& {

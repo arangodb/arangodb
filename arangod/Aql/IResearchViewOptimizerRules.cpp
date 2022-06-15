@@ -217,6 +217,98 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
   return true;
 }
 
+bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
+  if (!plan->contains(ExecutionNode::LIMIT) ||
+      !plan->contains(ExecutionNode::SORT)) {
+    return false;
+  }
+
+  auto current = static_cast<ExecutionNode*>(&viewNode);
+  auto viewVariable = viewNode.outVariable();
+  auto const& scorers = viewNode.scorers();
+  SortNode* sortNode = nullptr;
+  LimitNode const* limitNode = nullptr;
+  while ((current = current->getFirstParent())) {
+    switch (current->getType()) {
+      case ExecutionNode::SORT:
+        sortNode = ExecutionNode::castTo<SortNode*>(current);
+        break;
+      case ExecutionNode::LIMIT:
+        if (sortNode == nullptr) {
+          return false;
+        }
+        limitNode = ExecutionNode::castTo<LimitNode*>(current);
+        break;
+      case ExecutionNode::CALCULATION:
+        // Only deterministic calcs allowed
+        // Otherwise optimization should be forbidden
+        // as number of calls will be changed!
+        if (!current->isDeterministic()) {
+          return false;
+        }
+        break;
+      default:
+        return false;
+        break;
+    }
+    if (limitNode && sortNode) {
+      // only first SORT + LIMIT makes sense
+      break;
+    }
+  }
+  if (!sortNode || !limitNode) {
+    return false;
+  }
+
+  // we've found all we need
+  auto const& sortElements = sortNode->elements();
+  std::vector<std::pair<size_t, bool>> scoresSort;
+  for (auto const& sort : sortElements) {
+    TRI_ASSERT(sort.var);
+    auto varSetBy = plan->getVarSetBy(sort.var->id);
+    TRI_ASSERT(varSetBy);
+    arangodb::aql::Variable const* sortVariable{};
+    if (varSetBy->getType() == ExecutionNode::CALCULATION) {
+      auto* calc = ExecutionNode::castTo<CalculationNode*>(varSetBy);
+      TRI_ASSERT(calc->expression());
+      auto astCalcNode = calc->expression()->node();
+      if (!astCalcNode ||
+          astCalcNode->type != AstNodeType::NODE_TYPE_REFERENCE) {
+        // Not a reference?  Seems that it is not
+        // something produced by ScorerReplacer.
+        // e.g. it is expected to be LET sortVar = scorerVar;
+        // Definately not something we could handle.
+        return false;
+      }
+      sortVariable = reinterpret_cast<arangodb::aql::Variable const*>(
+          astCalcNode->getData());
+      TRI_ASSERT(sortVariable);
+    } else {
+      // FIXME (Dronplane): here we should deal with stored
+      //                    values when we will support such optimization
+      return false;
+    }
+
+    auto s = std::find_if(scorers.begin(), scorers.end(),
+                          [sortVariable](Scorer const& t) {
+                            return t.var->id == sortVariable->id;
+                          });
+    if (s == scorers.end()) {
+      return false;
+    }
+    scoresSort.emplace_back(std::distance(scorers.begin(), s), sort.ascending);
+  }
+  // all sort elements are covered by view's scorers
+  viewNode.setScorersSort(std::move(scoresSort),
+                          limitNode->offset() + limitNode->limit());
+  sortNode->_reinsertInCluster = false;
+  if (!arangodb::ServerState::instance()->isCoordinator()) {
+    // in cluster node will be unlinked later by 'distributeSortToClusterRule'
+    plan->unlinkNode(sortNode);
+  }
+  return true;
+}
+
 bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   TRI_ASSERT(viewNode.view());
   auto& primarySort = ::primarySort(*viewNode.view());
@@ -349,9 +441,8 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   }
 }
 
-void keepReplacementViewVariables(
-    arangodb::containers::SmallVector<ExecutionNode*> const& calcNodes,
-    arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes) {
+void keepReplacementViewVariables(std::span<ExecutionNode* const> calcNodes,
+                                  std::span<ExecutionNode* const> viewNodes) {
   std::vector<latematerialized::NodeWithAttrsColumn> nodesToChange;
   std::vector<std::vector<latematerialized::ColumnVariant<false>>>
       usedColumnsCounter;
@@ -416,7 +507,7 @@ void keepReplacementViewVariables(
 }
 
 bool noDocumentMaterialization(
-    arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes,
+    std::span<ExecutionNode* const> viewNodes,
     arangodb::containers::HashSet<ExecutionNode*>& toUnlink) {
   auto modified = false;
   VarSet currentUsedVars;
@@ -509,9 +600,7 @@ void lateDocumentMaterializationArangoSearchRule(
     return;
   }
 
-  ::arangodb::containers::SmallVector<
-      ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, ExecutionNode::LIMIT, true);
   for (auto* limitNode : nodes) {
     auto* loop = const_cast<ExecutionNode*>(limitNode->getLoop());
@@ -589,10 +678,7 @@ void lateDocumentMaterializationArangoSearchRule(
                     *ExecutionNode::castTo<SubqueryNode*>(current);
                 auto* subquery = subqueryNode.getSubquery();
                 TRI_ASSERT(subquery);
-                ::arangodb::containers::SmallVector<
-                    ExecutionNode*>::allocator_type::arena_type sa;
-                ::arangodb::containers::SmallVector<ExecutionNode*>
-                    subqueryCalcNodes{sa};
+                containers::SmallVector<ExecutionNode*, 8> subqueryCalcNodes;
                 // find calculation nodes in the plan of a subquery
                 CalculationNodeVarFinder finder(&var, subqueryCalcNodes);
                 valid = !subquery->walk(finder);
@@ -684,6 +770,47 @@ void lateDocumentMaterializationArangoSearchRule(
   }
 }
 
+void handleConstrainedSortInView(Optimizer* opt,
+                                 std::unique_ptr<ExecutionPlan> plan,
+                                 OptimizerRule const& rule) {
+  TRI_ASSERT(plan && plan->getAst());
+
+  // ensure 'Optimizer::addPlan' will be called
+  bool modified = false;
+  auto addPlan = irs::make_finally([opt, &plan, &rule, &modified]() {
+    opt->addPlan(std::move(plan), rule, modified);
+  });
+
+  // cppcheck-suppress accessMoved
+  if (!plan->contains(ExecutionNode::ENUMERATE_IRESEARCH_VIEW) ||
+      !plan->contains(ExecutionNode::SORT) ||
+      !plan->contains(ExecutionNode::LIMIT)) {
+    // no view && sort && limit present in the query,
+    // so no need to do any expensive transformations
+    return;
+  }
+
+  containers::SmallVector<ExecutionNode*, 8> viewNodes;
+  plan->findNodesOfType(viewNodes, ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
+                        true);
+  for (auto* node : viewNodes) {
+    TRI_ASSERT(node &&
+               ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node->getType());
+    auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(node);
+    if (viewNode.sort().first) {
+      // this view already has PrimarySort - no sort for us.
+      continue;
+    }
+
+    if (!viewNode.scorers().empty() && !viewNode.isInInnerLoop()) {
+      // check if we can optimize away a sort that follows the EnumerateView
+      // node this is only possible if the view node itself is not contained in
+      // another loop
+      modified |= optimizeScoreSort(viewNode, plan.get());
+    }
+  }
+}
+
 /// @brief move filters and sort conditions into views
 void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                      OptimizerRule const& rule) {
@@ -702,9 +829,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     return;
   }
 
-  ::arangodb::containers::SmallVector<
-      ExecutionNode*>::allocator_type::arena_type ca;
-  ::arangodb::containers::SmallVector<ExecutionNode*> calcNodes{ca};
+  containers::SmallVector<ExecutionNode*, 8> calcNodes;
 
   // replace scorers in all calculation nodes with references
   plan->findNodesOfType(calcNodes, ExecutionNode::CALCULATION, true);
@@ -718,9 +843,7 @@ void handleViewsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
   }
 
   // register replaced scorers to be evaluated by corresponding view nodes
-  ::arangodb::containers::SmallVector<
-      ExecutionNode*>::allocator_type::arena_type va;
-  ::arangodb::containers::SmallVector<ExecutionNode*> viewNodes{va};
+  containers::SmallVector<ExecutionNode*, 8> viewNodes;
   plan->findNodesOfType(viewNodes, ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
                         true);
 
@@ -774,9 +897,7 @@ void scatterViewInClusterRule(Optimizer* opt,
                               OptimizerRule const& rule) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   bool wasModified = false;
-  ::arangodb::containers::SmallVector<
-      ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  containers::SmallVector<ExecutionNode*, 8> nodes;
 
   // find subqueries
   std::unordered_map<ExecutionNode*, ExecutionNode*> subqueries;

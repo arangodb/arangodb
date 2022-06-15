@@ -292,9 +292,10 @@ TEST_F(RocksDBLogTest, insert_iterate_with_meta) {
                            LogMetaPayload::withFirstEntryOfTerm("Foobar", {})},
         PersistingLogEntry{
             TermIndexPair{LogTerm{1}, LogIndex{2}},
-            LogMetaPayload::withUpdateParticipantsConfig(ParticipantsConfig{
-                .generation = 1,
-                .participants = {{"FooBar", {.allowedInQuorum = false}}}})},
+            LogMetaPayload::withUpdateParticipantsConfig(
+                agency::ParticipantsConfig{
+                    .generation = 1,
+                    .participants = {{"FooBar", {.allowedInQuorum = false}}}})},
         PersistingLogEntry{LogTerm{2}, LogIndex{3},
                            LogPayload::createFromString("third")},
     };
@@ -326,7 +327,7 @@ TEST_F(RocksDBLogTest, insert_iterate_with_meta) {
     EXPECT_FALSE(entry->hasPayload());
     EXPECT_TRUE(entry->hasMeta());
     auto const expected =
-        LogMetaPayload::withUpdateParticipantsConfig(ParticipantsConfig{
+        LogMetaPayload::withUpdateParticipantsConfig(agency::ParticipantsConfig{
             .generation = 1,
             .participants = {{"FooBar", {.allowedInQuorum = false}}}});
     ASSERT_EQ(*entry->meta(), expected)

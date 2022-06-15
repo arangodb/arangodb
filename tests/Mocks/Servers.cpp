@@ -487,9 +487,11 @@ consensus::Store& AgencyCache::store() { return _readDB; }
 
 MockClusterServer::MockClusterServer(bool useAgencyMockPool,
                                      ServerState::RoleEnum newRole,
+                                     ServerID serverId,
                                      bool injectClusterIndexes)
     : MockServer(newRole, injectClusterIndexes),
-      _useAgencyMockPool(useAgencyMockPool) {
+      _useAgencyMockPool(useAgencyMockPool),
+      _serverId(serverId) {
   // Add features
   SetupAqlPhase(*this);
 
@@ -547,7 +549,7 @@ void MockClusterServer::startFeatures() {
   auto& indexFactory = const_cast<IndexFactory&>(_engine.indexFactory());
   auto& factory =
       getFeature<iresearch::IResearchFeature>().factory<ClusterEngine>();
-  indexFactory.emplace(std::string{iresearch::StaticStrings::DataSourceType},
+  indexFactory.emplace(std::string{iresearch::StaticStrings::ViewType},
                        factory);
   _server.getFeature<ClusterFeature>().clusterInfo().startSyncers();
 }
@@ -650,6 +652,8 @@ void MockClusterServer::agencyDropDatabase(std::string const& name) {
           agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
       .wait();
 }
+
+ServerID const& MockClusterServer::getServerID() const { return _serverId; }
 
 void MockClusterServer::buildCollectionProperties(
     VPackBuilder& props, std::string const& collectionName,
@@ -777,8 +781,9 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
   return clusterInfo.getCollection(dbName, collectionName);
 }
 
-MockDBServer::MockDBServer(bool start, bool useAgencyMock)
-    : MockClusterServer(useAgencyMock, ServerState::RoleEnum::ROLE_DBSERVER) {
+MockDBServer::MockDBServer(ServerID serverId, bool start, bool useAgencyMock)
+    : MockClusterServer(useAgencyMock, ServerState::RoleEnum::ROLE_DBSERVER,
+                        serverId) {
   addFeature<FlushFeature>(false);        // do not start the thread
   addFeature<MaintenanceFeature>(false);  // do not start the thread
   if (start) {
@@ -829,7 +834,8 @@ void MockDBServer::dropDatabase(std::string const& name) {
   dd.first();  // Does the job
 }
 
-void MockDBServer::createShard(std::string const& dbName, std::string shardName,
+void MockDBServer::createShard(std::string const& dbName,
+                               std::string const& shardName,
                                LogicalCollection& clusterCollection) {
   auto props = std::make_shared<VPackBuilder>();
   {
@@ -838,11 +844,13 @@ void MockDBServer::createShard(std::string const& dbName, std::string shardName,
     props->add(StaticStrings::DataSourceType,
                VPackValue(clusterCollection.type()));
     props->add(StaticStrings::DataSourceName, VPackValue(shardName));
-    // We need to set a value for CE testing here (default of 0 will be invalid
-    // in CE)
-#ifndef USE_ENTERPRISE
-    props->add(StaticStrings::ReplicationFactor, VPackValue(1));
-#endif
+    // We are in SingleMachine test code. Setting a replicationFactor > 2 here
+    // Would cause us to get stuck on writes.
+    // We may allow this for tests that do not write documents into the
+    // collection.
+    TRI_ASSERT(clusterCollection.replicationFactor() < 2);
+    props->add(StaticStrings::ReplicationFactor,
+               VPackValue(clusterCollection.replicationFactor()));
     props->add(StaticStrings::InternalValidatorTypes,
                VPackValue(clusterCollection.getInternalValidatorTypes()));
   }
@@ -853,7 +861,7 @@ void MockDBServer::createShard(std::string const& dbName, std::string shardName,
            basics::StringUtils::itoa(clusterCollection.planId().id())},
           {maintenance::SHARD, shardName},
           {maintenance::DATABASE, dbName},
-          {maintenance::SERVER_ID, "PRMR_0001"},
+          {maintenance::SERVER_ID, ServerState::instance()->getId()},
           {maintenance::THE_LEADER, ""}},
       maintenance::HIGHER_PRIORITY, false, props);
 
@@ -897,10 +905,10 @@ void MockDBServer::createShard(std::string const& dbName, std::string shardName,
   }
 }
 
-MockCoordinator::MockCoordinator(bool start, bool useAgencyMock,
-                                 bool injectClusterIndexes)
+MockCoordinator::MockCoordinator(ServerID serverId, bool start,
+                                 bool useAgencyMock, bool injectClusterIndexes)
     : MockClusterServer(useAgencyMock, ServerState::RoleEnum::ROLE_COORDINATOR,
-                        injectClusterIndexes) {
+                        serverId, injectClusterIndexes) {
   addFeature<arangodb::metrics::ClusterMetricsFeature>(false).disable();
   if (start) {
     MockCoordinator::startFeatures();

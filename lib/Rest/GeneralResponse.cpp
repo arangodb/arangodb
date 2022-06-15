@@ -355,7 +355,6 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_GRAPH_INVALID_PARAMETER):
     case static_cast<int>(TRI_ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS):
     case static_cast<int>(TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST):
-    case static_cast<int>(TRI_ERROR_ARANGO_NO_JOURNAL):
     case static_cast<int>(TRI_ERROR_NO_SMART_COLLECTION):
     case static_cast<int>(TRI_ERROR_NO_SMART_GRAPH_ATTRIBUTE):
     case static_cast<int>(TRI_ERROR_CANNOT_DROP_SMART_COLLECTION):
@@ -401,6 +400,7 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_GRAPH_NO_GRAPH_COLLECTION):
     case static_cast<int>(TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED):
     case static_cast<int>(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND):
+    case static_cast<int>(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND):
       return ResponseCode::NOT_FOUND;
 
     case static_cast<int>(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION):

@@ -32,6 +32,8 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 
+#include "IResearch/MakeViewSnapshot.h"
+
 #include <velocypack/Iterator.h>
 
 #include "utils/string_utils.hpp"
@@ -196,9 +198,10 @@ TEST_P(IResearchQueryGeoContainsTest, test) {
         arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
         arangodb::AccessMode::Type::READ);
     ASSERT_TRUE(trx.begin().ok());
-
-    auto snapshot = impl->snapshot(
-        trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    ASSERT_TRUE(trx.state());
+    auto* snapshot = makeViewSnapshot(
+        trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
+        impl->getLinks(), impl, impl->name());
     ASSERT_NE(nullptr, snapshot);
     ASSERT_EQ(1, snapshot->size());
     ASSERT_EQ(insertedDocs.size(), snapshot->docs_count());

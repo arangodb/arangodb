@@ -320,6 +320,13 @@ class Ast {
   /// @brief create an AST array limit node (offset, count)
   AstNode* createNodeArrayLimit(AstNode const*, AstNode const*);
 
+  /// @brief create an AST array filter node (quantifier, filter)
+  AstNode* createNodeArrayFilter(AstNode const*, AstNode const*);
+
+  /// @brief create an AST boolean expansion node
+  AstNode* createNodeBooleanExpansion(int64_t, AstNode const*, AstNode const*,
+                                      AstNode const*);
+
   /// @brief create an AST expansion node
   AstNode* createNodeExpansion(int64_t, AstNode const*, AstNode const*,
                                AstNode const*, AstNode const*, AstNode const*);

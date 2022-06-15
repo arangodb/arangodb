@@ -61,7 +61,7 @@ namespace {
 rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
   auto* sm = engine.settingsManager();
   if (sm) {
-    sm->sync(true);  // force
+    sm->sync(/*force*/ true);
   }
   return engine.db()->GetLatestSequenceNumber();
 }
@@ -291,11 +291,10 @@ void RocksDBMetaCollection::estimateSize(velocypack::Builder& builder) {
   RocksDBKeyBounds bounds = this->bounds();
   rocksdb::Range r(bounds.start(), bounds.end());
   uint64_t out = 0, total = 0;
-  db->GetApproximateSizes(
-      bounds.columnFamily(), &r, 1, &out,
-      static_cast<uint8_t>(
-          rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
-          rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+
+  rocksdb::SizeApproximationOptions options{.include_memtables = true,
+                                            .include_files = true};
+  db->GetApproximateSizes(options, bounds.columnFamily(), &r, 1, &out);
   total += out;
 
   builder.openObject();

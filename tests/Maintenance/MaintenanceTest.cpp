@@ -23,6 +23,7 @@
 /// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RestServer/arangod.h"
 #include "gtest/gtest.h"
 
 #include "Agency/AgencyPaths.h"
@@ -36,6 +37,7 @@
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedState/StateStatus.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
 #include <velocypack/Iterator.h>
@@ -549,13 +551,15 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
                    {dbsIds[shortNames[1]], createNode(dbs1Str)},
                    {dbsIds[shortNames[2]], createNode(dbs2Str)}} {
     as.addFeature<arangodb::metrics::MetricsFeature>();
+    as.addFeature<arangodb::RocksDBOptionFeature>();
     as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
         std::false_type{});
     auto& selector = as.addFeature<arangodb::EngineSelectorFeature>();
 
     // need to construct this after adding the MetricsFeature to the application
     // server
-    engine = std::make_unique<arangodb::RocksDBEngine>(as);
+    engine = std::make_unique<arangodb::RocksDBEngine>(
+        as, as.template getFeature<arangodb::RocksDBOptionFeature>());
     selector.setEngineTesting(engine.get());
   }
 

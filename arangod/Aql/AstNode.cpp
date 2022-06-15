@@ -164,6 +164,7 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
     {static_cast<int>(NODE_TYPE_VIEW), "view"},
     {static_cast<int>(NODE_TYPE_PARAMETER_DATASOURCE), "datasource parameter"},
     {static_cast<int>(NODE_TYPE_FOR_VIEW), "view enumeration"},
+    {static_cast<int>(NODE_TYPE_ARRAY_FILTER), "array filter"},
 };
 
 /// @brief names for AST node value types
@@ -505,6 +506,10 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
     }
     case NODE_TYPE_EXPANSION: {
       setIntValue(slice.get("levels").getNumericValue<int64_t>());
+      VPackSlice b = slice.get("booleanize");
+      if (b.isBoolean() && b.getBoolean()) {
+        setFlag(FLAG_BOOLEAN_EXPANSION);
+      }
       break;
     }
     case NODE_TYPE_OPERATOR_BINARY_IN:
@@ -599,6 +604,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
     case NODE_TYPE_WITH:
     case NODE_TYPE_FOR_VIEW:
     case NODE_TYPE_WINDOW:
+    case NODE_TYPE_ARRAY_FILTER:
       break;
   }
 
@@ -1070,6 +1076,7 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
 
   if (type == NODE_TYPE_EXPANSION) {
     builder.add("levels", VPackValue(getIntValue(true)));
+    builder.add("booleanize", VPackValue(hasFlag(FLAG_BOOLEAN_EXPANSION)));
   }
 
   // dump sub-nodes
@@ -1434,7 +1441,7 @@ bool AstNode::isSimple() const {
 
   if (type == NODE_TYPE_ARRAY || type == NODE_TYPE_OBJECT ||
       type == NODE_TYPE_EXPANSION || type == NODE_TYPE_ITERATOR ||
-      type == NODE_TYPE_ARRAY_LIMIT ||
+      type == NODE_TYPE_ARRAY_LIMIT || type == NODE_TYPE_ARRAY_FILTER ||
       type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT ||
       type == NODE_TYPE_OPERATOR_TERNARY ||
       type == NODE_TYPE_OPERATOR_NARY_AND ||
@@ -2056,6 +2063,16 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
   if (type == NODE_TYPE_ARRAY_LIMIT) {
     // not used by V8
     buffer.append("_LIMIT(");
+    getMember(0)->stringify(buffer, failIfLong);
+    buffer.push_back(',');
+    getMember(1)->stringify(buffer, failIfLong);
+    buffer.push_back(')');
+    return;
+  }
+
+  if (type == NODE_TYPE_ARRAY_FILTER) {
+    // not used by V8
+    buffer.append("_FILTER(");
     getMember(0)->stringify(buffer, failIfLong);
     buffer.push_back(',');
     getMember(1)->stringify(buffer, failIfLong);

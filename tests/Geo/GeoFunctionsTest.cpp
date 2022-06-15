@@ -49,7 +49,7 @@ namespace arangodb {
 namespace tests {
 namespace geo_functions_aql {
 
-auto clearVector = [](SmallVector<AqlValue>& v) {
+auto clearVector = [](containers::SmallVector<AqlValue, 4>& v) {
   for (auto& it : v) {
     it.destroy();
   }
@@ -66,10 +66,9 @@ class GeoEqualsTest : public ::testing::Test {
   fakeit::Mock<transaction::Context> contextMock;
   transaction::Context& context;
 
-  SmallVector<AqlValue>::allocator_type::arena_type arena;
-  SmallVector<AqlValue> paramsA;
-  SmallVector<AqlValue> paramsB;
-  SmallVector<AqlValue> paramsC;
+  containers::SmallVector<AqlValue, 4> paramsA;
+  containers::SmallVector<AqlValue, 4> paramsB;
+  containers::SmallVector<AqlValue, 4> paramsC;
 
   arangodb::aql::Function equalsFun;
   arangodb::aql::AstNode equalsFunNode;
@@ -78,9 +77,6 @@ class GeoEqualsTest : public ::testing::Test {
       : expressionContext(expressionContextMock.get()),
         trx(trxMock.get()),
         context(contextMock.get()),
-        paramsA{arena},
-        paramsB{arena},
-        paramsC{arena},
         equalsFun("GEO_EQUALS", &Functions::GeoEquals),
         equalsFunNode(NODE_TYPE_FCALL) {
     equalsFunNode.setData(static_cast<void const*>(&equalsFun));
@@ -732,15 +728,33 @@ TEST(GeoInRangeTest, test) {
     "type": "Point",
     "coordinates": [37.605, 55.707917] })");
 
-  SmallVector<AqlValue>::allocator_type::arena_type arena;
-
   {
     fakeit::When(Method(expressionContextMock, registerWarning))
         .Do([&](ErrorCode code, char const*) -> void {
           ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
         });
 
-    SmallVector<AqlValue> params{{}, arena};
+    containers::SmallVector<AqlValue, 4> params;
+
+    auto guard = arangodb::scopeGuard([&params]() noexcept {
+      for (auto& p : params) {
+        p.destroy();
+      }
+    });
+
+    auto const res =
+        f.implementation(&expressionContextMock.get(), node, params);
+    ASSERT_TRUE(res.isNull(false));
+  }
+
+  {
+    fakeit::When(Method(expressionContextMock, registerWarning))
+        .Do([&](ErrorCode code, char const*) -> void {
+          ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+        });
+    containers::SmallVector<AqlValue, 4> params = {
+        AqlValue{lhs->slice()},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -759,10 +773,10 @@ TEST(GeoInRangeTest, test) {
           ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
         });
 
-    SmallVector<AqlValue> params{{
-                                     AqlValue{lhs->slice()},
-                                 },
-                                 arena};
+    containers::SmallVector<AqlValue, 4> params{
+        AqlValue{lhs->slice()},
+        AqlValue{lhs->slice()},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -781,11 +795,11 @@ TEST(GeoInRangeTest, test) {
           ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
         });
 
-    SmallVector<AqlValue> params{{
-                                     AqlValue{lhs->slice()},
-                                     AqlValue{lhs->slice()},
-                                 },
-                                 arena};
+    containers::SmallVector<AqlValue, 4> params{
+        AqlValue{lhs->slice()},
+        AqlValue{lhs->slice()},
+        AqlValue{AqlValueHintDouble{0}},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -799,37 +813,12 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    fakeit::When(Method(expressionContextMock, registerWarning))
-        .Do([&](ErrorCode code, char const*) -> void {
-          ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
-        });
-
-    SmallVector<AqlValue> params{{
-                                     AqlValue{lhs->slice()},
-                                     AqlValue{lhs->slice()},
-                                     AqlValue{AqlValueHintDouble{0}},
-                                 },
-                                 arena};
-
-    auto guard = arangodb::scopeGuard([&params]() noexcept {
-      for (auto& p : params) {
-        p.destroy();
-      }
-    });
-
-    auto const res =
-        f.implementation(&expressionContextMock.get(), node, params);
-    ASSERT_TRUE(res.isNull(false));
-  }
-
-  {
-    SmallVector<AqlValue> params{{
-                                     AqlValue{lhs->slice()},
-                                     AqlValue{lhs->slice()},
-                                     AqlValue{AqlValueHintDouble{0}},
-                                     AqlValue{AqlValueHintDouble{0}},
-                                 },
-                                 arena};
+    containers::SmallVector<AqlValue, 4> params{
+        AqlValue{lhs->slice()},
+        AqlValue{lhs->slice()},
+        AqlValue{AqlValueHintDouble{0}},
+        AqlValue{AqlValueHintDouble{0}},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -844,11 +833,14 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    SmallVector<AqlValue> params{
-        {AqlValue{lhs->slice()}, AqlValue{lhs->slice()},
-         AqlValue{AqlValueHintDouble{0}}, AqlValue{AqlValueHintDouble{0}},
-         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}}},
-        arena};
+    containers::SmallVector<AqlValue, 4> params{
+        AqlValue{lhs->slice()},
+        AqlValue{lhs->slice()},
+        AqlValue{AqlValueHintDouble{0}},
+        AqlValue{AqlValueHintDouble{0}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{AqlValueHintBool{false}},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -863,11 +855,11 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    SmallVector<AqlValue> params{
-        {AqlValue{lhs->slice()}, AqlValue{lhs->slice()},
-         AqlValue{AqlValueHintDouble{0}}, AqlValue{AqlValueHintDouble{0}},
-         AqlValue{AqlValueHintBool{true}}, AqlValue{AqlValueHintBool{false}}},
-        arena};
+    containers::SmallVector<AqlValue, 6> params{
+        AqlValue{lhs->slice()},           AqlValue{lhs->slice()},
+        AqlValue{AqlValueHintDouble{0}},  AqlValue{AqlValueHintDouble{0}},
+        AqlValue{AqlValueHintBool{true}}, AqlValue{AqlValueHintBool{false}},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -882,11 +874,14 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    SmallVector<AqlValue> params{
-        {AqlValue{lhs->slice()}, AqlValue{lhs->slice()},
-         AqlValue{AqlValueHintDouble{0}}, AqlValue{AqlValueHintDouble{0}},
-         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{true}}},
-        arena};
+    containers::SmallVector<AqlValue, 6> params{
+        AqlValue{lhs->slice()},
+        AqlValue{lhs->slice()},
+        AqlValue{AqlValueHintDouble{0}},
+        AqlValue{AqlValueHintDouble{0}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{AqlValueHintBool{true}},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -901,11 +896,14 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    SmallVector<AqlValue> params{
-        {AqlValue{lhs->slice()}, AqlValue{rhs->slice()},
-         AqlValue{AqlValueHintDouble{0}}, AqlValue{AqlValueHintDouble{100}},
-         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}}},
-        arena};
+    containers::SmallVector<AqlValue, 6> params{
+        AqlValue{lhs->slice()},
+        AqlValue{rhs->slice()},
+        AqlValue{AqlValueHintDouble{0}},
+        AqlValue{AqlValueHintDouble{100}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{AqlValueHintBool{false}},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -920,13 +918,12 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    SmallVector<AqlValue> params{{
-                                     AqlValue{lhs->slice()},
-                                     AqlValue{rhs->slice()},
-                                     AqlValue{AqlValueHintDouble{0}},
-                                     AqlValue{AqlValueHintDouble{100}},
-                                 },
-                                 arena};
+    containers::SmallVector<AqlValue, 4> params{
+        AqlValue{lhs->slice()},
+        AqlValue{rhs->slice()},
+        AqlValue{AqlValueHintDouble{0}},
+        AqlValue{AqlValueHintDouble{100}},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -941,12 +938,15 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    SmallVector<AqlValue> params{
-        {AqlValue{lhs->slice()}, AqlValue{rhs->slice()},
-         AqlValue{AqlValueHintDouble{0}}, AqlValue{AqlValueHintDouble{100}},
-         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}},
-         AqlValue{"wg84"}},
-        arena};
+    containers::SmallVector<AqlValue, 7> params{
+        AqlValue{lhs->slice()},
+        AqlValue{rhs->slice()},
+        AqlValue{AqlValueHintDouble{0}},
+        AqlValue{AqlValueHintDouble{100}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{"wg84"},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -961,12 +961,15 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    SmallVector<AqlValue> params{
-        {AqlValue{rhs->slice()}, AqlValue{lhs->slice()},
-         AqlValue{AqlValueHintDouble{0}}, AqlValue{AqlValueHintDouble{100}},
-         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}},
-         AqlValue{"wg84"}},
-        arena};
+    containers::SmallVector<AqlValue, 7> params{
+        AqlValue{rhs->slice()},
+        AqlValue{lhs->slice()},
+        AqlValue{AqlValueHintDouble{0}},
+        AqlValue{AqlValueHintDouble{100}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{"wg84"},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -981,15 +984,15 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    SmallVector<AqlValue> params{
-        {
-            AqlValue{lhs->slice()}, AqlValue{rhs->slice()},
-            AqlValue{AqlValueHintDouble{0}}, AqlValue{AqlValueHintDouble{100}},
-            AqlValue{AqlValueHintBool{false}},
-            AqlValue{AqlValueHintBool{false}},
-            AqlValue{"foo"}  // fallback to 'sphere'
-        },
-        arena};
+    containers::SmallVector<AqlValue, 7> params{
+        AqlValue{lhs->slice()},
+        AqlValue{rhs->slice()},
+        AqlValue{AqlValueHintDouble{0}},
+        AqlValue{AqlValueHintDouble{100}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{"foo"}  // fallback to 'sphere'
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1004,15 +1007,15 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    SmallVector<AqlValue> params{
-        {
-            AqlValue{lhs->slice()}, AqlValue{rhs->slice()},
-            AqlValue{AqlValueHintDouble{0}}, AqlValue{AqlValueHintDouble{100}},
-            AqlValue{AqlValueHintBool{false}},
-            AqlValue{AqlValueHintBool{false}},
-            AqlValue{AqlValueHintBool{false}}  // fallback to 'sphere'
-        },
-        arena};
+    containers::SmallVector<AqlValue, 7> params{
+        AqlValue{lhs->slice()},
+        AqlValue{rhs->slice()},
+        AqlValue{AqlValueHintDouble{0}},
+        AqlValue{AqlValueHintDouble{100}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{AqlValueHintBool{false}}  // fallback to 'sphere'
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1027,11 +1030,14 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    SmallVector<AqlValue> params{
-        {AqlValue{lhs->slice()}, AqlValue{rhs->slice()},
-         AqlValue{AqlValueHintDouble{1}}, AqlValue{AqlValueHintDouble{400}},
-         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}}},
-        arena};
+    containers::SmallVector<AqlValue, 7> params{
+        AqlValue{lhs->slice()},
+        AqlValue{rhs->slice()},
+        AqlValue{AqlValueHintDouble{1}},
+        AqlValue{AqlValueHintDouble{400}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{AqlValueHintBool{false}},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1046,13 +1052,12 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    SmallVector<AqlValue> params{{
-                                     AqlValue{lhs->slice()},
-                                     AqlValue{rhs->slice()},
-                                     AqlValue{AqlValueHintDouble{1}},
-                                     AqlValue{AqlValueHintDouble{400}},
-                                 },
-                                 arena};
+    containers::SmallVector<AqlValue, 7> params{
+        AqlValue{lhs->slice()},
+        AqlValue{rhs->slice()},
+        AqlValue{AqlValueHintDouble{1}},
+        AqlValue{AqlValueHintDouble{400}},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1067,12 +1072,15 @@ TEST(GeoInRangeTest, test) {
   }
 
   {
-    SmallVector<AqlValue> params{
-        {AqlValue{lhs->slice()}, AqlValue{rhs->slice()},
-         AqlValue{AqlValueHintDouble{1}}, AqlValue{AqlValueHintDouble{400}},
-         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}},
-         AqlValue{"wg84"}},
-        arena};
+    containers::SmallVector<AqlValue, 7> params{
+        AqlValue{lhs->slice()},
+        AqlValue{rhs->slice()},
+        AqlValue{AqlValueHintDouble{1}},
+        AqlValue{AqlValueHintDouble{400}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{"wg84"},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1100,15 +1108,11 @@ TEST(GeoInRangeTest, test) {
       ]
     })");
 
-    SmallVector<AqlValue> params{{
-                                     AqlValue{shapeJson->slice()},
-                                     AqlValue{rhs->slice()},
-                                     AqlValue{AqlValueHintDouble{240}},
-                                     AqlValue{AqlValueHintDouble{242}},
-                                     AqlValue{AqlValueHintBool{false}},
-                                     AqlValue{AqlValueHintBool{false}},
-                                 },
-                                 arena};
+    containers::SmallVector<AqlValue, 7> params{
+        AqlValue{shapeJson->slice()},      AqlValue{rhs->slice()},
+        AqlValue{AqlValueHintDouble{240}}, AqlValue{AqlValueHintDouble{242}},
+        AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1128,12 +1132,16 @@ TEST(GeoInRangeTest, test) {
           ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
         });
 
-    SmallVector<AqlValue> params{
-        {AqlValue{lhs->slice()}, AqlValue{rhs->slice()},
-         AqlValue{AqlValueHintDouble{1}}, AqlValue{AqlValueHintDouble{400}},
-         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}},
-         AqlValue{"wg84"}, AqlValue{"wg84"}},
-        arena};
+    containers::SmallVector<AqlValue, 8> params{
+        AqlValue{lhs->slice()},
+        AqlValue{rhs->slice()},
+        AqlValue{AqlValueHintDouble{1}},
+        AqlValue{AqlValueHintDouble{400}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{"wg84"},
+        AqlValue{"wg84"},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1156,12 +1164,15 @@ TEST(GeoInRangeTest, test) {
       "type": "PPint",
       "coordinates": [37.610235, 55.709754] })");
 
-    SmallVector<AqlValue> params{
-        {AqlValue{invalidJson->slice()}, AqlValue{rhs->slice()},
-         AqlValue{AqlValueHintDouble{1}}, AqlValue{AqlValueHintDouble{400}},
-         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}},
-         AqlValue{"wg84"}},
-        arena};
+    containers::SmallVector<AqlValue, 7> params{
+        AqlValue{invalidJson->slice()},
+        AqlValue{rhs->slice()},
+        AqlValue{AqlValueHintDouble{1}},
+        AqlValue{AqlValueHintDouble{400}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{"wg84"},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1180,12 +1191,15 @@ TEST(GeoInRangeTest, test) {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
-    SmallVector<AqlValue> params{
-        {AqlValue{AqlValueHintBool{false}}, AqlValue{rhs->slice()},
-         AqlValue{AqlValueHintDouble{1}}, AqlValue{AqlValueHintDouble{400}},
-         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}},
-         AqlValue{"wg84"}},
-        arena};
+    containers::SmallVector<AqlValue, 7> params{
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{rhs->slice()},
+        AqlValue{AqlValueHintDouble{1}},
+        AqlValue{AqlValueHintDouble{400}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{"wg84"},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1208,12 +1222,15 @@ TEST(GeoInRangeTest, test) {
       "type": "PPint",
       "coordinates": [37.610235, 55.709754] })");
 
-    SmallVector<AqlValue> params{
-        {AqlValue{rhs->slice()}, AqlValue{invalidJson->slice()},
-         AqlValue{AqlValueHintDouble{1}}, AqlValue{AqlValueHintDouble{400}},
-         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}},
-         AqlValue{"wg84"}},
-        arena};
+    containers::SmallVector<AqlValue, 7> params{
+        AqlValue{rhs->slice()},
+        AqlValue{invalidJson->slice()},
+        AqlValue{AqlValueHintDouble{1}},
+        AqlValue{AqlValueHintDouble{400}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{"wg84"},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1232,12 +1249,15 @@ TEST(GeoInRangeTest, test) {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
-    SmallVector<AqlValue> params{
-        {AqlValue{rhs->slice()}, AqlValue{AqlValueHintBool{false}},
-         AqlValue{AqlValueHintDouble{1}}, AqlValue{AqlValueHintDouble{400}},
-         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}},
-         AqlValue{"wg84"}},
-        arena};
+    containers::SmallVector<AqlValue, 7> params{
+        AqlValue{rhs->slice()},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{AqlValueHintDouble{1}},
+        AqlValue{AqlValueHintDouble{400}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{"wg84"},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1256,12 +1276,15 @@ TEST(GeoInRangeTest, test) {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
-    SmallVector<AqlValue> params{
-        {AqlValue{lhs->slice()}, AqlValue{rhs->slice()},
-         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintDouble{400}},
-         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}},
-         AqlValue{"wg84"}},
-        arena};
+    containers::SmallVector<AqlValue, 7> params{
+        AqlValue{lhs->slice()},
+        AqlValue{rhs->slice()},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{AqlValueHintDouble{400}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{"wg84"},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1280,12 +1303,15 @@ TEST(GeoInRangeTest, test) {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
-    SmallVector<AqlValue> params{
-        {AqlValue{lhs->slice()}, AqlValue{rhs->slice()},
-         AqlValue{AqlValueHintDouble{400}}, AqlValue{AqlValueHintBool{false}},
-         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintBool{false}},
-         AqlValue{"wg84"}},
-        arena};
+    containers::SmallVector<AqlValue, 7> params{
+        AqlValue{lhs->slice()},
+        AqlValue{rhs->slice()},
+        AqlValue{AqlValueHintDouble{400}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{"wg84"},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1304,12 +1330,15 @@ TEST(GeoInRangeTest, test) {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
-    SmallVector<AqlValue> params{
-        {AqlValue{lhs->slice()}, AqlValue{rhs->slice()},
-         AqlValue{AqlValueHintDouble{100}}, AqlValue{AqlValueHintDouble{400}},
-         AqlValue{AqlValueHintDouble{400}}, AqlValue{AqlValueHintBool{false}},
-         AqlValue{"wg84"}},
-        arena};
+    containers::SmallVector<AqlValue, 7> params{
+        AqlValue{lhs->slice()},
+        AqlValue{rhs->slice()},
+        AqlValue{AqlValueHintDouble{100}},
+        AqlValue{AqlValueHintDouble{400}},
+        AqlValue{AqlValueHintDouble{400}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{"wg84"},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {
@@ -1328,12 +1357,15 @@ TEST(GeoInRangeTest, test) {
           ASSERT_EQ(code, TRI_ERROR_BAD_PARAMETER);
         });
 
-    SmallVector<AqlValue> params{
-        {AqlValue{lhs->slice()}, AqlValue{rhs->slice()},
-         AqlValue{AqlValueHintDouble{100}}, AqlValue{AqlValueHintDouble{400}},
-         AqlValue{AqlValueHintBool{false}}, AqlValue{AqlValueHintDouble{400}},
-         AqlValue{"wg84"}},
-        arena};
+    containers::SmallVector<AqlValue, 7> params{
+        AqlValue{lhs->slice()},
+        AqlValue{rhs->slice()},
+        AqlValue{AqlValueHintDouble{100}},
+        AqlValue{AqlValueHintDouble{400}},
+        AqlValue{AqlValueHintBool{false}},
+        AqlValue{AqlValueHintDouble{400}},
+        AqlValue{"wg84"},
+    };
 
     auto guard = arangodb::scopeGuard([&params]() noexcept {
       for (auto& p : params) {

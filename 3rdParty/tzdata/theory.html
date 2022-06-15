@@ -42,12 +42,13 @@ href="https://en.wikipedia.org/wiki/Unix_time">POSIX Epoch</a>
 (1970-01-01 00:00:00 <a
 href="https://en.wikipedia.org/wiki/Coordinated_Universal_Time"><abbr
 title="Coordinated Universal Time">UTC</abbr></a>).
-The database labels each timezone with a notable location and
-records all known clock transitions for that location.
 Although 1970 is a somewhat-arbitrary cutoff, there are significant
 challenges to moving the cutoff earlier even by a decade or two, due
 to the wide variety of local practices before computer timekeeping
 became prevalent.
+Most timezones correspond to a notable location and the database
+records all known clock transitions for that location;
+some timezones correspond instead to a fixed <abbr>UTC</abbr> offset.
 </p>
 
 <p>
@@ -58,8 +59,9 @@ specifies current standard time. For example, applications that deal
 with current and future timestamps in the traditional North
 American mountain time zone can choose from the timezones
 <code>America/Denver</code> which observes US-style daylight saving
-time, <code>America/Mazatlan</code> which observes Mexican-style DST,
-and <code>America/Phoenix</code> which does not observe DST.
+time (<abbr>DST</abbr>),
+<code>America/Mazatlan</code> which observes Mexican-style <abbr>DST</abbr>,
+and <code>America/Phoenix</code> which does not observe <abbr>DST</abbr>.
 Applications that also deal with past timestamps in the mountain time
 zone can choose from over a dozen timezones, such as
 <code>America/Boise</code>, <code>America/Edmonton</code>, and
@@ -68,7 +70,7 @@ time but differs from other timezones for some timestamps after 1970.
 </p>
 
 <p>
-Clock transitions before 1970 are recorded for each timezone,
+Clock transitions before 1970 are recorded for location-based timezones,
 because most systems support timestamps before 1970 and could
 misbehave if data entries were omitted for pre-1970 transitions.
 However, the database is not designed for and does not suffice for
@@ -190,8 +192,8 @@ in decreasing order of importance:
     <code>TZ</code> strings</a>.
     A file name component must not exceed 14 characters or start with
     '<code>-</code>'.
-    E.g., prefer <code>Asia/Brunei</code> to
-    <code>Asia/Bandar_Seri_Begawan</code>.
+    E.g., prefer <code>America/Noronha</code> to
+    <code>America/Fernando_de_Noronha</code>.
     Exceptions: see the discussion of legacy names below.
   </li>
   <li>
@@ -294,7 +296,7 @@ in decreasing order of importance:
   </li>
   <li>
     If a name is changed, put its old spelling in the
-    '<code>backward</code>' file.
+    '<code>backward</code>' file as a link to the new spelling.
     This means old spellings will continue to work.
     Ordinarily a name change should occur only in the rare case when
     a location's consensus English-language spelling changes; for example,
@@ -346,22 +348,37 @@ timestamps correctly and it increased maintenance burden.
 </ul>
 
 <p>
-The file '<code>zone1970.tab</code>' lists geographical locations used
+The file <code>zone1970.tab</code> lists geographical locations used
 to name timezones.
 It is intended to be an exhaustive list of names for geographic
 regions as described above; this is a subset of the timezones in the data.
-Although a '<code>zone1970.tab</code>' location's
+Although a <code>zone1970.tab</code> location's
 <a href="https://en.wikipedia.org/wiki/Longitude">longitude</a>
 corresponds to
 its <a href="https://en.wikipedia.org/wiki/Local_mean_time">local mean
 time (<abbr>LMT</abbr>)</a> offset with one hour for every 15&deg;
 east longitude, this relationship is not exact.
+The backward-compatibility file <code>zone.tab</code> is similar
+but conforms to the older-version guidelines related to <abbr>ISO</abbr> 3166-1;
+it lists only one country code per entry and unlike <code>zone1970.tab</code>
+it can list names defined in <code>backward</code>.
 </p>
 
 <p>
-Excluding '<code>backward</code>' should not affect the other data.
-If '<code>backward</code>' is excluded, excluding
-'<code>etcetera</code>' should not affect the remaining data.
+The database defines each timezone name to be a zone, or a link to a zone.
+The source file <code>backward</code> defines links for backward
+compatibility; it does not define zones.
+Although <code>backward</code> was originally designed to be optional,
+nowadays distributions typically use it
+and no great weight should be attached to whether a link
+is defined in <code>backward</code> or in some other file.
+The source file <code>etcetera</code> defines names that may be useful
+on platforms that do not support POSIX-style <code>TZ</code> strings;
+no other source file other than <code>backward</code>
+contains links to its zones.
+One of <code>etcetera</code>'s names is <code>GMT</code>,
+used by functions like <code>gmtime</code> to obtain leap
+second information on platforms that support leap seconds.
 </p>
 </section>
 
@@ -473,10 +490,10 @@ in decreasing order of importance:
 
     <p>
     <small>These abbreviations are:
-      AMT Amsterdam, Asunción, Athens;
+      AMT Asunción, Athens;
       BMT Baghdad, Bangkok, Batavia, Bermuda, Bern, Bogotá, Bridgetown,
         Brussels, Bucharest;
-      CMT Calamarca, Caracas, Chisinau, Colón, Copenhagen, Córdoba;
+      CMT Calamarca, Caracas, Chisinau, Colón, Córdoba;
       DMT Dublin/Dunsink;
       EMT Easter;
       FFMT Fort-de-France;
@@ -499,7 +516,8 @@ in decreasing order of importance:
       SMT Santiago, Simferopol, Singapore, Stanley;
       TBMT Tbilisi;
       TMT Tallinn, Tehran;
-      WMT Warsaw</small>.
+      WMT Warsaw;
+      ZMT Zomba.</small>
     </p>
 
     <p>
@@ -513,9 +531,7 @@ in decreasing order of importance:
 	1880&ndash;1916,
       MMT/MST/MDST for Moscow 1880&ndash;1919, and
       RMT/LST for Riga Mean Time and Latvian Summer time 1880&ndash;1926.
-    An extra-special case is SET for Swedish Time (<em>svensk
-    normaltid</em>) 1879&ndash;1899, 3&deg; west of the Stockholm
-    Observatory.</small>
+    </small>
     </p>
   </li>
   <li>
@@ -702,11 +718,9 @@ href="https://www.dissentmagazine.org/blog/booked-a-global-history-of-time-vanes
   <li>
     Sometimes historical timekeeping was specified more precisely
     than what the <code><abbr>tz</abbr></code> code can handle.
-    For example, from 1909 to 1937 <a
-    href="https://www.staff.science.uu.nl/~gent0113/wettijd/wettijd.htm"
-    hreflang="nl">Netherlands clocks</a> were legally Amsterdam Mean
+    For example, from 1880 to 1916 clocks in Ireland observed Dublin Mean
     Time (estimated to be <abbr>UT</abbr>
-    +00:19:32.13), but the <code><abbr>tz</abbr></code>
+    &minus;00:25:21.1), but the <code><abbr>tz</abbr></code>
     code cannot represent the fractional second.
     In practice these old specifications were rarely if ever
     implemented to subsecond precision.
@@ -753,7 +767,8 @@ href="https://www.dissentmagazine.org/blog/booked-a-global-history-of-time-vanes
     the Western 06:00 to be 12:00. These practices are largely outside
     the scope of the <code><abbr>tz</abbr></code> code and data, which
     provide only limited support for date and time localization
-    such as that required by POSIX. If DST is not used a different time zone
+    such as that required by POSIX.
+    If <abbr>DST</abbr> is not used a different time zone
     can often do the trick; for example, in Kenya a <code>TZ</code> setting
     like <code>&lt;-03&gt;3</code> or <code>America/Cayenne</code> starts
     the day six hours later than <code>Africa/Nairobi</code> does.
@@ -1271,7 +1286,8 @@ The directly-supported mechanism assumes that <code>time_t</code>
 counts of seconds since the POSIX epoch normally include leap seconds,
 as opposed to POSIX <code>time_t</code> counts which exclude leap seconds.
 This modified timescale is converted to <abbr>UTC</abbr>
-at the same point that time zone and DST adjustments are applied &ndash;
+at the same point that time zone and <abbr>DST</abbr>
+adjustments are applied &ndash;
 namely, at calls to <code>localtime</code> and analogous functions &ndash;
 and the process is driven by leap second information
 stored in alternate versions of the <abbr>TZif</abbr> files.

@@ -55,9 +55,8 @@ void deserialize(Slice slice, T& result, inspection::ParseOptions options) {
 
 template<class Inspector, class T>
 T deserialize(Slice slice, inspection::ParseOptions options) {
-  Inspector inspector(slice, options);
   T result;
-  deserialize(slice, result);
+  detail::deserialize<Inspector, T>(slice, result, options);
   return result;
 }
 }  // namespace detail
@@ -78,6 +77,12 @@ void deserializeUnsafe(Slice slice, T& result,
 template<class T>
 T deserialize(Slice slice, inspection::ParseOptions options = {}) {
   return detail::deserialize<inspection::VPackLoadInspector, T>(slice, options);
+}
+
+template<class T>
+T deserializeUnsafe(Slice slice, inspection::ParseOptions options = {}) {
+  return detail::deserialize<inspection::VPackUnsafeLoadInspector, T>(slice,
+                                                                      options);
 }
 
 }  // namespace arangodb::velocypack
