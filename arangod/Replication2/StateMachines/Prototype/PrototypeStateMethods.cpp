@@ -437,7 +437,9 @@ struct PrototypeStateMethodsCoordinator final
     auto dbservers = _clusterInfo.getCurrentDBServers();
     std::size_t expectedNumberOfServers =
         std::min(dbservers.size(), std::size_t{3});
-    if (!options.servers.empty()) {
+    if (options.numberOfServers.has_value()) {
+      expectedNumberOfServers = *options.numberOfServers;
+    } else if (!options.servers.empty()) {
       expectedNumberOfServers = options.servers.size();
     }
 
