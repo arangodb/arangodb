@@ -23,48 +23,35 @@
 
 #pragma once
 
-#include <functional>
-
 #include "Cluster/ClusterTypes.h"
 
-namespace arangodb {
-namespace cluster {
+#include <function2.hpp>
 
-/// @brief If constructed with a callback, the given callback will be called
-/// exactly once: Either during destruction, or when the object is overwritten
-/// (via operator=()), or when it's explicitly cleared. It's not copyable,
-/// but movable.
+namespace arangodb::cluster {
+
+/// @brief If constructed with a callback,
+/// the given callback will be called exactly once, except clear:
+/// Either during destruction, or when the object is overwritten.
 class CallbackGuard {
  public:
-  // Calls the callback given callback upon destruction.
-  // Allows only move semantics and no copy semantics.
+  using Callback = fu2::unique_function<void() noexcept>;
 
-  CallbackGuard();
-  // IMPORTANT NOTE:
-  // The passed callback should not throw exceptions, they will not be caught
-  // here, but thrown by the destructor!
-  explicit CallbackGuard(std::function<void(void)> callback);
-  ~CallbackGuard();
+  CallbackGuard() noexcept;
+  explicit CallbackGuard(Callback callback) noexcept;
+  ~CallbackGuard() noexcept;
 
-  // Note that the move constructor of std::function is not noexcept until
-  // C++20. Thus we cannot mark the constructors here noexcept.
-  // NOLINTNEXTLINE(hicpp-noexcept-move,performance-noexcept-move-constructor)
-  CallbackGuard(CallbackGuard&& other);
-  // operator= additionally calls the _callback, and this can also throw.
-  // NOLINTNEXTLINE(hicpp-noexcept-move,performance-noexcept-move-constructor)
-  CallbackGuard& operator=(CallbackGuard&&);
+  CallbackGuard(CallbackGuard&& other) noexcept;
+  CallbackGuard& operator=(CallbackGuard&& other) noexcept;
 
   CallbackGuard(CallbackGuard const&) = delete;
   CallbackGuard& operator=(CallbackGuard const&) = delete;
 
-  /// @brief Call the contained callback, then delete it.
-  void callAndClear();
+  bool empty() const noexcept;
 
  private:
-  void call();
+  void call() noexcept;
 
-  std::function<void(void)> _callback;
+  Callback _callback;
 };
 
-}  // namespace cluster
-}  // namespace arangodb
+}  // namespace arangodb::cluster

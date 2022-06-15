@@ -1254,6 +1254,7 @@ link_libraries(
   absl::node_hash_set
   absl::node_hash_map
   absl::synchronization
+  absl::strings
 )
 
 
@@ -1417,6 +1418,7 @@ if (BUILD_SEPP)
     tests/sepp/RocksDBOptions.cpp
     tests/sepp/Server.cpp
     tests/sepp/ValueGenerators/RandomStringGenerator.cpp
+    tests/sepp/Workloads/GetByPrimaryKey.cpp
     tests/sepp/Workloads/InsertDocuments.cpp
     tests/sepp/Workloads/IterateDocuments.cpp
   )

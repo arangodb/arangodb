@@ -286,7 +286,7 @@ function scanTestPaths (paths, options) {
 }
 
 
-function getTestCode(file, options, instanceInfo) {
+function getTestCode(file, options, instanceManager) {
   let filter;
   if (options.testCase) {
     filter = JSON.stringify(options.testCase);
@@ -304,7 +304,7 @@ function getTestCode(file, options, instanceInfo) {
     filter = filter || '';
     runTest = 'const runTest = require("@arangodb/mocha-runner");\n';
   }
-  return 'global.instanceInfo = ' + JSON.stringify(instanceInfo) + ';\n' + runTest +
+  return 'global.instanceManager = ' + JSON.stringify(instanceManager.getStructure()) + ';\n' + runTest +
          'return runTest(' + JSON.stringify(file) + ', true, ' + filter + ');\n';
 }
 // //////////////////////////////////////////////////////////////////////////////
@@ -318,8 +318,8 @@ class runOnArangodRunner extends testRunnerBase{
   }
   runOneTest(file) {
     try {
-      let testCode = getTestCode(file, this.options, this.instanceInfo);
-      let httpOptions = pu.makeAuthorizationHeaders(this.options);
+      let testCode = getTestCode(file, this.options, this.instanceManager);
+      let httpOptions = _.clone(this.instanceManager.httpAuthOptions);
       httpOptions.method = 'POST';
 
       httpOptions.timeout = this.options.oneTestTimeout;
@@ -331,11 +331,9 @@ class runOnArangodRunner extends testRunnerBase{
       }
 
       httpOptions.returnBodyOnError = true;
-
-      const reply = download(this.instanceInfo.url + '/_admin/execute?returnAsJSON=true',
+      const reply = download(this.instanceManager.url + '/_admin/execute?returnAsJSON=true',
                              testCode,
                              httpOptions);
-
       if (!reply.error && reply.code === 200) {
         return JSON.parse(reply.body);
       } else {
@@ -432,17 +430,6 @@ function writeTestResult(path, data) {
   fs.write(jsonFN, JSON.stringify(data));
 }
 
-/// make arangosh use HTTP, VST or HTTP2 according to option
-function findEndpoint(options, instanceInfo) {
-  let endpoint = instanceInfo.endpoint;
-  if (options.vst) {
-    endpoint = endpoint.replace(/.*\/\//, 'vst://');
-  } else if (options.http2) {
-    endpoint = endpoint.replace(/.*\/\//, 'h2://');
-  }
-  print("using endpoint ", endpoint);
-  return endpoint;
-}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a local unittest file using arangosh
@@ -453,9 +440,13 @@ class runInArangoshRunner extends testRunnerBase{
     super(options, testname, ...optionalArgs);
     this.info = "forkedArangosh";
   }
+  getEndpoint() {
+    return this.instanceManager.findEndpoint();
+  }
   runOneTest(file) {
+    require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
     let args = pu.makeArgs.arangosh(this.options);
-    args['server.endpoint'] = findEndpoint(this.options, this.instanceInfo);
+    args['server.endpoint'] = this.getEndpoint();
 
     args['javascript.unit-tests'] = fs.join(pu.TOP_DIR, file);
 
@@ -472,9 +463,9 @@ class runInArangoshRunner extends testRunnerBase{
     if (this.addArgs !== undefined) {
       args = Object.assign(args, this.addArgs);
     }
-    require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceInfo);
-    let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), this.options, 'arangosh', this.instanceInfo.rootDir, this.options.coreCheck);
-    return readTestResult(this.instanceInfo.rootDir, rc, args['javascript.unit-tests']);
+    // TODO require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager);
+    let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), this.options, 'arangosh', this.instanceManager.rootDir, this.options.coreCheck);
+    return readTestResult(this.instanceManager.rootDir, rc, args['javascript.unit-tests']);
   }
 }
 
@@ -491,15 +482,15 @@ class runLocalInArangoshRunner extends testRunnerBase{
   runOneTest(file) {
     let endpoint = arango.getEndpoint();
     if (this.options.vst || this.options.http2) {
-      let newEndpoint = findEndpoint(this.options, this.instanceInfo);
+      let newEndpoint = this.instanceManager.findEndpoint();
       if (endpoint !== newEndpoint) {
         print(`runInLocalArangosh: Reconnecting to ${newEndpoint} from ${endpoint}`);
         arango.reconnect(newEndpoint, '_system', 'root', '');
       }
     }
 
-    let testCode = getTestCode(file, this.options, this.instanceInfo);
-    require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceInfo);
+    let testCode = getTestCode(file, this.options, this.instanceManager);
+    require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
     let testFunc;
     try {
       eval('testFunc = function () {\n' + testCode + "}");
@@ -567,4 +558,3 @@ exports.doOnePathInner = doOnePathInner;
 exports.scanTestPaths = scanTestPaths;
 exports.diffArray = diffArray;
 exports.pathForTesting = pathForTesting;
-exports.findEndpoint = findEndpoint;
