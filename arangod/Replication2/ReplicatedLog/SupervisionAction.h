@@ -296,6 +296,50 @@ auto inspect(Inspector& f, UpdateLogConfigAction& x) {
   return f.object(x).fields(f.field("type", hack));
 }
 
+struct UpdateEffectiveWriteConcernAction {
+  static constexpr std::string_view name = "UpdateEffectiveWriteConcernAction";
+  size_t newEffectiveWriteConcern;
+
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modify<LogPlanSpecification>([&](LogPlanSpecification& plan) {
+      plan.participantsConfig.config.effectiveWriteConcern =
+          newEffectiveWriteConcern;
+      plan.participantsConfig.generation += 1;
+    });
+    ctx.modify<LogCurrentSupervision>(
+        [&](LogCurrentSupervision& currentSupervision) {
+          currentSupervision.assumedWriteConcern = std::min(
+              currentSupervision.assumedWriteConcern, newEffectiveWriteConcern);
+        });
+  }
+};
+template<typename Inspector>
+auto inspect(Inspector& f, UpdateEffectiveWriteConcernAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(
+      f.field("type", hack),
+      f.field("newEffectiveWriteConcern", x.newEffectiveWriteConcern));
+}
+
+struct SetAssumedWriteConcernAction {
+  static constexpr std::string_view name = "SetAssumedWriteConcernAction";
+  size_t newAssumedWriteConcern;
+
+  auto execute(ActionContext& ctx) const -> void {
+    ctx.modifyOrCreate<LogCurrentSupervision>(
+        [&](LogCurrentSupervision& currentSupervision) {
+          currentSupervision.assumedWriteConcern = newAssumedWriteConcern;
+        });
+  }
+};
+template<typename Inspector>
+auto inspect(Inspector& f, SetAssumedWriteConcernAction& x) {
+  auto hack = std::string{x.name};
+  return f.object(x).fields(
+      f.field("type", hack),
+      f.field("newAssumedWriteConcern", x.newAssumedWriteConcern));
+}
+
 struct ConvergedToTargetAction {
   static constexpr std::string_view name = "ConvergedToTargetAction";
   std::optional<std::uint64_t> version{std::nullopt};
@@ -307,7 +351,6 @@ struct ConvergedToTargetAction {
         });
   }
 };
-
 template<typename Inspector>
 auto inspect(Inspector& f, ConvergedToTargetAction& x) {
   auto hack = std::string{x.name};
@@ -327,7 +370,8 @@ using Action =
                  WriteEmptyTermAction, LeaderElectionAction,
                  UpdateParticipantFlagsAction, AddParticipantToPlanAction,
                  RemoveParticipantFromPlanAction, UpdateLogConfigAction,
-                 ConvergedToTargetAction>;
+                 UpdateEffectiveWriteConcernAction,
+                 SetAssumedWriteConcernAction, ConvergedToTargetAction>;
 
 auto executeAction(Log log, Action& action) -> ActionContext;
 }  // namespace arangodb::replication2::replicated_log
