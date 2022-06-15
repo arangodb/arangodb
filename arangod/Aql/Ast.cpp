@@ -2771,6 +2771,8 @@ bool Ast::getReferencedAttributesRecursive(
 
     if (node->type == NODE_TYPE_EXPANSION) {
       // special stunt needed here for the [*] operator...
+      // NOTE: Every [*] operator is represented as an EXPANSION
+      // with 5 (or more) members.
       if (node->numMembers() >= 5) {
         if (node->getMember(2)->type != NODE_TYPE_NOP ||
             node->getMember(4)->type != NODE_TYPE_NOP) {

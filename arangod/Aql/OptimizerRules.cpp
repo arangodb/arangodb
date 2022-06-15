@@ -872,6 +872,85 @@ bool shouldApplyHeapOptimization(arangodb::aql::SortNode& sortNode,
   return (0.25 * N * lgM + M * lgM) < (N * lgN);
 }
 
+bool applyGraphProjections(arangodb::aql::TraversalNode* traversal) {
+  auto* options =
+      static_cast<arangodb::traverser::TraverserOptions*>(traversal->options());
+  std::unordered_set<arangodb::aql::AttributeNamePath> attributes;
+  bool modified = false;
+  size_t maxProjections = options->getMaxProjections();
+  auto pathOutVariable = traversal->pathOutVariable();
+
+  // find projections for vertex output variable
+  bool useVertexProjections = true;
+
+  // if the path does not include vertices, we can restrict the vertex
+  // gathering to only the required attributes
+  if (traversal->vertexOutVariable() != nullptr) {
+    useVertexProjections = arangodb::aql::utils::findProjections(
+        traversal, traversal->vertexOutVariable(), /*expectedAttribute*/ "",
+        attributes);
+  }
+
+  if (useVertexProjections && options->producePathsVertices() &&
+      pathOutVariable != nullptr) {
+    useVertexProjections = arangodb::aql::utils::findProjections(
+        traversal, pathOutVariable, arangodb::StaticStrings::GraphQueryVertices,
+        attributes);
+  }
+
+  if (useVertexProjections && !attributes.empty() &&
+      attributes.size() <= maxProjections) {
+    traversal->setVertexProjections(
+        arangodb::aql::Projections(std::move(attributes)));
+    modified = true;
+  }
+
+  // find projections for edge output variable
+  attributes.clear();
+  bool useEdgeProjections = true;
+
+  if (traversal->edgeOutVariable() != nullptr) {
+    useEdgeProjections = arangodb::aql::utils::findProjections(
+        traversal, traversal->edgeOutVariable(), /*expectedAttribute*/ "",
+        attributes);
+  }
+
+  if (useEdgeProjections && options->producePathsEdges() &&
+      pathOutVariable != nullptr) {
+    useEdgeProjections = arangodb::aql::utils::findProjections(
+        traversal, pathOutVariable, arangodb::StaticStrings::GraphQueryEdges,
+        attributes);
+  }
+
+  if (useEdgeProjections) {
+    // if we found any projections, make sure that they include _from
+    // and _to, as the traversal code will refer to these attributes later.
+    if (arangodb::ServerState::instance()->isCoordinator() &&
+        !traversal->isSmart() && !traversal->isLocalGraphNode() &&
+        !traversal->isUsedAsSatellite()) {
+      // On cluster community variant we will also need the ID value on the
+      // coordinator to uniquely identify edges
+      attributes.emplace(arangodb::StaticStrings::IdString);
+      // Also the community variant needs to transport weight, as the
+      // coordinator will do the searching.
+      if (traversal->options()->mode ==
+          arangodb::traverser::TraverserOptions::Order::WEIGHTED) {
+        attributes.emplace(traversal->options()->weightAttribute);
+      }
+    }
+    attributes.emplace(arangodb::StaticStrings::FromString);
+    attributes.emplace(arangodb::StaticStrings::ToString);
+
+    if (attributes.size() <= maxProjections) {
+      traversal->setEdgeProjections(
+          arangodb::aql::Projections(std::move(attributes)));
+      modified = true;
+    }
+  }
+
+  return modified;
+}
+
 }  // namespace
 
 using namespace arangodb;
@@ -6120,7 +6199,7 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
   // variables from them
   // While on it, pick up possible projections on the vertex and edge documents
   for (auto const& n : tNodes) {
-    TraversalNode* traversal = ExecutionNode::castTo<TraversalNode*>(n);
+    auto* traversal = ExecutionNode::castTo<TraversalNode*>(n);
     auto* options = static_cast<arangodb::traverser::TraverserOptions*>(
         traversal->options());
 
@@ -6173,74 +6252,10 @@ void arangodb::aql::optimizeTraversalsRule(Optimizer* opt,
     }
 
     // handle projections (must be done after path variable optimization)
-    {
-      size_t maxProjections = options->getMaxProjections();
-
-      // find projections for vertex output variable
-      attributes.clear();
-      bool useVertexProjections = true;
-
-      // if the path does not include vertices, we can restrict the vertex
-      // gathering to only the required attributes
-      if (traversal->vertexOutVariable() != nullptr) {
-        useVertexProjections = arangodb::aql::utils::findProjections(
-            n, traversal->vertexOutVariable(), /*expectedAttribute*/ "",
-            attributes);
-      }
-
-      if (useVertexProjections && options->producePathsVertices() &&
-          pathOutVariable != nullptr) {
-        useVertexProjections = arangodb::aql::utils::findProjections(
-            n, pathOutVariable, StaticStrings::GraphQueryVertices, attributes);
-      }
-
-      if (useVertexProjections && !attributes.empty() &&
-          attributes.size() <= maxProjections) {
-        traversal->setVertexProjections(Projections(std::move(attributes)));
-        modified = true;
-      }
-
-      // find projections for edge output variable
-      attributes.clear();
-      bool useEdgeProjections = true;
-
-      if (traversal->edgeOutVariable() != nullptr) {
-        useEdgeProjections = arangodb::aql::utils::findProjections(
-            n, traversal->edgeOutVariable(), /*expectedAttribute*/ "",
-            attributes);
-      }
-
-      if (useEdgeProjections && options->producePathsEdges() &&
-          pathOutVariable != nullptr) {
-        useEdgeProjections = arangodb::aql::utils::findProjections(
-            n, pathOutVariable, StaticStrings::GraphQueryEdges, attributes);
-      }
-
-      if (useEdgeProjections) {
-        // if we found any projections, make sure that they include _from
-        // and _to, as the traversal code will refer to these attributes later.
-        if (ServerState::instance()->isCoordinator() && !traversal->isSmart() &&
-            !traversal->isLocalGraphNode() && !traversal->isUsedAsSatellite()) {
-          // On cluster community variant we will also need the ID value on the
-          // coordinator to uniquely identify edges
-          attributes.emplace(StaticStrings::IdString);
-          // Also the community variant needs to transport weight, as the
-          // coordinator will do the searching.
-          if (traversal->options()->mode ==
-              traverser::TraverserOptions::Order::WEIGHTED) {
-            attributes.emplace(traversal->options()->weightAttribute);
-          }
-        }
-        attributes.emplace(StaticStrings::FromString);
-        attributes.emplace(StaticStrings::ToString);
-
-        if (attributes.size() <= maxProjections) {
-          traversal->setEdgeProjections(Projections(std::move(attributes)));
-          modified = true;
-        }
-      }
-
-    }  // end projections handling
+    bool appliedProjections = applyGraphProjections(traversal);
+    if (appliedProjections) {
+      modified = true;
+    }
 
     // check if we can make use of the optimized neighbors enumerator
     if (!options->isDisjoint()) {
