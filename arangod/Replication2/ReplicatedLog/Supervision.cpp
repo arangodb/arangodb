@@ -46,6 +46,16 @@ using namespace arangodb::replication2::agency;
 
 namespace arangodb::replication2::replicated_log {
 
+auto computeEffectiveWriteConcern(LogTargetConfig const& config,
+                                  ParticipantsFlagsMap const& participants,
+                                  ParticipantsHealth const& health) -> size_t {
+  auto const numberNotFailedParticipants =
+      health.numberNotIsFailedOf(participants);
+
+  return std::max(config.writeConcern, std::min(numberNotFailedParticipants,
+                                                config.softWriteConcern));
+}
+
 auto isConfigurationCommitted(Log const& log) -> bool {
   if (!log.plan) {
     return false;
@@ -511,14 +521,8 @@ auto checkLogExists(SupervisionContext& ctx, Log const& log,
     } else {
       auto leader = pickLeader(target.leader, target.participants, health,
                                log.target.id.id());
-
-      auto const numberNotFailedParticipants =
-          health.numberNotIsFailedOf(target.participants);
-
-      auto effectiveWriteConcern = std::max(
-          target.config.writeConcern, std::min(numberNotFailedParticipants,
-                                               target.config.softWriteConcern));
-
+      auto effectiveWriteConcern = computeEffectiveWriteConcern(
+          target.config, target.participants, health);
       auto config =
           LogPlanConfig(effectiveWriteConcern, target.config.waitForSync);
       ctx.createAction<AddLogToPlanAction>(target.id, target.participants,
@@ -634,6 +638,41 @@ auto checkParticipantWithFlagsToUpdate(SupervisionContext& ctx, Log const& log,
 
 auto checkConfigUpdated(SupervisionContext& ctx, Log const& log,
                         ParticipantsHealth const& health) -> void {
+  if (!log.plan.has_value()) {
+    return;
+  }
+  ADB_PROD_ASSERT(log.plan.has_value());
+
+  auto const& target = log.target;
+  auto const& plan = *log.plan;
+
+  // Check write concern
+  auto effectiveWriteConcern = computeEffectiveWriteConcern(
+      target.config, plan.participantsConfig.participants, health);
+
+  if (effectiveWriteConcern !=
+      plan.participantsConfig.config.effectiveWriteConcern) {
+    ctx.createAction<UpdateEffectiveWriteConcernAction>(effectiveWriteConcern);
+
+    return;
+  }
+
+  if (!log.current.has_value()) {
+    return;
+  }
+  auto const& current = *log.current;
+  if (!current.leader.has_value() ||
+      !current.leader->committedParticipantsConfig.has_value()) {
+    return;
+  }
+  if (plan.participantsConfig.generation ==
+      current.leader->committedParticipantsConfig->generation) {
+    // update assumedWriteConcern
+    ctx.createAction<SetAssumedWriteConcernAction>(
+        plan.participantsConfig.config.effectiveWriteConcern);
+  }
+
+  // TODO: check waitForSync
   ctx.reportStatus<LogCurrentSupervision::ConfigChangeNotImplemented>();
 }
 
