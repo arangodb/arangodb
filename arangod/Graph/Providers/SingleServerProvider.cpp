@@ -82,7 +82,8 @@ SingleServerProvider<Step>::SingleServerProvider(
           queryContext.newTrxContext())),
       _opts(std::move(opts)),
       _cache(_trx.get(), &queryContext, resourceMonitor, _stats,
-             _opts.collectionToShardMap()),
+             _opts.collectionToShardMap(), _opts.getVertexProjections(),
+             _opts.getEdgeProjections()),
       _stats{} {
   // TODO CHECK RefactoredTraverserCache (will be discussed in the future, need
   // to do benchmarks if affordable) activateCache(false);
