@@ -36,6 +36,8 @@
 #include "IResearch/IResearchViewMeta.h"
 #include "IResearch/IResearchVPackTermAttribute.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "IResearch/IResearchLinkMeta.h"
+#include "IResearch/IResearchInvertedIndexMeta.h"
 #include "Logger/LogMacros.h"
 #include "Misc.h"
 #include "Transaction/Helpers.h"
@@ -1111,10 +1113,10 @@ bool StoredValue::write(irs::data_output& out) const {
 #include "Enterprise/IResearch/IResearchDocumentEE.hpp"
 #endif
 
-template arangodb::iresearch::FieldIterator<arangodb::iresearch::FieldMeta,
+template class arangodb::iresearch::FieldIterator<arangodb::iresearch::FieldMeta,
                                             arangodb::iresearch::FieldMeta>;
 
-template arangodb::iresearch::FieldIterator<arangodb::iresearch::IResearchInvertedIndexMeta,
+template class arangodb::iresearch::FieldIterator<arangodb::iresearch::IResearchInvertedIndexMeta,
                                             arangodb::iresearch::IResearchInvertedIndexMeta::FieldRecord>;
 
 // -----------------------------------------------------------------------------

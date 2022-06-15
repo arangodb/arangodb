@@ -205,9 +205,9 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
     } else
 #endif
     if (ValueStorage::NONE == field._storeValues) {
-      doc.insert<irs::Action::INDEX>(field);
+      doc.template insert<irs::Action::INDEX>(field);
     } else {
-      doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
+      doc.template insert<irs::Action::INDEX | irs::Action::STORE>(field);
     }
     ++body;
   }
@@ -223,7 +223,7 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
     } field;  // SortedField
     for (auto& sortField : meta._sort.fields()) {
       field.slice = get(document, sortField, VPackSlice::nullSlice());
-      doc.insert<irs::Action::STORE_SORTED>(field);
+      doc.template insert<irs::Action::STORE_SORTED>(field);
     }
   }
 
@@ -233,7 +233,7 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
     for (auto const& column : meta._storedValues.columns()) {
       field.fieldName = column.name;
       field.fields = &column.fields;
-      doc.insert<irs::Action::STORE>(field);
+      doc.template insert<irs::Action::STORE>(field);
     }
   }
 
@@ -243,7 +243,7 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
 
   // reuse the 'Field' instance stored inside the 'FieldIterator'
   Field::setPkValue(const_cast<Field&>(field), docPk);
-  doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
+  doc.template insert<irs::Action::INDEX | irs::Action::STORE>(field);
 
   if (trx.state()->hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
     ctx.tick(engine->currentTick());

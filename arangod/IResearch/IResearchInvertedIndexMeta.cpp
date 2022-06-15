@@ -732,12 +732,12 @@ IResearchInvertedIndexMeta::FieldRecord::FieldRecord(
     std::string&& expression, bool isArray, bool includeAllFields, bool trackListPositions,
     bool overrideValue, bool isPrimitiveAnalyzer, std::string_view parentName)
     : _fields(std::move(nested)),
-      _expression(std::move(expression)),
+      _includeAllFields(includeAllFields),
+      _trackListPositions(trackListPositions),
       _analyzers{std::move(a)},
       _features(std::move(features)),
       _primitiveOffset(isPrimitiveAnalyzer ? 1 : 0),
-      _includeAllFields(includeAllFields),
-      _trackListPositions(trackListPositions),
+      _expression(std::move(expression)),
       _isArray(isArray),
       _overrideValue(overrideValue) {
   TRI_ASSERT(_attribute.empty());
