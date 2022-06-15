@@ -23,12 +23,15 @@
 
 #pragma once
 
+#include "Basics/Result.h"
+#include "Basics/voc-errors.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Iterators.h"
 #include "Pregel/TypedBuffer.h"
 #include "Pregel/Reports.h"
+#include "Pregel/WorkerConfig.h"
 #include "Utils/DatabaseGuard.h"
 
 #include <atomic>
@@ -60,6 +63,35 @@ struct GraphFormat;
 
 class PregelFeature;
 
+struct DocumentId {
+  std::string _collectionName;
+  std::string _key;
+  static auto create(std::string_view documentId) -> ResultT<DocumentId>;
+};
+
+struct ShardResolver {
+  virtual auto getShard(DocumentId const& collectionName, WorkerConfig* config)
+      -> ResultT<PregelShard> = 0;
+  static auto create(bool isCluster, ClusterInfo& clusterInfo)
+      -> std::unique_ptr<ShardResolver>;
+  virtual ~ShardResolver(){};
+};
+
+struct ClusterShardResolver : ShardResolver {
+  ClusterInfo& _clusterInfo;
+  ClusterShardResolver(ClusterInfo& info) : _clusterInfo{info} {};
+  auto getShard(DocumentId const& documentId, WorkerConfig* config)
+      -> ResultT<PregelShard> override;
+};
+
+struct SingleServerShardResolver : ShardResolver {
+  auto getShard(DocumentId const& documentId, WorkerConfig* config)
+      -> ResultT<PregelShard> override;
+};
+
+// auto createShardResolver(bool isCluster, ClusterInfo& clusterInfo)
+//     -> std::unique_ptr<ShardResolver>;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief carry graph data for a worker job. NOT THREAD SAFE ON DOCUMENT LOADS
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,8 +99,10 @@ template<typename V, typename E>
 class GraphStore final {
  public:
   GraphStore(PregelFeature& feature, TRI_vocbase_t& vocbase,
-             uint64_t executionNumber, GraphFormat<V, E>* graphFormat);
+             uint64_t executionNumber, GraphFormat<V, E>* graphFormat,
+             std::unique_ptr<ShardResolver> shardResolver);
 
+  std::unique_ptr<ShardResolver> _shardResolver;
   uint64_t numberVertexSegments() const { return _vertices.size(); }
   uint64_t localVertexCount() const { return _localVertexCount; }
   uint64_t localEdgeCount() const { return _localEdgeCount; }
