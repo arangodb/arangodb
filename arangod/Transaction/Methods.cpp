@@ -2558,6 +2558,56 @@ Future<Result> Methods::replicateOperations(
   TRI_ASSERT(followerList != nullptr);
   TRI_ASSERT(!followerList->empty());
 
+  transaction::BuilderLeaser payload(this);
+  auto doOneDoc = [&](VPackSlice doc, VPackSlice result) {
+    VPackObjectBuilder guard(payload.get());
+    VPackSlice s = result.get(StaticStrings::KeyString);
+    TRI_ASSERT(s.isString());
+    payload->add(StaticStrings::KeyString, s);
+    s = result.get(StaticStrings::RevString);
+    payload->add(StaticStrings::RevString, s);
+    if (operation != TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
+      TRI_SanitizeObject(doc, *payload);
+    }
+  };
+
+  VPackSlice ourResult(ops->data());
+  size_t count = 0;
+  if (value.isArray()) {
+    VPackArrayBuilder guard(payload.get());
+    VPackArrayIterator itValue(value);
+    VPackArrayIterator itResult(ourResult);
+    while (itValue.valid() && itResult.valid()) {
+      TRI_ASSERT(itValue.index() == itResult.index());
+
+      TRI_ASSERT((*itResult).isObject());
+      if (!(*itResult).hasKey(StaticStrings::Error)) {
+        // not an error
+        // now check if document is explicitly excluded from replication
+        // this currently happens only for insert with overwriteMode=ignore
+        // for already-existing documents
+        if (excludePositions.find(itValue.index()) == excludePositions.end()) {
+          doOneDoc(itValue.value(), itResult.value());
+          count++;
+        }
+      }
+      itValue.next();
+      itResult.next();
+    }
+  } else {
+    if (excludePositions.find(0) == excludePositions.end()) {
+      doOneDoc(value, ourResult);
+      count++;
+    }
+  }
+
+  if (count == 0) {
+    // nothing to do
+    return Result();
+  }
+
+  // TODO - replicate payload
+
   // path and requestType are different for insert/remove/modify.
 
   network::RequestOptions reqOpts;
@@ -2622,54 +2672,6 @@ Future<Result> Methods::replicateOperations(
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
     default:
       TRI_ASSERT(false);
-  }
-
-  transaction::BuilderLeaser payload(this);
-  auto doOneDoc = [&](VPackSlice doc, VPackSlice result) {
-    VPackObjectBuilder guard(payload.get());
-    VPackSlice s = result.get(StaticStrings::KeyString);
-    TRI_ASSERT(s.isString());
-    payload->add(StaticStrings::KeyString, s);
-    s = result.get(StaticStrings::RevString);
-    payload->add(StaticStrings::RevString, s);
-    if (operation != TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-      TRI_SanitizeObject(doc, *payload);
-    }
-  };
-
-  VPackSlice ourResult(ops->data());
-  size_t count = 0;
-  if (value.isArray()) {
-    VPackArrayBuilder guard(payload.get());
-    VPackArrayIterator itValue(value);
-    VPackArrayIterator itResult(ourResult);
-    while (itValue.valid() && itResult.valid()) {
-      TRI_ASSERT(itValue.index() == itResult.index());
-
-      TRI_ASSERT((*itResult).isObject());
-      if (!(*itResult).hasKey(StaticStrings::Error)) {
-        // not an error
-        // now check if document is explicitly excluded from replication
-        // this currently happens only for insert with overwriteMode=ignore
-        // for already-existing documents
-        if (excludePositions.find(itValue.index()) == excludePositions.end()) {
-          doOneDoc(itValue.value(), itResult.value());
-          count++;
-        }
-      }
-      itValue.next();
-      itResult.next();
-    }
-  } else {
-    if (excludePositions.find(0) == excludePositions.end()) {
-      doOneDoc(value, ourResult);
-      count++;
-    }
-  }
-
-  if (count == 0) {
-    // nothing to do
-    return Result();
   }
 
   ReplicationTimeoutFeature& timeouts =
