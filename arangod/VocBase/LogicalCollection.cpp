@@ -37,6 +37,7 @@
 #include "Cluster/ServerState.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -1241,6 +1242,38 @@ std::optional<replication2::LogId> LogicalCollection::tryShardIdToStateId(
   }
   auto stateId = shardId.substr(1, shardId.size() - 1);
   return replication2::LogId::fromString(stateId);
+}
+
+auto LogicalCollection::getDocumentState()
+    -> std::shared_ptr<replication2::replicated_state::ReplicatedState<
+        replication2::replicated_state::document::DocumentState>> {
+  using namespace replication2::replicated_state;
+  auto stateMachine =
+      std::dynamic_pointer_cast<ReplicatedState<document::DocumentState>>(
+          vocbase().getReplicatedStateById(shardIdToStateId(name())));
+  ADB_PROD_ASSERT(stateMachine != nullptr)
+      << "Missing document state in shard " << name();
+  return stateMachine;
+}
+
+auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
+    replication2::replicated_state::document::DocumentLeaderState> {
+  auto stateMachine = getDocumentState();
+  auto leader = stateMachine->getLeader();
+  // TODO improve error handling
+  ADB_PROD_ASSERT(stateMachine != nullptr)
+      << "Cannot get DocumentLeaderState in shard " << name();
+  return leader;
+}
+
+auto LogicalCollection::getDocumentStateFollower() -> std::shared_ptr<
+    replication2::replicated_state::document::DocumentFollowerState> {
+  auto stateMachine = getDocumentState();
+  auto follower = stateMachine->getFollower();
+  // TODO improve error handling
+  ADB_PROD_ASSERT(stateMachine != nullptr)
+      << "Cannot get DocumentFollowerState in shard " << name();
+  return follower;
 }
 
 #ifndef USE_ENTERPRISE
