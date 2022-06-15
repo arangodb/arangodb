@@ -44,7 +44,8 @@ class IResearchInvertedIndexSort {
 
   bool operator==(IResearchInvertedIndexSort const& rhs) const noexcept {
     return _fields == rhs._fields && _directions == rhs._directions &&
-           _locale.getName() == rhs._locale.getName();
+           std::string_view(_locale.getName()) ==
+               std::string_view(rhs._locale.getName());
   }
 
   bool operator!=(IResearchInvertedIndexSort const& rhs) const noexcept {
@@ -104,6 +105,8 @@ class IResearchInvertedIndexSort {
     return _directions[i];
   }
 
+  std::string_view Locale() const noexcept { return _locale.getName(); }
+
   size_t memory() const noexcept;
 
   bool toVelocyPack(velocypack::Builder& builder) const;
@@ -117,9 +120,9 @@ class IResearchInvertedIndexSort {
 };
 
 struct InvertedIndexField {
+  // FIXME: turn into delegate ctor once attributes are not needed
   InvertedIndexField()
-      :  // FIXME: turn into delegate ctor once attributes are not needed
-        _includeAllFields(false),
+      : _includeAllFields(false),
         _trackListPositions(false),
         _isArray(false),
         _overrideValue(false) {}
@@ -159,7 +162,7 @@ struct InvertedIndexField {
 
   auto const& expansion() const noexcept { return _expansion; }
 
-  auto const& nested() const noexcept { return _fields; }
+  auto const& expression() const noexcept { return _expression; }
 
   auto const& features() const noexcept { return _features; }
 
@@ -252,6 +255,8 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
     return _fields._fields;
   }
 
+  bool hasNested() const noexcept { return _hasNested; }
+
   /// @brief custom conversion to match FieldIterator expectations
   operator InvertedIndexField const&() const noexcept { return _fields; }
 
@@ -271,5 +276,6 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
   Consistency _consistency{Consistency::kEventual};
   std::string _defaultAnalyzerName;
   std::optional<Features> _features;
+  bool _hasNested{false};
 };
 }  // namespace arangodb::iresearch

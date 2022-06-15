@@ -340,6 +340,7 @@ bool IResearchDataStoreMeta::init(velocypack::Slice slice, std::string& errorFie
                              IResearchDataStoreMeta const& defaults,
                              Mask* mask) noexcept {
   if (!slice.isObject()) {
+    errorField = "Object is expected";
     return false;
   }
 

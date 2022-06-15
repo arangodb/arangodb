@@ -56,6 +56,10 @@ using namespace std::literals;
 namespace arangodb::iresearch {
 namespace {
 
+#ifndef USE_ENTERPRISE
+inline bool needTrackPrevDoc(irs::string_ref) { return false; }
+#endif
+
 class IResearchFlushSubscription final : public FlushSubscription {
  public:
   explicit IResearchFlushSubscription(TRI_voc_tick_t tick = 0) noexcept
@@ -176,25 +180,13 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
     return {};  // no fields to index
   }
   auto& field = *body;
-
-  [[maybe_unused]] bool wasNested{false};
 #ifdef USE_ENTERPRISE
-  if (body.hasNested()) {
-    wasNested = true;
-    auto nestedRes = handleNestedFields(ctx, body);
-    if (nestedRes.fail()) {
-      return {
-          TRI_ERROR_INTERNAL,
-          "failed to insert document nested fields into arangosearch index '" +
-              std::to_string(id.id()) + "', document '" +
-              std::to_string(documentId.id()) + "'"};
-    }
+  auto eeRes = insertDocumentEE(ctx, body, id, documentId);
+  if (eeRes.fail()) {
+    return eeRes;
   }
 #endif
-  // flag if there was nested.
-  // first child should be without flag!
-  auto doc = ctx.insert(/*wasNested*/);
-
+  auto doc = ctx.insert(body.disableFlush());
   if (!doc) {
     return {TRI_ERROR_INTERNAL,
             "failed to insert document into arangosearch link '" +
@@ -202,6 +194,20 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
                 std::to_string(documentId.id()) + "'"};
   }
 
+  // User fields
+  while (body.valid()) {
+#ifdef USE_ENTERPRISE
+    if (field._root) {
+      handleNestedRoot(doc, field);
+    } else
+#endif
+        if (ValueStorage::NONE == field._storeValues) {
+      doc.template insert<irs::Action::INDEX>(field);
+    } else {
+      doc.template insert<irs::Action::INDEX | irs::Action::STORE>(field);
+    }
+    ++body;
+  }
   // Sorted field
   {
     struct SortedField {
@@ -213,7 +219,7 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
     } field;  // SortedField
     for (auto& sortField : meta._sort.fields()) {
       field.slice = get(document, sortField, VPackSlice::nullSlice());
-      doc.insert<irs::Action::STORE_SORTED>(field);
+      doc.template insert<irs::Action::STORE_SORTED>(field);
     }
   }
 
@@ -223,7 +229,7 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
     for (auto const& column : meta._storedValues.columns()) {
       field.fieldName = column.name;
       field.fields = &column.fields;
-      doc.insert<irs::Action::STORE>(field);
+      doc.template insert<irs::Action::STORE>(field);
     }
   }
 
@@ -233,22 +239,7 @@ Result insertDocument(irs::index_writer::documents_context& ctx,
 
   // reuse the 'Field' instance stored inside the 'FieldIterator'
   Field::setPkValue(const_cast<Field&>(field), docPk);
-  doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
-
-  // User fields
-  while (body.valid()) {
-#ifdef USE_ENTERPRISE
-    if (field._root) {
-      handleNestedRoot(doc, field);
-    } else
-#endif
-        if (ValueStorage::NONE == field._storeValues) {
-      doc.insert<irs::Action::INDEX>(field);
-    } else {
-      doc.insert<irs::Action::INDEX | irs::Action::STORE>(field);
-    }
-    ++body;
-  }
+  doc.template insert<irs::Action::INDEX | irs::Action::STORE>(field);
 
   if (trx.state()->hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
     ctx.tick(engine->currentTick());
@@ -1113,7 +1104,7 @@ Result IResearchDataStore::initDataStore(
     return {.compression = getDefaultCompression()(),
             .options = {},
             .encryption = encrypt && (DocumentPrimaryKey::PK() != name),
-            .track_prev_doc = false};
+            .track_prev_doc = needTrackPrevDoc(name)};
   };
 
   auto openFlags = irs::OM_APPEND;
@@ -1289,7 +1280,7 @@ void IResearchDataStore::properties(LinkLock linkLock,
 }
 
 Result IResearchDataStore::remove(transaction::Methods& trx,
-                                  LocalDocumentId documentId) {
+                                  LocalDocumentId documentId, bool nested) {
   TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
 
@@ -1347,7 +1338,7 @@ Result IResearchDataStore::remove(transaction::Methods& trx,
   // all of its fid stores, no impact to iResearch View data integrity
   // ...........................................................................
   try {
-    ctx->remove(*_engine, documentId);
+    ctx->remove(*_engine, documentId, nested);
 
     return {TRI_ERROR_NO_ERROR};
   } catch (basics::Exception const& e) {

@@ -1187,7 +1187,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
                                               irs::score_t* res) -> void {
       ASSERT_NE(nullptr, res);
       ++scorer_score_count;
-      *res = doc;
+      *res = static_cast<irs::score_t>(doc);
     };
     auto preparedOrder = irs::Order::Prepare(order);
 

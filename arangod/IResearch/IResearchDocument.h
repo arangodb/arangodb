@@ -143,6 +143,10 @@ class FieldIterator {
 
   void reset(velocypack::Slice slice, IndexMetaStruct const& linkMeta);
 
+  bool  disableFlush() const noexcept {
+    return _disableFlush;
+  }
+
 #ifdef USE_ENTERPRISE
 
   bool onRootLevel() const noexcept {
@@ -153,6 +157,10 @@ class FieldIterator {
 
   bool needDoc() const noexcept {
     return _needDoc;
+  }
+
+  void setDisableFlush() noexcept {
+    _disableFlush = true;
   }
 #endif
 
@@ -183,15 +191,10 @@ class FieldIterator {
   }
 
 #ifdef USE_ENTERPRISE
-
   using MetaTraits = IndexMetaTraits<LevelMeta>;
 
   void popLevel();
   bool pushLevel(VPackSlice value, LevelMeta const& meta, Filter filter);
-
-  std::vector<std::string> _nestingBuffers;
-  bool _needDoc{false};
-  bool _hasNested{false};
 #endif
 
   // disallow copy and assign
@@ -224,8 +227,13 @@ class FieldIterator {
   AnalyzerPool::CacheType::ptr _currentTypedAnalyzer;
   VPackTermAttribute const* _currentTypedAnalyzerValue{nullptr};
   PrimitiveTypeResetter _primitiveTypeResetter{nullptr};
-
   bool _isDBServer;
+  bool _disableFlush;
+ #ifdef USE_ENTERPRISE
+  std::vector<std::string> _nestingBuffers;
+  bool _needDoc{false};
+  bool _hasNested{false};
+#endif
 };  // FieldIterator
 
 ////////////////////////////////////////////////////////////////////////////////

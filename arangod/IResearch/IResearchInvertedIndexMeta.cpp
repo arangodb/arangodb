@@ -81,6 +81,7 @@ std::optional<InvertedIndexField> fromVelocyPack(
   if (slice.isString()) {
     try {
       analyzer = versionSpecificIdentity;
+      shortName = versionSpecificIdentity->name();
       fieldName = slice.copyString();
       TRI_ParseAttributeString(fieldName, fieldParts, true);
       TRI_ASSERT(!fieldParts.empty());
@@ -165,6 +166,7 @@ std::optional<InvertedIndexField> fromVelocyPack(
         }
       } else {
         analyzer = versionSpecificIdentity;
+        shortName = versionSpecificIdentity->name();
       }
       {
         if (slice.hasKey(kFeaturesFieldName)) {
@@ -305,11 +307,11 @@ void toVelocyPack(InvertedIndexField const& field, VPackBuilder& vpack) {
     field.features()->toVelocyPack(tmp);
     vpack.add(kFeaturesFieldName, tmp.slice());
   }
-  if (!field.nested().empty()) {
+  if (!field._fields.empty()) {
     VPackBuilder nestedFields;
     {
       VPackArrayBuilder nestedArray(&nestedFields);
-      for (auto const& nested : field.nested()) {
+      for (auto const& nested : field._fields) {
         toVelocyPack(nested, nestedFields);
       }
     }
@@ -589,6 +591,12 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
     }
     _features = std::move(tmp);
   }
+
+  _hasNested = std::find_if(fields().begin(), fields().end(),
+                            [](InvertedIndexField const& r) {
+                              return !r._fields.empty();
+                            }) != fields().end();
+
   return true;
 }
 

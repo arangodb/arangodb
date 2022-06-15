@@ -36,6 +36,8 @@
 #include "IResearch/IResearchViewMeta.h"
 #include "IResearch/IResearchVPackTermAttribute.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "IResearch/IResearchLinkMeta.h"
+#include "IResearch/IResearchInvertedIndexMeta.h"
 #include "Logger/LogMacros.h"
 #include "Misc.h"
 #include "Transaction/Helpers.h"
@@ -262,7 +264,7 @@ inline bool acceptAll(std::string& buffer,
           // this case is just skipped. Just like regular indicies do
           return false;
         } else if (value.value.isArray() && !nested.isArray() &&
-                   nested.nested().empty()) {
+                   nested._fields.empty()) {
           if (!nested.analyzer()->accepts(
                   arangodb::iresearch::AnalyzerValueType::Array)) {
             THROW_ARANGO_EXCEPTION_FORMAT(
@@ -357,7 +359,8 @@ FieldIterator<IndexMetaStruct, LevelMeta>::FieldIterator(
     : _trx(&trx),
       _collection(collection),
       _linkId(linkId),
-      _isDBServer(ServerState::instance()->isDBServer()) {
+      _isDBServer(ServerState::instance()->isDBServer()),
+      _disableFlush(false) {
   // initialize iterator's value
 }
 
@@ -372,7 +375,7 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::reset(
   _primitiveTypeResetter = nullptr;
   _stack.clear();
   _nameBuffer.clear();
-
+  _disableFlush = false;
   // push the provided 'doc' on stack and initialize current value
   auto const filter = getFilter(doc, static_cast<LevelMeta const&>(linkMeta));
 #ifdef USE_ENTERPRISE
@@ -604,7 +607,9 @@ void FieldIterator<IndexMetaStruct, LevelMeta>::next() {
   // restore value
   _value._storeValues = context->_storeValues;
   _value._value = irs::bytes_ref::NIL;
+#ifdef USE_ENTERPRISE
   _value._root = false;
+#endif
   _needDoc = false;
   while (true) {
   setAnalyzers:

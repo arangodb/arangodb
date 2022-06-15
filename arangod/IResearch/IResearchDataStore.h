@@ -109,8 +109,8 @@ struct IResearchTrxState final : public TransactionState::Cookie {
     }
   }
 
-  void remove(StorageEngine& engine, LocalDocumentId const& value) {
-    _ctx.remove(_removals.emplace(engine, value));
+  void remove(StorageEngine& engine, LocalDocumentId const& value, bool nested) {
+    _ctx.remove(_removals.emplace(engine, value, nested));
   }
 
   void reset() noexcept {
@@ -218,7 +218,7 @@ class IResearchDataStore {
   /// @brief remove an ArangoDB document from an iResearch View
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
-  Result remove(transaction::Methods& trx, LocalDocumentId documentId);
+  Result remove(transaction::Methods& trx, LocalDocumentId documentId, bool nested);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert an ArangoDB document into an iResearch View using '_meta'
