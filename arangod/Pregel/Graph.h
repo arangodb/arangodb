@@ -69,19 +69,18 @@ class Edge {
   template<typename V, typename E2>
   friend class GraphStore;
 
-  // these members are initialized by the GraphStore
-  char* _toKey;              // uint64_t
-  uint16_t _toKeyLength;     // uint16_t
-  PregelShard _targetShard;  // uint16_t
+  std::string _toKey;
+  PregelShard _targetShard;
 
   E _data;
 
  public:
-  std::string_view toKey() const {
-    return std::string_view(_toKey, _toKeyLength);
-  }
-  E& data() noexcept { return _data; }
+  void setToKey(std::string_view toKey) { _toKey = toKey; }
+  std::string_view toKey() const { return std::string_view(_toKey); }
+  void setTargetShard(PregelShard targetShard) { _targetShard = targetShard; }
   PregelShard targetShard() const noexcept { return _targetShard; }
+
+  E& data() noexcept { return _data; }
 };
 
 template<typename V, typename E>
