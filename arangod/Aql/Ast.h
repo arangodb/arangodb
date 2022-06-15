@@ -194,6 +194,12 @@ class Ast {
   /// @brief create an AST filter node
   AstNode* createNodeFilter(AstNode const*);
 
+  /// @brief create an AST takeWhile node
+  AstNode* createNodeTakeWhile(bool, AstNode const*);
+
+  /// @brief create an AST dropWhile node
+  AstNode* createNodeDropWhile(bool, AstNode const*);
+
   /// @brief create an AST filter node for an UPSERT query
   AstNode* createNodeUpsertFilter(AstNode const*, AstNode const*);
 

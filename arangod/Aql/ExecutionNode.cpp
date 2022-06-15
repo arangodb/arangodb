@@ -64,6 +64,7 @@
 #include "Aql/WalkerWorker.h"
 #include "Aql/WindowNode.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/application-exit.h"
 #include "Basics/system-compiler.h"
 #include "Cluster/ServerState.h"
 #include "Meta/static_assert_size.h"
@@ -1449,6 +1450,8 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case SINGLETON:
     case LIMIT:
     case WINDOW:
+    case ExecutionNode::TAKE_WHILE:
+    case ExecutionNode::DROP_WHILE:
       return false;
     // It should be safe to return false for these, but is it necessary?
     // Returning true can lead to more efficient register usage.
@@ -2450,6 +2453,37 @@ void FilterNode::getVariablesUsedHere(VarSet& vars) const {
 }
 
 Variable const* FilterNode::inVariable() const { return _inVariable; }
+
+TakeWhileNode::TakeWhileNode(ExecutionPlan* plan, ExecutionNodeId id,
+                             Variable const* inVariable)
+    : ExecutionNode(plan, id), _inVariable(inVariable) {}
+
+ExecutionNode::NodeType TakeWhileNode::getType() const { return TAKE_WHILE; }
+
+std::unique_ptr<ExecutionBlock> TakeWhileNode::createBlock(
+    ExecutionEngine& engine,
+    const std::unordered_map<ExecutionNode*, ExecutionBlock*>& cache) const {
+  // TODO
+  FATAL_ERROR_EXIT();
+  return nullptr;
+}
+ExecutionNode* TakeWhileNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                    bool withProperties) const {
+  // TODO
+  FATAL_ERROR_EXIT();
+  return nullptr;
+}
+void TakeWhileNode::doToVelocyPack(velocypack::Builder& builder,
+                                   unsigned int flags) const {
+  // TODO
+  FATAL_ERROR_EXIT();
+}
+CostEstimate TakeWhileNode::estimateCost() const {
+  TRI_ASSERT(!_dependencies.empty());
+  CostEstimate estimate = _dependencies.at(0)->getCost();
+  estimate.estimatedCost += estimate.estimatedNrItems;
+  return estimate;
+}
 
 ReturnNode::ReturnNode(ExecutionPlan* plan,
                        arangodb::velocypack::Slice const& base)

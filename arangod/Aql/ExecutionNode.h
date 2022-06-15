@@ -164,6 +164,8 @@ class ExecutionNode {
     ASYNC = 32,
     MUTEX = 33,
     WINDOW = 34,
+    TAKE_WHILE = 35,
+    DROP_WHILE = 36,
 
     MAX_NODE_TYPE_VALUE
   };
@@ -979,6 +981,34 @@ class FilterNode : public ExecutionNode {
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
+
+ private:
+  /// @brief input variable to read from
+  Variable const* _inVariable;
+};
+
+class TakeWhileNode : public ExecutionNode {
+  friend class ExecutionBlock;
+
+ public:
+  TakeWhileNode(ExecutionPlan* plan, ExecutionNodeId id,
+                Variable const* inVariable);
+
+  /// @brief return the type of the node
+  auto getType() const -> NodeType override;
+
+  std::unique_ptr<ExecutionBlock> createBlock(
+      ExecutionEngine& engine,
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache)
+      const override;
+
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const override;
+
+ protected:
+  void doToVelocyPack(velocypack::Builder& builder,
+                      unsigned int flags) const override;
+  CostEstimate estimateCost() const override;
 
  private:
   /// @brief input variable to read from

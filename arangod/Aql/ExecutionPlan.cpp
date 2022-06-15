@@ -1511,6 +1511,54 @@ ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous,
   return addDependency(previous, en);
 }
 
+ExecutionNode* ExecutionPlan::fromNodeTakeWhile(ExecutionNode* previous,
+                                                AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_TAKE_WHILE);
+  TRI_ASSERT(node->numMembers() == 1);
+
+  auto expression = node->getMember(0);
+
+  ExecutionNode* en = nullptr;
+
+  if (expression->type == NODE_TYPE_REFERENCE) {
+    // operand is already a variable
+    auto v = static_cast<Variable*>(expression->getData());
+    TRI_ASSERT(v != nullptr);
+    en = registerNode(std::make_unique<TakeWhileNode>(this, nextId(), v));
+  } else {
+    // operand is some misc expression
+    if (expression->isTrue()) {
+      // filter expression is known to be always true, so
+      // remove the filter entirely
+      return previous;
+    }
+
+    // note: if isTrue() is false above, it is not necessarily the case that
+    // isFalse() is true next. The reason is that isTrue() and isFalse() only
+    // return true in case of absolulete certainty. this requires expressions
+    // to be based on query compile-time values only, but it will not work
+    // for expressions that need to be evaluated at query runtime
+    if (expression->isFalse()) {
+      // filter expression is known to be always false, so
+      // replace the FILTER with a NoResultsNode
+      en = registerNode(new NoResultsNode(this, nextId()));
+    } else {
+      auto calc = createTemporaryCalculation(expression, previous);
+      en = registerNode(std::make_unique<TakeWhileNode>(this, nextId(),
+                                                        getOutVariable(calc)));
+      previous = calc;
+    }
+  }
+
+  return addDependency(previous, en);
+}
+
+ExecutionNode* ExecutionPlan::fromNodeDropWhile(ExecutionNode* previous,
+                                                AstNode const* node) {
+  std::abort();
+}
+
 /// @brief create an execution plan element from an AST LET node
 /// this also includes handling of subqueries (as subqueries can only occur
 /// inside LET nodes)
@@ -2253,6 +2301,14 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
       }
       case NODE_TYPE_FILTER: {
         en = fromNodeFilter(en, member);
+        break;
+      }
+      case NODE_TYPE_TAKE_WHILE: {
+        en = fromNodeTakeWhile(en, member);
+        break;
+      }
+      case NODE_TYPE_DROP_WHILE: {
+        en = fromNodeDropWhile(en, member);
         break;
       }
 

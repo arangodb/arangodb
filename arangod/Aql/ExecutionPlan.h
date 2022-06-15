@@ -363,6 +363,12 @@ class ExecutionPlan {
   /// @brief create an execution plan element from an AST FILTER node
   ExecutionNode* fromNodeFilter(ExecutionNode*, AstNode const*);
 
+  /// @brief create an execution plan element from an AST TAKE WHILE node
+  ExecutionNode* fromNodeTakeWhile(ExecutionNode*, AstNode const*);
+
+  /// @brief create an execution plan element from an AST DROP WHILE node
+  ExecutionNode* fromNodeDropWhile(ExecutionNode*, AstNode const*);
+
   /// @brief create an execution plan element from an AST LET node
   ExecutionNode* fromNodeLet(ExecutionNode*, AstNode const*);
 

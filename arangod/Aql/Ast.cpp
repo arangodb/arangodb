@@ -459,6 +459,32 @@ AstNode* Ast::createNodeFilter(AstNode const* expression) {
   return node;
 }
 
+/// @brief create an AST takeWhile node
+AstNode* Ast::createNodeTakeWhile(bool isWhile, AstNode const* expression) {
+  if (!isWhile) {
+    expression =
+        createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, expression);
+  }
+
+  AstNode* node = createNode(NODE_TYPE_TAKE_WHILE);
+  node->addMember(expression);
+
+  return node;
+}
+
+/// @brief create an AST dropWhile node
+AstNode* Ast::createNodeDropWhile(bool isWhile, AstNode const* expression) {
+  if (!isWhile) {
+    expression =
+        createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, expression);
+  }
+
+  AstNode* node = createNode(NODE_TYPE_DROP_WHILE);
+  node->addMember(expression);
+
+  return node;
+}
+
 /// @brief create an AST filter node for an UPSERT query
 AstNode* Ast::createNodeUpsertFilter(AstNode const* variable,
                                      AstNode const* object) {

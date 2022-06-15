@@ -90,6 +90,14 @@ class Parser;
   return T_FILTER;
 }
 
+(?i:TAKE) {
+  return T_TAKE;
+}
+
+(?i:DROP) {
+  return T_DROP;
+}
+
 (?i:RETURN) {
   return T_RETURN;
 }

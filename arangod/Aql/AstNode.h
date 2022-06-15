@@ -222,6 +222,8 @@ enum AstNodeType : uint32_t {
   NODE_TYPE_FOR_VIEW = 79,
   NODE_TYPE_WINDOW = 80,
   NODE_TYPE_ARRAY_FILTER = 81,
+  NODE_TYPE_TAKE_WHILE = 82,
+  NODE_TYPE_DROP_WHILE = 83,
 };
 
 static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types order");

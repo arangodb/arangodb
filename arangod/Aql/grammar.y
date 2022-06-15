@@ -324,6 +324,8 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %token T_FOR "FOR declaration"
 %token T_LET "LET declaration"
 %token T_FILTER "FILTER declaration"
+%token T_TAKE "TAKE declaration"
+%token T_DROP "DROP declaration"
 %token T_RETURN "RETURN declaration"
 %token T_COLLECT "COLLECT declaration"
 %token T_SORT "SORT declaration"
@@ -602,6 +604,10 @@ statement_block_statement:
     }
   | filter_statement {
     }
+  | take_statement {
+    }
+  | drop_statement {
+    }
   | collect_statement {
     }
   | sort_statement {
@@ -855,6 +861,40 @@ filter_statement:
     T_FILTER expression {
       // operand is a reference. can use it directly
       auto node = parser->ast()->createNodeFilter($2);
+      parser->ast()->addOperation(node);
+    }
+  ;
+
+take_statement:
+    T_TAKE T_STRING expression {
+      std::string_view operation($2.value, $2.length);
+      bool isWhile;
+
+      if (::caseInsensitiveEqual(operation, "WHILE")) {
+        isWhile = true;
+      } else if (::caseInsensitiveEqual(operation, "UNTIL")) {
+        isWhile = false;
+      } else {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'WHILE' or 'UNTIL'", operation, yylloc.first_line, yylloc.first_column);
+      }
+      auto node = parser->ast()->createNodeTakeWhile(isWhile, $3);
+      parser->ast()->addOperation(node);
+    }
+  ;
+
+drop_statement:
+    T_DROP T_STRING expression {
+      std::string_view operation($2.value, $2.length);
+      bool isWhile;
+
+      if (::caseInsensitiveEqual(operation, "WHILE")) {
+        isWhile = true;
+      } else if (::caseInsensitiveEqual(operation, "UNTIL")) {
+        isWhile = false;
+      } else {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'WHILE' or 'UNTIL'", operation, yylloc.first_line, yylloc.first_column);
+      }
+      auto node = parser->ast()->createNodeDropWhile(isWhile, $3);
       parser->ast()->addOperation(node);
     }
   ;

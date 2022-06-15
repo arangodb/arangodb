@@ -551,6 +551,8 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
     case NODE_TYPE_FOR:
     case NODE_TYPE_LET:
     case NODE_TYPE_FILTER:
+    case NODE_TYPE_TAKE_WHILE:
+    case NODE_TYPE_DROP_WHILE:
     case NODE_TYPE_RETURN:
     case NODE_TYPE_REMOVE:
     case NODE_TYPE_INSERT:

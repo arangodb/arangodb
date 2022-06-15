@@ -484,6 +484,8 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
     case ExecutionNode::WINDOW:
+    case ExecutionNode::TAKE_WHILE:
+    case ExecutionNode::DROP_WHILE:
       return false;
     case ExecutionNode::MUTEX:  // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
@@ -528,6 +530,8 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
     case ExecutionNode::WINDOW:
+    case ExecutionNode::TAKE_WHILE:
+    case ExecutionNode::DROP_WHILE:
       return false;
     case ExecutionNode::MUTEX:  // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
@@ -572,6 +576,8 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
     case ExecutionNode::WINDOW:
+    case ExecutionNode::TAKE_WHILE:
+    case ExecutionNode::DROP_WHILE:
       return false;
     case ExecutionNode::MUTEX:  // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:

@@ -28,6 +28,7 @@
 #include "Aql/QueryOptions.h"
 #include "Aql/SkipResult.h"
 #include "Basics/Result.h"
+#include "ExecutionNode.h"
 
 #include <cstdint>
 #include <utility>
