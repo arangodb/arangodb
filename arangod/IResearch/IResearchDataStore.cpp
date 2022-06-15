@@ -1284,7 +1284,7 @@ void IResearchDataStore::properties(LinkLock linkLock,
 }
 
 Result IResearchDataStore::remove(transaction::Methods& trx,
-                                  LocalDocumentId documentId) {
+                                  LocalDocumentId documentId, bool nested) {
   TRI_ASSERT(_engine);
   TRI_ASSERT(trx.state());
 
@@ -1342,7 +1342,7 @@ Result IResearchDataStore::remove(transaction::Methods& trx,
   // all of its fid stores, no impact to iResearch View data integrity
   // ...........................................................................
   try {
-    ctx->remove(*_engine, documentId);
+    ctx->remove(*_engine, documentId, nested);
 
     return {TRI_ERROR_NO_ERROR};
   } catch (basics::Exception const& e) {

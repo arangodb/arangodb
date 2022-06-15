@@ -145,6 +145,7 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
 
   bool dense() const noexcept { return !_sort.empty(); }
 
+
   static const IResearchInvertedIndexMeta& DEFAULT();
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -279,6 +280,10 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
       return _fields._fields;
   }
 
+  bool hasNested() const noexcept {
+    return _hasNested;
+  }
+
   /// @brief custom conversion to match FieldIterator expectations
   operator FieldRecord const&() const noexcept {
     return _fields;
@@ -300,5 +305,6 @@ struct IResearchInvertedIndexMeta : public IResearchDataStoreMeta {
   Consistency _consistency{Consistency::kEventual};
   std::string _defaultAnalyzerName;
   std::optional<Features> _features;
+  bool _hasNested{false};
 };
 }  // namespace arangodb::iresearch

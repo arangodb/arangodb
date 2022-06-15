@@ -592,6 +592,12 @@ bool IResearchInvertedIndexMeta::init(arangodb::ArangodServer& server,
     }
     _features = std::move(tmp);
   }
+
+  _hasNested =
+      std::find_if(fields().begin(), fields().end(), [](FieldRecord const& r) {
+        return !r.nested().empty();
+      }) != fields().end();
+
   return true;
 }
 
