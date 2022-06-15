@@ -26,6 +26,7 @@
 
 #include "IResearchFilterOptimization.h"
 #include "IResearchLinkMeta.h"
+#include "IResearchInvertedIndexMeta.h"
 
 #include "VocBase/voc-types.h"
 
@@ -53,52 +54,20 @@ struct QueryContext;
 using AnalyzerProvider =
     std::function<FieldMeta::Analyzer const&(std::string_view)>;
 
-class FilterContext {
- public:
-  FilterContext(FieldMeta::Analyzer const& analyzer, irs::score_t boost,
-                bool search, AnalyzerProvider const* provider,
-                std::string_view namePrefix) noexcept
-      : _analyzerProvider{provider},
-        _analyzer{analyzer},
-        _namePrefix{namePrefix},
-        _boost{boost},
-        _isSearchFilter{search} {
-    TRI_ASSERT(_analyzer._pool);
-  }
-
-  FilterContext(FilterContext const&) = default;
-  FilterContext& operator=(FilterContext const&) = delete;
-
-  bool isSearchFilter() const noexcept { return _isSearchFilter; }
-
-  irs::score_t boost() const noexcept { return _boost; }
-
-  FieldMeta::Analyzer const& analyzer() const noexcept { return _analyzer; }
-
+struct FilterContext {
   FieldMeta::Analyzer const& fieldAnalyzer(std::string_view name) const {
-    if (_analyzerProvider == nullptr) {
-      return _analyzer;
+    if (analyzerProvider == nullptr) {
+      return analyzer;
     }
-    return (*_analyzerProvider)(name);
+    return (*analyzerProvider)(name);
   }
 
-  AnalyzerProvider const* analyzerProvider() const noexcept {
-    return _analyzerProvider;
-  }
-
-  FieldMeta::Analyzer const& contextAnalyzer() const noexcept {
-    return _analyzer;
-  }
-
-  std::string_view namePrefix() const noexcept { return _namePrefix; }
-
- private:
-  AnalyzerProvider const* _analyzerProvider;
+  AnalyzerProvider const* analyzerProvider{};
   // need shared_ptr since pool could be deleted from the feature
-  FieldMeta::Analyzer const& _analyzer;
-  std::string_view _namePrefix;  // field name prefix
-  irs::score_t _boost;
-  bool _isSearchFilter;  // filter is building for SEARCH clause
+  FieldMeta::Analyzer const& analyzer;
+  std::span<const InvertedIndexField> fields{};
+  std::string_view namePrefix{};  // field name prefix
+  irs::score_t boost{irs::kNoBoost};
 };
 
 struct FilterFactory {
@@ -108,9 +77,8 @@ struct FilterFactory {
   ////////////////////////////////////////////////////////////////////////////////
   static arangodb::Result filter(irs::boolean_filter* filter,
                                  QueryContext const& ctx,
-                                 arangodb::aql::AstNode const& node,
-                                 bool forSearch = true,
-                                 AnalyzerProvider const* provider = nullptr);
+                                 FilterContext const& filterCtx,
+                                 arangodb::aql::AstNode const& node);
 };  // FilterFactory
 
 struct FilterConstants {

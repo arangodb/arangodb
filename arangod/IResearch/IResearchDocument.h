@@ -263,7 +263,7 @@ class FieldIterator {
 //  bool hasNested() const noexcept {
 //    return valid() &&
 //           std::any_of(_fieldsMeta->_fields._fields.begin(), _fieldsMeta->_fields._fields.end(),
-//                       [](IResearchInvertedIndexMeta::FieldRecord const& f) {
+//                       [](InvertedIndexField const& f) {
 //                         return !f.nested().empty();
 //                       });
 //  }
@@ -306,8 +306,8 @@ class FieldIterator {
 //                                         VPackSlice slice);
 //
 //  size_t _prefixLength{};
-//  IResearchInvertedIndexMeta::FieldRecord const* _begin{nullptr};
-//  IResearchInvertedIndexMeta::FieldRecord const* _end{nullptr};
+//  InvertedIndexField const* _begin{nullptr};
+//  InvertedIndexField const* _end{nullptr};
 //  IResearchInvertedIndexMeta const* _fieldsMeta{nullptr};
 //  Field _value;       // iterator's value
 //  VPackSlice _slice;  // input slice

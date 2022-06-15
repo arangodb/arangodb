@@ -80,7 +80,7 @@ using IResearchLinkIterator = arangodb::iresearch::FieldIterator<arangodb::irese
 
 using InvertedIndexFieldIterator = arangodb::iresearch::FieldIterator<
     arangodb::iresearch::IResearchInvertedIndexMeta,
-    arangodb::iresearch::IResearchInvertedIndexMeta::FieldRecord>;
+    arangodb::iresearch::InvertedIndexField>;
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
