@@ -1051,7 +1051,7 @@ TEST_F(IResearchLinkTest, test_write) {
     EXPECT_TRUE((trx.begin().ok()));
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(link.get());
     ASSERT_TRUE(l != nullptr);
-    EXPECT_TRUE((l->remove(trx, arangodb::LocalDocumentId(2)).ok()));
+    EXPECT_TRUE((l->remove(trx, arangodb::LocalDocumentId(2), false).ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE((l->commit().ok()));
   }
@@ -2344,7 +2344,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
         kEmpty, kEmpty, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     for (; begin != end; ++begin) {
-      EXPECT_TRUE(l->remove(trx, arangodb::LocalDocumentId(begin)).ok());
+      EXPECT_TRUE(l->remove(trx, arangodb::LocalDocumentId(begin), false).ok());
     }
 
     EXPECT_TRUE(trx.commit().ok());
