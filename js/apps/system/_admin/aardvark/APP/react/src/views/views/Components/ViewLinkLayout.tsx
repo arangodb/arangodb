@@ -1,10 +1,10 @@
-import React, { ReactNode } from "react";
+import React from "react";
 import { ArangoTable, ArangoTD, ArangoTH } from "../../../components/arango/table";
 import { Link } from 'react-router-dom';
+import { ChildProp } from "../../../utils/constants";
 
-type ViewLinkLayoutProps = {
+type ViewLinkLayoutProps = ChildProp & {
   fragments?: string[];
-  children: ReactNode;
 };
 
 const ViewLinkLayout = ({ fragments = [], children }: ViewLinkLayoutProps) =>
