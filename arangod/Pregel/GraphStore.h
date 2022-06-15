@@ -123,7 +123,6 @@ class GraphStore final {
   void loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex,
                  ShardID const& edgeShard, std::string const& documentID,
                  std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>& edges,
-                 std::vector<std::unique_ptr<TypedBuffer<char>>>& edgeKeys,
                  uint64_t numVertices, traverser::EdgeCollectionInfo& info);
 
   void storeVertices(std::vector<ShardID> const& globalShards,
