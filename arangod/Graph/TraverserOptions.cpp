@@ -63,12 +63,10 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
   TRI_ASSERT(type.isString());
   TRI_ASSERT(type.isEqualString("traversal"));
 #endif
+  BaseOptions::parseShardIndependentFlags(obj);
 
   minDepth = VPackHelper::getNumericValue<uint64_t>(obj, "minDepth", 1);
   maxDepth = VPackHelper::getNumericValue<uint64_t>(obj, "maxDepth", 1);
-  _parallelism = VPackHelper::getNumericValue<size_t>(obj, "parallelism", 1);
-  _refactor = VPackHelper::getBooleanValue(
-      obj, StaticStrings::GraphRefactorFlag, false);
   TRI_ASSERT(minDepth <= maxDepth);
 
   std::string tmp =
@@ -447,11 +445,10 @@ TraverserOptions::~TraverserOptions() = default;
 
 void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
+  toVelocyPackBase(builder);
 
   builder.add("minDepth", VPackValue(minDepth));
   builder.add("maxDepth", VPackValue(maxDepth));
-  builder.add("parallelism", VPackValue(_parallelism));
-  builder.add(StaticStrings::GraphRefactorFlag, VPackValue(refactor()));
 
   builder.add("neighbors", VPackValue(useNeighbors));
 
@@ -511,7 +508,6 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
     }
   }
 
-  builder.add("produceVertices", VPackValue(_produceVertices));
   builder.add("producePathsVertices", VPackValue(producePathsVertices()));
   builder.add("producePathsEdges", VPackValue(producePathsEdges()));
   builder.add("producePathsWeights", VPackValue(producePathsWeights()));
@@ -845,7 +841,6 @@ auto TraverserOptions::estimateDepth() const noexcept -> uint64_t {
 }
 
 void TraverserOptions::readProduceInfo(VPackSlice obj) {
-  _produceVertices = VPackHelper::getBooleanValue(obj, "produceVertices", true);
   _producePathsVertices =
       VPackHelper::getBooleanValue(obj, "producePathsVertices", true);
   _producePathsEdges =

@@ -24,8 +24,10 @@
 #pragma once
 
 #include "Aql/AqlFunctionsInternalCache.h"
+#include "Aql/DocumentProducingNode.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/NonConstExpressionContainer.h"
+#include "Aql/Projections.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -206,6 +208,18 @@ struct BaseOptions {
 
   void isQueryKilledCallback() const;
 
+  void setVertexProjections(aql::Projections projections);
+
+  void setEdgeProjections(aql::Projections projections);
+
+  void setMaxProjections(size_t projections) noexcept;
+
+  size_t getMaxProjections() const noexcept;
+
+  aql::Projections const& getVertexProjections() const;
+
+  aql::Projections const& getEdgeProjections() const;
+
   void setRefactor(bool r) noexcept { _refactor = r; }
 
   bool refactor() const { return _refactor; }
@@ -245,6 +259,10 @@ struct BaseOptions {
                               TRI_edge_direction_e direction);
 
   void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
+
+  void toVelocyPackBase(VPackBuilder& builder) const;
+
+  void parseShardIndependentFlags(arangodb::velocypack::Slice info);
 
  protected:
   mutable arangodb::transaction::Methods _trx;
@@ -303,6 +321,14 @@ struct BaseOptions {
 
   /// @brief whether or not we are running on a coordinator
   bool const _isCoordinator;
+
+  size_t _maxProjections{aql::DocumentProducingNode::kMaxProjections};
+
+  /// @brief Projections used on vertex data
+  aql::Projections _vertexProjections;
+
+  /// @brief Projections used on edge data
+  aql::Projections _edgeProjections;
 
   /// @brief whether or not we are running the refactored version
   /// TODO: This must be removed prior release - (is currently needed for the
