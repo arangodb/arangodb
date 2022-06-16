@@ -72,6 +72,11 @@ class Identifier {
   /// @brief check if this identifier is at least another
   bool operator>=(Identifier const& other) const noexcept;
 
+  template<class Inspector>
+  inline friend auto inspect(Inspector& f, Identifier& p) {
+    return f.apply(p._id);
+  }
+
  private:
   BaseType _id;
 };
