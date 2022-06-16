@@ -1261,7 +1261,7 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
   auto stateMachine = getDocumentState();
   auto leader = stateMachine->getLeader();
   // TODO improve error handling
-  ADB_PROD_ASSERT(stateMachine != nullptr)
+  ADB_PROD_ASSERT(leader != nullptr)
       << "Cannot get DocumentLeaderState in shard " << name();
   return leader;
 }
@@ -1271,7 +1271,7 @@ auto LogicalCollection::getDocumentStateFollower() -> std::shared_ptr<
   auto stateMachine = getDocumentState();
   auto follower = stateMachine->getFollower();
   // TODO improve error handling
-  ADB_PROD_ASSERT(stateMachine != nullptr)
+  ADB_PROD_ASSERT(follower != nullptr)
       << "Cannot get DocumentFollowerState in shard " << name();
   return follower;
 }
