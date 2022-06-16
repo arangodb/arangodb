@@ -3495,14 +3495,14 @@ TEST_F(
             server, *it,
             mangleNumeric("array[*].subobj.id"));
       },
-     /* [](auto& server, auto const& it) {
+      [](auto& server, auto const& it) {
         assertField<irs::null_token_stream>(server, *it,
                                             mangleNull("array[*].subobj.id"));
       },
       [](auto& server, auto const& it) {
         assertField<irs::null_token_stream>(server, *it,
                                             mangleNull("array[*].id"));
-      }*/
+      }
   };
 
   InvertedIndexFieldIterator it(
@@ -3626,7 +3626,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
       [](auto& server, auto const& it) {
         assertField<arangodb::iresearch::GeoJSONAnalyzer>(
             server, *it, "array[*].subobj.id", "my_geo");
-      }/* ,
+      } ,
       [](auto& server, auto const& it) {
         assertField<irs::null_token_stream>(server, *it,
                                             mangleNull("array[*].id"));
@@ -3634,7 +3634,7 @@ TEST_F(IResearchDocumentTest, InvertedFieldIterator_traverse_complex_with_geo) {
       [](auto& server, auto const& it) {
         assertField<irs::null_token_stream>(server, *it,
                                             mangleNull("array[*].subobj.id"));
-      }*/
+      }
   };
 
   InvertedIndexFieldIterator it(

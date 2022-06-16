@@ -244,8 +244,6 @@ inline bool acceptAll(std::string& buffer,
   buffer.append(key.c_str(), key.size());
   for (auto& nested : context->_fields) {
     auto fullName = nested.path();
-    // FIXME: starts_with will not work in general/ need to check up to first
-    // nesting delimiter!
     if (fullName.starts_with(buffer)) {
       if (buffer == nested.attributeString()) {
         if (value.value.isObject() &&
