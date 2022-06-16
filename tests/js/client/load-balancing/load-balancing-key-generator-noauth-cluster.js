@@ -32,28 +32,10 @@ const db = require("internal").db;
 const request = require("@arangodb/request");
 const _ = require("lodash");
 const isEnterprise = require("internal").isEnterprise();
+const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
+
+const servers = getCoordinatorEndpoints();
 const ERRORS = require("@arangodb").errors;
-let isCluster = require("internal").isCluster();
-
-function getCoordinators() {
-  const isCoordinator = (d) => (_.toLower(d.role) === 'coordinator');
-  const toEndpoint = (d) => (d.endpoint);
-  const endpointToURL = (endpoint) => {
-    if (endpoint.substr(0, 6) === 'ssl://') {
-      return 'https://' + endpoint.substr(6);
-    }
-    var pos = endpoint.indexOf('://');
-    if (pos === -1) {
-      return 'http://' + endpoint;
-    }
-    return 'http' + endpoint.substr(pos);
-  };
-
-  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
-  return instanceInfo.arangods.filter(isCoordinator)
-    .map(toEndpoint)
-    .map(endpointToURL);
-}
 
 function KeyGeneratorSuite() {
   'use strict';
@@ -117,7 +99,7 @@ function KeyGeneratorSuite() {
 
   return {
     setUpAll: function() {
-      coordinators = getCoordinators();
+      coordinators = getCoordinatorEndpoints();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }
@@ -183,7 +165,7 @@ function KeyGeneratorSuite() {
     },
 
     testAutoincrementOnOneShard: function() {
-      if (!isEnterprise || !isCluster) {
+      if (!isEnterprise) {
         return;
       }
       db._createDatabase(cn, {sharding: "single"});

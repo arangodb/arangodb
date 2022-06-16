@@ -264,7 +264,12 @@ void Projections::toVelocyPackFromIndex(
 }
 
 void Projections::toVelocyPack(arangodb::velocypack::Builder& b) const {
-  b.add(::projectionsKey, VPackValue(VPackValueType::Array));
+  toVelocyPack(b, ::projectionsKey);
+}
+
+void Projections::toVelocyPack(arangodb::velocypack::Builder& b,
+                               std::string_view key) const {
+  b.add(key, VPackValue(VPackValueType::Array));
   for (auto const& it : _projections) {
     if (it.path.size() == 1) {
       // projection on a top-level attribute. will be returned as a string
@@ -285,9 +290,14 @@ void Projections::toVelocyPack(arangodb::velocypack::Builder& b) const {
 
 /*static*/ Projections Projections::fromVelocyPack(
     arangodb::velocypack::Slice slice) {
+  return fromVelocyPack(slice, ::projectionsKey);
+}
+
+/*static*/ Projections Projections::fromVelocyPack(
+    arangodb::velocypack::Slice slice, std::string_view key) {
   std::vector<arangodb::aql::AttributeNamePath> projections;
 
-  VPackSlice p = slice.get(::projectionsKey);
+  VPackSlice p = slice.get(key);
   if (p.isArray()) {
     for (auto const& it : arangodb::velocypack::ArrayIterator(p)) {
       if (it.isString()) {
