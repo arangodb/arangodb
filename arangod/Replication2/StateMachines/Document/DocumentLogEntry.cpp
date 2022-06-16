@@ -21,32 +21,20 @@
 /// @author Alexandru Petenchea
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
-
 #include "DocumentLogEntry.h"
-#include "DocumentStateMachine.h"
-#include "DocumentStateStrategy.h"
+#include "Inspection/VPack.h"
 
-#include "Replication2/LoggerContext.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
+using namespace arangodb::replication2::replicated_state;
+using namespace arangodb::replication2::replicated_state::document;
 
-namespace arangodb::replication2::replicated_state::document {
+auto EntryDeserializer<DocumentLogEntry>::operator()(
+    streams::serializer_tag_t<DocumentLogEntry>, velocypack::Slice s) const
+    -> DocumentLogEntry {
+  return arangodb::velocypack::deserialize<DocumentLogEntry>(s);
+}
 
-struct DocumentCore {
-  explicit DocumentCore(
-      GlobalLogIdentifier gid, DocumentCoreParameters coreParameters,
-      std::shared_ptr<IDocumentStateAgencyHandler> agencyHandler,
-      std::shared_ptr<IDocumentStateShardHandler> shardHandler,
-      LoggerContext loggerContext);
-
-  LoggerContext const loggerContext;
-
-  auto getCollectionId() -> std::string_view;
-
- private:
-  GlobalLogIdentifier _gid;
-  DocumentCoreParameters _params;
-  std::shared_ptr<IDocumentStateAgencyHandler> _agencyHandler;
-  std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
-};
-}  // namespace arangodb::replication2::replicated_state::document
+void EntrySerializer<DocumentLogEntry>::operator()(
+    streams::serializer_tag_t<DocumentLogEntry>, DocumentLogEntry const& e,
+    velocypack::Builder& b) const {
+  serialize(b, e);
+}

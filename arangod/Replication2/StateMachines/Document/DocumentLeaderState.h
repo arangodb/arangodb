@@ -23,30 +23,40 @@
 
 #pragma once
 
-#include "DocumentLogEntry.h"
+#include "DocumentCore.h"
 #include "DocumentStateMachine.h"
-#include "DocumentStateStrategy.h"
 
-#include "Replication2/LoggerContext.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Basics/UnshackledMutex.h"
+
+#include <memory>
 
 namespace arangodb::replication2::replicated_state::document {
+struct DocumentLeaderState
+    : replicated_state::IReplicatedLeaderState<DocumentState> {
+  explicit DocumentLeaderState(std::unique_ptr<DocumentCore> core);
 
-struct DocumentCore {
-  explicit DocumentCore(
-      GlobalLogIdentifier gid, DocumentCoreParameters coreParameters,
-      std::shared_ptr<IDocumentStateAgencyHandler> agencyHandler,
-      std::shared_ptr<IDocumentStateShardHandler> shardHandler,
-      LoggerContext loggerContext);
+  [[nodiscard]] auto resign() && noexcept
+      -> std::unique_ptr<DocumentCore> override;
+
+  auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
+      -> futures::Future<Result> override;
+
+  void replicateOperations(velocypack::SharedSlice payload,
+                           TRI_voc_document_operation_e operation,
+                           TransactionId transactionId);
 
   LoggerContext const loggerContext;
-
-  auto getCollectionId() -> std::string_view;
+  std::string_view collectionId;
 
  private:
-  GlobalLogIdentifier _gid;
-  DocumentCoreParameters _params;
-  std::shared_ptr<IDocumentStateAgencyHandler> _agencyHandler;
-  std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
+  struct GuardedData {
+    explicit GuardedData(std::unique_ptr<DocumentCore> core)
+        : core(std::move(core)){};
+    [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
+
+    std::unique_ptr<DocumentCore> core;
+  };
+
+  Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
 };
 }  // namespace arangodb::replication2::replicated_state::document

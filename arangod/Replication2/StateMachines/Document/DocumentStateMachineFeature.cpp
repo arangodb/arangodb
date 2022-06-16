@@ -30,6 +30,7 @@
 
 #include "DocumentStateMachineFeature.h"
 #include "DocumentStateMachine.h"
+#include "DocumentStateStrategy.h"
 
 using namespace arangodb::replication2::replicated_state::document;
 

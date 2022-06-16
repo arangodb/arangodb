@@ -50,3 +50,7 @@ DocumentCore::DocumentCore(
 
   LOG_CTX("b7e0d", TRACE, loggerContext) << "Created shard " << shardId;
 }
+
+auto DocumentCore::getCollectionId() -> std::string_view {
+  return _params.collectionId;
+}

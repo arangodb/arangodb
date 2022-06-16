@@ -23,30 +23,22 @@
 
 #pragma once
 
-#include "DocumentLogEntry.h"
 #include "DocumentStateMachine.h"
-#include "DocumentStateStrategy.h"
 
-#include "Replication2/LoggerContext.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
 
 namespace arangodb::replication2::replicated_state::document {
+struct DocumentFollowerState
+    : replicated_state::IReplicatedFollowerState<DocumentState> {
+  explicit DocumentFollowerState(std::unique_ptr<DocumentCore> core);
 
-struct DocumentCore {
-  explicit DocumentCore(
-      GlobalLogIdentifier gid, DocumentCoreParameters coreParameters,
-      std::shared_ptr<IDocumentStateAgencyHandler> agencyHandler,
-      std::shared_ptr<IDocumentStateShardHandler> shardHandler,
-      LoggerContext loggerContext);
+ protected:
+  [[nodiscard]] auto resign() && noexcept
+      -> std::unique_ptr<DocumentCore> override;
+  auto acquireSnapshot(ParticipantId const& destination, LogIndex) noexcept
+      -> futures::Future<Result> override;
+  auto applyEntries(std::unique_ptr<EntryIterator> ptr) noexcept
+      -> futures::Future<Result> override;
 
-  LoggerContext const loggerContext;
-
-  auto getCollectionId() -> std::string_view;
-
- private:
-  GlobalLogIdentifier _gid;
-  DocumentCoreParameters _params;
-  std::shared_ptr<IDocumentStateAgencyHandler> _agencyHandler;
-  std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
+  std::unique_ptr<DocumentCore> _core;
 };
-}  // namespace arangodb::replication2::replicated_state::document
+}
