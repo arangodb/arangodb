@@ -183,6 +183,23 @@ void parseGraphCollectionRestriction(std::vector<std::string>& collections,
   }
 }
 
+ResultT<size_t> parseMaxProjections(AstNode const* value) {
+  int64_t maxProjections = -1;
+
+  if (value->isNumericValue()) {
+    if (value->isIntValue()) {
+      maxProjections = value->getIntValue();
+    } else if (value->isDoubleValue()) {
+      maxProjections = static_cast<int64_t>(value->getDoubleValue());
+    }
+  }
+  if (maxProjections >= 0) {
+    // got a valid value
+    return static_cast<size_t>(maxProjections);
+  }
+  return Result{TRI_ERROR_BAD_PARAMETER};
+}
+
 std::unique_ptr<graph::BaseOptions> createTraversalOptions(
     Ast* ast, AstNode const* direction, AstNode const* optionsNode) {
   TRI_ASSERT(direction != nullptr);
@@ -278,6 +295,15 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
         } else if (name == StaticStrings::GraphRefactorFlag &&
                    value->isBoolValue()) {
           options->setRefactor(value->getBoolValue());
+        } else if (name == arangodb::StaticStrings::MaxProjections) {
+          auto maxProjections = parseMaxProjections(value);
+          if (maxProjections.fail()) {
+            // will raise a warning, which can optionally abort the query
+            ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
+                                                  name.data(), name.size());
+          } else {
+            options->setMaxProjections(maxProjections.get());
+          }
         } else {
           ExecutionPlan::invalidOptionAttribute(
               ast->query(), "unknown", "TRAVERSAL", name.data(), name.size());
@@ -359,23 +385,13 @@ void setForOptions(QueryContext& query, AstNode const* node,
         TRI_ASSERT(child->numMembers() > 0);
         std::string_view name(child->getStringView());
         if (name == arangodb::StaticStrings::MaxProjections) {
-          AstNode const* value = child->getMember(0);
-          int64_t maxProjections = -1;
-
-          if (value->isNumericValue()) {
-            if (value->isIntValue()) {
-              maxProjections = value->getIntValue();
-            } else if (value->isDoubleValue()) {
-              maxProjections = static_cast<int64_t>(value->getDoubleValue());
-            }
-          }
-          if (maxProjections >= 0) {
-            // got a valid value
-            dn->setMaxProjections(static_cast<size_t>(maxProjections));
-          } else {
+          auto maxProjections = parseMaxProjections(child->getMember(0));
+          if (maxProjections.fail()) {
             // will raise a warning, which can optionally abort the query
             ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
                                                   name.data(), name.size());
+          } else {
+            dn->setMaxProjections(maxProjections.get());
           }
         } else if (name == arangodb::StaticStrings::UseCache) {
           AstNode const* value = child->getMember(0);
