@@ -28,7 +28,6 @@ const jsunity = require('jsunity');
 const arangodb = require("@arangodb");
 const _ = require('lodash');
 const db = arangodb.db;
-const request = require("@arangodb/request");
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const sh = require("@arangodb/testutils/replicated-state-helper");
 
@@ -100,6 +99,14 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
         assertEqual(plan, undefined);
       }
     },
+
+    /*
+    testReplicateOperations: function() {
+      const query = `FOR i IN 1..10 INSERT {i: "test"} INTO ${collectionName}`;
+      let res = db._query(query);
+      require('internal').print(res);
+    }
+     */
   };
 };
 
