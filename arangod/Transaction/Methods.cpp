@@ -992,6 +992,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
+  auto replicationVersion = vocbase().replicationVersion();
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // This failure point is to test the case that a former leader has
@@ -1016,16 +1017,20 @@ Future<OperationResult> transaction::Methods::insertLocal(
             TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
 
-      switch (followerInfo->allowedToWrite()) {
-        case FollowerInfo::WriteState::FORBIDDEN:
-          // We cannot fulfill minimum replication Factor. Reject write.
-          return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
-        case FollowerInfo::WriteState::UNAVAILABLE:
-        case FollowerInfo::WriteState::STARTUP:
-          return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
-                                 options);
-        default:
-          break;
+      // This is just a trick to let the function continue for replication2
+      // databases
+      if (replicationVersion != replication::Version::TWO) {
+        switch (followerInfo->allowedToWrite()) {
+          case FollowerInfo::WriteState::FORBIDDEN:
+            // We cannot fulfill minimum replication Factor. Reject write.
+            return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+          case FollowerInfo::WriteState::UNAVAILABLE:
+          case FollowerInfo::WriteState::STARTUP:
+            return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+                                   options);
+          default:
+            break;
+        }
       }
 
       replicationType = ReplicationType::LEADER;
@@ -1323,7 +1328,8 @@ Future<OperationResult> transaction::Methods::insertLocal(
 #endif
 
     if (!isMock && replicationType == ReplicationType::LEADER &&
-        !followers->empty()) {
+        (!followers->empty() ||
+         replicationVersion == replication::Version::TWO)) {
       TRI_ASSERT(collection != nullptr);
 
       // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
@@ -2557,7 +2563,11 @@ Future<Result> Methods::replicateOperations(
     std::shared_ptr<VPackBuffer<uint8_t>> const& ops,
     std::unordered_set<size_t> excludePositions) {
   TRI_ASSERT(followerList != nullptr);
-  TRI_ASSERT(!followerList->empty());
+
+  // It is normal to have an empty followerList when using replication2
+  TRI_ASSERT(!followerList->empty() ||
+             collection->vocbase().replicationVersion() ==
+                 replication::Version::TWO);
 
   transaction::BuilderLeaser payload(this);
   auto doOneDoc = [&](VPackSlice doc, VPackSlice result) {
@@ -2609,7 +2619,6 @@ Future<Result> Methods::replicateOperations(
 
   if (vocbase().replicationVersion() == replication::Version::TWO) {
     auto leaderState = collection->getDocumentStateLeader();
-    LOG_DEVEL << "replicating with leaderState";
     leaderState->replicateOperations(payload->sharedSlice(), operation,
                                      state()->id());
     return Result{};

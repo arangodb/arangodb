@@ -38,6 +38,15 @@ const shardIdToLogId = function (shardId) {
   return shardId.slice(1);
 };
 
+const getDocumentEntry = function (document, entries) {
+  for (const entry of entries) {
+    if (entry.hasOwnProperty("payload") && entry.payload[1].data.name === document.name) {
+      return entry;
+    }
+  }
+  return null;
+};
+
 const replicatedStateDocumentStoreSuiteReplication2 = function () {
   let previousDatabase, databaseExisted = true;
   return {
@@ -100,13 +109,20 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       }
     },
 
-    /*
-    testReplicateOperations: function() {
-      const query = `FOR i IN 1..10 INSERT {i: "test"} INTO ${collectionName}`;
-      let res = db._query(query);
-      require('internal').print(res);
+    testReplicateOperationsInsert: function() {
+      let collection = db._collection(collectionName);
+      let shards = collection.shards();
+      let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
+      let documents = [{name: "foo"}, {name: "bar"}];
+
+      documents.forEach(doc => collection.insert(doc));
+      let allEntries = logs.reduce((previous, current) => previous.concat(current.head(1000)), []);
+      for (const doc of documents) {
+        let entry = getDocumentEntry(doc, allEntries);
+        assertTrue(entry !== null);
+        assertEqual(entry.payload[1].operation, "insert");
+      }
     }
-     */
   };
 };
 
