@@ -55,6 +55,7 @@
 #include "Random/RandomGenerator.h"
 #include "Metrics/Counter.h"
 #include "Replication/ReplicationMetricsFeature.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
@@ -2606,7 +2607,13 @@ Future<Result> Methods::replicateOperations(
     return Result();
   }
 
-  // TODO - replicate payload
+  if (vocbase().replicationVersion() == replication::Version::TWO) {
+    auto leaderState = collection->getDocumentStateLeader();
+    LOG_DEVEL << "replicating with leaderState";
+    leaderState->replicateOperations(payload->sharedSlice(), operation,
+                                     state()->id());
+    return Result{};
+  }
 
   // path and requestType are different for insert/remove/modify.
 
