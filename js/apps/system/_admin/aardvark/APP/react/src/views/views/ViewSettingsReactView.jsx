@@ -18,7 +18,8 @@ const ViewSettingsReactView = ({ name }) => {
   });
   const view = useView(name);
   const [changed, setChanged] = useState(!!window.sessionStorage.getItem(`${name}-changed`));
-  const [state, dispatch] = useReducer(getReducer(initialState.current, postProcessor, setChanged, name),
+  const [state, dispatch] = useReducer(
+    getReducer(initialState.current, postProcessor, setChanged, name),
     initialState.current);
   const permissions = usePermissions();
   const [isAdminUser, setIsAdminUser] = useState(false);
@@ -137,21 +138,21 @@ const ViewSettingsReactView = ({ name }) => {
               </tbody>
             </table>
           </div>
+          {
+            isAdminUser
+              ? <div className="tab-pane tab-pane-modal active" id="Actions">
+                {
+                  changed
+                    ? <SaveButton view={formState} oldName={name} setChanged={setChanged}/>
+                    : null
+                }
+                <DeleteButton view={formState}
+                              modalCid={`modal-content-delete-${formState.globallyUniqueId}`}/>
+              </div>
+              : null
+          }
         </div>
       </div>
-      {
-        isAdminUser
-          ? <div className="modal-footer">
-            <DeleteButton view={formState}
-                          modalCid={`modal-content-delete-${formState.globallyUniqueId}`}/>
-            {
-              changed
-                ? <SaveButton view={formState} oldName={name} setChanged={setChanged}/>
-                : null
-            }
-          </div>
-          : null
-      }
     </div>
   </div>;
 };

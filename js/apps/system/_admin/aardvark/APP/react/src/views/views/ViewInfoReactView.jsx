@@ -121,13 +121,13 @@ const ViewInfoReactView = ({ name }) => {
                 </div>
               </th>
               <th className="collectionTh">
-                  <ToolTip
-                    title="Maximum number of concurrent active writers (segments) that perform a transaction."
-                    setArrow={true}
-                  >
-                    <span className="arangoicon icon_arangodb_info"></span>
-                  </ToolTip>
-                </th>
+                <ToolTip
+                  title="Maximum number of concurrent active writers (segments) that perform a transaction."
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info"></span>
+                </ToolTip>
+              </th>
             </tr>
 
             <tr>
@@ -138,13 +138,13 @@ const ViewInfoReactView = ({ name }) => {
                 </div>
               </th>
               <th className="collectionTh">
-                  <ToolTip
-                    title="Maximum number of writers (segments) cached in the pool."
-                    setArrow={true}
-                  >
-                    <span className="arangoicon icon_arangodb_info"></span>
-                  </ToolTip>
-                </th>
+                <ToolTip
+                  title="Maximum number of writers (segments) cached in the pool."
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info"></span>
+                </ToolTip>
+              </th>
             </tr>
 
             <tr>
@@ -155,13 +155,13 @@ const ViewInfoReactView = ({ name }) => {
                 </div>
               </th>
               <th className="collectionTh">
-                  <ToolTip
-                    title="Maximum memory byte size per writer (segment) before a writer (segment) flush is triggered."
-                    setArrow={true}
-                  >
-                    <span className="arangoicon icon_arangodb_info"></span>
-                  </ToolTip>
-                </th>
+                <ToolTip
+                  title="Maximum memory byte size per writer (segment) before a writer (segment) flush is triggered."
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info"></span>
+                </ToolTip>
+              </th>
             </tr>
             </tbody>
           </ArangoTable>
@@ -196,13 +196,13 @@ const ViewInfoReactView = ({ name }) => {
                 </div>
               </th>
               <th className="collectionTh">
-                  <ToolTip
-                    title="Defines how to compress the primary sort data."
-                    setArrow={true}
-                  >
-                    <span className="arangoicon icon_arangodb_info"></span>
-                  </ToolTip>
-                </th>
+                <ToolTip
+                  title="Defines how to compress the primary sort data."
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info"></span>
+                </ToolTip>
+              </th>
             </tr>
             </tbody>
           </ArangoTable>
@@ -227,25 +227,23 @@ const ViewInfoReactView = ({ name }) => {
                 </div>
               </th>
               <th className="collectionTh">
-                  <ToolTip
-                    title="An array of objects to describe which document attributes to store in the View index."
-                    setArrow={true}
-                  >
-                    <span className="arangoicon icon_arangodb_info"></span>
-                  </ToolTip>
-                </th>
+                <ToolTip
+                  title="An array of objects to describe which document attributes to store in the View index."
+                  setArrow={true}
+                >
+                  <span className="arangoicon icon_arangodb_info"></span>
+                </ToolTip>
+              </th>
             </tr>
             </tbody>
           </ArangoTable>
         </div>
+        {
+          isAdminUser && changed
+            ? <SaveButton view={view} oldName={name} setChanged={setChanged}/>
+            : null
+        }
       </div>
-      {
-        isAdminUser && changed
-          ? <div className="modal-footer">
-            <SaveButton view={view} oldName={name} setChanged={setChanged}/>
-          </div>
-          : null
-      }
     </div>
   </div>;
 };

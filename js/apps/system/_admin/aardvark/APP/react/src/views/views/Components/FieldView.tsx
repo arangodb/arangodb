@@ -1,17 +1,19 @@
 import React, { useContext } from "react";
 import ViewLinkLayout from "./ViewLinkLayout";
 import { ArangoTable, ArangoTD } from "../../../components/arango/table";
-import { ViewContext } from "../constants";
+import { FormState, ViewContext } from "../constants";
 import LinkPropertiesInput from "../forms/inputs/LinkPropertiesInput";
 import { useRouteMatch } from "react-router-dom";
 import { get, last } from "lodash";
+import { SaveButton } from "../Actions";
 
 type FieldViewProps = {
   disabled: boolean | undefined;
+  name: string;
 };
 
-const FieldView = ({ disabled }: FieldViewProps) => {
-  const { formState, dispatch } = useContext(ViewContext);
+const FieldView = ({ disabled, name }: FieldViewProps) => {
+  const { formState, dispatch, isAdminUser, changed, setChanged } = useContext(ViewContext);
   const match = useRouteMatch();
 
   const fragments = match.url.slice(1).split('/');
@@ -25,21 +27,13 @@ const FieldView = ({ disabled }: FieldViewProps) => {
   const field = get(formState, `${basePath}.fields[${fieldName}]`);
 
   return <ViewLinkLayout fragments={fragments}>
-    <ArangoTable style={{ marginLeft: 0 }}>
+    <ArangoTable style={{
+      marginLeft: 0,
+      border: 'none'
+    }}>
       <tbody>
-      <tr key={fieldName} style={{ borderBottom: "1px  solid #794242" }}>
-        <ArangoTD seq={0} style={{ textAlign: "center" }}>
-          {
-            fragments.map((fragment, idx) => {
-              if (idx < fragments.length - 1) {
-                return <><b>{fragment}</b><br/><i className={'fa fa-angle-double-down'}/><br/></>;
-              }
-
-              return <b>{fragment}</b>;
-            })
-          }
-        </ArangoTD>
-        <ArangoTD seq={1}>
+      <tr key={fieldName}>
+        <ArangoTD seq={0}>
           {
             field
               ? <LinkPropertiesInput
@@ -54,6 +48,13 @@ const FieldView = ({ disabled }: FieldViewProps) => {
       </tr>
       </tbody>
     </ArangoTable>
+    {
+      isAdminUser && changed
+        ? <div className="tab-pane tab-pane-modal active" id="Save">
+          <SaveButton view={formState as FormState} setChanged={setChanged} oldName={name}/>
+        </div>
+        : null
+    }
   </ViewLinkLayout>;
 };
 

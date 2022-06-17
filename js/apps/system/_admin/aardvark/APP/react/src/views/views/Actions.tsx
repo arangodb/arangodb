@@ -117,9 +117,14 @@ export const SaveButton = ({
   };
 
 
-  return (
-    <IconButton icon={"save"} onClick={handleSave} type={"success"}>Save</IconButton>
-  );
+  return <IconButton icon={"save"} onClick={handleSave} type={"success"} style={{
+    marginTop: 10,
+    marginBottom: 10,
+    marginRight: 10,
+    float: 'right'
+  }}>
+    Save View
+  </IconButton>;
 };
 
 export const DeleteButton = ({ view }: ButtonProps) => {
@@ -157,6 +162,12 @@ export const DeleteButton = ({ view }: ButtonProps) => {
         icon={"trash-o"}
         onClick={() => setShow(true)}
         type={"danger"}
+        style={{
+          marginTop: 10,
+          marginBottom: 10,
+          marginRight: 10,
+          float: 'right'
+        }}
       >
         Delete
       </IconButton>

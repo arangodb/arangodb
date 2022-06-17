@@ -89,14 +89,12 @@ const LinkList = ({ name }: ViewProps) => {
               : null
           }
         </ArangoTable>
+        {
+          isAdminUser && changed
+            ? <SaveButton view={formState} oldName={name} setChanged={setChanged}/>
+            : null
+        }
       </div>
-      {
-        isAdminUser && changed
-          ? <div className="modal-footer">
-            <SaveButton view={formState} oldName={name} setChanged={setChanged}/>
-          </div>
-          : null
-      }
     </div>
   );
 };

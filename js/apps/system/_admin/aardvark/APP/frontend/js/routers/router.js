@@ -94,7 +94,7 @@
           window.sessionStorage.getItem(`${replaceUrlSecond}-changed`)) {
           skipExecute = true;
           const tableContent = [
-            window.modalView.createReadOnlyEntry('unsavedConfirmationDialog', 'Are you sure?',
+            window.modalView.createReadOnlyEntry('unsavedConfirmationDialog', null,
               `
                 You have unsaved changes made to view: ${replaceUrlSecond}. If you navigate away
                 from this page, your changes will be lost. If you are sure, click on 'Discard' to
@@ -113,7 +113,7 @@
             })
           ];
 
-          window.modalView.show('modalTable.ejs', 'Important!', buttons, tableContent, undefined, undefined, undefined, true);
+          window.modalView.show('modalTable.ejs', 'You have unsaved changes!', buttons, tableContent, undefined, undefined, undefined, true);
         }
 
         $('#modal-dialog').on('hide', function () {

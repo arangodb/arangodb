@@ -1,5 +1,5 @@
 import React, { useContext } from "react";
-import { ArangoTable, ArangoTD, ArangoTH } from "../../../components/arango/table";
+import { ArangoTable, ArangoTD } from "../../../components/arango/table";
 import { IconButton } from "../../../components/arango/buttons";
 import { ViewContext } from "../constants";
 import { Link as HashLink, Link, useRouteMatch } from "react-router-dom";
@@ -36,18 +36,6 @@ const FieldList = ({
 
   return (
     <ArangoTable style={{ marginLeft: 0 }}>
-      <thead>
-        <tr>
-          <ArangoTH seq={0} style={{ width: "8%" }}>
-            Field
-          </ArangoTH>
-          {disabled ? null : (
-            <ArangoTH seq={1} style={{ width: "20%" }}>
-              Action
-            </ArangoTH>
-          )}
-        </tr>
-      </thead>
       <tbody>
         {fieldKeys.length
           ? fieldKeys.map(fld =>

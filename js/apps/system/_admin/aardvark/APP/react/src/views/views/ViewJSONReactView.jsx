@@ -21,7 +21,8 @@ const ViewJSONReactView = ({ name }) => {
   });
   const view = useView(name);
   const [changed, setChanged] = useState(!!window.sessionStorage.getItem(`${name}-changed`));
-  const [state, dispatch] = useReducer(getReducer(initialState.current, postProcessor, setChanged, name),
+  const [state, dispatch] = useReducer(
+    getReducer(initialState.current, postProcessor, setChanged, name),
     initialState.current);
   const permissions = usePermissions();
   const [views, setViews] = useState([]);
@@ -88,14 +89,14 @@ const ViewJSONReactView = ({ name }) => {
             </Grid>
           </div>
         </div>
+        {
+          isAdminUser && changed
+            ? <div className="tab-content" id="Save">
+              <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged}/>
+            </div>
+            : null
+        }
       </div>
-      {
-        isAdminUser && changed
-          ? <div className="modal-footer">
-            <SaveButton view={formState} oldName={name} menu={'json'} setChanged={setChanged}/>
-          </div>
-          : null
-      }
     </div>
   </div>;
 };

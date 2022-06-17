@@ -12,7 +12,8 @@ const ViewConsolidationReactView = ({ name }) => {
   });
   const view = useView(name);
   const [changed, setChanged] = useState(!!window.sessionStorage.getItem(`${name}-changed`));
-  const [state, dispatch] = useReducer(getReducer(initialState.current, postProcessor, setChanged, name),
+  const [state, dispatch] = useReducer(
+    getReducer(initialState.current, postProcessor, setChanged, name),
     initialState.current);
   const permissions = usePermissions();
   const [isAdminUser, setIsAdminUser] = useState(false);
@@ -44,15 +45,15 @@ const ViewConsolidationReactView = ({ name }) => {
             <ConsolidationPolicyForm formState={formState} dispatch={dispatch}
                                      disabled={!isAdminUser}/>
           </div>
+          {
+            isAdminUser && changed
+              ? <div className="tab-pane tab-pane-modal active" id="Save">
+                <SaveButton view={formState} oldName={name} setChanged={setChanged}/>
+              </div>
+              : null
+          }
         </div>
       </div>
-      {
-        isAdminUser && changed
-          ? <div className="modal-footer">
-            <SaveButton view={formState} oldName={name} setChanged={setChanged}/>
-          </div>
-          : null
-      }
     </div>
   </div>;
 };
