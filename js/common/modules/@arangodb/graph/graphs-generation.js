@@ -40,17 +40,27 @@ const makeEdge = (from, to, vColl, name_prefix, inverse = false) => {
         return {
             _from: `${vColl}/${name_prefix}_${to}`,
             _to: `${vColl}/${name_prefix}_${from}`,
-            vertex: `${name_prefix}_${from}`
+            vertex: `${name_prefix}_${to}`
         };
     }
 };
 
+function makeVertex(name, name_prefix) {
+    return {_key: `${name_prefix}_${name}`};
+}
+
 function makeVertices(length, name_prefix) {
     let vertices = [];
     for (let i = 0; i < length; ++i) {
-        vertices.push({_key: `${name_prefix}_${i}`});
+        vertices.push(makeVertex(i, name_prefix));
     }
     return vertices;
+}
+
+function createSingleVertex(name_prefix) {
+    const vertices = makeVertices(1, name_prefix);
+    const edges = [];
+    return {vertices, edges};
 }
 
 function createDirectedCycle(length, vColl, name_prefix) {
@@ -174,7 +184,10 @@ function createClique(size, vColl, name_prefix, kind = "bidirected") {
 // console.log(createClique(3, "vertices", "v", "linear"));
 // console.log(createClique(4, "vertices", "v", "linear"));
 
-exports.createDirectedCycle = createDirectedCycle();
-exports.createAlternatingCycle = createAlternatingCycle();
-exports.createFullBinaryTree = createFullBinaryTree();
-exports.createClique = createClique();
+exports.makeVertex = makeVertex;
+exports.makeEdge = makeEdge;
+exports.createDirectedCycle = createDirectedCycle;
+exports.createAlternatingCycle = createAlternatingCycle;
+exports.createFullBinaryTree = createFullBinaryTree;
+exports.createClique = createClique;
+exports.createSingleVertex = createSingleVertex;
