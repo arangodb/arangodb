@@ -25,6 +25,7 @@
 #pragma once
 
 #include <stdlib.h>
+#include <iostream>
 #include <ostream>
 #include <sstream>
 #include <string>
@@ -266,24 +267,26 @@ struct AssertionConditionalStream {
   std::ostringstream stream;
   template<typename T>
   auto operator<<(T const& v) noexcept -> AssertionConditionalStream& {
-    if (condition) {
-      stream << v;
-    }
+    stream << v;
     return *this;
   }
-  auto withCondition(bool c) -> AssertionConditionalStream&& {
+  auto withCondition(bool c) -> AssertionConditionalStream& {
     condition = c;
-    return std::move(*this);
+    return *this;
   }
 };
 
 struct AssertionConditionalLogger {
-  void operator&(AssertionConditionalStream const& stream) const {
+  void operator&(AssertionConditionalStream& stream) const {
     if (!stream.condition) {
       std::string message = stream.stream.str();
       arangodb::CrashHandler::assertionFailure(
           file, line, function, expr,
           message.empty() ? nullptr : message.c_str());
+    } else {
+      // need to clear the stream to avoid cumulation of assertion output!
+      stream.stream.str({});
+      stream.stream.clear();
     }
   }
 
