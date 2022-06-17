@@ -55,6 +55,8 @@ class TraverserCacheTest : public ::testing::Test {
   std::unordered_map<std::string, std::vector<std::string>>
       collectionToShardMap{};  // can be empty, only used in standalone mode
   arangodb::ResourceMonitor* _monitor;
+  arangodb::aql::Projections _vertexProjections{};
+  arangodb::aql::Projections _edgeProjections{};
 
   TraverserCacheTest() : gdb(s.server, "testVocbase") {
     query = gdb.getQuery("RETURN 1", std::vector<std::string>{});
@@ -63,7 +65,7 @@ class TraverserCacheTest : public ::testing::Test {
     _monitor = &query->resourceMonitor();
     traverserCache = std::make_unique<RefactoredTraverserCache>(
         trx.get(), query.get(), query->resourceMonitor(), stats,
-        collectionToShardMap);
+        collectionToShardMap, _vertexProjections, _edgeProjections);
   }
 
   ~TraverserCacheTest() = default;
