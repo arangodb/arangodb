@@ -29,6 +29,7 @@
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/ParticipantsHealth.h"
 #include "Replication2/ReplicatedLog/Supervision.h"
 #include "Replication2/ReplicatedLog/SupervisionAction.h"
 
@@ -290,7 +291,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action) {
   auto const& participantsConfig =
       ParticipantsConfig{.generation = 1,
                          .participants = participantsFlags,
-                         .config = LogPlanConfig(3, 3, true)};
+                         .config = LogPlanConfig(3, true)};
 
   auto const& plan = LogPlanSpecification(
       logId,
@@ -360,7 +361,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_wait_for_committed) {
   auto const& participantsConfig =
       ParticipantsConfig{.generation = 2,
                          .participants = participantsFlags,
-                         .config = LogPlanConfig(3, 3, true)};
+                         .config = LogPlanConfig(3, true)};
 
   auto const& plan = LogPlanSpecification(
       logId,
@@ -441,7 +442,7 @@ TEST_F(LogSupervisionTest, test_remove_participant_action_committed) {
   auto const& participantsConfig =
       ParticipantsConfig{.generation = 2,
                          .participants = participantsFlags,
-                         .config = LogPlanConfig(3, 3, true)};
+                         .config = LogPlanConfig(3, true)};
 
   auto const& plan = LogPlanSpecification(
       logId,
@@ -505,7 +506,7 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
   auto const& participantsConfig =
       ParticipantsConfig{.generation = 2,
                          .participants = participantsFlags,
-                         .config = LogPlanConfig(3, 3, true)};
+                         .config = LogPlanConfig(3, true)};
 
   auto const& plan = LogPlanSpecification(
       logId,
@@ -564,4 +565,43 @@ TEST_F(LogSupervisionTest, test_write_empty_term) {
   auto writeEmptyTermAction = std::get<WriteEmptyTermAction>(r);
 
   ASSERT_EQ(writeEmptyTermAction.minTerm, LogTerm{3});
+}
+
+TEST_F(LogSupervisionTest, test_compute_effective_write_concern) {
+  auto const config = LogTargetConfig(3, 3, false);
+  auto const participants = ParticipantsFlagsMap{{"A", {}}};
+  auto const health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{44}, .notIsFailed = true}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
+
+  auto effectiveWriteConcern =
+      computeEffectiveWriteConcern(config, participants, health);
+  ASSERT_EQ(effectiveWriteConcern, 3);
+}
+
+TEST_F(LogSupervisionTest, test_compute_effective_write_concern_2) {
+  auto const config = LogTargetConfig(2, 5, false);
+  auto const participants = ParticipantsFlagsMap{
+      {"A", {}}, {"B", {}}, {"C", {}}, {"D", {}}, {"E", {}}};
+  auto const health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{44}, .notIsFailed = true}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = false}}}};
+
+  auto effectiveWriteConcern =
+      computeEffectiveWriteConcern(config, participants, health);
+  ASSERT_EQ(effectiveWriteConcern, 3);
 }
