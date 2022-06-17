@@ -427,6 +427,6 @@ bool ShardingStrategyHash::isCompatible(const ShardingStrategy* other) const {
           (_sharding->shardKeys().at(0) == StaticStrings::PrefixOfKeyString ||
            _sharding->shardKeys().at(0) == StaticStrings::PostfixOfKeyString));
 #else
-  return (name() == other->name());
+  return name() == other->name();
 #endif
 }

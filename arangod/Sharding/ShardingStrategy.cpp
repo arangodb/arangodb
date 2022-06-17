@@ -30,7 +30,7 @@
 using namespace arangodb;
 
 bool ShardingStrategy::isCompatible(ShardingStrategy const* other) const {
-  return (name() == other->name());
+  return name() == other->name();
 }
 
 void ShardingStrategy::toVelocyPack(VPackBuilder& result) const {
