@@ -425,9 +425,6 @@ function wccRegressionTestSuite() {
   };
 }
 
-
-
-
 function wccTestSuite() {
   'use strict';
 
@@ -450,17 +447,29 @@ function wccTestSuite() {
     },
 
     testWCCFourDirectedCycles: function() {
-      for (let i of [2,10, 5, 23]) {
+      // expected components: [2_0, 2_1], [10_0,..., 10_9], [5_0,...,5_4], [23_0,...,23_22]
+      const componentSizes = [2,10, 5, 23];
+      // We need for the test later that all sizes are distinct.
+      // Let's check that we didn't make a mistake.
+      let sortedCopyComponentSizes = componentSizes;
+      sortedCopyComponentSizes.sort();
+      for (let i = 0; i < componentSizes.size - 1; ++i) {
+        assertNotEqual(componentSizes[i], componentSizes[i+1]);
+      }
+
+      // Produce the graph.
+      for (let i of componentSizes) {
         let {vertices, edges} = graphGeneration.createDirectedCycle(i, vColl, i.toString());
         db[vColl].save(vertices);
         db[eColl].save(edges);
       }
 
+      // Get the result of Pregel's WCC.
       const status = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
       assertEqual(status.state, "done", "Pregel Job did never succeed.");
 
       // Now test the result.
-      // We expect four components
+      // We expect four components.
       const query = `
         FOR v IN ${vColl}
           COLLECT component = v.result WITH COUNT INTO size
@@ -469,11 +478,40 @@ function wccTestSuite() {
       `;
       const computedComponents = db._query(query).toArray();
       assertEqual(computedComponents.length, 4, `We expected 4 components, instead got ${JSON.stringify(computedComponents)}`);
-      // Both have 20 elements
+
+      // Test component sizes
       assertEqual(computedComponents[0].size, 23);
       assertEqual(computedComponents[1].size, 10);
       assertEqual(computedComponents[2].size, 5);
       assertEqual(computedComponents[3].size, 2);
+
+      // Test that components contain correct vertices:
+      //   we saved the components such that a component of size s has vertices
+      //   [`${s}_0`,..., `${s}_${s-1}`].
+      // We use that all sizes are distinct.
+      for (let component of computedComponents) {
+        const componentId = component.component;
+        const queryVerticesOfComponent = `
+        FOR v IN ${vColl}
+        FILTER v.result == ${componentId}
+          RETURN v._key
+      `;
+        const verticesOfComponent = db._query(queryVerticesOfComponent).toArray();
+        const sizeOfComponent = component.size;
+        // Test the first parts of vertex names (i.e., `${s}` in `${s}_{i}`) are correct.
+        for (let v of verticesOfComponent) {
+          assertEqual(v.substr(0, v.indexOf('_')), `${sizeOfComponent}`);
+        }
+
+        // Test the second parts.
+        // For this, convert vertex keys of the form `${s}_${i}` to i.
+        // We need this to sort them properly, e.g., "23_2" should be < than "23_10".
+        let secondComponentsOfVertices = (verticesOfComponent.map(v => parseInt(v.substr(`${sizeOfComponent}`.length + 1))));
+        secondComponentsOfVertices.sort(function(a, b) { return a - b;});
+        for (let i = 0; i < sizeOfComponent; ++i) {
+          assertEqual(secondComponentsOfVertices[i], i);
+        }
+      }
     },
 
     testWCCOneSingleVertex: function() {
@@ -501,7 +539,7 @@ function wccTestSuite() {
       let isolatedVertex1 = graphGeneration.makeVertex(1, "v");
       const vertices = [isolatedVertex0, isolatedVertex1];
       db[vColl].save(vertices);
-      const edges = []
+      const edges = [];
       db[eColl].save(edges);
 
 
