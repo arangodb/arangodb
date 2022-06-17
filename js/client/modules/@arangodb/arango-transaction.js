@@ -121,7 +121,11 @@ function ArangoTransaction (database, data) {
   });
 
   let url = this._url() + '/begin';
-  let requestResult = this._database._connection.POST(url, body);
+  let headers = {};
+  if (data.allowDirtyReads) {
+    headers["x-arango-allow-dirty-read"] = "true";
+  }
+  let requestResult = this._database._connection.POST(url, body, headers);
 
   arangosh.checkRequestResult(requestResult);
   this._id = requestResult.result.id;
