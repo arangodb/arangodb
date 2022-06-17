@@ -32,28 +32,9 @@ const db = require("internal").db;
 const request = require("@arangodb/request");
 const url = require('url');
 const _ = require("lodash");
+const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
 
-function getCoordinators() {
-  const isCoordinator = (d) => (_.toLower(d.role) === 'coordinator');
-  const toEndpoint = (d) => (d.endpoint);
-  const endpointToURL = (endpoint) => {
-    if (endpoint.substr(0, 6) === 'ssl://') {
-      return 'https://' + endpoint.substr(6);
-    }
-    var pos = endpoint.indexOf('://');
-    if (pos === -1) {
-      return 'http://' + endpoint;
-    }
-    return 'http' + endpoint.substr(pos);
-  };
-
-  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
-  return instanceInfo.arangods.filter(isCoordinator)
-                              .map(toEndpoint)
-                              .map(endpointToURL);
-}
-
-const servers = getCoordinators();
+const servers = getCoordinatorEndpoints();
 
 function ResponseHeadersSuite () {
   'use strict';
@@ -92,7 +73,7 @@ function ResponseHeadersSuite () {
 
   return {
     setUp: function() {
-      coordinators = getCoordinators();
+      coordinators = getCoordinatorEndpoints();
       if (coordinators.length < 2) {
         throw new Error('Expecting at least two coordinators');
       }

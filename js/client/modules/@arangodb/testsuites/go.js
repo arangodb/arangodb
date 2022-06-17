@@ -70,7 +70,7 @@ function goDriver (options) {
       this.info = "runInGoTest";
     }
     runOneTest(file) {
-      process.env['TEST_ENDPOINTS'] = this.instanceInfo.urls.join(',');
+      process.env['TEST_ENDPOINTS'] = this.instanceManager.urls.join(',');
       process.env['TEST_AUTHENTICATION'] = 'basic:root:';
       let jwt = pu.getJwtSecret(this.options);
       if (jwt) {

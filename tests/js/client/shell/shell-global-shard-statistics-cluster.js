@@ -26,7 +26,10 @@
 let jsunity = require('jsunity');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
-let { getServersByType } = require('@arangodb/test-helper');
+const {
+  getCoordinators,
+  getDBServers
+} = require('@arangodb/test-helper');
 
 function shardStatisticsSuite() {
   'use strict';
@@ -79,7 +82,7 @@ function shardStatisticsSuite() {
       assertEqual(400, result.code);
         
       // fetch statistics for a coordinator
-      let coordinators = getServersByType("coordinator");
+      let coordinators = getCoordinators();
       assertTrue(coordinators.length > 0);
       result = fetchStatsRaw("?DBserver=" + coordinators[0].id);
       assertTrue(result.error);
@@ -141,7 +144,7 @@ function shardStatisticsSuite() {
           assertTrue(stats.servers > 0);
         });
 
-        let dbservers = getServersByType("dbserver");
+        let dbservers = getDBServers();
         assertTrue(dbservers.length > 0);
 
         let partialValues = {
@@ -270,7 +273,7 @@ function shardStatisticsSuite() {
     },
     
     testShardStatisticsByDBServer: function () {
-      const dbservers = getServersByType("dbserver");
+      const dbservers = getDBServers();
       assertTrue(dbservers.length > 0);
       
       let baseValues = fetchStats("?DBserver=all");
