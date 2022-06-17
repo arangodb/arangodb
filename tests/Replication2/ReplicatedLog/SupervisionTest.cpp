@@ -586,7 +586,8 @@ TEST_F(LogSupervisionTest, test_compute_effective_write_concern) {
   ASSERT_EQ(effectiveWriteConcern, 3);
 }
 
-TEST_F(LogSupervisionTest, test_compute_effective_write_concern_2) {
+TEST_F(LogSupervisionTest,
+       test_compute_effective_write_concern_accepts_higher_soft_write_concern) {
   auto const config = LogTargetConfig(2, 5, false);
   auto const participants = ParticipantsFlagsMap{
       {"A", {}}, {"B", {}}, {"C", {}}, {"D", {}}, {"E", {}}};
@@ -604,4 +605,46 @@ TEST_F(LogSupervisionTest, test_compute_effective_write_concern_2) {
   auto effectiveWriteConcern =
       computeEffectiveWriteConcern(config, participants, health);
   ASSERT_EQ(effectiveWriteConcern, 3);
+}
+
+TEST_F(LogSupervisionTest,
+       test_compute_effective_write_concern_with_all_participants_failed) {
+  auto const config = LogTargetConfig(2, 5, false);
+  auto const participants = ParticipantsFlagsMap{
+      {"A", {}}, {"B", {}}, {"C", {}}, {"D", {}}, {"E", {}}};
+  auto const health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{44}, .notIsFailed = false}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = false}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = false}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = false}}}};
+
+  auto effectiveWriteConcern =
+      computeEffectiveWriteConcern(config, participants, health);
+  ASSERT_EQ(effectiveWriteConcern, 2);
+}
+
+TEST_F(
+    LogSupervisionTest,
+    test_compute_effective_write_concern_with_no_intersection_between_participants_and_health) {
+  auto const config = LogTargetConfig(2, 5, false);
+  auto const participants = ParticipantsFlagsMap{{"A", {}}};
+  auto const health = ParticipantsHealth{
+      ._health = {
+          {"A",
+           ParticipantHealth{.rebootId = RebootId{44}, .notIsFailed = true}},
+          {"B",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"C",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}},
+          {"D",
+           ParticipantHealth{.rebootId = RebootId{14}, .notIsFailed = true}}}};
+
+  auto effectiveWriteConcern =
+      computeEffectiveWriteConcern(config, participants, health);
+  ASSERT_EQ(effectiveWriteConcern, 2);
 }
