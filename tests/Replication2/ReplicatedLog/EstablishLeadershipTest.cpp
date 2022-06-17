@@ -22,8 +22,8 @@
 
 #include "TestHelper.h"
 
-#include "Replication2/ReplicatedLog/Algorithms.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/Algorithms.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -94,13 +94,13 @@ TEST_F(EstablishLeadershipTest, check_meta_create_leader_entry) {
     auto log = leader->copyInMemoryLog();
     auto entry = log.getEntryByIndex(LogIndex{1});
     ASSERT_NE(entry, std::nullopt);
-    auto const& persenty = entry->entry();
+    auto const &persenty = entry->entry();
     EXPECT_TRUE(persenty.hasMeta());
     ASSERT_NE(persenty.meta(), nullptr);
-    auto const& meta = *persenty.meta();
+    auto const &meta = *persenty.meta();
     ASSERT_TRUE(
         std::holds_alternative<LogMetaPayload::FirstEntryOfTerm>(meta.info));
-    auto const& info = std::get<LogMetaPayload::FirstEntryOfTerm>(meta.info);
+    auto const &info = std::get<LogMetaPayload::FirstEntryOfTerm>(meta.info);
     EXPECT_EQ(info.leader, "leader");
 
     auto const expectedConfiguration = agency::ParticipantsConfig{
@@ -118,7 +118,7 @@ TEST_F(EstablishLeadershipTest, excluded_follower) {
 
   auto follower = followerLog->becomeFollower("follower", LogTerm{4}, "leader");
 
-  auto config = agency::LogPlanConfig{2, 2, false};
+  auto config = agency::LogPlanConfig{2, false};
   auto participants = std::unordered_map<ParticipantId, ParticipantFlags>{
       {"leader", {}}, {"follower", {.allowedInQuorum = false}}};
   auto participantsConfig = std::make_shared<agency::ParticipantsConfig>(
