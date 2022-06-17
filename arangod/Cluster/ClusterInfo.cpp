@@ -119,7 +119,6 @@ namespace {
 
 std::string const kMetricsServerId = "Plan/Metrics/ServerId";
 std::string const kMetricsRebootId = "Plan/Metrics/RebootId";
-std::string const kMetricsVersion = "Plan/Metrics/Version";
 
 void addToShardStatistics(arangodb::ShardStatistics& stats,
                           containers::FlatHashSet<std::string>& servers,
@@ -4520,19 +4519,14 @@ void ClusterInfo::initMetricsState() {
   builderRebootId.add(VPackValue{rebootId});
   VPackBuilder builderServerId;
   builderServerId.add(VPackValue{serverId});
-  VPackBuilder builderVersion;
-  builderVersion.add(VPackValue{0});
 
   AgencyWriteTransaction const write{
       {{kMetricsRebootId, AgencyValueOperationType::SET,
         builderRebootId.slice()},
        {kMetricsServerId, AgencyValueOperationType::SET,
-        builderServerId.slice()},
-       {kMetricsVersion, AgencyValueOperationType::SET,
-        builderVersion.slice()}},
+        builderServerId.slice()}},
       {{kMetricsRebootId, AgencyPrecondition::Type::EMPTY, true},
-       {kMetricsServerId, AgencyPrecondition::Type::EMPTY, true},
-       {kMetricsVersion, AgencyPrecondition::Type::EMPTY, true}}};
+       {kMetricsServerId, AgencyPrecondition::Type::EMPTY, true}}};
   AgencyComm ac{_server};
   while (!server().isStopping()) {
     auto const r = ac.sendTransactionWithFailover(write);
@@ -4548,18 +4542,16 @@ void ClusterInfo::initMetricsState() {
 ClusterInfo::MetricsState ClusterInfo::getMetricsState(bool wantLeader) {
   auto& ac = _server.getFeature<ClusterFeature>().agencyCache();
   auto [result, index] = ac.read({AgencyCommHelper::path(kMetricsServerId),
-                                  AgencyCommHelper::path(kMetricsRebootId),
-                                  AgencyCommHelper::path(kMetricsVersion)});
+                                  AgencyCommHelper::path(kMetricsRebootId)});
   auto data = result->slice().at(0).get(std::initializer_list<std::string_view>{
       AgencyCommHelper::path(), "Plan", "Metrics"});
   auto leaderRebootId = data.get("RebootId").getNumber<uint64_t>();
   auto leaderServerId = data.get("ServerId").stringView();
-  auto leaderVersion = data.get("Version").getNumber<uint64_t>();
   auto ourRebootId = ServerState::instance()->getRebootId().value();
   auto ourServerId = ServerState::instance()->getId();
   if (ourRebootId == leaderRebootId && ourServerId == leaderServerId) {
     // TRI_ASSERT(_metricsGuard.empty());
-    return {std::nullopt, leaderVersion};
+    return {std::nullopt};
   }
   if (wantLeader) {
     // remove old callback (with _metricsGuard call, then store new callback)
@@ -4570,41 +4562,7 @@ ClusterInfo::MetricsState ClusterInfo::getMetricsState(bool wantLeader) {
         },
         "Try to propose current server as a new leader for cluster metrics");
   }
-  return {std::string{leaderServerId}, leaderVersion};
-}
-
-bool ClusterInfo::tryIncMetricsVersion(uint64_t version) {
-  AgencyComm ac{_server};
-  auto rebootId = ServerState::instance()->getRebootId().value();
-  auto serverId = ServerState::instance()->getId();
-
-  VPackBuilder builderRebootId;
-  builderRebootId.add(VPackValue{rebootId});
-  VPackBuilder builderServerId;
-  builderServerId.add(VPackValue{serverId});
-  VPackBuilder builderVersion;
-  builderVersion.add(VPackValue{version});
-
-  AgencyWriteTransaction const write{
-      {kMetricsVersion, AgencySimpleOperationType::INCREMENT_OP},
-      {{kMetricsRebootId, AgencyPrecondition::Type::VALUE,
-        builderRebootId.slice()},
-       {kMetricsServerId, AgencyPrecondition::Type::VALUE,
-        builderServerId.slice()},
-       {kMetricsVersion, AgencyPrecondition::Type::VALUE,
-        builderVersion.slice()}}};
-  auto const r = ac.sendTransactionWithFailover(write);
-  if (r.successful()) {
-    return true;
-  }
-  if (r.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
-    LOG_TOPIC("bfdc0", INFO, Logger::CLUSTER)
-        << "Failed increment Metrics/Version with precondition failed";
-  } else {
-    LOG_TOPIC("bfdc1", WARN, Logger::CLUSTER)
-        << "Failed increment Metrics/Version with httpCode: " << r.httpCode();
-  }
-  return false;
+  return {std::string{leaderServerId}};
 }
 
 void ClusterInfo::proposeMetricsLeader(uint64_t oldRebootId,

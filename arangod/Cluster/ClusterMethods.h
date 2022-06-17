@@ -135,7 +135,8 @@ futures::Future<metrics::RawDBServers> metricsOnLeader(NetworkFeature& network,
 ////////////////////////////////////////////////////////////////////////////////
 
 futures::Future<metrics::LeaderResponse> metricsFromLeader(
-    NetworkFeature& network, ClusterFeature& cluster, std::string_view leader);
+    NetworkFeature& network, ClusterFeature& cluster, std::string_view leader,
+    std::string serverId, uint64_t rebootId, uint64_t version);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the selectivity estimates from DBservers

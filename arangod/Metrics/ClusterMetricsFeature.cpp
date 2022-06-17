@@ -37,7 +37,6 @@
 #include "ProgramOptions/Section.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "Transaction/StandaloneContext.h"
 
 namespace arangodb::metrics {
 
@@ -63,7 +62,7 @@ void ClusterMetricsFeature::collectOptions(
 void ClusterMetricsFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> /*options*/) {
   if (!ServerState::instance()->isCoordinator()) {
-    _count.store(kStop, std::memory_order_release);
+    _count.store(kStop);
   }
 }
 
@@ -79,7 +78,7 @@ void ClusterMetricsFeature::start() {
 }
 
 void ClusterMetricsFeature::beginShutdown() {
-  _count.store(kStop, std::memory_order_release);
+  _count.store(kStop);
   std::atomic_store_explicit(&_timer, {}, std::memory_order_relaxed);
   std::atomic_store_explicit(&_update, {}, std::memory_order_relaxed);
 }
@@ -89,7 +88,7 @@ void ClusterMetricsFeature::stop() { beginShutdown(); }
 std::optional<std::string> ClusterMetricsFeature::update(
     CollectMode mode) noexcept {
   if (mode == CollectMode::TriggerGlobal) {
-    auto const count = _count.fetch_add(kUpdate, std::memory_order_acq_rel);
+    auto const count = _count.fetch_add(kUpdate /*== 2*/);
     if (count == 0) {
       rescheduleUpdate(0);
     }
@@ -104,11 +103,18 @@ std::optional<std::string> ClusterMetricsFeature::update(
     // 1) other CollectModes: invalidFuture()
     // 2) follower:           makeFuture(leader)
     // 3) leader:             metricsOnLeader(...).thenValue(...)
-    auto [leader, version] = ci.getMetricsState(false);
+    auto leader = std::move(ci.getMetricsState(false).leader);
     if (leader) {
       return leader;
     }
     if (!leader && mode == CollectMode::WriteGlobal) {
+      auto const version = [&] {
+        auto data = getData();
+        return (data && data->packed) ? VPackSlice{data->packed->data()}
+                                            .get("Version")
+                                            .getNumber<uint64_t>()
+                                      : 0;
+      }();
       writeData(version, metricsOnLeader(nf, cf).getTry());
     }
   } catch (...) {
@@ -117,6 +123,7 @@ std::optional<std::string> ClusterMetricsFeature::update(
 }
 
 void ClusterMetricsFeature::rescheduleTimer() noexcept {
+  TRI_ASSERT(_timeout > 0);
   auto h = SchedulerFeature::SCHEDULER->queueDelayed(
       RequestLane::DELAYED_FUTURE, std::chrono::seconds{_timeout},
       [this](bool canceled) noexcept {
@@ -136,12 +143,12 @@ void ClusterMetricsFeature::rescheduleUpdate(uint32_t timeout) noexcept {
         if (canceled || wasStop()) {
           return;
         }
-        if (_count.exchange(kUpdate, std::memory_order_acq_rel) % 2 == kStop) {
+        if (_count.exchange(kUpdate) % 2 == kStop) {
           // If someone call more than billion update(TriggerGlobal)
           // before we execute execute store we defer Stop to next try.
           // But it's impossible, so it's valid optimization:
           // exchange + store instead of cas loop
-          _count.store(kStop, std::memory_order_release);
+          _count.store(kStop);
           return;
         }
         try {
@@ -157,33 +164,37 @@ void ClusterMetricsFeature::update() {
   auto& nf = server().getFeature<NetworkFeature>();
   auto& cf = server().getFeature<ClusterFeature>();
   auto& ci = cf.clusterInfo();
-  auto [leader, version] = ci.getMetricsState(true);
+  auto leader = std::move(ci.getMetricsState(true).leader);
+  auto data = getData();
+  bool const isData = data && data->packed;
+  auto const oldData =
+      isData ? VPackSlice{data->packed->data()} : VPackSlice::noneSlice();
+  auto version = isData ? oldData.get("Version").getNumber<uint64_t>() : 0;
   if (wasStop()) {
     return;
   }
   if (!leader) {  // cannot read leader from agency, so assume it's leader
     return metricsOnLeader(nf, cf).thenFinal(
-        [this, v = version](futures::Try<RawDBServers>&& raw) mutable noexcept {
+        [this, version](futures::Try<RawDBServers>&& raw) mutable noexcept {
           if (wasStop()) {
             return;
           }
           bool force = false;
           try {
-            force = !writeData(v, std::move(raw));
+            force = !writeData(version, std::move(raw));
           } catch (...) {
             force = true;
           }
           repeatUpdate(force);
         });
   }
-  auto const oldVersion = [&] {
-    auto data = getData();
-    return data ? data->version : 0;
-  }();
-  if (leader->empty() || version <= oldVersion) {
+  if (leader->empty()) {
     return rescheduleUpdate(std::max(_timeout, 1U));
   }
-  metricsFromLeader(nf, cf, *leader)
+  auto rebootId = isData ? oldData.get("RebootId").getNumber<uint64_t>() : 0;
+  auto serverId = isData ? oldData.get("ServerId").copyString() : "";
+  data.reset();
+  metricsFromLeader(nf, cf, *leader, std::move(serverId), rebootId, version)
       .thenFinal([this](futures::Try<LeaderResponse>&& raw) mutable noexcept {
         if (wasStop()) {
           return;
@@ -204,7 +215,7 @@ void ClusterMetricsFeature::repeatUpdate(bool force) noexcept {
       rescheduleUpdate(std::max(_timeout, 1U));
     }
   } else {
-    auto const count = _count.fetch_sub(kUpdate, std::memory_order_acq_rel);
+    auto const count = _count.fetch_sub(kUpdate);
     if (count % 2 != kStop && count > kUpdate) {
       rescheduleUpdate(0);
     }
@@ -222,18 +233,17 @@ bool ClusterMetricsFeature::writeData(uint64_t version,
   }
   velocypack::Builder builder;
   builder.openObject();
-  builder.add("version", VPackValue{version + 1});
-  builder.add(VPackValue{"data"});
+  builder.add("ServerId", VPackValue{ServerState::instance()->getId()});
+  builder.add("RebootId",
+              VPackValue{ServerState::instance()->getRebootId().value()});
+  builder.add("Version", VPackValue{version + 1});
+  builder.add(VPackValue{"Data"});
   metrics.toVelocyPack(builder);
   builder.close();
-  auto data = std::make_shared<Data>(version + 1, std::move(metrics));
+  auto data = std::make_shared<Data>(std::move(metrics));
   data->packed = builder.buffer();
-  auto& cf = server().getFeature<ClusterFeature>();
-  auto& ci = cf.clusterInfo();
-  if (ci.tryIncMetricsVersion(version)) {
-    std::atomic_store_explicit(&_data, std::move(data),
-                               std::memory_order_release);
-  }
+  std::atomic_store_explicit(&_data, std::move(data),
+                             std::memory_order_release);
   return true;
 }
 
@@ -244,14 +254,6 @@ bool ClusterMetricsFeature::readData(futures::Try<LeaderResponse>&& raw) {
   velocypack::Slice metrics{raw.get()->data()};
   if (!metrics.isObject()) {
     return false;
-  }
-  auto const newVersion = metrics.get("version").getNumber<uint64_t>();
-  auto const oldVersion = [&] {
-    auto data = getData();
-    return data ? data->version : 0;
-  }();
-  if (newVersion <= oldVersion) {
-    return true;
   }
   auto data = Data::fromVPack(metrics);
   data->packed = std::move(raw).get();
@@ -283,8 +285,7 @@ ClusterMetricsFeature::Metrics ClusterMetricsFeature::parse(
 }
 
 bool ClusterMetricsFeature::wasStop() const noexcept {
-  return _count.load(std::memory_order_acquire) % 2 == kStop ||
-         server().isStopping();
+  return _count.load() % 2 == kStop || server().isStopping();
 }
 
 void ClusterMetricsFeature::add(std::string_view metric, MapReduce mapReduce) {
@@ -330,10 +331,9 @@ std::shared_ptr<ClusterMetricsFeature::Data> ClusterMetricsFeature::getData()
 
 std::shared_ptr<ClusterMetricsFeature::Data>
 ClusterMetricsFeature::Data::fromVPack(VPackSlice slice) {
-  auto version = slice.get("version").getNumber<uint64_t>();
-  auto metrics = slice.get("data");
+  auto const metrics = slice.get("Data");
   auto const size = metrics.length();
-  auto data = std::make_shared<Data>(version);
+  auto data = std::make_shared<Data>();
   for (size_t i = 0; i < size; i += 3) {
     auto name = metrics.at(i).stringView();
     auto labels = metrics.at(i + 1).stringView();

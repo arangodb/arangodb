@@ -70,15 +70,12 @@ class ClusterMetricsFeature final : public ArangodFeature {
   };
 
   struct Data final {
-    explicit Data(uint64_t v) : version{v} {}
-
-    explicit Data(uint64_t v, Metrics&& m)
-        : version{v}, metrics{std::move(m)} {}
+    Data() = default;
+    explicit Data(Metrics&& m) : metrics{std::move(m)} {}
 
     static std::shared_ptr<Data> fromVPack(VPackSlice slice);
 
     LeaderResponse packed;
-    uint64_t version;
     Metrics metrics;
   };
   explicit ClusterMetricsFeature(Server& server);

@@ -1435,7 +1435,8 @@ futures::Future<metrics::RawDBServers> metricsOnLeader(
 ////////////////////////////////////////////////////////////////////////////////
 
 futures::Future<metrics::LeaderResponse> metricsFromLeader(
-    NetworkFeature& network, ClusterFeature& cluster, std::string_view leader) {
+    NetworkFeature& network, ClusterFeature& cluster, std::string_view leader,
+    std::string serverId, uint64_t rebootId, uint64_t version) {
   LOG_TOPIC("badf1", TRACE, Logger::CLUSTER) << "Start receive metrics";
   auto* pool = network.pool();
   network::Headers headers;
@@ -1443,7 +1444,11 @@ futures::Future<metrics::LeaderResponse> metricsFromLeader(
   auto future = network::sendRequest(
       pool, absl::StrCat("server:", leader), fuerte::RestVerb::Get,
       "/_admin/metrics", {},
-      network::RequestOptions{}.param("type", metrics::kCDJson),
+      network::RequestOptions{}
+          .param("type", metrics::kCDJson)
+          .param("MetricsServerId", std::move(serverId))
+          .param("MetricsRebootId", std::to_string(rebootId))
+          .param("MetricsVersion", std::to_string(version)),
       std::move(headers));
   return std::move(future).then([](Try<network::Response>&& response) {
     if (response.hasValue()) {

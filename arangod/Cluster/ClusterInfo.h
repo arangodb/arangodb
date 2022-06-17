@@ -801,7 +801,6 @@ class ClusterInfo final {
 
   struct [[nodiscard]] MetricsState {
     std::optional<ServerID> leader;
-    uint64_t version;
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -820,15 +819,6 @@ class ClusterInfo final {
   /// @return Who is the leader, and what cache version is current.
   //////////////////////////////////////////////////////////////////////////////
   MetricsState getMetricsState(bool wantLeader);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief try to increment current version in cache
-  /// @param version old version
-  /// Success only current server is a leader and
-  /// old version is equal current version in agency
-  /// @return success or not
-  //////////////////////////////////////////////////////////////////////////////
-  bool tryIncMetricsVersion(uint64_t version);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief try to propose self as new leader

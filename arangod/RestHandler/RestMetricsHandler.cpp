@@ -65,6 +65,29 @@ network::Headers buildHeaders(
   return headers;
 }
 
+bool isOutdated(
+    GeneralRequest const& oldData,
+    std::shared_ptr<metrics::ClusterMetricsFeature::Data> const& data) {
+  if (!data || !data->packed) {
+    TRI_ASSERT(!data);
+    return false;
+  }
+  velocypack::Slice newData{data->packed->data()};
+  auto const oldVersion = oldData.value("MetricsVersion");
+  auto const newVersion = newData.get("Version").getNumber<uint64_t>();
+  if (oldVersion.empty() || std::stoull(oldVersion) < newVersion) {
+    return true;
+  }
+  auto const oldRebootId = oldData.value("MetricsRebootId");
+  auto const newRebootId = newData.get("RebootId").getNumber<uint64_t>();
+  if (oldRebootId.empty() || std::stoull(oldRebootId) != newRebootId) {
+    return true;
+  }
+  auto const oldServerId = oldData.value("MetricsServerId");
+  auto const newServerId = newData.get("ServerId").stringView();
+  return oldServerId != newServerId;
+}
+
 }  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -166,11 +189,11 @@ RestStatus RestMetricsHandler::execute() {
   }
 
   if (type == metrics::kCDJson) {
-    auto& metrics = server().getFeature<metrics::ClusterMetricsFeature>();
-    auto data = metrics.getData();
     _response->setResponseCode(rest::ResponseCode::OK);
     _response->setContentType(rest::ContentType::VPACK);
-    if (data->packed) {
+    auto& metrics = server().getFeature<metrics::ClusterMetricsFeature>();
+    auto data = metrics.getData();
+    if (isOutdated(*_request, data)) {
       _response->addPayload(velocypack::Slice{data->packed->data()});
     } else {
       _response->addPayload(velocypack::Slice::emptyArraySlice());
