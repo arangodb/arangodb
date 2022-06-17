@@ -44,12 +44,13 @@ class Methods;
 namespace aql {
 
 struct AqlCall;
-class AqlItemBlockInputMatrix;
+class AqlItemBlockInputRange;
 class AqlItemBlockManager;
-class AllRowsFetcher;
 class RegisterInfos;
 class NoStats;
 class OutputAqlItemRow;
+template<BlockPassthrough>
+class SingleRowFetcher;
 struct SortRegister;
 
 class SortExecutorInfos {
@@ -108,14 +109,12 @@ class SortExecutor {
         BlockPassthrough::Disable;
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
-  using Fetcher = AllRowsFetcher;
+  using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = SortExecutorInfos;
   using Stats = NoStats;
 
   SortExecutor(Fetcher&, Infos& infos);
   ~SortExecutor();
-
-  void initializeInputMatrix(AqlItemBlockInputMatrix& inputMatrix);
 
   /**
    * @brief produce the next Rows of Aql Values.
@@ -124,7 +123,7 @@ class SortExecutor {
    * upstream
    */
   [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
-      AqlItemBlockInputMatrix& inputMatrix, OutputAqlItemRow& output);
+      AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output);
 
   /**
    * @brief skip the next Row of Aql Values.
@@ -132,17 +131,22 @@ class SortExecutor {
    * @return ExecutorState, the stats, and a new Call that needs to be send to
    * upstream
    */
-  [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
-      AqlItemBlockInputMatrix& inputMatrix, AqlCall& call);
 
+  [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
+      AqlItemBlockInputRange& inputRange, AqlCall& call);
+
+  /*
   [[nodiscard]] auto expectedNumberOfRowsNew(
       AqlItemBlockInputMatrix const& input, AqlCall const& call) const noexcept
       -> size_t;
+      */
 
  private:
   void doSorting();
+  void consumeInput(AqlItemBlockInputRange& inputRange, ExecutorState& state);
 
  private:
+  bool _inputReady = false;
   Infos& _infos;
 
   AqlItemMatrix const* _input;
@@ -153,6 +157,8 @@ class SortExecutor {
   size_t _returnNext;
 
   size_t _memoryUsageForRowIndexes;
+  std::vector<SharedAqlItemBlockPtr> _inputBlocks;
+  std::vector<AqlItemMatrix::RowIndex> _rowIndexes;
 };
 }  // namespace aql
 }  // namespace arangodb

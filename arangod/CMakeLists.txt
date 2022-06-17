@@ -858,6 +858,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/NonceFeature.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/PrivilegeFeature.cpp
+  RestServer/RocksDBTempStorageFeature.cpp
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
