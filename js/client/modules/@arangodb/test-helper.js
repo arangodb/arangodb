@@ -44,6 +44,7 @@ const {
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const _ = require('lodash');
+const inst = require('@arangodb/testutils/instance');
     
 exports.getServerById = getServerById;
 exports.getServersByType = getServersByType;
@@ -391,4 +392,69 @@ exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 
     console.warn("insync=", insync, ", collInfo=", collInfo, internal.time() - start);
     internal.wait(1);
   }
+};
+
+exports.getControleableServers = function (role) {
+  return global.theInstanceManager.arangods.filter((instance) => instance.isRole(role));
+};
+
+// These functions lean on special runners to export the actual instance object into the global namespace.
+exports.getCtrlAgents = function() {
+  return exports.getControleableServers(inst.instanceRole.agent);
+};
+exports.getCtrlDBServers = function() {
+  return exports.getControleableServers(inst.instanceRole.dbServer);
+};
+exports.getCtrlCoordinators = function() {
+  return exports.getControleableServers(inst.instanceRole.coordinator);
+};
+
+exports.getServers = function (role) {
+  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
+  let ret = instanceInfo.arangods.filter(inst => inst.instanceRole === role);
+  if (ret.length === 0) {
+    throw new Error("No instance matched the type " + role);
+  }
+  return ret;
+};
+
+exports.getCoordinators = function () {
+  return exports.getServers(inst.instanceRole.coordinator);
+};
+exports.getDBServers = function () {
+  return exports.getServers(inst.instanceRole.dbServer);
+};
+exports.getAgents = function () {
+  return exports.getServers(inst.instanceRole.agent);
+};
+
+exports.getEndpoints = function (role) {
+  const endpointToURL = (instance) => {
+    let protocol = instance.endpoint.split('://')[0];
+    switch(protocol) {
+    case 'ssl':
+      return 'https://' + instance.endpoint.substr(6);
+      break;
+    case 'tcp':
+      return 'http://' + instance.endpoint.substr(6);
+      break;
+    default:
+      var pos = instance.endpoint.indexOf('://');
+      if (pos === -1) {
+        return 'http://' + instance.endpoint;
+      }
+      return 'http' + instance.endpoint.substr(pos);
+    }
+  };
+  return exports.getServers(role).map(endpointToURL);
+};
+
+exports.getCoordinatorEndpoints = function () {
+  return exports.getEndpoints(inst.instanceRole.coordinator);
+};
+exports.getDBServerEndpoints = function () {
+  return exports.getEndpoints(inst.instanceRole.dbServer);
+};
+exports.getAgentEndpoints = function () {
+  return exports.getEndpoints(inst.instanceRole.agent);
 };
