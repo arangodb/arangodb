@@ -25,13 +25,21 @@ const ViewLinkLayout = ({ fragments = [], children }: ViewLinkLayoutProps) =>
               <tr className="figuresHeader">
                 <ArangoTH seq={0} style={{ width: "100%" }}>
                   <ul className={'breadcrumb'}>
-                    <li><Link to={'/'}>Links</Link> <span className="divider">/</span></li>
+                    <li>
+                      <Link to={'/'}>Links</Link>
+                      <span className="divider">
+                        <i className={'fa fa-long-arrow-right'}/>
+                      </span>
+                    </li>
                     {
                       fragments.slice(0, fragments.length - 1).map((fragment, idx) => {
                         const path = fragments.slice(0, idx + 1).join('/');
 
                         return <li key={`${idx}-${fragment}`}>
-                          <Link to={`/${path}`}>{fragment}</Link> <span className="divider">/</span>
+                          <Link to={`/${path}`}>{fragment}</Link>
+                          <span className="divider">
+                            <i className={'fa fa-long-arrow-right'}/>
+                          </span>
                         </li>;
                       })
                     }
