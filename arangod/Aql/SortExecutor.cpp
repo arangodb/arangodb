@@ -23,10 +23,10 @@
 
 #include "SortExecutor.h"
 
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
 #include "Basics/ResourceUsage.h"
@@ -41,18 +41,18 @@ namespace {
 // custom AqlValue-aware comparator for sorting
 class OurLessThan {
  public:
-  OurLessThan(velocypack::Options const* options, AqlItemMatrix const& input,
+  OurLessThan(velocypack::Options const* options,
+              std::vector<SharedAqlItemBlockPtr> const& input,
               std::vector<SortRegister> const& sortRegisters) noexcept
       : _vpackOptions(options), _input(input), _sortRegisters(sortRegisters) {}
 
   bool operator()(AqlItemMatrix::RowIndex const& a,
                   AqlItemMatrix::RowIndex const& b) const {
-    auto const& left = _input.getBlockRef(a.first);
-    auto const& right = _input.getBlockRef(b.first);
+    auto const& left = _input[a.first].get();
+    auto const& right = _input[b.first].get();
     for (auto const& reg : _sortRegisters) {
-      AqlValue const& lhs = left.first->getValueReference(a.second, reg.reg);
-      AqlValue const& rhs = right.first->getValueReference(b.second, reg.reg);
-
+      AqlValue const& lhs = left->getValueReference(a.second, reg.reg);
+      AqlValue const& rhs = right->getValueReference(b.second, reg.reg);
       int const cmp = AqlValue::Compare(_vpackOptions, lhs, rhs, true);
 
       if (cmp < 0) {
@@ -67,7 +67,7 @@ class OurLessThan {
 
  private:
   velocypack::Options const* _vpackOptions;
-  AqlItemMatrix const& _input;
+  std::vector<SharedAqlItemBlockPtr> const& _input;
   std::vector<SortRegister> const& _sortRegisters;
 };  // OurLessThan
 
@@ -135,61 +135,75 @@ SortExecutor::~SortExecutor() {
   _infos.getResourceMonitor().decreaseMemoryUsage(_memoryUsageForRowIndexes);
 }
 
-void SortExecutor::initializeInputMatrix(AqlItemBlockInputMatrix& inputMatrix) {
-  TRI_ASSERT(_input == nullptr);
-  ExecutorState state;
+void SortExecutor::consumeInput(AqlItemBlockInputRange& inputRange,
+                                ExecutorState& state) {
+  size_t memoryUsageForRowIndexes =
+      inputRange.countDataRows() * sizeof(AqlItemMatrix::RowIndex);
 
-  // We need to get data
-  std::tie(state, _input) = inputMatrix.getMatrix();
+  ResourceUsageScope guard(_infos.getResourceMonitor(),
+                           memoryUsageForRowIndexes);
 
-  // If the execution state was not waiting it is guaranteed that we get a
-  // matrix. Maybe empty still
-  TRI_ASSERT(_input != nullptr);
-  if (_input == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  InputAqlItemRow input{CreateInvalidInputRowHint{}};
+
+  while (inputRange.hasDataRow()) {
+    // This executor is passthrough. it has enough place to write.
+    _rowIndexes.emplace_back(
+        std::make_pair(_inputBlocks.size() - 1, inputRange.getRowIndex()));
+    std::tie(state, input) =
+        inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    TRI_ASSERT(input.isInitialized());
   }
-  // After allRows the dependency has to be done
-  TRI_ASSERT(state == ExecutorState::DONE);
-
-  // Execute the sort
-  doSorting();
-
-  // If we get here we have an input matrix
-  // And we have a list of sorted indexes.
-  TRI_ASSERT(_input != nullptr);
-  TRI_ASSERT(_sortedIndexes.size() == _input->size());
-};
+  guard.steal();
+  _memoryUsageForRowIndexes += memoryUsageForRowIndexes;
+}
 
 std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
-    AqlItemBlockInputMatrix& inputMatrix, OutputAqlItemRow& output) {
+    AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   AqlCall upstreamCall{};
-
-  if (!inputMatrix.hasDataRow()) {
-    // If our inputMatrix does not contain all upstream rows
-    return {inputMatrix.upstreamState(), NoStats{}, upstreamCall};
+  if (!_inputReady) {
+    auto inputBlock = inputRange.getBlock();
+    if (inputBlock != nullptr) {
+      _inputBlocks.emplace_back(inputBlock);
+    }
   }
 
-  if (_input == nullptr) {
-    initializeInputMatrix(inputMatrix);
-  }
-
-  if (_returnNext >= _sortedIndexes.size()) {
+  if (_returnNext >= _rowIndexes.size() && !_rowIndexes.empty()) {
     // Bail out if called too often,
     // Bail out on no elements
     return {ExecutorState::DONE, NoStats{}, upstreamCall};
   }
 
-  while (_returnNext < _sortedIndexes.size() && !output.isFull()) {
-    InputAqlItemRow inRow = _input->getRow(_sortedIndexes[_returnNext]);
+  ExecutorState state = ExecutorState::HASMORE;
+
+  if (!_inputReady) {
+    consumeInput(inputRange, state);
+    if (inputRange.upstreamState() == ExecutorState::HASMORE) {
+      return {state, NoStats{}, upstreamCall};
+    }
+    if (_returnNext < _rowIndexes.size()) {
+      doSorting();
+      _inputReady = true;
+    }
+  }
+
+  while (_returnNext < _rowIndexes.size() && !output.isFull()) {
+    InputAqlItemRow inRow(_inputBlocks[_rowIndexes[_returnNext].first],
+                          _rowIndexes[_returnNext].second);
     output.copyRow(inRow);
     output.advanceRow();
     _returnNext++;
   }
 
-  if (_returnNext >= _sortedIndexes.size()) {
-    return {ExecutorState::DONE, NoStats{}, upstreamCall};
+  if (_returnNext >= _rowIndexes.size()) {
+    _inputReady = false;
+    _inputBlocks.clear();
+    _rowIndexes.clear();
+    state = ExecutorState::DONE;
+  } else {
+    state = ExecutorState::HASMORE;
   }
-  return {ExecutorState::HASMORE, NoStats{}, upstreamCall};
+
+  return {state, NoStats{}, upstreamCall};
 }
 
 void SortExecutor::doSorting() {
@@ -197,59 +211,66 @@ void SortExecutor::doSorting() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  size_t memoryUsageForRowIndexes = _input->memoryUsageForRowIndexes();
-  // may throw
-  ResourceUsageScope guard(_infos.getResourceMonitor(),
-                           memoryUsageForRowIndexes);
-
-  TRI_ASSERT(_input != nullptr);
-  _sortedIndexes = _input->produceRowIndexes();
-
-  // now we are responsible for tracking the memory
-  guard.steal();
-  _memoryUsageForRowIndexes = memoryUsageForRowIndexes;
-
   // comparison function
-  OurLessThan ourLessThan(_infos.vpackOptions(), *_input,
+  OurLessThan ourLessThan(_infos.vpackOptions(), _inputBlocks,
                           _infos.sortRegisters());
   if (_infos.stable()) {
-    std::stable_sort(_sortedIndexes.begin(), _sortedIndexes.end(), ourLessThan);
+    std::stable_sort(_rowIndexes.begin(), _rowIndexes.end(), ourLessThan);
   } else {
-    std::sort(_sortedIndexes.begin(), _sortedIndexes.end(), ourLessThan);
+    std::sort(_rowIndexes.begin(), _rowIndexes.end(), ourLessThan);
   }
 }
 
 std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
-    AqlItemBlockInputMatrix& inputMatrix, AqlCall& call) {
+    AqlItemBlockInputRange& inputRange, AqlCall& call) {
   AqlCall upstreamCall{};
 
-  if (inputMatrix.upstreamState() == ExecutorState::HASMORE) {
-    // If our inputMatrix does not contain all upstream rows
-    return {ExecutorState::HASMORE, NoStats{}, 0, upstreamCall};
+  ExecutorState state = ExecutorState::HASMORE;
+
+  if (!_inputReady) {
+    auto inputBlock = inputRange.getBlock();
+    if (inputBlock != nullptr) {
+      _inputBlocks.emplace_back(inputBlock);
+    }
+    consumeInput(inputRange, state);
+    if (inputRange.upstreamState() == ExecutorState::HASMORE) {
+      return {state, NoStats{}, 0, upstreamCall};
+    }
+    if (_returnNext < _rowIndexes.size()) {
+      doSorting();
+      _inputReady = true;
+    }
   }
 
-  if (_input == nullptr) {
-    initializeInputMatrix(inputMatrix);
+  if (state == ExecutorState::HASMORE) {
+    return {state, NoStats{}, 0, upstreamCall};
   }
 
-  if (_returnNext >= _sortedIndexes.size()) {
+  if (_returnNext >= _rowIndexes.size() && !_rowIndexes.empty()) {
     // Bail out if called too often,
     // Bail out on no elements
     return {ExecutorState::DONE, NoStats{}, 0, upstreamCall};
   }
 
-  while (_returnNext < _sortedIndexes.size() && call.shouldSkip()) {
-    InputAqlItemRow inRow = _input->getRow(_sortedIndexes[_returnNext]);
+  while (_returnNext < _rowIndexes.size() && call.shouldSkip()) {
+    InputAqlItemRow inRow(_inputBlocks[_rowIndexes[_returnNext].first],
+                          _rowIndexes[_returnNext].second);
     _returnNext++;
     call.didSkip(1);
   }
 
-  if (_returnNext >= _sortedIndexes.size()) {
+  if (_returnNext >= _rowIndexes.size()) {
+    _inputReady = false;
+    _rowIndexes.clear();
+    _inputBlocks.clear();
     return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), upstreamCall};
   }
   return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), upstreamCall};
+
+  //  throw std::exception();
 }
 
+/*
 [[nodiscard]] auto SortExecutor::expectedNumberOfRowsNew(
     AqlItemBlockInputMatrix const& input, AqlCall const& call) const noexcept
     -> size_t {
@@ -278,3 +299,4 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
   }
   return rowsAvailable;
 }
+ */

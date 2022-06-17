@@ -29,6 +29,19 @@
 #include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/MetricsFeature.h"
+DECLARE_COUNTER(
+    arangodb_rocksdb_write_stalls_total,
+    "Number of times RocksDB has entered a stalled (slowed) write state");
+DECLARE_COUNTER(arangodb_rocksdb_write_stops_total,
+                "Number of times RocksDB has entered a stopped write state");
+DECLARE_COUNTER(
+    arangodb_rocksdb_temp_write_stalls_total,
+    "Number of times RocksDB has entered a stalled (slowed) write state");
+DECLARE_COUNTER(arangodb_rocksdb_temp_write_stops_total,
+                "Number of times RocksDB has entered a stopped write state");
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
@@ -36,6 +49,7 @@ class ApplicationServer;
 
 /// @brief Gathers better metrics from RocksDB than we can get by scraping
 /// alone.
+template <typename T=arangodb_rocksdb_write_stalls_total, typename S=arangodb_rocksdb_write_stops_total>
 class RocksDBMetricsListener : public rocksdb::EventListener {
  public:
   explicit RocksDBMetricsListener(ArangodServer&);

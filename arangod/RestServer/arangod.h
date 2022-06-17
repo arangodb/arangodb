@@ -122,6 +122,7 @@ class VersionFeature;
 class ViewTypesFeature;
 class ClusterEngine;
 class RocksDBEngine;
+class RocksDBTempEngine;
 class DaemonFeature;
 class SupervisorFeature;
 class WindowsServiceFeature;
@@ -287,6 +288,7 @@ using ArangodFeatures = TypeList<
     iresearch::IResearchFeature,
     ClusterEngine,
     RocksDBEngine,
+    RocksDBTempEngine,
     cluster::FailureOracleFeature,
     replication2::replicated_state::ReplicatedStateAppFeature,
     replication2::replicated_state::black_hole::BlackHoleStateMachineFeature,

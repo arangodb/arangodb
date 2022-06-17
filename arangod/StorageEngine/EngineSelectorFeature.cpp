@@ -37,6 +37,7 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBTempEngine.h"
 #include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb;
@@ -286,6 +287,8 @@ As& EngineSelectorFeature::engine() {
 }
 template ClusterEngine& EngineSelectorFeature::engine<ClusterEngine>();
 template RocksDBEngine& EngineSelectorFeature::engine<RocksDBEngine>();
+
+template RocksDBTempEngine& EngineSelectorFeature::engine<RocksDBTempEngine>();
 
 std::string_view EngineSelectorFeature::engineName() {
   return _engine->typeName();

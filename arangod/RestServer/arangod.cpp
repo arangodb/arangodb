@@ -103,6 +103,11 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
               server,
               server.template getFeature<arangodb::RocksDBOptionFeature>());
         },
+        [](auto& server, TypeTag<RocksDBTempEngine>) {
+          return std::make_unique<RocksDBTempEngine>(
+              server,
+              server.template getFeature<arangodb::RocksDBOptionFeature>());
+        },
         [&ret](auto& server, TypeTag<ScriptFeature>) {
           return std::make_unique<ScriptFeature>(server, &ret);
         },

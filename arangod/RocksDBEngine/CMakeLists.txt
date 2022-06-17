@@ -55,6 +55,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBCuckooIndexEstimator.cpp
   RocksDBEngine/RocksDBEdgeIndex.cpp
   RocksDBEngine/RocksDBEngine.cpp
+  RocksDBEngine/RocksDBTempEngine.cpp
   RocksDBEngine/RocksDBFormat.cpp
   RocksDBEngine/RocksDBFulltextIndex.cpp
   RocksDBEngine/RocksDBGeoIndex.cpp

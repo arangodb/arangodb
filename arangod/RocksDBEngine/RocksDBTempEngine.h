@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBChecksumEnv.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -77,7 +78,7 @@ namespace transaction {
 struct Options;
 }  // namespace transaction
 
-class RocksDBEngine;  // forward
+class RocksDBTempEngine;  // forward
 struct RocksDBOptionsProvider;
 
 /// @brief helper class to make file-purging thread-safe
@@ -85,19 +86,19 @@ struct RocksDBOptionsProvider;
 /// purging of maybe-needed WAL files via holding a lock in the
 /// RocksDB engine. if there is no object of this type around,
 /// purging is allowed to happen
-class RocksDBFilePurgePreventer {
+class RocksDBTempFilePurgePreventer {
  public:
-  RocksDBFilePurgePreventer(RocksDBFilePurgePreventer const&) = delete;
-  RocksDBFilePurgePreventer& operator=(RocksDBFilePurgePreventer const&) =
+  RocksDBTempFilePurgePreventer(RocksDBTempFilePurgePreventer const&) = delete;
+  RocksDBTempFilePurgePreventer& operator=(RocksDBTempFilePurgePreventer const&) =
       delete;
-  RocksDBFilePurgePreventer& operator=(RocksDBFilePurgePreventer&&) = delete;
+  RocksDBTempFilePurgePreventer& operator=(RocksDBTempFilePurgePreventer&&) = delete;
 
-  explicit RocksDBFilePurgePreventer(RocksDBEngine*);
-  RocksDBFilePurgePreventer(RocksDBFilePurgePreventer&&);
-  ~RocksDBFilePurgePreventer();
+  explicit RocksDBTempFilePurgePreventer(RocksDBTempEngine*);
+  RocksDBTempFilePurgePreventer(RocksDBTempFilePurgePreventer&&);
+  ~RocksDBTempFilePurgePreventer();
 
  private:
-  RocksDBEngine* _engine;
+  RocksDBTempEngine* _engine;
 };
 
 /// @brief helper class to make file-purging thread-safe
@@ -108,35 +109,34 @@ class RocksDBFilePurgePreventer {
 /// unneeded WAL files, as they will not be accessed by any other thread.
 /// however, without this object it would be unsafe to delete WAL files
 /// that may still be accessed by WAL tailing etc.
-class RocksDBFilePurgeEnabler {
+class RocksDBTempFilePurgeEnabler {
  public:
-  RocksDBFilePurgeEnabler(RocksDBFilePurgePreventer const&) = delete;
-  RocksDBFilePurgeEnabler& operator=(RocksDBFilePurgeEnabler const&) = delete;
-  RocksDBFilePurgeEnabler& operator=(RocksDBFilePurgeEnabler&&) = delete;
+  RocksDBTempFilePurgeEnabler(RocksDBTempFilePurgePreventer const&) = delete;
+  RocksDBTempFilePurgeEnabler& operator=(RocksDBTempFilePurgeEnabler const&) = delete;
+  RocksDBTempFilePurgeEnabler& operator=(RocksDBTempFilePurgeEnabler&&) = delete;
 
-  explicit RocksDBFilePurgeEnabler(RocksDBEngine*);
-  RocksDBFilePurgeEnabler(RocksDBFilePurgeEnabler&&);
-  ~RocksDBFilePurgeEnabler();
+  explicit RocksDBTempFilePurgeEnabler(RocksDBTempEngine*);
+  RocksDBTempFilePurgeEnabler(RocksDBTempFilePurgeEnabler&&);
+  ~RocksDBTempFilePurgeEnabler();
 
   /// @brief returns true if purging any type of WAL file is currently allowed
   bool canPurge() const { return _engine != nullptr; }
 
  private:
-  RocksDBEngine* _engine;
+  RocksDBTempEngine* _engine;
 };
 
-//class RocksDBEngine final : public StorageEngine {
-class RocksDBEngine : public StorageEngine {
-  friend class RocksDBFilePurgePreventer;
-  friend class RocksDBFilePurgeEnabler;
+class RocksDBTempEngine final : public StorageEngine {
+  friend class RocksDBTempFilePurgePreventer;
+  friend class RocksDBTempFilePurgeEnabler;
 
  public:
-  static constexpr std::string_view name() noexcept { return "RocksDBEngine"; }
+  static constexpr std::string_view name() noexcept { return "RocksDBTempEngine"; }
 
   // create the storage engine
-  explicit RocksDBEngine(Server& server,
+  explicit RocksDBTempEngine(Server& server,
                          RocksDBOptionsProvider const& optionsProvider);
-  ~RocksDBEngine();
+  ~RocksDBTempEngine();
 
   // inherited from ApplicationFeature
   // ---------------------------------
@@ -190,7 +190,7 @@ class RocksDBEngine : public StorageEngine {
 
   std::string versionFilename(TRI_voc_tick_t id) const override;
   std::string dataPath() const override {
-    return _basePath + TRI_DIR_SEPARATOR_STR + "engine-rocksdb";
+    return _basePath + TRI_DIR_SEPARATOR_STR + "engine-rocksdb-temp";
   }
   std::string databasePath(TRI_vocbase_t const* /*vocbase*/) const override {
     return _basePath;
@@ -256,10 +256,10 @@ class RocksDBEngine : public StorageEngine {
   /// @brief disallow purging of WAL files even if the archive gets too big
   /// removing WAL files does not seem to be thread-safe, so we have to track
   /// usage of WAL files ourselves
-  RocksDBFilePurgePreventer disallowPurging() noexcept;
+  RocksDBTempFilePurgePreventer disallowPurging() noexcept;
 
   /// @brief whether or not purging of WAL files is currently allowed
-  RocksDBFilePurgeEnabler startPurging() noexcept;
+  RocksDBTempFilePurgeEnabler startPurging() noexcept;
 
   void scheduleTreeRebuild(TRI_voc_tick_t database,
                            std::string const& collection);
@@ -483,7 +483,7 @@ class RocksDBEngine : public StorageEngine {
 #endif
 
  public:
-  static constexpr std::string_view kEngineName = "rocksdb";
+  static constexpr std::string_view kTempEngineName = "rocksdb-temp";
 
  private:
   bool checkExistingDB(
@@ -680,13 +680,9 @@ class RocksDBEngine : public StorageEngine {
 
   std::unique_ptr<rocksdb::Env> NewChecksumEnv(rocksdb::Env* base_env,
                                                std::string const& path);
-
-
-
-  friend class RocksDBTempEngine;
 };
 
-static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";
-static constexpr const char* kEncryptionKeystoreFolder = "ENCRYPTION-KEYS";
+static constexpr const char* kTempEncryptionTypeFile = "ENCRYPTION";
+static constexpr const char* kTempEncryptionKeystoreFolder = "ENCRYPTION-KEYS";
 
 }  // namespace arangodb
