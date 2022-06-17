@@ -30,6 +30,7 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/voc-errors.h"
 #include "Cluster/ClusterFeature.h"
 #include "Indexes/IndexIterator.h"
 #include "Pregel/Algos/AIR/AIR.h"
@@ -68,11 +69,69 @@ using namespace arangodb::pregel;
 #define LOG_PREGEL(logId, level) \
   LOG_TOPIC(logId, level, Logger::PREGEL) << "[job " << _executionNumber << "] "
 
+auto DocumentId::create(std::string_view documentId) -> ResultT<DocumentId> {
+  auto separatorPosition = documentId.find('/');
+  if (separatorPosition == std::string::npos ||
+      separatorPosition == documentId.size()) {
+    return ResultT<DocumentId>::error(
+        TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD,
+        fmt::format("Given string {} is not a valid document id.", documentId));
+  }
+  return DocumentId{
+      ._collectionName = std::string(documentId.substr(0, separatorPosition)),
+      ._key = std::string(documentId.substr(separatorPosition + 1))};
+}
+auto ClusterShardResolver::getShard(DocumentId const& documentId,
+                                    WorkerConfig* config)
+    -> ResultT<PregelShard> {
+  ShardID responsibleShard;
+  auto res = Utils::resolveShard(
+      _clusterInfo, config, documentId._collectionName,
+      StaticStrings::KeyString, documentId._key, responsibleShard);
+  if (res != TRI_ERROR_NO_ERROR) {
+    return ResultT<PregelShard>::error(
+        res,
+        fmt::format(
+            "Could not resolve target shard of edge '{}', collection: {}: {}",
+            documentId._key, documentId._collectionName,
+            TRI_errno_string(res)));
+  }
+  auto shard = config->shardId(responsibleShard);
+  if (shard == InvalidPregelShard) {
+    return ResultT<PregelShard>::error(
+        TRI_ERROR_CLUSTER_SHARD_GONE, "Could not resolve target shard of edge");
+  }
+  return shard;
+}
+
+auto SingleServerShardResolver::getShard(DocumentId const& documentId,
+                                         WorkerConfig* config)
+    -> ResultT<PregelShard> {
+  auto shard = config->shardId(documentId._collectionName);
+  if (shard == InvalidPregelShard) {
+    return ResultT<PregelShard>::error(
+        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        "Could not resolve target collection of edge");
+  }
+  return shard;
+}
+
+auto ShardResolver::create(bool isCluster, ClusterInfo& clusterInfo)
+    -> std::unique_ptr<ShardResolver> {
+  if (isCluster) {
+    return std::make_unique<ClusterShardResolver>(clusterInfo);
+  } else {
+    return std::make_unique<SingleServerShardResolver>();
+  }
+}
+
 template<typename V, typename E>
 GraphStore<V, E>::GraphStore(PregelFeature& feature, TRI_vocbase_t& vocbase,
                              uint64_t executionNumber,
-                             GraphFormat<V, E>* graphFormat)
-    : _feature(feature),
+                             GraphFormat<V, E>* graphFormat,
+                             std::unique_ptr<ShardResolver> shardResolver)
+    : _shardResolver(std::move(shardResolver)),
+      _feature(feature),
       _vocbaseGuard(vocbase),
       _executionNumber(executionNumber),
       _graphFormat(graphFormat),
@@ -456,10 +515,6 @@ void GraphStore<V, E>::loadEdges(
     }
   };
 
-  bool const isCluster = ServerState::instance()->isRunningInCluster();
-  auto& ci = trx.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-
-  std::string collectionName;  // will be reused
   size_t addedEdges = 0;
   auto buildEdge = [&](Edge<E>* edge, std::string_view toValue) {
     ++addedEdges;
@@ -470,37 +525,21 @@ void GraphStore<V, E>::loadEdges(
     ++_observables.edgesLoaded;
     _observables.memoryBytesUsed += sizeof(Edge<E>);
 
-    std::size_t pos = toValue.find('/');
-    collectionName = std::string(toValue.substr(0, pos));
-
-    std::string_view key = toValue.substr(pos + 1);
-    edge->setToKey(key);
-    TRI_ASSERT(key.size() <= std::numeric_limits<uint16_t>::max());
-
-    if (isCluster) {
-      // resolve the shard of the target vertex.
-      ShardID responsibleShard;
-
-      auto res =
-          Utils::resolveShard(ci, _config, collectionName,
-                              StaticStrings::KeyString, key, responsibleShard);
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG_PREGEL("b80ba", ERR) << "Could not resolve target shard of edge '"
-                                 << key << "', collection: " << collectionName
-                                 << ": " << TRI_errno_string(res);
-        return res;
-      }
-
-      edge->setTargetShard((PregelShard)_config->shardId(responsibleShard));
-    } else {
-      // single server is much simpler
-      edge->setTargetShard((PregelShard)_config->shardId(collectionName));
+    auto documentId = DocumentId::create(std::string_view(toValue));
+    if (documentId.fail()) {
+      LOG_PREGEL("fe72b", ERR) << documentId.errorMessage();
+      return documentId.errorNumber();
     }
+    edge->setToKey(documentId.get()._key);
+    TRI_ASSERT(documentId.get()._key.size() <=
+               std::numeric_limits<uint16_t>::max());
 
-    if (edge->targetShard() == InvalidPregelShard) {
-      LOG_PREGEL("1f413", ERR) << "Could not resolve target shard of edge";
-      return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+    auto shard = _shardResolver->getShard(documentId.get(), _config);
+    if (shard.fail()) {
+      LOG_PREGEL("ba803", ERR) << shard.errorMessage();
+      return shard.errorNumber();
     }
+    edge->setTargetShard(shard.get());
     return TRI_ERROR_NO_ERROR;
   };
 

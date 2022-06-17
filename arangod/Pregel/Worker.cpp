@@ -80,8 +80,14 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo,
   _messageCombiner.reset(algo->messageCombiner());
   _conductorAggregators = std::make_unique<AggregatorHandler>(algo);
   _workerAggregators = std::make_unique<AggregatorHandler>(algo);
+
+  auto shardResolver = ShardResolver::create(
+      ServerState::instance()->isRunningInCluster(),
+      vocbase.server().getFeature<ClusterFeature>().clusterInfo());
+
   _graphStore = std::make_unique<GraphStore<V, E>>(
-      _feature, vocbase, _config.executionNumber(), _algorithm->inputFormat());
+      _feature, vocbase, _config.executionNumber(), _algorithm->inputFormat(),
+      std::move(shardResolver));
 
   _feature.metrics()->pregelWorkersNumber->fetch_add(1);
 
