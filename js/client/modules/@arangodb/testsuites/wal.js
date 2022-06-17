@@ -57,11 +57,11 @@ function walCleanup (options) {
   opts.extraArgs['rocksdb.wal-file-timeout-initial'] = '3';
   opts.cluster = true;
 
-  let rc = new tu.runInArangoshRunner(opts,
-                                      'wal_cleanup', {
-                                        'server.authentication': 'false',
-                                        'rocksdb.wal-file-timeout-initial': '3'
-                                      }).run(testCases);
+  let rc = new tu.runLocalInArangoshRunner(opts,
+                                           'wal_cleanup', {
+                                             'server.authentication': 'false',
+                                             'rocksdb.wal-file-timeout-initial': '3'
+                                           }).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
