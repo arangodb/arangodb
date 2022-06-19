@@ -28,9 +28,10 @@
 namespace arangodb::basics {
 
 void UnshackledMutex::lock() noexcept {
+  auto func = +[](bool const* locked) noexcept { return !*locked; };
   absl::MutexLock guard{
       &_mutex,
-      absl::Condition{+[](bool const* locked) noexcept { return !*locked; },
+      absl::Condition{func,
                       &std::as_const(_locked)}};
   _locked = true;
 }
