@@ -47,6 +47,24 @@ const getDocumentEntry = function (document, entries, type) {
   return null;
 };
 
+const searchDocs = function(logs, docs, opType) {
+  let allEntries = logs.reduce((previous, current) => previous.concat(current.head(1000)), []);
+  for (const doc of docs) {
+    let entry = getDocumentEntry(doc, allEntries, opType);
+    assertTrue(entry !== null);
+    assertEqual(entry.payload[1].operation, opType);
+  }
+};
+
+const getArrayElements = function(logs, name, opType) {
+  // Unroll all array entries from all logs filter them by name.
+  return logs.reduce((previous, current) => previous.concat(current.head(1000)), [])
+      .filter(entry => entry.hasOwnProperty("payload") && entry.payload[1].operation === opType
+          && Array.isArray(entry.payload[1].data))
+      .reduce((previous, current) => previous.concat(current.payload[1].data), [])
+      .filter(entry => entry.name === name);
+};
+
 const replicatedStateDocumentStoreSuiteReplication2 = function () {
   let previousDatabase, databaseExisted = true;
   return {
@@ -115,33 +133,15 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       let shards = collection.shards();
       let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
 
-      const searchInsertedDocs = function(docs, opType) {
-        let allEntries = logs.reduce((previous, current) => previous.concat(current.head(1000)), []);
-        for (const doc of docs) {
-          let entry = getDocumentEntry(doc, allEntries, opType);
-          assertTrue(entry !== null);
-          assertEqual(entry.payload[1].operation, opType);
-        }
-      };
-
-      // Insert single documents
+      // Insert single document
       let documents = [{name: "foo"}, {name: "bar"}];
       documents.forEach(doc => collection.insert(doc));
-      searchInsertedDocs(documents, opType);
-
-      const getArrayElements = function(name, opType) {
-        // Unroll all array entries from all logs filter them by name.
-        return logs.reduce((previous, current) => previous.concat(current.head(1000)), [])
-            .filter(entry => entry.hasOwnProperty("payload") && entry.payload[1].operation === opType
-                && Array.isArray(entry.payload[1].data))
-            .reduce((previous, current) => previous.concat(current.payload[1].data), [])
-            .filter(entry => entry.name === name);
-      };
+      searchDocs(logs, documents, opType);
 
       // Insert multiple documents
       documents = [...Array(10).keys()].map(i => {return {name: "test1", foobar: i};});
       collection.insert(documents);
-      let result = getArrayElements("test1", opType);
+      let result = getArrayElements(logs, "test1", opType);
       for (const doc of documents) {
         assertTrue(result.find(entry => entry.foobar === doc.foobar) !== undefined);
       }
@@ -149,11 +149,48 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       // AQL INSERT
       documents = [...Array(10).keys()].map(i => {return {name: "test2", foobar: i};});
       db._query(`FOR i in 0..9 INSERT {_key: CONCAT('test', i), name: "test2", foobar: i} INTO ${collectionName}`);
-      result = getArrayElements("test1", opType);
+      result = getArrayElements(logs, "test2", opType);
       for (const doc of documents) {
         assertTrue(result.find(entry => entry.foobar === doc.foobar) !== undefined);
       }
-    }
+    },
+
+    testReplicateOperationsModify: function() {
+      const opType = "updated";
+      let collection = db._collection(collectionName);
+      let shards = collection.shards();
+      let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
+
+      // Update single document
+      let documents = [{value: 1}, {value: 2}];
+      let docHandles = [];
+      documents.forEach(doc => {
+        let testName = `test${doc.value}`;
+        let docUpdate = {name: testName};
+        let d = collection.insert(doc);
+        docHandles.push(collection.update(d, docUpdate));
+        searchDocs(logs, [docUpdate], opType);
+      });
+
+      // Replace multiple documents
+      let replacements = [{value: 10, name: "testR"}, {value: 20, name: "testR"}];
+      docHandles = collection.replace(docHandles, replacements);
+      let result = getArrayElements(logs, "testR", "replace");
+      for (const doc of replacements) {
+        assertTrue(result.find(entry => entry.value === doc.value) !== undefined);
+      }
+
+      // Update multiple documents
+      let updates = documents.map(doc => {return {name: "test10"};});
+      docHandles = collection.update(docHandles, updates);
+      result = getArrayElements(logs, "test10", opType);
+      assertEqual(result.length, updates.length);
+
+      // AQL UPDATE
+      db._query(`FOR doc IN ${collectionName} UPDATE {_key: doc._key, name: "test100"} IN ${collectionName}`);
+      result = getArrayElements(logs, "test100", opType);
+      assertEqual(result.length, updates.length);
+    },
   };
 };
 

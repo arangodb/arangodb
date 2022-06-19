@@ -992,7 +992,7 @@ Future<OperationResult> transaction::Methods::insertLocal(
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
-  auto replicationVersion = vocbase().replicationVersion();
+  auto replicationVersion = collection->replicationVersion();
   ReplicationType replicationType = ReplicationType::NONE;
   if (_state->isDBServer()) {
     // This failure point is to test the case that a former leader has
@@ -1437,6 +1437,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   auto* trxColl = trxCollection(cid);
   TRI_ASSERT(trxColl->isLocked(AccessMode::Type::WRITE));
   auto const& collection = trxColl->collection();
+  auto replicationVersion = collection->replicationVersion();
 
   // Assert my assumption that we don't have a lock only with mmfiles single
   // document operations.
@@ -1454,16 +1455,20 @@ Future<OperationResult> transaction::Methods::modifyLocal(
             TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
 
-      switch (followerInfo->allowedToWrite()) {
-        case FollowerInfo::WriteState::FORBIDDEN:
-          // We cannot fulfill minimum replication Factor. Reject write.
-          return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
-        case FollowerInfo::WriteState::UNAVAILABLE:
-        case FollowerInfo::WriteState::STARTUP:
-          return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
-                                 options);
-        default:
-          break;
+      // This is just a trick to let the function continue for replication2
+      // databases
+      if (replicationVersion != replication::Version::TWO) {
+        switch (followerInfo->allowedToWrite()) {
+          case FollowerInfo::WriteState::FORBIDDEN:
+            // We cannot fulfill minimum replication Factor. Reject write.
+            return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+          case FollowerInfo::WriteState::UNAVAILABLE:
+          case FollowerInfo::WriteState::STARTUP:
+            return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+                                   options);
+          default:
+            break;
+        }
       }
 
       replicationType = ReplicationType::LEADER;
@@ -1474,7 +1479,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(
       // be silent.
       // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
-      if (!followers->empty()) {
+      if (!followers->empty() ||
+          replicationVersion == replication::Version::TWO) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -1655,7 +1661,9 @@ Future<OperationResult> transaction::Methods::modifyLocal(
 
   auto resDocs = resultBuilder.steal();
   if (res.ok()) {
-    if (replicationType == ReplicationType::LEADER && !followers->empty()) {
+    if (replicationType == ReplicationType::LEADER &&
+        (!followers->empty() ||
+         replicationVersion == replication::Version::TWO)) {
       // We still hold a lock here, because this is update/replace and we're
       // therefore not doing single document operations. But if we didn't hold
       // it at the beginning of the method the followers may not be up-to-date.
