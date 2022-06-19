@@ -1749,6 +1749,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
   auto* trxColl = trxCollection(cid);
   TRI_ASSERT(trxColl->isLocked(AccessMode::Type::WRITE));
   auto const& collection = trxColl->collection();
+  auto replicationVersion = collection->replicationVersion();
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
@@ -1763,16 +1764,20 @@ Future<OperationResult> transaction::Methods::removeLocal(
             TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
 
-      switch (followerInfo->allowedToWrite()) {
-        case FollowerInfo::WriteState::FORBIDDEN:
-          // We cannot fulfill minimum replication Factor. Reject write.
-          return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
-        case FollowerInfo::WriteState::UNAVAILABLE:
-        case FollowerInfo::WriteState::STARTUP:
-          return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
-                                 options);
-        default:
-          break;
+      // This is just a trick to let the function continue for replication2
+      // databases
+      if (replicationVersion != replication::Version::TWO) {
+        switch (followerInfo->allowedToWrite()) {
+          case FollowerInfo::WriteState::FORBIDDEN:
+            // We cannot fulfill minimum replication Factor. Reject write.
+            return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+          case FollowerInfo::WriteState::UNAVAILABLE:
+          case FollowerInfo::WriteState::STARTUP:
+            return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+                                   options);
+          default:
+            break;
+        }
       }
 
       replicationType = ReplicationType::LEADER;
@@ -1783,7 +1788,8 @@ Future<OperationResult> transaction::Methods::removeLocal(
       // be silent.
       // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
-      if (!followers->empty()) {
+      if (!followers->empty() ||
+          replicationVersion == replication::Version::TWO) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -1918,7 +1924,9 @@ Future<OperationResult> transaction::Methods::removeLocal(
 
   auto resDocs = resultBuilder.steal();
   if (res.ok()) {
-    if (replicationType == ReplicationType::LEADER && !followers->empty()) {
+    if (replicationType == ReplicationType::LEADER &&
+        (!followers->empty() ||
+         replicationVersion == replication::Version::TWO)) {
       TRI_ASSERT(collection != nullptr);
       // Now replicate the same operation on all followers:
 
