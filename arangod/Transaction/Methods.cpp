@@ -1041,7 +1041,8 @@ Future<OperationResult> transaction::Methods::insertLocal(
       // be silent.
       // Otherwise, if we already know the followers to replicate to, we can
       // just check if they're empty.
-      if (!followers->empty()) {
+      if (!followers->empty() ||
+          replicationVersion == replication::Version::TWO) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -2617,7 +2618,24 @@ Future<Result> Methods::replicateOperations(
     return Result();
   }
 
-  if (vocbase().replicationVersion() == replication::Version::TWO) {
+  if (collection->replicationVersion() == replication::Version::TWO) {
+    auto replicatedState = collection->getDocumentState();
+
+    // TODO find a better way to wait for service availability
+    for (int counter{0}; counter < 5; ++counter) {
+      auto status = replicatedState->getStatus();
+      TRI_ASSERT(status.has_value());
+      auto leaderStatus = status->asLeaderStatus();
+      TRI_ASSERT(leaderStatus != nullptr);
+      if (leaderStatus->managerState.state ==
+          replication2::replicated_state::LeaderInternalState::
+              kServiceAvailable) {
+        break;
+      }
+      using namespace std::chrono_literals;
+      std::this_thread::sleep_for(1s);
+    }
+
     auto leaderState = collection->getDocumentStateLeader();
     leaderState->replicateOperations(payload->sharedSlice(), operation,
                                      state()->id());
