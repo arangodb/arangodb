@@ -89,6 +89,17 @@ class ClusterMetricsFeature final : public ArangodFeature {
   void beginShutdown() final;
   void stop() final;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Update current local cache of cluster metrics
+  /// @param mode customize update behavior
+  /// if mode is TriggerGlobal then async update and return nullopt
+  /// other modes if we aren't leader return who is leader
+  /// (RestHandler will make redirect to it)
+  /// if we are leader then if mode is ReadGlobal just do nothing
+  /// if mode is WriteGlobal then make blocking update from DB Servers
+  /// @return leader server id, nullopt means no need return (TriggerGlobal)
+  /// or current server is leader (other modes)
+  //////////////////////////////////////////////////////////////////////////////
   std::optional<std::string> update(CollectMode mode) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
