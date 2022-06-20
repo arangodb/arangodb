@@ -95,7 +95,7 @@ void handleGossipResponse(arangodb::network::Response const& r,
         // service unavailable
         LOG_TOPIC("f9c3f", INFO, Logger::AGENCY)
             << "Gossip endpoint " << endpoint << " is still unavailable";
-        std::this_thread::sleep_for(std::chrono::seconds(10));
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
         break;
 
       default:
