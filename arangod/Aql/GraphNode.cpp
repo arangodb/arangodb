@@ -1007,6 +1007,14 @@ void GraphNode::initializeIndexConditions() const {
       plan()->getAst(), getRegisterPlan()->varInfo, getTemporaryVariable());
 }
 
+void GraphNode::setVertexProjections(Projections projections) {
+  options()->setVertexProjections(std::move(projections));
+}
+
+void GraphNode::setEdgeProjections(Projections projections) {
+  options()->setEdgeProjections(std::move(projections));
+}
+
 bool GraphNode::isEligibleAsSatelliteTraversal() const {
   return graph() != nullptr && graph()->isSatellite();
 }

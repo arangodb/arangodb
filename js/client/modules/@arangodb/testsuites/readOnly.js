@@ -34,6 +34,7 @@ const optionsDocumentation = [
 
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const im = require('@arangodb/testutils/instance-manager');
 const request = require('@arangodb/request');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -85,16 +86,19 @@ function readOnly (options) {
     });
 
   print(CYAN + 'readOnly tests...' + RESET);
-
-  const adbInstance = pu.startInstance('tcp', options, conf, 'readOnly');
-  if (adbInstance === false) {
-    results.failed += 1;
-    results['test'] = {
-      failed: 1,
-      status: false,
-      message: 'failed to start server!'
+  
+  let instanceManager = new im.instanceManager('tcp', options, conf, 'readOnly');
+  instanceManager.prepareInstance();
+  instanceManager.launchTcpDump("");
+  if (!instanceManager.launchInstance()) {
+    return {
+      readOnly: {
+        status: false,
+        message: 'failed to start server!'
+      }
     };
   }
+  instanceManager.reconnect();
 
   const requests = [
     [200, 'post', '/_api/collection', 'root', {name: 'testcol'}],
@@ -141,12 +145,13 @@ function readOnly (options) {
   const run = (tests) => {
     const bodies = [];
     for (const r of tests) {
-      const res = request[r[1]]({
-        url: `${adbInstance.arangods[0].url}${r[2]}`,
+      let req = {
+        url: `${instanceManager.url}${r[2]}`,
         body: Object.keys(r[4]).length ? JSON.stringify(r[4]) : '',
         auth: { username: r[3], password: '' },
         timeout: 60.0
-      });
+      };
+      const res = request[r[1]](req);
       try {
         bodies.push(JSON.parse(res.body));
       } catch (e) {
@@ -162,14 +167,15 @@ function readOnly (options) {
         results.failed += 1;
         results[r.slice(0, 5).join('_')] = {
           failed: 1,
-          status: false
+          status: false,
+          message: "Result: expected " + r[0] + " got " + r[1] + " - req: " + JSON.stringify(req) + " - reply: " + JSON.stringify(res)
         };
       }
     }
     return bodies;
   };
 
-  let res = pu.run.arangoshCmd(options, adbInstance, {}, [
+  let res = pu.run.arangoshCmd(options, instanceManager, {}, [
     '--javascript.execute-string',
     `const users = require('@arangodb/users');
     users.save('test', '', true);
@@ -193,7 +199,8 @@ function readOnly (options) {
   options.coreCheck);
 
   if (res.status !== true) {
-    let shutdownStatus = pu.shutdownInstance(adbInstance, options);
+    let shutdownStatus = instanceManager.shutdownInstance();
+    instanceManager.destructor();
     return {
       readOnly : {
         status: false,
@@ -215,7 +222,8 @@ function readOnly (options) {
   requests[0][2] += bodies.pop().indexes.filter(idx => idx.type === 'hash')[0].id;
   run(requests);
 
-  results['shutdown'] = pu.shutdownInstance(adbInstance, options);
+  results['shutdown'] = instanceManager.shutdownInstance();
+  instanceManager.destructor();
 
   return results;
 }

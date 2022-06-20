@@ -27,8 +27,7 @@
 #include <string>
 #include <vector>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 /// @brief helper class to handle top level and nested attribute paths.
 /// a top-level attribute (e.g. _key) will be stored in a vector with a single
@@ -98,8 +97,7 @@ struct AttributeNamePath {
   std::vector<std::string> path;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 namespace std {
 

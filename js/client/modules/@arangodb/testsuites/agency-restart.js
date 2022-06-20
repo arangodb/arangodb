@@ -34,6 +34,7 @@ const optionsDocumentation = [
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const inst = require('@arangodb/testutils/instance');
 const _ = require('lodash');
 
 const toArgv = require('internal').toArgv;
@@ -50,7 +51,7 @@ const testPaths = {
 // / @brief TEST: agency_restart
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangodRecovery (params) {
+function runArangodRecovery (params, agencyConfig) {
   let additionalParams= {
     'log.foreground-tty': 'true',
     'javascript.enabled': 'true',
@@ -76,51 +77,45 @@ function runArangodRecovery (params) {
       fs.remove(crashLog);
     } catch (err) {}
 
-
     params.options.disableMonitor = true;
     params.testDir = fs.join(params.tempDir, `${params.count}`);
-    pu.cleanupDBDirectoriesAppend(params.testDir);
-    let dataDir = fs.join(params.testDir, 'data');
-    let appDir = fs.join(params.testDir, 'app');
-    let tmpDir = fs.join(params.testDir, 'tmp');
-    fs.makeDirectoryRecursive(params.testDir);
-    fs.makeDirectoryRecursive(dataDir);
-    fs.makeDirectoryRecursive(tmpDir);
-    fs.makeDirectoryRecursive(appDir);
 
-    let args = pu.makeArgs.arangod(params.options, appDir, '', tmpDir);
     // enable development debugging if extremeVerbosity is set
+    let args = {};
     if (params.options.extremeVerbosity === true) {
       args['log.level'] = 'development=info';
     }
     args = Object.assign(args, params.options.extraArgs);
     args = Object.assign(args, {
-      'database.directory': fs.join(dataDir + 'db'),
       'server.rest-server': 'false',
       'javascript.script': params.script
     });
-      
-    args['log.output'] = 'file://' + crashLog;
-    params.args = args;
 
-    argv = toArgv(Object.assign(params.args, additionalParams));
+    args['log.output'] = 'file://' + crashLog;
+    pu.cleanupDBDirectoriesAppend(params.testDir);
+    params['instance'] = new inst.instance(params.options,
+                                           inst.instanceRole.agent,
+                                           args, {}, 'tcp', params.rootDir, '',
+                                           agencyConfig);
+
+    argv = toArgv(Object.assign(params.instance.args, additionalParams));
   } else {
     additionalParams['javascript.script-parameter'] = 'recovery';
-    argv = toArgv(Object.assign(params.args, additionalParams));
-    
+    argv = toArgv(Object.assign(params.instance.args, additionalParams));
+
     if (params.options.rr) {
       binary = 'rr';
       argv.unshift(pu.ARANGOD_BIN);
     }
   }
-    
+
   process.env["crash-log"] = crashLog;
-  params.instanceInfo.pid = pu.executeAndWait(
+  params.instance.pid = pu.executeAndWait(
     binary,
     argv,
     params.options,
     'recovery',
-    params.instanceInfo.rootDir,
+    params.instance.rootDir,
     !params.setup && params.options.coreCheck);
 }
 
@@ -158,33 +153,32 @@ function agencyRestart (options) {
       print(BLUE + "running setup of test " + count + " - " + test + RESET);
       let params = {
         tempDir: tempDir,
-        instanceInfo: {
-          rootDir: fs.join(fs.getTempPath(), 'agency-restart', count.toString())
-        },
+        rootDir: fs.join(fs.getTempPath(), 'agency-restart', count.toString()),
         options: _.cloneDeep(options),
         script: test,
         setup: true,
         count: count,
         testDir: ""
       };
-      runArangodRecovery(params);
+      let agencyConfig = new inst.agencyConfig(options, null);
+      runArangodRecovery(params, agencyConfig);
 
       ////////////////////////////////////////////////////////////////////////
       print(BLUE + "running recovery of test " + count + " - " + test + RESET);
       params.options.disableMonitor = options.disableMonitor;
       params.setup = false;
       try {
-        tu.writeTestResult(params.args['temp.path'], {
+        tu.writeTestResult(params.instance.args['temp.path'], {
           failed: 1,
-          status: false, 
+          status: false,
           message: "unable to run agency_restart test " + test,
           duration: -1
         });
       } catch (er) {}
-      runArangodRecovery(params);
+      runArangodRecovery(params, agencyConfig);
 
       results[test] = tu.readTestResult(
-        params.args['temp.path'],
+        params.instance.args['temp.path'],
         {
           status: false
         },

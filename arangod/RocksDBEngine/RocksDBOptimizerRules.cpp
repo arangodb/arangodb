@@ -37,6 +37,7 @@
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Aql/OptimizerUtils.h"
 #include "Aql/Query.h"
 #include "Aql/SortNode.h"
 #include "Basics/StaticStrings.h"
@@ -94,128 +95,20 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
          !ExecutionNode::castTo<EnumerateCollectionNode*>(n)
               ->isDeterministic());
 
-    bool stop = false;
-    bool optimize = false;
-    attributes.clear();
     DocumentProducingNode* e = dynamic_cast<DocumentProducingNode*>(n);
     if (e == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL, "cannot convert node to DocumentProducingNode");
     }
-    Variable const* v = e->outVariable();
 
-    ExecutionNode* current = n->getFirstParent();
-    while (current != nullptr) {
-      bool doRegularCheck = false;
+    attributes.clear();
+    bool foundProjections = arangodb::aql::utils::findProjections(
+        n, e->outVariable(), /*expectedAttribute*/ "", attributes);
 
-      if (current->getType() == EN::REMOVE) {
-        RemoveNode const* removeNode =
-            ExecutionNode::castTo<RemoveNode const*>(current);
-        if (removeNode->inVariable() == v) {
-          // FOR doc IN collection REMOVE doc IN ...
-          attributes.emplace(
-              arangodb::aql::AttributeNamePath(StaticStrings::KeyString));
-          optimize = true;
-        } else {
-          doRegularCheck = true;
-        }
-      } else if (current->getType() == EN::UPDATE ||
-                 current->getType() == EN::REPLACE) {
-        UpdateReplaceNode const* modificationNode =
-            ExecutionNode::castTo<UpdateReplaceNode const*>(current);
+    if (foundProjections && !attributes.empty() &&
+        attributes.size() <= e->maxProjections()) {
+      Projections projections(attributes);
 
-        if (modificationNode->inKeyVariable() == v &&
-            modificationNode->inDocVariable() != v) {
-          // FOR doc IN collection UPDATE/REPLACE doc IN ...
-          attributes.emplace(
-              arangodb::aql::AttributeNamePath(StaticStrings::KeyString));
-          optimize = true;
-        } else {
-          doRegularCheck = true;
-        }
-      } else if (current->getType() == EN::CALCULATION) {
-        Expression* exp =
-            ExecutionNode::castTo<CalculationNode*>(current)->expression();
-
-        if (exp != nullptr && exp->node() != nullptr) {
-          AstNode const* node = exp->node();
-          vars.clear();
-          current->getVariablesUsedHere(vars);
-
-          if (vars.find(v) != vars.end()) {
-            if (!Ast::getReferencedAttributesRecursive(node, v, attributes)) {
-              stop = true;
-              break;
-            }
-            optimize = true;
-          }
-        }
-      } else if (current->getType() == EN::GATHER) {
-        // compare sort attributes of GatherNode
-        auto gn = ExecutionNode::castTo<GatherNode*>(current);
-        for (auto const& it : gn->elements()) {
-          if (it.var == v) {
-            if (it.attributePath.empty()) {
-              // sort of GatherNode refers to the entire document, not to an
-              // attribute of the document
-              stop = true;
-              break;
-            }
-            // insert attribute name into the set of attributes that we need for
-            // our projection
-            attributes.emplace(AttributeNamePath(it.attributePath));
-          }
-        }
-      } else if (current->getType() == EN::INDEX) {
-        Condition const* condition =
-            ExecutionNode::castTo<IndexNode const*>(current)->condition();
-
-        if (condition != nullptr && condition->root() != nullptr) {
-          AstNode const* node = condition->root();
-          vars.clear();
-          current->getVariablesUsedHere(vars);
-
-          if (vars.find(v) != vars.end()) {
-            if (!Ast::getReferencedAttributesRecursive(node, v, attributes)) {
-              stop = true;
-              break;
-            }
-            optimize = true;
-          }
-        }
-      } else {
-        // all other node types mandate a check
-        doRegularCheck = true;
-      }
-
-      if (doRegularCheck) {
-        vars.clear();
-        current->getVariablesUsedHere(vars);
-
-        if (vars.find(v) != vars.end()) {
-          // original variable is still used here
-          stop = true;
-          break;
-        }
-      }
-
-      if (stop) {
-        break;
-      }
-
-      current = current->getFirstParent();
-    }
-
-    Projections projections(attributes);
-
-    // projections are currently limited to a particular number of attributes.
-    // set default limit for number of projections (arbitrarily to 5 attributes
-    // if not configured, or to the configured number if set)
-    TRI_ASSERT(e != nullptr);
-    size_t const maxProjections = e->maxProjections();
-
-    if (optimize && !stop && !projections.empty() &&
-        projections.size() <= maxProjections) {
       if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION &&
           !isRandomOrder) {
         // the node is still an EnumerateCollection... now check if we should
@@ -338,7 +231,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
       }
 
       modified = true;
-    } else if (!stop && projections.empty() &&
+    } else if (foundProjections && attributes.empty() &&
                n->getType() == ExecutionNode::ENUMERATE_COLLECTION &&
                !isRandomOrder) {
       // replace collection access with primary index access (which can be
