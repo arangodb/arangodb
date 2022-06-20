@@ -303,8 +303,6 @@ struct DFSEnumerator {
             return result;
           }
           if (step->isActive()) {
-            v->outgoing.emplace_back(std::move(transition), step);
-            v->searchIndex = v->outgoing.size();
             auto cycle = decltype(path)();
             {
               // move cycle from `path` to `cycle`
@@ -316,7 +314,11 @@ struct DFSEnumerator {
             result.failed.emplace(CheckError("cycle detected"), step,
                                   buildPathVector());
             std::swap(path, cycle);
-            result.failed->cycle.emplace(buildPathVector());
+            auto cycle_vec = buildPathVector();
+            if (step->searchIndex == 0) {
+              cycle_vec.emplace_back(step, transition);
+            }
+            result.failed->cycle.emplace(std::move(cycle_vec));
             return result;
           }
           v->outgoing.emplace_back(std::move(transition), step);
@@ -524,8 +526,6 @@ struct RandomEnumerator {
             return result;
           }
           if (step->isActive()) {
-            v->outgoing.emplace_back(std::move(transition), step);
-            v->searchIndex = v->outgoing.size();
             auto cycle = decltype(path)();
             {
               // move cycle from `path` to `cycle`
@@ -536,7 +536,11 @@ struct RandomEnumerator {
             result.failed.emplace(CheckError("cycle detected"), step,
                                   buildPathVector());
             std::swap(path, cycle);
-            result.failed->cycle.emplace(buildPathVector());
+            auto cycle_vec = buildPathVector();
+            if (!step->searchIndex.has_value()) {
+              cycle_vec.emplace_back(step, transition);
+            }
+            result.failed->cycle.emplace(std::move(cycle_vec));
             return result;
           }
           v->outgoing.emplace_back(std::move(transition), step);
