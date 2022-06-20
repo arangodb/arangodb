@@ -43,10 +43,6 @@ let AbstractGraph = ggc.__GraphClass;
 // thrown first).
 
 class GeneralGraph extends AbstractGraph {
-  constructor(info) {
-    super(info);
-  }
-
   _deleteEdgeDefinition(name, dropCollection = false) {
     let uri = GRAPH_PREFIX + encodeURIComponent(this.__name) + "/edge/" + encodeURIComponent(name);
     if (dropCollection === true) {

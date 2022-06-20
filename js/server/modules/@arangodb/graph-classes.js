@@ -33,10 +33,6 @@ const {ArangoGraph} = require('internal');
 let AbstractGraph = ggc.__GraphClass;
 
 class GeneralGraph extends AbstractGraph {
-  constructor(info) {
-    super(info);
-  }
-
   _deleteEdgeDefinition(edgeDefinition, dropCollection = false) {
     let result = ArangoGraph._deleteEdgeDefinition(this.__name, edgeDefinition, dropCollection);
     this.__updateDefinitions(result.graph.edgeDefinitions, result.graph.orphanCollections);
