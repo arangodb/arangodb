@@ -1,7 +1,7 @@
 v3.9.3 (XXXX-XX-XX)
 -------------------
 
-* Optionally enable range deletions in the WAL for truncate operationns in 
+* Optionally enable range deletions in the WAL for truncate operations in 
   the cluster, too. This can speed up truncate operations for large 
   collections/shards. Range deletions are turned off by default to ensure
   compatibility with all versions of arangosync. They can be turned on by
