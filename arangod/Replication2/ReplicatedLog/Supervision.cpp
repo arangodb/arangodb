@@ -218,6 +218,9 @@ auto checkLeaderPresent(SupervisionContext& ctx, Log const& log,
   TRI_ASSERT(log.current.has_value());
   auto const& current = *log.current;
 
+  if (!current.supervision.has_value()) {
+    return;
+  }
   ADB_PROD_ASSERT(current.supervision.has_value());
 
   if (currentTerm.leader) {
@@ -536,8 +539,10 @@ auto checkLogExists(SupervisionContext& ctx, Log const& log,
 auto checkCurrentExists(SupervisionContext& ctx, Log const& log) -> void {
   // If the Current subtree does not exist yet, create it by writing
   // a message into it.
+  auto const effectiveWriteConcern =
+      log.plan->participantsConfig.config.effectiveWriteConcern;
   if (!log.current || !log.current->supervision) {
-    ctx.createAction<CurrentNotAvailableAction>();
+    ctx.createAction<CurrentNotAvailableAction>(effectiveWriteConcern);
   }
 }
 

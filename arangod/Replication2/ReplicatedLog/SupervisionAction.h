@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "Basics/debugging.h"
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-common.h"
 #include <memory>
@@ -127,9 +128,15 @@ auto inspect(Inspector& f, AddLogToPlanAction& x) {
 struct CurrentNotAvailableAction {
   static constexpr std::string_view name = "CurrentNotAvailableAction";
 
+  CurrentNotAvailableAction(size_t assumedWriteConcern)
+      : assumedWriteConcern(assumedWriteConcern) {}
   auto execute(ActionContext& ctx) const -> void {
-    ctx.setValue<LogCurrentSupervision>();
+    ctx.modifyOrCreate<LogCurrentSupervision>(
+        [&](LogCurrentSupervision& currentSupervision) {
+          currentSupervision.assumedWriteConcern = assumedWriteConcern;
+        });
   }
+  size_t assumedWriteConcern;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, CurrentNotAvailableAction& x) {
