@@ -37,7 +37,7 @@ exports.getServerById = function (id) {
 };
 
 exports.getServersByType = function (type) {
-  const isType = (d) => (d.role.toLowerCase() === type);
+  const isType = (d) => (d.instanceRole.toLowerCase() === type);
   const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
   return instanceInfo.arangods.filter(isType);
 };
@@ -62,7 +62,7 @@ exports.getEndpointById = function (id) {
 };
 
 exports.getEndpointsByType = function (type) {
-  const isType = (d) => (d.role.toLowerCase() === type);
+  const isType = (d) => (d.instanceRole.toLowerCase() === type);
   const toEndpoint = (d) => (d.endpoint);
   const endpointToURL = (endpoint) => {
     if (endpoint.substr(0, 6) === 'ssl://') {

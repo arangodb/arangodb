@@ -32,7 +32,7 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const ERRORS = arangodb.errors;
-const {debugCanUseFailAt, debugSetFailAt, debugClearFailAt, getServersByType} = require("@arangodb/test-helper");
+const { debugCanUseFailAt, debugSetFailAt, debugClearFailAt, getDBServers } = require("@arangodb/test-helper");  
 const cluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
 
@@ -42,7 +42,7 @@ const cn = "UnitTestsKeyGen";
 // in cluster case, this is the coordinator.
 let endpoints = [arango.getEndpoint()];
 if (cluster) {
-  endpoints = endpoints.concat(getServersByType("dbserver").map((s) => s.endpoint));
+  endpoints = endpoints.concat(getDBServers().map((s) => s.endpoint));
 }
 
 let debugSetFailAtAll = (fp) => {
