@@ -343,6 +343,13 @@ auto inspect(Inspector& f, EnumStorage<Enum>& e) {
                               f.field("message", e.message));
   }
 }
+
+struct AnEmptyObject {};
+template<class Inspector>
+auto inspect(Inspector& f, AnEmptyObject& x) {
+  return f.object(x).fields();
+}
+
 }  // namespace
 
 namespace arangodb::inspection {
@@ -467,6 +474,14 @@ struct VPackSaveInspectorTest : public ::testing::Test {
   velocypack::Builder builder;
   VPackSaveInspector inspector{builder};
 };
+
+TEST_F(VPackSaveInspectorTest, store_empty_object) {
+  auto empty = AnEmptyObject{};
+  auto result = inspector.apply(empty);
+  EXPECT_TRUE(result.ok());
+  EXPECT_TRUE(builder.slice().isObject());
+  EXPECT_EQ(0, builder.slice().length());
+}
 
 TEST_F(VPackSaveInspectorTest, store_int) {
   int x = 42;
@@ -852,6 +867,16 @@ TEST_F(VPackSaveInspectorTest, store_unqualified_variant) {
 struct VPackLoadInspectorTest : public ::testing::Test {
   velocypack::Builder builder;
 };
+
+TEST_F(VPackLoadInspectorTest, load_empty_object) {
+  builder.openObject();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  auto d = AnEmptyObject{};
+  auto result = inspector.apply(d);
+  ASSERT_TRUE(result.ok());
+}
 
 TEST_F(VPackLoadInspectorTest, load_int) {
   builder.add(VPackValue(42));
@@ -1502,6 +1527,18 @@ TEST_F(VPackLoadInspectorTest, load_object_with_fallback_reference) {
   ASSERT_TRUE(result.ok());
   EXPECT_EQ(42, f.x);
   EXPECT_EQ(42, f.y);
+}
+
+TEST_F(VPackLoadInspectorTest, load_object_ignoring_missing_fields) {
+  builder.openObject();
+  builder.close();
+  VPackLoadInspector inspector{builder, {.ignoreMissingFields = true}};
+
+  FallbackReference f{.x = 1, .y = 2};
+  auto result = inspector.apply(f);
+  ASSERT_TRUE(result.ok());
+  EXPECT_EQ(1, f.x);
+  EXPECT_EQ(1, f.y);
 }
 
 TEST_F(VPackLoadInspectorTest, load_object_with_invariant_fulfilled) {

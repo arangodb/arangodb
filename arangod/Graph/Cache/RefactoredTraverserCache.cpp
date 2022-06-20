@@ -38,6 +38,7 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
 #include "VocBase/LogicalCollection.h"
@@ -70,11 +71,12 @@ bool isWithClauseMissing(arangodb::basics::Exception const& ex) {
 }  // namespace
 
 RefactoredTraverserCache::RefactoredTraverserCache(
-    arangodb::transaction::Methods* trx, aql::QueryContext* query,
-    arangodb::ResourceMonitor& resourceMonitor,
-    arangodb::aql::TraversalStats& stats,
+    transaction::Methods* trx, aql::QueryContext* query,
+    ResourceMonitor& resourceMonitor, aql::TraversalStats& stats,
     std::unordered_map<std::string, std::vector<std::string>> const&
-        collectionToShardMap)
+        collectionToShardMap,
+    arangodb::aql::Projections const& vertexProjections,
+    arangodb::aql::Projections const& edgeProjections)
     : _query(query),
       _trx(trx),
       _stringHeap(
@@ -86,7 +88,9 @@ RefactoredTraverserCache::RefactoredTraverserCache(
                                 !_query->vocbase()
                                      .server()
                                      .getFeature<QueryRegistryFeature>()
-                                     .requireWith()) {
+                                     .requireWith()),
+      _vertexProjections(vertexProjections),
+      _edgeProjections(edgeProjections) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 }
 
@@ -101,7 +105,12 @@ void RefactoredTraverserCache::clear() {
 
 template<typename ResultType>
 bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
-                                          bool onlyId, ResultType& result) {
+                                          EdgeReadType readType,
+                                          ResultType& result) {
+  if constexpr (std::is_same_v<ResultType, std::string>) {
+    // Only Ids can be extracted into a std::string
+    TRI_ASSERT(readType == EdgeReadType::ONLYID);
+  }
   auto col = _trx->vocbase().lookupCollection(idToken.cid());
 
   if (ADB_UNLIKELY(col == nullptr)) {
@@ -117,16 +126,64 @@ bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
           ->read(
               _trx, idToken.localDocumentId(),
               [&](LocalDocumentId const&, VPackSlice edge) -> bool {
-                if (onlyId) {
-                  edge = edge.get(StaticStrings::IdString);
+                if (readType == EdgeReadType::ONLYID) {
+                  if constexpr (std::is_same_v<ResultType, std::string>) {
+                    // If we want to expose the ID, we need to translate the
+                    // custom type Unfortunately we cannot do this in slice only
+                    // manner, as there is no complete slice with the _id.
+                    result = transaction::helpers::extractIdString(
+                        _trx->resolver(), edge, VPackSlice::noneSlice());
+                    return true;
+                  }
+                  edge = edge.get(StaticStrings::IdString).translate();
+                } else if (readType == EdgeReadType::ID_DOCUMENT) {
+                  if constexpr (std::is_same_v<ResultType,
+                                               velocypack::Builder>) {
+                    TRI_ASSERT(result.isOpenObject());
+                    TRI_ASSERT(edge.isObject());
+                    // Extract and Translate the _key value
+                    result.add(VPackValue(transaction::helpers::extractIdString(
+                        _trx->resolver(), edge, VPackSlice::noneSlice())));
+                    if (!_edgeProjections.empty()) {
+                      VPackObjectBuilder guard(&result);
+                      _edgeProjections.toVelocyPackFromDocument(result, edge,
+                                                                _trx);
+                    } else {
+                      result.add(edge);
+                    }
+                    return true;
+                  } else {
+                    // We can only inject key_value pairs into velocypack
+                    TRI_ASSERT(false);
+                  }
                 }
                 // NOTE: Do not count this as Primary Index Scan, we
                 // counted it in the edge Index before copying...
                 if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
+                  if (!_edgeProjections.empty()) {
+                    // TODO: This does one unnecessary copy.
+                    // We should be able to move the Projection into the
+                    // AQL value.
+                    transaction::BuilderLeaser builder(_trx);
+                    {
+                      VPackObjectBuilder guard(builder.get());
+                      _edgeProjections.toVelocyPackFromDocument(*builder, edge,
+                                                                _trx);
+                    }
+                    result = aql::AqlValue(builder->slice());
+                  } else {
+                    result = aql::AqlValue(edge);
+                  }
                   result = aql::AqlValue(edge);
                 } else if constexpr (std::is_same_v<ResultType,
                                                     velocypack::Builder>) {
-                  result.add(edge);
+                  if (!_edgeProjections.empty()) {
+                    VPackObjectBuilder guard(&result);
+                    _edgeProjections.toVelocyPackFromDocument(result, edge,
+                                                              _trx);
+                  } else {
+                    result.add(edge);
+                  }
                 }
                 return true;
               },
@@ -180,10 +237,28 @@ bool RefactoredTraverserCache::appendVertex(
             stats.incrScannedIndex(1);
             // copying...
             if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
-              result = aql::AqlValue(doc);
+              if (!_vertexProjections.empty()) {
+                // TODO: This does one unnecessary copy.
+                // We should be able to move the Projection into the
+                // AQL value.
+                transaction::BuilderLeaser builder(_trx);
+                {
+                  VPackObjectBuilder guard(builder.get());
+                  _vertexProjections.toVelocyPackFromDocument(*builder, doc,
+                                                              _trx);
+                }
+                result = aql::AqlValue(builder->slice());
+              } else {
+                result = aql::AqlValue(doc);
+              }
             } else if constexpr (std::is_same_v<ResultType,
                                                 velocypack::Builder>) {
-              result.add(doc);
+              if (!_vertexProjections.empty()) {
+                VPackObjectBuilder guard(&result);
+                _vertexProjections.toVelocyPackFromDocument(result, doc, _trx);
+              } else {
+                result.add(doc);
+              }
             }
             return true;
           });
@@ -245,16 +320,40 @@ bool RefactoredTraverserCache::appendVertex(
 
 void RefactoredTraverserCache::insertEdgeIntoResult(
     EdgeDocumentToken const& idToken, VPackBuilder& builder) {
-  if (!appendEdge(idToken, false, builder)) {
+  if (!appendEdge(idToken, EdgeReadType::DOCUMENT, builder)) {
     builder.add(VPackSlice::nullSlice());
   }
 }
 
 void RefactoredTraverserCache::insertEdgeIdIntoResult(
     EdgeDocumentToken const& idToken, VPackBuilder& builder) {
-  if (!appendEdge(idToken, true, builder)) {
+  if (!appendEdge(idToken, EdgeReadType::ONLYID, builder)) {
     builder.add(VPackSlice::nullSlice());
   }
+}
+
+void RefactoredTraverserCache::insertEdgeIntoLookupMap(
+    EdgeDocumentToken const& idToken, VPackBuilder& builder) {
+  if (!appendEdge(idToken, EdgeReadType::ID_DOCUMENT, builder)) {
+    // The IDToken has been expanded by an index used on for the edges.
+    // The invariant is that an index only delivers existing edges so this
+    // case should never happen in production. If it shows up we have
+    // inconsistencies in index and data.
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "GraphEngine attempt to read details of a non-existing edge. This "
+        "indicates index inconsistency.");
+  }
+}
+
+std::string RefactoredTraverserCache::getEdgeId(
+    EdgeDocumentToken const& idToken) {
+  std::string res;
+  if (!appendEdge(idToken, EdgeReadType::ONLYID, res)) {
+    res = "null";
+  }
+  return res;
 }
 
 void RefactoredTraverserCache::insertVertexIntoResult(

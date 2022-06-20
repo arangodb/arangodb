@@ -20,12 +20,12 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
-#include "Replication2/ReplicatedLog/SupervisionAction.h"
-#include "Replication2/ReplicatedState/SupervisionAction.h"
-#include "Replication2/ReplicatedLog/ParticipantsHealth.h"
 #include "Replication2/Helper/ModelChecker/AgencyState.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/ParticipantsHealth.h"
+#include "Replication2/ReplicatedLog/SupervisionAction.h"
+#include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "Replication2/ReplicatedState/SupervisionAction.h"
 
 namespace arangodb::test {
 
@@ -104,11 +104,33 @@ struct ReplaceServerTargetState {
   replication2::ParticipantId newServer;
 };
 
+struct SetLeaderInTargetAction {
+  SetLeaderInTargetAction(replication2::ParticipantId newLeader);
+  void apply(AgencyState& agency) const;
+  auto toString() const -> std::string;
+  replication2::ParticipantId newLeader;
+};
+
+struct AddLogParticipantAction {
+  AddLogParticipantAction(replication2::ParticipantId server);
+  void apply(AgencyState& agency) const;
+  auto toString() const -> std::string;
+  replication2::ParticipantId server;
+};
+
+struct RemoveLogParticipantAction {
+  RemoveLogParticipantAction(replication2::ParticipantId server);
+  void apply(AgencyState& agency) const;
+  auto toString() const -> std::string;
+  replication2::ParticipantId server;
+};
+
 using AgencyTransition =
     std::variant<SupervisionStateAction, SupervisionLogAction,
                  DBServerSnapshotCompleteAction, DBServerReportTermAction,
                  DBServerCommitConfigAction, KillServerAction,
-                 ReplaceServerTargetState>;
+                 ReplaceServerTargetState, AddLogParticipantAction,
+                 SetLeaderInTargetAction, RemoveLogParticipantAction>;
 
 auto operator<<(std::ostream& os, AgencyTransition const& a) -> std::ostream&;
 }  // namespace arangodb::test

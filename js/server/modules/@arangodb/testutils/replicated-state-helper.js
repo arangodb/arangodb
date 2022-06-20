@@ -85,6 +85,17 @@ const updateReplicatedStatePlan = function (database, logId, callback) {
   global.ArangoAgency.increaseVersion(`Plan/Version`);
 };
 
+const replicatedStateDeletePlan = function (database, logId) {
+  global.ArangoAgency.remove(`Plan/ReplicatedStates/${database}/${logId}`);
+  global.ArangoAgency.increaseVersion(`Plan/Version`);
+};
+
+const replicatedStateDeleteTarget = function (database, logId) {
+  global.ArangoAgency.remove(`Target/ReplicatedStates/${database}/${logId}`);
+  global.ArangoAgency.increaseVersion(`Target/Version`);
+};
+
+
 const getLocalStatus = function (serverId, database, logId) {
   let url = LH.getServerUrl(serverId);
   const res = request.get(`${url}/_db/${database}/_api/replicated-state/${logId}/local-status`);
@@ -138,8 +149,11 @@ const getReplicatedStateStatus = function (database, stateId) {
   return current.supervision.statusReport;
 };
 
-const createReplicatedStateTarget = function (database, targetConfig, type) {
-  const servers = _.sampleSize(LH.dbservers, targetConfig.replicationFactor);
+const createReplicatedStateTarget = function (database, targetConfig, type, replicationFactor) {
+  if (replicationFactor === undefined) {
+    replicationFactor = 3;
+  }
+  const servers = _.sampleSize(LH.dbservers, replicationFactor);
   return createReplicatedStateTargetWithServers(database, targetConfig, type, servers);
 };
 
@@ -154,5 +168,7 @@ exports.getLocalStatus = getLocalStatus;
 exports.getReplicatedStateLeaderTarget = getReplicatedStateLeaderTarget;
 exports.getReplicatedStateStatus = getReplicatedStateStatus;
 exports.readReplicatedStateAgency = readReplicatedStateAgency;
+exports.replicatedStateDeletePlan = replicatedStateDeletePlan;
+exports.replicatedStateDeleteTarget = replicatedStateDeleteTarget;
 exports.updateReplicatedStatePlan = updateReplicatedStatePlan;
 exports.updateReplicatedStateTarget = updateReplicatedStateTarget;

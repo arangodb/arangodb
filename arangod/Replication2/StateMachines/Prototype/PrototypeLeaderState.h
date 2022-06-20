@@ -52,6 +52,11 @@ struct PrototypeLeaderState
            PrototypeStateMethods::PrototypeWriteOptions)
       -> futures::Future<LogIndex>;
 
+  auto compareExchange(std::string key, std::string oldValue,
+                       std::string newValue,
+                       PrototypeStateMethods::PrototypeWriteOptions options)
+      -> futures::Future<ResultT<LogIndex>>;
+
   auto remove(std::string key, PrototypeStateMethods::PrototypeWriteOptions)
       -> futures::Future<LogIndex>;
   auto remove(std::vector<std::string> keys,
@@ -66,9 +71,14 @@ struct PrototypeLeaderState
   auto getSnapshot(LogIndex waitForIndex)
       -> futures::Future<ResultT<std::unordered_map<std::string, std::string>>>;
 
+  auto waitForApplied(LogIndex waitForIndex) -> futures::Future<futures::Unit>;
+
   LoggerContext const loggerContext;
 
  private:
+  auto executeOp(PrototypeLogEntry const&,
+                 PrototypeStateMethods::PrototypeWriteOptions)
+      -> futures::Future<LogIndex>;
   auto pollNewEntries();
   void handlePollResult(
       futures::Future<std::unique_ptr<EntryIterator>>&& pollFuture);

@@ -61,6 +61,8 @@
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 
+#include <atomic>
+
 using namespace arangodb::application_features;
 
 namespace arangodb {
@@ -69,7 +71,6 @@ namespace arangodb {
 /// will load counts from the db and scan the WAL
 RocksDBRecoveryManager::RocksDBRecoveryManager(Server& server)
     : ArangodFeature{server, *this},
-      _db(nullptr),
       _currentSequenceNumber(0),
       _recoveryState(RecoveryState::BEFORE) {
   setOptional(true);
@@ -91,7 +92,6 @@ void RocksDBRecoveryManager::start() {
   _recoveryState.store(RecoveryState::IN_PROGRESS, std::memory_order_release);
 
   // start recovery
-  _db = server().getFeature<RocksDBEngine>().db();
   runRecovery();
 
   // synchronizes with acquire inRecovery()
@@ -113,6 +113,15 @@ void RocksDBRecoveryManager::runRecovery() {
   }
 
   // now restore collection counts into collections
+}
+
+RecoveryState RocksDBRecoveryManager::recoveryState() const noexcept {
+  return _recoveryState.load(std::memory_order_acquire);
+}
+
+rocksdb::SequenceNumber RocksDBRecoveryManager::recoverySequenceNumber()
+    const noexcept {
+  return _currentSequenceNumber.load(std::memory_order_relaxed);
 }
 
 class WBReader final : public rocksdb::WriteBatch::Handler {
@@ -139,15 +148,17 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   // can be used for debugging later)
   rocksdb::SequenceNumber _batchStartSequence;
   // current sequence number
-  rocksdb::SequenceNumber& _currentSequence;
+  std::atomic<rocksdb::SequenceNumber>& _currentSequence;
+
   RocksDBEngine& _engine;
+  // whether we are currently at the start of a batch
   bool _startOfBatch = false;
 
  public:
   /// @param seqs sequence number from which to count operations
   explicit WBReader(ArangodServer& server,
                     rocksdb::SequenceNumber recoveryStartSequence,
-                    rocksdb::SequenceNumber& currentSequence)
+                    std::atomic<rocksdb::SequenceNumber>& currentSequence)
       : _server(server),
         _recoveryStartSequence(recoveryStartSequence),
         _minimumServerTick(TRI_NewTickServer()),
@@ -330,7 +341,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       _startOfBatch = false;
     } else {
       // we are inside a batch already. now increase sequence number
-      ++_currentSequence;
+      _currentSequence.fetch_add(1, std::memory_order_relaxed);
     }
   }
 
@@ -468,7 +479,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         << "recovering SINGLE DELETE @ " << _currentSequence << " "
         << RocksDBKey(key);
     handleDeleteCF(column_family_id, key);
-
     for (auto helper : _engine.recoveryHelpers()) {
       helper->SingleDeleteCF(column_family_id, key, _currentSequence);
     }
@@ -582,6 +592,8 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     RocksDBEngine& engine =
         server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
 
+    auto db = engine.db();
+
     Result rv;
     for (auto& helper : engine.recoveryHelpers()) {
       helper->prepare();
@@ -591,12 +603,16 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
         engine.settingsManager()->earliestSeqNeeded();
     auto recoveryStartSequence = std::min(earliest, engine.releasedTick());
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+    engine.recoveryStartSequence(recoveryStartSequence);
+#endif
+
     if (engine.dbExisted()) {
       LOG_TOPIC("fe333", INFO, Logger::ENGINES)
           << "RocksDB recovery starting, scanning WAL starting from sequence "
              "number "
           << recoveryStartSequence
-          << ", latest sequence number: " << _db->GetLatestSequenceNumber();
+          << ", latest sequence number: " << db->GetLatestSequenceNumber();
     }
 
     // Tell the WriteBatch reader the transaction markers to look for
@@ -607,9 +623,9 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     RocksDBFilePurgePreventer purgePreventer(engine.disallowPurging());
 
     std::unique_ptr<rocksdb::TransactionLogIterator> iterator;
-    rocksdb::Status s = _db->GetUpdatesSince(
-        recoveryStartSequence, &iterator,
-        rocksdb::TransactionLogIterator::ReadOptions(true));
+    rocksdb::Status s =
+        db->GetUpdatesSince(recoveryStartSequence, &iterator,
+                            rocksdb::TransactionLogIterator::ReadOptions(true));
 
     rv = rocksutils::convertStatus(s);
 

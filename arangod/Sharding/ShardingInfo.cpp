@@ -503,6 +503,7 @@ std::shared_ptr<ShardMap> ShardingInfo::shardIds(
 
 void ShardingInfo::setShardMap(std::shared_ptr<ShardMap> const& map) {
   _shardIds = map;
+  _numberOfShards = map->size();
 }
 
 ErrorCode ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice,

@@ -55,6 +55,8 @@
 
 #include <v8.h>
 
+#include <limits>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
@@ -825,10 +827,10 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(ExpressionContext& ctx,
     // use stack-based allocation for the first few function call
     // parameters. this saves a few heap allocations per function
     // call invocation
-    ::arangodb::containers::SmallVectorWithArena<AqlValue> parameters;
+    containers::SmallVector<AqlValue, 8> parameters;
 
     // same here
-    ::arangodb::containers::SmallVectorWithArena<uint64_t> destroyParameters;
+    containers::SmallVector<uint64_t, 8> destroyParameters;
 
     explicit FunctionParameters(size_t n) {
       parameters.reserve(n);
@@ -866,7 +868,7 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(ExpressionContext& ctx,
   TRI_ASSERT(params.parameters.size() == params.destroyParameters.size());
   TRI_ASSERT(params.parameters.size() == n);
 
-  AqlValue a = func->implementation(&ctx, *node, params.parameters.vector());
+  AqlValue a = func->implementation(&ctx, *node, params.parameters);
   mustDestroy = true;  // function result is always dynamic
 
   return a;
@@ -1437,9 +1439,13 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
   int64_t offset = 0;
   int64_t count = INT64_MAX;
 
+  bool const isBoolean = node->hasFlag(FLAG_BOOLEAN_EXPANSION);
+
   auto limitNode = node->getMember(3);
 
   if (limitNode->type != NODE_TYPE_NOP) {
+    TRI_ASSERT(!isBoolean);
+
     bool localMustDestroy;
     AqlValue subOffset = executeSimpleExpression(ctx, limitNode->getMember(0),
                                                  localMustDestroy, false);
@@ -1454,25 +1460,39 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
     if (localMustDestroy) {
       subCount.destroy();
     }
-  }
 
-  if (offset < 0 || count <= 0) {
-    // no items to return... can already stop here
-    return AqlValue(AqlValueHintEmptyArray());
-  }
-
-  // FILTER
-  AstNode const* filterNode = node->getMember(2);
-
-  if (filterNode->type == NODE_TYPE_NOP) {
-    filterNode = nullptr;
-  } else if (filterNode->isConstant()) {
-    if (filterNode->isTrue()) {
-      // filter expression is always true
-      filterNode = nullptr;
-    } else {
-      // filter expression is always false
+    if (offset < 0 || count <= 0) {
+      // no items to return... can already stop here
       return AqlValue(AqlValueHintEmptyArray());
+    }
+  }
+
+  // quantifier and FILTER
+  AstNode const* quantifierAndFilterNode = node->getMember(2);
+
+  AstNode const* quantifierNode = nullptr;
+  AstNode const* filterNode = nullptr;
+
+  if (quantifierAndFilterNode == nullptr ||
+      quantifierAndFilterNode->type == NODE_TYPE_NOP) {
+    filterNode = nullptr;
+  } else {
+    TRI_ASSERT(quantifierAndFilterNode->type == NODE_TYPE_ARRAY_FILTER);
+    TRI_ASSERT(quantifierAndFilterNode->numMembers() == 2);
+
+    quantifierNode = quantifierAndFilterNode->getMember(0);
+    TRI_ASSERT(quantifierNode != nullptr);
+
+    filterNode = quantifierAndFilterNode->getMember(1);
+
+    if (!isBoolean && filterNode->isConstant()) {
+      if (filterNode->isTrue()) {
+        // filter expression is always true
+        filterNode = nullptr;
+      } else {
+        // filter expression is always false
+        return AqlValue(AqlValueHintEmptyArray());
+      }
     }
   }
 
@@ -1492,6 +1512,9 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
 
     if (!a.isArray()) {
       TRI_ASSERT(!mustDestroy);
+      if (isBoolean) {
+        return AqlValue(AqlValueHintBool(false));
+      }
       return AqlValue(AqlValueHintEmptyArray());
     }
 
@@ -1536,6 +1559,9 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
 
     if (!a.isArray()) {
       TRI_ASSERT(!mustDestroy);
+      if (isBoolean) {
+        return AqlValue(AqlValueHintBool(false));
+      }
       return AqlValue(AqlValueHintEmptyArray());
     }
 
@@ -1552,12 +1578,13 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
 
   if (node->getMember(4)->type != NODE_TYPE_NOP) {
     // return projection
+    TRI_ASSERT(!isBoolean);
     projectionNode = node->getMember(4);
   }
 
   if (filterNode == nullptr && projectionNode->type == NODE_TYPE_REFERENCE &&
-      value.isArray() && offset == 0 && count == INT64_MAX) {
-    // no filter and no projection... we can return the array as it is
+      value.isArray() && offset == 0 && count == INT64_MAX && !isBoolean) {
+    // no filter and no limit... we can return the array as it is
     auto other = static_cast<Variable const*>(projectionNode->getData());
 
     if (other->id == variable->id) {
@@ -1572,9 +1599,56 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
-  builder.openArray();
+
+  if (!isBoolean) {
+    builder.openArray();
+  }
 
   size_t const n = value.length();
+
+  // relevant only in case isBoolean = true
+  size_t minRequiredItems = 0;
+  size_t maxRequiredItems = 0;
+  size_t takenItems = 0;
+
+  if (quantifierNode == nullptr || quantifierNode->type == NODE_TYPE_NOP) {
+    // no quantifier. assume we need at least 1 item
+    minRequiredItems = 1;
+    maxRequiredItems = std::numeric_limits<decltype(maxRequiredItems)>::max();
+  } else {
+    // note: quantifierNode can be a NODE_TYPE_QUANTIFIER (ALL|ANY|NONE),
+    // a number (e.g. 3), or a range (e.g. 1..5)
+    auto getRangeBound = [&ctx](AstNode const* node) -> int64_t {
+      bool localMustDestroy;
+      AqlValue sub =
+          executeSimpleExpression(ctx, node, localMustDestroy, false);
+      int64_t value = sub.toInt64();
+      if (value < 0) {
+        value = 0;
+      }
+      value = static_cast<size_t>(value);
+      if (localMustDestroy) {
+        sub.destroy();
+      }
+      return value;
+    };
+
+    if (quantifierNode->type == NODE_TYPE_QUANTIFIER) {
+      // ALL|ANY|NONE
+      std::tie(minRequiredItems, maxRequiredItems) =
+          Quantifier::requiredMatches(n, quantifierNode);
+    } else if (quantifierNode->type == NODE_TYPE_RANGE) {
+      // range
+      TRI_ASSERT(quantifierNode->numMembers() == 2);
+
+      minRequiredItems = getRangeBound(quantifierNode->getMember(0));
+      maxRequiredItems = getRangeBound(quantifierNode->getMember(1));
+    } else {
+      // exact value
+      minRequiredItems = maxRequiredItems = getRangeBound(quantifierNode);
+    }
+  }
+
   for (size_t i = 0; i < n; ++i) {
     bool localMustDestroy;
     AqlValue item = value.at(i, localMustDestroy, false);
@@ -1599,18 +1673,23 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
       }
 
       if (takeItem && offset > 0) {
+        TRI_ASSERT(!isBoolean);
         // there is an offset in place
         --offset;
         takeItem = false;
       }
 
       if (takeItem) {
-        AqlValue sub = executeSimpleExpression(ctx, projectionNode,
-                                               localMustDestroy, false);
-        sub.toVelocyPack(&vopts, builder, /*resolveExternals*/ false,
-                         /*allowUnindexed*/ false);
-        if (localMustDestroy) {
-          sub.destroy();
+        ++takenItems;
+
+        if (!isBoolean) {
+          AqlValue sub = executeSimpleExpression(ctx, projectionNode,
+                                                 localMustDestroy, false);
+          sub.toVelocyPack(&vopts, builder, /*resolveExternals*/ false,
+                           /*allowUnindexed*/ false);
+          if (localMustDestroy) {
+            sub.destroy();
+          }
         }
       }
       ctx.clearVariable(variable);
@@ -1627,6 +1706,11 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
         break;
       }
     }
+  }
+
+  if (isBoolean) {
+    return AqlValue(AqlValueHintBool(takenItems >= minRequiredItems &&
+                                     takenItems <= maxRequiredItems));
   }
 
   builder.close();

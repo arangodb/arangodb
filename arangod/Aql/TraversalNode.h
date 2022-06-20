@@ -121,18 +121,19 @@ class TraversalNode : public virtual GraphNode {
       std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
       const override;
 
-  std::unique_ptr<ExecutionBlock> createRefactoredBlock(
+  std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
       std::vector<std::pair<Variable const*, RegisterId>>&&,
       std::function<
-          void(bool, std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&,
+          void(std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&,
       std::function<
-          void(bool, std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&,
+          void(std::shared_ptr<aql::PruneExpressionEvaluator>&)> const&,
       const std::unordered_map<TraversalExecutorInfosHelper::OutputName,
                                RegisterId,
                                TraversalExecutorInfosHelper::OutputNameHash>&,
       RegisterId, RegisterInfos,
-      std::unordered_map<ServerID, aql::EngineId> const*) const;
+      std::unordered_map<ServerID, aql::EngineId> const*,
+      bool isSmart = false) const;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -184,9 +185,6 @@ class TraversalNode : public virtual GraphNode {
   /// @brief return the condition for the node
   Condition const* condition() const { return _condition.get(); }
 
-  /// @brief which variable? -1 none, 0 Edge, 1 Vertex, 2 path
-  int checkIsOutVariable(size_t variableId) const;
-
   /// @brief check whether an access is inside the specified range
   bool isInRange(uint64_t, bool) const;
 
@@ -205,8 +203,6 @@ class TraversalNode : public virtual GraphNode {
   ///        This condition validates the edge
   void registerPostFilterCondition(AstNode const* condition);
 
-  bool allDirectionsEqual() const;
-
   void getConditionVariables(std::vector<Variable const*>&) const override;
 
   void getPruneVariables(std::vector<Variable const*>&) const;
@@ -223,13 +219,18 @@ class TraversalNode : public virtual GraphNode {
   std::vector<arangodb::graph::IndexAccessor> buildUsedIndexes() const;
   std::unordered_map<uint64_t, std::vector<arangodb::graph::IndexAccessor>>
   buildUsedDepthBasedIndexes() const;
-  std::pair<arangodb::graph::VertexUniquenessLevel,
-            arangodb::graph::EdgeUniquenessLevel>
-  convertUniquenessLevels() const;
 
   /// @brief Overrides GraphNode::options() with a more specific return type
   ///  (casts graph::BaseOptions* into traverser::TraverserOptions*)
   auto options() const -> traverser::TraverserOptions*;
+
+  // @brief Get reference to the Prune expression.
+  //        You are not responsible for it!
+  Expression* pruneExpression() const { return _pruneExpression.get(); }
+
+  // @brief Get reference to the postFilter expression.
+  //        You are not responsible for it!
+  Expression* postFilterExpression() const;
 
  protected:
   /// @brief export to VelocyPack
@@ -244,15 +245,6 @@ class TraversalNode : public virtual GraphNode {
   void traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
                             bool withProperties) const;
 
-  // @brief Get reference to the Prune expression.
-  //        You are not responsible for it!
-  Expression* pruneExpression() const { return _pruneExpression.get(); }
-
-  // @brief Get reference to the postFilter expression.
-  //        You are not responsible for it!
-  Expression* postFilterExpression() const;
-
- private:
   /// @brief vertex output variable
   Variable const* _pathOutVariable;
 

@@ -32,7 +32,6 @@
 #include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Graph/SingleServerEdgeCursor.h"
-#include "Graph/SingleServerTraverser.h"
 #include "Indexes/Index.h"
 
 #include <velocypack/Iterator.h>
@@ -46,7 +45,6 @@ using VPackHelper = arangodb::basics::VelocyPackHelper;
 TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query)
     : BaseOptions(query),
       _baseVertexExpression(nullptr),
-      _traverser(nullptr),
       minDepth(1),
       maxDepth(1),
       useNeighbors(false),
@@ -65,12 +63,10 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
   TRI_ASSERT(type.isString());
   TRI_ASSERT(type.isEqualString("traversal"));
 #endif
+  BaseOptions::parseShardIndependentFlags(obj);
 
   minDepth = VPackHelper::getNumericValue<uint64_t>(obj, "minDepth", 1);
   maxDepth = VPackHelper::getNumericValue<uint64_t>(obj, "maxDepth", 1);
-  _parallelism = VPackHelper::getNumericValue<size_t>(obj, "parallelism", 1);
-  _refactor = VPackHelper::getBooleanValue(
-      obj, StaticStrings::GraphRefactorFlag, false);
   TRI_ASSERT(minDepth <= maxDepth);
 
   std::string tmp =
@@ -178,7 +174,6 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
                                    VPackSlice info, VPackSlice collections)
     : BaseOptions(query, info, collections),
       _baseVertexExpression(nullptr),
-      _traverser(nullptr),
       minDepth(1),
       maxDepth(1),
       useNeighbors(false),
@@ -401,7 +396,6 @@ TraverserOptions::TraverserOptions(TraverserOptions const& other,
     : BaseOptions(static_cast<BaseOptions const&>(other),
                   allowAlreadyBuiltCopy),
       _baseVertexExpression(nullptr),
-      _traverser(nullptr),
       _producePathsVertices(other._producePathsVertices),
       _producePathsEdges(other._producePathsEdges),
       _producePathsWeights(other._producePathsWeights),
@@ -451,11 +445,10 @@ TraverserOptions::~TraverserOptions() = default;
 
 void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
+  toVelocyPackBase(builder);
 
   builder.add("minDepth", VPackValue(minDepth));
   builder.add("maxDepth", VPackValue(maxDepth));
-  builder.add("parallelism", VPackValue(_parallelism));
-  builder.add(StaticStrings::GraphRefactorFlag, VPackValue(refactor()));
 
   builder.add("neighbors", VPackValue(useNeighbors));
 
@@ -515,7 +508,6 @@ void TraverserOptions::toVelocyPack(VPackBuilder& builder) const {
     }
   }
 
-  builder.add("produceVertices", VPackValue(_produceVertices));
   builder.add("producePathsVertices", VPackValue(producePathsVertices()));
   builder.add("producePathsEdges", VPackValue(producePathsEdges()));
   builder.add("producePathsWeights", VPackValue(producePathsWeights()));
@@ -678,37 +670,6 @@ bool TraverserOptions::hasSpecificCursorForDepth(uint64_t depth) const {
   return _depthLookupInfo.contains(depth);
 }
 
-bool TraverserOptions::vertexHasFilter(uint64_t depth) const {
-  if (_baseVertexExpression != nullptr) {
-    return true;
-  }
-  return _vertexExpressions.find(depth) != _vertexExpressions.end();
-}
-
-bool TraverserOptions::hasEdgeFilter(int64_t depth, size_t cursorId) const {
-  if (_isCoordinator) {
-    // The Coordinator never checks conditions. The DBServer is responsible!
-    return false;
-  }
-  arangodb::aql::Expression* expression = nullptr;
-
-  auto specific = _depthLookupInfo.find(depth);
-
-  if (specific != _depthLookupInfo.end()) {
-    TRI_ASSERT(!specific->second.empty());
-    TRI_ASSERT(specific->second.size() > cursorId);
-    expression = specific->second[cursorId].expression.get();
-  } else {
-    bool unused;
-    expression = getEdgeExpression(cursorId, unused);
-  }
-  return expression != nullptr;
-}
-
-bool TraverserOptions::hasVertexCollectionRestrictions() const {
-  return !vertexCollections.empty();
-}
-
 bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
                                               std::string_view vertexId,
                                               uint64_t depth, size_t cursorId) {
@@ -774,24 +735,6 @@ auto TraverserOptions::isSatelliteLeader() const -> bool {
 }
 #endif
 
-auto TraverserOptions::getEdgeDestination(arangodb::velocypack::Slice edge,
-                                          std::string_view origin) const
-    -> std::string_view {
-  if (edge.isString()) {
-    return edge.stringView();
-  }
-
-  TRI_ASSERT(edge.isObject());
-  auto from = edge.get(arangodb::StaticStrings::FromString);
-  TRI_ASSERT(from.isString());
-  if (from.stringView() == origin) {
-    auto to = edge.get(arangodb::StaticStrings::ToString);
-    TRI_ASSERT(to.isString());
-    return to.stringView();
-  }
-  return from.stringView();
-}
-
 void TraverserOptions::initializeIndexConditions(
     aql::Ast* ast,
     std::unordered_map<aql::VariableId, aql::VarInfo> const& varInfo,
@@ -813,51 +756,6 @@ void TraverserOptions::calculateIndexExpressions(aql::Ast* ast) {
   }
 }
 
-bool TraverserOptions::evaluateVertexExpression(
-    arangodb::velocypack::Slice vertex, uint64_t depth) {
-  arangodb::aql::Expression* expression = nullptr;
-
-  auto specific = _vertexExpressions.find(depth);
-
-  if (specific != _vertexExpressions.end()) {
-    expression = specific->second.get();
-  } else {
-    expression = _baseVertexExpression.get();
-  }
-
-  vertex = vertex.resolveExternal();
-  return evaluateExpression(expression, vertex);
-}
-
-#ifndef USE_ENTERPRISE
-bool TraverserOptions::checkSmartDestination(
-    VPackSlice edge, std::string_view sourceVertex) const {
-  return false;
-}
-#endif
-
-bool TraverserOptions::destinationCollectionAllowed(
-    VPackSlice edge, std::string_view sourceVertex) const {
-  if (hasVertexCollectionRestrictions()) {
-    auto destination = getEdgeDestination(edge, sourceVertex);
-    auto collection =
-        transaction::helpers::extractCollectionFromId(destination);
-    if (std::find(vertexCollections.begin(), vertexCollections.end(),
-                  std::string_view(collection.data(), collection.size())) ==
-        vertexCollections.end()) {
-      // collection not found
-      return false;
-    }
-  }
-#ifdef USE_ENTERPRISE
-  if (!checkSmartDestination(edge, sourceVertex)) {
-    return false;
-  }
-#endif
-
-  return true;
-}
-
 std::unique_ptr<EdgeCursor> arangodb::traverser::TraverserOptions::buildCursor(
     uint64_t depth) {
   ensureCache();
@@ -876,10 +774,6 @@ std::unique_ptr<EdgeCursor> arangodb::traverser::TraverserOptions::buildCursor(
   // otherwise, retain / reuse the general (global) cursor
   return std::make_unique<graph::SingleServerEdgeCursor>(this, _tmpVar, nullptr,
                                                          _baseLookupInfos);
-}
-
-void TraverserOptions::linkTraverser(ClusterTraverser* trav) {
-  _traverser = trav;
 }
 
 double TraverserOptions::estimateCost(size_t& nrItems) const {
@@ -932,35 +826,11 @@ TraverserOptions::createPostFilterEvaluator(
       std::numeric_limits<std::size_t>::max(), expr);
 }
 
-void TraverserOptions::activatePrune(std::vector<aql::Variable const*> vars,
-                                     std::vector<aql::RegisterId> regs,
-                                     size_t vertexVarIdx, size_t edgeVarIdx,
-                                     size_t pathVarIdx, aql::Expression* expr) {
-  _pruneExpression = createPruneEvaluator(vars, regs, vertexVarIdx, edgeVarIdx,
-                                          pathVarIdx, expr);
-}
-
 void TraverserOptions::activatePostFilter(
     std::vector<aql::Variable const*> vars, std::vector<aql::RegisterId> regs,
     size_t vertexVarIdx, size_t edgeVarIdx, aql::Expression* expr) {
   _postFilterExpression =
       createPostFilterEvaluator(vars, regs, vertexVarIdx, edgeVarIdx, expr);
-}
-
-double TraverserOptions::weightEdge(VPackSlice edge) const {
-  TRI_ASSERT(mode == Order::WEIGHTED);
-  const auto weight =
-      arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-          edge, weightAttribute, defaultWeight);
-  if (weight < 0.) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
-  }
-
-  return weight;
-}
-
-bool TraverserOptions::hasWeightAttribute() const {
-  return !weightAttribute.empty();
 }
 
 auto TraverserOptions::estimateDepth() const noexcept -> uint64_t {
@@ -971,7 +841,6 @@ auto TraverserOptions::estimateDepth() const noexcept -> uint64_t {
 }
 
 void TraverserOptions::readProduceInfo(VPackSlice obj) {
-  _produceVertices = VPackHelper::getBooleanValue(obj, "produceVertices", true);
   _producePathsVertices =
       VPackHelper::getBooleanValue(obj, "producePathsVertices", true);
   _producePathsEdges =

@@ -164,6 +164,7 @@ void RestAdminServerHandler::handleAvailability() {
       }
       break;
     }
+    case ServerState::Mode::STARTUP:
     case ServerState::Mode::MAINTENANCE:
     case ServerState::Mode::REDIRECT:
     case ServerState::Mode::TRYAGAIN:

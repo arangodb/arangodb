@@ -27,6 +27,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/ResultT.h"
 #include "Basics/StringHeap.h"
+#include "Aql/Projections.h"
 #include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/HashedStringRef.h>
@@ -47,6 +48,7 @@ class Slice;
 
 namespace aql {
 struct AqlValue;
+class Projections;
 class QueryContext;
 class TraversalStats;
 }  // namespace aql
@@ -62,12 +64,17 @@ struct EdgeDocumentToken;
 
 class RefactoredTraverserCache {
  public:
-  explicit RefactoredTraverserCache(
+  enum EdgeReadType { ONLYID, DOCUMENT, ID_DOCUMENT };
+
+  RefactoredTraverserCache(
       arangodb::transaction::Methods* trx, aql::QueryContext* query,
       arangodb::ResourceMonitor& resourceMonitor,
       arangodb::aql::TraversalStats& stats,
       std::unordered_map<std::string, std::vector<std::string>> const&
-          collectionToShardMap);
+          collectionToShardMap,
+      arangodb::aql::Projections const& vertexProjections,
+      arangodb::aql::Projections const& edgeProjections);
+
   ~RefactoredTraverserCache();
 
   RefactoredTraverserCache(RefactoredTraverserCache const&) = delete;
@@ -90,6 +97,18 @@ class RefactoredTraverserCache {
   //////////////////////////////////////////////////////////////////////////////
   void insertEdgeIdIntoResult(graph::EdgeDocumentToken const& etkn,
                               velocypack::Builder& builder);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Inserts { [...], _id : edge, [...] } into the given builder.
+  /// The builder has to be an open Object.
+  //////////////////////////////////////////////////////////////////////////////
+  void insertEdgeIntoLookupMap(graph::EdgeDocumentToken const& etkn,
+                               velocypack::Builder& builder);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Returns the Translated Edge _id value, translating the custom type
+  //////////////////////////////////////////////////////////////////////////////
+  std::string getEdgeId(EdgeDocumentToken const& idToken);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document identified by the _id string
@@ -120,12 +139,14 @@ class RefactoredTraverserCache {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Lookup an edge document from the database.
   ///        if this returns false the result is unmodified
-  ///        if onlyId is set to true, the result will only contain the _Id
-  ///        value not the document itself.
+  ///        if readType is set to ONLYID: the result will only contain the _Id
+  ///        if readType is set to DOCUMENT: the result will contain the data
+  ///        if readType is set to ID_DOCUMENT: the result will contain {id:
+  ///        data}
   //////////////////////////////////////////////////////////////////////////////
 
   template<typename ResultType>
-  bool appendEdge(graph::EdgeDocumentToken const& etkn, bool onlyId,
+  bool appendEdge(graph::EdgeDocumentToken const& etkn, EdgeReadType readType,
                   ResultType& result);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -168,6 +189,12 @@ class RefactoredTraverserCache {
   /// @brief whether or not to allow adding of previously unknown collections
   /// during the traversal
   bool const _allowImplicitCollections;
+
+  /// @brief Projections on vertex data, responsibility is with BaseOptions
+  aql::Projections const& _vertexProjections;
+
+  /// @brief Projections on edge data, responsibility is with BaseOptions
+  aql::Projections const& _edgeProjections;
 };
 
 }  // namespace graph

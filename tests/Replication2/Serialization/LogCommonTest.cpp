@@ -27,10 +27,12 @@
 
 #include "Aql/VelocyPackHelper.h"
 #include "Inspection/VPack.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;
+using namespace arangodb::replication2::agency;
 using namespace arangodb::replication2::replicated_log;
 using namespace arangodb::basics;
 using namespace arangodb::tests;
@@ -116,65 +118,6 @@ TEST(LogCommonTest, commit_fail_reason) {
   EXPECT_ANY_THROW({ CommitFailReason::fromVelocyPack(jsonSlice); });
 }
 
-TEST(LogCommonTest, log_config) {
-  auto logConfig = LogConfig{1, 1, 1, false};
-  VPackBuilder builder;
-  logConfig.toVelocyPack(builder);
-  auto slice = builder.slice();
-  const LogConfig fromVPack(slice);
-  EXPECT_EQ(logConfig, fromVPack);
-
-  auto jsonBuffer = R"({
-    "writeConcern": 1,
-    "softWriteConcern": 1,
-    "replicationFactor": 1,
-    "waitForSync": false
-  })"_vpack;
-  auto jsonSlice = velocypack::Slice(jsonBuffer->data());
-  EXPECT_TRUE(VelocyPackHelper::equal(jsonSlice, slice, true))
-      << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
-
-  // Test defaulting of softWriteConcern to writeConcern
-  jsonBuffer = R"({
-    "writeConcern": 2,
-    "replicationFactor": 3,
-    "waitForSync": false
-  })"_vpack;
-  jsonSlice = velocypack::Slice(jsonBuffer->data());
-  logConfig = LogConfig{jsonSlice};
-  EXPECT_EQ(logConfig.softWriteConcern, logConfig.writeConcern);
-}
-
-TEST(LogCommonTest, log_config_inspector) {
-  auto logConfig = LogConfig{1, 1, 1, false};
-  VPackBuilder builder;
-
-  serialize(builder, logConfig);
-  auto slice = builder.slice();
-  auto const fromVPack = deserialize<LogConfig>(slice);
-  EXPECT_EQ(logConfig, fromVPack);
-
-  auto jsonBuffer = R"({
-    "writeConcern": 1,
-    "softWriteConcern": 1,
-    "replicationFactor": 1,
-    "waitForSync": false
-  })"_vpack;
-  auto jsonSlice = velocypack::Slice(jsonBuffer->data());
-  EXPECT_TRUE(VelocyPackHelper::equal(jsonSlice, slice, true))
-      << "expected " << jsonSlice.toJson() << " found " << slice.toJson();
-
-  // Test defaulting of softWriteConcern to writeConcern
-  jsonBuffer = R"({
-    "writeConcern": 2,
-    "replicationFactor": 3,
-    "waitForSync": false
-  })"_vpack;
-  jsonSlice = velocypack::Slice(jsonBuffer->data());
-  logConfig = deserialize<LogConfig>(jsonSlice);
-  EXPECT_EQ(logConfig.softWriteConcern, logConfig.writeConcern);
-}
-
 TEST(LogCommonTest, participant_flags) {
   {
     auto participantFlags = ParticipantFlags{
@@ -230,9 +173,9 @@ TEST(LogCommonTest, participants_config) {
       .generation = 15, .participants = {{"A", ParticipantFlags{}}}};
 
   VPackBuilder builder;
-  participantsConfig.toVelocyPack(builder);
+  velocypack::serialize(builder, participantsConfig);
   auto slice = builder.slice();
-  auto fromVPack = ParticipantsConfig::fromVelocyPack(slice);
+  auto fromVPack = velocypack::deserialize<ParticipantsConfig>(slice);
   EXPECT_EQ(participantsConfig, fromVPack);
 }
 
@@ -249,6 +192,10 @@ TEST(LogCommonTest, participants_config_inspector) {
 
   auto jsonBuffer = R"({
       "generation": 15,
+      "config": {
+        "effectiveWriteConcern":1,
+        "waitForSync":false
+      },
       "participants": {
         "A": {
           "forced": false,

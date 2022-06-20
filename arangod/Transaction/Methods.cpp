@@ -1082,6 +1082,13 @@ Future<OperationResult> transaction::Methods::insertLocal(
   ManagedDocumentResult docResult;
   ManagedDocumentResult prevDocResult;  // return OLD (with override option)
 
+  if (options.validate && !options.isRestore &&
+      options.isSynchronousReplicationFrom.empty()) {
+    options.schema = collection->schema();
+  } else {
+    options.schema = nullptr;
+  }
+
   [[maybe_unused]] size_t numExclusions = 0;
 
   auto workForOneDocument = [&](VPackSlice value, bool isBabies,
@@ -1090,6 +1097,13 @@ Future<OperationResult> transaction::Methods::insertLocal(
 
     if (!value.isObject()) {
       return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    }
+
+    auto r =
+        transaction::Methods::validateSmartJoinAttribute(*collection, value);
+
+    if (r != TRI_ERROR_NO_ERROR) {
+      return Result(r);
     }
 
     docResult.clear();
@@ -1295,7 +1309,20 @@ Future<OperationResult> transaction::Methods::insertLocal(
 
   std::shared_ptr<VPackBufferUInt8> resDocs = resultBuilder.steal();
   if (res.ok()) {
-    if (replicationType == ReplicationType::LEADER && !followers->empty()) {
+    bool isMock = false;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+    StorageEngine& engine = collection->vocbase()
+                                .server()
+                                .getFeature<EngineSelectorFeature>()
+                                .engine();
+
+    if (engine.typeName() == "Mock") {
+      isMock = true;
+    }
+#endif
+
+    if (!isMock && replicationType == ReplicationType::LEADER &&
+        !followers->empty()) {
       TRI_ASSERT(collection != nullptr);
 
       // In the multi babies case res is always TRI_ERROR_NO_ERROR if we
@@ -1496,6 +1523,13 @@ Future<OperationResult> transaction::Methods::modifyLocal(
   VPackBuilder resultBuilder;  // building the complete result
   ManagedDocumentResult previous;
   ManagedDocumentResult result;
+
+  if (options.validate && !options.isRestore &&
+      options.isSynchronousReplicationFrom.empty()) {
+    options.schema = collection->schema();
+  } else {
+    options.schema = nullptr;
+  }
 
   [[maybe_unused]] size_t numExclusions = 0;
 

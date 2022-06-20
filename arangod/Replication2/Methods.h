@@ -26,9 +26,12 @@
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogEntries.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedState/AgencySpecification.h"
 
+#include <string>
 #include <variant>
+#include <vector>
 
 namespace arangodb {
 class Result;
@@ -64,11 +67,12 @@ struct ReplicatedLogMethods {
   using GenericLogStatus =
       std::variant<replication2::replicated_log::LogStatus,
                    replication2::replicated_log::GlobalStatus>;
+  using ParticipantsList = std::vector<std::string>;
 
   struct CreateOptions {
     bool waitForReady{true};
     std::optional<LogId> id;
-    std::optional<LogConfig> config;
+    std::optional<agency::LogTargetConfig> config;
     std::optional<ParticipantId> leader;
     std::vector<ParticipantId> servers;
   };
@@ -83,9 +87,9 @@ struct ReplicatedLogMethods {
 
   virtual auto deleteReplicatedLog(LogId id) const
       -> futures::Future<Result> = 0;
-  virtual auto getReplicatedLogs() const
-      -> futures::Future<std::unordered_map<arangodb::replication2::LogId,
-                                            replicated_log::LogStatus>> = 0;
+  virtual auto getReplicatedLogs() const -> futures::Future<std::unordered_map<
+      arangodb::replication2::LogId,
+      std::variant<replicated_log::LogStatus, ParticipantsList>>> = 0;
   virtual auto getLocalStatus(LogId) const
       -> futures::Future<replication2::replicated_log::LogStatus> = 0;
   virtual auto getGlobalStatus(
@@ -163,7 +167,7 @@ struct ReplicatedStateMethods {
 
   virtual auto createReplicatedState(replicated_state::agency::Target spec)
       const -> futures::Future<Result> = 0;
-  virtual auto deleteReplicatedLog(LogId id) const
+  virtual auto deleteReplicatedState(LogId id) const
       -> futures::Future<Result> = 0;
 
   virtual auto getLocalStatus(LogId) const
@@ -181,6 +185,13 @@ struct ReplicatedStateMethods {
       -> futures::Future<ResultT<GlobalSnapshotStatus>> = 0;
 
   static auto createInstance(TRI_vocbase_t& vocbase)
+      -> std::shared_ptr<ReplicatedStateMethods>;
+
+  static auto createInstanceDBServer(TRI_vocbase_t& vocbase)
+      -> std::shared_ptr<ReplicatedStateMethods>;
+
+  static auto createInstanceCoordinator(ArangodServer& server,
+                                        std::string databaseName)
       -> std::shared_ptr<ReplicatedStateMethods>;
 
   [[nodiscard]] virtual auto replaceParticipant(

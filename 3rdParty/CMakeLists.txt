@@ -164,7 +164,7 @@ endif()
 set(USE_IPO ${IPO_ENABLED})
 set(ICU_STATIC_LIBS ${ICU_LIBS})
 set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
-set(LZ4_INCLUDE_DIR "${LZ4_ROOT}/lib" PARENT_SCOPE)
+set(LZ4_INCLUDE_DIR "${LZ4_ROOT}/lib")
 set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
 set(UNWIND_ROOT "invalid")
 set(BFD_ROOT "invalid")
@@ -207,11 +207,14 @@ unset(BUILD_SHARED_LIBS CACHE) # otherwise ZLib (below) does not build on win32
 ## ROCKSDB
 ################################################################################
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb)
-set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
+UpdateModule(${GIT_EXECUTABLE} "rocksdb" ${CMAKE_CURRENT_SOURCE_DIR} "README.md")
+
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/rocksdb EXCLUDE_FROM_ALL)
+set(ARANGO_ROCKSDB_VERSION "${rocksdb_VERSION}" PARENT_SCOPE)
 add_library(rocksdb_interface INTERFACE)
-target_include_directories(rocksdb_interface SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/include)
-target_include_directories(rocksdb_interface SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION})
+target_include_directories(rocksdb_interface SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/include)
+target_include_directories(rocksdb_interface SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/3rdParty/rocksdb)
+list(APPEND LINK_DIRECTORIES "${CMAKE_CURRENT_BINARY_DIR}/rocksdb")
 
 ################################################################################
 # llhttp

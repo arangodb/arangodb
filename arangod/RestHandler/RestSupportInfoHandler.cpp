@@ -250,7 +250,7 @@ void RestSupportInfoHandler::buildHostInfo(VPackBuilder& result) {
   result.add("role", VPackValue(ServerState::roleToString(
                          ServerState::instance()->getRole())));
   result.add("maintenance",
-             VPackValue(ServerState::instance()->isMaintenance()));
+             VPackValue(ServerState::instance()->isStartupOrMaintenance()));
   result.add("readOnly", VPackValue(ServerState::instance()->readOnly()));
 
   result.add("version", VPackValue(ARANGODB_VERSION));

@@ -46,10 +46,12 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Containers/FlatHashSet.h"
+#include "Containers/HashSet.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
+#include "IResearch/ViewSnapshot.h"
 #include "RegisterPlan.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -57,23 +59,20 @@
 #include "VocBase/LogicalCollection.h"
 #include "types.h"
 
+#include <frozen/map.h>
 #include <velocypack/Iterator.h>
-#include "frozen/map.h"
 
+namespace arangodb::iresearch {
 namespace {
-
-using namespace arangodb;
-using namespace arangodb::iresearch;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief surrogate root for all queries without a filter
 ////////////////////////////////////////////////////////////////////////////////
 aql::AstNode const kAll{aql::AstNodeValue{true}};
 
-// -----------------------------------------------------------------------------
-// --SECTION--       helpers for std::vector<arangodb::iresearch::IResearchSort>
-// -----------------------------------------------------------------------------
-
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helpers for std::vector<arangodb::iresearch::IResearchSort>
+////////////////////////////////////////////////////////////////////////////////
 void toVelocyPack(velocypack::Builder& builder,
                   std::vector<Scorer> const& scorers, bool verbose) {
   VPackArrayBuilder arrayScope(&builder);
@@ -132,24 +131,22 @@ std::vector<Scorer> fromVelocyPack(aql::ExecutionPlan& plan,
   return scorers;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                            helpers for IResearchViewNode::Options
-// -----------------------------------------------------------------------------
-namespace {
-static constexpr frozen::map<irs::string_ref,
-                             arangodb::aql::ConditionOptimization, 4>
-    conditionOptimizationTypeMap = {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief helpers for IResearchViewNode::Options
+////////////////////////////////////////////////////////////////////////////////
+constexpr auto conditionOptimizationTypeMap =
+    frozen::make_map<irs::string_ref, arangodb::aql::ConditionOptimization>({
         {"auto", arangodb::aql::ConditionOptimization::Auto},
         {"nodnf", arangodb::aql::ConditionOptimization::NoDNF},
         {"noneg", arangodb::aql::ConditionOptimization::NoNegation},
-        {"none", arangodb::aql::ConditionOptimization::None}};
+        {"none", arangodb::aql::ConditionOptimization::None},
+    });
 
-static constexpr frozen::map<irs::string_ref,
-                             arangodb::iresearch::CountApproximate, 2>
-    countApproximationTypeMap = {
+constexpr auto countApproximationTypeMap =
+    frozen::make_map<irs::string_ref, arangodb::iresearch::CountApproximate>({
         {"exact", arangodb::iresearch::CountApproximate::Exact},
-        {"cost", arangodb::iresearch::CountApproximate::Cost}};
-}  // namespace
+        {"cost", arangodb::iresearch::CountApproximate::Cost},
+    });
 
 void toVelocyPack(velocypack::Builder& builder,
                   IResearchViewNode::Options const& options) {
@@ -342,17 +339,18 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view,
          }
 
          auto& resolver = query.resolver();
-         ::arangodb::containers::HashSet<DataSourceId> sources;
-
+         containers::FlatHashSet<DataSourceId> sources;
+         auto const n = value.numMembers();
+         sources.reserve(n);
          // get list of CIDs for restricted collections
-         for (size_t i = 0, n = value.numMembers(); i < n; ++i) {
+         for (size_t i = 0; i != n; ++i) {
            auto const* sub = value.getMemberUnchecked(i);
            TRI_ASSERT(sub);
 
            switch (sub->value.type) {
              case aql::VALUE_TYPE_INT: {
-               sources.insert(DataSourceId{static_cast<DataSourceId::BaseType>(
-                   sub->getIntValue(true))});
+               sources.emplace(
+                   static_cast<DataSourceId::BaseType>(sub->getIntValue(true)));
                break;
              }
 
@@ -376,7 +374,7 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view,
                  }
                }
 
-               sources.insert(collection->id());
+               sources.emplace(collection->id());
                break;
              }
 
@@ -551,9 +549,9 @@ bool parseOptions(aql::QueryContext& query, LogicalView const& view,
   return true;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     other helpers
-// -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @brief other helpers
+////////////////////////////////////////////////////////////////////////////////
 // in loop or non-deterministic
 bool hasDependencies(aql::ExecutionPlan const& plan, aql::AstNode const& node,
                      aql::Variable const& ref, aql::VarSet& vars) {
@@ -639,8 +637,8 @@ int evaluateVolatility(IResearchViewNode const& node) {
 
   // evaluate filter condition volatility
   auto& filterCondition = node.filterCondition();
-  if (!::filterConditionIsEmpty(&filterCondition) && inDependentScope) {
-    irs::set_bit<0>(::hasDependencies(plan, filterCondition, outVariable, vars),
+  if (!filterConditionIsEmpty(&filterCondition) && inDependentScope) {
+    irs::set_bit<0>(hasDependencies(plan, filterCondition, outVariable, vars),
                     mask);
   }
 
@@ -650,7 +648,7 @@ int evaluateVolatility(IResearchViewNode const& node) {
     vars.clear();
 
     for (auto const& scorer : scorers) {
-      if (::hasDependencies(plan, *scorer.node, outVariable, vars)) {
+      if (hasDependencies(plan, *scorer.node, outVariable, vars)) {
         irs::set_bit<1>(mask);
         break;
       }
@@ -664,80 +662,8 @@ std::function<bool(DataSourceId)> const viewIsEmpty = [](DataSourceId) {
   return false;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief index reader implementation over multiple irs::index_reader
-/// @note it is assumed that ViewState resides in the same
-///       TransactionState as the IResearchView ViewState, therefore a separate
-///       lock is not required to be held
-////////////////////////////////////////////////////////////////////////////////
-class Snapshot : public IResearchView::Snapshot,
-                 private irs::util::noncopyable {
- public:
-  typedef std::vector<std::pair<DataSourceId, irs::sub_reader const*>>
-      readers_t;
-
-  Snapshot(readers_t&& readers, uint64_t docs_count,
-           uint64_t live_docs_count) noexcept
-      : _readers(std::move(readers)),
-        _docs_count(docs_count),
-        _live_docs_count(live_docs_count) {}
-
-  /// @brief constructs snapshot from a given snapshot
-  ///        according to specified set of collections
-  Snapshot(const IResearchView::Snapshot& rhs,
-           ::arangodb::containers::HashSet<DataSourceId> const& collections);
-
-  /// @returns corresponding sub-reader
-  virtual const irs::sub_reader& operator[](size_t i) const noexcept override {
-    assert(i < readers_.size());
-    return *(_readers[i].second);
-  }
-
-  virtual DataSourceId cid(size_t i) const noexcept override {
-    assert(i < readers_.size());
-    return _readers[i].first;
-  }
-
-  /// @returns number of documents
-  virtual uint64_t docs_count() const noexcept override { return _docs_count; }
-
-  /// @returns number of live documents
-  virtual uint64_t live_docs_count() const noexcept override {
-    return _live_docs_count;
-  }
-
-  /// @returns total number of opened writers
-  virtual size_t size() const noexcept override { return _readers.size(); }
-
- private:
-  readers_t _readers;
-  uint64_t _docs_count;
-  uint64_t _live_docs_count;
-};  // Snapshot
-
-Snapshot::Snapshot(
-    const IResearchView::Snapshot& rhs,
-    ::arangodb::containers::HashSet<DataSourceId> const& collections)
-    : _docs_count(0), _live_docs_count(0) {
-  for (size_t i = 0, size = rhs.size(); i < size; ++i) {
-    auto const cid = rhs.cid(i);
-
-    if (!collections.contains(cid)) {
-      continue;
-    }
-
-    auto& segment = rhs[i];
-
-    _docs_count += segment.docs_count();
-    _live_docs_count += segment.live_docs_count();
-    _readers.emplace_back(cid, &segment);
-  }
-}
-
-typedef std::shared_ptr<IResearchView::Snapshot const> SnapshotPtr;
-
 /// @brief Since cluster is not transactional and each distributed
-///        part of a query starts it's own trasaction associated
+///        part of a query starts it's own transaction associated
 ///        with global query identifier, there is no single place
 ///        to store a snapshot and we do the following:
 ///
@@ -760,47 +686,47 @@ typedef std::shared_ptr<IResearchView::Snapshot const> SnapshotPtr;
 ///           FOR x IN view OPTIONS { collections : [ 'c2' ] }
 ///           RETURN {d, x}
 ///
-SnapshotPtr snapshotDBServer(IResearchViewNode const& node,
-                             transaction::Methods& trx) {
+ViewSnapshotPtr snapshotDBServer(IResearchViewNode const& node,
+                                 transaction::Methods& trx) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
-
-  auto const& view = basics::downCast<IResearchView>(*node.view());
-  auto& options = node.options();
+  auto const& view = *node.view();
+  auto const& options = node.options();
+  // Cluster is not transactional,
+  // so we don't make sense to make ViewSnapshotView for restrictSources
+  void const* key = options.restrictSources ? static_cast<void const*>(&node)
+                                            : static_cast<void const*>(&view);
+  auto* snapshot = getViewSnapshot(trx, key);
+  if (snapshot != nullptr) {
+    if (options.forceSync) {
+      syncViewSnapshot(*snapshot, view.name());
+    }
+    return {ViewSnapshotPtr{}, snapshot};
+  }
   auto* resolver = trx.resolver();
   TRI_ASSERT(resolver);
-
-  ::arangodb::containers::FlatHashSet<DataSourceId> collections;
-  for (auto& shard : node.shards()) {
-    auto collection = resolver->getCollection(shard);
-
+  auto const& shards = node.shards();
+  ViewSnapshot::Links links;
+  links.reserve(shards.size());
+  // TODO(MBkkt) Runtime checks type of view
+  auto const& viewImpl = basics::downCast<IResearchView>(*node.view());
+  auto const guard = viewImpl.linksReadLock();
+  for (auto& shard : shards) {
+    auto const& collection = resolver->getCollection(shard);
     if (!collection) {
-      THROW_ARANGO_EXCEPTION(arangodb::Result(
+      THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-          std::string("failed to find shard by id '") + shard + "'"));
+          "failed to find shard by id '" + shard + "'");
     }
-
     if (options.restrictSources &&
         !options.sources.contains(collection->planId())) {
-      // skip restricted collections if any
-      continue;
+      // TODO(MBkkt) Maybe we want check sources on Coordinator?
+      continue;  // skip restricted collections if any
     }
-
-    collections.emplace(collection->id());
+    auto const cid = collection->id();
+    links.emplace_back(viewImpl.linkLock(guard, cid));
   }
-
-  void const* snapshotKey = nullptr;
-
-  if (options.restrictSources) {
-    // use node address as the snapshot identifier
-    snapshotKey = &node;
-  }
-
-  IResearchView::SnapshotMode const mode =
-      !options.forceSync ? IResearchView::SnapshotMode::FindOrCreate
-                         : IResearchView::SnapshotMode::SyncAndReplace;
-
-  // use aliasing ctor
-  return {SnapshotPtr(), view.snapshot(trx, mode, &collections, snapshotKey)};
+  return {ViewSnapshotPtr{}, makeViewSnapshot(trx, key, options.forceSync,
+                                              view.name(), std::move(links))};
 }
 
 /// @brief Since single-server is transactional we do the following:
@@ -815,30 +741,37 @@ SnapshotPtr snapshotDBServer(IResearchViewNode const& node,
 ///      otherwise we reassemble restricted snapshot based on the
 ///      original one taken in (1) and return it
 ///
-SnapshotPtr snapshotSingleServer(IResearchViewNode const& node,
-                                 transaction::Methods& trx) {
+ViewSnapshotPtr snapshotSingleServer(IResearchViewNode const& node,
+                                     transaction::Methods& trx) {
   TRI_ASSERT(ServerState::instance()->isSingleServer());
-
-  auto const& view = basics::downCast<IResearchView>(*node.view());
-  auto& options = node.options();
-
-  IResearchView::SnapshotMode mode = IResearchView::SnapshotMode::Find;
-
-  if (options.forceSync) {
-    mode = IResearchView::SnapshotMode::SyncAndReplace;
-  } else if (!trx.isMainTransaction()) {
-    mode = IResearchView::SnapshotMode::FindOrCreate;
+  auto const& view = *node.view();
+  auto const& options = node.options();
+  void const* key = static_cast<void const*>(&view);
+  auto* snapshot = getViewSnapshot(trx, key);
+  if (snapshot != nullptr) {
+    if (options.forceSync) {
+      syncViewSnapshot(*snapshot, view.name());
+    }
+    if (options.restrictSources) {
+      return std::make_shared<ViewSnapshotView>(*snapshot, options.sources);
+    }
+    return {ViewSnapshotPtr{}, snapshot};
   }
-
-  // use aliasing ctor
-  auto reader = SnapshotPtr(SnapshotPtr(), view.snapshot(trx, mode));
-
-  if (options.restrictSources && reader) {
-    // reassemble reader
-    reader = std::make_shared<Snapshot>(*reader, options.sources);
+  if (!options.forceSync && trx.isMainTransaction()) {
+    return {};
   }
-
-  return reader;
+  auto links = [&] {
+    // TODO(MBkkt) Runtime checks type of view
+    // TODO(MBkkt) Don't need to make this allocation if key already exist
+    auto const& viewImpl = basics::downCast<IResearchView>(*node.view());
+    return viewImpl.getLinks();
+  }();
+  snapshot = makeViewSnapshot(trx, key, options.forceSync, view.name(),
+                              std::move(links));
+  if (options.restrictSources && snapshot != nullptr) {
+    return std::make_shared<ViewSnapshotView>(*snapshot, options.sources);
+  }
+  return {ViewSnapshotPtr{}, snapshot};
 }
 
 inline IResearchViewSort const& primarySort(arangodb::LogicalView const& view) {
@@ -929,10 +862,12 @@ void extractViewValuesVar(aql::VariableGenerator const* vars,
       IResearchViewNode::ViewVariable{fieldNumber, var});
 }
 
-template<bool copyStored, MaterializeType materializeType>
-constexpr std::unique_ptr<aql::ExecutionBlock> (*executors[])(
+using Executor = std::unique_ptr<aql::ExecutionBlock> (*)(
     aql::ExecutionEngine*, IResearchViewNode const*, aql::RegisterInfos&&,
-    aql::IResearchViewExecutorInfos&&) = {
+    aql::IResearchViewExecutorInfos&&);
+
+template<bool copyStored, MaterializeType materializeType>
+constexpr Executor kExecutors[] = {
     [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode,
        aql::RegisterInfos&& registerInfos,
        aql::IResearchViewExecutorInfos&& executorInfos)
@@ -988,15 +923,12 @@ constexpr size_t getExecutorIndex(bool sorted, bool ordered, bool heapsort) {
   TRI_ASSERT(!sorted || !heapsort);
   auto index = static_cast<size_t>(ordered) + 2 * static_cast<size_t>(sorted) +
                static_cast<size_t>(heapsort) * 4;
-  TRI_ASSERT(index < IRESEARCH_COUNTOF(
-                         (executors<false, MaterializeType::Materialize>)));
+  TRI_ASSERT(index <
+             std::size((kExecutors<false, MaterializeType::Materialize>)));
   return index;
 }
 
 }  // namespace
-
-namespace arangodb {
-namespace iresearch {
 
 bool filterConditionIsEmpty(aql::AstNode const* filterCondition) noexcept {
   return filterCondition == &kAll;
@@ -1107,8 +1039,8 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
     auto const& collections = plan.getAst()->query().collections();
 
     for (auto const shardSlice : velocypack::ArrayIterator(shardsSlice)) {
-      auto const shardId =
-          shardSlice.copyString();  // shardID is collection name on db server
+      // shardID is collection name on db server
+      auto const shardId = shardSlice.stringView();
       auto const* shard = collections.get(shardId);
 
       if (!shard) {
@@ -1118,7 +1050,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
         continue;
       }
 
-      _shards.push_back(shard->name());
+      _shards.insert(shard->name());
     }
   } else {
     LOG_TOPIC("a48f3", ERR, arangodb::iresearch::TOPIC)
@@ -1131,7 +1063,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan,
 
   auto const options = base.get(NODE_OPTIONS_PARAM);
 
-  if (!::fromVelocyPack(options, _options)) {
+  if (!fromVelocyPack(options, _options)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "failed to parse 'IResearchViewNode' options: " + options.toString());
@@ -1366,8 +1298,8 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
 
   // stored values
   {
-    auto const& primarySort = ::primarySort(*_view);
-    auto const& storedValues = ::storedValues(*_view);
+    auto const& primarySort = iresearch::primarySort(*_view);
+    auto const& storedValues = iresearch::storedValues(*_view);
     VPackArrayBuilder arrayScope(&nodes, NODE_VIEW_VALUES_VARS);
     std::string fieldName;
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
@@ -1405,7 +1337,7 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
 
   // filter condition
   nodes.add(VPackValue(NODE_CONDITION_PARAM));
-  if (!::filterConditionIsEmpty(_filterCondition)) {
+  if (!filterConditionIsEmpty(_filterCondition)) {
     _filterCondition->toVelocyPack(nodes, flags != 0);
   } else {
     nodes.openObject();
@@ -1414,19 +1346,20 @@ void IResearchViewNode::doToVelocyPack(VPackBuilder& nodes,
 
   // sort condition
   nodes.add(VPackValue(NODE_SCORERS_PARAM));
-  ::toVelocyPack(nodes, _scorers, flags != 0);
+  iresearch::toVelocyPack(nodes, _scorers, flags != 0);
 
   // shards
   {
     VPackArrayBuilder arrayScope(&nodes, NODE_SHARDS_PARAM);
     for (auto& shard : _shards) {
+      // TODO(MBkkt) check options.sources
       nodes.add(VPackValue(shard));
     }
   }
 
   // options
   nodes.add(VPackValue(NODE_OPTIONS_PARAM));
-  ::toVelocyPack(nodes, _options);
+  iresearch::toVelocyPack(nodes, _options);
 
   // volatility mask
   nodes.add(NODE_VOLATILITY_PARAM, VPackValue(_volatilityMask));
@@ -1453,7 +1386,7 @@ IResearchViewNode::collections() const {
     auto const* collection = collections.get(id);
 
     if (collection) {
-      viewCollections.push_back(*collection);
+      viewCollections.emplace_back(*collection);
     } else {
       LOG_TOPIC("ee270", WARN, arangodb::iresearch::TOPIC)
           << "collection with id '" << id
@@ -1614,7 +1547,7 @@ void IResearchViewNode::replaceVariables(
 void IResearchViewNode::getVariablesUsedHere(aql::VarSet& vars) const {
   auto const outVariableAlreadyInVarSet = vars.contains(_outVariable);
 
-  if (!::filterConditionIsEmpty(_filterCondition)) {
+  if (!filterConditionIsEmpty(_filterCondition)) {
     aql::Ast::getReferencedVariables(_filterCondition, vars);
   }
 
@@ -1661,7 +1594,7 @@ IResearchViewNode::getVariablesSetHere() const {
 aql::RegIdSet IResearchViewNode::calcInputRegs() const {
   auto inputRegs = aql::RegIdSet{};
 
-  if (!::filterConditionIsEmpty(_filterCondition)) {
+  if (!filterConditionIsEmpty(_filterCondition)) {
     aql::VarSet vars;
     aql::Ast::getReferencedVariables(_filterCondition, vars);
 
@@ -1719,6 +1652,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                      "failed to get transaction while creating "
                                      "IResearchView ExecutionBlock");
     }
+    TRI_ASSERT(trx->state());
 
     if (options().forceSync &&
         trx->state()->hasHint(
@@ -1728,13 +1662,10 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                      "views and transactions");
     }
 
-    auto const& view = basics::downCast<IResearchView>(*this->view());
-
-    std::shared_ptr<IResearchView::Snapshot const> reader;
-
+    auto const& view = *this->view();
     LOG_TOPIC("82af6", TRACE, arangodb::iresearch::TOPIC)
         << "Start getting snapshot for view '" << view.name() << "'";
-
+    ViewSnapshotPtr reader;
     // we manage snapshot differently in single-server/db server,
     // see description of functions below to learn how
     if (ServerState::instance()->isDBServer()) {
@@ -1753,14 +1684,11 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                      "failed to get snapshot while creating "
                                      "arangosearch view ExecutionBlock");
     }
-
     return reader;
   };
 
   auto const buildExecutorInfo = [this](aql::ExecutionEngine& engine,
-                                        std::shared_ptr<
-                                            IResearchView::Snapshot const>
-                                            reader) {
+                                        ViewSnapshotPtr reader) {
     // We could be asked to produce only document/collection ids for later
     // materialization or full document body at once
     aql::RegisterCount numDocumentRegs = 0;
@@ -1860,7 +1788,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
         engine.getQuery(),
         scorers(),
         _sort,
-        ::storedValues(*_view),
+        storedValues(*_view),
         *plan(),
         outVariable(),
         filterCondition(),
@@ -1882,9 +1810,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     return createNoResultsExecutor(engine);
   }
 
-  std::shared_ptr<IResearchView::Snapshot const> reader =
-      createSnapshot(engine);
-  if (0 == reader->size()) {
+  auto reader = createSnapshot(engine);
+  if (reader->size() == 0) {
     return createNoResultsExecutor(engine);
   }
 
@@ -1906,63 +1833,49 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   switch (materializeType) {
     case MaterializeType::NotMaterialize:
-      return ::executors<false,
-                         MaterializeType::NotMaterialize>[getExecutorIndex(
+      return kExecutors<false,
+                        MaterializeType::NotMaterialize>[getExecutorIndex(
           sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
                                       std::move(executorInfos));
     case MaterializeType::LateMaterialize:
-      return ::executors<false,
-                         MaterializeType::LateMaterialize>[getExecutorIndex(
+      return kExecutors<false,
+                        MaterializeType::LateMaterialize>[getExecutorIndex(
           sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
                                       std::move(executorInfos));
     case MaterializeType::Materialize:
-      return ::executors<false, MaterializeType::Materialize>[getExecutorIndex(
+      return kExecutors<false, MaterializeType::Materialize>[getExecutorIndex(
           sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
                                       std::move(executorInfos));
     case MaterializeType::NotMaterialize | MaterializeType::UseStoredValues:
 #ifdef USE_ENTERPRISE
       if (encrypted) {
-        return ::executors<
+        return kExecutors<
             true, MaterializeType::NotMaterialize |
                       MaterializeType::UseStoredValues>[getExecutorIndex(
             sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
                                         std::move(executorInfos));
-      } else {
-        return ::executors<
-            false, MaterializeType::NotMaterialize |
-                       MaterializeType::UseStoredValues>[getExecutorIndex(
-            sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
-                                        std::move(executorInfos));
       }
-#else
-      return ::executors<false,
-                         MaterializeType::NotMaterialize |
-                             MaterializeType::UseStoredValues>[getExecutorIndex(
+#endif
+      return kExecutors<false,
+                        MaterializeType::NotMaterialize |
+                            MaterializeType::UseStoredValues>[getExecutorIndex(
           sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
                                       std::move(executorInfos));
-#endif
     case MaterializeType::LateMaterialize | MaterializeType::UseStoredValues:
 #ifdef USE_ENTERPRISE
       if (encrypted) {
-        return ::executors<
+        return kExecutors<
             true, MaterializeType::LateMaterialize |
                       MaterializeType::UseStoredValues>[getExecutorIndex(
             sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
                                         std::move(executorInfos));
-      } else {
-        return ::executors<
-            false, MaterializeType::LateMaterialize |
-                       MaterializeType::UseStoredValues>[getExecutorIndex(
-            sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
-                                        std::move(executorInfos));
       }
-#else
-      return ::executors<false,
-                         MaterializeType::LateMaterialize |
-                             MaterializeType::UseStoredValues>[getExecutorIndex(
+#endif
+      return kExecutors<false,
+                        MaterializeType::LateMaterialize |
+                            MaterializeType::UseStoredValues>[getExecutorIndex(
           sorted, ordered, heapsort)](&engine, this, std::move(registerInfos),
                                       std::move(executorInfos));
-#endif
     default:
       ADB_UNREACHABLE;
   }
@@ -1976,9 +1889,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 #endif
 
 bool IResearchViewNode::OptimizationState::canVariablesBeReplaced(
-    aql::CalculationNode* calclulationNode) const {
-  return _nodesToChange.find(calclulationNode) !=
-         _nodesToChange.cend();  // contains()
+    aql::CalculationNode* calculationNode) const {
+  return _nodesToChange.contains(calculationNode);
 }
 
 void IResearchViewNode::OptimizationState::saveCalcNodesForViewVariables(
@@ -2154,5 +2066,4 @@ IResearchViewNode::OptimizationState::replaceAllViewVariables(
   return uniqueVariables;
 }
 
-}  // namespace iresearch
-}  // namespace arangodb
+}  // namespace arangodb::iresearch

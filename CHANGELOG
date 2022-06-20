@@ -1,6 +1,200 @@
 devel
 -----
 
+* Now supporting projections on traversals. In AQL Traversal statements like
+  FOR v,e,p IN 1..3 OUTBOUND @start GRAPH @graph RETURN v.name
+  we will now detect attribute accesses on the data, in above example "v.name"
+  and use it to optimize data-loading, e.g. we will only extract the "name" attribute.
+  This optimization will help if you have large document sizes, but only access small
+  parts of the documents. By default we will only project up to 5 attributes on each
+  vertex, and edge. This limit can be modified by adding OPTIONS {maxProjections: 42}.
+  To identify if your query is using projections the explain output will now contain a
+  hint like `/* vertex (projections: `name`) */`
+  For now only attribute accesses are detected, functions like `KEEP` will not be projected.
+
+* Updated arangosync to v2.11.0-preview-1.
+
+* Change default `format_version` for RocksDB .sst files from 3 to 5.
+
+* Added support for creating autoincrement keys on cluster mode, but only for 
+  single sharded collections.
+
+* Add support for LZ4 and LZ4HC compression support for RocksDB.
+
+* Allow parallel access to the shards of smart edge collections in AQL via 
+  parallel GatherNodes.
+
+* Update RocksDB internal table checksum type to xxHash64.
+
+* Updated arangosync to v2.10.0.
+
+* Added several startup option to configure parallelism for individual Pregel 
+  jobs:
+
+  - `--pregel.min-parallelism`: minimum parallelism usable in Pregel jobs.
+  - `--pregel.max-parallelism`: maximum parallelism usable in Pregel jobs.
+  - `--pregel.parallelism`: default parallelism to use in Pregel jobs.
+
+  These parallelism options can be used by administrators to set concurrency
+  defaults and bounds for Pregel jobs. Each individual Pregel job can set
+  its own parallelism value using the job's `parallelism` option, but the
+  job's parallelism value will be clamped to the bounds defined by
+  `--pregel,min-parallelism` and `--pregel.max-parallelism`. If a job does
+  not set its `parallelism` value, it will default to the parallelism value
+  configured via `--pregel.parallelism`.
+
+* Added startup options to configure the usage of memory-mapped files for 
+  Pregel temporary data:
+
+  - `--pregel.memory-mapped-files`: if set to `true`, Pregel jobs will by 
+    default store their temporary data in disk-backed memory-mapped files. 
+    If set to `false`, the temporary data of Pregel jobs will be buffered in 
+    RAM. The default value is `true`, meaning that memory-mapped files will
+    be used. The option can be overriden for each Pregel job by setting the 
+    `useMemoryMaps` option of the job.
+
+  - `--pregel.memory-mapped-files-location-type`: location for memory-mapped
+    files written by Pregel. This option is only meaningful if memory-mapped
+    files are actually used. The option can have one of the following values:
+    - `temp-directory`: store memory-mapped files in the temporary directory,
+      as configured via `--temp.path`. If `--temp.path` is not set, the
+      system's temporary directory will be used.
+    - `database-directory`: store memory-mapped files in a separate directory
+      underneath the database directory. 
+    - `custom`: use a custom directory location for memory-mapped files. The
+      exact location must be set via the configuration parameter
+      `--pregel.memory-mapped-files-custom-path`.
+
+    The default value for this option is `temp-directory`.
+
+  - `--pregel.memory-mapped-files-custom-path`: custom directory location for
+    Pregel's memory-mapped files. This setting can only be used if the option
+    `--pregel.memory-mapped-files-location-type` is set to `custom`.
+
+  The default location for Pregel's memory-mapped files is the temporary
+  directory (`temp-directory`), which may not provide enough capacity for 
+  larger Pregel jobs.
+  It may be more sensible to configure a custom directory for memory-mapped
+  files and provide the necessary disk space there (`custom`). Such custom 
+  directory can be mounted on ephemeral storage, as the files are only needed 
+  temporarily.
+  There is also the option to use a subdirectory of the database directory 
+  as the storage location for the memory-mapped files (`database-directory`). 
+  The database directory often provides a lot of disk space capacity, but 
+  when it is used for both the regular database data and Pregel's memory-mapped
+  files, it has to provide enough capacity to store both.
+
+* Pregel status now reports whether memory mapped files are used in a job.
+
+* Fixed issue BTS-875.
+
+* Updated arangosync to v2.10.0-preview-1.
+
+* Enterprise only: Restricted behaviour of Hybrid Disjoint Smart Graphs. Within 
+  a single traversal or path query we now restrict that you can only switch 
+  between Smart and Satellite sharding once, all queries where more than one 
+  switch is (in theory) possible will be rejected. e.g:
+  ```
+    FOR v IN 2 OUTBOUND @start smartToSatEdges, satToSmartEdges
+  ```
+  will be rejected (we can go smart -> sat -> smart, so two switches)
+  ```
+  FOR v1 IN 1 OUTBOUND @start smartToSatEdges
+    FOR v2 IN 1 OUTBOUND v1 satToSmartEdges
+  ```
+  will still be allowed, as each statement only switches once.
+  We have decided to take this restrictions as especially for ShortestPath
+  queries the results are not well-defined. If you have a use-case where
+  this restriction hits you, please contact us.
+
+* Change default value of `--rocksdb.block-cache-shard-bits` to an automatic
+  default value that allows data blocks of at least 128MiB to be stored in each
+  cache shard if the block cache's strict capacity limit is used. The strict 
+  capacity limit for the block cache is enabled by default in 3.10, but can be 
+  turned off by setting the option `--rocksdb.enforce-block-cache-size-limit`
+  to `false`. Also log a startup warning if the resulting cache shard size 
+  would be smaller than is potentially safe when the strict capacity limit is
+  set. 
+  Enforcing the block cache's capacity limit has the consequence that data
+  reads by RocksDB must fit into the block cache or the read operation will
+  fail with an "Incomplete" error.
+
+* The API `/_admin/status` now returns a progress attribute that shows the 
+  server's current state (starting, stopping, etc.), with details about which 
+  feature is currently started, stopped etc. During recovery, the current WAL 
+  recovery sequence number is also reported in a sub-attribute of the 
+  `progress` attribute. Clients can query this attribute to track the 
+  progress of the WAL recovery.
+  The additional progress attribute returned by `/_admin/status` is most
+  useful when using the `--server.early-connections true` setting. With that
+  setting, the server will respond to incoming requests to a limited set of
+  APIs already during server startup. When the setting is not used, the REST
+  interface will be opened relatively late during the startup sequence, so
+  that the progress attribute will likely not be very useful anymore.
+
+* Optionally start up HTTP interface of servers earlier, so that ping probes 
+  from tools can already be responded to when the server is not fully started.
+  By default, the HTTP interface is opened at the same point during the startup
+  sequence as before, but it can optionally be opened earlier by setting the 
+  new startup option `--server.early-connections` to `true`. This will 
+  open the HTTP interface early in the startup, so that the server can respond
+  to a limited set of REST APIs even during recovery. This can be useful 
+  because the recovery procedure can take time proportional to the amount of 
+  data to recover.
+  When the `--server.early-connections` option is set to `true`, the
+  server will respond to requests to the following APIs during the startup
+  already:
+  - `/_api/version`
+  - `/_admin/version`
+  - `/_admin/status`
+  All other APIs will be responded to with an HTTP response code 503, so that 
+  callers can see that the server is not fully ready.
+  If authentication is used, then only JWT authentication can be used during
+  the early startup phase. Incoming requests relying on other authentication
+  mechanisms that require access to the database data will also be responded to
+  with HTTP 503 errors, even if correct credentials are used.
+
+* Fix behavior when accessing a view instead of a collection by name in a REST
+  document operation. Now return a proper error.
+
+* Upgraded bundled version of RocksDB to 7.2.
+
+* Fix documentation of collection's `cacheEnabled` property default.
+
+* Added `[?]` array operator to AQL, which works as follows:
+  - `nonArray[?]`: returns `false`
+  - `nonArray[? FILTER CURRENT ...]`: returns `false`
+  - `array[?]`: returns `false` if array is empty, `true` otherwise
+  - `array[? FILTER CURRENT ...]`: returns `false` if no array member
+     satisfies the filter condition, returns `true` if at least one member
+     satistifies it.
+
+* Fixed Github issue #16279: assertion failure/crash in AQL query optimizer when
+  permuting adjacent FOR loops that depended on each other.
+
+* No good reason to fatal error in agency state, when local database entries
+  lack local timestamp (legacy). In that situation, we will record epoch begin
+  as local time.
+
+* Put hotbackup requests on the HIGH priority queue to make hotbackups work
+  under high load (BTS-865).
+
+* Removed separate FlushThread (for views syncing) and merged it with the
+  RocksDBBackgroundThread.
+
+* Fix some issues with WAL recovery for views. Previously it was possible that
+  changes to a view/link were already recovered and persisted, but that the
+  lower bound WAL tick was not moved forward. This could lead to already fully
+  recovered views/links being recovered again on the next restart.
+
+* Updated OpenSSL to 1.1.1o and OpenLDAP to 2.6.2.
+
+* Upgrade jemalloc to version 5.3.0.
+
+* Fixed BTS-860. Changed ArangoSearch index recovery procedure to
+  remove necessity to always fully recreate index if IndexCreation marker
+  encountered.
+
 * Updated arangosync to v2.9.1.
 
 * Added option `--enable-revision-trees` to arangorestore, which will add the
@@ -120,8 +314,12 @@ devel
 
 * Added an IO heartbeat which checks that the underlying volume is writable
   with reasonable performance. The test is done every 15 seconds and can
-  be explicitly switched off. New metrics to give visibility if the test
-  fails.
+  explicitly switched off. New metrics to give visibility if the test fails:
+    - `arangodb_ioheartbeat_delays_total`: total number of delayed io heartbeats
+    - `arangodb_ioheartbeat_duration`: histogram of execution times [us]
+    - `arangodb_ioheartbeat_failures_total`: total number of failures
+  These metrics are only populated, if `--database.io-heartbeat` is set to
+  `true` (which is currently the default).
 
 * Fix lock order in Agent::advanceCommitIndex for State's _logLock and
   Agent's _waitForCV.

@@ -1,6 +1,6 @@
 /*jshint strict: true */
 /*global assertTrue, assertEqual*/
-'use strict';
+"use strict";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -24,9 +24,9 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-const jsunity = require('jsunity');
+const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
-const _ = require('lodash');
+const _ = require("lodash");
 const db = arangodb.db;
 const helper = require("@arangodb/testutils/replicated-logs-helper");
 const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
@@ -37,7 +37,8 @@ const {
   replicatedLogSetTarget,
   replicatedLogDeleteTarget,
   dbservers,
-  registerAgencyTestBegin, registerAgencyTestEnd,
+  registerAgencyTestBegin,
+  registerAgencyTestEnd,
   replicatedLogUpdateTargetParticipants,
   waitForReplicatedLogAvailable,
 } = helper;
@@ -50,21 +51,47 @@ const {
 
 const database = "replication2_supervision_test_db";
 
-const replicatedLogLeaderElectionFailed = function (database, logId, term, servers) {
+const replicatedLogLeaderElectionFailed = function (
+    database,
+    logId,
+    term,
+    servers
+) {
   return function () {
     let {current} = readReplicatedLogAgency(database, logId);
     if (current === undefined) {
       return Error("current not yet defined");
     }
 
-    if (current.supervision === undefined || current.supervision.election === undefined) {
+    if (
+        current.supervision === undefined ||
+        current.supervision.StatusReport === undefined
+    ) {
       return Error("supervision not yet updated");
     }
 
-    let election = current.supervision.election;
+    if (!Array.isArray(current.supervision.StatusReport)) {
+      return Error("StatusReport is not an array");
+    }
+
+    if (current.supervision.StatusReport.length === 0) {
+      return Error("StatusReport is empty");
+    }
+
+    let statusReport = current.supervision.StatusReport[0];
+    if (statusReport.type !== "LeaderElectionQuorumNotReached") {
+      return Error(
+          "StatusReport is not the correct type " +
+          `found = ${statusReport.type}, expected LeaderElectionQuorumNotReached`
+      );
+    }
+
+    let election = statusReport.detail.election;
     if (election.term !== term) {
-      return Error("supervision report not yet available for current term; "
-        + `found = ${election.term}; expected = ${term}`);
+      return Error(
+          "supervision report not yet available for current term; " +
+          `found = ${election.term}; expected = ${term}`
+      );
     }
 
     if (servers !== undefined) {
@@ -75,11 +102,12 @@ const replicatedLogLeaderElectionFailed = function (database, logId, term, serve
         }
         let code = election.details[x].code;
         if (code !== servers[x]) {
-          return Error(`server ${x} reported with code ${code}, expected ${servers[x]}`);
+          return Error(
+              `server ${x} reported with code ${code}, expected ${servers[x]}`
+          );
         }
       }
     }
-
     return true;
   };
 };
@@ -91,13 +119,19 @@ const replicatedLogSupervisionError = function (database, logId, errorCode) {
     if (current.supervision === undefined) {
       return Error(`supervision not yet defined`);
     }
-    if (current.supervision.error === undefined) {
-      return Error(`no error reported in supervision`);
+    if (
+        current.supervision.StatusReport === undefined ||
+        current.supervision.StatusReport.length === 0
+    ) {
+      return Error(`no StatusReport available supervision`);
     }
-    if (current.supervision.error.code !== errorCode) {
-      return Error(`reported supervision errorCode ${current.supervision.error.code} not as expected ${errorCode}`);
+    let statusReport = current.supervision.StatusReport[0];
+    if (statusReport.type !== errorCode) {
+      return Error(
+          `reported supervision errorCode ${statusReport.type} not as expected ${errorCode}`
+      );
     }
-    if (current.supervision.error.code === errorCode) {
+    if (statusReport.type === errorCode) {
       return true;
     }
     return false;
@@ -105,54 +139,54 @@ const replicatedLogSupervisionError = function (database, logId, errorCode) {
 };
 
 const replicatedLogSuite = function () {
-
   const targetConfig = {
     writeConcern: 2,
     softWriteConcern: 2,
-    replicationFactor: 3,
     waitForSync: false,
   };
 
-  const {setUpAll, tearDownAll, stopServer, continueServer, resumeAll} = (function () {
-    let previousDatabase, databaseExisted = true;
-    let stoppedServers = {};
-    return {
-      setUpAll: function () {
-        previousDatabase = db._name();
-        if (!_.includes(db._databases(), database)) {
-          db._createDatabase(database);
-          databaseExisted = false;
-        }
-        db._useDatabase(database);
-      },
+  const {setUpAll, tearDownAll, stopServer, continueServer, resumeAll} =
+      (function () {
+        let previousDatabase,
+            databaseExisted = true;
+        let stoppedServers = {};
+        return {
+          setUpAll: function () {
+            previousDatabase = db._name();
+            if (!_.includes(db._databases(), database)) {
+              db._createDatabase(database);
+              databaseExisted = false;
+            }
+            db._useDatabase(database);
+          },
 
-      tearDownAll: function () {
-        db._useDatabase(previousDatabase);
-        if (!databaseExisted) {
-          db._dropDatabase(database);
-        }
-      },
-      stopServer: function (serverId) {
-        if (stoppedServers[serverId] !== undefined) {
-          throw Error(`${serverId} already stopped`);
-        }
-        helper.stopServer(serverId);
-        stoppedServers[serverId] = true;
-      },
-      continueServer: function (serverId) {
-        if (stoppedServers[serverId] === undefined) {
-          throw Error(`${serverId} not stopped`);
-        }
-        helper.continueServer(serverId);
-        delete stoppedServers[serverId];
-      },
-      resumeAll: function () {
-        Object.keys(stoppedServers).forEach(function (key) {
-          continueServer(key);
-        });
-      }
-    };
-  }());
+          tearDownAll: function () {
+            db._useDatabase(previousDatabase);
+            if (!databaseExisted) {
+              db._dropDatabase(database);
+            }
+          },
+          stopServer: function (serverId) {
+            if (stoppedServers[serverId] !== undefined) {
+              throw Error(`${serverId} already stopped`);
+            }
+            helper.stopServer(serverId);
+            stoppedServers[serverId] = true;
+          },
+          continueServer: function (serverId) {
+            if (stoppedServers[serverId] === undefined) {
+              throw Error(`${serverId} not stopped`);
+            }
+            helper.continueServer(serverId);
+            delete stoppedServers[serverId];
+          },
+          resumeAll: function () {
+            Object.keys(stoppedServers).forEach(function (key) {
+              continueServer(key);
+            });
+          },
+        };
+      })();
 
   const createReplicatedLogAndWaitForLeader = function (database) {
     return helper.createReplicatedLog(database, targetConfig);
@@ -175,7 +209,8 @@ const replicatedLogSuite = function () {
   };
 
   return {
-    setUpAll, tearDownAll,
+    setUpAll,
+    tearDownAll,
     setUp: registerAgencyTestBegin,
     tearDown: function (test) {
       resumeAll();
@@ -185,7 +220,8 @@ const replicatedLogSuite = function () {
 
     // This test stops the leader and a follower, then waits for a failover to happen
     testConvergedToVersion: function () {
-      const {logId, followers, leader, term} = createReplicatedLogAndWaitForLeader(database);
+      const {logId, followers, leader, term} =
+          createReplicatedLogAndWaitForLeader(database);
 
       const targetVersion = 15;
 
@@ -198,7 +234,8 @@ const replicatedLogSuite = function () {
 
     // This test stops the leader and a follower, then waits for a failover to happen
     testCheckSimpleFailover: function () {
-      const {logId, followers, leader, term} = createReplicatedLogAndWaitForLeader(database);
+      const {logId, followers, leader, term} =
+          createReplicatedLogAndWaitForLeader(database);
       waitForReplicatedLogAvailable(logId);
 
       // now stop one server
@@ -222,16 +259,18 @@ const replicatedLogSuite = function () {
       stopServer(leader);
 
       // since writeConcern is 2, there is no way a new leader can be elected
-      waitFor(replicatedLogLeaderElectionFailed(database, logId, term + 1, {
-        [leader]: 1,
-        [followers[0]]: 1,
-        [followers[1]]: 0,
-      }));
+      waitFor(
+          replicatedLogLeaderElectionFailed(database, logId, term + 1, {
+            [leader]: 1,
+            [followers[0]]: 1,
+            [followers[1]]: 0,
+          })
+      );
 
       {
         // check election result
         const {current} = readReplicatedLogAgency(database, logId);
-        const election = current.supervision.election;
+        const election = current.supervision.StatusReport[0].detail.election;
         assertEqual(election.term, term + 1);
         assertEqual(election.participantsRequired, 2);
         assertEqual(election.participantsAvailable, 1);
@@ -240,10 +279,17 @@ const replicatedLogSuite = function () {
         assertEqual(detail[followers[0]].code, 1);
         assertEqual(detail[followers[1]].code, 0);
       }
-
       // now resume, followers[1] has to become leader, because it's the only server with log entry 1 available
       continueServer(followers[0]);
-      waitFor(replicatedLogIsReady(database, logId, term + 2, [followers[0], followers[1]], followers[1]));
+      waitFor(
+          replicatedLogIsReady(
+              database,
+              logId,
+              term + 2,
+              [followers[0], followers[1]],
+              followers[1]
+          )
+      );
 
       replicatedLogDeleteTarget(database, logId);
 
@@ -252,16 +298,23 @@ const replicatedLogSuite = function () {
 
     // This test requests a specific server as leader in Target
     testChangeLeader: function () {
-      const {logId, servers, term, followers} = createReplicatedLogAndWaitForLeader(database);
+      const {logId, servers, term, followers} =
+          createReplicatedLogAndWaitForLeader(database);
 
       // now change the leader
       const newLeader = _.sample(followers);
       setReplicatedLogLeaderTarget(database, logId, newLeader);
       waitFor(replicatedLogIsReady(database, logId, term, servers, newLeader));
 
-      waitFor(replicatedLogParticipantsFlag(database, logId, {
-        [newLeader]: {allowedAsLeader: true, allowedInQuorum: true, forced: false},
-      }));
+      waitFor(
+          replicatedLogParticipantsFlag(database, logId, {
+            [newLeader]: {
+              allowedAsLeader: true,
+              allowedInQuorum: true,
+              forced: false,
+            },
+          })
+      );
       {
         const {current} = readReplicatedLogAgency(database, logId);
         const actions = current.actions;
@@ -271,20 +324,28 @@ const replicatedLogSuite = function () {
         //  3. update participant flags with leader.forced = false
         {
           const action = _.nth(actions, -3).desc;
-          assertEqual(action.type, 'UpdateParticipantFlagsAction');
+          assertEqual(action.type, "UpdateParticipantFlagsAction");
           assertEqual(action.participant, newLeader);
-          assertEqual(action.flags, {allowedAsLeader: true, allowedInQuorum: true, forced: true});
+          assertEqual(action.flags, {
+            allowedAsLeader: true,
+            allowedInQuorum: true,
+            forced: true,
+          });
         }
         {
           const action = _.nth(actions, -2).desc;
-          assertEqual(action.type, 'DictateLeaderAction');
+          assertEqual(action.type, "SwitchLeaderAction");
           assertEqual(action.leader.serverId, newLeader);
         }
         {
           const action = _.nth(actions, -1).desc;
-          assertEqual(action.type, 'UpdateParticipantFlagsAction');
+          assertEqual(action.type, "UpdateParticipantFlagsAction");
           assertEqual(action.participant, newLeader);
-          assertEqual(action.flags, {allowedAsLeader: true, allowedInQuorum: true, forced: false});
+          assertEqual(action.flags, {
+            allowedAsLeader: true,
+            allowedInQuorum: true,
+            forced: false,
+          });
         }
       }
       replicatedLogDeleteTarget(database, logId);
@@ -293,7 +354,8 @@ const replicatedLogSuite = function () {
     // This test adds and removes an excluded flag to a server in Target
     // and waits for the corresponding action in Current
     testRemoveAllowedInQuorumFlag: function () {
-      const {logId, followers} = createReplicatedLogAndWaitForLeader(database);
+      const {logId, followers} =
+          createReplicatedLogAndWaitForLeader(database);
 
       // now add the excluded flag to one of the servers
       const server = _.sample(followers);
@@ -301,18 +363,30 @@ const replicatedLogSuite = function () {
         [server]: {allowedInQuorum: false},
       });
 
-      waitFor(replicatedLogParticipantsFlag(database, logId, {
-        [server]: {allowedInQuorum: false, forced: false, allowedAsLeader: true},
-      }));
+      waitFor(
+          replicatedLogParticipantsFlag(database, logId, {
+            [server]: {
+              allowedInQuorum: false,
+              forced: false,
+              allowedAsLeader: true,
+            },
+          })
+      );
 
       // now remove the flag again
       replicatedLogUpdateTargetParticipants(database, logId, {
         [server]: {allowedInQuorum: true},
       });
 
-      waitFor(replicatedLogParticipantsFlag(database, logId, {
-        [server]: {allowedInQuorum: true, forced: false, allowedAsLeader: true},
-      }));
+      waitFor(
+          replicatedLogParticipantsFlag(database, logId, {
+            [server]: {
+              allowedInQuorum: true,
+              forced: false,
+              allowedAsLeader: true,
+            },
+          })
+      );
 
       replicatedLogDeleteTarget(database, logId);
     },
@@ -327,16 +401,23 @@ const replicatedLogSuite = function () {
         [newServer]: {allowedInQuorum: false, allowedAsLeader: false},
       });
 
-      waitFor(replicatedLogParticipantsFlag(database, logId, {
-        [newServer]: {allowedInQuorum: false, allowedAsLeader: false, forced: false},
-      }));
+      waitFor(
+          replicatedLogParticipantsFlag(database, logId, {
+            [newServer]: {
+              allowedInQuorum: false,
+              allowedAsLeader: false,
+              forced: false,
+            },
+          })
+      );
 
       replicatedLogDeleteTarget(database, logId);
     },
 
     // This test removes a participant from the replicated log
     testRemoveFollowerParticipant: function () {
-      const {logId, servers, followers} = createReplicatedLogAndWaitForLeader(database);
+      const {logId, servers, followers} =
+          createReplicatedLogAndWaitForLeader(database);
 
       // first add a new server, but with excluded flag
       const newServer = _.sample(_.difference(dbservers, servers));
@@ -344,18 +425,26 @@ const replicatedLogSuite = function () {
         [newServer]: {allowedInQuorum: true, allowedAsLeader: true},
       });
 
-      waitFor(replicatedLogParticipantsFlag(database, logId, {
-        [newServer]: {allowedInQuorum: true, allowedAsLeader: true, forced: false},
-      }));
+      waitFor(
+          replicatedLogParticipantsFlag(database, logId, {
+            [newServer]: {
+              allowedInQuorum: true,
+              allowedAsLeader: true,
+              forced: false,
+            },
+          })
+      );
 
       const removedServer = _.sample(followers);
       replicatedLogUpdateTargetParticipants(database, logId, {
         [removedServer]: null,
       });
 
-      waitFor(replicatedLogParticipantsFlag(database, logId, {
-        [removedServer]: null,
-      }));
+      waitFor(
+          replicatedLogParticipantsFlag(database, logId, {
+            [removedServer]: null,
+          })
+      );
 
       {
         const {current} = readReplicatedLogAgency(database, logId);
@@ -365,15 +454,50 @@ const replicatedLogSuite = function () {
         //  2. dictate leadership with new leader
         {
           const action = _.nth(actions, -2).desc;
-          assertEqual(action.type, 'UpdateParticipantFlagsAction');
-          assertEqual(action.flags, {allowedAsLeader: true, allowedInQuorum: false, forced: false});
+          assertEqual(action.type, "UpdateParticipantFlagsAction");
+          assertEqual(action.flags, {
+            allowedAsLeader: true,
+            allowedInQuorum: false,
+            forced: false,
+          });
         }
         {
           const action = _.nth(actions, -1).desc;
-          assertEqual(action.type, 'RemoveParticipantFromPlanAction');
+          assertEqual(action.type, "RemoveParticipantFromPlanAction");
           assertEqual(action.participant, removedServer);
         }
       }
+
+      replicatedLogDeleteTarget(database, logId);
+    },
+
+    // This test first sets a new leader and waits for the leader exchange to take place.
+    // Then the new leader is stopped, thus an election is triggered.
+    // Although the now failed ex-leader remains in target, the election is expected to succeed.
+    testChangeLeaderWithFailed: function () {
+      const {logId, servers, term, followers} = createReplicatedLogAndWaitForLeader(database);
+
+      const setLeader = followers[0];
+      setReplicatedLogLeaderTarget(database, logId, setLeader);
+      waitFor(replicatedLogIsReady(database, logId, term, servers, setLeader));
+      waitFor(replicatedLogParticipantsFlag(database, logId, {
+        [setLeader]: {allowedAsLeader: true, allowedInQuorum: true, forced: false},
+      }));
+
+      // Stop current leader and wait for the leader to be changed
+      stopServer(setLeader);
+
+      // Supervision should notice that the target leader is failed and should not try to set it.
+      const errorCode = "TargetLeaderFailed";
+      waitFor(replicatedLogSupervisionError(database, logId, errorCode));
+
+      waitFor(lpreds.replicatedLogLeaderPlanChanged(database, logId, setLeader));
+      let {newLeader} = helper.getReplicatedLogLeaderPlan(database, logId);
+      waitFor(replicatedLogIsReady(database, logId, term, servers, newLeader));
+
+      replicatedLogUpdateTargetParticipants(database, logId, {
+        [setLeader]: {allowedInQuorum: true, allowedAsLeader: true},
+      });
 
       replicatedLogDeleteTarget(database, logId);
     },
@@ -382,22 +506,29 @@ const replicatedLogSuite = function () {
     // to become the leader. It then removed the excluded flag and expects the
     // leadership to be transferred.
     testChangeLeaderWithExcluded: function () {
-      const {logId, servers, term, followers} = createReplicatedLogAndWaitForLeader(database);
+      const {logId, servers, term, followers} =
+          createReplicatedLogAndWaitForLeader(database);
 
       // first make the new leader excluded
       const newLeader = followers[0];
       replicatedLogUpdateTargetParticipants(database, logId, {
         [newLeader]: {allowedInQuorum: false, allowedAsLeader: false},
       });
-      waitFor(replicatedLogParticipantsFlag(database, logId, {
-        [newLeader]: {allowedInQuorum: false, allowedAsLeader: false, forced: false},
-      }));
+      waitFor(
+          replicatedLogParticipantsFlag(database, logId, {
+            [newLeader]: {
+              allowedInQuorum: false,
+              allowedAsLeader: false,
+              forced: false,
+            },
+          })
+      );
 
       // new we try to change to the new leader
       setReplicatedLogLeaderTarget(database, logId, newLeader);
 
       // nothing should happen (supervision should not elect leader)
-      const errorCode = 1; // TARGET_LEADER_EXCLUDED
+      const errorCode = "TargetLeaderExcluded";
       waitFor(replicatedLogSupervisionError(database, logId, errorCode));
 
       replicatedLogUpdateTargetParticipants(database, logId, {
@@ -411,16 +542,23 @@ const replicatedLogSuite = function () {
     // This test excludes follower A, waits for the flags to be committed and
     // requests that follower B shall become the leader.
     testChangeLeaderWithExcludedOtherFollower: function () {
-      const {logId, servers, term, followers} = createReplicatedLogAndWaitForLeader(database);
+      const {logId, servers, term, followers} =
+          createReplicatedLogAndWaitForLeader(database);
 
       // first make one follower excluded
       const excludedFollower = followers[0];
       replicatedLogUpdateTargetParticipants(database, logId, {
         [excludedFollower]: {allowedAsLeader: false},
       });
-      waitFor(replicatedLogParticipantsFlag(database, logId, {
-        [excludedFollower]: {allowedInQuorum: true, allowedAsLeader: false, forced: false},
-      }));
+      waitFor(
+          replicatedLogParticipantsFlag(database, logId, {
+            [excludedFollower]: {
+              allowedInQuorum: true,
+              allowedAsLeader: false,
+              forced: false,
+            },
+          })
+      );
 
       // new we try to change to the new leader
       const newLeader = followers[1];
@@ -433,7 +571,8 @@ const replicatedLogSuite = function () {
     // This tests completely replaces a follower in Target with a different
     // server
     testReplaceFollowerWithNewFollower: function () {
-      const {logId, servers, term, followers, leader} = createReplicatedLogAndWaitForLeader(database);
+      const {logId, servers, term, followers, leader} =
+          createReplicatedLogAndWaitForLeader(database);
 
       const oldServer = _.sample(followers);
       const newServer = _.sample(_.difference(dbservers, servers));
@@ -442,26 +581,49 @@ const replicatedLogSuite = function () {
         // delete old server from target
         delete target.participants[oldServer];
         // add new server to target
-        target.participants[newServer] = {allowedAsLeader: false, allowedInQuorum: false};
+        target.participants[newServer] = {
+          allowedAsLeader: false,
+          allowedInQuorum: false,
+        };
         replicatedLogSetTarget(database, logId, target);
       }
 
-      waitFor(replicatedLogParticipantsFlag(database, logId, {
-        [newServer]: {allowedAsLeader: false, allowedInQuorum: false, forced: false},
-        [oldServer]: null,
-      }));
+      waitFor(
+          replicatedLogParticipantsFlag(database, logId, {
+            [newServer]: {
+              allowedAsLeader: false,
+              allowedInQuorum: false,
+              forced: false,
+            },
+            [oldServer]: null,
+          })
+      );
 
       // now remove the excluded flag
       replicatedLogUpdateTargetParticipants(database, logId, {
         [newServer]: {allowedAsLeader: true, allowedInQuorum: true},
       });
-      waitFor(replicatedLogParticipantsFlag(database, logId, {
-        [newServer]: {allowedAsLeader: true, allowedInQuorum: true, forced: false},
-        [oldServer]: null,
-      }));
+      waitFor(
+          replicatedLogParticipantsFlag(database, logId, {
+            [newServer]: {
+              allowedAsLeader: true,
+              allowedInQuorum: true,
+              forced: false,
+            },
+            [oldServer]: null,
+          })
+      );
 
       // we expect still to have the same term and same leader
-      waitFor(replicatedLogIsReady(database, logId, term, [..._.difference(servers, oldServer), newServer], leader));
+      waitFor(
+          replicatedLogIsReady(
+              database,
+              logId,
+              term,
+              [..._.difference(servers, oldServer), newServer],
+              leader
+          )
+      );
     },
 
     // This tests removes the participant that is currently the leader from Target
@@ -469,39 +631,61 @@ const replicatedLogSuite = function () {
     // It then waits for the replicated log to converge and
     // then removes the excluded flag.
     testReplaceLeaderWithNewFollower: function () {
-      const {logId, servers, term, leader, followers} = createReplicatedLogAndWaitForLeader(database);
+      const {logId, servers, term, leader, followers} =
+          createReplicatedLogAndWaitForLeader(database);
 
       const newServer = _.sample(_.difference(dbservers, servers));
       {
         let {target} = readReplicatedLogAgency(database, logId);
         // delete old leader from target
         delete target.participants[leader];
-        target.participants[newServer] = {allowedAsLeader: false, allowedInQuorum: false};
+        target.participants[newServer] = {
+          allowedAsLeader: false,
+          allowedInQuorum: false,
+        };
         replicatedLogSetTarget(database, logId, target);
       }
 
       // Wait for the new participant to appear, while excluded
-      waitFor(replicatedLogParticipantsFlag(database, logId, {
-        [newServer]: {allowedAsLeader: false, allowedInQuorum: false, forced: false},
-      }));
+      waitFor(
+          replicatedLogParticipantsFlag(database, logId, {
+            [newServer]: {
+              allowedAsLeader: false,
+              allowedInQuorum: false,
+              forced: false,
+            },
+          })
+      );
 
       // now remove the excluded flag
       replicatedLogUpdateTargetParticipants(database, logId, {
         [newServer]: {allowedAsLeader: true, allowedInQuorum: true},
       });
 
-      waitFor(replicatedLogParticipantsFlag(database, logId, {
-        [newServer]: {allowedAsLeader: true, allowedInQuorum: true, forced: false},
-      }));
+      waitFor(
+          replicatedLogParticipantsFlag(database, logId, {
+            [newServer]: {
+              allowedAsLeader: true,
+              allowedInQuorum: true,
+              forced: false,
+            },
+          })
+      );
 
       // we expect to have a new leader and the new follower
-      waitFor(replicatedLogLeaderEstablished(database, logId, term + 1, [...followers, newServer]));
+      waitFor(
+          replicatedLogLeaderEstablished(database, logId, term + 1, [
+            ...followers,
+            newServer,
+          ])
+      );
     },
 
-    // This test adds a new participant to the replicated log 
+    // This test adds a new participant to the replicated log
     // and requests that this new participant shall become the leader.
     testChangeLeaderToNewFollower: function () {
-      const {logId, servers, term, leader, followers} = createReplicatedLogAndWaitForLeader(database);
+      const {logId, servers, term, leader, followers} =
+          createReplicatedLogAndWaitForLeader(database);
 
       const newServer = _.sample(_.difference(dbservers, servers));
       {
@@ -510,39 +694,63 @@ const replicatedLogSuite = function () {
         target.leader = newServer;
         // delete old leader from target
         delete target.participants[leader];
-        target.participants[newServer] = {allowedInQuorum: false, allowedAsLeader: false};
+        target.participants[newServer] = {
+          allowedInQuorum: false,
+          allowedAsLeader: false,
+        };
         replicatedLogSetTarget(database, logId, target);
       }
-      waitFor(replicatedLogParticipantsFlag(database, logId, {
-        [newServer]: {allowedInQuorum: false, allowedAsLeader: false, forced: false},
-      }));
+      waitFor(
+          replicatedLogParticipantsFlag(database, logId, {
+            [newServer]: {
+              allowedInQuorum: false,
+              allowedAsLeader: false,
+              forced: false,
+            },
+          })
+      );
 
       // the new leader is excluded
-      const errorCode = 1; // TARGET_LEADER_EXCLUDED
+      const errorCode = "TargetLeaderExcluded";
       waitFor(replicatedLogSupervisionError(database, logId, errorCode));
 
       // now remove the excluded flag
       replicatedLogUpdateTargetParticipants(database, logId, {
         [newServer]: {allowedInQuorum: true, allowedAsLeader: true},
       });
-      waitFor(replicatedLogParticipantsFlag(database, logId, {
-        [newServer]: {allowedInQuorum: true, allowedAsLeader: true, forced: false},
-        [leader]: null,
-      }));
-      waitFor(replicatedLogIsReady(database, logId, term + 1, [...followers, newServer], newServer));
+      waitFor(
+          replicatedLogParticipantsFlag(database, logId, {
+            [newServer]: {
+              allowedInQuorum: true,
+              allowedAsLeader: true,
+              forced: false,
+            },
+            [leader]: null,
+          })
+      );
+      waitFor(
+          replicatedLogIsReady(
+              database,
+              logId,
+              term + 1,
+              [...followers, newServer],
+              newServer
+          )
+      );
     },
 
     // This tests requests a non-server as leader and expects the
     // supervision to fail
     testChangeLeaderToNonServer: function () {
-      const {logId, servers, term, leader} = createReplicatedLogAndWaitForLeader(database);
+      const {logId, servers, term, leader} =
+          createReplicatedLogAndWaitForLeader(database);
 
       // now change the leader
       const otherServer = "Foo42";
       setReplicatedLogLeaderTarget(database, logId, otherServer);
       // The supervision should complain about the server not being a leader
 
-      const errorCode = 0; // TARGET_LEADER_INVALID
+      const errorCode = "TargetLeaderInvalid";
       waitFor(replicatedLogSupervisionError(database, logId, errorCode));
 
       // nothing should have happend
@@ -553,14 +761,15 @@ const replicatedLogSuite = function () {
     // This tests requests a non-participant server as leader and expects the
     // supervision to fail
     testChangeLeaderToNonFollower: function () {
-      const {logId, servers, term, leader} = createReplicatedLogAndWaitForLeader(database);
+      const {logId, servers, term, leader} =
+          createReplicatedLogAndWaitForLeader(database);
 
       // now change the leader
       const otherServer = _.sample(_.difference(dbservers, servers));
       setReplicatedLogLeaderTarget(database, logId, otherServer);
       // The supervision should complain about the server not being a leader
 
-      const errorCode = 0; // TARGET_LEADER_INVALID
+      const errorCode = "TargetLeaderInvalid";
       waitFor(replicatedLogSupervisionError(database, logId, errorCode));
       //
       // nothing should have happend
@@ -570,7 +779,8 @@ const replicatedLogSuite = function () {
 
     // This test replaces all participants
     testChangeAllParticipants: function () {
-      const {logId, servers, term, leader} = createReplicatedLogAndWaitForLeader(database);
+      const {logId, servers, term, leader} =
+          createReplicatedLogAndWaitForLeader(database);
 
       // now change the leader
       const otherServers = _.difference(dbservers, servers);
@@ -580,21 +790,53 @@ const replicatedLogSuite = function () {
         let {target} = readReplicatedLogAgency(database, logId);
         // delete old leader from target
         target.version = targetVersion;
-        target.participants =
-          Object.assign({}, ...otherServers.map((x) => ({[x]: {}})));
+        target.participants = Object.assign(
+            {},
+            ...otherServers.map((x) => ({[x]: {}}))
+        );
         replicatedLogSetTarget(database, logId, target);
       }
 
       waitFor(replicatedLogTargetVersion(database, logId, targetVersion));
 
       const {current} = readReplicatedLogAgency(database, logId);
-      waitFor(replicatedLogLeaderEstablished(database, logId, undefined, otherServers));
+      waitFor(
+          replicatedLogLeaderEstablished(database, logId, undefined, otherServers)
+      );
+
+      replicatedLogDeleteTarget(database, logId);
+    },
+
+
+    // This test excludes all participants from quorum. This is uncommittable. Wait for the leader to complain.
+    // then allow two servers. We exepect the log to commit this config.
+    testExcludeAllServers: function () {
+      const {logId, servers} = createReplicatedLogAndWaitForLeader(database);
+
+      // now exclude all participants
+      const [first, second, third] = servers;
+      replicatedLogUpdateTargetParticipants(database, logId, {
+        [first]: {allowedInQuorum: false},
+        [second]: {allowedInQuorum: false},
+        [third]: {allowedInQuorum: false},
+      });
+
+      waitFor(lpreds.replicatedLogLeaderCommitFail(database, logId, "NonEligibleServerRequiredForQuorum"));
+
+      replicatedLogUpdateTargetParticipants(database, logId, {
+        [first]: {allowedInQuorum: true},
+        [second]: {allowedInQuorum: true},
+        [third]: {allowedInQuorum: true},
+      });
+      // service should continue as normal
+      waitFor(lpreds.replicatedLogLeaderCommitFail(database, logId, undefined));
 
       replicatedLogDeleteTarget(database, logId);
     },
 
     testLogStatus: function () {
-      const {logId, servers, leader, term, followers} = createReplicatedLogAndWaitForLeader(database);
+      const {logId, servers, leader, term, followers} =
+          createReplicatedLogAndWaitForLeader(database);
 
       waitFor(replicatedLogIsReady(database, logId, term, servers, leader));
       waitForReplicatedLogAvailable(logId);
@@ -603,26 +845,34 @@ const replicatedLogSuite = function () {
       waitFor(function () {
         let globalStatus = log.status();
         if (globalStatus.leaderId !== leader) {
-          return Error(`Current leader is reported as ${globalStatus.leader}, expected ${leader}`);
+          return Error(
+              `Current leader is reported as ${globalStatus.leader}, expected ${leader}`
+          );
         }
 
         let localStatus = helper.getLocalStatus(database, logId, leader);
         if (localStatus.role !== "leader") {
-          return Error('Designated leader does not report as leader');
+          return Error("Designated leader does not report as leader");
         }
 
         const leaderData = globalStatus.participants[leader];
         if (leaderData.connection.errorCode !== 0) {
-          return Error(`Connection to leader failed: ${leaderData.connection.errorCode} ${leaderData.connection.errorMessage}`);
+          return Error(
+              `Connection to leader failed: ${leaderData.connection.errorCode} ${leaderData.connection.errorMessage}`
+          );
         }
 
         if (!_.isEqual(leaderData.response, localStatus)) {
-          return Error("Copy of local status does not yet match actual local status, " +
-            `found = ${JSON.stringify(globalStatus.participants[leader])}; expected = ${JSON.stringify(localStatus)}`);
+          return Error(
+              "Copy of local status does not yet match actual local status, " +
+              `found = ${JSON.stringify(
+                  globalStatus.participants[leader]
+              )}; expected = ${JSON.stringify(localStatus)}`
+          );
         }
         localStatus = helper.getLocalStatus(database, logId, followers[1]);
         if (localStatus.role !== "follower") {
-          return Error('Designated follower does not report as follower');
+          return Error("Designated follower does not report as follower");
         }
         return true;
       });
@@ -630,11 +880,13 @@ const replicatedLogSuite = function () {
       stopServer(leader);
       stopServer(followers[0]);
 
-      waitFor(replicatedLogLeaderElectionFailed(database, logId, term + 1, {
-        [leader]: 1,
-        [followers[0]]: 1,
-        [followers[1]]: 0,
-      }));
+      waitFor(
+          replicatedLogLeaderElectionFailed(database, logId, term + 1, {
+            [leader]: 1,
+            [followers[0]]: 1,
+            [followers[1]]: 0,
+          })
+      );
 
       waitFor(function () {
         const globalStatus = log.status();
@@ -643,16 +895,22 @@ const replicatedLogSuite = function () {
 
         const supervisionData = globalStatus.supervision;
         if (supervisionData.connection.errorCode !== 0) {
-          return Error(`Connection to supervision failed: ${supervisionData.connection.errorCode} ${supervisionData.connection.errorMessage}`);
+          return Error(
+              `Connection to supervision failed: ${supervisionData.connection.errorCode} ${supervisionData.connection.errorMessage}`
+          );
         }
 
         if (!_.isEqual(election, supervisionData.response.election)) {
-          return Error('Coordinator not reporting latest state from supervision' +
-            `found = ${globalStatus.supervision.election}; expected = ${election}`);
+          return Error(
+              "Coordinator not reporting latest state from supervision" +
+              `found = ${globalStatus.supervision.election}; expected = ${election}`
+          );
         }
 
         if (globalStatus.specification.source !== "RemoteAgency") {
-          return Error(`Specification source is ${globalStatus.specification.source}, expected RemoteAgency`);
+          return Error(
+              `Specification source is ${globalStatus.specification.source}, expected RemoteAgency`
+          );
         }
 
         return true;
@@ -661,6 +919,81 @@ const replicatedLogSuite = function () {
       replicatedLogDeleteTarget(database, logId);
       continueServer(leader);
       continueServer(followers[0]);
+    },
+
+    testReplaceMultipleFollowers: function () {
+      const {servers, leader, followers, logId, term} = createReplicatedLogAndWaitForLeader(database);
+      const otherServer = _.difference(dbservers, servers);
+
+      const newFollowers = _.sampleSize(otherServer, 2);
+      helper.replicatedLogUpdateTargetParticipants(database, logId, {
+        [followers[0]]: null,
+        [followers[1]]: null,
+        [newFollowers[0]]: {},
+        [newFollowers[1]]: {},
+      });
+
+      waitFor(replicatedLogParticipantsFlag(database, logId, {
+        [followers[0]]: null,
+        [followers[1]]: null,
+        [newFollowers[0]]: {allowedInQuorum: true, allowedAsLeader: true, forced: false},
+        [newFollowers[1]]: {allowedInQuorum: true, allowedAsLeader: true, forced: false},
+      }));
+      waitFor(replicatedLogIsReady(database, logId, term, [leader, ...newFollowers], leader));
+
+      {
+        const actions = helper.getLastNSupervisionActionsType(database, logId, 4);
+        const counts = helper.countActionsByType(actions);
+        const expected = {
+          "RemoveParticipantFromPlanAction": 2,
+          "UpdateParticipantFlagsAction": 2,
+        };
+        assertEqual(counts, expected);
+      }
+
+      replicatedLogDeleteTarget(database, logId);
+    },
+
+    testReplaceLeaderAndOneFollower: function () {
+      const {servers, leader, followers, logId, term} = createReplicatedLogAndWaitForLeader(database);
+
+      //const initialNumberOfActions = helper.getSupervisionActionTypes(database, logId).length;
+
+      const otherServer = _.difference(dbservers, servers);
+      const [newLeader, newFollower] = _.sampleSize(otherServer, 2);
+      const oldFollower = followers[0];
+      helper.updateReplicatedLogTarget(database, logId, function (target) {
+        delete target.participants[oldFollower];
+        delete target.participants[leader];
+        target.participants[newLeader] = {};
+        target.participants[newFollower] = {};
+        target.leader = newLeader;
+      });
+
+      waitFor(replicatedLogParticipantsFlag(database, logId, {
+        [oldFollower]: null,
+        [leader]: null,
+        [newLeader]: {allowedInQuorum: true, allowedAsLeader: true, forced: false},
+        [newFollower]: {allowedInQuorum: true, allowedAsLeader: true, forced: false},
+        [followers[1]]: {allowedInQuorum: true, allowedAsLeader: true, forced: false},
+      }));
+      waitFor(replicatedLogIsReady(database, logId, term + 1, [newLeader, newFollower, followers[1]], newLeader));
+
+      /*
+      TODO this is unstable right now
+      const actions = helper.getSupervisionActionTypes(database, logId);
+      const actionsRequired = actions.length - initialNumberOfActions;
+      const last = _.takeRight(actions, actionsRequired);
+      const counts = helper.countActionsByType(last);
+      const expected = {
+        "RemoveParticipantFromPlanAction": 2, // we removed two participants
+        "AddParticipantToPlanAction": 2, // and added two other participants
+        "SwitchLeaderAction": 1, // we have one leader change
+        "UpdateParticipantFlagsAction": 6, // two for switch leader, two for each remove participant
+      };
+      assertEqual(counts, expected);
+      */
+      replicatedLogDeleteTarget(database, logId);
     },
   };
 };

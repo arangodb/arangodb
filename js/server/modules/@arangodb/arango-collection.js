@@ -77,9 +77,20 @@ var ArangoDatabase = require('@arangodb/arango-database').ArangoDatabase;
 ArangoCollection.prototype.shards = function (detailed) {
   let base = ArangoClusterInfo.getCollectionInfo(require('internal').db._name(), this.name());
   if (detailed) {
+    // Will return an object.
     return base.shards;
   }
-  return Object.keys(base.shardShorts);
+
+  // (!detailed) will return only the shard ids in sorted order
+  return Object.keys(base.shardShorts).sort(function (a, b) {
+    if (parseInt(a.substring(1, a.length)) > parseInt(b.substring(1, b.length))) {
+      return 1;
+    }
+    if (parseInt(a.substring(1, a.length)) < parseInt(b.substring(1, b.length))) {
+      return -1;
+    }
+    return 0;
+  });
 };
 
 // //////////////////////////////////////////////////////////////////////////////

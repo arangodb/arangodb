@@ -48,7 +48,7 @@ const sortedArrayEqualOrError = (left, right) => {
 const replaceParticipant = (database, logId, oldParticipant, newParticipant) => {
   const url = lh.getServerUrl(_.sample(lh.coordinators));
   const res = request.post(
-    `${url}/_db/${database}/_api/replicated-state/${logId}/participant/${oldParticipant}/replace-with/${newParticipant}`
+      `${url}/_db/${database}/_api/replicated-state/${logId}/participant/${oldParticipant}/replace-with/${newParticipant}`
   );
   lh.checkRequestResult(res);
   const {json: {result}} = res;
@@ -69,12 +69,17 @@ const unsetLeader = (database, logId) => {
   const {json: {result}} = res;
   return result;
 };
+const dropState = (database, logId) => {
+  const url = lh.getServerUrl(_.sample(lh.coordinators));
+  const res = request.delete(`${url}/_db/${database}/_api/replicated-state/${logId}`);
+  lh.checkRequestResult(res);
+  return res.json;
+};
 
-const replicatedStateSuite = function () {
+const replicatedStateSuite = function (stateType) {
   const targetConfig = {
     writeConcern: 2,
     softWriteConcern: 2,
-    replicationFactor: 3,
     waitForSync: false,
   };
 
@@ -105,7 +110,7 @@ const replicatedStateSuite = function () {
     tearDown: lh.registerAgencyTestEnd,
 
     testGetLocalStatus: function () {
-      const {stateId, followers, leader} = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      const {stateId, followers, leader} = sh.createReplicatedStateTarget(database, targetConfig, stateType);
 
       {
         const status = sh.getLocalStatus(leader, database, stateId);
@@ -133,7 +138,7 @@ const replicatedStateSuite = function () {
         stateId,
         servers: participants,
         followers
-      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      } = sh.createReplicatedStateTarget(database, targetConfig, stateType);
       const nonParticipants = _.without(lh.dbservers, ...participants);
       const oldParticipant = _.sample(followers);
       const newParticipant = _.sample(nonParticipants);
@@ -168,7 +173,7 @@ const replicatedStateSuite = function () {
         stateId,
         servers: participants,
         leader
-      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      } = sh.createReplicatedStateTarget(database, targetConfig, stateType);
       const nonParticipants = _.without(lh.dbservers, ...participants);
       const oldParticipant = leader;
       const newParticipant = _.sample(nonParticipants);
@@ -203,7 +208,7 @@ const replicatedStateSuite = function () {
         stateId,
         servers: participants,
         leader
-      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      } = sh.createReplicatedStateTarget(database, targetConfig, stateType);
 
       {
         // Explicitly set the leader, just use the existing one
@@ -251,7 +256,7 @@ const replicatedStateSuite = function () {
       const {
         stateId,
         servers: participants,
-      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      } = sh.createReplicatedStateTarget(database, targetConfig, stateType);
       const nonParticipants = _.without(lh.dbservers, ...participants);
       const [oldParticipant, newParticipant] = _.sampleSize(nonParticipants, 2);
 
@@ -273,7 +278,7 @@ const replicatedStateSuite = function () {
       const {
         stateId,
         servers: participants,
-      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      } = sh.createReplicatedStateTarget(database, targetConfig, stateType);
       const [oldParticipant, newParticipant] = _.sampleSize(participants, 2);
 
       try {
@@ -294,7 +299,7 @@ const replicatedStateSuite = function () {
       const {
         stateId,
         followers,
-      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      } = sh.createReplicatedStateTarget(database, targetConfig, stateType);
       const newLeader = _.sample(followers);
 
       const result = setLeader(database, stateId, newLeader);
@@ -311,7 +316,7 @@ const replicatedStateSuite = function () {
       const {
         stateId,
         followers,
-      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      } = sh.createReplicatedStateTarget(database, targetConfig, stateType);
       { // set the leader first
         const newLeader = _.sample(followers);
 
@@ -346,7 +351,7 @@ const replicatedStateSuite = function () {
       const {
         stateId,
         servers: participants,
-      } = sh.createReplicatedStateTarget(database, targetConfig, "black-hole");
+      } = sh.createReplicatedStateTarget(database, targetConfig, stateType);
       const nonParticipants = _.without(lh.dbservers, ...participants);
       const newLeader = _.sample(nonParticipants);
 
@@ -362,8 +367,24 @@ const replicatedStateSuite = function () {
         assertUndefined(stateAgencyContent.target.leader);
       }
     },
+
+    testDropReplicatedState: function () {
+      const {stateId} = sh.createReplicatedStateTarget(database, targetConfig, stateType);
+
+      const res = dropState(database, stateId);
+      assertEqual(200, res.code);
+
+      lh.waitFor(spreds.replicatedStateIsGone(database, stateId));
+      lh.waitFor(lpreds.replicatedLogIsGone(database, stateId));
+    },
   };
 };
 
-jsunity.run(replicatedStateSuite);
+const suiteWithState = function (stateType) {
+  return function () {
+    return replicatedStateSuite(stateType);
+  };
+};
+
+jsunity.run(suiteWithState("black-hole"));
 return jsunity.done();

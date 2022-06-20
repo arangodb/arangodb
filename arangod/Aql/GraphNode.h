@@ -200,6 +200,10 @@ class GraphNode : public ExecutionNode {
 
   void initializeIndexConditions() const;
 
+  void setVertexProjections(Projections projections);
+
+  void setEdgeProjections(Projections projections);
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // Internal helpers used in tests to modify enterprise detections.
   // These should not be used in production, as their detection
@@ -227,6 +231,8 @@ class GraphNode : public ExecutionNode {
                                 std::vector<Collection*> const& vertexColls);
 
   Collection const* getShardingPrototype() const;
+
+  void determineEnterpriseFlags(AstNode const* edgeCollectionList);
 
  protected:
   /// @brief the database

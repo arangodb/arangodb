@@ -21,18 +21,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Replication2/Helper/ModelChecker/Actors.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedState/AgencySpecification.h"
-#include "Replication2/ReplicatedState/Supervision.h"
-#include "Replication2/ReplicatedLog/Supervision.h"
-#include "Replication2/ReplicatedLog/SupervisionAction.h"
 #include "Replication2/ModelChecker/ModelChecker.h"
 #include "Replication2/ModelChecker/Predicates.h"
+#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedLog/Supervision.h"
+#include "Replication2/ReplicatedLog/SupervisionAction.h"
+#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
+
+#include "Replication2/ReplicatedState/AgencySpecification.h"
+#include "Replication2/ReplicatedState/Supervision.h"
 
 #include "Replication2/Helper/ModelChecker/AgencyState.h"
+#include "Replication2/Helper/ModelChecker/AgencyTransitions.h"
 #include "Replication2/Helper/ModelChecker/HashValues.h"
 #include "Replication2/Helper/ModelChecker/Predicates.h"
-#include "Replication2/Helper/ModelChecker/AgencyTransitions.h"
 
 using namespace arangodb;
 using namespace arangodb::test;
@@ -60,21 +63,24 @@ auto SupervisionActor::stepReplicatedLog(AgencyState const& agency)
   if (!agency.replicatedLog.has_value()) {
     return std::nullopt;
   }
-  auto action = replicated_log::checkReplicatedLog(
-      agency.replicatedLog->target, agency.replicatedLog->plan,
-      agency.replicatedLog->current, agency.health);
-  if (std::holds_alternative<replicated_log::EmptyAction>(action)) {
-    return std::nullopt;
+  replicated_log::SupervisionContext ctx;
+  replicated_log::checkReplicatedLog(ctx, *agency.replicatedLog, agency.health);
+
+  if (ctx.hasAction()) {
+    auto action = ctx.getAction();
+    if (!std::holds_alternative<replicated_log::NoActionPossibleAction>(
+            action)) {
+      return SupervisionLogAction{std::move(action)};
+    }
   }
-  if (std::holds_alternative<replicated_log::LeaderElectionOutOfBoundsAction>(
-          action)) {
-    return std::nullopt;
-  }
-  return SupervisionLogAction{std::move(action)};
+  return std::nullopt;
 }
 
 auto SupervisionActor::stepReplicatedState(AgencyState const& agency)
     -> std::optional<AgencyTransition> {
+  if (!agency.replicatedState.has_value()) {
+    return std::nullopt;
+  }
   replicated_state::SupervisionContext ctx;
   ctx.enableErrorReporting();
   replicated_state::checkReplicatedState(ctx, agency.replicatedLog,
@@ -244,6 +250,43 @@ auto KillAnyServerActor::expand(AgencyState const& s,
   }
   return result;
 }
+
+AddServerActor::AddServerActor(ParticipantId newServer)
+    : newServer(std::move(newServer)) {}
+
+auto AddServerActor::step(AgencyState const& agency) const
+    -> std::vector<AgencyTransition> {
+  if (!agency.replicatedLog) {
+    return {};
+  }
+
+  auto const& target = agency.replicatedLog->target;
+  TRI_ASSERT(!target.participants.contains(newServer));
+  auto result = std::vector<AgencyTransition>{};
+
+  result.emplace_back(AddLogParticipantAction{newServer});
+
+  return result;
+}
+
+RemoveServerActor::RemoveServerActor(ParticipantId server)
+    : server(std::move(server)) {}
+
+auto RemoveServerActor::step(AgencyState const& agency) const
+    -> std::vector<AgencyTransition> {
+  if (!agency.replicatedLog) {
+    return {};
+  }
+
+  auto const& target = agency.replicatedLog->target;
+  TRI_ASSERT(target.participants.contains(server));
+  auto result = std::vector<AgencyTransition>{};
+
+  result.emplace_back(RemoveLogParticipantAction{server});
+
+  return result;
+}
+
 ReplaceAnyServerActor::ReplaceAnyServerActor(ParticipantId newServer)
     : newServer(std::move(newServer)) {}
 
@@ -279,4 +322,12 @@ auto ReplaceSpecificServerActor::step(AgencyState const& agency) const
 
   return {ReplaceServerTargetState{oldServer, newServer}};
 }
+
+SetLeaderActor::SetLeaderActor(ParticipantId leader) : newLeader(leader) {}
+
+auto SetLeaderActor::step(AgencyState const& agency) const
+    -> std::vector<AgencyTransition> {
+  return {SetLeaderInTargetAction(newLeader)};
+}
+
 }  // namespace arangodb::test
