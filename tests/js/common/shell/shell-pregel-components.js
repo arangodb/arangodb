@@ -429,9 +429,9 @@ function wccTestSuite() {
   'use strict';
 
   // componentsSizes should be an array of distinct sizes for components
-  // createComponent should be a function that gets (<number of vertices>, <vertex collection name>, <name_prefix>)
+  // makeComponent should be a function that gets (<number of vertices>, <vertex collection name>, <name_prefix>)
   // and returns {vertices: <array of vertices>, edges: <array of edges>}
-  const testWCCDisjointComponents = function(componentSizes, createComponent) {
+  const testWCCDisjointComponents = function(componentSizes, makeComponent) {
     // we expect that '_' appears in the string (should it not, return the whole string)
     const extract_name_prefix = function(v) {
       return v.substr(0, v.indexOf('_'));
@@ -448,7 +448,7 @@ function wccTestSuite() {
 
     // Produce the graph.
     for (let i of sortedComponentSizes) {
-      let {vertices, edges} = createComponent(i, vColl, i.toString());
+      let {vertices, edges} = makeComponent(i, vColl, i.toString());
       db[vColl].save(vertices);
       db[eColl].save(edges);
     }
@@ -525,7 +525,7 @@ function wccTestSuite() {
     },
 
     testWCCFourDirectedCycles: function() {
-      testWCCDisjointComponents([2, 10, 5, 23], graphGeneration.createDirectedCycle);
+      testWCCDisjointComponents([2, 10, 5, 23], graphGeneration.makeDirectedCycle);
     },
 
     testWCC20DirectedCycles: function() {
@@ -534,7 +534,7 @@ function wccTestSuite() {
       for (let i=2; i<22; ++i) {
         componentSizes.push(i);
       }
-      testWCCDisjointComponents(componentSizes, graphGeneration.createDirectedCycle);
+      testWCCDisjointComponents(componentSizes, graphGeneration.makeDirectedCycle);
     },
 
     testWCC20AlternatingCycles() {
@@ -543,7 +543,7 @@ function wccTestSuite() {
       for (let i=2; i<22; ++i) {
         componentSizes.push(i);
       }
-      testWCCDisjointComponents(componentSizes, graphGeneration.createAlternatingCycle);
+      testWCCDisjointComponents(componentSizes, graphGeneration.makeAlternatingCycle);
     },
 
     testWCC10BidirectedCliques() {
@@ -551,11 +551,11 @@ function wccTestSuite() {
       for (let i=120; i<130; ++i) {
         treeDepths.push(i);
       }
-      testWCCDisjointComponents(treeDepths, graphGeneration.createBidirectedClique);
+      testWCCDisjointComponents(treeDepths, graphGeneration.makeBidirectedClique);
     },
 
     testWCCOneSingleVertex: function() {
-      let {vertices, edges} = graphGeneration.createSingleVertex("v");
+      let {vertices, edges} = graphGeneration.makeSingleVertex("v");
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
@@ -602,7 +602,7 @@ function wccTestSuite() {
 
     testWCCOneDirectedTree: function()  {
       const depth = 3;
-      let {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "v", false);
+      let {vertices, edges} = graphGeneration.makeFullBinaryTree(depth, vColl, "v", false);
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
@@ -627,7 +627,7 @@ function wccTestSuite() {
 
     testWCCOneDepth3AlternatingTree: function() {
       const depth = 3;
-      let {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "v", true);
+      let {vertices, edges} = graphGeneration.makeFullBinaryTree(depth, vColl, "v", true);
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
@@ -651,7 +651,7 @@ function wccTestSuite() {
 
     testWCCOneDepth4AlternatingTree: function() {
       const depth = 4;
-      let {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "v", true);
+      let {vertices, edges} = graphGeneration.makeFullBinaryTree(depth, vColl, "v", true);
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
@@ -676,13 +676,13 @@ function wccTestSuite() {
     testWCCAlternatingTreeAlternatingCycle: function() {
       // tree
       const depth = 3;
-      const {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "t", true);
+      const {vertices, edges} = graphGeneration.makeFullBinaryTree(depth, vColl, "t", true);
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
       // cycle
       const length = 5;
-      const resultC = graphGeneration.createAlternatingCycle(length, vColl, "c");
+      const resultC = graphGeneration.makeAlternatingCycle(length, vColl, "c");
       db[vColl].save(resultC.vertices);
       db[eColl].save(resultC.edges);
 

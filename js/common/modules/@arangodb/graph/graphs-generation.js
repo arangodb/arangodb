@@ -57,7 +57,7 @@ function makeVertices(length, name_prefix) {
     return vertices;
 }
 
-function createSingleVertex(name_prefix) {
+function makeSingleVertex(name_prefix) {
     const vertices = makeVertices(1, name_prefix);
     const edges = [];
     return {vertices, edges};
@@ -65,7 +65,7 @@ function createSingleVertex(name_prefix) {
 
 // length must be at least 2, shorter cycles make no sense and throw
 // because then the test is wrong
-function createDirectedCycle(length, vColl, name_prefix) {
+function makeDirectedCycle(length, vColl, name_prefix) {
     if (length < 2) {
         console.error(`createDirectedCycle: error: length must be at least 2, instead got ${length}`);
         assertTrue(false);
@@ -83,7 +83,7 @@ function createDirectedCycle(length, vColl, name_prefix) {
 // by replacing every second edge (v,w) by (w,v).
 // Note that if length is odd,
 // there may be a sub-path of length 2: (length-1) -> 0 -> 1.
-function createAlternatingCycle(length, vColl, name_prefix) {
+function makeAlternatingCycle(length, vColl, name_prefix) {
     if (length < 2) {
         return {};
     }
@@ -104,7 +104,7 @@ function createAlternatingCycle(length, vColl, name_prefix) {
 // Creates a full binary tree of depth treeDepth (0 means: only the root) with edges directed away from the root.
 // If alternating is true, on every second level of edges starting from the first, the edges are inverted:
 // (v,w) is replaced by (w,v). (I.e., if alternating is true, two edges point to the root of the tree.)
-function createFullBinaryTree(treeDepth, vColl, name_prefix, alternating = false) {
+function makeFullBinaryTree(treeDepth, vColl, name_prefix, alternating = false) {
     if (treeDepth === 0) {
         return {vertices: [0], edges: []};
     }
@@ -145,7 +145,7 @@ function createFullBinaryTree(treeDepth, vColl, name_prefix, alternating = false
 //  - "linear": the edges constitute a linear order <:
 //              there is an edge from v to w if and only if index of v < index of w.
 // Note that the number of edges grows quadratically in size!
-function createClique(size, vColl, name_prefix, kind = "bidirected") {
+function makeClique(size, vColl, name_prefix, kind = "bidirected") {
     let vertices = makeVertices(size, name_prefix);
     let edges = [];
     for (let v = 0; v < size; ++v) {
@@ -165,15 +165,15 @@ function createClique(size, vColl, name_prefix, kind = "bidirected") {
 }
 
 // a wrapper to unify the call of createDirectedCycle, createAlternatingCycle, createFullBinaryTree
-function createBidirectedClique(size, vColl, name_prefix) {
-    return createClique(size, vColl, name_prefix, "bidirected");
+function makeBidirectedClique(size, vColl, name_prefix) {
+    return makeClique(size, vColl, name_prefix, "bidirected");
 }
 
 exports.makeVertex = makeVertex;
 exports.makeEdge = makeEdge;
-exports.createDirectedCycle = createDirectedCycle;
-exports.createAlternatingCycle = createAlternatingCycle;
-exports.createFullBinaryTree = createFullBinaryTree;
-exports.createClique = createClique;
-exports.createBidirectedClique = createBidirectedClique;
-exports.createSingleVertex = createSingleVertex;
+exports.makeDirectedCycle = makeDirectedCycle;
+exports.makeAlternatingCycle = makeAlternatingCycle;
+exports.makeFullBinaryTree = makeFullBinaryTree;
+exports.makeClique = makeClique;
+exports.makeBidirectedClique = makeBidirectedClique;
+exports.makeSingleVertex = makeSingleVertex;
