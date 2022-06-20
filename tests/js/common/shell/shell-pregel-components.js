@@ -36,7 +36,6 @@ var internal = require("internal");
 var console = require("console");
 let pregel = require("@arangodb/pregel");
 let graphGeneration = require("@arangodb/graph/graphs-generation");
-const {makeEdge} = require("../../../../js/common/modules/@arangodb/graph/graphs-generation");
 
 // TODO make this more flexible: input maxWaitTimeSecs and sleepIntervalSecs
 const pregelRunSmallInstance = function (algName, graphName, parameters) {
@@ -554,7 +553,7 @@ function wccTestSuite() {
     },
 
     testWCCOneSingleVertex: function() {
-      let {vertices, edges} = graphGeneration.createSingleVertex("v");
+      let {vertices, edges} = graphGeneration.makeSingleVertex("v");
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
@@ -580,7 +579,7 @@ function wccTestSuite() {
 
     testWCCOneDirectedTree: function()  {
       const depth = 3;
-      let {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "v", false);
+      let {vertices, edges} = graphGeneration.makeFullBinaryTree(depth, vColl, "v", false);
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
@@ -592,7 +591,7 @@ function wccTestSuite() {
 
     testWCCOneDepth3AlternatingTree: function() {
       const depth = 3;
-      let {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "v", true);
+      let {vertices, edges} = graphGeneration.makeFullBinaryTree(depth, vColl, "v", true);
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
@@ -603,7 +602,7 @@ function wccTestSuite() {
 
     testWCCOneDepth4AlternatingTree: function() {
       const depth = 4;
-      let {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "v", true);
+      let {vertices, edges} = graphGeneration.makeFullBinaryTree(depth, vColl, "v", true);
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
@@ -615,13 +614,13 @@ function wccTestSuite() {
     testWCCAlternatingTreeAlternatingCycle: function() {
       // tree
       const depth = 3;
-      const {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "t", true);
+      const {vertices, edges} = graphGeneration.makeFullBinaryTree(depth, vColl, "t", true);
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
       // cycle
       const length = 5;
-      const resultC = graphGeneration.createAlternatingCycle(length, vColl, "c");
+      const resultC = graphGeneration.makeAlternatingCycle(length, vColl, "c");
       db[vColl].save(resultC.vertices);
       db[eColl].save(resultC.edges);
 
