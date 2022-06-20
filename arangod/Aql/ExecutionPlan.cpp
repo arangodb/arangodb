@@ -896,8 +896,9 @@ Variable const* ExecutionPlan::getOutVariable(ExecutionNode const* node) const {
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL, std::string("invalid node type '") +
-                              node->getTypeString() + "' in getOutVariable");
+      TRI_ERROR_INTERNAL,
+      basics::StringUtils::concatT("invalid node type '", node->getTypeString(),
+                                   "' in getOutVariable()"));
 }
 
 /// @brief creates an anonymous COLLECT node (for a DISTINCT)
@@ -2903,7 +2904,7 @@ struct Shower final
         return type;
       }
       default:
-        return {node.getTypeString()};
+        return std::string{node.getTypeString()};
     }
   }
 };

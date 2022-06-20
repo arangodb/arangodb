@@ -234,10 +234,10 @@ class ExecutionNode {
   virtual NodeType getType() const = 0;
 
   /// @brief resolve nodeType to a string.
-  static std::string const& getTypeString(NodeType type);
+  static std::string_view getTypeString(NodeType type);
 
   /// @brief return the type name of the node
-  std::string const& getTypeString() const;
+  std::string_view getTypeString() const;
 
   /// @brief checks whether we know a type of this kind; throws exception if
   /// not.
@@ -1004,6 +1004,8 @@ class TakeWhileNode : public ExecutionNode {
 
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override;
+
+  void getVariablesUsedHere(VarSet& vars) const override;
 
  protected:
   void doToVelocyPack(velocypack::Builder& builder,

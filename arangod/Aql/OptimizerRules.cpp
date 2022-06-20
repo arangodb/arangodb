@@ -56,6 +56,7 @@
 #include "Aql/WindowNode.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/Exceptions.tpp"
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -4082,7 +4083,8 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
       TRI_ASSERT(false);
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
-          "Cannot distribute " + node->getTypeString() + ".");
+          basics::StringUtils::concatT("Cannot distribute ",
+                                       node->getTypeString(), "."));
     } break;
   }
 
@@ -4890,6 +4892,8 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::REMOTESINGLE:
         case EN::ENUMERATE_IRESEARCH_VIEW:
         case EN::WINDOW:
+        case EN::TAKE_WHILE:
+        case EN::DROP_WHILE:
 
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
@@ -7315,16 +7319,18 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     //  non-existent documents, move MATERIALIZE to the allowed nodes!
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::MUTEX:
+    case ExecutionNode::TAKE_WHILE:
+    case ExecutionNode::DROP_WHILE:
       return false;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }
-  THROW_ARANGO_EXCEPTION_FORMAT(
-      TRI_ERROR_INTERNAL_AQL,
-      "Unhandled node type '%s' in sort-limit optimizer rule. Please report "
+  throw basics::Exception::fmt(
+      ADB_HERE, TRI_ERROR_INTERNAL_AQL,
+      "Unhandled node type '{}' in sort-limit optimizer rule. Please report "
       "this error. Try turning off the sort-limit rule to get your query "
       "working.",
-      node->getTypeString().c_str());
+      node->getTypeString());
 }
 
 void arangodb::aql::sortLimitRule(Optimizer* opt,
@@ -8661,7 +8667,8 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
         TRI_ASSERT(false);
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_INTERNAL,
-            "Cannot distribute " + targetNode->getTypeString() + ".");
+            basics::StringUtils::concatT("Cannot distribute ",
+                                         targetNode->getTypeString(), "."));
       } break;
     }
     TRI_ASSERT(inputVariable != nullptr);

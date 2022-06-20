@@ -66,6 +66,7 @@
 #include "Aql/SortingGatherExecutor.h"
 #include "Aql/SubqueryEndExecutor.h"
 #include "Aql/SubqueryStartExecutor.h"
+#include "Aql/TakeWhileExecutor.h"
 #include "Aql/TraversalExecutor.h"
 #include "Aql/UnsortedGatherExecutor.h"
 #include "Aql/UpsertModifier.h"
@@ -687,6 +688,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
       useExecutor ==
           (is_one_of_v<
               Executor, FilterExecutor, ShortestPathExecutor, ReturnExecutor,
+              TakeWhileExecutor,
               KShortestPathsExecutor<graph::KShortestPathsFinder>,
               KShortestPathsExecutor<KPathRefactored>,
               KShortestPathsExecutor<KPathRefactoredTracer>,
@@ -2534,6 +2536,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<HashedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<AccuWindowExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<WindowExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<TakeWhileExecutor>;
 
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<
     false, false, arangodb::iresearch::MaterializeType::NotMaterialize>>;

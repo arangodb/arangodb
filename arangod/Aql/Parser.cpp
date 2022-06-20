@@ -142,7 +142,7 @@ void Parser::registerParseError(ErrorCode errorCode, char const* format,
 
   snprintf(buffer, sizeof(buffer) - 1, format, data.data());
 
-  return registerParseError(errorCode, buffer, line, column);
+  registerParseError(errorCode, buffer, line, column);
 }
 
 /// @brief register a parse error, position is specified as line / column

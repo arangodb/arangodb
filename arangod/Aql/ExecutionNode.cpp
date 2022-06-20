@@ -60,6 +60,7 @@
 #include "Aql/SortNode.h"
 #include "Aql/SubqueryEndExecutionNode.h"
 #include "Aql/SubqueryStartExecutionNode.h"
+#include "Aql/TakeWhileExecutor.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/WindowNode.h"
@@ -74,6 +75,7 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
+#include <frozen/unordered_map.h>
 
 #include <algorithm>
 
@@ -85,7 +87,7 @@ using namespace materialize;
 namespace {
 
 /// @brief NodeType to string mapping
-std::unordered_map<int, std::string const> const typeNames{
+constexpr static frozen::unordered_map<int, std::string_view, 34> typeNames = {
     {static_cast<int>(ExecutionNode::SINGLETON), "SingletonNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_COLLECTION),
      "EnumerateCollectionNode"},
@@ -95,6 +97,7 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::CALCULATION), "CalculationNode"},
     {static_cast<int>(ExecutionNode::SUBQUERY), "SubqueryNode"},
     {static_cast<int>(ExecutionNode::FILTER), "FilterNode"},
+    {static_cast<int>(ExecutionNode::TAKE_WHILE), "TakeWhileNode"},
     {static_cast<int>(ExecutionNode::SORT), "SortNode"},
     {static_cast<int>(ExecutionNode::COLLECT), "CollectNode"},
     {static_cast<int>(ExecutionNode::RETURN), "ReturnNode"},
@@ -128,7 +131,7 @@ std::unordered_map<int, std::string const> const typeNames{
 }  // namespace
 
 /// @brief resolve nodeType to a string.
-std::string const& ExecutionNode::getTypeString(NodeType type) {
+std::string_view ExecutionNode::getTypeString(NodeType type) {
   auto it = ::typeNames.find(static_cast<int>(type));
 
   if (it != ::typeNames.end()) {
@@ -140,7 +143,7 @@ std::string const& ExecutionNode::getTypeString(NodeType type) {
 }
 
 /// @brief returns the type name of the node
-std::string const& ExecutionNode::getTypeString() const {
+std::string_view ExecutionNode::getTypeString() const {
   return getTypeString(getType());
 }
 
@@ -2462,27 +2465,39 @@ ExecutionNode::NodeType TakeWhileNode::getType() const { return TAKE_WHILE; }
 
 std::unique_ptr<ExecutionBlock> TakeWhileNode::createBlock(
     ExecutionEngine& engine,
-    const std::unordered_map<ExecutionNode*, ExecutionBlock*>& cache) const {
-  // TODO
-  FATAL_ERROR_EXIT();
-  return nullptr;
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  RegisterId inputRegister = variableToRegisterId(_inVariable);
+
+  auto registerInfos = createRegisterInfos(RegIdSet{inputRegister}, {});
+  auto executorInfos = TakeWhileExecutorInfos(inputRegister, false /* TODO */);
+  return std::make_unique<ExecutionBlockImpl<TakeWhileExecutor>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
+
 ExecutionNode* TakeWhileNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
   // TODO
   FATAL_ERROR_EXIT();
   return nullptr;
 }
+
 void TakeWhileNode::doToVelocyPack(velocypack::Builder& builder,
                                    unsigned int flags) const {
   // TODO
   FATAL_ERROR_EXIT();
 }
-CostEstimate TakeWhileNode::estimateCost() const {
+
+auto TakeWhileNode::estimateCost() const -> CostEstimate {
   TRI_ASSERT(!_dependencies.empty());
   CostEstimate estimate = _dependencies.at(0)->getCost();
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
+}
+
+void TakeWhileNode::getVariablesUsedHere(VarSet& vars) const {
+  vars.emplace(_inVariable);
 }
 
 ReturnNode::ReturnNode(ExecutionPlan* plan,

@@ -644,10 +644,10 @@ auto ExecutionEngine::executeForClient(AqlCallStack const& stack,
 
   auto rootBlock = dynamic_cast<BlocksWithClients*>(root());
   if (rootBlock == nullptr) {
-    using namespace std::string_literals;
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL_AQL,
-        "unexpected node type "s + root()->getPlanNode()->getTypeString());
+        basics::StringUtils::concatT("unexpected node type ",
+                                     root()->getPlanNode()->getTypeString()));
   }
 
   auto const res = rootBlock->executeForClient(stack, clientId);

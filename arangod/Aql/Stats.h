@@ -83,6 +83,25 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
   return executionStats;
 }
 
+class TakeWhileStats {
+ public:
+  TakeWhileStats() noexcept = default;
+
+  void operator+=(TakeWhileStats const& stats) noexcept {
+    _overfetched += stats._overfetched;
+  }
+
+ private:
+  std::uint64_t _overfetched = 0;
+};
+
+inline ExecutionStats& operator+=(
+    ExecutionStats& executionStats,
+    TakeWhileStats const& takeWhileStats) noexcept {
+  // TODO ?
+  return executionStats;
+}
+
 // MaterializeExecutor only tracks the number of filtered rows, so we
 // can reuse the FilterStats for it.
 using MaterializeStats = FilterStats;

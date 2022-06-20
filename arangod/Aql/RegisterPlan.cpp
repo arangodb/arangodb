@@ -176,14 +176,14 @@ void RegisterPlanWalkerT<T>::after(T* en) {
             // report an error here to prevent crashing
             THROW_ARANGO_EXCEPTION_MESSAGE(
                 TRI_ERROR_INTERNAL,
-                std::string("missing variable ") +
+                basics::StringUtils::concatT(
+                    "missing variable ",
                     ((!v->name.empty() && v->name[0] >= '0' &&
                       v->name[0] <= '9')
                          ? "#"
-                         : "") +
-                    v->name + " (id " + std::to_string(v->id) + ") for node #" +
-                    std::to_string(en->id().id()) + " (" + en->getTypeString() +
-                    ") while planning registers");
+                         : ""),
+                    v->name, " (id ", v->id, ") for node #", en->id().id(),
+                    " (", en->getTypeString(), ") while planning registers"));
           }
         }
       }
@@ -598,7 +598,9 @@ auto RegisterPlanT<T>::variableToRegisterId(Variable const* variable) const
     -> RegisterId {
   TRI_ASSERT(variable != nullptr);
   auto it = varInfo.find(variable->id);
-  TRI_ASSERT(it != varInfo.end());
+  TRI_ASSERT(it != varInfo.end())
+      << "This might be caused by an ExecutionNode not having "
+         "getVariablesUsedHere() implemented/overridden (correctly)";
   RegisterId rv = it->second.registerId;
   TRI_ASSERT(rv.isValid());
   return rv;
@@ -637,5 +639,5 @@ std::ostream& aql::operator<<(std::ostream& os, const RegisterPlanT<T>& r) {
 
 template struct aql::RegisterPlanT<ExecutionNode>;
 template struct aql::RegisterPlanWalkerT<ExecutionNode>;
-template std::ostream& aql::operator<<<ExecutionNode>(
+template std::ostream& aql::operator<< <ExecutionNode>(
     std::ostream& os, const RegisterPlanT<ExecutionNode>& r);

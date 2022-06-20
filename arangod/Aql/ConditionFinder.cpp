@@ -61,6 +61,8 @@ bool ConditionFinder::before(ExecutionNode* en) {
     case EN::REPLACE:
     case EN::UPDATE:
     case EN::UPSERT:
+    case EN::TAKE_WHILE:
+    case EN::DROP_WHILE:
     case EN::LIMIT: {
       // LIMIT or modification invalidates the sort expression we already found
       _sorts.clear();
