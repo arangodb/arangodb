@@ -698,10 +698,46 @@ function wccTestSuite() {
           RETURN {component, size}
       `;
       const computedComponents = db._query(query).toArray();
-      assertEqual(computedComponents.length, 2, `We expected 2 component, instead got ${JSON.stringify(computedComponents)}`);
+      assertEqual(computedComponents.length, 2, `We expected 2 components, instead got ${JSON.stringify(computedComponents)}`);
 
       assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree
       assertEqual(computedComponents[1].size, length);
+    },
+
+    testWCCTwoCliquesConnectedByDirectedCycle: function() {
+      // first clique
+      const size0 = 20;
+      const {vertices, edges} = graphGeneration.makeBidirectedClique(size0, vColl, "c0", true);
+      db[vColl].save(vertices);
+      db[eColl].save(edges);
+
+      // second clique
+      const size1 = 21;
+      const resultC1 = graphGeneration.makeAlternatingCycle(size1, vColl, "c1");
+      db[vColl].save(resultC1.vertices);
+      db[eColl].save(resultC1.edges);
+
+      // connecting edge
+      const connectingEdge =  {
+        _from: `${vColl}/c0_0`,
+        _to: `${vColl}/c1_0`,
+        vertex: `c0_0`
+      };
+      db[eColl].save([connectingEdge]);
+
+      const status = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
+      assertEqual(status.state, "done", "Pregel Job did never succeed.");
+
+      // Now test the result.
+      const query = `
+        FOR v IN ${vColl}
+          COLLECT component = v.result WITH COUNT INTO size
+          SORT size DESC
+          RETURN {component, size}
+      `;
+      const computedComponents = db._query(query).toArray();
+      assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
+      assertEqual(computedComponents[0].size, size0 + size1);
     },
 
   };
