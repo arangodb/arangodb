@@ -26,7 +26,6 @@
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Roman Rabinovich
-// / @author Copyright 2022, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const makeEdge = (from, to, vColl, name_prefix, inverse = false) => {
