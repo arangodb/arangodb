@@ -309,7 +309,12 @@ bool ReplicationFeature::syncByRevision() const { return _syncByRevision; }
 // start the replication applier for a single database
 void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
-  TRI_ASSERT(vocbase->replicationApplier() != nullptr);
+  if (vocbase->replicationApplier() == nullptr) {
+    LOG_TOPIC("2038c", ERROR, arangodb::Logger::REPLICATION)
+      << "no replication applier available in this database: '"
+      << vocbase->name();
+    return nullptr;
+  }
 
   if (!ServerState::instance()->isClusterRole() &&
       vocbase->replicationApplier()->autoStart()) {
