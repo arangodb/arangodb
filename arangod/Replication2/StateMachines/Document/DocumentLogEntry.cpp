@@ -48,9 +48,9 @@ auto document::fromDocumentOperation(TRI_voc_document_operation_e& op) noexcept
       return kRemove;
     default:
       ADB_PROD_ASSERT(false) << "Unexpected document operation " << op;
-      break;
   }
-  return {};
+  return {};  // should never be reached, but compiler complains about missing
+              // return
 }
 
 auto document::to_string(OperationType op) noexcept -> std::string_view {
@@ -68,6 +68,8 @@ auto document::to_string(OperationType op) noexcept -> std::string_view {
     default:
       ADB_PROD_ASSERT(false) << "Unexpected operation " << op;
   }
+  return {};  // should never be reached, but compiler complains about missing
+              // return
 }
 
 auto OperationStringTransformer::toSerialized(OperationType source,
