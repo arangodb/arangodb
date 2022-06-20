@@ -99,7 +99,10 @@ auto SupervisionLogAction::toString() const -> std::string {
   return std::string{"Supervision "} +
          std::visit(
              [&](auto const& x) {
-               return boost::core::demangle(typeid(x).name());
+               VPackBuilder builder;
+               velocypack::serialize(builder, x);
+               return boost::core::demangle(typeid(x).name()) + " " +
+                      builder.toJson();
              },
              _action);
 }

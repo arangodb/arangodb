@@ -64,7 +64,6 @@ struct DBServerSnapshotCompleteAction {
       replication2::replicated_state::StateGeneration generation);
 
   void apply(AgencyState& agency);
-  ;
   auto toString() const -> std::string;
 
   replication2::ParticipantId name;
