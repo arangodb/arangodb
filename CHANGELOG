@@ -1,13 +1,17 @@
 v3.9.3 (XXXX-XX-XX)
 -------------------
 
-* Optionally enable range deletions in the WAL for truncate operations in 
-  the cluster, too. This can speed up truncate operations for large 
+* Optionally enable range deletions in the WAL for truncate operations in the
+  cluster, too. This can speed up truncate operations for large
   collections/shards. Range deletions are turned off by default to ensure
   compatibility with all versions of arangosync. They can be turned on by
-  using the startup option `--rocksdb.use-range-delete-in-wal` and setting it
-  to `true`. The default value of that option will change from `false` to
-  `true` in ArangoDB 3.10.
+  using the startup option `--rocksdb.use-range-delete-in-wal` and setting it to
+  `true`. The default value of that option will change from `false` to `true` in
+  ArangoDB 3.10.
+
+* Fixed potential resource leak when reusing `rocksdb::PinnableSlice` instances
+  without resetting them first. This issue can lead to the block cache filling
+  up with data that will not be evicted from the block cache anymore.
 
 
 v3.9.2 (2022-06-07)
