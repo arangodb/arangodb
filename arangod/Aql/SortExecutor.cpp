@@ -23,16 +23,23 @@
 
 #include "SortExecutor.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/QueryContext.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
 #include "Basics/ResourceUsage.h"
+#include "RestServer/RocksDBTempStorageFeature.h"
+
+#include <rocksdb/options.h>
 
 #include <Logger/LogMacros.h>
 #include <algorithm>
+#include <string>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -51,10 +58,12 @@ class OurLessThan {
     auto const& left = _input[a.first].get();
     auto const& right = _input[b.first].get();
     for (auto const& reg : _sortRegisters) {
+      LOG_DEVEL << "reg id " << reg.reg.toUInt32();
       AqlValue const& lhs = left->getValueReference(a.second, reg.reg);
       AqlValue const& rhs = right->getValueReference(b.second, reg.reg);
       int const cmp = AqlValue::Compare(_vpackOptions, lhs, rhs, true);
-
+      LOG_DEVEL << "comparing " << lhs.slice().toString() << " "
+                << rhs.slice().toString();
       if (cmp < 0) {
         return reg.asc;
       } else if (cmp > 0) {
@@ -89,6 +98,9 @@ SortExecutorInfos::SortExecutorInfos(
       _sortRegisters(std::move(sortRegisters)),
       _stable(stable) {
   TRI_ASSERT(!_sortRegisters.empty());
+  for (auto const& reg : _sortRegisters) {
+    LOG_DEVEL << "ASC " << reg.asc;
+  }
 }
 
 RegisterCount SortExecutorInfos::numberOfInputRegisters() const {
@@ -129,14 +141,19 @@ SortExecutor::SortExecutor(Fetcher&, SortExecutorInfos& infos)
       _input(nullptr),
       _currentRow(CreateInvalidInputRowHint{}),
       _returnNext(0),
-      _memoryUsageForRowIndexes(0) {}
+      _memoryUsageForRowIndexes(0),
+      _comp(std::make_unique<TwoPartComparator>(_infos.vpackOptions())) {}
 
 SortExecutor::~SortExecutor() {
+  _inputReady = false;
+  _mustStoreInput = false;
+  _rowIndexes.clear();
+  _inputBlocks.clear();
   _infos.getResourceMonitor().decreaseMemoryUsage(_memoryUsageForRowIndexes);
 }
 
 void SortExecutor::consumeInput(AqlItemBlockInputRange& inputRange,
-                                ExecutorState& state) {
+                                ExecutorState& state, ExecutionEngine* engine) {
   size_t memoryUsageForRowIndexes =
       inputRange.countDataRows() * sizeof(AqlItemMatrix::RowIndex);
 
@@ -147,8 +164,45 @@ void SortExecutor::consumeInput(AqlItemBlockInputRange& inputRange,
 
   while (inputRange.hasDataRow()) {
     // This executor is passthrough. it has enough place to write.
-    _rowIndexes.emplace_back(
-        std::make_pair(_inputBlocks.size() - 1, inputRange.getRowIndex()));
+
+    if (_rowIndexes.size() >= 3) {  // THIS IS JUST FOR DEBUGGING,
+                                    // MUST BE AROUND 100k OR
+                                    // A THRESHOLD IN BYTES USED IN RAM
+      _mustStoreInput = true;
+
+      auto& rocksDBfeature = engine->getQuery()
+                                 .vocbase()
+                                 .server()
+                                 .getFeature<RocksDBTempStorageFeature>();
+      if (!_rowIndexes.empty()) {
+        rocksdb::DB* tempDB = rocksDBfeature.tempDB();
+        rocksdb::Options options = rocksDBfeature.tempDBOptions();
+        rocksdb::WriteOptions writeOptions;
+        rocksdb::ColumnFamilyOptions cfOptions;
+        cfOptions.comparator = _comp.get();
+        tempDB->CreateColumnFamily(cfOptions, "SortCF", &_cfHandle);
+        //   writeOptions.comparator = &_comp;
+        _curIt = tempDB->NewIterator(rocksdb::ReadOptions());
+        for (auto const& [first, second] : _rowIndexes) {
+          for (auto const& reg : _infos.sortRegisters()) {
+            InputAqlItemRow newRow(_curBlock, second);
+            velocypack::Builder builder;
+            newRow.toVelocyPack(_infos.vpackOptions(), builder);
+            tempDB->Put(writeOptions, _cfHandle,
+                        _inputBlocks[first]
+                            .get()
+                            ->getValueReference(second, reg.reg)
+                            .slice()
+                            .toString(),
+                        builder.toString());
+          }
+        }
+        _rowIndexes.clear();
+      }
+    } else {
+      _rowIndexes.emplace_back(
+          std::make_pair(_inputBlocks.size() - 1, inputRange.getRowIndex()));
+    }
     std::tie(state, input) =
         inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
@@ -158,16 +212,19 @@ void SortExecutor::consumeInput(AqlItemBlockInputRange& inputRange,
 }
 
 std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
-    AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
+    AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output,
+    ExecutionEngine* engine) {
   AqlCall upstreamCall{};
   if (!_inputReady) {
-    auto inputBlock = inputRange.getBlock();
-    if (inputBlock != nullptr) {
-      _inputBlocks.emplace_back(inputBlock);
+    _curBlock = inputRange.getBlock();
+    if (_curBlock != nullptr && !_mustStoreInput) {
+      _inputBlocks.emplace_back(_curBlock);
     }
   }
 
-  if (_returnNext >= _rowIndexes.size() && !_rowIndexes.empty()) {
+  if ((!_mustStoreInput &&
+       (_returnNext >= _rowIndexes.size() && !_rowIndexes.empty())) ||
+      (_curIt != nullptr && !_curIt->Valid())) {
     // Bail out if called too often,
     // Bail out on no elements
     return {ExecutorState::DONE, NoStats{}, upstreamCall};
@@ -176,28 +233,35 @@ std::tuple<ExecutorState, NoStats, AqlCall> SortExecutor::produceRows(
   ExecutorState state = ExecutorState::HASMORE;
 
   if (!_inputReady) {
-    consumeInput(inputRange, state);
+    consumeInput(inputRange, state, engine);
     if (inputRange.upstreamState() == ExecutorState::HASMORE) {
       return {state, NoStats{}, upstreamCall};
     }
-    if (_returnNext < _rowIndexes.size()) {
+    if (!_mustStoreInput && (_returnNext < _rowIndexes.size())) {
       doSorting();
-      _inputReady = true;
+      //  _inputReady = true;
     }
+    _inputReady = true;
   }
 
-  while (_returnNext < _rowIndexes.size() && !output.isFull()) {
-    InputAqlItemRow inRow(_inputBlocks[_rowIndexes[_returnNext].first],
-                          _rowIndexes[_returnNext].second);
-    output.copyRow(inRow);
-    output.advanceRow();
-    _returnNext++;
+  if (!_mustStoreInput) {
+    while (_returnNext < _rowIndexes.size() && !output.isFull()) {
+      InputAqlItemRow inRow(_inputBlocks[_rowIndexes[_returnNext].first],
+                            _rowIndexes[_returnNext].second);
+      output.copyRow(inRow);
+      output.advanceRow();
+      _returnNext++;
+    }
+  } else {
+    // iterate through rocksdb storage, but how to build a row from key and
+    // value
   }
 
-  if (_returnNext >= _rowIndexes.size()) {
-    _inputReady = false;
-    _inputBlocks.clear();
-    _rowIndexes.clear();
+  if ((!_mustStoreInput && (_returnNext >= _rowIndexes.size())) ||
+      !_curIt->Valid()) {
+    //  _inputReady = false;
+    // _inputBlocks.clear();
+    // _rowIndexes.clear();
     state = ExecutorState::DONE;
   } else {
     state = ExecutorState::HASMORE;
@@ -222,7 +286,8 @@ void SortExecutor::doSorting() {
 }
 
 std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
-    AqlItemBlockInputRange& inputRange, AqlCall& call) {
+    AqlItemBlockInputRange& inputRange, AqlCall& call,
+    ExecutionEngine* engine) {
   AqlCall upstreamCall{};
 
   ExecutorState state = ExecutorState::HASMORE;
@@ -232,7 +297,7 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
     if (inputBlock != nullptr) {
       _inputBlocks.emplace_back(inputBlock);
     }
-    consumeInput(inputRange, state);
+    consumeInput(inputRange, state, engine);
     if (inputRange.upstreamState() == ExecutorState::HASMORE) {
       return {state, NoStats{}, 0, upstreamCall};
     }
@@ -260,9 +325,9 @@ std::tuple<ExecutorState, NoStats, size_t, AqlCall> SortExecutor::skipRowsRange(
   }
 
   if (_returnNext >= _rowIndexes.size()) {
-    _inputReady = false;
-    _rowIndexes.clear();
-    _inputBlocks.clear();
+    //  _inputReady = false;
+    //  _rowIndexes.clear();
+    //  _inputBlocks.clear();
     return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), upstreamCall};
   }
   return {ExecutorState::HASMORE, NoStats{}, call.getSkipCount(), upstreamCall};

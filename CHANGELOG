@@ -1,6 +1,11 @@
 devel
 -----
 
+* APM-84: Whenever the amount of entries for SORT or COLLECT AGGREGATE in 
+  queries reach a specific threshold in memory usage, the entries are stored
+  in disck temporarily using rocksdb as a means to it, because then also the
+  entries can be stored when inserted on disk using a customized comparator.
+
 * Now supporting projections on traversals. In AQL Traversal statements like
   FOR v,e,p IN 1..3 OUTBOUND @start GRAPH @graph RETURN v.name
   we will now detect attribute accesses on the data, in above example "v.name"

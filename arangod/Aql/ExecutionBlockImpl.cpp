@@ -1033,12 +1033,20 @@ auto ExecutionBlockImpl<Executor>::executeProduceRows(
     -> std::tuple<ExecutorState, typename Executor::Stats, AqlCallType> {
   if constexpr (isMultiDepExecutor<Executor>) {
     TRI_ASSERT(input.numberDependencies() == _dependencies.size());
-    return _executor.produceRows(input, output);
+    if constexpr (std::is_same_v<Executor, SortExecutor>) {
+      return _executor.produceRows(input, output, _engine);
+    } else {
+      return _executor.produceRows(input, output);
+    }
   } else if constexpr (executorCanReturnWaiting<Executor>) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
   } else {
-    return _executor.produceRows(input, output);
+    if constexpr (std::is_same_v<Executor, SortExecutor>) {
+      return _executor.produceRows(input, output, _engine);
+    } else {
+      return _executor.produceRows(input, output);
+    }
   }
 }
 
@@ -1055,18 +1063,33 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(
       TRI_ASSERT(inputRange.numberDependencies() == _dependencies.size());
       // If the executor has a method skipRowsRange, to skip outputs.
       // Every non-passthrough executor needs to implement this.
-      auto res = _executor.skipRowsRange(inputRange, call);
-      _executorReturnedDone =
-          std::get<ExecutorState>(res) == ExecutorState::DONE;
-      return res;
+
+      if constexpr (std::is_same_v<Executor, SortExecutor>) {
+        auto res = _executor.skipRowsRange(inputRange, call, _engine);
+        _executorReturnedDone =
+            std::get<ExecutorState>(res) == ExecutorState::DONE;
+        return res;
+      } else {
+        auto res = _executor.skipRowsRange(inputRange, call);
+        _executorReturnedDone =
+            std::get<ExecutorState>(res) == ExecutorState::DONE;
+        return res;
+      }
     } else if constexpr (executorCanReturnWaiting<Executor>) {
       TRI_ASSERT(false);
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
     } else {
-      auto [state, stats, skipped, localCall] =
-          _executor.skipRowsRange(inputRange, call);
-      _executorReturnedDone = state == ExecutorState::DONE;
-      return {state, stats, skipped, localCall};
+      if constexpr (std::is_same_v<Executor, SortExecutor>) {
+        auto [state, stats, skipped, localCall] =
+            _executor.skipRowsRange(inputRange, call, _engine);
+        _executorReturnedDone = state == ExecutorState::DONE;
+        return {state, stats, skipped, localCall};
+      } else {
+        auto [state, stats, skipped, localCall] =
+            _executor.skipRowsRange(inputRange, call);
+        _executorReturnedDone = state == ExecutorState::DONE;
+        return {state, stats, skipped, localCall};
+      }
     }
   } else if constexpr (skipRowsType<Executor>() ==
                        SkipRowsRangeVariant::FETCHER) {
