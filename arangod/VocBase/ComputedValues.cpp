@@ -24,13 +24,16 @@
 #include "ComputedValues.h"
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/AqlValue.h"
+#include "Aql/AqlValueMaterializer.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Expression.h"
+#include "Aql/ExpressionContext.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/Parser.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryString.h"
+#include "Aql/QueryWarnings.h"
 #include "Aql/StandaloneCalculation.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
@@ -47,6 +50,7 @@
 #include <type_traits>
 #include <unordered_set>
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace {
@@ -56,6 +60,90 @@ std::underlying_type<arangodb::RunOn>::type runOnValue(arangodb::RunOn runOn) {
   return static_cast<std::underlying_type<arangodb::RunOn>::type>(runOn);
 }
 
+class ComputedValuesExpressionContext final : public aql::ExpressionContext {
+ public:
+  explicit ComputedValuesExpressionContext(transaction::Methods& trx,
+                                           AqlFunctionsInternalCache& cache)
+      : ExpressionContext(),
+        _trx(trx),
+        _aqlFunctionsInternalCache(cache),
+        _failOnWarning(false) {}
+
+  void registerWarning(ErrorCode errorCode, char const* msg) override {
+    if (_failOnWarning) {
+      // treat as an error if we are supposed to treat warnings as errors
+      registerError(errorCode, msg);
+    }
+  }
+
+  void registerError(ErrorCode errorCode, char const* msg) override {
+    TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
+
+    if (msg == nullptr) {
+      THROW_ARANGO_EXCEPTION(errorCode);
+    }
+
+    THROW_ARANGO_EXCEPTION_MESSAGE(errorCode, std::string_view(msg));
+  }
+
+  void failOnWarning(bool value) { _failOnWarning = value; }
+
+  icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
+                                       bool caseInsensitive) override {
+    return _aqlFunctionsInternalCache.buildRegexMatcher(ptr, length,
+                                                        caseInsensitive);
+  }
+
+  icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
+                                      bool caseInsensitive) override {
+    return _aqlFunctionsInternalCache.buildLikeMatcher(ptr, length,
+                                                       caseInsensitive);
+  }
+
+  icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression,
+                                       velocypack::Options const* opts,
+                                       bool& isEmptyExpression) override {
+    return _aqlFunctionsInternalCache.buildSplitMatcher(splitExpression, opts,
+                                                        isEmptyExpression);
+  }
+
+  arangodb::ValidatorBase* buildValidator(
+      arangodb::velocypack::Slice const& params) override {
+    return _aqlFunctionsInternalCache.buildValidator(params);
+  }
+
+  TRI_vocbase_t& vocbase() const override { return _trx.vocbase(); }
+
+  // may be inaccessible on some platforms
+  transaction::Methods& trx() const override { return _trx; }
+  bool killed() const override { return false; }
+
+  AqlValue getVariableValue(Variable const* variable, bool doCopy,
+                            bool& mustDestroy) const override {
+    if (doCopy) {
+      return AqlValue(AqlValueHintSliceCopy(_value));
+    }
+    return AqlValue(AqlValueHintSliceNoCopy(_value));
+  }
+
+  void setVariable(Variable const* /*variable*/,
+                   arangodb::velocypack::Slice value) override {
+    _value = value;
+  }
+
+  // unregister a temporary variable from the ExpressionContext.
+  void clearVariable(Variable const* variable) noexcept override {
+    _value = VPackSlice::noneSlice();
+  }
+
+ private:
+  transaction::Methods& _trx;
+  AqlFunctionsInternalCache& _aqlFunctionsInternalCache;
+  bool _failOnWarning;
+
+  velocypack::Slice _value;
+};
+
 }  // namespace
 
 namespace arangodb {
@@ -63,12 +151,14 @@ namespace arangodb {
 ComputedValues::ComputedValue::ComputedValue(TRI_vocbase_t& vocbase,
                                              std::string_view name,
                                              std::string_view expressionString,
-                                             RunOn runOn, bool doOverride)
+                                             RunOn runOn, bool doOverride,
+                                             bool failOnWarning)
     : _vocbase(vocbase),
       _name(name),
       _expressionString(expressionString),
       _runOn(runOn),
       _override(doOverride),
+      _failOnWarning(failOnWarning),
       _queryContext(StandaloneCalculation::buildQueryContext(_vocbase)),
       _rootNode(nullptr) {
   Ast* ast = _queryContext->ast();
@@ -78,7 +168,20 @@ ComputedValues::ComputedValue::ComputedValue(TRI_vocbase_t& vocbase,
   // will throw if there is any error, but the expression should have been
   // validated before
   parser.parse();
-  ast->validateAndOptimize(_queryContext->trxForOptimization());
+
+  ast->validateAndOptimize(_queryContext->trxForOptimization(),
+                           /*optimizeNonCacheable*/ false);
+
+  if (_failOnWarning) {
+    // rethrow any warnings during query inspection
+    QueryWarnings const& warnings = _queryContext->warnings();
+    if (!warnings.empty()) {
+      auto const& allWarnings = warnings.all();
+      TRI_ASSERT(!allWarnings.empty());
+      THROW_ARANGO_EXCEPTION_MESSAGE(allWarnings[0].first,
+                                     allWarnings[0].second);
+    }
+  }
 
   // create a temporary variable name, with which the bind parameter will be
   // replaced with, e.g. @doc -> temp_1. that way we only have to set the value
@@ -136,74 +239,111 @@ void ComputedValues::ComputedValue::toVelocyPack(
   }
   result.close();  // runOn
   result.add("override", VPackValue(_override));
+  result.add("failOnWarning", VPackValue(_failOnWarning));
   result.close();
 }
 
-bool ComputedValues::ComputedValue::mustRunOn(RunOn runOn) const noexcept {
-  return ((::runOnValue(_runOn) & ::runOnValue(runOn)) != 0);
+std::string_view ComputedValues::ComputedValue::name() const noexcept {
+  return _name;
+}
+
+bool ComputedValues::ComputedValue::doOverride() const noexcept {
+  return _override;
+}
+
+bool ComputedValues::ComputedValue::failOnWarning() const noexcept {
+  return _failOnWarning;
 }
 
 void ComputedValues::ComputedValue::computeAttribute(
-    transaction::Methods& trx, velocypack::Slice input,
+    ExpressionContext& ctx, velocypack::Slice input,
     velocypack::Builder& output) const {
-  TRI_ASSERT(_queryContext != nullptr);
   TRI_ASSERT(_expression != nullptr);
-
-  AqlFunctionsInternalCache cache;
-
-  FixedVarExpressionContext ctx(trx, *_queryContext, cache);
-  // inject document into temporary variable (@doc)
-  ctx.setVariableValue(_tempVariable, AqlValue(AqlValueHintSliceNoCopy(input)));
 
   bool mustDestroy;
   AqlValue result = _expression->execute(&ctx, mustDestroy);
   AqlValueGuard guard(result, mustDestroy);
 
-  output.add(_name, result.slice());
+  auto const& vopts = ctx.trx().vpackOptions();
+  AqlValueMaterializer materializer(&vopts);
+  output.add(_name, materializer.slice(result, false));
 }
 
 ComputedValues::ComputedValues(TRI_vocbase_t& vocbase,
                                std::vector<std::string> const& shardKeys,
-                               velocypack::Slice params)
-    : _runOn(RunOn::kNever) {
+                               velocypack::Slice params) {
   Result res = buildDefinitions(vocbase, shardKeys, params);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-
-  TRI_ASSERT(_runOn != RunOn::kNever);
 }
 
 ComputedValues::~ComputedValues() = default;
 
+bool ComputedValues::mustComputeAttribute(std::string_view name,
+                                          RunOn runOn) const noexcept {
+  if (runOn == RunOn::kInsert) {
+    auto it = _attributesForInsert.find(name);
+    return it == _attributesForInsert.end() || _values[it->second].doOverride();
+  }
+  if (runOn == RunOn::kUpdate) {
+    auto it = _attributesForUpdate.find(name);
+    return it == _attributesForUpdate.end() || _values[it->second].doOverride();
+  }
+  if (runOn == RunOn::kReplace) {
+    auto it = _attributesForReplace.find(name);
+    return it == _attributesForReplace.end() ||
+           _values[it->second].doOverride();
+  }
+  TRI_ASSERT(false);
+  return false;
+}
+
 bool ComputedValues::mustRunOnInsert() const noexcept {
-  return mustRunOn(RunOn::kInsert);
+  return !_attributesForInsert.empty();
 }
 
 bool ComputedValues::mustRunOnUpdate() const noexcept {
-  return mustRunOn(RunOn::kUpdate);
+  return !_attributesForUpdate.empty();
 }
 
 bool ComputedValues::mustRunOnReplace() const noexcept {
-  return mustRunOn(RunOn::kReplace);
+  return !_attributesForReplace.empty();
 }
 
-void ComputedValues::computeAttributes(transaction::Methods& trx,
-                                       velocypack::Slice input, RunOn runOn,
-                                       velocypack::Builder& output) const {
-  TRI_ASSERT(mustRunOn(runOn));
-
-  for (auto const& it : _values) {
-    if (!it.mustRunOn(runOn)) {
-      continue;
-    }
-
-    it.computeAttribute(trx, input, output);
+void ComputedValues::computeAttributes(
+    transaction::Methods& trx, velocypack::Slice input,
+    containers::FlatHashSet<std::string_view> const& keysWritten, RunOn runOn,
+    velocypack::Builder& output) const {
+  if (runOn == RunOn::kInsert) {
+    computeAttributes(_attributesForInsert, trx, input, keysWritten, output);
+  } else if (runOn == RunOn::kUpdate) {
+    computeAttributes(_attributesForUpdate, trx, input, keysWritten, output);
+  } else if (runOn == RunOn::kReplace) {
+    computeAttributes(_attributesForReplace, trx, input, keysWritten, output);
+  } else {
+    TRI_ASSERT(false);
   }
 }
 
-bool ComputedValues::mustRunOn(RunOn runOn) const noexcept {
-  return ((::runOnValue(_runOn) & ::runOnValue(runOn)) != 0);
+void ComputedValues::computeAttributes(
+    containers::FlatHashMap<std::string, std::size_t> const& attributes,
+    transaction::Methods& trx, velocypack::Slice input,
+    containers::FlatHashSet<std::string_view> const& keysWritten,
+    velocypack::Builder& output) const {
+  AqlFunctionsInternalCache cache;
+  ComputedValuesExpressionContext ctx(trx, cache);
+  // inject document into temporary variable (@doc)
+  ctx.setVariable(nullptr, input);
+
+  for (auto const& it : attributes) {
+    ComputedValue const& cv = _values[it.second];
+    if (cv.doOverride() || !keysWritten.contains(cv.name())) {
+      // update "failOnWarning" flag for each computation
+      ctx.failOnWarning(cv.failOnWarning());
+      cv.computeAttribute(ctx, input, output);
+    }
+  }
 }
 
 Result ComputedValues::buildDefinitions(
@@ -249,6 +389,13 @@ Result ComputedValues::buildDefinitions(
       }
     }
 
+    VPackSlice doOverride = it.get("override");
+    if (!doOverride.isBoolean()) {
+      return res.reset(
+          TRI_ERROR_BAD_PARAMETER,
+          "invalid 'computedValues' entry: 'override' must be a boolean");
+    }
+
     RunOn runOn = RunOn::kInsert;
 
     VPackSlice on = it.get("on");
@@ -265,12 +412,15 @@ Result ComputedValues::buildDefinitions(
         if (ov == "insert") {
           runOn = static_cast<RunOn>(::runOnValue(runOn) |
                                      ::runOnValue(RunOn::kInsert));
+          _attributesForInsert.emplace(n, _values.size());
         } else if (ov == "update") {
           runOn = static_cast<RunOn>(::runOnValue(runOn) |
                                      ::runOnValue(RunOn::kUpdate));
+          _attributesForUpdate.emplace(n, _values.size());
         } else if (ov == "replace") {
           runOn = static_cast<RunOn>(::runOnValue(runOn) |
                                      ::runOnValue(RunOn::kReplace));
+          _attributesForReplace.emplace(n, _values.size());
         } else {
           return res.reset(
               TRI_ERROR_BAD_PARAMETER,
@@ -283,9 +433,15 @@ Result ComputedValues::buildDefinitions(
         return res.reset(TRI_ERROR_BAD_PARAMETER,
                          "invalid 'computedValues' entry: empty on value");
       }
+    } else if (on.isNone()) {
+      // default is just "insert"
+      runOn = static_cast<RunOn>(::runOnValue(runOn) |
+                                 ::runOnValue(RunOn::kInsert));
+      _attributesForInsert.emplace(n, _values.size());
+    } else {
+      return res.reset(TRI_ERROR_BAD_PARAMETER,
+                       "invalid 'computedValues' entry: invalid on value");
     }
-
-    _runOn = static_cast<RunOn>(::runOnValue(_runOn) | ::runOnValue(runOn));
 
     VPackSlice expression = it.get("expression");
     if (!expression.isString()) {
@@ -304,11 +460,9 @@ Result ComputedValues::buildDefinitions(
       break;
     }
 
-    VPackSlice doOverride = it.get("override");
-    if (!doOverride.isBoolean()) {
-      return res.reset(
-          TRI_ERROR_BAD_PARAMETER,
-          "invalid 'computedValues' entry: 'override' must be a boolean");
+    bool failOnWarning = false;
+    if (VPackSlice fow = it.get("failOnWarning"); fow.isBoolean()) {
+      failOnWarning = fow.getBoolean();
     }
 
     // check for duplicate names in the array
@@ -322,7 +476,7 @@ Result ComputedValues::buildDefinitions(
 
     try {
       _values.emplace_back(vocbase, name.stringView(), expression.stringView(),
-                           runOn, doOverride.getBoolean());
+                           runOn, doOverride.getBoolean(), failOnWarning);
     } catch (std::exception const& ex) {
       return res.reset(TRI_ERROR_BAD_PARAMETER,
                        "invalid 'computedValues' entry: "s + ex.what());

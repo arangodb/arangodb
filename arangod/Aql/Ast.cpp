@@ -84,6 +84,7 @@ struct ValidateAndOptimizeContext {
   uint64_t recursionDepth = 0;  // current depth of the tree we walk
   bool hasSeenAnyWriteNode = false;
   bool hasSeenWriteNodeInCurrentScope = false;
+  bool optimizeNonCacheable = true;
 };
 
 auto doNothingVisitor = [](AstNode const*) {};
@@ -2348,8 +2349,10 @@ size_t Ast::extractParallelism(AstNode const* optionsNode) {
 /// this does not only optimize but also performs a few validations after
 /// bind parameter injection. merging this pass with the regular AST
 /// optimizations saves one extra pass over the AST
-void Ast::validateAndOptimize(transaction::Methods& trx) {
+void Ast::validateAndOptimize(transaction::Methods& trx,
+                              bool optimizeNonCacheable) {
   ::ValidateAndOptimizeContext context(trx);
+  context.optimizeNonCacheable = optimizeNonCacheable;
 
   auto preVisitor = [&](AstNode const* node) -> bool {
     auto ctx = &context;
@@ -2561,7 +2564,8 @@ void Ast::validateAndOptimize(transaction::Methods& trx) {
       if (ctx->stopOptimizationRequests == 0) {
         // optimization allowed
         return this->optimizeFunctionCall(ctx->trx,
-                                          ctx->aqlFunctionsInternalCache, node);
+                                          ctx->aqlFunctionsInternalCache, node,
+                                          ctx->optimizeNonCacheable);
       }
       // optimization not allowed
       return node;
@@ -3681,7 +3685,8 @@ AstNode* Ast::optimizeAttributeAccess(
 /// @brief optimizes a call to a built-in function
 AstNode* Ast::optimizeFunctionCall(
     transaction::Methods& trx,
-    AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node) {
+    AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node,
+    bool optimizeNonCacheable) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_FCALL);
   TRI_ASSERT(node->numMembers() == 1);
@@ -3785,6 +3790,11 @@ AstNode* Ast::optimizeFunctionCall(
 
   if (!func->hasFlag(Function::Flags::Deterministic)) {
     // non-deterministic function
+    return node;
+  }
+
+  if (!optimizeNonCacheable && !func->hasFlag(Function::Flags::Cacheable)) {
+    // non-cacheable function
     return node;
   }
 

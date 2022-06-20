@@ -24,6 +24,8 @@
 #pragma once
 
 #include "Basics/Result.h"
+#include "Containers/FlatHashMap.h"
+#include "Containers/FlatHashSet.h"
 
 #include <cstdint>
 #include <string>
@@ -35,6 +37,7 @@ namespace arangodb {
 namespace aql {
 struct AstNode;
 class Expression;
+class ExpressionContext;
 class QueryContext;
 struct Variable;
 }  // namespace aql
@@ -60,7 +63,7 @@ class ComputedValues {
    public:
     ComputedValue(TRI_vocbase_t& vocbase, std::string_view name,
                   std::string_view expressionString, RunOn runOn,
-                  bool doOverride);
+                  bool doOverride, bool failOnWarning);
     ComputedValue(ComputedValue const&) = delete;
     ComputedValue& operator=(ComputedValue const&) = delete;
     ComputedValue(ComputedValue&&) = default;
@@ -68,9 +71,11 @@ class ComputedValues {
     ~ComputedValue();
 
     void toVelocyPack(velocypack::Builder&) const;
-    void computeAttribute(transaction::Methods& trx, velocypack::Slice input,
+    void computeAttribute(aql::ExpressionContext& ctx, velocypack::Slice input,
                           velocypack::Builder& output) const;
-    bool mustRunOn(RunOn runOn) const noexcept;
+    std::string_view name() const noexcept;
+    bool doOverride() const noexcept;
+    bool failOnWarning() const noexcept;
 
    private:
     TRI_vocbase_t& _vocbase;
@@ -78,6 +83,7 @@ class ComputedValues {
     std::string _expressionString;
     RunOn _runOn;
     bool _override;
+    bool _failOnWarning;
     std::unique_ptr<aql::QueryContext> _queryContext;
 
     std::unique_ptr<aql::Expression> _expression;
@@ -102,21 +108,32 @@ class ComputedValues {
   bool mustRunOnUpdate() const noexcept;
   bool mustRunOnReplace() const noexcept;
 
-  void computeAttributes(transaction::Methods& trx, velocypack::Slice input,
-                         RunOn runOn, velocypack::Builder& output) const;
+  bool mustComputeAttribute(std::string_view name, RunOn runOn) const noexcept;
+
+  void computeAttributes(
+      transaction::Methods& trx, velocypack::Slice input,
+      containers::FlatHashSet<std::string_view> const& keysWritten, RunOn runOn,
+      velocypack::Builder& output) const;
 
  private:
-  bool mustRunOn(RunOn runOn) const noexcept;
+  void computeAttributes(
+      containers::FlatHashMap<std::string, std::size_t> const& attributes,
+      transaction::Methods& trx, velocypack::Slice input,
+      containers::FlatHashSet<std::string_view> const& keysWritten,
+      velocypack::Builder& output) const;
 
   Result buildDefinitions(TRI_vocbase_t& vocbase,
                           std::vector<std::string> const& shardKeys,
                           velocypack::Slice params);
 
-  // where will the computations be executed (overall)
-  RunOn _runOn;
-
   // individual instructions for computed values
   std::vector<ComputedValue> _values;
+
+  // the size_t value indiciates the position of the computation inside
+  // the _values vector
+  containers::FlatHashMap<std::string, std::size_t> _attributesForInsert;
+  containers::FlatHashMap<std::string, std::size_t> _attributesForUpdate;
+  containers::FlatHashMap<std::string, std::size_t> _attributesForReplace;
 };
 
 }  // namespace arangodb

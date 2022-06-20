@@ -477,7 +477,8 @@ bool AqlAnalyzer::reset(irs::string_ref field) noexcept {
               return node;
             }
           });
-      ast->validateAndOptimize(_query->trxForOptimization());
+      ast->validateAndOptimize(_query->trxForOptimization(),
+                               /*optimizeNonCacheable*/ true);
 
       std::unique_ptr<ExecutionPlan> plan =
           ExecutionPlan::instantiateFromAst(ast, true);

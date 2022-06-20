@@ -32,6 +32,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/encoding.h"
+#include "Containers/FlatHashSet.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Futures/Utilities.h"
@@ -40,6 +41,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
+#include "VocBase/ComputedValues.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -366,7 +368,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
 
 /// @brief new object for insert, computes the hash of the key
 Result PhysicalCollection::newObjectForInsert(
-    transaction::Methods*, VPackSlice value, bool isEdgeCollection,
+    transaction::Methods* trx, VPackSlice value, bool isEdgeCollection,
     VPackBuilder& builder, bool isRestore, RevisionId& revisionId) const {
   builder.openObject();
 
@@ -460,10 +462,48 @@ Result PhysicalCollection::newObjectForInsert(
     builder.add(StaticStrings::RevString, revisionId.toValuePair(ridBuffer));
   }
 
+  std::shared_ptr<ComputedValues> cv;
+  // TODO!
+  if (true /*!options.isRestore && options.isSynchronousReplicationFrom.empty()*/) {
+    cv = _logicalCollection.computedValues();
+    if (cv != nullptr && !cv->mustRunOnInsert()) {
+      // nothing to be done on insert
+      cv.reset();
+    }
+  }
+
+  containers::FlatHashSet<std::string_view> keysWritten;
+
   // add other attributes after the system attributes
-  TRI_SanitizeObjectWithEdges(value, builder);
+  VPackObjectIterator it(value, true);
+  while (it.valid()) {
+    std::string_view key(it.key().stringView());
+    // _id, _key, _rev, _from, _to. minimum size here is 3
+    if (key.size() < 3 || key[0] != '_' ||
+        (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
+         key != StaticStrings::RevString && key != StaticStrings::FromString &&
+         key != StaticStrings::ToString)) {
+      if (cv == nullptr || !cv->mustComputeAttribute(key, RunOn::kInsert)) {
+        // only add an attribute here if it is not going to be force-calculated
+        // by the computed attributes
+        builder.add(key, it.value());
+        if (cv != nullptr) {
+          // track which attributes we have produced so that they are not
+          // added again by the computed attributes later.
+          keysWritten.emplace(key);
+        }
+      }
+    }
+    it.next();
+  }
+
+  if (cv != nullptr) {
+    // add all remaining computed attributes, if we need to
+    cv->computeAttributes(*trx, value, keysWritten, RunOn::kInsert, builder);
+  }
 
   builder.close();
+
   return Result();
 }
 

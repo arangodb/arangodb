@@ -244,7 +244,8 @@ Result StandaloneCalculation::validateQuery(TRI_vocbase_t& vocbase,
     auto qs = arangodb::aql::QueryString(queryString);
     Parser parser(queryContext, *ast, qs);
     parser.parse();
-    ast->validateAndOptimize(queryContext.trxForOptimization());
+    ast->validateAndOptimize(queryContext.trxForOptimization(),
+                             /*optimizeNonCacheable*/ false);
     AstNode* astRoot = const_cast<AstNode*>(ast->root());
     TRI_ASSERT(astRoot);
     // Forbid all V8 related stuff as it is not available on DBServers where
