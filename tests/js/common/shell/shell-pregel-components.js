@@ -47,7 +47,9 @@ const pregelRunSmallInstance = function (algName, graphName, parameters) {
     wakeupsLeft--;
     internal.sleep(0.2);
   }
-  assertEqual(pregel.status(pid).state, "done", "Pregel Job did never succeed.");
+  const statusState = pregel.status(pid).state;
+  console.warn(statusState);
+  assertEqual(statusState, "done", `Pregel Job did never succeed. Status: ${statusState}`);
 
   // Now test the result.
   const query = `
@@ -60,10 +62,10 @@ const pregelRunSmallInstance = function (algName, graphName, parameters) {
 };
 
 // componentsSizes should be an array of distinct sizes for components
-// createComponent should be a function that gets (<number of vertices>, <vertex collection name>, <name_prefix>)
+// makeComponent should be a function that gets (<number of vertices>, <vertex collection name>, <name_prefix>)
 // and returns {vertices: <array of vertices>, edges: <array of edges>} where the graph induced by vertices and edges
 // is, indeed , a component (of whatever kind)
-const testComponentsAlgorithmOnDisjointComponents = function(componentSizes, createComponent, algorithm_name = "wcc") {
+const testComponentsAlgorithmOnDisjointComponents = function(componentSizes, makeComponent, algorithm_name = "wcc") {
   // we expect that '_' appears in the string (should it not, return the whole string)
   const extract_name_prefix = function(v) {
     return v.substr(0, v.indexOf('_'));
@@ -80,7 +82,7 @@ const testComponentsAlgorithmOnDisjointComponents = function(componentSizes, cre
 
   // Produce the graph.
   for (let i of sortedComponentSizes) {
-    let {vertices, edges} = createComponent(i, vColl, i.toString());
+    let {vertices, edges} = makeComponent(i, vColl, i.toString());
     db[vColl].save(vertices);
     db[eColl].save(edges);
   }
@@ -508,7 +510,7 @@ function wccTestSuite() {
 
     setUp: function() {
       db._create(vColl, { numberOfShards: 4 });
-      db._createEdgeCollection(eColl, {
+        db._createEdgeCollection(eColl, {
         numberOfShards: 4,
         replicationFactor: 1,
         shardKeys: ["vertex"],
@@ -523,7 +525,7 @@ function wccTestSuite() {
     },
 
     testWCCFourDirectedCycles: function() {
-      testComponentsAlgorithmOnDisjointComponents([2, 10, 5, 23], graphGeneration.createDirectedCycle);
+      testComponentsAlgorithmOnDisjointComponents([2, 10, 5, 23], graphGeneration.makeDirectedCycle);
     },
 
     testWCC20DirectedCycles: function() {
@@ -532,7 +534,7 @@ function wccTestSuite() {
       for (let i=2; i<22; ++i) {
         componentSizes.push(i);
       }
-      testComponentsAlgorithmOnDisjointComponents(componentSizes, graphGeneration.createDirectedCycle);
+      testComponentsAlgorithmOnDisjointComponents(componentSizes, graphGeneration.makeDirectedCycle);
     },
 
     testWCC20AlternatingCycles() {
@@ -541,7 +543,7 @@ function wccTestSuite() {
       for (let i=2; i<22; ++i) {
         componentSizes.push(i);
       }
-      testComponentsAlgorithmOnDisjointComponents(componentSizes, graphGeneration.createAlternatingCycle);
+      testComponentsAlgorithmOnDisjointComponents(componentSizes, graphGeneration.makeAlternatingCycle);
     },
 
     testWCC10BidirectedCliques() {
@@ -549,7 +551,7 @@ function wccTestSuite() {
       for (let i=120; i<130; ++i) {
         treeDepths.push(i);
       }
-      testComponentsAlgorithmOnDisjointComponents(treeDepths, graphGeneration.createBidirectedClique);
+      testComponentsAlgorithmOnDisjointComponents(treeDepths, graphGeneration.makeBidirectedClique);
     },
 
     testWCCOneSingleVertex: function() {
@@ -630,6 +632,32 @@ function wccTestSuite() {
       assertEqual(computedComponents[1].size, length);
     },
 
+    testWCCTwoCliquesConnectedByDirectedCycle: function() {
+      // first clique
+      const size0 = 10;
+      const {vertices, edges} = graphGeneration.makeBidirectedClique(size0, vColl, "c0", true);
+      db[vColl].save(vertices);
+      db[eColl].save(edges);
+
+      // second clique
+      const size1 = 11;
+      const resultC1 = graphGeneration.makeAlternatingCycle(size1, vColl, "c1");
+      db[vColl].save(resultC1.vertices);
+      db[eColl].save(resultC1.edges);
+
+      // connecting edge
+      const connectingEdge =  {
+        _from: `${vColl}/c0_0`,
+        _to: `${vColl}/c1_0`,
+        vertex: `c0_0`
+      };
+      db[eColl].save([connectingEdge]);
+
+      const computedComponents = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
+      assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
+      assertEqual(computedComponents[0].size, size0 + size1);
+    },
+
   };
 }
 
@@ -656,7 +684,7 @@ function sccTestSuite() {
     },
 
     testSCCFourDirectedCycles: function() {
-      testComponentsAlgorithmOnDisjointComponents([2, 10, 5, 23], graphGeneration.createDirectedCycle, "scc");
+      testComponentsAlgorithmOnDisjointComponents([2, 10, 5, 23], graphGeneration.makeDirectedCycle, "scc");
     },
 
     testSCC20DirectedCycles: function() {
@@ -665,7 +693,7 @@ function sccTestSuite() {
       for (let i=2; i<22; ++i) {
         componentSizes.push(i);
       }
-      testComponentsAlgorithmOnDisjointComponents(componentSizes, graphGeneration.createDirectedCycle, "scc");
+      testComponentsAlgorithmOnDisjointComponents(componentSizes, graphGeneration.makeDirectedCycle, "scc");
     },
 
     testSCC10BidirectedCliques() {
@@ -673,11 +701,11 @@ function sccTestSuite() {
       for (let i=120; i<130; ++i) {
         treeDepths.push(i);
       }
-      testComponentsAlgorithmOnDisjointComponents(treeDepths, graphGeneration.createBidirectedClique, "scc");
+      testComponentsAlgorithmOnDisjointComponents(treeDepths, graphGeneration.makeBidirectedClique, "scc");
     },
 
     testSCCOneSingleVertex: function() {
-      let {vertices, edges} = graphGeneration.createSingleVertex("v");
+      let {vertices, edges} = graphGeneration.makeSingleVertex("v");
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
@@ -705,7 +733,7 @@ function sccTestSuite() {
       let vertex1 = graphGeneration.makeVertex(1, "v");
       const vertices = [vertex0, vertex1];
       db[vColl].save(vertices);
-      const edges = [makeEdge(0, 1, vColl, "v")];
+      const edges = [graphGeneration.makeEdge(0, 1, vColl, "v")];
       db[eColl].save(edges);
 
       const computedComponents = pregelRunSmallInstance("SCC", graphName, { resultField: "result", store: true });
@@ -716,7 +744,7 @@ function sccTestSuite() {
 
     testSCCOneDirected10Path: function() {
       const length = 10;
-      const {vertices, edges} = graphGeneration.createPath(length, vColl, "v");
+      const {vertices, edges} = graphGeneration.makePath(length, vColl, "v");
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
@@ -730,7 +758,7 @@ function sccTestSuite() {
 
     testSCCOneBidirected10Path: function() {
       const length = 10;
-      const {vertices, edges} = graphGeneration.createPath(length, vColl, "v", "bidirected");
+      const {vertices, edges} = graphGeneration.makePath(length, vColl, "v", "bidirected");
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
@@ -742,7 +770,7 @@ function sccTestSuite() {
 
     testSCCOneAlternated10Path: function() {
       const length = 10;
-      const {vertices, edges} = graphGeneration.createPath(length, vColl, "v", "alternating");
+      const {vertices, edges} = graphGeneration.makePath(length, vColl, "v", "alternating");
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
@@ -757,7 +785,7 @@ function sccTestSuite() {
     testSCCOneDirectedTree: function()  {
       // Each vertex induces its own strongly connected component.
       const depth = 3;
-      let {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "v", false);
+      let {vertices, edges} = graphGeneration.makeFullBinaryTree(depth, vColl, "v", false);
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
@@ -776,7 +804,7 @@ function sccTestSuite() {
     testSCCOneDepth3AlternatingTree: function() {
       // Each vertex induces its own strongly connected component.
       const depth = 3;
-      let {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "v", true);
+      let {vertices, edges} = graphGeneration.makeFullBinaryTree(depth, vColl, "v", true);
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
@@ -794,7 +822,7 @@ function sccTestSuite() {
     testSCCOneDepth4AlternatingTree: function() {
       const depth = 4;
       // Each vertex induces its own strongly connected component.
-      let {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "v", true);
+      let {vertices, edges} = graphGeneration.makeFullBinaryTree(depth, vColl, "v", true);
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
@@ -812,13 +840,13 @@ function sccTestSuite() {
     testSCCAlternatingTreeAlternatingCycle: function() {
       // tree
       const depth = 3;
-      const {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "t", true);
+      const {vertices, edges} = graphGeneration.makeFullBinaryTree(depth, vColl, "t", true);
       db[vColl].save(vertices);
       db[eColl].save(edges);
 
       // cycle
       const length = 5;
-      const resultC = graphGeneration.createAlternatingCycle(length, vColl, "c");
+      const resultC = graphGeneration.makeAlternatingCycle(length, vColl, "c");
       db[vColl].save(resultC.vertices);
       db[eColl].save(resultC.edges);
 
