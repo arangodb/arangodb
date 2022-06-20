@@ -600,7 +600,7 @@ function wccTestSuite() {
       assertEqual(computedComponents[1].size, 1);
     },
 
-    testWCCOneDirectedTree: function() {
+    testWCCOneDirectedTree: function()  {
       const depth = 3;
       let {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "v", false);
       db[vColl].save(vertices);
@@ -625,8 +625,32 @@ function wccTestSuite() {
 
     },
 
-    testWCCOneAlternatingTree: function() {
+    testWCCOneDepth3AlternatingTree: function() {
       const depth = 3;
+      let {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "v", true);
+      db[vColl].save(vertices);
+      db[eColl].save(edges);
+
+
+      const status = pregelRunSmallInstance("wcc", graphName, { resultField: "result", store: true });
+      assertEqual(status.state, "done", "Pregel Job did never succeed.");
+
+      // Now test the result.
+      // We expect 1 component
+      const query = `
+        FOR v IN ${vColl}
+          COLLECT component = v.result WITH COUNT INTO size
+          SORT size DESC
+          RETURN {component, size}
+      `;
+      const computedComponents = db._query(query).toArray();
+      assertEqual(computedComponents.length, 1, `We expected 1 component, instead got ${JSON.stringify(computedComponents)}`);
+
+      assertEqual(computedComponents[0].size, Math.pow(2, depth + 1) - 1); // number of vertices in a full binary tree
+    },
+
+    testWCCOneDepth4AlternatingTree: function() {
+      const depth = 4;
       let {vertices, edges} = graphGeneration.createFullBinaryTree(depth, vColl, "v", true);
       db[vColl].save(vertices);
       db[eColl].save(edges);
