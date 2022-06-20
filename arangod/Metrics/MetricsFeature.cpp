@@ -153,6 +153,9 @@ void MetricsFeature::toPrometheus(std::string& result, CollectMode mode) const {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// Sets metrics that can be collected by ClusterMetricsFeature
+////////////////////////////////////////////////////////////////////////////////
 constexpr auto kCoordinatorBatch = frozen::make_unordered_set<frozen::string>({
     "arangodb_search_link_stats",
 });

@@ -48,8 +48,11 @@
 namespace arangodb::metrics {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// This feature is able to asynchronously collect metrics
-/// from cluster DBServers and accumulate them on the Coordinators
+/// This feature is able to asynchronously collect
+/// metrics from cluster DBServers (MetricsFeature)
+/// and accumulate them on the Coordinators (ClusterMetricsFeature)
+///
+/// See IResearchLinkCoordinator as an example
 ////////////////////////////////////////////////////////////////////////////////
 class ClusterMetricsFeature final : public ArangodFeature {
  public:

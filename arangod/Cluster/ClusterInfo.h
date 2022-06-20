@@ -793,12 +793,17 @@ class ClusterInfo final {
                                             bool restore);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief init metrics state
-  /// try to propose self as leader or understand who is current leader
-  /// no return while no stopping and we don't know who is leader
+  /// @brief Init metrics state
+  /// @note Current server should be Coordinator
+  /// Try to propose current server as leader or know that someone
+  /// was a leader. No return while we don't know that or server should stop.
   //////////////////////////////////////////////////////////////////////////////
   void initMetricsState();
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief The MetricsState that stored in agency.
+  /// @note If `leader` is `nullopt` that means we ourselves are the leader.
+  //////////////////////////////////////////////////////////////////////////////
   struct [[nodiscard]] MetricsState {
     std::optional<ServerID> leader;
   };
@@ -813,15 +818,14 @@ class ClusterInfo final {
   /// something is not founded or some other error occurs, so the called
   /// must guard against this. In particular, this can happen in the
   /// bootstrap phase if the `AgencyCache` has not yet heard about this.
-  /// @note If `leader` in the resulting `MetricsState` is `nullopt`
-  /// that means we ourselves are the leader.
   /// @note If `wantLeader` is true, then thread-safe, otherwise not
   /// @return Who is the leader, and what cache version is current.
   //////////////////////////////////////////////////////////////////////////////
   MetricsState getMetricsState(bool wantLeader);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief try to propose self as new leader
+  /// @brief Try to propose current server as new leader
+  /// @note Current server should be Coordinator
   /// @param oldRebootId last leader RebootId
   /// @param oldServerId last leader ServerID
   //////////////////////////////////////////////////////////////////////////////

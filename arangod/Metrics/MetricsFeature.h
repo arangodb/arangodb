@@ -64,6 +64,11 @@ class MetricsFeature final : public ArangodFeature {
   bool remove(Builder const& builder);
 
   void toPrometheus(std::string& result, CollectMode mode) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief That used for collect some metrics
+  /// to array for ClusterMetricsFeature
+  //////////////////////////////////////////////////////////////////////////////
   void toVPack(velocypack::Builder& builder) const;
 
   ServerStatistics& serverStatistics() noexcept;
