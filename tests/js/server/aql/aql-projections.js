@@ -545,7 +545,7 @@ function projectionsExtractionTestSuite () {
       c = db._create(cn, { numberOfShards: 1 });
 
       let docs = [];
-      for (var i = 0; i < 100; ++i) {
+      for (let i = 0; i < 100; ++i) {
         docs.push({ _key: "test" + i, value1: i, value2: i, foo: { bar: { a: i, b: i }, baz: i } });
       }
       c.insert(docs);
@@ -664,7 +664,7 @@ function projectionsMaxProjectionsTestSuite () {
       c = db._create(cn, { numberOfShards: 1 });
 
       let docs = [];
-      for (var i = 0; i < 100; ++i) {
+      for (let i = 0; i < 100; ++i) {
         docs.push({ _key: "test" + i, value1: i, value2: i, value3: i, value4: i, value5: i, value6: i, value7: i });
       }
       c.insert(docs);

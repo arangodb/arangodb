@@ -42,17 +42,10 @@ let { getEndpointById,
       debugRemoveFailAt,
       debugSetFailAt,
       debugClearFailAt,
-      reconnectRetry
+      reconnectRetry,
+      getDBServers
     } = require('@arangodb/test-helper');
 
-function getDBServers() {
-  var tmp = global.ArangoClusterInfo.getDBServers();
-  var servers = [];
-  for (var i = 0; i < tmp.length; ++i) {
-    servers[i] = tmp[i].serverId;
-  }
-  return servers;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
