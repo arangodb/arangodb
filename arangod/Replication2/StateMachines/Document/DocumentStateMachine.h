@@ -93,3 +93,6 @@ extern template struct replicated_state::ReplicatedState<
     document::DocumentState>;
 
 }  // namespace arangodb::replication2::replicated_state
+
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
