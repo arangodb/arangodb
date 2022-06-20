@@ -4550,7 +4550,7 @@ ClusterInfo::MetricsState ClusterInfo::getMetricsState(bool wantLeader) {
   auto ourRebootId = ServerState::instance()->getRebootId().value();
   auto ourServerId = ServerState::instance()->getId();
   if (ourRebootId == leaderRebootId && ourServerId == leaderServerId) {
-    // TRI_ASSERT(_metricsGuard.empty());
+    TRI_ASSERT(_metricsGuard.empty());
     return {std::nullopt};
   }
   if (wantLeader) {

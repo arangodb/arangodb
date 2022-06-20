@@ -26,7 +26,7 @@
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
-const {getEndpointsByType, getRawMetric, getAllMetric} = require("@arangodb/test-helper");
+const { getEndpointsByType, getRawMetric, getAllMetric } = require("@arangodb/test-helper");
 const parsePrometheusTextFormat = require("parse-prometheus-text-format");
 const _ = require("lodash");
 
@@ -84,48 +84,56 @@ function checkCoordinators(coordinators, mode) {
   }
 }
 
+function createClusterWideMetrics() {
+  db._create("foo1", { "replicationFactor": 3, "numberOfShards": 9 });
+  db._create("foo2", { "replicationFactor": 2, "numberOfShards": 12 });
+  db._create("foo3", { "replicationFactor": 1, "numberOfShards": 1 });
+  let foo1_values = [];
+  let foo2_values = [{ "name": "i" }];
+  let foo3_values = [{ "name": "hate" }, { "name": "js" }];
+  for (let i = 0; i !== 1000; ++i) {
+    foo1_values.push({ "name": i });
+    foo2_values.push({ "name": i + 100000 });
+    foo3_values.push({ "name": i - 100000 });
+  }
+  db.foo1.save(foo1_values);
+  db.foo2.save(foo2_values);
+  db.foo3.save(foo3_values);
+  db._createView("foov", "arangosearch", {
+    "consolidationIntervalMsec": 0,
+    "cleanupIntervalStep": 0,
+    "links": {
+      "foo1": { "includeAllFields": true },
+      "foo2": { "includeAllFields": true },
+      "foo3": { "includeAllFields": true }
+    }
+  });
+  db._query("FOR d IN foov OPTIONS { waitForSync: true } LIMIT 1 RETURN 1");
+}
+
+function cleanupClusterWideMetrics() {
+  db._dropView("foov");
+  db._drop("foo1");
+  db._drop("foo2");
+  db._drop("foo3");
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 function CoordinatorMetricsTestSuite() {
   return {
     setUpAll: function () {
-      db._create("foo1", {"replicationFactor": 3, "numberOfShards": 9});
-      db._create("foo2", {"replicationFactor": 2, "numberOfShards": 12});
-      db._create("foo3", {"replicationFactor": 1, "numberOfShards": 1});
-      let foo1_values = [];
-      let foo2_values = [{"name": "i"}];
-      let foo3_values = [{"name": "hate"}, {"name": "js"}];
-      for (let i = 0; i !== 1000; ++i) {
-        foo1_values.push({"name": i});
-        foo2_values.push({"name": i + 100000});
-        foo3_values.push({"name": i - 100000});
-      }
-      db.foo1.save(foo1_values);
-      db.foo2.save(foo2_values);
-      db.foo3.save(foo3_values);
-      db._createView("foov", "arangosearch", {
-        "consolidationIntervalMsec": 0,
-        "cleanupIntervalStep": 0,
-        "links": {
-          "foo1": {"includeAllFields": true},
-          "foo2": {"includeAllFields": true},
-          "foo3": {"includeAllFields": true}
-        }
-      });
-      db._query("FOR d IN foov OPTIONS { waitForSync: true } LIMIT 1 RETURN 1");
+      createClusterWideMetrics();
     },
 
     tearDownAll: function () {
-      db._dropView("foov");
-      db._drop("foo1");
-      db._drop("foo2");
-      db._drop("foo3");
+      cleanupClusterWideMetrics();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief CoordinatorMetricsTestSuite tests
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief CoordinatorMetricsTestSuite tests
+    ////////////////////////////////////////////////////////////////////////////////
     testMetricsParameterValidation: function () {
       let coordinators = getEndpointsByType("coordinator");
       let dbservers = getEndpointsByType("dbserver");
@@ -230,9 +238,9 @@ function CoordinatorMetricsTestSuite() {
     testIResearchMetricStatsForce: function () {
       let coordinators = getEndpointsByType("coordinator");
       let c = coordinators[0];
-      this.tearDownAll();
+      cleanupClusterWideMetrics();
       getAllMetric(c, '?mode=write_global'); // write something not valid
-      this.setUpAll();
+      createClusterWideMetrics();
       let txt = getAllMetric(c, '?mode=write_global');
       checkRawMetrics(txt, false);
       checkCoordinators(coordinators, '?mode=read_global');
@@ -242,10 +250,10 @@ function CoordinatorMetricsTestSuite() {
 
     testIResearchMetricStats: function () {
       let coordinators = getEndpointsByType("coordinator");
-      this.tearDownAll();
+      cleanupClusterWideMetrics();
       let c = coordinators[0];
       getAllMetric(c, '?mode=write_global'); // write something not valid
-      this.setUpAll();
+      createClusterWideMetrics();
       let txt = getAllMetric(c, '?mode=write_global');
       checkRawMetrics(txt, false);
       checkCoordinators(coordinators, '?mode=trigger_global');
@@ -255,10 +263,10 @@ function CoordinatorMetricsTestSuite() {
 
     testIResearchMetricStatsSleep: function () {
       let coordinators = getEndpointsByType("coordinator");
-      this.tearDownAll();
+      cleanupClusterWideMetrics();
       let c = coordinators[0];
       getAllMetric(c, '?mode=write_global'); // write something not valid
-      this.setUpAll();
+      createClusterWideMetrics();
       getAllMetric(c, '?mode=trigger_global');
       require("internal").sleep(1);
       checkCoordinators(coordinators, '?mode=trigger_global');

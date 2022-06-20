@@ -1441,15 +1441,14 @@ futures::Future<metrics::LeaderResponse> metricsFromLeader(
   auto* pool = network.pool();
   network::Headers headers;
   headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeJsonNoEncoding);
+  auto options = network::RequestOptions{}
+                     .param("type", metrics::kCDJson)
+                     .param("MetricsServerId", std::move(serverId))
+                     .param("MetricsRebootId", std::to_string(rebootId))
+                     .param("MetricsVersion", std::to_string(version));
   auto future = network::sendRequest(
       pool, absl::StrCat("server:", leader), fuerte::RestVerb::Get,
-      "/_admin/metrics", {},
-      network::RequestOptions{}
-          .param("type", metrics::kCDJson)
-          .param("MetricsServerId", std::move(serverId))
-          .param("MetricsRebootId", std::to_string(rebootId))
-          .param("MetricsVersion", std::to_string(version)),
-      std::move(headers));
+      "/_admin/metrics", {}, std::move(options), std::move(headers));
   return std::move(future).then([](Try<network::Response>&& response) {
     if (response.hasValue()) {
       return response->response().stealPayload();

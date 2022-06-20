@@ -74,13 +74,15 @@ bool isOutdated(
   }
   velocypack::Slice newData{data->packed->data()};
   auto const oldVersion = oldData.value("MetricsVersion");
+  TRI_ASSERT(!oldVersion.empty());
   auto const newVersion = newData.get("Version").getNumber<uint64_t>();
-  if (oldVersion.empty() || std::stoull(oldVersion) < newVersion) {
+  if (std::stoull(oldVersion) < newVersion) {
     return true;
   }
   auto const oldRebootId = oldData.value("MetricsRebootId");
+  TRI_ASSERT(!oldRebootId.empty());
   auto const newRebootId = newData.get("RebootId").getNumber<uint64_t>();
-  if (oldRebootId.empty() || std::stoull(oldRebootId) != newRebootId) {
+  if (std::stoull(oldRebootId) != newRebootId) {
     return true;
   }
   auto const oldServerId = oldData.value("MetricsServerId");
@@ -194,9 +196,9 @@ RestStatus RestMetricsHandler::execute() {
     auto& metrics = server().getFeature<metrics::ClusterMetricsFeature>();
     auto data = metrics.getData();
     if (isOutdated(*_request, data)) {
-      _response->addPayload(velocypack::Slice{data->packed->data()});
+      _response->addPayload(VPackSlice{data->packed->data()});
     } else {
-      _response->addPayload(velocypack::Slice::emptyArraySlice());
+      _response->addPayload(VPackSlice::noneSlice());
     }
     return RestStatus::DONE;
   }

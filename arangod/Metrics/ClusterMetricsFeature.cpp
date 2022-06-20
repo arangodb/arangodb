@@ -192,7 +192,8 @@ void ClusterMetricsFeature::update() {
     return rescheduleUpdate(std::max(_timeout, 1U));
   }
   auto rebootId = isData ? oldData.get("RebootId").getNumber<uint64_t>() : 0;
-  auto serverId = isData ? oldData.get("ServerId").copyString() : "";
+  // We use `"0"` instead of `""` because we cannot parse empty string parameter
+  auto serverId = isData ? oldData.get("ServerId").copyString() : "0";
   data.reset();
   metricsFromLeader(nf, cf, *leader, std::move(serverId), rebootId, version)
       .thenFinal([this](futures::Try<LeaderResponse>&& raw) mutable noexcept {
