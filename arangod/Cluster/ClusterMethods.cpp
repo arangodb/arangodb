@@ -175,10 +175,22 @@ Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx,
   TRI_ASSERT(trx.state()->isCoordinator());
   TRI_ASSERT(trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED));
   ClusterTrxMethods::SortedServersSet leaders{};
-  for (auto const& shardServers : shards) {
-    ServerID const& srv = shardServers.second.at(0);
-    if (!trx.state()->knowsServer(srv)) {
-      leaders.emplace(srv);
+  if (trx.state()->options().allowDirtyReads) {
+    // In this case we do not always choose the leader, but take the
+    // choice stored in the TransactionState. We might hit some followers
+    // in this case, but this is the purpose of `allowDirtyReads`.
+    for (auto const& pair : shards) {
+      ServerID const& replica = trx.state()->whichReplica(pair.first);
+      if (!trx.state()->knowsServer(replica)) {
+        leaders.emplace(replica);
+      }
+    }
+  } else {
+    for (auto const& shardServers : shards) {
+      ServerID const& srv = shardServers.second.at(0);
+      if (!trx.state()->knowsServer(srv)) {
+        leaders.emplace(srv);
+      }
     }
   }
   return ClusterTrxMethods::beginTransactionOnLeaders(*trx.state(), leaders,
@@ -195,17 +207,27 @@ void addTransactionHeaderForShard(transaction::Methods const& trx,
     return;  // no need
   }
 
-  auto const& it = shardMap.find(shard);
-  if (it != shardMap.end()) {
-    if (it->second.empty()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
-    }
-    ServerID const& leader = it->second[0];
+  // If we are in a reading transaction and are supposed to read from followers
+  // then we need to send transaction begin headers not only to leaders, but
+  // sometimes also to followers. The `TransactionState` knows this and so
+  // we must consult `whichReplica` instead blindly taking the leader.
+  // Note that this essentially only happens in `getDocumentOnCoordinator`.
+  if (trx.state()->options().allowDirtyReads) {
+    ServerID const& leader = trx.state()->whichReplica(shard);
     ClusterTrxMethods::addTransactionHeader(trx, leader, headers);
   } else {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "couldn't find shard in shardMap");
+    auto const& it = shardMap.find(shard);
+    if (it != shardMap.end()) {
+      if (it->second.empty()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+      }
+      ServerID const& leader = it->second[0];
+      ClusterTrxMethods::addTransactionHeader(trx, leader, headers);
+    } else {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "couldn't find shard in shardMap");
+    }
   }
 }
 
@@ -1628,6 +1650,10 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
       }
 
       network::Headers headers;
+      // Just make sure that no dirty read flag makes it here, since we
+      // are writing and then `addTransactionHeaderForShard` might
+      // mightbehave!
+      TRI_ASSERT(!trx.state()->options().allowDirtyReads);
       addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first, headers);
       auto future = network::sendRequestRetry(
           pool, "shard:" + it.first, fuerte::RestVerb::Post,
@@ -1763,6 +1789,10 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
             }
 
             network::Headers headers;
+            // Just make sure that no dirty read flag makes it here, since we
+            // are writing and then `addTransactionHeaderForShard` might
+            // mightbehave!
+            TRI_ASSERT(!trx.state()->options().allowDirtyReads);
             addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first,
                                          headers);
             futures.emplace_back(network::sendRequestRetry(
@@ -1830,6 +1860,10 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
         for (auto const& shardServers : *shardIds) {
           ShardID const& shard = shardServers.first;
           network::Headers headers;
+          // Just make sure that no dirty read flag makes it here, since we
+          // are writing and then `addTransactionHeaderForShard` might
+          // mightbehave!
+          TRI_ASSERT(!trx.state()->options().allowDirtyReads);
           addTransactionHeaderForShard(trx, *shardIds, shard, headers);
           futures.emplace_back(network::sendRequestRetry(
               pool, "shard:" + shard, fuerte::RestVerb::Delete,
@@ -1902,6 +1936,10 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
     builder.close();
 
     network::Headers headers;
+    // Just make sure that no dirty read flag makes it here, since we
+    // are writing and then `addTransactionHeaderForShard` might
+    // mightbehave!
+    TRI_ASSERT(!trx.state()->options().allowDirtyReads);
     addTransactionHeaderForShard(trx, *shardIds, /*shard*/ p.first, headers);
     auto future = network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Put,
@@ -2611,6 +2649,10 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
             }
 
             network::Headers headers;
+            // Just make sure that no dirty read flag makes it here, since we
+            // are writing and then `addTransactionHeaderForShard` might
+            // mightbehave!
+            TRI_ASSERT(!trx.state()->options().allowDirtyReads);
             addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first,
                                          headers);
             futures.emplace_back(network::sendRequestRetry(
@@ -2664,6 +2706,10 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
         for (auto const& shardServers : *shardIds) {
           ShardID const& shard = shardServers.first;
           network::Headers headers;
+          // Just make sure that no dirty read flag makes it here, since we
+          // are writing and then `addTransactionHeaderForShard` might
+          // mightbehave!
+          TRI_ASSERT(!trx.state()->options().allowDirtyReads);
           addTransactionHeaderForShard(trx, *shardIds, shard, headers);
 
           std::string url;
