@@ -63,9 +63,12 @@ function createSingleVertex(name_prefix) {
     return {vertices, edges};
 }
 
+// length must be at least 2, shorter cycles make no sense and throw
+// because then the test is wrong
 function createDirectedCycle(length, vColl, name_prefix) {
     if (length < 2) {
-        return {};
+        console.error(`createDirectedCycle: error: length must be at least 2, instead got ${length}`);
+        assertTrue(false);
     }
     let vertices = makeVertices(length, name_prefix);
     let edges = [];
@@ -105,6 +108,9 @@ function createFullBinaryTree(treeDepth, vColl, name_prefix, alternating = false
     if (treeDepth === 0) {
         return {vertices: [0], edges: []};
     }
+    if (treeDepth > 14) {
+        console.warn(`createFullBinaryTree WARNING: creating ${Math.pow(2, treeDepth + 1) - 1} vertices!`);
+    }
     let vertices = makeVertices(Math.pow(2, treeDepth + 1) - 1, name_prefix);
     // We create edges level by level top-down.
     // variable firstFree: the least index of a vertex not yet connected by an edge.
@@ -128,7 +134,6 @@ function createFullBinaryTree(treeDepth, vColl, name_prefix, alternating = false
             }
             leaves = leavesNestLevel;
         }
-
     }
     return {vertices, edges};
 }
@@ -157,6 +162,11 @@ function createClique(size, vColl, name_prefix, kind = "bidirected") {
         }
     }
     return {vertices, edges};
+}
+
+// a wrapper to unify the call of createDirectedCycle, createAlternatingCycle, createFullBinaryTree
+function createBidirectedClique(size, vColl, name_prefix) {
+    return createClique(size, vColl, name_prefix, "bidirected");
 }
 
 // for manual testing
@@ -190,4 +200,5 @@ exports.createDirectedCycle = createDirectedCycle;
 exports.createAlternatingCycle = createAlternatingCycle;
 exports.createFullBinaryTree = createFullBinaryTree;
 exports.createClique = createClique;
+exports.createBidirectedClique = createBidirectedClique;
 exports.createSingleVertex = createSingleVertex;
