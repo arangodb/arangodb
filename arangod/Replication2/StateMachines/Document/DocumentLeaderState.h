@@ -42,7 +42,7 @@ struct DocumentLeaderState
       -> futures::Future<Result> override;
 
   void replicateOperations(velocypack::SharedSlice payload,
-                           TRI_voc_document_operation_e operation,
+                           OperationType operation,
                            TransactionId transactionId);
 
   LoggerContext const loggerContext;

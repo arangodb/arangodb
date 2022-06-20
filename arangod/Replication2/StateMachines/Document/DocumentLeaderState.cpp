@@ -51,26 +51,10 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
   return {TRI_ERROR_NO_ERROR};
 }
 
-void DocumentLeaderState::replicateOperations(
-    velocypack::SharedSlice payload, TRI_voc_document_operation_e operation,
-    TransactionId transactionId) {
-  auto opName = std::invoke([&operation]() -> std::string {
-    switch (operation) {
-      case TRI_VOC_DOCUMENT_OPERATION_INSERT:
-        return "insert";
-      case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
-        return "updated";
-      case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
-        return "replace";
-      case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
-        return "remove";
-      default:
-        TRI_ASSERT(false);
-    }
-    return "error";
-  });
-
-  auto entry = DocumentLogEntry{std::string(collectionId), std::move(opName),
+void DocumentLeaderState::replicateOperations(velocypack::SharedSlice payload,
+                                              OperationType operation,
+                                              TransactionId transactionId) {
+  auto entry = DocumentLogEntry{std::string(collectionId), operation,
                                 std::move(payload), transactionId};
   getStream()->insert(entry);
 }

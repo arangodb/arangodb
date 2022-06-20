@@ -24,8 +24,77 @@
 #include "DocumentLogEntry.h"
 #include "Inspection/VPack.h"
 
+namespace {
+auto const String_Insert = std::string_view{"Insert"};
+auto const String_Update = std::string_view{"Update"};
+auto const String_Replace = std::string_view{"Replace"};
+auto const String_Remove = std::string_view{"Remove"};
+auto const String_Truncate = std::string_view{"Truncate"};
+}  // namespace
+
 using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::replicated_state::document;
+
+auto document::fromDocumentOperation(TRI_voc_document_operation_e& op) noexcept
+    -> OperationType {
+  switch (op) {
+    case TRI_VOC_DOCUMENT_OPERATION_INSERT:
+      return kInsert;
+    case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
+      return kUpdate;
+    case TRI_VOC_DOCUMENT_OPERATION_REPLACE:
+      return kReplace;
+    case TRI_VOC_DOCUMENT_OPERATION_REMOVE:
+      return kRemove;
+    default:
+      ADB_PROD_ASSERT(false) << "Unexpected document operation " << op;
+      break;
+  }
+  return {};
+}
+
+auto document::to_string(OperationType op) noexcept -> std::string_view {
+  switch (op) {
+    case kInsert:
+      return String_Insert;
+    case kUpdate:
+      return String_Update;
+    case kReplace:
+      return String_Replace;
+    case kRemove:
+      return String_Remove;
+    case kTruncate:
+      return String_Truncate;
+    default:
+      ADB_PROD_ASSERT(false) << "Unexpected operation " << op;
+  }
+}
+
+auto OperationStringTransformer::toSerialized(OperationType source,
+                                              std::string& target) const
+    -> inspection::Status {
+  target = to_string(source);
+  return {};
+}
+
+auto OperationStringTransformer::fromSerialized(std::string const& source,
+                                                OperationType& target) const
+    -> inspection::Status {
+  if (source == String_Insert) {
+    target = OperationType::kInsert;
+  } else if (source == String_Update) {
+    target = OperationType::kUpdate;
+  } else if (source == String_Replace) {
+    target = OperationType::kReplace;
+  } else if (source == String_Remove) {
+    target = OperationType::kRemove;
+  } else if (source == String_Truncate) {
+    target = OperationType::kTruncate;
+  } else {
+    return inspection::Status{"Invalid operation " + std::string{source}};
+  }
+  return {};
+}
 
 auto EntryDeserializer<DocumentLogEntry>::operator()(
     streams::serializer_tag_t<DocumentLogEntry>, velocypack::Slice s) const

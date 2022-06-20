@@ -132,7 +132,7 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
     },
 
     testReplicateOperationsInsert: function() {
-      const opType = "insert";
+      const opType = "Insert";
       let collection = db._collection(collectionName);
       let shards = collection.shards();
       let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
@@ -160,7 +160,7 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
     },
 
     testReplicateOperationsModify: function() {
-      const opType = "updated";
+      const opType = "Update";
       let collection = db._collection(collectionName);
       let shards = collection.shards();
       let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
@@ -178,7 +178,7 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
       // Replace multiple documents
       let replacements = [{value: 10, name: "testR"}, {value: 20, name: "testR"}];
       docHandles = collection.replace(docHandles, replacements);
-      let result = getArrayElements(logs, "replace",  "testR");
+      let result = getArrayElements(logs, "Replace",  "testR");
       for (const doc of replacements) {
         assertTrue(result.find(entry => entry.value === doc.value) !== undefined);
       }
@@ -196,7 +196,7 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
     },
 
     testReplicateOperationsRemove: function() {
-      const opType = "remove";
+      const opType = "Remove";
       let collection = db._collection(collectionName);
       let shards = collection.shards();
       let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
@@ -218,7 +218,27 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
         assertTrue(result.find(entry => entry._key === doc._key) !== undefined);
       }
     },
-  };
+
+    testReplicateOperationsTruncate: function() {
+      const opType = "Truncate";
+      let collection = db._collection(collectionName);
+      let shards = collection.shards();
+      let logs = shards.map(shardId => db._replicatedLog(shardId.slice(1)));
+      collection.truncate();
+
+      let found = [];
+      let allEntries = logs.reduce((previous, current) => previous.concat(current.head(1000)), []);
+      for (const entry of allEntries) {
+        if (entry.hasOwnProperty("payload") && entry.payload[1].operation === opType) {
+          let colName = entry.payload[1].data.collection;
+          assertTrue(shards.includes(colName) && !found.includes(colName));
+          found.push(colName);
+        }
+      }
+      assertEqual(found.length, 2);
+    },
+
+    };
 };
 
 const replicatedStateDocumentStoreSuiteDatabaseDeletionReplication2 = function () {

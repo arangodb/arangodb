@@ -2049,6 +2049,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(
   DataSourceId cid =
       addCollectionAtRuntime(collectionName, AccessMode::Type::WRITE);
   auto const& collection = trxCollection(cid)->collection();
+  auto replicationVersion = collection->replicationVersion();
 
   std::shared_ptr<std::vector<ServerID> const> followers;
 
@@ -2063,22 +2064,27 @@ Future<OperationResult> transaction::Methods::truncateLocal(
             TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options));
       }
 
-      switch (followerInfo->allowedToWrite()) {
-        case FollowerInfo::WriteState::FORBIDDEN:
-          // We cannot fulfill minimum replication Factor. Reject write.
-          return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
-        case FollowerInfo::WriteState::UNAVAILABLE:
-        case FollowerInfo::WriteState::STARTUP:
-          return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
-                                 options);
-        default:
-          break;
+      // This is just a trick to let the function continue for replication2
+      // databases
+      if (replicationVersion != replication::Version::TWO) {
+        switch (followerInfo->allowedToWrite()) {
+          case FollowerInfo::WriteState::FORBIDDEN:
+            // We cannot fulfill minimum replication Factor. Reject write.
+            return OperationResult(TRI_ERROR_ARANGO_READ_ONLY, options);
+          case FollowerInfo::WriteState::UNAVAILABLE:
+          case FollowerInfo::WriteState::STARTUP:
+            return OperationResult(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+                                   options);
+          default:
+            break;
+        }
       }
 
       // fetch followers
       replicationType = ReplicationType::LEADER;
       followers = followerInfo->get();
-      if (!followers->empty()) {
+      if (!followers->empty() ||
+          replicationVersion == replication::Version::TWO) {
         options.silent = false;
       }
     } else {  // we are a follower following theLeader
@@ -2117,6 +2123,21 @@ Future<OperationResult> transaction::Methods::truncateLocal(
 
   if (res.fail()) {
     return futures::makeFuture(OperationResult(res, options));
+  }
+
+  if (replicationType == ReplicationType::LEADER &&
+      replicationVersion == replication::Version::TWO) {
+    auto leaderState = collection->waitForDocumentStateLeader();
+    auto body = VPackBuilder();
+    {
+      VPackObjectBuilder ob(&body);
+      body.add("collection", collectionName);
+    }
+    leaderState->replicateOperations(
+        body.sharedSlice(),
+        replication2::replicated_state::document::OperationType::kTruncate,
+        state()->id());
+    return OperationResult{Result{}, options};
   }
 
   // Now see whether or not we have to do synchronous replication:
@@ -2635,26 +2656,12 @@ Future<Result> Methods::replicateOperations(
   }
 
   if (collection->replicationVersion() == replication::Version::TWO) {
-    auto replicatedState = collection->getDocumentState();
-
-    // TODO find a better way to wait for service availability
-    for (int counter{0}; counter < 5; ++counter) {
-      auto status = replicatedState->getStatus();
-      TRI_ASSERT(status.has_value());
-      auto leaderStatus = status->asLeaderStatus();
-      TRI_ASSERT(leaderStatus != nullptr);
-      if (leaderStatus->managerState.state ==
-          replication2::replicated_state::LeaderInternalState::
-              kServiceAvailable) {
-        break;
-      }
-      using namespace std::chrono_literals;
-      std::this_thread::sleep_for(1s);
-    }
-
-    auto leaderState = collection->getDocumentStateLeader();
-    leaderState->replicateOperations(payload->sharedSlice(), operation,
-                                     state()->id());
+    auto leaderState = collection->waitForDocumentStateLeader();
+    leaderState->replicateOperations(
+        payload->sharedSlice(),
+        replication2::replicated_state::document::fromDocumentOperation(
+            operation),
+        state()->id());
     return Result{};
   }
 

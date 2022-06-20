@@ -26,6 +26,7 @@
 #include "Replication2/ReplicatedState/ReplicatedStateTraits.h"
 #include "Replication2/Streams/StreamSpecification.h"
 #include "VocBase/Identifiers/TransactionId.h"
+#include "Inspection/Status.h"
 
 #include <velocypack/SharedSlice.h>
 
@@ -34,16 +35,38 @@
 
 namespace arangodb::replication2::replicated_state {
 namespace document {
+
+enum OperationType {
+  kInsert,
+  kUpdate,
+  kReplace,
+  kRemove,
+  kTruncate,
+};
+
+auto to_string(OperationType) noexcept -> std::string_view;
+auto fromDocumentOperation(TRI_voc_document_operation_e& op) noexcept
+    -> OperationType;
+
+struct OperationStringTransformer {
+  using SerializedType = std::string;
+  auto toSerialized(OperationType source, std::string& target) const
+      -> inspection::Status;
+  auto fromSerialized(std::string const& source, OperationType& target) const
+      -> inspection::Status;
+};
+
 struct DocumentLogEntry {
   std::string collectionId;
-  std::string operation;  // TODO use enum
+  OperationType operation;
   velocypack::SharedSlice data;
   TransactionId trx;
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, DocumentLogEntry& p) {
     return f.object(p).fields(f.field("collectionId", p.collectionId),
-                              f.field("operation", p.operation),
+                              f.field("operation", p.operation)
+                                  .transformWith(OperationStringTransformer{}),
                               f.field("data", p.data), f.field("trx", p.trx));
   }
 };
