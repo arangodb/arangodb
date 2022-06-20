@@ -81,7 +81,7 @@ class RocksDBSstFileMethods final : public RocksDBMethods {
   rocksdb::ColumnFamilyHandle* _cf;
   std::string _idxPath;
   std::vector<std::string> _sstFileNames;
-  std::vector<std::pair<std::string, std::string>> _sortedKeyValPairs;
+  std::vector<std::pair<std::string, std::string>> _keyValPairs;
 };
 
 }  // namespace arangodb

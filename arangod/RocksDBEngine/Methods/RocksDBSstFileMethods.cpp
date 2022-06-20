@@ -71,12 +71,12 @@ void RocksDBSstFileMethods::insertEstimators() {
 }
 
 rocksdb::Status RocksDBSstFileMethods::writeToFile() {
-  if (_sortedKeyValPairs.empty()) {
+  if (_keyValPairs.empty()) {
     return rocksdb::Status::OK();
   }
 
   auto comparator = _cf->GetComparator();
-  std::sort(_sortedKeyValPairs.begin(), _sortedKeyValPairs.end(),
+  std::sort(_keyValPairs.begin(), _keyValPairs.end(),
             [&comparator](auto& v1, auto& v2) {
               return comparator->Compare({v1.first}, {v2.first}) < 0;
             });
@@ -90,13 +90,13 @@ rocksdb::Status RocksDBSstFileMethods::writeToFile() {
   if (res.ok()) {
     _bytesToWriteCount = 0;
     _sstFileNames.emplace_back(fileName);
-    for (auto const& [key, val] : _sortedKeyValPairs) {
+    for (auto const& [key, val] : _keyValPairs) {
       res = _sstFileWriter.Put(rocksdb::Slice(key), rocksdb::Slice(val));
       if (!res.ok()) {
         break;
       }
     }
-    _sortedKeyValPairs.clear();
+    _keyValPairs.clear();
     if (res.ok()) {
       res = _sstFileWriter.Finish();
     }
@@ -148,7 +148,7 @@ rocksdb::Status RocksDBSstFileMethods::Put(rocksdb::ColumnFamilyHandle* cf,
   if (_cf == nullptr) {
     _cf = cf;
   }
-  _sortedKeyValPairs.emplace_back(std::make_pair(
+  _keyValPairs.emplace_back(std::make_pair(
       key.string().ToString(), std::string(val.data(), val.size())));
   _bytesToWriteCount += key.size() + val.size();
   if (_bytesToWriteCount >= this->kMaxDataSize) {
