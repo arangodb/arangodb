@@ -18,18 +18,18 @@ upgrade_data_3.6.* weight=1000 single
 upgrade_data_3.7.* weight=1000 single
 
 # Single Server Replication Tests
-replication_fuzz weight=500 single -- --extraArgs:log.level replication=trace
-replication_ongoing weight=500 single -- --extraArgs:log.level replication=trace
-replication_ongoing_frompresent single -- --extraArgs:log.level replication=trace
-replication_ongoing_global weight=500 single -- --extraArgs:log.level replication=trace
-replication_ongoing_global_spec single -- --extraArgs:log.level replication=trace
-replication_static weight=500 single -- --extraArgs:log.level replication=trace
-replication_sync weight=500 single -- --extraArgs:log.level replication=trace
-shell_replication single
+replication_fuzz weight=500 wweight=2 single -- --extraArgs:log.level replication=trace
+replication_ongoing weight=500 wweight=2 single -- --extraArgs:log.level replication=trace
+replication_ongoing_frompresent wweight=2 single -- --extraArgs:log.level replication=trace
+replication_ongoing_global weight=500 wweight=2 single -- --extraArgs:log.level replication=trace
+replication_ongoing_global_spec wweight=2 single -- --extraArgs:log.level replication=trace
+replication_static weight=500 wweight=2 single -- --extraArgs:log.level replication=trace
+replication_sync weight=500 wweight=2 single -- --extraArgs:log.level replication=trace
+shell_replication wweight=2 single 
 
 # Misc single server tests
 active_failover single
-agency weight=350 single -- --dumpAgencyOnError true
+agency weight=350 wweight=2 single -- --dumpAgencyOnError true
 agency-restart weight=250 single
 arangobench weight=1000 single
 arangosh single
@@ -91,7 +91,7 @@ export -- --dumpAgencyOnError true
 importing -- --dumpAgencyOnError true
 hot_backup !windows -- --dumpAgencyOnError true
 
-http_replication weight=500
+http_replication weight=500 wweight=2
 http_server weight=750 -- --dumpAgencyOnError true
 server_http -- --dumpAgencyOnError true
 server_parameters weight=1000 -- --dumpAgencyOnError true
