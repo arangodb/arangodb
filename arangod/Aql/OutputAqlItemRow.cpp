@@ -235,7 +235,7 @@ auto OutputAqlItemRow::fastForwardAllRows(InputAqlItemRow const& sourceRow,
   // We have the guarantee that we have all data in our block.
   // We only need to adjust internal indexes.
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // Safely assert that the API is not missused.
+  // Safely assert that the API is not misused.
   TRI_ASSERT(_baseIndex + rows <= _block->numRows());
   for (size_t i = _baseIndex; i < _baseIndex + rows; ++i) {
     TRI_ASSERT(!_block->isShadowRow(i));

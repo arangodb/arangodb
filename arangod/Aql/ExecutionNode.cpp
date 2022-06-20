@@ -64,6 +64,7 @@
 #include "Aql/TraversalNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/WindowNode.h"
+#include "Basics/Exceptions.tpp"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/system-compiler.h"
@@ -138,8 +139,8 @@ std::string_view ExecutionNode::getTypeString(NodeType type) {
     return (*it).second;
   }
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                 "missing type in TypeNames");
+  throw basics::Exception::fmt(ADB_HERE, TRI_ERROR_NOT_IMPLEMENTED,
+                               "missing type {} in TypeNames", type);
 }
 
 /// @brief returns the type name of the node
