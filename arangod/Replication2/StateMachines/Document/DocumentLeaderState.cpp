@@ -67,6 +67,7 @@ void DocumentLeaderState::replicateOperations(
       default:
         TRI_ASSERT(false);
     }
+    return "error";
   });
 
   auto entry = DocumentLogEntry{std::string(collectionId), std::move(opName),
